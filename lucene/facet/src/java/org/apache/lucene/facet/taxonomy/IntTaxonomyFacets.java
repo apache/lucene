@@ -31,10 +31,17 @@ import org.apache.lucene.facet.TopOrdAndIntQueue;
 /** Base class for all taxonomy-based facets that aggregate to a per-ords int[]. */
 public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
-  /** Per-ordinal value. */
-  final int[] values;
+  /**
+   * Per-ordinal value. We are making this and {@link #sparseValues} protected for some expert
+   * usage. e.g. It can be checked which is being used before a loop instead of calling {@link
+   * #increment} for each iteration.
+   *
+   * @see FastTaxonomyFacetCounts#count as an example of usage.
+   */
+  protected final int[] values;
 
-  final IntIntHashMap sparseValues;
+  /** @see #values */
+  protected final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
   protected IntTaxonomyFacets(
@@ -72,6 +79,11 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     // if our result set is < 10% of the index, we collect sparsely (use hash map):
     return sumTotalHits < maxDoc / 10;
+  }
+
+  /** Increment the count for this ordinal by 1. */
+  protected void increment(int ordinal) {
+    increment(ordinal, 1);
   }
 
   /** Increment the count for this ordinal by {@code amount}.. */
