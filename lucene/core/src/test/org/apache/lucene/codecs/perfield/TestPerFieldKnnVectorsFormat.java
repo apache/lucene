@@ -174,10 +174,6 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
             throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          // assert that knnVectorsReader#getVectorValues returns different instances upon repeated
-          // calls
-          assert knnVectorsReader.getVectorValues(fieldInfo.name)
-              != knnVectorsReader.getVectorValues(fieldInfo.name);
           writer.writeField(fieldInfo, knnVectorsReader);
         }
 

@@ -61,6 +61,10 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
         throws IOException {
       assert fieldInfo != null;
       assert knnVectorsReader != null;
+      // assert that knnVectorsReader#getVectorValues returns different instances upon repeated
+      // calls
+      assert knnVectorsReader.getVectorValues(fieldInfo.name)
+          != knnVectorsReader.getVectorValues(fieldInfo.name);
       delegate.writeField(fieldInfo, knnVectorsReader);
     }
 
