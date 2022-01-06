@@ -91,24 +91,14 @@ final class BKDForUtil {
     for (int i = 0; i < 192; ++i) {
       tmp[i] = longs[i] << 8;
     }
-    int tmpIdx = 0;
-    for (int i = 192; i < 256; i++) {
-      tmp[tmpIdx++] |= (longs[i] >>> 16) & MASK32_8;
-      tmp[tmpIdx++] |= (longs[i] >>> 8) & MASK32_8;
-      tmp[tmpIdx++] |= longs[i] & MASK32_8;
+    for (int i = 0; i < 64; i++) {
+      final int longIdx = i + 192;
+      tmp[i] |= (longs[longIdx] >>> 16) & MASK32_8;
+      tmp[i + 64] |= (longs[longIdx] >>> 8) & MASK32_8;
+      tmp[i + 128] |= longs[longIdx] & MASK32_8;
     }
     for (int i = 0; i < 192; ++i) {
       out.writeLong(tmp[i]);
-    }
-  }
-
-  /**
-   * The pattern that this shiftLongs method applies is recognized by the C2 compiler, which
-   * generates SIMD instructions for it in order to shift multiple longs at once.
-   */
-  private static void shiftLongs(long[] a, int count, long[] b, int shift, long mask) {
-    for (int i = 0; i < count; ++i) {
-      b[i] = (a[i] >>> shift) & mask;
     }
   }
 
@@ -119,13 +109,12 @@ final class BKDForUtil {
 
   void decode24(DataInput in, long[] longs) throws IOException {
     in.readLongs(tmp, 0, 192);
-    shiftLongs(tmp, 192, longs, 8, MASK32_24);
-    shiftLongs(tmp, 192, tmp, 0, MASK32_8);
-    for (int iter = 0, tmpIdx = 0, longsIdx = 192; iter < 64; ++iter, tmpIdx += 3, longsIdx += 1) {
-      long l0 = tmp[tmpIdx] << 16;
-      l0 |= tmp[tmpIdx + 1] << 8;
-      l0 |= tmp[tmpIdx + 2];
-      longs[longsIdx] = l0;
+    for (int i = 0; i < 192; ++i) {
+      longs[i] = (tmp[i] >>> 8) & MASK32_24;
+    }
+    for (int i = 0; i < 64; i++) {
+      longs[i + 192] =
+          ((tmp[i] & MASK32_8) << 16) | ((tmp[i + 64] & MASK32_8) << 8) | (tmp[i + 128] & MASK32_8);
     }
     expand32(longs);
   }
