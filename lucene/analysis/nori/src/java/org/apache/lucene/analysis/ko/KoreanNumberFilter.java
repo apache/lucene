@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * A {@link TokenFilter} that normalizes Korean numbers to regular Arabic decimal numbers in
@@ -72,6 +73,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
  *
  * @lucene.experimental
  */
+@IgnoreRandomChains(reason = "LUCENE-10361: KoreanNumberFilter messes up offsets")
 public class KoreanNumberFilter extends TokenFilter {
 
   private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
