@@ -69,7 +69,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     countAll(reader);
   }
 
-  final void count(List<MatchingDocs> matchingDocs) throws IOException {
+  private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
       SortedNumericDocValues dv = hits.context.reader().getSortedNumericDocValues(indexFieldName);
       if (dv == null) {

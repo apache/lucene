@@ -37,8 +37,6 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
    * <p>We are making this and {@link #sparseValues} protected for some expert usage. e.g. It can be
    * checked which is being used before a loop instead of calling {@link #increment} for each
    * iteration.
-   *
-   * @see FastTaxonomyFacetCounts#count as an example of usage.
    */
   protected final int[] values;
 
