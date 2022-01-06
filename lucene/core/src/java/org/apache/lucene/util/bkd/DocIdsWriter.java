@@ -35,11 +35,13 @@ class DocIdsWriter {
   private static final byte BPV_32 = (byte) 32;
   private static final byte BPV_32_FOR_UTIL = (byte) 32 + 32;
 
+  private final boolean usingDefaultBlockSize;
   private final BKDForUtil forUtil = new BKDForUtil();
   private final long[] scratch;
 
   DocIdsWriter(int maxPointsInLeaf) {
     scratch = new long[maxPointsInLeaf];
+    usingDefaultBlockSize = maxPointsInLeaf == BKDForUtil.BLOCK_SIZE;
   }
 
   void writeDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
@@ -77,7 +79,7 @@ class DocIdsWriter {
     }
 
     // special optimization when count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE (common case)
-    if (count == BKDForUtil.BLOCK_SIZE) {
+    if (usingDefaultBlockSize && count == BKDForUtil.BLOCK_SIZE) {
       if (sorted && Integer.toUnsignedLong(min2max) <= 0xFFFFL) {
         out.writeByte(DELTA_FOR_UTIL);
         long[] delta = new long[count];
