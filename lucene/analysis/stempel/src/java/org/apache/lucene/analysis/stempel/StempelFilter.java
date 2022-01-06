@@ -59,7 +59,10 @@ public final class StempelFilter extends TokenFilter {
    */
   public StempelFilter(TokenStream in, StempelStemmer stemmer, int minLength) {
     super(in);
-    this.stemmer = Objects.requireNonNull(stemmer);
+    this.stemmer = Objects.requireNonNull(stemmer, "stemmer");
+    if (minLength < 1) {
+      throw new IllegalArgumentException("minLength must be >=1");
+    }
     this.minLength = minLength;
   }
 
@@ -67,7 +70,7 @@ public final class StempelFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
-      if (!keywordAtt.isKeyword() && termAtt.length() > minLength) {
+      if (!keywordAtt.isKeyword() && termAtt.length() >= minLength) {
         StringBuilder sb = stemmer.stem(termAtt);
         if (sb != null) // if we can't stem it, return unchanged
         termAtt.setEmpty().append(sb);
