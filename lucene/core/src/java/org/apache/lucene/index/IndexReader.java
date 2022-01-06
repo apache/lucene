@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.util.Bits; // javadocs
+import org.apache.lucene.util.Bits;
 
 /**
  * IndexReader is an abstract class, providing an interface for accessing a point-in-time view of an
@@ -171,8 +171,12 @@ public abstract class IndexReader implements Closeable {
     parentReaders.add(reader);
   }
 
-  // overridden by StandardDirectoryReader and SegmentReader
-  void notifyReaderClosedListeners() throws IOException {
+  /**
+   * For test framework use only.
+   *
+   * @lucene.internal
+   */
+  protected void notifyReaderClosedListeners() throws IOException {
     // nothing to notify in the base impl
   }
 

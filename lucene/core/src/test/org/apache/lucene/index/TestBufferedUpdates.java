@@ -17,7 +17,7 @@
 package org.apache.lucene.index;
 
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Unit test for {@link BufferedUpdates} */
 public class TestBufferedUpdates extends LuceneTestCase {

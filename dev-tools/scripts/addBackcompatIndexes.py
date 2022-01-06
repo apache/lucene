@@ -168,8 +168,8 @@ def check_backcompat_tests():
   scriptutil.run('./gradlew -p lucene/backward-codecs test --tests TestBackwardsCompatibility')
   print('ok')
 
-def download_from_mirror(version, remotename, localname):
-  url = 'http://apache.cs.utah.edu/lucene/java/%s/%s' % (version, remotename)
+def download_from_cdn(version, remotename, localname):
+  url = 'http://dlcdn.apache.org/lucene/java/%s/%s' % (version, remotename)
   try:
     urllib.request.urlretrieve(url, localname)
     return True
@@ -200,9 +200,9 @@ def download_release(version, temp_dir, force):
 
   filename = 'lucene-%s-src.tgz' % version
   source_tgz = os.path.join(temp_dir, filename)
-  if not download_from_mirror(version, filename, source_tgz) and \
+  if not download_from_cdn(version, filename, source_tgz) and \
      not download_from_archives(version, filename, source_tgz):
-    raise Exception('Could not find version %s in apache mirror or archives' % version)
+    raise Exception('Could not find version %s in apache CDN or archives' % version)
 
   olddir = os.getcwd()
   os.chdir(temp_dir)

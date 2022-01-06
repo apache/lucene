@@ -17,8 +17,8 @@
 package org.apache.lucene.analysis.icu.segmentation;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Test tokenizing Myanmar text into syllables */
 public class TestMyanmarSyllable extends BaseTokenStreamTestCase {

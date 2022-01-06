@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
@@ -81,7 +80,6 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SegmentReader;
@@ -103,19 +101,21 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -335,8 +335,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   static final String[] oldNames = {
-    "9.0.0-cfs",
-    "9.0.0-nocfs"
+    "9.0.0-cfs", // Force on separate lines
+    "9.0.0-nocfs",
   };
 
   public static String[] getOldNames() {
@@ -344,7 +344,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   static final String[] oldSortedNames = {
-    "sorted.9.0.0"
+    "sorted.9.0.0", // Force on separate lines
   };
 
   public static String[] getOldSortedNames() {
@@ -595,6 +595,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.10.1-nocfs",
     "8.11.0-cfs",
     "8.11.0-nocfs",
+    "8.11.1-cfs",
+    "8.11.1-nocfs"
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
@@ -1766,9 +1768,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public static final String emptyIndex = "empty.8.0.0.zip";
+  public static final String emptyIndex = "empty.9.0.0.zip";
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testUpgradeEmptyOldIndex() throws Exception {
     Path oldIndexDir = createTempDir("emptyIndex");
     TestUtil.unzip(getDataInputStream(emptyIndex), oldIndexDir);
@@ -1776,14 +1777,13 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     newIndexUpgrader(dir).upgrade();
 
-    checkAllSegmentsUpgraded(dir, 8);
+    checkAllSegmentsUpgraded(dir, 9);
 
     dir.close();
   }
 
   public static final String moreTermsIndex = "moreterms.9.0.0.zip";
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testMoreTerms() throws Exception {
     Path oldIndexDir = createTempDir("moreterms");
     TestUtil.unzip(getDataInputStream(moreTermsIndex), oldIndexDir);
@@ -1832,7 +1832,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     reader.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDocValuesUpdates() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1861,7 +1860,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDeletes() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1885,7 +1883,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testSoftDeletes() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);
@@ -1907,7 +1904,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
-  @LuceneTestCase.AwaitsFix(bugUrl = "Unavailable until 9.0.0 is released")
   public void testDocValuesUpdatesWithNewField() throws Exception {
     Path oldIndexDir = createTempDir("dvupdates");
     TestUtil.unzip(getDataInputStream(dvUpdatesIndex), oldIndexDir);

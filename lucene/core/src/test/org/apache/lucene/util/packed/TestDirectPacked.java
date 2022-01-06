@@ -16,15 +16,15 @@
  */
 package org.apache.lucene.util.packed;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.Random;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.LongValues;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestDirectPacked extends LuceneTestCase {
 
@@ -111,7 +111,7 @@ public class TestDirectPacked extends LuceneTestCase {
 
   private void doTestBpv(Directory directory, int bpv, long offset, boolean merge)
       throws Exception {
-    MyRandom random = new MyRandom(random().nextLong());
+    Random random = random();
     int numIters = TEST_NIGHTLY ? 100 : 10;
     for (int i = 0; i < numIters; i++) {
       long[] original = randomLongs(random, bpv);
@@ -145,29 +145,13 @@ public class TestDirectPacked extends LuceneTestCase {
     }
   }
 
-  private long[] randomLongs(MyRandom random, int bpv) {
+  private long[] randomLongs(Random random, int bpv) {
     int amount = random.nextInt(5000);
     long[] longs = new long[amount];
+    long max = PackedInts.maxValue(bpv);
     for (int i = 0; i < longs.length; i++) {
-      longs[i] = random.nextLong(bpv);
+      longs[i] = RandomNumbers.randomLongBetween(random, 0, max);
     }
     return longs;
-  }
-
-  // java.util.Random only returns 48bits of randomness in nextLong...
-  static class MyRandom extends Random {
-    byte[] buffer = new byte[8];
-    ByteArrayDataInput input = new ByteArrayDataInput();
-
-    MyRandom(long seed) {
-      super(seed);
-    }
-
-    public synchronized long nextLong(int bpv) {
-      nextBytes(buffer);
-      input.reset(buffer);
-      long bits = input.readLong();
-      return bits >>> (64 - bpv);
-    }
   }
 }

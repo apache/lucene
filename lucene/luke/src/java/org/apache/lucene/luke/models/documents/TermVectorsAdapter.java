@@ -22,8 +22,9 @@ import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
-import org.apache.logging.log4j.Logger;
+import java.util.logging.Logger;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -53,7 +54,10 @@ final class TermVectorsAdapter {
     Terms termVector = reader.getTermVector(docid, field);
     if (termVector == null) {
       // no term vector available
-      log.warn("No term vector indexed for doc: #{} and field: {}", docid, field);
+      log.warning(
+          () ->
+              String.format(
+                  Locale.ROOT, "No term vector indexed for doc: #%s and field: %s", docid, field));
       return Collections.emptyList();
     }
 

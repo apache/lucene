@@ -19,6 +19,8 @@ package org.apache.lucene.search;
 import java.util.Arrays;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.tests.search.AssertingQuery;
+import org.apache.lucene.tests.search.SearchEquivalenceTestBase;
 
 /** Basic equivalence tests for core queries */
 public class TestSimpleSearchEquivalence extends SearchEquivalenceTestBase {

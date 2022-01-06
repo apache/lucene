@@ -21,7 +21,6 @@ import java.util.Map;
 import org.apache.lucene.analysis.TokenizerFactory;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.MinimizationOperations;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
@@ -74,7 +73,7 @@ public class SimplePatternSplitTokenizerFactory extends TokenizerFactory {
     determinizeWorkLimit =
         getInt(args, "determinizeWorkLimit", Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     dfa =
-        MinimizationOperations.minimize(
+        Operations.determinize(
             new RegExp(require(args, PATTERN)).toAutomaton(), determinizeWorkLimit);
     if (args.isEmpty() == false) {
       throw new IllegalArgumentException("Unknown parameters: " + args);

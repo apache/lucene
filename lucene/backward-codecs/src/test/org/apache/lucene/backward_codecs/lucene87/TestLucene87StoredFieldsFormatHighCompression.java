@@ -20,12 +20,12 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.index.BaseStoredFieldsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 
 @Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene87StoredFieldsFormatHighCompression extends BaseStoredFieldsFormatTestCase {

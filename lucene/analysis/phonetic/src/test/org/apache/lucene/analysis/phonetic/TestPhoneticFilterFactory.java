@@ -21,9 +21,9 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.codec.language.Caverphone2;
 import org.apache.commons.codec.language.Metaphone;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
 
 public class TestPhoneticFilterFactory extends BaseTokenStreamTestCase {

@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -157,6 +158,23 @@ public final class IOUtils {
   }
 
   /**
+   * Wrap all calls to {@link Class#getResource(String)} or {@link
+   * Class#getResourceAsStream(String)} using this method to enforce existence of the resource. This
+   * code works around those methods returning {@code null} to signal non-existence.
+   *
+   * @param resource return value of above methods
+   * @param name of resource
+   * @return the resource passed in if existent
+   * @throws FileNotFoundException if resource was not found
+   */
+  public static <T> T requireResourceNonNull(T resource, String name) throws IOException {
+    if (resource == null) {
+      throw new FileNotFoundException("The resource '" + name + "' was not found.");
+    }
+    return resource;
+  }
+
+  /**
    * Opens a Reader for the given resource using a {@link CharsetDecoder}. Unlike Java's defaults
    * this reader will throw an exception if your it detects the read charset doesn't match the
    * expected {@link Charset}.
@@ -168,13 +186,21 @@ public final class IOUtils {
    * @param resource the resource name to load
    * @param charSet the expected charset
    * @return a reader to read the given file
+   * @deprecated {@link Class#getResourceAsStream(String)} is caller sensitive and cannot load
+   *     resources across Java Modules. Please call the {@code getResourceAsStream()} directly and
+   *     use {@link #requireResourceNonNull(Object,String)} to signal missing resources {@code null}
    */
+  @Deprecated(forRemoval = true, since = "9.1")
   public static Reader getDecodingReader(Class<?> clazz, String resource, Charset charSet)
       throws IOException {
-    InputStream stream = null;
+    var argModule = clazz.getModule();
+    if (argModule.isNamed() && argModule != IOUtils.class.getModule()) {
+      throw new UnsupportedOperationException(
+          "getDecodingReader(class,...) does not work when Java Module System is enabled.");
+    }
+    InputStream stream = requireResourceNonNull(clazz.getResourceAsStream(resource), resource);
     boolean success = false;
     try {
-      stream = clazz.getResourceAsStream(resource);
       final Reader reader = getDecodingReader(stream, charSet);
       success = true;
       return reader;

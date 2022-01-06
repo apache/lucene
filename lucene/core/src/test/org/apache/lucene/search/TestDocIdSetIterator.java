@@ -19,7 +19,7 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDocIdSetIterator extends LuceneTestCase {
   public void testRangeBasic() throws Exception {

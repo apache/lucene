@@ -22,25 +22,32 @@ plugins {
 description = 'Lucene benchmarking module'
 
 dependencies {  
-  implementation project(':lucene:core')
+  moduleImplementation project(':lucene:core')
 
-  implementation project(':lucene:analysis:common')
-  implementation project(':lucene:facet')
-  implementation project(':lucene:highlighter')
-  implementation project(':lucene:queries')
-  implementation project(':lucene:spatial-extras')
-  implementation project(':lucene:queryparser')
+  moduleImplementation project(':lucene:analysis:common')
+  moduleImplementation project(':lucene:facet')
+  moduleImplementation project(':lucene:highlighter')
+  moduleImplementation project(':lucene:queries')
+  moduleImplementation project(':lucene:spatial-extras')
+  moduleImplementation project(':lucene:queryparser')
 
-  implementation "org.apache.commons:commons-compress"
-  implementation "com.ibm.icu:icu4j"
-  implementation "org.locationtech.spatial4j:spatial4j"
-  implementation("net.sourceforge.nekohtml:nekohtml", {
+  moduleImplementation "org.apache.commons:commons-compress"
+  moduleImplementation "com.ibm.icu:icu4j"
+  moduleImplementation "org.locationtech.spatial4j:spatial4j"
+  moduleImplementation ("net.sourceforge.nekohtml:nekohtml", {
+    exclude module: "xml-apis"
+    // LUCENE-10337: Exclude xercesImpl from module path because it has split packages with the JDK (!)
+    exclude module: "xercesImpl"
+  })
+
+  // LUCENE-10337: Include xercesImpl on regular classpath where it won't cause conflicts.
+  implementation ("xerces:xercesImpl", {
     exclude module: "xml-apis"
   })
 
-  runtimeOnly project(':lucene:analysis:icu')
+  moduleRuntimeOnly project(':lucene:analysis:icu')
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }
 
 // We add 'conf' to resources because we validate *.alg script correctness in one of the tests.
