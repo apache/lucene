@@ -84,11 +84,11 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
           ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
 
       if (singleValued != null) {
-        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
           increment((int) singleValued.longValue());
         }
       } else {
-        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
           for (int i = 0; i < multiValued.docValueCount(); i++) {
             increment((int) multiValued.nextValue());
           }
