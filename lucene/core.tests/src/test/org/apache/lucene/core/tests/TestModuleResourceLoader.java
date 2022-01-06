@@ -17,13 +17,12 @@
 package org.apache.lucene.core.tests;
 
 import java.io.IOException;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ModuleResourceLoader;
 import org.apache.lucene.util.ResourceLoader;
-import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
-public class TestModuleResourceLoader extends Assert {
+public class TestModuleResourceLoader extends LuceneTestCase {
   private static final Module MODULE = TestModuleResourceLoader.class.getModule();
 
   private final ResourceLoader loader = new ModuleResourceLoader(MODULE);
@@ -33,7 +32,6 @@ public class TestModuleResourceLoader extends Assert {
     assertTrue("Test class must be in a named module", MODULE.isNamed());
   }
 
-  @Test
   public void testModuleResources() throws Exception {
     try (var stream = loader.openResource("org/apache/lucene/core/testresources/accessible.txt")) {
       stream.available();
@@ -51,8 +49,7 @@ public class TestModuleResourceLoader extends Assert {
     }
   }
 
-  @Test
-  public void testModuleClassloading() throws Exception {
+  public void testModuleClassloading() {
     assertSame(
         TestModuleResourceLoader.class,
         loader.findClass(TestModuleResourceLoader.class.getName(), Object.class));

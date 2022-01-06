@@ -15,13 +15,5 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
-
-/** Test utility class to create mock {@link Lucene90PostingsFormat.IntBlockTermState}. */
-public class MockTermStateFactory {
-
-  /** Creates an empty {@link Lucene90PostingsFormat.IntBlockTermState}. */
-  public static Lucene90PostingsFormat.IntBlockTermState create() {
-    return new Lucene90PostingsFormat.IntBlockTermState();
-  }
-}
+/** Shared test fixtures for spatial packages. */
+package org.apache.lucene.spatial3d.tests;
