@@ -116,7 +116,6 @@ public final class DoubleRange extends Range {
     return Objects.hash(label, min, max);
   }
 
-  @Deprecated
   private static class ValueSourceQuery extends Query {
     private final DoubleRange range;
     private final Query fastMatchQuery;
@@ -331,13 +330,7 @@ public final class DoubleRange extends Range {
    *
    * @param fastMatchQuery a query to use as a filter
    * @param valueSource the source of values for the range check
-   * @deprecated Counting from a user-provided DoubleValuesSource is being deprecated in favor of
-   *     counting from a MultiDoubleValuesSource. See {@link #getQuery(Query,
-   *     MultiDoubleValuesSource)} and {@link
-   *     MultiDoubleValuesSource#fromSingleValued(DoubleValuesSource)} for an easy way to use the
-   *     new method with a {@code DoubleValuesSource}.
    */
-  @Deprecated
   public Query getQuery(Query fastMatchQuery, DoubleValuesSource valueSource) {
     return new ValueSourceQuery(this, fastMatchQuery, valueSource);
   }
@@ -355,6 +348,11 @@ public final class DoubleRange extends Range {
    * @param valueSource the source of values for the range check
    */
   public Query getQuery(Query fastMatchQuery, MultiDoubleValuesSource valueSource) {
-    return new MultiValueSourceQuery(this, fastMatchQuery, valueSource);
+    DoubleValuesSource singleValues = MultiDoubleValuesSource.unwrapSingleton(valueSource);
+    if (singleValues != null) {
+      return new ValueSourceQuery(this, fastMatchQuery, singleValues);
+    } else {
+      return new MultiValueSourceQuery(this, fastMatchQuery, valueSource);
+    }
   }
 }

@@ -47,19 +47,13 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
    */
   public LongRangeFacetCounts(String field, FacetsCollector hits, LongRange... ranges)
       throws IOException {
-    this(field, (MultiLongValuesSource) null, hits, ranges);
+    this(field, (LongValuesSource) null, hits, ranges);
   }
 
   /**
    * Create {@code LongRangeFacetCounts}, using the provided {@link LongValuesSource} if non-null.
    * If {@code valueSource} is null, doc values from the provided {@code field} will be used.
-   *
-   * @deprecated Deprecated in favor of {@link #LongRangeFacetCounts(String, MultiLongValuesSource,
-   *     FacetsCollector, LongRange...)}. See {@link
-   *     MultiLongValuesSource#fromSingleValued(LongValuesSource)} for an easy way to wrap a
-   *     single-valued source when using the new ctor.
    */
-  @Deprecated
   public LongRangeFacetCounts(
       String field, LongValuesSource valueSource, FacetsCollector hits, LongRange... ranges)
       throws IOException {
@@ -83,13 +77,7 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
    * the provided {@code Query} as a fastmatch: only documents passing the filter are checked for
    * the matching ranges, which is helpful when the provided {@link LongValuesSource} is costly
    * per-document, such as a geo distance.
-   *
-   * @deprecated Deprecated in favor of {@link #LongRangeFacetCounts(String, MultiLongValuesSource,
-   *     FacetsCollector, Query, LongRange...)}. See {@link
-   *     MultiLongValuesSource#fromSingleValued(LongValuesSource)} for an easy way to wrap a {@code
-   *     LongValuesSource} for use with the new ctor.
    */
-  @Deprecated
   public LongRangeFacetCounts(
       String field,
       LongValuesSource valueSource,
@@ -101,7 +89,7 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
     // use the provided valueSource if non-null, otherwise use the doc values associated with the
     // field
     if (valueSource != null) {
-      doCount(valueSource, hits.getMatchingDocs());
+      count(valueSource, hits.getMatchingDocs());
     } else {
       count(field, hits.getMatchingDocs());
     }
@@ -125,31 +113,19 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
     // use the provided valueSource if non-null, otherwise use the doc values associated with the
     // field
     if (valuesSource != null) {
-      count(valuesSource, hits.getMatchingDocs());
+      LongValuesSource singleValues = MultiLongValuesSource.unwrapSingleton(valuesSource);
+      if (singleValues != null) {
+        count(singleValues, hits.getMatchingDocs());
+      } else {
+        count(valuesSource, hits.getMatchingDocs());
+      }
     } else {
       count(field, hits.getMatchingDocs());
     }
   }
 
-  /**
-   * Counts from the provided valueSource.
-   *
-   * <p>TODO: Seems like we could extract this into RangeFacetCounts and make the logic common
-   * between this class and DoubleRangeFacetCounts somehow. The blocker right now is that this
-   * implementation expects LongValueSource and DoubleRangeFacetCounts expects DoubleValueSource.
-   */
-  private void count(MultiLongValuesSource valueSource, List<MatchingDocs> matchingDocs)
-      throws IOException {
-    LongValuesSource singleValues = MultiLongValuesSource.unwrapSingleton(valueSource);
-    if (singleValues != null) {
-      doCount(singleValues, matchingDocs);
-    } else {
-      doCount(valueSource, matchingDocs);
-    }
-  }
-
-  /** Single-value implementation. */
-  private void doCount(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
+  /** Counts from the provided valueSource. */
+  private void count(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
     LongRange[] ranges = getLongRanges();
@@ -183,8 +159,8 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
     totCount -= missingCount;
   }
 
-  /** Multi-valued implementation. */
-  private void doCount(MultiLongValuesSource valueSource, List<MatchingDocs> matchingDocs)
+  /** Counts from the provided valueSource. */
+  private void count(MultiLongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
     LongRange[] ranges = getLongRanges();

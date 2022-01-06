@@ -98,11 +98,11 @@ New Features
 * LUCENE-10335: Add ModuleResourceLoader as complement to ClasspathResourceLoader.
   (Uwe Schindler)
 
-* LUCENE-10245: MultiDoubleValues(Source) and MultiLongValues(Source) were added as multi-valued versions of
-  DoubleValues(Source) and LongValues(Source) to the facets module. LongValueFacetCounts, LongRangeFacetCounts
-  and DoubleRangeFacetCounts were augmented to support these new multi-valued abstractions instead of the
-  single-valued versions (with the single-valued versions marked as deprecated). DoubleRange and LongRange also
-  support creating queries from these multi-valued sources in place of the single-valued ones. (Greg Miller)
+* LUCENE-10245: MultiDoubleValues(Source) and MultiLongValues(Source) were added as multi-valued
+  versions of DoubleValues(Source) and LongValues(Source) to the facets module. LongValueFacetCounts,
+  LongRangeFacetCounts and DoubleRangeFacetCounts were augmented to support these new multi-valued
+  abstractions. DoubleRange and LongRange also support creating queries from these multi-valued
+  sources. (Greg Miller)
 
 Improvements
 ---------------------

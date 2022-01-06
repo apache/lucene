@@ -32,7 +32,6 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.MultiDoubleValuesSource;
 import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.DoubleRangeFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
@@ -120,7 +119,7 @@ public class DistanceFacetsExample implements Closeable {
   }
 
   // TODO: Would be nice to augment this example with documents containing multiple "locations",
-  // adding the ability to compute distance facets for the multi-valued case
+  // adding the ability to compute distance facets for the multi-valued case (see LUCENE-10245)
   private DoubleValuesSource getDistanceValueSource() {
     Expression distance;
     try {
@@ -221,7 +220,7 @@ public class DistanceFacetsExample implements Closeable {
     Facets facets =
         new DoubleRangeFacetCounts(
             "field",
-            MultiDoubleValuesSource.fromSingleValued(getDistanceValueSource()),
+            getDistanceValueSource(),
             fc,
             getBoundingBoxQuery(ORIGIN_LATITUDE, ORIGIN_LONGITUDE, 10.0),
             ONE_KM,
@@ -241,9 +240,7 @@ public class DistanceFacetsExample implements Closeable {
     final DoubleValuesSource vs = getDistanceValueSource();
     q.add(
         "field",
-        range.getQuery(
-            getBoundingBoxQuery(ORIGIN_LATITUDE, ORIGIN_LONGITUDE, range.max),
-            MultiDoubleValuesSource.fromSingleValued(vs)));
+        range.getQuery(getBoundingBoxQuery(ORIGIN_LATITUDE, ORIGIN_LONGITUDE, range.max), vs));
     DrillSideways ds =
         new DrillSideways(searcher, config, (TaxonomyReader) null) {
           @Override
@@ -254,13 +251,7 @@ public class DistanceFacetsExample implements Closeable {
               throws IOException {
             assert drillSideways.length == 1;
             return new DoubleRangeFacetCounts(
-                "field",
-                MultiDoubleValuesSource.fromSingleValued(vs),
-                drillSideways[0],
-                ONE_KM,
-                TWO_KM,
-                FIVE_KM,
-                TEN_KM);
+                "field", vs, drillSideways[0], ONE_KM, TWO_KM, FIVE_KM, TEN_KM);
           }
         };
     return ds.search(q, 10).hits;

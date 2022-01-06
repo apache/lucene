@@ -103,7 +103,6 @@ public final class LongRange extends Range {
     return Objects.hash(label, min, max);
   }
 
-  @Deprecated
   private static class ValueSourceQuery extends Query {
     private final LongRange range;
     private final Query fastMatchQuery;
@@ -318,12 +317,7 @@ public final class LongRange extends Range {
    *
    * @param fastMatchQuery a query to use as a filter
    * @param valueSource the source of values for the range check
-   * @deprecated Counting from a user-provided LongValuesSource is being deprecated in favor of
-   *     counting from a MultiLongValuesSource. See {@link #getQuery(Query, MultiLongValuesSource)}
-   *     and {@link MultiLongValuesSource#fromSingleValued(LongValuesSource)} for an easy way to use
-   *     the new method with a {@code LongValuesSource}.
    */
-  @Deprecated
   public Query getQuery(Query fastMatchQuery, LongValuesSource valueSource) {
     return new ValueSourceQuery(this, fastMatchQuery, valueSource);
   }
@@ -341,6 +335,11 @@ public final class LongRange extends Range {
    * @param valuesSource the source of values for the range check
    */
   public Query getQuery(Query fastMatchQuery, MultiLongValuesSource valuesSource) {
-    return new MultiValueSourceQuery(this, fastMatchQuery, valuesSource);
+    LongValuesSource singleValues = MultiLongValuesSource.unwrapSingleton(valuesSource);
+    if (singleValues != null) {
+      return new ValueSourceQuery(this, fastMatchQuery, singleValues);
+    } else {
+      return new MultiValueSourceQuery(this, fastMatchQuery, valuesSource);
+    }
   }
 }

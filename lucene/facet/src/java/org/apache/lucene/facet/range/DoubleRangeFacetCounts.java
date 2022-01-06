@@ -52,13 +52,14 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
    *
    * <p>N.B This assumes that the field was indexed with {@link
    * org.apache.lucene.document.DoubleDocValuesField}. For float-valued fields, use {@link
+   * #DoubleRangeFacetCounts(String, DoubleValuesSource, FacetsCollector, DoubleRange...)} or {@link
    * #DoubleRangeFacetCounts(String, MultiDoubleValuesSource, FacetsCollector, DoubleRange...)}
    *
    * <p>TODO: Extend multi-valued support to fields that have been indexed as float values
    */
   public DoubleRangeFacetCounts(String field, FacetsCollector hits, DoubleRange... ranges)
       throws IOException {
-    this(field, (MultiDoubleValuesSource) null, hits, ranges);
+    this(field, (DoubleValuesSource) null, hits, ranges);
   }
 
   /**
@@ -68,13 +69,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
    * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
    * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
    * field is indexed.
-   *
-   * @deprecated Deprecated in favor of {@link #DoubleRangeFacetCounts(String,
-   *     MultiDoubleValuesSource, FacetsCollector, DoubleRange...)}. See {@link
-   *     MultiDoubleValuesSource#fromSingleValued(DoubleValuesSource)} for an easy way to wrap
-   *     {@code DoubleValuesSource} for use with the new ctor.
    */
-  @Deprecated
   public DoubleRangeFacetCounts(
       String field, DoubleValuesSource valueSource, FacetsCollector hits, DoubleRange... ranges)
       throws IOException {
@@ -108,13 +103,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
    * <p>N.B If relying on the provided {@code field}, see javadoc notes associated with {@link
    * #DoubleRangeFacetCounts(String, FacetsCollector, DoubleRange...)} for assumptions on how the
    * field is indexed.
-   *
-   * @deprecated Deprecated in favor of {@link #DoubleRangeFacetCounts(String,
-   *     MultiDoubleValuesSource, FacetsCollector, Query, DoubleRange...)}. See {@link
-   *     MultiDoubleValuesSource#fromSingleValued(DoubleValuesSource)} for an easy way to wrap
-   *     {@code DoubleValuesSource} for use with the new ctor.
    */
-  @Deprecated
   public DoubleRangeFacetCounts(
       String field,
       DoubleValuesSource valueSource,
@@ -126,7 +115,7 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
     // use the provided valueSource if non-null, otherwise use the doc values associated with the
     // field
     if (valueSource != null) {
-      doCount(valueSource, hits.getMatchingDocs());
+      count(valueSource, hits.getMatchingDocs());
     } else {
       count(field, hits.getMatchingDocs());
     }
@@ -153,25 +142,19 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
     // use the provided valueSource if non-null, otherwise use the doc values associated with the
     // field
     if (valuesSource != null) {
-      count(valuesSource, hits.getMatchingDocs());
+      DoubleValuesSource singleValues = MultiDoubleValuesSource.unwrapSingleton(valuesSource);
+      if (singleValues != null) {
+        count(singleValues, hits.getMatchingDocs());
+      } else {
+        count(valuesSource, hits.getMatchingDocs());
+      }
     } else {
       count(field, hits.getMatchingDocs());
     }
   }
 
   /** Counts from the provided valueSource. */
-  private void count(MultiDoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
-      throws IOException {
-    DoubleValuesSource singleValues = MultiDoubleValuesSource.unwrapSingleton(valueSource);
-    if (singleValues != null) {
-      doCount(singleValues, matchingDocs);
-    } else {
-      doCount(valueSource, matchingDocs);
-    }
-  }
-
-  /** Single-valued implementation. */
-  private void doCount(DoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
+  private void count(DoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
     LongRange[] longRanges = getLongRanges();
@@ -204,8 +187,8 @@ public class DoubleRangeFacetCounts extends RangeFacetCounts {
     totCount -= missingCount;
   }
 
-  /** Multi-valued implementation. */
-  private void doCount(MultiDoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
+  /** Counts from the provided valueSource. */
+  private void count(MultiDoubleValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
     LongRange[] longRanges = getLongRanges();
