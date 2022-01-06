@@ -32,15 +32,21 @@ import org.apache.lucene.facet.TopOrdAndIntQueue;
 public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   /**
-   * Per-ordinal value. We are making this and {@link #sparseValues} protected for some expert
-   * usage. e.g. It can be checked which is being used before a loop instead of calling {@link
-   * #increment} for each iteration.
+   * Dense ordinal values.
+   *
+   * <p>We are making this and {@link #sparseValues} protected for some expert usage. e.g. It can be
+   * checked which is being used before a loop instead of calling {@link #increment} for each
+   * iteration.
    *
    * @see FastTaxonomyFacetCounts#count as an example of usage.
    */
   protected final int[] values;
 
-  /** @see #values */
+  /**
+   * Sparse ordinal values.
+   *
+   * @see #values for why protected.
+   */
   protected final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
