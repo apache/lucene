@@ -72,7 +72,7 @@ public class ICUNormalizer2Filter extends TokenFilter {
    */
   public ICUNormalizer2Filter(TokenStream input, Normalizer2 normalizer) {
     super(input);
-    this.normalizer = Objects.requireNonNull(normalizer);
+    this.normalizer = Objects.requireNonNull(normalizer, "normalizer");
   }
 
   @Override

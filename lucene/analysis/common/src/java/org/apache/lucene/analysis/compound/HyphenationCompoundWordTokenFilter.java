@@ -33,7 +33,7 @@ import org.xml.sax.InputSource;
  * this.
  */
 public class HyphenationCompoundWordTokenFilter extends CompoundWordTokenFilterBase {
-  private HyphenationTree hyphenator;
+  private final HyphenationTree hyphenator;
 
   /**
    * Creates a new {@link HyphenationCompoundWordTokenFilter} instance.
@@ -75,7 +75,7 @@ public class HyphenationCompoundWordTokenFilter extends CompoundWordTokenFilterB
       boolean onlyLongestMatch) {
     super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
 
-    this.hyphenator = Objects.requireNonNull(hyphenator);
+    this.hyphenator = Objects.requireNonNull(hyphenator, "hyphenator");
   }
 
   /**

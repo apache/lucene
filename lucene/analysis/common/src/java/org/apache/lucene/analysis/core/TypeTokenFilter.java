@@ -39,7 +39,7 @@ public final class TypeTokenFilter extends FilteringTokenFilter {
    */
   public TypeTokenFilter(TokenStream input, Set<String> stopTypes, boolean useWhiteList) {
     super(input);
-    this.stopTypes = Objects.requireNonNull(stopTypes);
+    this.stopTypes = Objects.requireNonNull(stopTypes, "stopTypes");
     this.useWhiteList = useWhiteList;
   }
 

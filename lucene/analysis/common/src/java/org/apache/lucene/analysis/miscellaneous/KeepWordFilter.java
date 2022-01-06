@@ -43,7 +43,7 @@ public final class KeepWordFilter extends FilteringTokenFilter {
    */
   public KeepWordFilter(TokenStream in, CharArraySet words) {
     super(in);
-    this.words = Objects.requireNonNull(words);
+    this.words = Objects.requireNonNull(words, "words");
   }
 
   @Override

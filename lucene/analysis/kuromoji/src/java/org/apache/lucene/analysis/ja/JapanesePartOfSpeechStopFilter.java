@@ -35,7 +35,7 @@ public final class JapanesePartOfSpeechStopFilter extends FilteringTokenFilter {
    */
   public JapanesePartOfSpeechStopFilter(TokenStream input, Set<String> stopTags) {
     super(input);
-    this.stopTags = Objects.requireNonNull(stopTags);
+    this.stopTags = Objects.requireNonNull(stopTags, "stopTags");
   }
 
   @Override

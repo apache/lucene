@@ -54,7 +54,7 @@ public final class SnowballFilter extends TokenFilter {
 
   public SnowballFilter(TokenStream input, SnowballStemmer stemmer) {
     super(input);
-    this.stemmer = Objects.requireNonNull(stemmer);
+    this.stemmer = Objects.requireNonNull(stemmer, "stemmer");
   }
 
   /**
@@ -69,11 +69,12 @@ public final class SnowballFilter extends TokenFilter {
    */
   public SnowballFilter(TokenStream in, String name) {
     super(in);
+    Objects.requireNonNull(name, "name");
     // Class.forName is frowned upon in place of the ResourceLoader but in this case,
     // the factory will use the other constructor so that the program is already loaded.
     try {
       Class<? extends SnowballStemmer> stemClass =
-          Class.forName("org.tartarus.snowball.ext." + Objects.requireNonNull(name) + "Stemmer")
+          Class.forName("org.tartarus.snowball.ext." + name + "Stemmer")
               .asSubclass(SnowballStemmer.class);
       stemmer = stemClass.getConstructor().newInstance();
     } catch (Exception e) {

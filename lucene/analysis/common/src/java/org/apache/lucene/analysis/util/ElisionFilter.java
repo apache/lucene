@@ -41,7 +41,7 @@ public final class ElisionFilter extends TokenFilter {
    */
   public ElisionFilter(TokenStream input, CharArraySet articles) {
     super(input);
-    this.articles = Objects.requireNonNull(articles);
+    this.articles = Objects.requireNonNull(articles, "articles");
   }
 
   /** Increments the {@link TokenStream} with a {@link CharTermAttribute} without elisioned start */

@@ -47,8 +47,8 @@ public class PatternReplaceCharFilter extends BaseCharFilter {
 
   public PatternReplaceCharFilter(Pattern pattern, String replacement, Reader in) {
     super(in);
-    this.pattern = Objects.requireNonNull(pattern);
-    this.replacement = Objects.requireNonNull(replacement);
+    this.pattern = Objects.requireNonNull(pattern, "pattern");
+    this.replacement = Objects.requireNonNull(replacement, "replacement");
   }
 
   @Override

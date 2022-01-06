@@ -40,7 +40,7 @@ public final class SetKeywordMarkerFilter extends KeywordMarkerFilter {
    */
   public SetKeywordMarkerFilter(final TokenStream in, final CharArraySet keywordSet) {
     super(in);
-    this.keywordSet = Objects.requireNonNull(keywordSet);
+    this.keywordSet = Objects.requireNonNull(keywordSet, "keywordSet");
   }
 
   @Override
