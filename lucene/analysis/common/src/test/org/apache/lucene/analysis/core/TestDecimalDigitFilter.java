@@ -28,8 +28,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 /** Tests for {@link DecimalDigitFilter} */
-@SuppressWarnings(
-    "CharacterGetNumericValue") // we use Character.isDigit(ch) and only generate decimal digits
 public class TestDecimalDigitFilter extends BaseTokenStreamTestCase {
   private Analyzer tokenized;
   private Analyzer keyword;

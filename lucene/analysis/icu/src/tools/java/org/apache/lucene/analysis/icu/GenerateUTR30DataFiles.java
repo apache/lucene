@@ -226,7 +226,6 @@ public class GenerateUTR30DataFiles {
     return connection;
   }
 
-  @SuppressWarnings("CharacterGetNumericValue") // we only use decimal digits
   private static void expandSingleRule(
       StringBuilder builder, String leftHandSide, String rightHandSide)
       throws IllegalArgumentException {

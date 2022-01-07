@@ -163,6 +163,7 @@ allprojects { prj ->
             '-Xep:WaitNotInLoop:OFF',
             '-Xep:DoNotCallSuggester:OFF',
             '-Xep:UnnecessaryLambda:OFF',
+            '-Xep:CharacterGetNumericValue:OFF',
             '-Xep:BoxedPrimitiveConstructor:OFF', // TODO: remove this when on Java 17
         ]
       }

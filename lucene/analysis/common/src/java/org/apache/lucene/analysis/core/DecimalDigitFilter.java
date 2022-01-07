@@ -35,7 +35,6 @@ public final class DecimalDigitFilter extends TokenFilter {
   }
 
   @Override
-  @SuppressWarnings("CharacterGetNumericValue") // we use Character.isDigit(ch), so it is safe
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       char[] buffer = termAtt.buffer();
