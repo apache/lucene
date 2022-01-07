@@ -31,14 +31,14 @@ import org.apache.lucene.store.IOContext;
 /** Stored field format used by plugaable codec */
 public class Lucene90CustomCompressionStoredFieldsFormat extends StoredFieldsFormat {
   // chunk size for zstandard
-  private static final int ZSTD_BLOCK_LENGTH = 10 * 8 * 1024;
+  private static final int ZSTD_BLOCK_LENGTH = 10 * 48 * 1024;
 
   public static final String MODE_KEY =
       Lucene90CustomCompressionStoredFieldsFormat.class.getSimpleName() + ".mode";
 
   final Lucene90CustomCompressionCodec.Mode mode;
 
-  private static int compressionLevel;
+  private int compressionLevel;
 
   /** default constructor */
   public Lucene90CustomCompressionStoredFieldsFormat() {
@@ -51,7 +51,7 @@ public class Lucene90CustomCompressionStoredFieldsFormat extends StoredFieldsFor
   public Lucene90CustomCompressionStoredFieldsFormat(
       Lucene90CustomCompressionCodec.Mode mode, int compressionLevel) {
     this.mode = Objects.requireNonNull(mode);
-    Lucene90CustomCompressionStoredFieldsFormat.compressionLevel = compressionLevel;
+    this.compressionLevel = compressionLevel;
   }
 
   @Override
@@ -87,17 +87,16 @@ public class Lucene90CustomCompressionStoredFieldsFormat extends StoredFieldsFor
     switch (mode) {
       case ZSTD:
         return new Lucene90CompressingStoredFieldsFormat(
-            "CustomCompressionStoredFieldsZSTD", ZSTD_MODE_NO_DICT, ZSTD_BLOCK_LENGTH, 1024, 10);
+            "CustomCompressionStoredFieldsZSTD", ZSTD_MODE_NO_DICT, ZSTD_BLOCK_LENGTH, 4096, 10);
 
       case ZSTD_DICT:
         return new Lucene90CompressingStoredFieldsFormat(
-            "CustomCompressionStoredFieldsZSTD", ZSTD_MODE_DICT, ZSTD_BLOCK_LENGTH, 1024, 10);
+            "CustomCompressionStoredFieldsZSTD", ZSTD_MODE_DICT, ZSTD_BLOCK_LENGTH, 4096, 10);
       default:
         throw new AssertionError();
     }
   }
 
-  public static final CompressionMode ZSTD_MODE_NO_DICT = new ZstdCompressionMode(compressionLevel);
-  public static final CompressionMode ZSTD_MODE_DICT =
-      new ZstdDictCompressionMode(compressionLevel);
+  public final CompressionMode ZSTD_MODE_NO_DICT = new ZstdCompressionMode(compressionLevel);
+  public final CompressionMode ZSTD_MODE_DICT = new ZstdDictCompressionMode(compressionLevel);
 }

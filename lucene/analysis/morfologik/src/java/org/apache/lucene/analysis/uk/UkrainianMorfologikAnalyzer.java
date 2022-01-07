@@ -19,8 +19,6 @@ package org.apache.lucene.analysis.uk;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import morfologik.stemming.Dictionary;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
@@ -77,9 +75,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
             if (is == null) {
               throw new IOException("Could not locate the required stopwords resource.");
             }
-            wordList =
-                WordlistLoader.getSnowballWordSet(
-                    IOUtils.getDecodingReader(is, StandardCharsets.UTF_8));
+            wordList = WordlistLoader.getSnowballWordSet(is);
           }
 
           // First, try to look up the resource module by name.
@@ -100,13 +96,12 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
               dictionary = Dictionary.read(fsaStream, metaStream);
             }
           } else {
+            var name = "ua/net/nlp/ukrainian.dict";
             dictionary =
                 Dictionary.read(
-                    Objects.requireNonNull(
-                        UkrainianMorfologikAnalyzer.class
-                            .getClassLoader()
-                            .getResource("ua/net/nlp/ukrainian.dict"),
-                        "Could not locate the required Ukrainian dictionary resource."));
+                    IOUtils.requireResourceNonNull(
+                        UkrainianMorfologikAnalyzer.class.getClassLoader().getResource(name),
+                        name));
           }
           defaultResources = new DefaultResources(wordList, dictionary);
         } catch (IOException e) {

@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.compound;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.compound.hyphenation.Hyphenation;
@@ -32,7 +33,7 @@ import org.xml.sax.InputSource;
  * this.
  */
 public class HyphenationCompoundWordTokenFilter extends CompoundWordTokenFilterBase {
-  private HyphenationTree hyphenator;
+  private final HyphenationTree hyphenator;
 
   /**
    * Creates a new {@link HyphenationCompoundWordTokenFilter} instance.
@@ -74,7 +75,7 @@ public class HyphenationCompoundWordTokenFilter extends CompoundWordTokenFilterB
       boolean onlyLongestMatch) {
     super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
 
-    this.hyphenator = hyphenator;
+    this.hyphenator = Objects.requireNonNull(hyphenator, "hyphenator");
   }
 
   /**

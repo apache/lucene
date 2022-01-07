@@ -1,6 +1,7 @@
 # Run ./gradlew --write-locks to regenerate this file
 com.carrotsearch:hppc:0.9.0 (1 constraints: 0b050636)
 com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.7.6 (1 constraints: 11051036)
+com.github.luben:zstd-jni:1.5.0-4 (1 constraints: 69059d40)
 com.ibm.icu:icu4j:70.1 (1 constraints: dc040a31)
 commons-codec:commons-codec:1.13 (1 constraints: d904f430)
 commons-logging:commons-logging:1.2 (1 constraints: c20f9771)
@@ -23,8 +24,7 @@ org.ow2.asm:asm-analysis:7.2 (1 constraints: e409d9a5)
 org.ow2.asm:asm-commons:7.2 (1 constraints: ad042e2c)
 org.ow2.asm:asm-tree:7.2 (2 constraints: 2f14468c)
 ua.net.nlp:morfologik-ukrainian-search:4.9.1 (1 constraints: 10051b36)
-xerces:xercesImpl:2.12.0 (2 constraints: 1f14b675)
-com.github.luben:zstd-jni:1.5.0-4 (1 constraints: 69059d40)
+xerces:xercesImpl:2.12.0 (1 constraints: 3705353b)
 
 [Test dependencies]
 org.assertj:assertj-core:3.21.0 (1 constraints: 38053c3b)

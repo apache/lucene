@@ -26,12 +26,14 @@ import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.util.SegmentingTokenizerBase;
 import org.apache.lucene.util.AttributeFactory;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Run OpenNLP SentenceDetector and Tokenizer. The last token in each sentence is marked by setting
  * the {@link #EOS_FLAG_BIT} in the FlagsAttribute; following filters can use this information to
  * apply operations to tokens one sentence at a time.
  */
+@IgnoreRandomChains(reason = "LUCENE-10352: add argument providers for this one")
 public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
   public static int EOS_FLAG_BIT = 1;
 

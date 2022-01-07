@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.util;
+package org.apache.lucene.tests.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -36,16 +36,6 @@ public class StringMockResourceLoader implements ResourceLoader {
       return Class.forName(cname).asSubclass(expectedType);
     } catch (Exception e) {
       throw new RuntimeException("Cannot load class: " + cname, e);
-    }
-  }
-
-  @Override
-  public <T> T newInstance(String cname, Class<T> expectedType) {
-    Class<? extends T> clazz = findClass(cname, expectedType);
-    try {
-      return clazz.getConstructor().newInstance();
-    } catch (Exception e) {
-      throw new RuntimeException("Cannot create instance: " + cname, e);
     }
   }
 

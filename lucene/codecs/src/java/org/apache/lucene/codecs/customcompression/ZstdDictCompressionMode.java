@@ -31,8 +31,8 @@ import org.apache.lucene.util.BytesRef;
 public class ZstdDictCompressionMode extends CompressionMode {
   private static final int NUM_SUB_BLOCKS = 10;
   private final int level;
-  public static final int defaultLevel = 3;
-  private static final int DICT_SIZE_FACTOR = 2;
+  public static final int defaultLevel = 6;
+  private static final int DICT_SIZE_FACTOR = 6;
   /** default constructor */
   ZstdDictCompressionMode() {
     this.level = defaultLevel;

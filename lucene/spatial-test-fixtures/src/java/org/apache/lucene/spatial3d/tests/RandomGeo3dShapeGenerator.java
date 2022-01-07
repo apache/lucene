@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.spatial3d.geom;
+package org.apache.lucene.spatial3d.tests;
 
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
@@ -25,6 +25,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import org.apache.lucene.spatial3d.geom.GeoArea;
+import org.apache.lucene.spatial3d.geom.GeoAreaShape;
+import org.apache.lucene.spatial3d.geom.GeoBBox;
+import org.apache.lucene.spatial3d.geom.GeoBBoxFactory;
+import org.apache.lucene.spatial3d.geom.GeoCircle;
+import org.apache.lucene.spatial3d.geom.GeoCircleFactory;
+import org.apache.lucene.spatial3d.geom.GeoCompositeAreaShape;
+import org.apache.lucene.spatial3d.geom.GeoCompositeMembershipShape;
+import org.apache.lucene.spatial3d.geom.GeoPath;
+import org.apache.lucene.spatial3d.geom.GeoPathFactory;
+import org.apache.lucene.spatial3d.geom.GeoPoint;
+import org.apache.lucene.spatial3d.geom.GeoPointShape;
+import org.apache.lucene.spatial3d.geom.GeoPointShapeFactory;
+import org.apache.lucene.spatial3d.geom.GeoPolygon;
+import org.apache.lucene.spatial3d.geom.GeoPolygonFactory;
+import org.apache.lucene.spatial3d.geom.GeoShape;
+import org.apache.lucene.spatial3d.geom.PlanetModel;
 
 /**
  * Class for generating random Geo3dShapes. They can be generated under given constraints which are
@@ -42,22 +59,22 @@ public final class RandomGeo3dShapeGenerator {
   private static final int MAX_POINT_ITERATIONS = 1000;
 
   /* Supported shapes */
-  protected static final int CONVEX_POLYGON = 0;
-  protected static final int CONVEX_POLYGON_WITH_HOLES = 1;
-  protected static final int CONCAVE_POLYGON = 2;
-  protected static final int CONCAVE_POLYGON_WITH_HOLES = 3;
-  protected static final int COMPLEX_POLYGON = 4;
-  protected static final int CIRCLE = 5;
-  protected static final int RECTANGLE = 6;
-  protected static final int PATH = 7;
-  protected static final int COLLECTION = 8;
-  protected static final int POINT = 9;
-  protected static final int LINE = 10;
-  protected static final int EXACT_CIRCLE = 11;
+  public static final int CONVEX_POLYGON = 0;
+  public static final int CONVEX_POLYGON_WITH_HOLES = 1;
+  public static final int CONCAVE_POLYGON = 2;
+  public static final int CONCAVE_POLYGON_WITH_HOLES = 3;
+  public static final int COMPLEX_POLYGON = 4;
+  public static final int CIRCLE = 5;
+  public static final int RECTANGLE = 6;
+  public static final int PATH = 7;
+  public static final int COLLECTION = 8;
+  public static final int POINT = 9;
+  public static final int LINE = 10;
+  public static final int EXACT_CIRCLE = 11;
 
   /* Helper shapes for generating constraints whch are just three sided polygons */
-  protected static final int CONVEX_SIMPLE_POLYGON = 500;
-  protected static final int CONCAVE_SIMPLE_POLYGON = 501;
+  public static final int CONVEX_SIMPLE_POLYGON = 500;
+  public static final int CONCAVE_SIMPLE_POLYGON = 501;
 
   /** Static methods only. */
   private RandomGeo3dShapeGenerator() {}
@@ -550,7 +567,7 @@ public final class RandomGeo3dShapeGenerator {
           collection.addShape(member);
         }
       }
-      if (collection.shapes.size() == 0) {
+      if (collection.size() == 0) {
         continue;
       }
       return collection;
@@ -963,7 +980,7 @@ public final class RandomGeo3dShapeGenerator {
    * @param points The points to order.
    * @return The list of ordered points anti-clockwise.
    */
-  protected static List<GeoPoint> orderPoints(List<GeoPoint> points) {
+  public static List<GeoPoint> orderPoints(List<GeoPoint> points) {
     double x = 0;
     double y = 0;
     double z = 0;
@@ -1005,8 +1022,7 @@ public final class RandomGeo3dShapeGenerator {
    * Class that holds the constraints that are given to build shapes. It consists in a list of
    * GeoAreaShapes and relationships the new shape needs to satisfy.
    */
-  static class Constraints extends HashMap<GeoAreaShape, Integer> {
-
+  public static class Constraints extends HashMap<GeoAreaShape, Integer> {
     /**
      * Check if the shape is valid under the constraints.
      *
@@ -1052,7 +1068,7 @@ public final class RandomGeo3dShapeGenerator {
       // For GeoCompositeMembershipShape we only consider the first shape to help
       // converging
       if (relationship == GeoArea.WITHIN && shape instanceof GeoCompositeMembershipShape) {
-        shape = (((GeoCompositeMembershipShape) shape).shapes.get(0));
+        shape = (((GeoCompositeMembershipShape) shape).getShapes().get(0));
       }
       switch (relationship) {
         case GeoArea.DISJOINT:

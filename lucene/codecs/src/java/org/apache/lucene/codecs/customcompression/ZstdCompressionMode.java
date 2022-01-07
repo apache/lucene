@@ -31,7 +31,7 @@ import org.apache.lucene.util.BytesRef;
 public class ZstdCompressionMode extends CompressionMode {
   private static final int NUM_SUB_BLOCKS = 10;
   private final int level;
-  public static final int defaultLevel = 3;
+  public static final int defaultLevel = 6;
 
   /** default constructor */
   ZstdCompressionMode() {

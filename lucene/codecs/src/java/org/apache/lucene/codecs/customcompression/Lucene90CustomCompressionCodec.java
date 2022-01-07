@@ -25,7 +25,7 @@ public final class Lucene90CustomCompressionCodec extends FilterCodec {
 
   private final StoredFieldsFormat storedFieldsFormat;
   private int compressionLevel;
-  public static final int defaultCompressionLevel = 3;
+  public static final int defaultCompressionLevel = 6;
 
   /** Compression modes */
   public static enum Mode {
