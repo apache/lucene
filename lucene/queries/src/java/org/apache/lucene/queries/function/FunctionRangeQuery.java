@@ -116,8 +116,8 @@ public class FunctionRangeQuery extends Query {
   }
 
   private boolean equalsTo(FunctionRangeQuery other) {
-    return Objects.equals(includeLower, other.includeLower)
-        && Objects.equals(includeUpper, other.includeUpper)
+    return includeLower == other.includeLower
+        && includeUpper == other.includeUpper
         && Objects.equals(valueSource, other.valueSource)
         && Objects.equals(lowerVal, other.lowerVal)
         && Objects.equals(upperVal, other.upperVal);
