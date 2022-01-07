@@ -36,7 +36,7 @@ public class IndriOrWeight extends Weight {
     this.query = query;
     this.boost = boost;
     this.scoreMode = scoreMode;
-    weights = new ArrayList<>();
+    this.weights = new ArrayList<>();
     // Calculate total boost score so that boost can be normalized
     float boostSum = 0;
     for (BooleanClause c : query) {
