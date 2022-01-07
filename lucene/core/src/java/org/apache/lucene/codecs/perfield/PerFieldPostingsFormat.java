@@ -27,6 +27,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
@@ -185,6 +186,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
               new MergedIterator<>(
                   true,
                   Arrays.stream(mergeState.fieldsProducers)
+                      .filter(Objects::nonNull)
                       .map(FieldsProducer::iterator)
                       .toArray(Iterator[]::new));
       Map<PostingsFormat, FieldsGroup> formatToGroups = buildFieldsGroupMapping(indexedFieldNames);

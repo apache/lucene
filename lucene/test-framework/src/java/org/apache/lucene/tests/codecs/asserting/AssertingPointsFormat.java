@@ -21,6 +21,7 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
@@ -54,18 +55,21 @@ public final class AssertingPointsFormat extends PointsFormat {
 
   @Override
   public PointsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new AssertingPointsReader(state.segmentInfo.maxDoc(), in.fieldsReader(state), false);
+    return new AssertingPointsReader(
+        state.segmentInfo.maxDoc(), in.fieldsReader(state), state.fieldInfos, false);
   }
 
   static class AssertingPointsReader extends PointsReader {
     private final PointsReader in;
     private final int maxDoc;
+    private final FieldInfos fis;
     private final boolean merging;
     private final Thread creationThread;
 
-    AssertingPointsReader(int maxDoc, PointsReader in, boolean merging) {
+    AssertingPointsReader(int maxDoc, PointsReader in, FieldInfos fis, boolean merging) {
       this.in = in;
       this.maxDoc = maxDoc;
+      this.fis = fis;
       this.merging = merging;
       this.creationThread = Thread.currentThread();
       // do a few simple checks on init
@@ -80,6 +84,8 @@ public final class AssertingPointsFormat extends PointsFormat {
 
     @Override
     public PointValues getValues(String field) throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null && fi.getPointDimensionCount() > 0;
       if (merging) {
         AssertingCodec.assertThread("PointsReader", creationThread);
       }
@@ -97,7 +103,7 @@ public final class AssertingPointsFormat extends PointsFormat {
 
     @Override
     public PointsReader getMergeInstance() {
-      return new AssertingPointsReader(maxDoc, in.getMergeInstance(), true);
+      return new AssertingPointsReader(maxDoc, in.getMergeInstance(), fis, true);
     }
 
     @Override

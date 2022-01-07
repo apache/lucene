@@ -21,7 +21,7 @@ module org.apache.lucene.analysis.morfologik.tests {
   requires org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
   requires org.apache.lucene.analysis.morfologik;
-  requires junit;
+  requires org.apache.lucene.test_framework;
 
   exports org.apache.lucene.analysis.morfologik.tests;
 }

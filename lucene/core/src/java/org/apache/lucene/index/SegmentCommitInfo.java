@@ -244,7 +244,9 @@ public class SegmentCommitInfo {
     // updates) and then maybe even be able to remove LiveDocsFormat.files().
 
     // Must separately add any live docs files:
-    info.getCodec().liveDocsFormat().files(this, files);
+    if (hasDeletions()) {
+      info.getCodec().liveDocsFormat().files(this, files);
+    }
 
     // must separately add any field updates files
     for (Set<String> updatefiles : dvUpdatesFiles.values()) {
