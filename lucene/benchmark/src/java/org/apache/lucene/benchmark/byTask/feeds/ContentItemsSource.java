@@ -186,7 +186,7 @@ public abstract class ContentItemsSource implements Closeable {
       sb.append("total bytes of ")
           .append(itemsName)
           .append(": ")
-          .append(Format.format(0, nub, col))
+          .append(Format.format(0, (double) nub, col))
           .append(newline);
       lastPrintedNumUniqueBytes = nub;
     }
@@ -200,7 +200,7 @@ public abstract class ContentItemsSource implements Closeable {
       sb.append("total bytes added for ")
           .append(itemsName)
           .append(" since last inputs reset: ")
-          .append(Format.format(0, getBytesCount(), col))
+          .append(Format.format(0, (double) getBytesCount(), col))
           .append(newline);
     }
     if (print) {
