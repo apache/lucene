@@ -71,6 +71,26 @@ public class TestDocIdsWriter extends LuceneTestCase {
     }
   }
 
+  public void testCluster() throws Exception {
+    cluster(() -> BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+    cluster(() -> 1 + random().nextInt(5000));
+  }
+
+  private void cluster(IntSupplier size) throws Exception {
+    int numIters = atLeast(100);
+    try (Directory dir = newDirectory()) {
+      for (int iter = 0; iter < numIters; ++iter) {
+        int[] docIDs = new int[size.getAsInt()];
+        int min = random().nextInt(1000);
+        final int bpv = TestUtil.nextInt(random(), 1, 16);
+        for (int i = 0; i < docIDs.length; ++i) {
+          docIDs[i] = min + TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
+        }
+        test(dir, docIDs);
+      }
+    }
+  }
+
   public void testBitSet() throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {

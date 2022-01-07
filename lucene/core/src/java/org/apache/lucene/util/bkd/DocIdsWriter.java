@@ -47,18 +47,21 @@ final class DocIdsWriter {
     // or when a segment is sorted
     boolean sorted = true;
     boolean strictlySorted = true;
+    int min = docIds[0];
+    int max = docIds[0];
     for (int i = 1; i < count; ++i) {
       int last = docIds[start + i - 1];
       int current = docIds[start + i];
       if (last > current) {
         sorted = strictlySorted = false;
-        break;
       } else if (last == current) {
         strictlySorted = false;
       }
+      min = Math.min(min, current);
+      max = Math.max(max, current);
     }
 
-    int min2max = docIds[start + count - 1] - docIds[start] + 1;
+    int min2max = max - min + 1;
     if (strictlySorted) {
       if (min2max == count) {
         // continuous ids, typically happens when segment is sorted
@@ -78,23 +81,20 @@ final class DocIdsWriter {
 
     // special optimization when count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE (common case)
     if (count == BKDForUtil.BLOCK_SIZE) {
-      if (sorted && Integer.toUnsignedLong(min2max) <= 0xFFFFL) {
+      if (Integer.toUnsignedLong(min2max) <= 0xFFFFL) {
         out.writeByte(DELTA_FOR_UTIL);
         long[] delta = new long[count];
-        final int min = docIds[start];
         for (int i = 0; i < count; i++) {
           delta[i] = docIds[i] - min;
         }
-        out.writeVInt(docIds[start]);
+        out.writeVInt(min);
         forUtil.encode16(delta, out);
       } else {
         long[] longs = new long[count];
-        long max = 0;
         for (int i = 0; i < count; i++) {
           longs[i] = docIds[i];
-          max |= longs[i] & 0xffffffffL;
         }
-        if (max <= 0xffffff) {
+        if (Integer.toUnsignedLong(max) <= 0xFFFFFFL) {
           out.writeByte(BPV_24_FOR_UTIL);
           forUtil.encode24(longs, out);
         } else {
@@ -114,11 +114,7 @@ final class DocIdsWriter {
         previous = doc;
       }
     } else {
-      long max = 0;
-      for (int i = 0; i < count; ++i) {
-        max |= Integer.toUnsignedLong(docIds[start + i]);
-      }
-      if (max <= 0xffffff) {
+      if (Integer.toUnsignedLong(max) <= 0xffffff) {
         out.writeByte(BPV_24);
         // write them the same way we are reading them.
         int i;
