@@ -99,7 +99,6 @@ public class TestRegExp extends LuceneTestCase {
     return bound == 0 ? 0 : random().nextInt(bound);
   }
 
-  @SuppressWarnings("BareDotMetacharacter")
   protected String checkRandomExpression(String docValue) {
     // Generate and test a random regular expression which should match the given docValue
     StringBuilder result = new StringBuilder();
@@ -143,8 +142,8 @@ public class TestRegExp extends LuceneTestCase {
         result.append(".{1," + replacementPart.length() + "}");
         break;
       case 6:
-        // replace all chars with . (this is correct: errorprone "BareDotMetacharacter")
-        result.append(replacementPart.replaceAll(".", "."));
+        // replace all chars with .
+        result.append(".".repeat(replacementPart.length()));
         break;
       case 7:
         // OR with uppercase chars eg [aA] (many of these sorts of expression in the wild..
