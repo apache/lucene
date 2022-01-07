@@ -41,8 +41,9 @@ public class IndriAndWeight extends Weight {
     // Calculate total boost score so that boost can be normalized
     float boostSum = 0;
     for (BooleanClause c : query) {
-      if (c.getQuery() instanceof BoostQuery) {
-        boostSum += ((BoostQuery) c.getQuery()).getBoost();
+      Query q = c.getQuery();
+      if (q instanceof BoostQuery) {
+        boostSum += ((BoostQuery) q).getBoost();
       } else {
         boostSum++;
       }
