@@ -39,6 +39,7 @@ final class DocIdsWriter {
   private final long[] scratch;
 
   DocIdsWriter(int maxPointsInLeaf) {
+    assert BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE == BKDForUtil.BLOCK_SIZE;
     scratch = new long[maxPointsInLeaf];
   }
 
