@@ -41,8 +41,11 @@ public class SortedSetDocValuesFacetField extends Field {
   /** Dimension. */
   public final String dim;
 
-  /** Label. */
+  /** Path. */
   public final String[] path;
+
+  /** String form of path. */
+  @Deprecated public final String label;
 
   /** Sole constructor. */
   public SortedSetDocValuesFacetField(String dim, String... path) {
@@ -56,6 +59,7 @@ public class SortedSetDocValuesFacetField extends Field {
     }
     this.dim = dim;
     this.path = path;
+    this.label = FacetsConfig.pathToString(path);
   }
 
   @Override

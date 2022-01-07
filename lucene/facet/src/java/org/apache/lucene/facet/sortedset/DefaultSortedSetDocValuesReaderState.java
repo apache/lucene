@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Stack;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.DocValues;
@@ -56,10 +57,10 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
   private final FacetsConfig config;
 
-  /*** Used for hierarchical dims ***/
+  /** Used for hierarchical dims. */
   private final Map<String, DimTree> prefixToDimTree = new HashMap<>();
 
-  /*** Used for flat dims ***/
+  /** Used for flat dims. */
   private final Map<String, OrdRange> prefixToOrdRange = new HashMap<>();
 
   /**
@@ -89,7 +90,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
       throws IOException {
     this.field = field;
     this.reader = reader;
-    this.config = config;
+    this.config = Objects.requireNonNullElse(config, new FacetsConfig());
 
     // We need this to create thread-safe MultiSortedSetDV
     // per collector:
@@ -123,41 +124,27 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     List<Boolean> hasChildren = new ArrayList<>();
     List<Integer> siblings = new ArrayList<>();
 
-    String dim = null;
-
     // stack of paths with unfulfilled siblings
     Stack<OrdAndComponent> siblingStack = new Stack<>();
 
-    String[] nextComponents = null;
     int dimEndOrd = dimStartOrd;
+
+    BytesRef nextTerm = dv.lookupOrd(dimEndOrd);
+    String[] nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
+    String dim = nextComponents[0];
+
     while (true) {
-      String[] components;
+      String[] components = nextComponents;
 
       int ord = dimEndOrd - dimStartOrd;
-
-      if (nextComponents == null) {
-        BytesRef term = dv.lookupOrd(dimEndOrd);
-        components = FacetsConfig.stringToPath(term.utf8ToString());
-        dim = components[0];
-      } else {
-        components = nextComponents;
-      }
 
       while (siblingStack.empty() == false
           && siblingStack.peek().component.length >= components.length) {
         OrdAndComponent possibleSibling = siblingStack.pop();
         if (possibleSibling.component.length == components.length) {
-          // lengths are equal
-          boolean isSibling = true;
-          for (int i = 0; i < possibleSibling.component.length - 1; i++) {
-            if (possibleSibling.component[i].equals(components[i]) == false) {
-              isSibling = false;
-              break;
-            }
-          }
-          if (isSibling) {
-            siblings.set(possibleSibling.ord, ord);
-          }
+          // lengths are equal, all non-siblings of equal length will have already been popped off
+          // so this must be sibling
+          siblings.set(possibleSibling.ord, ord);
         }
       }
 
@@ -168,7 +155,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
         break;
       }
 
-      BytesRef nextTerm = dv.lookupOrd(dimEndOrd + 1);
+      nextTerm = dv.lookupOrd(dimEndOrd + 1);
       nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
 
       if (nextComponents[0].equals(components[0]) == false) {
@@ -211,34 +198,27 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   private int createOneFlatFacetDimState(SortedSetDocValues dv, int dimStartOrd)
       throws IOException {
 
-    String dim = null;
-
-    String[] nextComponents = null;
     int dimEndOrd = dimStartOrd;
 
-    while (true) {
-      String[] components;
+    BytesRef nextTerm = dv.lookupOrd(dimEndOrd);
+    String[] nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
+    if (nextComponents.length != 2) {
+      throw new IllegalArgumentException(
+          "dimension not configured to handle hierarchical field; got: "
+              + Arrays.toString(nextComponents)
+              + " "
+              + nextTerm.utf8ToString());
+    }
+    String dim = nextComponents[0];
 
-      if (nextComponents == null) {
-        BytesRef term = dv.lookupOrd(dimEndOrd);
-        components = FacetsConfig.stringToPath(term.utf8ToString());
-        if (components.length != 2) {
-          throw new IllegalArgumentException(
-              "dimension not configured to handle hierarchical field; got: "
-                  + Arrays.toString(components)
-                  + " "
-                  + term.utf8ToString());
-        }
-        dim = components[0];
-      } else {
-        components = nextComponents;
-      }
+    while (true) {
+      String[] components = nextComponents;
 
       if (dimEndOrd + 1 == valueCount) {
         break;
       }
 
-      BytesRef nextTerm = dv.lookupOrd(dimEndOrd + 1);
+      nextTerm = dv.lookupOrd(dimEndOrd + 1);
       nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
 
       if (nextComponents[0].equals(components[0]) == false) {
@@ -359,11 +339,8 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   }
 
   @Override
-  public boolean isHierarchicalDim(String dim) {
-    if (config == null) {
-      return false;
-    }
-    return config.getDimConfig(dim).hierarchical;
+  public FacetsConfig getFacetConfig() {
+    return config;
   }
 
   @Override
@@ -392,7 +369,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
         };
   }
 
-  /*** Flat facet operations ***/
+  /* Flat facet operations */
 
   @Override
   public Map<String, OrdRange> getPrefixToOrdRange() {
@@ -408,7 +385,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     return prefixToOrdRange.get(dim);
   }
 
-  /*** Hierarchical facet operations ***/
+  /* Hierarchical facet operations */
 
   @Override
   public DimTree getDimTree(String dim) {

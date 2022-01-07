@@ -1351,6 +1351,37 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     }
   }
 
+  public void testHierarchicalNonExistentPath() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+      FacetsConfig config = new FacetsConfig();
+      config.setHierarchical("fizz", true);
+
+      Document doc = new Document();
+      doc.add(new SortedSetDocValuesFacetField("fizz", "buzz", "baz"));
+      writer.addDocument(config.build(doc));
+      writer.commit();
+
+      try (IndexReader r = writer.getReader()) {
+        IndexSearcher searcher = newSearcher(r);
+
+        SortedSetDocValuesReaderState state =
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+
+        ExecutorService exec = randomExecutorServiceOrNull();
+        try {
+          Facets facets = getAllFacets(searcher, state, exec);
+          FacetResult result = facets.getTopChildren(5, "fizz", "fake", "path");
+
+          // make sure the result is null (and no exception was thrown)
+          assertNull(result);
+        } finally {
+          if (exec != null) exec.shutdownNow();
+        }
+      }
+    }
+  }
+
   private static Facets getAllFacets(
       IndexSearcher searcher, SortedSetDocValuesReaderState state, ExecutorService exec)
       throws IOException, InterruptedException {

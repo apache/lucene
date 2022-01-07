@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.PrimitiveIterator;
+import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.Accountable;
@@ -52,7 +53,7 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
       this.end = end;
     }
 
-    /** Iterates from start to end ord (inclusive) * */
+    /** Iterates from start to end ord (inclusive) */
     public PrimitiveIterator.OfInt iterator() {
       return new PrimitiveIterator.OfInt() {
         int current = start;
@@ -82,12 +83,18 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
     // TODO: This array can take up a lot of space. Change type based on input size maybe?
     private final int[] siblings;
 
-    /** The first ord of the dimension * */
+    /** The first ord of the dimension */
     public final int dimStartOrd;
 
-    /** Sibling and children must be of same length * */
+    /** Sibling and children must be of same length */
     public DimTree(int dimStartOrd, List<Integer> sibling, List<Boolean> hasChildren) {
-      assert sibling.size() == hasChildren.size();
+      if (sibling.size() != hasChildren.size()) {
+        throw new IllegalArgumentException(
+            "Sibling list and children list must have the same size. Got sibling list size of "
+                + sibling.size()
+                + " and child list size of "
+                + hasChildren.size());
+      }
       this.hasChildren = new FixedBitSet(hasChildren.size());
       this.siblings = new int[sibling.size()];
       for (int i = 0; i < sibling.size(); i++) {
@@ -101,12 +108,12 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
       this.dimStartOrd = dimStartOrd;
     }
 
-    /** Iterates through all first level children of dimension * */
+    /** Iterates through all first level children of dimension */
     public PrimitiveIterator.OfInt iterator() {
       return iterator(dimStartOrd);
     }
 
-    /** Iterates through all children of given pathOrd * */
+    /** Iterates through all children of given pathOrd */
     public PrimitiveIterator.OfInt iterator(int pathOrd) {
       return new PrimitiveIterator.OfInt() {
 
@@ -165,10 +172,10 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
   /** Number of unique labels. */
   public abstract int getSize();
 
-  /** Returns if dim is configured as hierarchical ** */
-  public abstract boolean isHierarchicalDim(String dim);
+  /** Returns the associated facet config. */
+  public abstract FacetsConfig getFacetConfig();
 
-  /*** Only used for flat facets (dim/value) ***/
+  /* Only used for flat facets (dim/value) */
 
   /** Returns the {@link OrdRange} for this dimension. */
   public abstract OrdRange getOrdRange(String dim);
@@ -176,10 +183,11 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
   /** Returns mapping from prefix to {@link OrdRange}. */
   public abstract Map<String, OrdRange> getPrefixToOrdRange();
 
-  /*** Only used for hierarchical facets ***/
+  /* Only used for hierarchical facets */
 
+  /** Returns mapping from prefix to {@link DimTree} */
   public abstract DimTree getDimTree(String dim);
 
-  /** Returns a list of all dimensions and their respective ordinals */
+  /** Returns a list of all dimensions */
   public abstract Iterable<String> getDims();
 }

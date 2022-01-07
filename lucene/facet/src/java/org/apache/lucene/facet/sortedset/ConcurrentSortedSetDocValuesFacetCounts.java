@@ -64,9 +64,12 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
   final ExecutorService exec;
   final SortedSetDocValuesReaderState state;
+  final FacetsConfig stateConfig;
   final SortedSetDocValues dv;
   final String field;
   final AtomicIntegerArray counts;
+
+  private static final String[] emptyPath = new String[0];
 
   /** Returns all facet counts, same result as searching on {@link MatchAllDocsQuery} but faster. */
   public ConcurrentSortedSetDocValuesFacetCounts(
@@ -81,6 +84,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
       throws IOException, InterruptedException {
     this.state = state;
     this.field = state.getField();
+    this.stateConfig = state.getFacetConfig();
     this.exec = exec;
     dv = state.getDocValues();
     counts = new AtomicIntegerArray(state.getSize());
@@ -98,16 +102,13 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
       throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
     }
 
-    if (state.isHierarchicalDim(dim)) {
+    if (stateConfig.getDimConfig(dim).hierarchical) {
       int pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
-      if (pathOrd == -1) {
+      if (pathOrd < 0) {
         // path was never indexed
         return null;
       }
       SortedSetDocValuesReaderState.DimTree dimTree = state.getDimTree(dim);
-      if (dimTree == null) {
-        return null;
-      }
       return getDim(dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
     } else {
       if (path.length > 0) {
@@ -116,6 +117,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
       }
       OrdRange ordRange = state.getOrdRange(dim);
       if (ordRange == null) {
+        // means dimension was never indexed
         return null;
       }
       return getDim(dim, null, -1, ordRange.iterator(), topN);
@@ -174,7 +176,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
     if (pathOrd == -1) {
       // not hierarchical facet
-      return new FacetResult(dim, new String[0], dimCount, labelValues, childCount);
+      return new FacetResult(dim, emptyPath, dimCount, labelValues, childCount);
     } else {
       // hierarchical facet
       return new FacetResult(dim, path, counts.get(pathOrd), labelValues, childCount);
@@ -391,15 +393,15 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
     List<FacetResult> results = new ArrayList<>();
     for (String dim : state.getDims()) {
-      if (state.isHierarchicalDim(dim)) {
+      if (stateConfig.getDimConfig(dim).hierarchical) {
         SortedSetDocValuesReaderState.DimTree dimTree = state.getDimTree(dim);
-        FacetResult fr = getDim(dim, new String[0], dimTree.dimStartOrd, dimTree.iterator(), topN);
+        FacetResult fr = getDim(dim, emptyPath, dimTree.dimStartOrd, dimTree.iterator(), topN);
         if (fr != null) {
           results.add(fr);
         }
       } else {
         OrdRange ordRange = state.getOrdRange(dim);
-        FacetResult fr = getDim(dim, new String[0], -1, ordRange.iterator(), topN);
+        FacetResult fr = getDim(dim, emptyPath, -1, ordRange.iterator(), topN);
         if (fr != null) {
           results.add(fr);
         }

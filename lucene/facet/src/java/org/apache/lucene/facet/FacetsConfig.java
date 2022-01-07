@@ -478,28 +478,29 @@ public class FacetsConfig {
 
       for (SortedSetDocValuesFacetField facetField : ent.getValue()) {
         FacetLabel facetLabel = new FacetLabel(facetField.dim, facetField.path);
-        if (getDimConfig(facetField.dim).hierarchical) {
+        DimConfig dimConfig = getDimConfig(facetField.dim);
+        if (dimConfig.hierarchical) {
           for (int i = 0; i < facetLabel.length; i++) {
             String fullPath = pathToString(facetLabel.components, i + 1);
             // For facet counts:
             doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
-
-            // For drill-down:
-            indexDrillDownTerms(doc, indexFieldName, getDimConfig(facetField.dim), facetLabel);
           }
+          // For drill-down:
         } else {
           if (facetLabel.length != 2) {
             throw new IllegalArgumentException(
-                "Dim " + facetField.dim + " not hierarchical but got facet label: " + facetLabel);
+                "dimension \""
+                    + facetField.dim
+                    + "\" is not hierarchical yet has "
+                    + facetField.path.length
+                    + " components");
           }
           String fullPath = pathToString(facetLabel.components, facetLabel.length);
-
           // For facet counts:
           doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
-
-          // For drill-down:
-          indexDrillDownTerms(doc, indexFieldName, getDimConfig(facetField.dim), facetLabel);
         }
+        // For drill-down:
+        indexDrillDownTerms(doc, indexFieldName, dimConfig, facetLabel);
       }
     }
   }
