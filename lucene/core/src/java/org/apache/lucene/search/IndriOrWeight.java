@@ -22,7 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 
-/** The Weight for IndriAndQuery, used to normalize, score and explain these queries. */
+/** The Weight for IndriOrQuery, used to normalize, score and explain these queries. */
 public class IndriOrWeight extends Weight {
 
   private final IndriQuery query;
