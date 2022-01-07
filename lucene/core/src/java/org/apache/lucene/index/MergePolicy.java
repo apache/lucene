@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.document.Field;
@@ -229,6 +230,15 @@ public abstract class MergePolicy {
       totalMaxDoc = segments.stream().mapToInt(i -> i.info.maxDoc()).sum();
       mergeProgress = new OneMergeProgress();
       mergeReaders = List.of();
+    }
+
+    public OneMerge(List<CodecReader> codecReaders, Function<CodecReader, MergeReader> readerFactory) {
+      List<MergeReader> readers = new ArrayList<>(codecReaders.size());
+      codecReaders.forEach(r -> readers.add(readerFactory.apply(r)));
+      mergeReaders = List.copyOf(readers);
+      segments = List.of();
+      totalMaxDoc = codecReaders.stream().mapToInt(IndexReader::maxDoc).sum();
+      mergeProgress = new OneMergeProgress();
     }
 
     /**
@@ -568,6 +578,21 @@ public abstract class MergePolicy {
   public abstract MergeSpecification findMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException;
+
+  /**
+   * Define {@link OneMerge} operations for a list of codec readers. This call is used to
+   * define merges for input readers in {@link IndexWriter#addIndexes(CodecReader...)}.
+   * Default implementation adds all readers to a single merge. This can be overridden in custom
+   * merge policies.
+   *
+   * @param readers set of readers to merge into the main index
+   */
+  public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+    OneMerge merge = new OneMerge(readers, reader -> new MergeReader((SegmentReader) reader, null));
+    MergeSpecification mergeSpec = new MergeSpecification();
+    mergeSpec.add(merge);
+    return mergeSpec;
+  }
 
   /**
    * Determine what set of merge operations is necessary in order to merge to {@code <=} the

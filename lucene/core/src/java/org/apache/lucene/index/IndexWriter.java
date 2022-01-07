@@ -276,6 +276,7 @@ public class IndexWriter
   final DocumentsWriter docWriter;
   private final EventQueue eventQueue = new EventQueue(this);
   private final MergeScheduler.MergeSource mergeSource = new IndexWriterMergeSource(this);
+  private final AddIndexesMergeSource addIndexesMergeSource = new AddIndexesMergeSource();
 
   private final ReentrantLock writeDocValuesLock = new ReentrantLock();
 
@@ -3124,145 +3125,330 @@ public class IndexWriter
   public long addIndexes(CodecReader... readers) throws IOException {
     ensureOpen();
 
-    // long so we can detect int overflow:
+    // Best effort up front validations
     long numDocs = 0;
-    long seqNo;
-    try {
-      if (infoStream.isEnabled("IW")) {
-        infoStream.message("IW", "flush at addIndexes(CodecReader...)");
-      }
-      flush(false, true);
+    for (CodecReader leaf: readers) {
+      validateMergeReader(leaf);
+      numDocs += leaf.numDocs();
+    }
+    testReserveDocs(numDocs);
 
-      String mergedName = newSegmentName();
-      int numSoftDeleted = 0;
-      for (CodecReader leaf : readers) {
-        numDocs += leaf.numDocs();
-        validateMergeReader(leaf);
-        if (softDeletesEnabled) {
-          Bits liveDocs = leaf.getLiveDocs();
-          numSoftDeleted +=
-              PendingSoftDeletes.countSoftDeletes(
-                  FieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), leaf),
-                  liveDocs);
-        }
-      }
-
-      // Best-effort up front check:
-      testReserveDocs(numDocs);
-
-      final IOContext context =
-          new IOContext(
-              new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
-
-      // TODO: somehow we should fix this merge so it's
-      // abortable so that IW.close(false) is able to stop it
-      TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(directory);
-      Codec codec = config.getCodec();
-      // We set the min version to null for now, it will be set later by SegmentMerger
-      SegmentInfo info =
-          new SegmentInfo(
-              directoryOrig,
-              Version.LATEST,
-              null,
-              mergedName,
-              -1,
-              false,
-              codec,
-              Collections.emptyMap(),
-              StringHelper.randomId(),
-              Collections.emptyMap(),
-              config.getIndexSort());
-
-      SegmentMerger merger =
-          new SegmentMerger(
-              Arrays.asList(readers), info, infoStream, trackingDir, globalFieldNumberMap, context);
-
-      if (!merger.shouldMerge()) {
-        return docWriter.getNextSequenceNumber();
-      }
-
-      synchronized (this) {
-        ensureOpen();
-        assert merges.areEnabled();
-        runningAddIndexesMerges.add(merger);
-      }
-      try {
-        merger.merge(); // merge 'em
-      } finally {
-        synchronized (this) {
-          runningAddIndexesMerges.remove(merger);
-          notifyAll();
-        }
-      }
-      SegmentCommitInfo infoPerCommit =
-          new SegmentCommitInfo(info, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId());
-
-      info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
-      trackingDir.clearCreatedFiles();
-
-      setDiagnostics(info, SOURCE_ADDINDEXES_READERS);
-
-      final MergePolicy mergePolicy = config.getMergePolicy();
-      boolean useCompoundFile;
-      synchronized (this) { // Guard segmentInfos
-        if (merges.areEnabled() == false) {
-          // Safe: these files must exist
-          deleteNewFiles(infoPerCommit.files());
-
-          return docWriter.getNextSequenceNumber();
-        }
-        ensureOpen();
-        useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, infoPerCommit, this);
-      }
-
-      // Now create the compound file if needed
-      if (useCompoundFile) {
-        Collection<String> filesToDelete = infoPerCommit.files();
-        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
-        // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
-        // createCompoundFile tries to cleanup, but it might not always be able to...
-        try {
-          createCompoundFile(infoStream, trackingCFSDir, info, context, this::deleteNewFiles);
-        } finally {
-          // delete new non cfs files directly: they were never
-          // registered with IFD
-          deleteNewFiles(filesToDelete);
-        }
-        info.setUseCompoundFile(true);
-      }
-
-      // Have codec write SegmentInfo.  Must do this after
-      // creating CFS so that 1) .si isn't slurped into CFS,
-      // and 2) .si reflects useCompoundFile=true change
-      // above:
-      codec.segmentInfoFormat().write(trackingDir, info, context);
-
-      info.addFiles(trackingDir.getCreatedFiles());
-
-      // Register the new segment
-      synchronized (this) {
-        if (merges.areEnabled() == false) {
-          // Safe: these files must exist
-          deleteNewFiles(infoPerCommit.files());
-
-          return docWriter.getNextSequenceNumber();
-        }
-        ensureOpen();
-
-        // Now reserve the docs, just before we update SIS:
-        reserveDocs(numDocs);
-
-        segmentInfos.add(infoPerCommit);
-        seqNo = docWriter.getNextSequenceNumber();
-        checkpoint();
-      }
-    } catch (VirtualMachineError tragedy) {
-      tragicEvent(tragedy, "addIndexes(CodecReader...)");
-      throw tragedy;
+    MergePolicy mergePolicy = config.getMergePolicy();
+    MergePolicy.MergeSpecification spec = mergePolicy.findMerges(Arrays.asList(readers));
+    if (spec != null && spec.merges.size() > 0) {
+      spec.merges.forEach(addIndexesMergeSource::registerMerge);
+      mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
     }
     maybeMerge();
+    return docWriter.getNextSequenceNumber();
 
-    return seqNo;
+//    // =======
+//
+//    // long so we can detect int overflow:
+////    long numDocs = 0;
+//    long seqNo;
+//    try {
+//      if (infoStream.isEnabled("IW")) {
+//        infoStream.message("IW", "flush at addIndexes(CodecReader...)");
+//      }
+//      flush(false, true);
+//
+//      String mergedName = newSegmentName();
+//      int numSoftDeleted = 0;
+//      for (CodecReader leaf : readers) {
+//        numDocs += leaf.numDocs();
+////        validateMergeReader(leaf);
+//        if (softDeletesEnabled) {
+//          Bits liveDocs = leaf.getLiveDocs();
+//          numSoftDeleted +=
+//              PendingSoftDeletes.countSoftDeletes(
+//                  DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(
+//                      config.getSoftDeletesField(), leaf),
+//                  liveDocs);
+//        }
+//      }
+//
+//      // Best-effort up front check:
+//      testReserveDocs(numDocs);
+//
+//      final IOContext context =
+//          new IOContext(
+//              new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
+//
+//      // TODO: somehow we should fix this merge so it's
+//      // abortable so that IW.close(false) is able to stop it
+//      TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(directory);
+//      Codec codec = config.getCodec();
+//      // We set the min version to null for now, it will be set later by SegmentMerger
+//      SegmentInfo info =
+//          new SegmentInfo(
+//              directoryOrig,
+//              Version.LATEST,
+//              null,
+//              mergedName,
+//              -1,
+//              false,
+//              codec,
+//              Collections.emptyMap(),
+//              StringHelper.randomId(),
+//              Collections.emptyMap(),
+//              config.getIndexSort());
+//
+//      SegmentMerger merger =
+//          new SegmentMerger(
+//              Arrays.asList(readers), info, infoStream, trackingDir, globalFieldNumberMap, context);
+//
+//      if (!merger.shouldMerge()) {
+//        return docWriter.getNextSequenceNumber();
+//      }
+//
+//      synchronized (this) {
+//        ensureOpen();
+//        assert merges.areEnabled();
+//        runningAddIndexesMerges.add(merger);
+//      }
+//      try {
+//        merger.merge(); // merge 'em
+//      } finally {
+//        synchronized (this) {
+//          runningAddIndexesMerges.remove(merger);
+//          notifyAll();
+//        }
+//      }
+//      SegmentCommitInfo infoPerCommit =
+//          new SegmentCommitInfo(info, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId());
+//
+//      info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
+//      trackingDir.clearCreatedFiles();
+//
+//      setDiagnostics(info, SOURCE_ADDINDEXES_READERS);
+//
+//      final MergePolicy mergePolicy = config.getMergePolicy();
+//      boolean useCompoundFile;
+//      synchronized (this) { // Guard segmentInfos
+//        if (merges.areEnabled() == false) {
+//          // Safe: these files must exist
+//          deleteNewFiles(infoPerCommit.files());
+//
+//          return docWriter.getNextSequenceNumber();
+//        }
+//        ensureOpen();
+//        useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, infoPerCommit, this);
+//      }
+//
+//      // Now create the compound file if needed
+//      if (useCompoundFile) {
+//        Collection<String> filesToDelete = infoPerCommit.files();
+//        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
+//        // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
+//        // createCompoundFile tries to cleanup, but it might not always be able to...
+//        try {
+//          createCompoundFile(infoStream, trackingCFSDir, info, context, this::deleteNewFiles);
+//        } finally {
+//          // delete new non cfs files directly: they were never
+//          // registered with IFD
+//          deleteNewFiles(filesToDelete);
+//        }
+//        info.setUseCompoundFile(true);
+//      }
+//
+//      // Have codec write SegmentInfo.  Must do this after
+//      // creating CFS so that 1) .si isn't slurped into CFS,
+//      // and 2) .si reflects useCompoundFile=true change
+//      // above:
+//      codec.segmentInfoFormat().write(trackingDir, info, context);
+//
+//      info.addFiles(trackingDir.getCreatedFiles());
+//
+//      // Register the new segment
+//      synchronized (this) {
+//        if (merges.areEnabled() == false) {
+//          // Safe: these files must exist
+//          deleteNewFiles(infoPerCommit.files());
+//
+//          return docWriter.getNextSequenceNumber();
+//        }
+//        ensureOpen();
+//
+//        // Now reserve the docs, just before we update SIS:
+//        reserveDocs(numDocs);
+//
+//        segmentInfos.add(infoPerCommit);
+//        seqNo = docWriter.getNextSequenceNumber();
+//        checkpoint();
+//      }
+//    } catch (VirtualMachineError tragedy) {
+//      tragicEvent(tragedy, "addIndexes(CodecReader...)");
+//      throw tragedy;
+//    }
+//    maybeMerge();
+//    return docWriter.getNextSequenceNumber();  // VIGYA added now
+//    return seqNo;
+  }
+
+  private class AddIndexesMergeSource implements MergeScheduler.MergeSource {
+
+    private final Queue<MergePolicy.OneMerge> pendingAddIndexesMerges = new ArrayDeque<>();
+
+    public void registerMerge(MergePolicy.OneMerge merge) {
+      pendingAddIndexesMerges.add(merge);
+      pendingMerges.add(merge);
+    }
+
+    @Override
+    public MergePolicy.OneMerge getNextMerge() {
+      MergePolicy.OneMerge merge = pendingAddIndexesMerges.remove();
+      pendingMerges.removeFirst();
+      runningMerges.add(merge);
+      return merge;
+    }
+
+    @Override
+    public void onMergeFinished(MergePolicy.OneMerge merge) {
+      runningMerges.remove(merge);
+    }
+
+    @Override
+    public boolean hasPendingMerges() {
+      return pendingMerges.size() > 0;
+    }
+
+    @Override
+    public void merge(MergePolicy.OneMerge merge) throws IOException {
+      List<CodecReader> readers = merge.getMergeReader().stream().map(r -> r.reader).collect(Collectors.toList());
+
+      // long so we can detect int overflow:
+      long numDocs = 0;
+//      long seqNo;
+      try {
+        if (infoStream.isEnabled("IW")) {
+          infoStream.message("IW", "flush at addIndexes(CodecReader...)");
+        }
+        flush(false, true);
+
+        String mergedName = newSegmentName();
+        int numSoftDeleted = 0;
+        for (CodecReader leaf : readers) {
+          numDocs += leaf.numDocs();
+          if (softDeletesEnabled) {
+            Bits liveDocs = leaf.getLiveDocs();
+            numSoftDeleted +=
+              PendingSoftDeletes.countSoftDeletes(
+                DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), leaf), liveDocs);
+          }
+        }
+
+        // Best-effort up front check:
+        testReserveDocs(numDocs);
+
+        final IOContext context =
+          new IOContext(
+            new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
+
+        // TODO: somehow we should fix this merge so it's
+        // abortable so that IW.close(false) is able to stop it
+        TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(directory);
+        Codec codec = config.getCodec();
+        // We set the min version to null for now, it will be set later by SegmentMerger
+        SegmentInfo info =
+          new SegmentInfo(
+            directoryOrig,
+            Version.LATEST,
+            null,
+            mergedName,
+            -1,
+            false,
+            codec,
+            Collections.emptyMap(),
+            StringHelper.randomId(),
+            Collections.emptyMap(),
+            config.getIndexSort());
+
+        SegmentMerger merger = new SegmentMerger(readers, info, infoStream, trackingDir, globalFieldNumberMap, context);
+
+        if (!merger.shouldMerge()) {
+          return;
+        }
+
+        synchronized (this) {
+          ensureOpen();
+          assert merges.areEnabled();
+          runningAddIndexesMerges.add(merger);
+        }
+        try {
+          merger.merge(); // merge 'em
+        } finally {
+          synchronized (this) {
+            runningAddIndexesMerges.remove(merger);
+            notifyAll();
+          }
+        }
+        SegmentCommitInfo infoPerCommit =
+          new SegmentCommitInfo(info, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId());
+
+        info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
+        trackingDir.clearCreatedFiles();
+
+        setDiagnostics(info, SOURCE_ADDINDEXES_READERS);
+
+        final MergePolicy mergePolicy = config.getMergePolicy();
+        boolean useCompoundFile;
+        synchronized (this) { // Guard segmentInfos
+          if (merges.areEnabled() == false) {
+            // Safe: these files must exist
+            deleteNewFiles(infoPerCommit.files());
+            return;
+          }
+          ensureOpen();
+          useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, infoPerCommit, IndexWriter.this);
+        }
+
+        // Now create the compound file if needed
+        if (useCompoundFile) {
+          Collection<String> filesToDelete = infoPerCommit.files();
+          TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
+          // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
+          // createCompoundFile tries to cleanup, but it might not always be able to...
+          try {
+            createCompoundFile(infoStream, trackingCFSDir, info, context, IndexWriter.this::deleteNewFiles);
+          } finally {
+            // delete new non cfs files directly: they were never
+            // registered with IFD
+            deleteNewFiles(filesToDelete);
+          }
+          info.setUseCompoundFile(true);
+        }
+
+        // Have codec write SegmentInfo.  Must do this after
+        // creating CFS so that 1) .si isn't slurped into CFS,
+        // and 2) .si reflects useCompoundFile=true change
+        // above:
+        codec.segmentInfoFormat().write(trackingDir, info, context);
+
+        info.addFiles(trackingDir.getCreatedFiles());
+
+        // Register the new segment
+        synchronized (this) {
+          if (merges.areEnabled() == false) {
+            // Safe: these files must exist
+            deleteNewFiles(infoPerCommit.files());
+            return;
+          }
+          ensureOpen();
+
+          // Now reserve the docs, just before we update SIS:
+          reserveDocs(numDocs);
+
+          segmentInfos.add(infoPerCommit);
+//          seqNo = docWriter.getNextSequenceNumber();
+          checkpoint();
+        }
+      } catch (VirtualMachineError tragedy) {
+        tragicEvent(tragedy, "addIndexes(CodecReader...)");
+        throw tragedy;
+      }
+//      maybeMerge();
+    }
   }
 
   /** Copies the segment files as-is into the IndexWriter's directory. */
