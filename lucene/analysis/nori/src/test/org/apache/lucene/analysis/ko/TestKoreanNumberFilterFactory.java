@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 
 /** Simple tests for {@link org.apache.lucene.analysis.ko.KoreanNumberFilterFactory} */
 public class TestKoreanNumberFilterFactory extends BaseTokenStreamTestCase {

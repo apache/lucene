@@ -52,6 +52,9 @@ module org.apache.lucene.core {
   // Only export internal packages to the test framework.
   exports org.apache.lucene.internal.tests to
       org.apache.lucene.test_framework;
+  // Open certain packages for the test framework (ram usage tester).
+  opens org.apache.lucene.document to
+      org.apache.lucene.test_framework;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;

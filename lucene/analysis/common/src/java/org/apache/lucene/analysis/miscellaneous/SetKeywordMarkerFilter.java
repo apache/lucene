@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import java.util.Objects;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -39,7 +40,7 @@ public final class SetKeywordMarkerFilter extends KeywordMarkerFilter {
    */
   public SetKeywordMarkerFilter(final TokenStream in, final CharArraySet keywordSet) {
     super(in);
-    this.keywordSet = keywordSet;
+    this.keywordSet = Objects.requireNonNull(keywordSet, "keywordSet");
   }
 
   @Override

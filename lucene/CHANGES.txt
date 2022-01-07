@@ -50,6 +50,9 @@ API Changes
   org.apache.lucene.* to org.apache.lucene.tests.* to avoid package name conflicts with the
   core module. (Dawid Weiss)
 
+* LUCENE-10183: KnnVectorsWriter#writeField to take KnnVectorsReader instead of VectorValues.
+  (Zach Chen, Michael Sokolov, Julie Tibshirani, Adrien Grand)
+
 * LUCENE-10335: Deprecate helper methods for resource loading in IOUtils and StopwordAnalyzerBase
   that are not compatible with module system (Class#getResourceAsStream() and Class#getResource()
   are caller sensitive in Java 11). Instead add utility method IOUtils#requireResourceNonNull(T)
@@ -119,7 +122,7 @@ Improvements
 
 * LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
   with or without offsets enabled. (Patrick Zhai)
-  
+
 Optimizations
 ---------------------
 
@@ -140,6 +143,12 @@ Optimizations
 
 * LUCENE-10346: Optimize facet counting for single-valued TaxonomyFacetCounts. (Guo Feng)
 
+Changes in runtime behavior
+---------------------
+
+* LUCENE-10291: Lucene now only writes files for terms and postings if at least
+  one field is indexed with postings. (Yannick Welsch)
+
 Bug Fixes
 ---------------------
 
@@ -153,6 +162,15 @@ Bug Fixes
 * LUCENE-10349: Fix all analyzers to behave according to their documentation:
   getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
 
+* LUCENE-10352: Add missing service provider entries: KoreanNumberFilterFactory,
+  DaitchMokotoffSoundexFilterFactory (Uwe Schindler, Robert Muir)
+
+* LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
+  DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
+
+* LLUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
+  Uwe Schindler)
+
 Other
 ---------------------
 
@@ -162,6 +180,13 @@ Other
 
 * LUCENE-10310: TestXYDocValuesQueries#doRandomDistanceTest does not produce random circles with radius
   with '0' value any longer.
+
+* LUCENE-10352: Removed duplicate instances of StringMockResourceLoader and migrated class to
+  test-framework.  (Uwe Schindler, Robert Muir)
+
+* LUCENE-10352: Convert TestAllAnalyzersHaveFactories and TestRandomChains to a global integration test
+  and discover classes to check from module system. The test now checks all analyzer modules,
+  so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
 
 ======================= Lucene 9.0.0 =======================
 

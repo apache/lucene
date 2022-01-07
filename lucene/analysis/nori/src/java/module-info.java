@@ -28,6 +28,7 @@ module org.apache.lucene.analysis.nori {
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.ko.KoreanTokenizerFactory;
   provides org.apache.lucene.analysis.TokenFilterFactory with
+      org.apache.lucene.analysis.ko.KoreanNumberFilterFactory,
       org.apache.lucene.analysis.ko.KoreanPartOfSpeechStopFilterFactory,
       org.apache.lucene.analysis.ko.KoreanReadingFormFilterFactory;
 }
