@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -824,7 +825,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
                     }
 
                     boolean doIndex;
-                    if (currentVersion == missingValue) {
+                    if (Objects.equals(currentVersion, missingValue)) {
                       if (VERBOSE) {
                         System.out.println(
                             Thread.currentThread().getName() + ":   id not in RT cache");

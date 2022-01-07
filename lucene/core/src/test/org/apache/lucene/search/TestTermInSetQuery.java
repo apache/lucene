@@ -187,7 +187,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
     final long actualRamBytesUsed = RamUsageTester.ramUsed(query);
     final long expectedRamBytesUsed = query.ramBytesUsed();
     // error margin within 5%
-    assertEquals(expectedRamBytesUsed, actualRamBytesUsed, actualRamBytesUsed / 20);
+    assertEquals(expectedRamBytesUsed, actualRamBytesUsed, actualRamBytesUsed / 20.d);
   }
 
   private static class TermsCountingDirectoryReaderWrapper extends FilterDirectoryReader {

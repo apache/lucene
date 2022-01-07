@@ -197,10 +197,10 @@ public class FuzzyQuery extends MultiTermQuery {
     if (!super.equals(obj)) return false;
     if (getClass() != obj.getClass()) return false;
     FuzzyQuery other = (FuzzyQuery) obj;
-    return Objects.equals(maxEdits, other.maxEdits)
-        && Objects.equals(prefixLength, other.prefixLength)
-        && Objects.equals(maxExpansions, other.maxExpansions)
-        && Objects.equals(transpositions, other.transpositions)
+    return maxEdits == other.maxEdits
+        && prefixLength == other.prefixLength
+        && maxExpansions == other.maxExpansions
+        && transpositions == other.transpositions
         && Objects.equals(term, other.term);
   }
 
