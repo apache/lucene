@@ -22,7 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 
-/** The Weight for IndriAndQuery, used to normalize, score and explain these queries. */
+/** The Weight for IndriOrQuery, used to normalize, score and explain these queries. */
 public class IndriOrWeight extends Weight {
 
   private final IndriQuery query;
@@ -36,7 +36,7 @@ public class IndriOrWeight extends Weight {
     this.query = query;
     this.boost = boost;
     this.scoreMode = scoreMode;
-    weights = new ArrayList<>();
+    this.weights = new ArrayList<>();
     // Calculate total boost score so that boost can be normalized
     float boostSum = 0;
     for (BooleanClause c : query) {
