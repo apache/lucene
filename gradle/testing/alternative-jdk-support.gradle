@@ -88,3 +88,5 @@ if (jvmGradle != jvmCurrent) {
 rootProject.ext.runtimeJavaExecutable = jvmCurrent.javaExecutable
 rootProject.ext.runtimeJavaHome = jvmCurrent.javaHome
 rootProject.ext.runtimeJavaVersion = jvmDetector.getMetadata(jvmCurrent.javaHome).languageVersion
+rootProject.ext.usesAltJvm = (jvmGradle != jvmCurrent);
+
