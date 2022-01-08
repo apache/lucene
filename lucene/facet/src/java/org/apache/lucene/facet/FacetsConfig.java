@@ -485,7 +485,6 @@ public class FacetsConfig {
             // For facet counts:
             doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
           }
-          // For drill-down:
         } else {
           if (facetLabel.length != 2) {
             throw new IllegalArgumentException(

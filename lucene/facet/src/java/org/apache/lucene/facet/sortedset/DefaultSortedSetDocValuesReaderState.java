@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Stack;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.DocValues;
@@ -90,7 +89,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
       throws IOException {
     this.field = field;
     this.reader = reader;
-    this.config = Objects.requireNonNullElse(config, new FacetsConfig());
+    this.config = config;
 
     // We need this to create thread-safe MultiSortedSetDV
     // per collector:
@@ -174,7 +173,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
         // we still add INVALID_ORDINAL, which will be replaced if a valid sibling is found
         siblings.add(ord, INVALID_ORDINAL);
       } else if (components.length == nextComponents.length) {
-        // next ord must be a sibling of current and there are no direct children or current, this
+        // next ord must be a sibling of current and there are no direct children of current, this
         // is because we
         // are indexing all ancestral paths
         siblings.add(ord, ord + 1);
@@ -339,7 +338,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   }
 
   @Override
-  public FacetsConfig getFacetConfig() {
+  public FacetsConfig getFacetsConfig() {
     return config;
   }
 

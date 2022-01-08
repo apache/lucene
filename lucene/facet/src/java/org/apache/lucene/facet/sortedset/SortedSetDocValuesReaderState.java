@@ -173,7 +173,7 @@ public abstract class SortedSetDocValuesReaderState implements Accountable {
   public abstract int getSize();
 
   /** Returns the associated facet config. */
-  public abstract FacetsConfig getFacetConfig();
+  public abstract FacetsConfig getFacetsConfig();
 
   /* Only used for flat facets (dim/value) */
 

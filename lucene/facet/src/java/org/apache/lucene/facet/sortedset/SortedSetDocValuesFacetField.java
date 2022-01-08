@@ -44,7 +44,13 @@ public class SortedSetDocValuesFacetField extends Field {
   /** Path. */
   public final String[] path;
 
-  /** String form of path. */
+  /**
+   * String form of path.
+   *
+   * @deprecated This field will be removed in a future version. {@link
+   *     FacetsConfig#pathToString(String[])} can be applied to {@code path} as a replacement if
+   *     string path is desired.
+   */
   @Deprecated public final String label;
 
   /** Sole constructor. */
