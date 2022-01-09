@@ -188,6 +188,10 @@ def check_prerequisites(todo=None):
         git_ver = run("git --version").splitlines()[0]
     except:
         sys.exit("You will need git installed")
+    try:
+        svn_ver = run("svn --version").splitlines()[0]
+    except:
+        sys.exit("You will need svn installed")
     if not 'EDITOR' in os.environ:
         print("WARNING: Environment variable $EDITOR not set, using %s" % get_editor())
 
@@ -1150,7 +1154,7 @@ def configure_pgp(gpg_todo):
             return False
         if length < 4096:
             print("Your key length is < 4096, Please generate a stronger key.")
-            print("Alternatively, follow instructions in http://www.apache.org/dev/release-signing.html#note")
+            print("Alternatively, follow instructions in https://infra.apache.org/release-signing.html#note")
             if not ask_yes_no("Have you configured your gpg to avoid SHA-1?"):
                 print("Please either generate a strong key or reconfigure your client")
                 return False
@@ -1173,7 +1177,7 @@ def configure_pgp(gpg_todo):
         if apache_sigs < 1:
             print(textwrap.dedent("""\
                 Your key is not signed by any other committer. 
-                Please review http://www.apache.org/dev/openpgp.html#apache-wot
+                Please review https://infra.apache.org/openpgp.html#apache-wot
                 and make sure to get your key signed until next time.
                 You may want to run 'gpg --refresh-keys' to refresh your keychain."""))
         uses_apacheid = is_code_signing_key = False
@@ -1183,9 +1187,9 @@ def configure_pgp(gpg_todo):
                 if 'CODE SIGNING KEY' in line.upper():
                     is_code_signing_key = True
         if not uses_apacheid:
-            print("WARNING: Your key should use your apache-id email address, see http://www.apache.org/dev/release-signing.html#user-id")
+            print("WARNING: Your key should use your apache-id email address, see https://infra.apache.org/release-signing.html#user-id")
         if not is_code_signing_key:
-            print("WARNING: You code signing key should be labeled 'CODE SIGNING KEY', see http://www.apache.org/dev/release-signing.html#key-comment")
+            print("WARNING: You code signing key should be labeled 'CODE SIGNING KEY', see https://infra.apache.org/release-signing.html#key-comment")
     except Exception as e:
         print("Could not check signatures of your key: %s" % e)
 
@@ -1203,6 +1207,22 @@ def configure_pgp(gpg_todo):
 
     gpg_state['apache_id'] = id
     gpg_state['gpg_key'] = gpg_id
+
+    print(textwrap.dedent("""\
+            You can choose between signing the release with the gpg program or with
+            the gradle signing plugin. Read about the difference by running
+            ./gradlew helpPublishing"""))
+
+    gpg_state['use_gradle'] = ask_yes_no("Do you want to sign the release with gradle plugin? No means gpg")
+
+    print(textwrap.dedent("""\
+            You need the passphrase to sign the release.
+            This script can prompt you securely for your passphrase (will not be stored) and pass it on to
+            buildAndPushRelease in a secure way. However, you can also configure your passphrase in advance 
+            and avoid having to type it in the terminal. This can be done with either a gpg-agent (for gpg tool)
+            or in gradle.properties or an ENV.var (for gradle), See ./gradlew helpPublishing for details."""))
+    gpg_state['prompt_pass'] = ask_yes_no("Do you want this wizard to prompt you for your gpg password? ")
+
     return True
 
 
@@ -1386,7 +1406,7 @@ def main():
                             subtitle=get_releasing_text,
                             prologue_text="Welcome to the release wizard. From here you can manage the process including creating new RCs. "
                                           "All changes are persisted, so you can exit any time and continue later. Make sure to read the Help section.",
-                            epilogue_text="® 2021 The Lucene project. Licensed under the Apache License 2.0\nScript version v%s)" % getScriptVersion(),
+                            epilogue_text="® 2022 The Lucene project. Licensed under the Apache License 2.0\nScript version v%s)" % getScriptVersion(),
                             screen=MyScreen())
 
     todo_menu = UpdatableConsoleMenu(title=get_releasing_text,
@@ -1623,15 +1643,15 @@ class Commands(SecretYamlObject):
             for line in cmd.display_cmd():
                 print("  %s" % line)
         print()
+        confirm_each = (not self.confirm_each_command is False) and len(commands) > 1
         if not self.enable_execute is False:
             if self.run_text:
                 print("\n%s\n" % self.get_run_text())
-            if len(commands) > 1:
-                if not self.confirm_each_command is False:
-                    print("You will get prompted before running each individual command.")
-                else:
-                    print(
-                        "You will not be prompted for each command but will see the ouput of each. If one command fails the execution will stop.")
+            if confirm_each:
+                print("You will get prompted before running each individual command.")
+            else:
+                print(
+                    "You will not be prompted for each command but will see the ouput of each. If one command fails the execution will stop.")
             success = True
             if ask_yes_no("Do you want me to run these commands now?"):
                 if self.remove_files:
@@ -1660,8 +1680,10 @@ class Commands(SecretYamlObject):
                     folder_prefix = ''
                     if cmd.cwd:
                         folder_prefix = cmd.cwd + "_"
-                    if self.confirm_each_command is False or len(commands) == 1 or ask_yes_no("Shall I run '%s' in folder '%s'" % (cmd, cwd)):
-                        if self.confirm_each_command is False:
+                    if confirm_each and cmd.comment:
+                        print("# %s\n" % cmd.get_comment())
+                    if not confirm_each or ask_yes_no("Shall I run '%s' in folder '%s'" % (cmd, cwd)):
+                        if not confirm_each:
                             print("------------\nRunning '%s' in folder '%s'" % (cmd, cwd))
                         logfilename = cmd.logfile
                         logfile = None
