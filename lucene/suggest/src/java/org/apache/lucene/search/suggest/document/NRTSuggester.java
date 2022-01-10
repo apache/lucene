@@ -217,7 +217,7 @@ public final class NRTSuggester implements Accountable {
               collector.seenSurfaceForms.add(key);
             }
             try {
-              float score = scorer.score(decode(path.output.output1), path.boost);
+              float score = scorer.score((float) decode(path.output.output1), path.boost);
               collector.collect(docID, spare.toCharsRef(), path.context, score);
               return true;
             } catch (IOException e) {
@@ -275,8 +275,8 @@ public final class NRTSuggester implements Accountable {
         Util.FSTPath<Pair<Long, BytesRef>> first, Util.FSTPath<Pair<Long, BytesRef>> second) {
       int cmp =
           Float.compare(
-              scorer.score(decode(second.output.output1), second.boost),
-              scorer.score(decode(first.output.output1), first.boost));
+              scorer.score((float) decode(second.output.output1), second.boost),
+              scorer.score((float) decode(first.output.output1), first.boost));
       return (cmp != 0) ? cmp : first.input.get().compareTo(second.input.get());
     }
   }

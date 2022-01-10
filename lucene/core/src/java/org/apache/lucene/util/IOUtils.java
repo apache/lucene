@@ -498,6 +498,7 @@ public final class IOUtils {
    * The first exception thrown by the consumer is re-thrown and subsequent exceptions are
    * suppressed.
    */
+  @SuppressWarnings("StreamToIterable")
   public static <T> void applyToAll(Collection<T> collection, IOConsumer<T> consumer)
       throws IOException {
     IOUtils.close(

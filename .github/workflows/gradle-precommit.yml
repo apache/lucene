@@ -21,7 +21,7 @@ jobs:
         # Operating systems to run on.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '11' ]
+        java: [ '17' ]
 
     steps:
     - uses: actions/checkout@v2
@@ -65,7 +65,7 @@ jobs:
         # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '11' ]
+        java: [ '17' ]
 
     steps:
     - uses: actions/checkout@v2

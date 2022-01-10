@@ -31,6 +31,8 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
@@ -40,7 +42,8 @@ public abstract class KnnVectorsWriter implements Closeable {
   protected KnnVectorsWriter() {}
 
   /** Write all values contained in the provided reader */
-  public abstract void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException;
+  public abstract void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+      throws IOException;
 
   /** Called once at the end before close */
   public abstract void finish() throws IOException;
@@ -67,47 +70,77 @@ public abstract class KnnVectorsWriter implements Closeable {
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
     }
-    List<VectorValuesSub> subs = new ArrayList<>();
-    int dimension = -1;
-    VectorSimilarityFunction similarityFunction = null;
-    int nonEmptySegmentIndex = 0;
-    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (knnVectorsReader != null) {
-        if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
-          int segmentDimension = mergeFieldInfo.getVectorDimension();
-          VectorSimilarityFunction segmentSimilarityFunction =
-              mergeFieldInfo.getVectorSimilarityFunction();
-          if (dimension == -1) {
-            dimension = segmentDimension;
-            similarityFunction = mergeFieldInfo.getVectorSimilarityFunction();
-          } else if (dimension != segmentDimension) {
-            throw new IllegalStateException(
-                "Varying dimensions for vector-valued field "
-                    + mergeFieldInfo.name
-                    + ": "
-                    + dimension
-                    + "!="
-                    + segmentDimension);
-          } else if (similarityFunction != segmentSimilarityFunction) {
-            throw new IllegalStateException(
-                "Varying similarity functions for vector-valued field "
-                    + mergeFieldInfo.name
-                    + ": "
-                    + similarityFunction
-                    + "!="
-                    + segmentSimilarityFunction);
-          }
-          VectorValues values = knnVectorsReader.getVectorValues(mergeFieldInfo.name);
-          if (values != null) {
-            subs.add(new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
-          }
-        }
-      }
-    }
     // Create a new VectorValues by iterating over the sub vectors, mapping the resulting
     // docids using docMaps in the mergeState.
-    writeField(mergeFieldInfo, new VectorValuesMerger(subs, mergeState));
+    writeField(
+        mergeFieldInfo,
+        new KnnVectorsReader() {
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
+
+          @Override
+          public void close() throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void checkIntegrity() throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public VectorValues getVectorValues(String field) throws IOException {
+            List<VectorValuesSub> subs = new ArrayList<>();
+            int dimension = -1;
+            VectorSimilarityFunction similarityFunction = null;
+            int nonEmptySegmentIndex = 0;
+            for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+              KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
+              if (knnVectorsReader != null) {
+                if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
+                  int segmentDimension = mergeFieldInfo.getVectorDimension();
+                  VectorSimilarityFunction segmentSimilarityFunction =
+                      mergeFieldInfo.getVectorSimilarityFunction();
+                  if (dimension == -1) {
+                    dimension = segmentDimension;
+                    similarityFunction = mergeFieldInfo.getVectorSimilarityFunction();
+                  } else if (dimension != segmentDimension) {
+                    throw new IllegalStateException(
+                        "Varying dimensions for vector-valued field "
+                            + mergeFieldInfo.name
+                            + ": "
+                            + dimension
+                            + "!="
+                            + segmentDimension);
+                  } else if (similarityFunction != segmentSimilarityFunction) {
+                    throw new IllegalStateException(
+                        "Varying similarity functions for vector-valued field "
+                            + mergeFieldInfo.name
+                            + ": "
+                            + similarityFunction
+                            + "!="
+                            + segmentSimilarityFunction);
+                  }
+                  VectorValues values = knnVectorsReader.getVectorValues(mergeFieldInfo.name);
+                  if (values != null) {
+                    subs.add(
+                        new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
+                  }
+                }
+              }
+            }
+            return new VectorValuesMerger(subs, mergeState);
+          }
+
+          @Override
+          public TopDocs search(String field, float[] target, int k, Bits acceptDocs)
+              throws IOException {
+            throw new UnsupportedOperationException();
+          }
+        });
+
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
     }
