@@ -72,25 +72,40 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
   private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      SortedNumericDocValues dv =
+      SortedNumericDocValues multiValued =
           FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
-      if (dv == null) {
+      if (multiValued == null) {
         continue;
       }
 
-      DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
 
-      if (values != null) {
-        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          for (int i = 0; i < dv.docValueCount(); i++) {
-            values[(int) dv.nextValue()]++;
+      DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
+      DocIdSetIterator it =
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+
+      if (singleValued != null) {
+        if (values != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            values[(int) singleValued.longValue()]++;
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            sparseValues.addTo((int) singleValued.longValue(), 1);
           }
         }
       } else {
-        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          for (int i = 0; i < dv.docValueCount(); i++) {
-            sparseValues.addTo((int) dv.nextValue(), 1);
+        if (values != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              values[(int) multiValued.nextValue()]++;
+            }
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              sparseValues.addTo((int) multiValued.nextValue(), 1);
+            }
           }
         }
       }
@@ -102,40 +117,45 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   private final void countAll(IndexReader reader) throws IOException {
     assert values != null;
     for (LeafReaderContext context : reader.leaves()) {
-      SortedNumericDocValues dv = FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
-      if (dv == null) {
+      SortedNumericDocValues multiValued =
+          FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
+      if (multiValued == null) {
         continue;
       }
 
       Bits liveDocs = context.reader().getLiveDocs();
-      NumericDocValues ndv = DocValues.unwrapSingleton(dv);
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
 
-      if (ndv != null) {
+      if (singleValued != null) {
         if (liveDocs == null) {
-          while (ndv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            values[(int) ndv.longValue()]++;
+          while (singleValued.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            values[(int) singleValued.longValue()]++;
           }
         } else {
-          for (int doc = ndv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ndv.nextDoc()) {
+          for (int doc = singleValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = singleValued.nextDoc()) {
             if (liveDocs.get(doc)) {
-              values[(int) ndv.longValue()]++;
+              values[(int) singleValued.longValue()]++;
             }
           }
         }
       } else {
         if (liveDocs == null) {
-          while (dv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            final int dvCount = dv.docValueCount();
+          while (multiValued.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            final int dvCount = multiValued.docValueCount();
             for (int i = 0; i < dvCount; i++) {
-              values[(int) dv.nextValue()]++;
+              values[(int) multiValued.nextValue()]++;
             }
           }
         } else {
-          for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
+          for (int doc = multiValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = multiValued.nextDoc()) {
             if (liveDocs.get(doc)) {
-              final int dvCount = dv.docValueCount();
+              final int dvCount = multiValued.docValueCount();
               for (int i = 0; i < dvCount; i++) {
-                values[(int) dv.nextValue()]++;
+                values[(int) multiValued.nextValue()]++;
               }
             }
           }
