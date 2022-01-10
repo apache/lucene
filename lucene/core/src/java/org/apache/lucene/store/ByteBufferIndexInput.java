@@ -244,8 +244,8 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     try {
       return curBuf.get();
     } catch (
-            @SuppressWarnings("unused")
-                    BufferUnderflowException e) {
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
       do {
         curBufIndex++;
         if (curBufIndex >= buffers.length) {
@@ -278,9 +278,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       i |= (b & 0x0F) << 28;
       if ((b & 0xF0) == 0) return guard.check(i);
       throw new IOException("Invalid vInt detected (too many bits)");
-    }  catch (
-            @SuppressWarnings("unused")
-                    NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
@@ -316,9 +316,9 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       i |= (b & 0x7FL) << 56;
       if (b >= 0) return guard.check(i);
       throw new IOException("Invalid vLong detected (negative values disallowed)");
-    }  catch (
-            @SuppressWarnings("unused")
-                    NullPointerException npe) {
+    } catch (
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }
