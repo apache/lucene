@@ -39,7 +39,7 @@ New Features
   JDK modules: jdk.unsupported (unmapping) and jdk.management (OOP size for RAM usage calculatons).
   It is also recommended to install JUL logging adapters to feed the log events into your app's
   logging system.  (Uwe Schindler, Dawid Weiss, Tomoko Uchida, Robert Muir)
-  
+
 * LUCENE-10330: Make MMapDirectory tests fail by default, if unmapping does not work.
   (Uwe Schindler, Dawid Weiss)
 
@@ -65,6 +65,12 @@ New Features
 
 * LUCENE-10335: Add ModuleResourceLoader as complement to ClasspathResourceLoader.
   (Uwe Schindler)
+
+* LUCENE-10245: MultiDoubleValues(Source) and MultiLongValues(Source) were added as multi-valued
+  versions of DoubleValues(Source) and LongValues(Source) to the facets module. LongValueFacetCounts,
+  LongRangeFacetCounts and DoubleRangeFacetCounts were augmented to support these new multi-valued
+  abstractions. DoubleRange and LongRange also support creating queries from these multi-valued
+  sources. (Greg Miller)
 
 * LUCENE-10250: Add support for arbitrary length hierarchical SSDV facets. (Marc D'mello)
 
