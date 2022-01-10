@@ -28,36 +28,14 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 /**
  * Lucene 9.0 vector format, which encodes numeric vector values and an optional associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
- * consists of four files:
+ * consists of three files:
  *
  * <h2>.vec (vector data) file</h2>
  *
  * <p>This file stores all the floating-point vector data ordered by field, document ordinal, and
  * vector dimension. The floats are stored in little-endian byte order.
  *
- * <h2>.vel (graph levels) file</h2>
- *
- * <p>Stores the graph info for each vector field: graph nodes on each level and for each node a
- * pointer to the graph data file that contains this node's neighbours. For each vector field
- * organized as:
- *
- * <ul>
- *   <li><b>[int]</b> the number of levels in the graph
- *   <li>For each level
- *       <ul>
- *         <li><b>[int]</b> the number of nodes on this level
- *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
- *             the the level 0th nodes ordinals.
- *       </ul>
- *   <li>For each level
- *       <ul>
- *         <li><b>array[vlong]</b> for each node the offset (delta-encoded relative to the previous
- *             document) of its entry in in the graph data (.veg) that stores this node's
- *             connections.
- *       </ul>
- * </ul>
- *
- * <h2>.ven (graph neighbours) file</h2>
+ * <h2>.vex (vector index)</h2>
  *
  * <p>Stores graphs connecting the documents for each field organized as a list of nodes' neighbours
  * as following:
@@ -68,8 +46,10 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *         <li>For each node:
  *             <ul>
  *               <li><b>[int32]</b> the number of neighbor nodes
- *               <li><b>array[vint]</b> the neighbor ordinals, delta-encoded (initially subtracting
- *                   -1)
+ *               <li><b>array[int32]</b> the neighbor ordinals
+ *               <li><b>array[int32]</b> padding from empty integers if the number of neigbors less
+ *                   than the maximum number of connections (maxConn). Padding is equal to
+ *                   ((maxConn-the number of neighbours) * 4) bytes.
  *             </ul>
  *       </ul>
  * </ul>
@@ -83,14 +63,19 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int32]</b> vector similarity function ordinal
  *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
- *   <li><b>[vlong]</b> offset to this field's graph index in the .vel file
- *   <li><b>[vlong]</b> length of this field's graph index data, in bytes
- *   <li><b>[vlong]</b> offset to this field's graph data in the .ven file
- *   <li><b>[vlong]</b> length of this field's graph data' data, in bytes
- *   <li><b>[int]</b> number of levels in the graph
+ *   <li><b>[vlong]</b> to this field's index in the .vex file
+ *   <li><b>[vlong]</b> length of this field's index data, in bytes
  *   <li><b>[int]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
  *   <li><b>array[vint]</b> the docids of documents having vectors, in order
+ *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
+ *   <li><b>[int]</b> number of levels in the graph
+ *   <li>Graph nodes by level. For each level
+ *       <ul>
+ *         <li><b>[int]</b> the number of nodes on this level
+ *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
+ *             the the level 0th nodes ordinals.
+ *       </ul>
  * </ul>
  *
  * @lucene.experimental
@@ -99,12 +84,10 @@ public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
 
   static final String META_CODEC_NAME = "Lucene90HnswVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene90HnswVectorsFormatData";
-  static final String GRAPH_LEVELS_CODEC_NAME = "Lucene90HnswVectorsFormatGraphLevels";
-  static final String GRAPH_NEIGHBOURS_CODEC_NAME = "Lucene90HnswVectorsFormatGraphNeighbours";
+  static final String VECTOR_INDEX_CODEC_NAME = "Lucene90HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
-  static final String GRAPH_LEVELS_EXTENSION = "vel";
-  static final String GRAPH_NEIGHBOURS_EXTENSION = "ven";
+  static final String VECTOR_INDEX_EXTENSION = "vex";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
