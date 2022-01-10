@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.document.Document;
@@ -148,7 +149,7 @@ public class TestLiveFieldValues extends LuceneTestCase {
                   if (allIDs.size() > 0) {
                     String randomID = allIDs.get(threadRandom.nextInt(allIDs.size()));
                     Integer expected = values.get(randomID);
-                    if (expected == missing) {
+                    if (Objects.equals(expected, missing)) {
                       expected = null;
                     }
                     assertEquals("id=" + randomID, expected, rt.get(randomID));

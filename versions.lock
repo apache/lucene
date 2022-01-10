@@ -23,7 +23,7 @@ org.ow2.asm:asm-analysis:7.2 (1 constraints: e409d9a5)
 org.ow2.asm:asm-commons:7.2 (1 constraints: ad042e2c)
 org.ow2.asm:asm-tree:7.2 (2 constraints: 2f14468c)
 ua.net.nlp:morfologik-ukrainian-search:4.9.1 (1 constraints: 10051b36)
-xerces:xercesImpl:2.12.0 (2 constraints: 1f14b675)
+xerces:xercesImpl:2.12.0 (1 constraints: 3705353b)
 
 [Test dependencies]
 org.assertj:assertj-core:3.21.0 (1 constraints: 38053c3b)

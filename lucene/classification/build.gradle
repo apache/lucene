@@ -25,7 +25,7 @@ dependencies {
   moduleImplementation project(':lucene:queries')
   moduleImplementation project(':lucene:grouping')
 
-  testImplementation project(':lucene:test-framework')
-  testImplementation project(':lucene:analysis:common')
-  testImplementation project(':lucene:codecs')
+  moduleTestImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:analysis:common')
+  moduleTestImplementation project(':lucene:codecs')
 }

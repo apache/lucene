@@ -334,8 +334,7 @@ public class MMapDirectory extends FSDirectory {
   private static final BufferCleaner CLEANER;
 
   static {
-    final Object hack =
-        AccessController.doPrivileged((PrivilegedAction<Object>) MMapDirectory::unmapHackImpl);
+    final Object hack = doPrivileged(MMapDirectory::unmapHackImpl);
     if (hack instanceof BufferCleaner) {
       CLEANER = (BufferCleaner) hack;
       UNMAP_SUPPORTED = true;
@@ -346,6 +345,13 @@ public class MMapDirectory extends FSDirectory {
       UNMAP_NOT_SUPPORTED_REASON = hack.toString();
       Logger.getLogger(MMapDirectory.class.getName()).warning(UNMAP_NOT_SUPPORTED_REASON);
     }
+  }
+
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 
   @SuppressForbidden(reason = "Needs access to sun.misc.Unsafe to enable hack")
@@ -390,16 +396,15 @@ public class MMapDirectory extends FSDirectory {
         throw new IllegalArgumentException("unmapping only works with direct buffers");
       }
       final Throwable error =
-          AccessController.doPrivileged(
-              (PrivilegedAction<Throwable>)
-                  () -> {
-                    try {
-                      unmapper.invokeExact(buffer);
-                      return null;
-                    } catch (Throwable t) {
-                      return t;
-                    }
-                  });
+          doPrivileged(
+              () -> {
+                try {
+                  unmapper.invokeExact(buffer);
+                  return null;
+                } catch (Throwable t) {
+                  return t;
+                }
+              });
       if (error != null) {
         throw new IOException("Unable to unmap the mapped buffer: " + resourceDescription, error);
       }
