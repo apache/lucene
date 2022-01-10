@@ -171,6 +171,8 @@ public class GenerateJflexTLDMacros {
    * care about TLDs that are prefixes and are exactly one character shorter than another TLD. See
    * LUCENE-8278 and LUCENE-5391.
    */
+  @SuppressWarnings(
+      "ModifyCollectionInEnhancedForLoop") // it looks like it works because it is a sorted map!
   private void partitionTLDprefixesBySuffixLength() {
     TLDsBySuffixLength.add(new TreeSet<>()); // initialize set for zero-suffix TLDs
     for (SortedMap.Entry<String, Boolean> entry : processedTLDsLongestFirst.entrySet()) {

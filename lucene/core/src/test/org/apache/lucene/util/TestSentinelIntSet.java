@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.util.HashSet;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 /** */

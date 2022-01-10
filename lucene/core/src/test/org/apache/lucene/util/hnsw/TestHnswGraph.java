@@ -45,11 +45,11 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
 /** Tests HNSW KNN graphs */
@@ -219,6 +219,41 @@ public class TestHnswGraph extends LuceneTestCase {
     // We expect to get approximately 100% recall;
     // the lowest docIds are closest to zero; sum(0,9) = 45
     assertTrue("sum(result docs)=" + sum, sum < 75);
+  }
+
+  public void testSearchWithSkewedAcceptOrds() throws IOException {
+    int nDoc = 1000;
+    CircularVectorValues vectors = new CircularVectorValues(nDoc);
+    HnswGraphBuilder builder =
+        new HnswGraphBuilder(
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, 16, 100, random().nextInt());
+    HnswGraph hnsw = builder.build(vectors);
+
+    // Skip over half of the documents that are closest to the query vector
+    FixedBitSet acceptOrds = new FixedBitSet(nDoc);
+    for (int i = 500; i < nDoc; i++) {
+      acceptOrds.set(i);
+    }
+    NeighborQueue nn =
+        HnswGraph.search(
+            new float[] {1, 0},
+            10,
+            10,
+            vectors.randomAccess(),
+            VectorSimilarityFunction.DOT_PRODUCT,
+            hnsw,
+            acceptOrds,
+            new SplittableRandom(random().nextLong()));
+    int[] nodes = nn.nodes();
+    assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
+    int sum = 0;
+    for (int node : nodes) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
+      sum += node;
+    }
+    // We still expect to get reasonable recall. The lowest non-skipped docIds
+    // are closest to the query vector: sum(500,509) = 5045
+    assertTrue("sum(result docs)=" + sum, sum < 5100);
   }
 
   public void testBoundsCheckerMax() {

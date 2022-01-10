@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis.icu.segmentation;
 
 import java.text.CharacterIterator;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCharArrayIterator extends LuceneTestCase {
   public void testBasicUsage() {

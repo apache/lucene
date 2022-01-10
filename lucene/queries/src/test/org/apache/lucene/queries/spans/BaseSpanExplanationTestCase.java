@@ -24,7 +24,7 @@ import static org.apache.lucene.queries.spans.SpanTestUtil.spanNotQuery;
 import static org.apache.lucene.queries.spans.SpanTestUtil.spanOrQuery;
 import static org.apache.lucene.queries.spans.SpanTestUtil.spanTermQuery;
 
-import org.apache.lucene.search.BaseExplanationTestCase;
+import org.apache.lucene.tests.search.BaseExplanationTestCase;
 
 public abstract class BaseSpanExplanationTestCase extends BaseExplanationTestCase {
 

@@ -26,7 +26,6 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -37,7 +36,8 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestParentChildrenBlockJoinQuery extends LuceneTestCase {
 
@@ -93,7 +93,7 @@ public class TestParentChildrenBlockJoinQuery extends LuceneTestCase {
       if (expectedChildDocs > 0) {
         for (int i = 0; i < topDocs.scoreDocs.length; i++) {
           ScoreDoc childScoreDoc = topDocs.scoreDocs[i];
-          assertEquals(expectedChildDocs - i, childScoreDoc.score, 0);
+          assertEquals((float) expectedChildDocs - i, childScoreDoc.score, 0.f);
         }
       }
     }

@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -108,13 +109,14 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     if ((vectors instanceof RandomAccessVectorValuesProducer) == false) {
       throw new IllegalArgumentException(
-          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
+              "Indexing an HNSW graph requires a random access vector values, got " + vectors);
     }
 
-    // write vectors' values into the vectorDate file
     long pos = vectorData.getFilePointer();
     // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
     // CFS is not used, eg for larger indexes

@@ -24,10 +24,10 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestPendingDeletes extends LuceneTestCase {

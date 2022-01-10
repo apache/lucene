@@ -24,15 +24,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
@@ -241,7 +242,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     }
 
     w.forceMerge(1);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     assertEquals(numDocs, r.maxDoc());
     assertEquals(numDocs, r.numDocs());
     r.close();
@@ -252,14 +253,14 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     w.deleteDocuments(new Term("id", "" + (42 + 17)));
 
-    r = w.getReader();
+    r = DirectoryReader.open(w);
     assertEquals(numDocs, r.maxDoc());
     assertEquals(numDocs - 1, r.numDocs());
     r.close();
 
     w.forceMergeDeletes();
 
-    r = w.getReader();
+    r = DirectoryReader.open(w);
     assertEquals(numDocs - 1, r.maxDoc());
     assertEquals(numDocs - 1, r.numDocs());
     r.close();

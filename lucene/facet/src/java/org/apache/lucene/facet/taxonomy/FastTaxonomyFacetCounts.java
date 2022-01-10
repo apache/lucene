@@ -22,14 +22,15 @@ import java.util.List;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Computes facets counts, assuming the default encoding into DocValues was used.
@@ -68,31 +69,26 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     countAll(reader);
   }
 
-  private final void count(List<MatchingDocs> matchingDocs) throws IOException {
+  private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      BinaryDocValues dv = hits.context.reader().getBinaryDocValues(indexFieldName);
-      if (dv == null) { // this reader does not have DocValues for the requested category list
+      SortedNumericDocValues dv = hits.context.reader().getSortedNumericDocValues(indexFieldName);
+      if (dv == null) {
         continue;
       }
 
       DocIdSetIterator it =
           ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
 
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        final BytesRef bytesRef = dv.binaryValue();
-        byte[] bytes = bytesRef.bytes;
-        int end = bytesRef.offset + bytesRef.length;
-        int ord = 0;
-        int offset = bytesRef.offset;
-        int prev = 0;
-        while (offset < end) {
-          byte b = bytes[offset++];
-          if (b >= 0) {
-            prev = ord = ((ord << 7) | b) + prev;
-            increment(ord);
-            ord = 0;
-          } else {
-            ord = (ord << 7) | (b & 0x7F);
+      if (values != null) {
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          for (int i = 0; i < dv.docValueCount(); i++) {
+            values[(int) dv.nextValue()]++;
+          }
+        }
+      } else {
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          for (int i = 0; i < dv.docValueCount(); i++) {
+            sparseValues.addTo((int) dv.nextValue(), 1);
           }
         }
       }
@@ -102,32 +98,44 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   }
 
   private final void countAll(IndexReader reader) throws IOException {
+    assert values != null;
     for (LeafReaderContext context : reader.leaves()) {
-      BinaryDocValues dv = context.reader().getBinaryDocValues(indexFieldName);
-      if (dv == null) { // this reader does not have DocValues for the requested category list
+      SortedNumericDocValues dv = context.reader().getSortedNumericDocValues(indexFieldName);
+      if (dv == null) {
         continue;
       }
 
       Bits liveDocs = context.reader().getLiveDocs();
+      NumericDocValues ndv = DocValues.unwrapSingleton(dv);
 
-      for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
-        if (liveDocs != null && liveDocs.get(doc) == false) {
-          continue;
+      if (ndv != null) {
+        if (liveDocs == null) {
+          while (ndv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            values[(int) ndv.longValue()]++;
+          }
+        } else {
+          for (int doc = ndv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ndv.nextDoc()) {
+            if (liveDocs.get(doc)) {
+              values[(int) ndv.longValue()]++;
+            }
+          }
         }
-        final BytesRef bytesRef = dv.binaryValue();
-        byte[] bytes = bytesRef.bytes;
-        int end = bytesRef.offset + bytesRef.length;
-        int ord = 0;
-        int offset = bytesRef.offset;
-        int prev = 0;
-        while (offset < end) {
-          byte b = bytes[offset++];
-          if (b >= 0) {
-            prev = ord = ((ord << 7) | b) + prev;
-            increment(ord);
-            ord = 0;
-          } else {
-            ord = (ord << 7) | (b & 0x7F);
+      } else {
+        if (liveDocs == null) {
+          while (dv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            final int dvCount = dv.docValueCount();
+            for (int i = 0; i < dvCount; i++) {
+              values[(int) dv.nextValue()]++;
+            }
+          }
+        } else {
+          for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
+            if (liveDocs.get(doc)) {
+              final int dvCount = dv.docValueCount();
+              for (int i = 0; i < dvCount; i++) {
+                values[(int) dv.nextValue()]++;
+              }
+            }
           }
         }
       }

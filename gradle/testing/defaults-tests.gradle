@@ -119,6 +119,10 @@ allprojects {
       if (rootProject.runtimeJavaVersion < JavaVersion.VERSION_16) {
         jvmArgs '--illegal-access=deny'
       }
+      
+      // Lucene needs to optional modules at runtime, which we want to enforce for testing
+      // (if the runner JVM does not support them, it will fail tests):
+      jvmArgs '--add-modules', 'jdk.unsupported,jdk.management'
 
       systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
       systemProperty 'java.awt.headless', 'true'
@@ -160,6 +164,13 @@ allprojects {
         stackTraceFilters.clear()
         showStandardStreams false
       }
+
+      // Disable automatic test class detection, rely on class names only. This is needed for testing
+      // against JDKs where the bytecode is unparseable by Gradle, for example.
+      // We require all tests to start with Test*, this simplifies include patterns greatly.
+      scanForTestClasses = false
+      include '**/Test*.class'
+      exclude '**/*$*'
 
       // Set up custom test output handler.
       doFirst {

@@ -18,7 +18,7 @@ package org.apache.lucene.expressions.js;
 
 import java.text.ParseException;
 import org.apache.lucene.expressions.Expression;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestJavascriptCompiler extends LuceneTestCase {
 

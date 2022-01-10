@@ -17,10 +17,7 @@
 package org.apache.lucene.search.uhighlight;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -28,7 +25,10 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestUnifiedHighlighterReanalysis extends LuceneTestCase {
@@ -46,7 +46,8 @@ public class TestUnifiedHighlighterReanalysis extends LuceneTestCase {
             .add(new TermQuery(new Term("title", "test")), BooleanClause.Occur.SHOULD)
             .build();
 
-    UnifiedHighlighter highlighter = new UnifiedHighlighter(null, indexAnalyzer);
+    UnifiedHighlighter highlighter =
+        UnifiedHighlighter.builderWithoutSearcher(indexAnalyzer).build();
     String snippet = highlighter.highlightWithoutSearcher("body", query, text, 1).toString();
 
     assertEquals("Just a test <b>highlighting</b> without a searcher. ", snippet);
@@ -67,7 +68,7 @@ public class TestUnifiedHighlighterReanalysis extends LuceneTestCase {
         RandomIndexWriter indexWriter = new RandomIndexWriter(random(), directory);
         IndexReader indexReader = indexWriter.getReader()) {
       IndexSearcher searcher = newSearcher(indexReader);
-      UnifiedHighlighter highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
+      UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
       highlighter.highlightWithoutSearcher("body", query, text, 1); // should throw
     }
   }

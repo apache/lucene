@@ -29,6 +29,7 @@ import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /**
  * Factory functions for creating {@link IntervalsSource interval sources}.
@@ -185,7 +186,10 @@ public final class Intervals {
    * @see WildcardQuery for glob format
    */
   public static IntervalsSource wildcard(BytesRef wildcard, int maxExpansions) {
-    CompiledAutomaton ca = new CompiledAutomaton(WildcardQuery.toAutomaton(new Term("", wildcard)));
+    CompiledAutomaton ca =
+        new CompiledAutomaton(
+            WildcardQuery.toAutomaton(
+                new Term("", wildcard), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
     return new MultiTermIntervalsSource(ca, maxExpansions, wildcard.utf8ToString());
   }
 
@@ -271,7 +275,10 @@ public final class Intervals {
   }
 
   /**
-   * Create an unordered {@link IntervalsSource}
+   * Create an unordered {@link IntervalsSource}. Note that if there are multiple intervals ends at
+   * the same position are eligible, only the narrowest one will be returned. For example if asking
+   * for <code>unordered(term("apple"), term("banana"))</code> on field of "apple wolf apple orange
+   * banana", only the "apple orange banana" will be returned.
    *
    * <p>Returns intervals in which all the subsources appear. The subsources may overlap
    *

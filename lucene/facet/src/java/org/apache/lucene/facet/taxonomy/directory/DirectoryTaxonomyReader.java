@@ -24,8 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntUnaryOperator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.LRUHashMap;
@@ -60,8 +58,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountable {
-
-  private static final Logger log = Logger.getLogger(DirectoryTaxonomyReader.class.getName());
 
   private static final int DEFAULT_CACHE_VALUE = 4000;
 
@@ -565,10 +561,10 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
           continue;
         }
         sb.append(i).append(": ").append(category.toString()).append("\n");
-      } catch (IOException e) {
-        if (log.isLoggable(Level.FINEST)) {
-          log.log(Level.FINEST, e.getMessage(), e);
-        }
+      } catch (
+          @SuppressWarnings("unused")
+          IOException e) {
+        sb.append(i).append(": EXCEPTION!! \n");
       }
     }
     return sb.toString();
