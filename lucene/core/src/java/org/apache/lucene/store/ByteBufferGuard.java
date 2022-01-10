@@ -88,6 +88,21 @@ final class ByteBufferGuard {
     }
   }
 
+  public byte check(byte result) {
+    ensureValid();
+    return result;
+  }
+
+  public int check(int result) {
+    ensureValid();
+    return result;
+  }
+
+  public long check(long result) {
+    ensureValid();
+    return result;
+  }
+
   public void getBytes(ByteBuffer receiver, byte[] dst, int offset, int length) {
     ensureValid();
     receiver.get(dst, offset, length);
