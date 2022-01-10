@@ -3297,6 +3297,11 @@ public class IndexWriter
 
     @Override
     public MergePolicy.OneMerge getNextMerge() {
+      System.out.println("VIGYA - getNextMerge: pendingAddIndexesMerges size = " + pendingAddIndexesMerges.size());
+      System.out.println("VIGYA - getNextMerge: pendingMerges size = " + pendingMerges.size());
+      if (hasPendingMerges() == false) {
+        return null;
+      }
       MergePolicy.OneMerge merge = pendingAddIndexesMerges.remove();
       pendingMerges.removeFirst();
       runningMerges.add(merge);
@@ -3310,7 +3315,7 @@ public class IndexWriter
 
     @Override
     public boolean hasPendingMerges() {
-      return pendingMerges.size() > 0;
+      return pendingAddIndexesMerges.size() > 0;
     }
 
     @Override

@@ -1501,6 +1501,8 @@ public class TestAddIndexes extends LuceneTestCase {
       readers[i] = (CodecReader) reader.leaves().get(i).reader();
     }
     writer.addIndexes(readers);
+    System.out.printf("VIGYA - wrappedReader maxDocs: [%s], numDocs: [%s], delDocs: [%s]\n",
+      wrappedReader.maxDoc(), wrappedReader.numDocs(), wrappedReader.numDeletedDocs());
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().numDocs);
     assertEquals(maxDoc, writer.getDocStats().maxDoc);
     writer.commit();
