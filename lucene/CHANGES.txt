@@ -66,6 +66,8 @@ New Features
 * LUCENE-10335: Add ModuleResourceLoader as complement to ClasspathResourceLoader.
   (Uwe Schindler)
 
+* LUCENE-10250: Add support for arbitrary length hierarchical SSDV facets. (Marc D'mello)
+
 Improvements
 ---------------------
 
