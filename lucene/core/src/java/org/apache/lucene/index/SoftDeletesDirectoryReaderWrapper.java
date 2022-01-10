@@ -40,7 +40,7 @@ import org.apache.lucene.util.FixedBitSet;
  * @see IndexWriter#softUpdateDocument(Term, Iterable, Field...)
  * @see SoftDeletesRetentionMergePolicy
  */
-public final class SoftDeletesDirectoryReaderWrapper extends LastingFilterDirectoryReader {
+public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryReader {
   private final String field;
   /**
    * Creates a new soft deletes wrapper.
@@ -174,16 +174,21 @@ public final class SoftDeletesDirectoryReaderWrapper extends LastingFilterDirect
     return true;
   }
 
-  static final class SoftDeletesFilterLeafReader extends LastingFilterLeafReader {
+  static final class SoftDeletesFilterLeafReader extends FilterLeafReader {
     private final LeafReader reader;
     private final FixedBitSet bits;
     private final int numDocs;
+    private final CacheHelper readerCacheHelper;
 
     private SoftDeletesFilterLeafReader(LeafReader reader, FixedBitSet bits, int numDocs) {
       super(reader);
       this.reader = reader;
       this.bits = bits;
       this.numDocs = numDocs;
+      this.readerCacheHelper =
+              reader.getReaderCacheHelper() == null
+                      ? null
+                      : new DelegatingCacheHelper(reader.getReaderCacheHelper());
     }
 
     @Override
@@ -200,18 +205,28 @@ public final class SoftDeletesDirectoryReaderWrapper extends LastingFilterDirect
     public CacheHelper getCoreCacheHelper() {
       return reader.getCoreCacheHelper();
     }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return readerCacheHelper;
+    }
   }
 
-  static final class SoftDeletesFilterCodecReader extends LastingFilterCodecReader {
+  static final class SoftDeletesFilterCodecReader extends FilterCodecReader {
     private final LeafReader reader;
     private final FixedBitSet bits;
     private final int numDocs;
+    private final CacheHelper readerCacheHelper;
 
     private SoftDeletesFilterCodecReader(CodecReader reader, FixedBitSet bits, int numDocs) {
       super(reader);
       this.reader = reader;
       this.bits = bits;
       this.numDocs = numDocs;
+      this.readerCacheHelper =
+              reader.getReaderCacheHelper() == null
+                      ? null
+                      : new DelegatingCacheHelper(reader.getReaderCacheHelper());
     }
 
     @Override
@@ -227,6 +242,11 @@ public final class SoftDeletesDirectoryReaderWrapper extends LastingFilterDirect
     @Override
     public CacheHelper getCoreCacheHelper() {
       return reader.getCoreCacheHelper();
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return readerCacheHelper;
     }
   }
 }
