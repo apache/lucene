@@ -149,11 +149,11 @@ public abstract class FilterDirectoryReader extends DirectoryReader {
   }
 
   /**
-   * A DelegatingCacheHelper is a CacheHelper specialization for implementing long-lived
-   * caching behaviour for FilterDirectoryReader subclasses. It uses a unique CacheKey for the
-   * purpose of implementing the onClose listener delegation for the reader.
+   * A DelegatingCacheHelper is a CacheHelper specialization for implementing long-lived caching
+   * behaviour for FilterDirectoryReader subclasses. It uses a unique CacheKey for the purpose of
+   * implementing the onClose listener delegation for the reader.
    */
-  static protected class DelegatingCacheHelper implements CacheHelper {
+  protected static class DelegatingCacheHelper implements CacheHelper {
     private final CacheHelper delegate;
     private final CacheKey cacheKey = new CacheKey();
 

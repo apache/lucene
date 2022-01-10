@@ -54,13 +54,13 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
   }
 
   private SoftDeletesDirectoryReaderWrapper(DirectoryReader in, SoftDeletesSubReaderWrapper wrapper)
-          throws IOException {
+      throws IOException {
     super(in, wrapper);
     this.field = wrapper.field;
     readerCacheHelper =
-            in.getReaderCacheHelper() == null
-                    ? null
-                    : new DelegatingCacheHelper(in.getReaderCacheHelper());
+        in.getReaderCacheHelper() == null
+            ? null
+            : new DelegatingCacheHelper(in.getReaderCacheHelper());
   }
 
   @Override
@@ -70,15 +70,15 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
       // we try to reuse the life docs instances here if the reader cache key didn't change
       if (reader instanceof SoftDeletesFilterLeafReader && reader.getReaderCacheHelper() != null) {
         readerCache.put(
-                ((SoftDeletesFilterLeafReader) reader).reader.getReaderCacheHelper().getKey(), reader);
+            ((SoftDeletesFilterLeafReader) reader).reader.getReaderCacheHelper().getKey(), reader);
       } else if (reader instanceof SoftDeletesFilterCodecReader
-              && reader.getReaderCacheHelper() != null) {
+          && reader.getReaderCacheHelper() != null) {
         readerCache.put(
-                ((SoftDeletesFilterCodecReader) reader).reader.getReaderCacheHelper().getKey(), reader);
+            ((SoftDeletesFilterCodecReader) reader).reader.getReaderCacheHelper().getKey(), reader);
       }
     }
     return new SoftDeletesDirectoryReaderWrapper(
-            in, new SoftDeletesSubReaderWrapper(readerCache, field));
+        in, new SoftDeletesSubReaderWrapper(readerCache, field));
   }
 
   @Override
@@ -128,7 +128,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
 
   static LeafReader wrap(LeafReader reader, String field) throws IOException {
     DocIdSetIterator iterator =
-            DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
+        DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
     if (iterator == null) {
       return reader;
     }
@@ -145,20 +145,20 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     int numDocs = reader.maxDoc() - numDeletes;
     assert assertDocCounts(numDocs, numSoftDeletes, reader);
     return reader instanceof CodecReader
-            ? new SoftDeletesFilterCodecReader((CodecReader) reader, bits, numDocs)
-            : new SoftDeletesFilterLeafReader(reader, bits, numDocs);
+        ? new SoftDeletesFilterCodecReader((CodecReader) reader, bits, numDocs)
+        : new SoftDeletesFilterLeafReader(reader, bits, numDocs);
   }
 
   private static boolean assertDocCounts(
-          int expectedNumDocs, int numSoftDeletes, LeafReader reader) {
+      int expectedNumDocs, int numSoftDeletes, LeafReader reader) {
     if (reader instanceof SegmentReader) {
       SegmentReader segmentReader = (SegmentReader) reader;
       SegmentCommitInfo segmentInfo = segmentReader.getSegmentInfo();
       if (segmentReader.isNRT == false) {
         int numDocs =
-                segmentInfo.info.maxDoc() - segmentInfo.getSoftDelCount() - segmentInfo.getDelCount();
+            segmentInfo.info.maxDoc() - segmentInfo.getSoftDelCount() - segmentInfo.getDelCount();
         assert numDocs == expectedNumDocs
-                : "numDocs: "
+            : "numDocs: "
                 + numDocs
                 + " expected: "
                 + expectedNumDocs
@@ -196,9 +196,9 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
       this.bits = bits;
       this.numDocs = numDocs;
       this.readerCacheHelper =
-              reader.getReaderCacheHelper() == null
-                      ? null
-                      : new DelegatingCacheHelper(reader.getReaderCacheHelper());
+          reader.getReaderCacheHelper() == null
+              ? null
+              : new DelegatingCacheHelper(reader.getReaderCacheHelper());
     }
 
     @Override
@@ -234,9 +234,9 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
       this.bits = bits;
       this.numDocs = numDocs;
       this.readerCacheHelper =
-              reader.getReaderCacheHelper() == null
-                      ? null
-                      : new DelegatingCacheHelper(reader.getReaderCacheHelper());
+          reader.getReaderCacheHelper() == null
+              ? null
+              : new DelegatingCacheHelper(reader.getReaderCacheHelper());
     }
 
     @Override
