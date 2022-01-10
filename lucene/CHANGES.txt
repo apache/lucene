@@ -146,6 +146,8 @@ Optimizations
 
 * LUCENE-10346: Optimize facet counting for single-valued TaxonomyFacetCounts. (Guo Feng)
 
+* LUCENE-10350: Avoid some duplicate null check in facet counting for TaxonomyFacetCounts. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
