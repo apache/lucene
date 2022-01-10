@@ -157,6 +157,12 @@ public abstract class FilterDirectoryReader extends DirectoryReader {
     private final CacheHelper delegate;
     private final CacheKey cacheKey = new CacheKey();
 
+    /**
+     * Create a new DelegatingCacheHelper that delegates the cache onClose listener to another CacheHelper,
+     * but with its own unique CacheKey.
+     *
+     * @param delegate the CacheHelper to delegate the close listener to
+     */
     protected DelegatingCacheHelper(CacheHelper delegate) {
       this.delegate = delegate;
     }
