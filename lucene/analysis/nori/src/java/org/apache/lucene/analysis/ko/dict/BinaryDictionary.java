@@ -81,12 +81,12 @@ public abstract class BinaryDictionary implements Dictionary {
       }
       this.resourcePath = resourcePath;
     }
-    InputStream mapIS = null, dictIS = null, posIS = null;
     int[] targetMapOffsets, targetMap;
     ByteBuffer buffer;
-    try {
-      mapIS = getResource(TARGETMAP_FILENAME_SUFFIX);
-      mapIS = new BufferedInputStream(mapIS);
+    try (InputStream mapIS = new BufferedInputStream(getResource(TARGETMAP_FILENAME_SUFFIX));
+        InputStream posIS = new BufferedInputStream(getResource(POSDICT_FILENAME_SUFFIX));
+        // no buffering here, as we load in one large buffer
+        InputStream dictIS = getResource(DICT_FILENAME_SUFFIX)) {
       DataInput in = new InputStreamDataInput(mapIS);
       CodecUtil.checkHeader(in, TARGETMAP_HEADER, VERSION, VERSION);
       targetMap = new int[in.readVInt()];
@@ -110,11 +110,7 @@ public abstract class BinaryDictionary implements Dictionary {
                 + ", sourceId="
                 + sourceId);
       targetMapOffsets[sourceId] = targetMap.length;
-      mapIS.close();
-      mapIS = null;
 
-      posIS = getResource(POSDICT_FILENAME_SUFFIX);
-      posIS = new BufferedInputStream(posIS);
       in = new InputStreamDataInput(posIS);
       CodecUtil.checkHeader(in, POSDICT_HEADER, VERSION, VERSION);
       int posSize = in.readVInt();
@@ -122,11 +118,7 @@ public abstract class BinaryDictionary implements Dictionary {
       for (int j = 0; j < posSize; j++) {
         posDict[j] = POS.resolveTag(in.readByte());
       }
-      posIS.close();
-      posIS = null;
 
-      dictIS = getResource(DICT_FILENAME_SUFFIX);
-      // no buffering here, as we load in one large buffer
       in = new InputStreamDataInput(dictIS);
       CodecUtil.checkHeader(in, DICT_HEADER, VERSION, VERSION);
       final int size = in.readVInt();
@@ -136,11 +128,7 @@ public abstract class BinaryDictionary implements Dictionary {
       if (read != size) {
         throw new EOFException("Cannot read whole dictionary");
       }
-      dictIS.close();
-      dictIS = null;
       buffer = tmpBuffer.asReadOnlyBuffer();
-    } finally {
-      IOUtils.closeWhileHandlingException(mapIS, posIS, dictIS);
     }
 
     this.targetMap = targetMap;

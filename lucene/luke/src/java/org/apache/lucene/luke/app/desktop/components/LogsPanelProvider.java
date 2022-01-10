@@ -102,7 +102,7 @@ public final class LogsPanelProvider {
                 String logContent =
                     clonedCopy.stream()
                         .filter(record -> record.getLevel().intValue() >= level.intValue())
-                        .map(formatter::apply)
+                        .map(formatter)
                         .collect(Collectors.joining("\n"));
 
                 logTextArea.setText(logContent);
