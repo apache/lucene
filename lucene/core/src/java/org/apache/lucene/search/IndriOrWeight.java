@@ -25,7 +25,6 @@ import org.apache.lucene.index.LeafReaderContext;
 /** The Weight for IndriOrQuery, used to normalize, score and explain these queries. */
 public class IndriOrWeight extends Weight {
 
-  private final IndriQuery query;
   private final float boost;
   private final ArrayList<Weight> weights;
   private final ScoreMode scoreMode;
@@ -33,7 +32,6 @@ public class IndriOrWeight extends Weight {
   public IndriOrWeight(IndriOrQuery query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     super(query);
-    this.query = query;
     this.boost = boost;
     this.scoreMode = scoreMode;
     this.weights = new ArrayList<>();

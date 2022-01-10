@@ -25,7 +25,6 @@ import org.apache.lucene.index.LeafReaderContext;
 /** The Weight for IndriAndQuery, used to normalize, score and explain these queries. */
 public class IndriAndWeight extends Weight {
 
-  private final IndriAndQuery query;
   private final ArrayList<Weight> weights;
   private final ScoreMode scoreMode;
   private final float boost;
@@ -34,7 +33,6 @@ public class IndriAndWeight extends Weight {
       IndriAndQuery query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     super(query);
-    this.query = query;
     this.boost = boost;
     this.scoreMode = scoreMode;
     weights = new ArrayList<>();
@@ -104,11 +102,8 @@ public class IndriAndWeight extends Weight {
   @Override
   public Explanation explain(LeafReaderContext context, int doc) throws IOException {
     List<Explanation> subs = new ArrayList<>();
-    boolean fail = false;
-    Iterator<BooleanClause> cIter = query.iterator();
     for (Iterator<Weight> wIter = weights.iterator(); wIter.hasNext(); ) {
       Weight w = wIter.next();
-      BooleanClause c = cIter.next();
       Explanation e = w.explain(context, doc);
       if (e.isMatch()) {
         subs.add(e);
