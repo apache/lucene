@@ -238,12 +238,10 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraph.search(
             new float[] {1, 0},
             10,
-            10,
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
-            acceptOrds,
-            new SplittableRandom(random().nextLong()));
+            acceptOrds);
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;

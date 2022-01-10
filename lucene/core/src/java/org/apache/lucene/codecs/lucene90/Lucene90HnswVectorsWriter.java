@@ -114,7 +114,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     if ((vectors instanceof RandomAccessVectorValuesProducer) == false) {
       throw new IllegalArgumentException(
-              "Indexing an HNSW graph requires a random access vector values, got " + vectors);
+          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
     }
 
     long pos = vectorData.getFilePointer();
