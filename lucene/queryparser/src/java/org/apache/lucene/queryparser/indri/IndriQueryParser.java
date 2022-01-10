@@ -27,7 +27,6 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndriAndQuery;
 import org.apache.lucene.search.IndriOrQuery;
-import org.apache.lucene.search.IndriWeightedSumQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
@@ -54,7 +53,6 @@ public class IndriQueryParser {
   private static final String OR = "or";
   private static final String WAND = "wand";
   private static final String WEIGHT = "weight";
-  private static final String WSUM = "wsum";
 
   private final Analyzer analyzer;
   private String field;
@@ -260,9 +258,7 @@ public class IndriQueryParser {
       // this loop must handle "weight arg". Handle the weight first.
 
       Float weight = null;
-      if (queryTree.getOperator().equals(WEIGHT)
-          || queryTree.getOperator().equals(WAND)
-          || queryTree.getOperator().equals(WSUM)) {
+      if (queryTree.getOperator().equals(WEIGHT) || queryTree.getOperator().equals(WAND)) {
         PopWeight popWeight = popWeight(queryString);
         weight = popWeight.getWeight();
         queryString = popWeight.getQueryString();
@@ -318,8 +314,6 @@ public class IndriQueryParser {
         // Create Operator
         if (operatorQuery.getOperator().equalsIgnoreCase(OR)) {
           query = new IndriOrQuery(clauses);
-        } else if (operatorQuery.getOperator().equalsIgnoreCase(WSUM)) {
-          query = new IndriWeightedSumQuery(clauses);
         } else if (operatorQuery.getOperator().equalsIgnoreCase(WAND)) {
           query = new IndriAndQuery(clauses);
         } else {

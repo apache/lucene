@@ -37,21 +37,8 @@ public class IndriOrWeight extends Weight {
     this.boost = boost;
     this.scoreMode = scoreMode;
     this.weights = new ArrayList<>();
-    // Calculate total boost score so that boost can be normalized
-    float boostSum = 0;
     for (BooleanClause c : query) {
-      if (c.getQuery() instanceof BoostQuery) {
-        boostSum += ((BoostQuery) c.getQuery()).getBoost();
-      } else {
-        boostSum++;
-      }
-    }
-    for (BooleanClause c : query) {
-      float subBoost = 1.0f;
-      if (c.getQuery() instanceof BoostQuery) {
-        subBoost = ((BoostQuery) c.getQuery()).getBoost() / boostSum;
-      }
-      Weight w = searcher.createWeight(c.getQuery(), scoreMode, subBoost);
+      Weight w = searcher.createWeight(c.getQuery(), scoreMode, 1.0f);
       weights.add(w);
     }
   }
@@ -102,34 +89,21 @@ public class IndriOrWeight extends Weight {
   @Override
   public Explanation explain(LeafReaderContext context, int doc) throws IOException {
     List<Explanation> subs = new ArrayList<>();
-    boolean fail = false;
-    Iterator<BooleanClause> cIter = query.iterator();
     for (Iterator<Weight> wIter = weights.iterator(); wIter.hasNext(); ) {
       Weight w = wIter.next();
-      BooleanClause c = cIter.next();
       Explanation e = w.explain(context, doc);
       if (e.isMatch()) {
-        subs.add(e);
-      } else if (c.isRequired()) {
-        subs.add(
-            Explanation.noMatch(
-                "no match on required clause (" + c.getQuery().toString() + ")", e));
-        fail = true;
+        subs.add(Explanation.match(e.getValue(), "log(1 - e^score)", e));
       }
     }
-    if (fail) {
+    Scorer scorer = scorer(context);
+    if (scorer != null) {
+      int advanced = scorer.iterator().advance(doc);
+      assert advanced == doc;
+      return Explanation.match(scorer.score(), "log (1 - product of subscores):", subs);
+    } else {
       return Explanation.noMatch(
           "Failure to meet condition(s) of required/prohibited clause(s)", subs);
-    } else {
-      Scorer scorer = scorer(context);
-      if (scorer != null) {
-        int advanced = scorer.iterator().advance(doc);
-        assert advanced == doc;
-        return Explanation.match(scorer.score(), "sum of:", subs);
-      } else {
-        return Explanation.noMatch(
-            "Failure to meet condition(s) of required/prohibited clause(s)", subs);
-      }
     }
   }
 }

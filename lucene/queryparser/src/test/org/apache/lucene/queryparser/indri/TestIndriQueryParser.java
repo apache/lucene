@@ -23,10 +23,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndriAndQuery;
 import org.apache.lucene.search.IndriOrQuery;
-import org.apache.lucene.search.IndriWeightedSumQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -70,18 +68,5 @@ public class TestIndriQueryParser extends LuceneTestCase {
     IndriOrQuery expected = new IndriOrQuery(clauses);
 
     assertEquals(expected, parse("#or(foo bar)"));
-  }
-
-  /** test the Indri Weighted SUM */
-  public void testIndriWSUM() throws Exception {
-    List<BooleanClause> clauses = new ArrayList<>();
-    Query query1 = new BoostQuery(new TermQuery(new Term("field", "foo")), 1.0f);
-    clauses.add(new BooleanClause(query1, Occur.SHOULD));
-    Query query2 = new BoostQuery(new TermQuery(new Term("field", "bar")), 2.0f);
-    clauses.add(new BooleanClause(query2, Occur.SHOULD));
-
-    IndriWeightedSumQuery expected = new IndriWeightedSumQuery(clauses);
-
-    assertEquals(expected, parse("#wsum(1.0 foo 2.0 bar)"));
   }
 }

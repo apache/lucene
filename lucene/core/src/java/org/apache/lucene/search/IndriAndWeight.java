@@ -112,26 +112,16 @@ public class IndriAndWeight extends Weight {
       Explanation e = w.explain(context, doc);
       if (e.isMatch()) {
         subs.add(e);
-      } else if (c.isRequired()) {
-        subs.add(
-            Explanation.noMatch(
-                "no match on required clause (" + c.getQuery().toString() + ")", e));
-        fail = true;
       }
     }
-    if (fail) {
+    Scorer scorer = scorer(context);
+    if (scorer != null) {
+      int advanced = scorer.iterator().advance(doc);
+      assert advanced == doc;
+      return Explanation.match(scorer.score(), "sum of:", subs);
+    } else {
       return Explanation.noMatch(
           "Failure to meet condition(s) of required/prohibited clause(s)", subs);
-    } else {
-      Scorer scorer = scorer(context);
-      if (scorer != null) {
-        int advanced = scorer.iterator().advance(doc);
-        assert advanced == doc;
-        return Explanation.match(scorer.score(), "sum of:", subs);
-      } else {
-        return Explanation.noMatch(
-            "Failure to meet condition(s) of required/prohibited clause(s)", subs);
-      }
     }
   }
 }

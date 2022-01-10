@@ -56,40 +56,31 @@ public class TestIndriAndQuery extends LuceneTestCase {
                         random(), MockTokenizer.WHITESPACE, true, MockTokenFilter.ENGLISH_STOPSET))
                 .setSimilarity(sim)
                 .setMergePolicy(newLogMergePolicy()));
-    // Query is "President Washington"
     {
       Document d1 = new Document();
       d1.add(newField("id", "d1", TextField.TYPE_STORED));
-      d1.add(
-          newTextField(
-              "body", "President Washington was the first leader of the US", Field.Store.YES));
+      d1.add(newTextField("body", "President Washington", Field.Store.YES));
       writer.addDocument(d1);
     }
 
     {
       Document d2 = new Document();
       d2.add(newField("id", "d2", TextField.TYPE_STORED));
-      d2.add(
-          newTextField(
-              "body",
-              "The president is head of the executive branch of government",
-              Field.Store.YES));
+      d2.add(newTextField("body", "President Lincoln", Field.Store.YES));
       writer.addDocument(d2);
     }
 
     {
       Document d3 = new Document();
       d3.add(newField("id", "d3", TextField.TYPE_STORED));
-      d3.add(
-          newTextField(
-              "body", "George Washington was a general in the Revolutionary War", Field.Store.YES));
+      d3.add(newTextField("body", "George Washington", Field.Store.YES));
       writer.addDocument(d3);
     }
 
     {
       Document d4 = new Document();
       d4.add(newField("id", "d4", TextField.TYPE_STORED));
-      d4.add(newTextField("body", "A company or college can have a president", Field.Store.YES));
+      d4.add(newTextField("body", "President Jefferson", Field.Store.YES));
       writer.addDocument(d4);
     }
 
@@ -135,8 +126,60 @@ public class TestIndriAndQuery extends LuceneTestCase {
 
     try {
       assertEquals("all docs should match " + q.toString(), 4, h.length);
+
+      float score0 = h[0].score;
+      float score1 = h[1].score;
+      float score2 = h[2].score;
+      float score3 = h[3].score;
+
+      String doc0 = s.doc(h[0].doc).get("id");
+      String doc1 = s.doc(h[1].doc).get("id");
+      String doc2 = s.doc(h[2].doc).get("id");
+      String doc3 = s.doc(h[3].doc).get("id");
+
+      assertEquals("doc0 should be d1: ", "d1", doc0);
+      assertEquals("doc1 should be d3: ", "d3", doc1);
+      assertEquals("doc2 should be d2: ", "d2", doc2);
+      assertEquals("doc3 should be d4: ", "d4", doc3);
+
+      assertTrue(
+          "d3 does not have a better score then d1: " + score0 + " >? " + score1, score0 > score1);
+      assertTrue(
+          "d4 does not have a better score then d3: " + score1 + " >? " + score3, score1 > score3);
+      assertTrue(
+          "d2 does not have a better score then d3: " + score1 + " >? " + score2, score1 > score2);
     } catch (Error e) {
-      printHits("testSimpleEqualScores1", h, s);
+      printHits("testSimpleQuery2", h, s);
+      throw e;
+    }
+  }
+
+  public void testBoostQuery() throws Exception {
+
+    BooleanClause clause1 =
+        new BooleanClause(new BoostQuery(tq("body", "president"), 3), Occur.SHOULD);
+    BooleanClause clause2 =
+        new BooleanClause(new BoostQuery(tq("body", "washington"), 1), Occur.SHOULD);
+
+    IndriAndQuery q = new IndriAndQuery(Arrays.asList(clause1, clause2));
+
+    ScoreDoc[] h = s.search(q, 1000).scoreDocs;
+
+    try {
+      assertEquals("all docs should match " + q.toString(), 4, h.length);
+
+      String doc0 = s.doc(h[0].doc).get("id");
+      String doc1 = s.doc(h[1].doc).get("id");
+      String doc2 = s.doc(h[2].doc).get("id");
+      String doc3 = s.doc(h[3].doc).get("id");
+
+      assertEquals("doc0 should be d1: ", "d1", doc0);
+      assertEquals("doc1 should be d3: ", "d2", doc1);
+      assertEquals("doc2 should be d2: ", "d4", doc2);
+      assertEquals("doc3 should be d4: ", "d3", doc3);
+
+    } catch (Error e) {
+      printHits("testBoostQuery", h, s);
       throw e;
     }
   }

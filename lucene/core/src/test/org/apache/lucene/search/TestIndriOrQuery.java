@@ -80,9 +80,7 @@ public class TestIndriOrQuery extends LuceneTestCase {
     {
       Document d3 = new Document();
       d3.add(newField("id", "d3", TextField.TYPE_STORED));
-      d3.add(
-          newTextField(
-              "body", "George Washington was a general in the Revolutionary War", Field.Store.YES));
+      d3.add(newTextField("body", "George Washington was a general", Field.Store.YES));
       writer.addDocument(d3);
     }
 
@@ -119,7 +117,7 @@ public class TestIndriOrQuery extends LuceneTestCase {
     try {
       assertEquals("2 docs should match " + q.toString(), 2, h.length);
     } catch (Error e) {
-      printHits("testSimpleEqualScores1", h, s);
+      printHits("Query: george washington", h, s);
       throw e;
     }
   }
@@ -135,8 +133,30 @@ public class TestIndriOrQuery extends LuceneTestCase {
 
     try {
       assertEquals("all docs should match " + q.toString(), 4, h.length);
+
+      float score0 = h[0].score;
+      float score1 = h[1].score;
+      float score2 = h[2].score;
+      float score3 = h[3].score;
+
+      String doc0 = s.doc(h[0].doc).get("id");
+      String doc1 = s.doc(h[1].doc).get("id");
+      String doc2 = s.doc(h[2].doc).get("id");
+      String doc3 = s.doc(h[3].doc).get("id");
+
+      assertEquals("doc0 should be d1: ", "d1", doc0);
+      assertEquals("doc1 should be d3: ", "d3", doc1);
+      assertEquals("doc2 should be d2: ", "d2", doc2);
+      assertEquals("doc3 should be d4: ", "d4", doc3);
+
+      assertTrue(
+          "d3 does not have a better score then d1: " + score0 + " >? " + score1, score0 > score1);
+      assertTrue(
+          "d4 does not have a better score then d3: " + score1 + " >? " + score3, score1 > score3);
+      assertTrue(
+          "d2 does not have a better score then d3: " + score1 + " >? " + score2, score1 > score2);
     } catch (Error e) {
-      printHits("testSimpleEqualScores1", h, s);
+      printHits("Query: president washington", h, s);
       throw e;
     }
   }
