@@ -156,6 +156,9 @@ Optimizations
 
 * LUCENE-10356: Further optimize facet counting for single-valued TaxonomyFacetCounts. (Greg Miller)
 
+* LUCENE-10379: Count directly into the dense values array in FastTaxonomyFacetCounts#countAll.
+  (Guo Feng, Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
