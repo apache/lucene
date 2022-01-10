@@ -86,11 +86,11 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       if (singleValued != null) {
         if (values != null) {
           while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            values[(int) dv.nextValue()]++;
+            values[(int) singleValued.longValue()]++;
           }
         } else {
           while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            sparseValues.addTo((int) dv.nextValue(), 1);
+            sparseValues.addTo((int) singleValued.longValue(), 1);
           }
         }
       } else {
@@ -131,7 +131,9 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
             values[(int) singleValued.longValue()]++;
           }
         } else {
-          for (int doc = singleValued.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = singleValued.nextDoc()) {
+          for (int doc = singleValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = singleValued.nextDoc()) {
             if (liveDocs.get(doc)) {
               values[(int) singleValued.longValue()]++;
             }
@@ -146,7 +148,9 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
             }
           }
         } else {
-          for (int doc = multiValued.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = multiValued.nextDoc()) {
+          for (int doc = multiValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = multiValued.nextDoc()) {
             if (liveDocs.get(doc)) {
               final int dvCount = multiValued.docValueCount();
               for (int i = 0; i < dvCount; i++) {
