@@ -240,11 +240,6 @@ public class TestFacetLabel extends FacetTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          new SortedSetDocValuesFacetField("dim", null);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
           new SortedSetDocValuesFacetField("dim", "");
         });
   }

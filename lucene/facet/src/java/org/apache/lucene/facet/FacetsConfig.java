@@ -471,19 +471,35 @@ public class FacetsConfig {
 
   private void processSSDVFacetFields(
       Map<String, List<SortedSetDocValuesFacetField>> byField, Document doc) {
+
     for (Map.Entry<String, List<SortedSetDocValuesFacetField>> ent : byField.entrySet()) {
 
       String indexFieldName = ent.getKey();
 
       for (SortedSetDocValuesFacetField facetField : ent.getValue()) {
-        FacetLabel facetLabel = new FacetLabel(facetField.dim, facetField.label);
-        String fullPath = pathToString(facetLabel.components, facetLabel.length);
-
-        // For facet counts:
-        doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
-
+        FacetLabel facetLabel = new FacetLabel(facetField.dim, facetField.path);
+        DimConfig dimConfig = getDimConfig(facetField.dim);
+        if (dimConfig.hierarchical) {
+          for (int i = 0; i < facetLabel.length; i++) {
+            String fullPath = pathToString(facetLabel.components, i + 1);
+            // For facet counts:
+            doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
+          }
+        } else {
+          if (facetLabel.length != 2) {
+            throw new IllegalArgumentException(
+                "dimension \""
+                    + facetField.dim
+                    + "\" is not hierarchical yet has "
+                    + facetField.path.length
+                    + " components");
+          }
+          String fullPath = pathToString(facetLabel.components, facetLabel.length);
+          // For facet counts:
+          doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
+        }
         // For drill-down:
-        indexDrillDownTerms(doc, indexFieldName, getDimConfig(facetField.dim), facetLabel);
+        indexDrillDownTerms(doc, indexFieldName, dimConfig, facetLabel);
       }
     }
   }
@@ -538,7 +554,7 @@ public class FacetsConfig {
   private static final char ESCAPE_CHAR = '\u001E';
 
   /** Turns a dim + path into an encoded string. */
-  public static String pathToString(String dim, String[] path) {
+  public static String pathToString(String dim, String... path) {
     String[] fullPath = new String[1 + path.length];
     fullPath[0] = dim;
     System.arraycopy(path, 0, fullPath, 1, path.length);
