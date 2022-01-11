@@ -62,7 +62,7 @@ The raw file contains the data that needs to be retrieved.
 
 Some file formats are simpler, e.g. the compound file format's index is so
 small that it can be loaded fully into memory at open time. So it becomes
-read-once and can be stored in the metadata file.
+read-once and can be stored in the same file as metadata.
 
 Some file formats are more complex, e.g. postings have multiple types of data
 (docs, freqs, positions, offsets, payloads) that are optionally retrieved, so
