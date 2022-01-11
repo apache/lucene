@@ -588,7 +588,7 @@ public abstract class MergePolicy {
    * @param readers set of readers to merge into the main index
    */
   public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
-    OneMerge merge = new OneMerge(readers, reader -> new MergeReader((SegmentReader) reader, null));
+    OneMerge merge = new OneMerge(readers, leaf -> new MergeReader(leaf, leaf.getLiveDocs()));
     MergeSpecification mergeSpec = new MergeSpecification();
     mergeSpec.add(merge);
     return mergeSpec;
@@ -840,11 +840,23 @@ public abstract class MergePolicy {
   }
 
   static final class MergeReader {
+    final CodecReader codecReader;
     final SegmentReader reader;
     final Bits hardLiveDocs;
 
     MergeReader(SegmentReader reader, Bits hardLiveDocs) {
+      this.codecReader = reader;
       this.reader = reader;
+      this.hardLiveDocs = hardLiveDocs;
+    }
+
+    MergeReader(CodecReader reader, Bits hardLiveDocs) {
+      if (SegmentReader.class.isAssignableFrom(reader.getClass())) {
+        this.reader = (SegmentReader) reader;
+      } else {
+        this.reader = null;
+      }
+      this.codecReader = reader;
       this.hardLiveDocs = hardLiveDocs;
     }
   }
