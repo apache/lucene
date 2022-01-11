@@ -242,15 +242,17 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   @Override
   public final int readVInt() throws IOException {
-    int pos = 0;
     try {
-      pos = curBuf.position();
-      return guard.getVInt(curBuf);
-    } catch (
-        @SuppressWarnings("unused")
-        BufferUnderflowException e) {
-      curBuf.position(pos);
-      return super.readVInt();
+      //using #position instead of #mark here as #position is a final method
+      int pos = curBuf.position();
+      try {
+        return guard.getVInt(curBuf);
+      } catch (
+          @SuppressWarnings("unused")
+          BufferUnderflowException e) {
+        curBuf.position(pos);
+        return super.readVInt();
+      }
     } catch (
         @SuppressWarnings("unused")
         NullPointerException npe) {
@@ -260,15 +262,17 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   @Override
   public final long readVLong() throws IOException {
-    int pos = 0;
     try {
-      pos = curBuf.position();
-      return guard.getVLong(curBuf);
-    } catch (
-        @SuppressWarnings("unused")
-        BufferUnderflowException e) {
-      curBuf.position(pos);
-      return super.readVLong();
+      //using #position instead of #mark here as #position is a final method
+      int pos = curBuf.position();
+      try {
+        return guard.getVLong(curBuf);
+      } catch (
+          @SuppressWarnings("unused")
+          BufferUnderflowException e) {
+        curBuf.position(pos);
+        return super.readVLong();
+      }
     } catch (
         @SuppressWarnings("unused")
         NullPointerException npe) {
