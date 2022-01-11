@@ -68,6 +68,13 @@ Some file formats are more complex, e.g. postings have multiple types of data
 (docs, freqs, positions, offsets, payloads) that are optionally retrieved, so
 they use multiple data files in order not to have to read lots of useless data.
 
+## Don't use too many files
+
+The maximum number of file descriptors is usually not infinite. It's ok to use
+multiple files per segment as described above, but this number should always be
+small. For instance, it would be a bad practice to use a different file per
+field.
+
 ## Add codec headers and footers to all files
 
 Use `CodecUtil` to add headers and footers to all files of the index. This
