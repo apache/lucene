@@ -91,6 +91,13 @@ interacting with the `Directory` in order to detect some bugs, but it might
 take many runs before randomization triggers the exact case that triggers a
 bug.
 
+### Verify checksums upon merges
+
+Merges need to read most if not all input data anyway, so make sure to verify
+checksums before starting a merge by calling `checkIntegrity()` on the file
+format reader in order to make sure that file corruptions don't get propagated
+by merges. All default implementations do this.
+
 ### How to make backward-compatible changes to file formats?
 
 See [here](../lucene/backward-codecs/README.md).
