@@ -68,15 +68,13 @@ Some file formats are more complex, e.g. postings have multiple types of data
 (docs, freqs, positions, offsets, payloads) that are optionally retrieved, so
 they use multiple data files in order not to have to read lots of useless data.
 
-## Best practices
-
-### Add codec headers and footers to all files
+## Add codec headers and footers to all files
 
 Use `CodecUtil` to add headers and footers to all files of the index. This
 helps make sure that we are opening the right file and differenciate Lucene
 bugs from file corruptions.
 
-### Validate checksums of the metadata file when opening the segment
+## Validate checksums of the metadata file when opening a segment
 
 If data has been organized in such a way that the metadata file only contains
 read-once data then verifying checksums is very cheap to do and can help detect
@@ -85,14 +83,14 @@ message that tells users that their index is corrupt, rather than a confusing
 exception that tells them that Lucene tried to read data beyond the end of the
 file or anything like that.
 
-### Validate structures of other files when opening the segment
+## Validate structures of other files when opening a segment
 
 One of the most frequent case of index corruption that we have observed over
 the years is file truncation. Verifying that index files have the expected
 codec header and a correct structure for the codec footer when opening a
 segment helps detect a significant spectrum of cases of corruption.
 
-### Do as many consistency checks as reasonable
+## Do as many consistency checks as reasonable
 
 It is common for some data to be redundant, e.g. data from the metadata file
 might be redundant with information from `FieldInfos`, or all files from the
@@ -100,7 +98,7 @@ same file format should have the same version in their codec header. Checking
 that these redundant pieces of information are consistent is always a good
 idea, as it would make cases of corruption much easier to debug.
 
-### Make sure to not leak files
+## Make sure to not leak files
 
 Be paranoid regarding where exceptions might be thrown and make sure that files
 would be closed on all paths. E.g. imagine that opening the data file fails
@@ -110,13 +108,13 @@ interacting with the `Directory` in order to detect some bugs, but it might
 take many runs before randomization triggers the exact case that triggers a
 bug.
 
-### Verify checksums upon merges
+## Verify checksums upon merges
 
 Merges need to read most if not all input data anyway, so make sure to verify
 checksums before starting a merge by calling `checkIntegrity()` on the file
 format reader in order to make sure that file corruptions don't get propagated
 by merges. All default implementations do this.
 
-### How to make backward-compatible changes to file formats?
+## How to make backward-compatible changes to file formats?
 
 See [here](../lucene/backward-codecs/README.md).
