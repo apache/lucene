@@ -243,7 +243,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   @Override
   public final int readVInt() throws IOException {
     try {
-      //using #position instead of #mark here as #position is a final method
+      // using #position instead of #mark here as #position is a final method
       int pos = curBuf.position();
       try {
         return guard.getVInt(curBuf);
@@ -263,7 +263,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   @Override
   public final long readVLong() throws IOException {
     try {
-      //using #position instead of #mark here as #position is a final method
+      // using #position instead of #mark here as #position is a final method
       int pos = curBuf.position();
       try {
         return guard.getVLong(curBuf);
