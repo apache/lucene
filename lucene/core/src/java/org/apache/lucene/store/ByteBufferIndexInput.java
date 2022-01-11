@@ -240,44 +240,17 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     }
   }
 
-  private byte readUnsafeByte() throws IOException {
+  @Override
+  public final int readVInt() throws IOException {
+    int pos = 0;
     try {
-      return curBuf.get();
+      pos = curBuf.position();
+      return guard.getVInt(curBuf);
     } catch (
         @SuppressWarnings("unused")
         BufferUnderflowException e) {
-      do {
-        curBufIndex++;
-        if (curBufIndex >= buffers.length) {
-          throw new EOFException("read past EOF: " + this);
-        }
-        setCurBuf(buffers[curBufIndex]);
-        curBuf.position(0);
-      } while (!curBuf.hasRemaining());
-      return curBuf.get();
-    }
-  }
-
-  @Override
-  public final int readVInt() throws IOException {
-    try {
-      byte b = readUnsafeByte();
-      if (b >= 0) return guard.check(b);
-      int i = b & 0x7F;
-      b = readUnsafeByte();
-      i |= (b & 0x7F) << 7;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7F) << 14;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7F) << 21;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      // Warning: the next ands use 0x0F / 0xF0 - beware copy/paste errors:
-      i |= (b & 0x0F) << 28;
-      if ((b & 0xF0) == 0) return guard.check(i);
-      throw new IOException("Invalid vInt detected (too many bits)");
+      curBuf.position(pos);
+      return super.readVInt();
     } catch (
         @SuppressWarnings("unused")
         NullPointerException npe) {
@@ -287,35 +260,15 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   @Override
   public final long readVLong() throws IOException {
+    int pos = 0;
     try {
-      byte b = readUnsafeByte();
-      if (b >= 0) return b;
-      long i = b & 0x7FL;
-      b = readUnsafeByte();
-      i |= (b & 0x7FL) << 7;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7FL) << 14;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7FL) << 21;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7FL) << 28;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7FL) << 35;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7FL) << 42;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7FL) << 49;
-      if (b >= 0) return guard.check(i);
-      b = readUnsafeByte();
-      i |= (b & 0x7FL) << 56;
-      if (b >= 0) return guard.check(i);
-      throw new IOException("Invalid vLong detected (negative values disallowed)");
+      pos = curBuf.position();
+      return guard.getVLong(curBuf);
+    } catch (
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
+      curBuf.position(pos);
+      return super.readVLong();
     } catch (
         @SuppressWarnings("unused")
         NullPointerException npe) {
