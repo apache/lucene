@@ -29,26 +29,16 @@ import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to a per-ords int[]. */
-public abstract class IntTaxonomyFacets extends TaxonomyFacets {
+abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
-  /**
-   * Dense ordinal values.
-   *
-   * <p>We are making this and {@link #sparseValues} protected for some expert usage. e.g. It can be
-   * checked which is being used before a loop instead of calling {@link #increment} for each
-   * iteration.
-   */
-  protected final int[] values;
+  /** Dense ordinal values. */
+  final int[] values;
 
-  /**
-   * Sparse ordinal values.
-   *
-   * @see #values for why protected.
-   */
-  protected final IntIntHashMap sparseValues;
+  /** Sparse ordinal values. */
+  final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
-  protected IntTaxonomyFacets(
+  IntTaxonomyFacets(
       String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
       throws IOException {
     super(indexFieldName, taxoReader, config);
@@ -62,8 +52,82 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
   }
 
+  /** Rolls up any single-valued hierarchical dimensions. */
+  void rollup() throws IOException {
+    // Rollup any necessary dims:
+    int[] children = null;
+    if (values != null) {
+      for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
+        String dim = ent.getKey();
+        DimConfig ft = ent.getValue();
+        if (ft.hierarchical && ft.multiValued == false) {
+          int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
+          // It can be -1 if this field was declared in the
+          // config but never indexed:
+          if (dimRootOrd > 0) {
+            if (children == null) {
+              // lazy init
+              children = getChildren();
+            }
+            values[dimRootOrd] += rollup(children[dimRootOrd]);
+          }
+        }
+      }
+    } else {
+      assert sparseValues != null;
+      for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
+        String dim = ent.getKey();
+        DimConfig ft = ent.getValue();
+        if (ft.hierarchical && ft.multiValued == false) {
+          int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
+          // It can be -1 if this field was declared in the
+          // config but never indexed:
+          if (dimRootOrd > 0) {
+            if (children == null) {
+              // lazy init
+              children = getChildren();
+            }
+            sparseValues.addTo(dimRootOrd, rollup(children[dimRootOrd]));
+          }
+        }
+      }
+    }
+  }
+
+  private int rollup(int ord) throws IOException {
+    int[] children = getChildren();
+    int[] siblings = getSiblings();
+    int sum = 0;
+    if (values != null) {
+      while (ord != TaxonomyReader.INVALID_ORDINAL) {
+        int value = rollup(children[ord]);
+        values[ord] += value;
+        sum += value;
+        ord = siblings[ord];
+      }
+    } else {
+      assert sparseValues != null;
+      while (ord != TaxonomyReader.INVALID_ORDINAL) {
+        int value = rollup(children[ord]);
+        sparseValues.addTo(ord, value);
+        sum += value;
+        ord = siblings[ord];
+      }
+    }
+    return sum;
+  }
+
+  /** Get the count for this ordinal. */
+  private int getValue(int ordinal) {
+    if (sparseValues != null) {
+      return sparseValues.get(ordinal);
+    } else {
+      return values[ordinal];
+    }
+  }
+
   /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
-  protected boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
+  private boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
     if (taxoReader.getSize() < 1024) {
       // small number of unique values: use an array
       return false;
@@ -83,63 +147,6 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     // if our result set is < 10% of the index, we collect sparsely (use hash map):
     return sumTotalHits < maxDoc / 10;
-  }
-
-  /** Increment the count for this ordinal by 1. */
-  protected void increment(int ordinal) {
-    increment(ordinal, 1);
-  }
-
-  /** Increment the count for this ordinal by {@code amount}.. */
-  protected void increment(int ordinal, int amount) {
-    if (sparseValues != null) {
-      sparseValues.addTo(ordinal, amount);
-    } else {
-      values[ordinal] += amount;
-    }
-  }
-
-  /** Get the count for this ordinal. */
-  protected int getValue(int ordinal) {
-    if (sparseValues != null) {
-      return sparseValues.get(ordinal);
-    } else {
-      return values[ordinal];
-    }
-  }
-
-  /** Rolls up any single-valued hierarchical dimensions. */
-  protected void rollup() throws IOException {
-    // Rollup any necessary dims:
-    int[] children = null;
-    for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
-      String dim = ent.getKey();
-      DimConfig ft = ent.getValue();
-      if (ft.hierarchical && ft.multiValued == false) {
-        int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
-        // It can be -1 if this field was declared in the
-        // config but never indexed:
-        if (dimRootOrd > 0) {
-          if (children == null) {
-            // lazy init
-            children = getChildren();
-          }
-          increment(dimRootOrd, rollup(children[dimRootOrd]));
-        }
-      }
-    }
-  }
-
-  private int rollup(int ord) throws IOException {
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
-    int sum = 0;
-    while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      increment(ord, rollup(children[ord]));
-      sum += getValue(ord);
-      ord = siblings[ord];
-    }
-    return sum;
   }
 
   @Override
