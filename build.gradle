@@ -46,7 +46,7 @@ version = {
   String versionSuffix = propertyOrDefault('version.suffix', 'SNAPSHOT')
   return propertyOrDefault('version.release', "${baseVersion}-${versionSuffix}")
 }()
-description = 'Grandparent project for Apache Lucene Core and Apache Solr'
+description = 'Grandparent project for Apache Lucene Core'
 
 // Propagate version and derived properties across projects.
 allprojects {
