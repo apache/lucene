@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
@@ -101,6 +102,11 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
         throws IOException {
       getInstance(fieldInfo).writeField(fieldInfo, knnVectorsReader);
+    }
+
+    @Override
+    public void mergeField(FieldInfo mergeFieldInfo, MergeState mergeState) throws IOException {
+      getInstance(mergeFieldInfo).mergeField(mergeFieldInfo, mergeState);
     }
 
     @Override

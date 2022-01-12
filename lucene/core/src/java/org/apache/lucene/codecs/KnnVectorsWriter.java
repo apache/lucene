@@ -49,7 +49,7 @@ public abstract class KnnVectorsWriter implements Closeable {
   public abstract void finish() throws IOException;
 
   /** Merge the vector values from multiple segments, for all fields */
-  public void merge(MergeState mergeState) throws IOException {
+  public final void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
       KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
@@ -59,14 +59,18 @@ public abstract class KnnVectorsWriter implements Closeable {
     }
     for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
       if (fieldInfo.hasVectorValues()) {
-        mergeVectors(fieldInfo, mergeState);
+        mergeField(fieldInfo, mergeState);
       }
     }
     finish();
   }
 
-  private void mergeVectors(FieldInfo mergeFieldInfo, final MergeState mergeState)
-      throws IOException {
+  /**
+   * Merges the vectors for the field specified in {@code mergeFieldInfo}. The default
+   * implementation calls {@link #writeField}, passing a {@link KnnVectorsReader} that combines the
+   * vector values and ignores deleted documents.
+   */
+  public void mergeField(FieldInfo mergeFieldInfo, final MergeState mergeState) throws IOException {
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
     }
