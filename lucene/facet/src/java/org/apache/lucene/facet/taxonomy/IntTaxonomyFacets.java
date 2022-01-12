@@ -100,17 +100,14 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     int sum = 0;
     if (values != null) {
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
-        int value = rollup(children[ord]);
-        values[ord] += value;
-        sum += value;
+        values[ord] += rollup(children[ord]);
+        sum += values[ord];
         ord = siblings[ord];
       }
     } else {
       assert sparseValues != null;
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
-        int value = rollup(children[ord]);
-        sparseValues.addTo(ord, value);
-        sum += value;
+        sum += sparseValues.addTo(ord, rollup(children[ord]));
         ord = siblings[ord];
       }
     }
