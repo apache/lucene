@@ -26,11 +26,11 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnGraphValues.NodesIterator;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -185,13 +185,11 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     } else {
       meta.writeInt(graph.numLevels());
       for (int level = 0; level < graph.numLevels(); level++) {
-        DocIdSetIterator nodesOnLevel = graph.getAllNodesOnLevel(level);
-        int countOnLevel = (int) nodesOnLevel.cost();
-        meta.writeInt(countOnLevel); // number of nodes on a level
+        NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
+        meta.writeInt(nodesOnLevel.size()); // number of nodes on a level
         if (level > 0) {
-          for (int node = nodesOnLevel.nextDoc();
-              node != DocIdSetIterator.NO_MORE_DOCS;
-              node = nodesOnLevel.nextDoc()) {
+          while (nodesOnLevel.hasNext()) {
+            int node = nodesOnLevel.nextInt();
             meta.writeVInt(node); // list of nodes on a level
           }
         }
@@ -224,10 +222,9 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
-      DocIdSetIterator nodesOnLevel = graph.getAllNodesOnLevel(level);
-      for (int node = nodesOnLevel.nextDoc();
-          node != DocIdSetIterator.NO_MORE_DOCS;
-          node = nodesOnLevel.nextDoc()) {
+      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
+      while (nodesOnLevel.hasNext()) {
+        int node = nodesOnLevel.nextInt();
         NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
         vectorIndex.writeInt(size);

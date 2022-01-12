@@ -40,7 +40,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.index.KnnGraphValues.NodesIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -257,11 +257,10 @@ public class TestKnnGraph extends LuceneTestCase {
     int[] scratch = new int[maxConn];
 
     for (int level = 0; level < graphValues.numLevels(); level++) {
-      DocIdSetIterator nodesItr = graphValues.getAllNodesOnLevel(level);
+      NodesIterator nodesItr = graphValues.getNodesOnLevel(level);
       graph[level] = new int[size][];
-      for (int node = nodesItr.nextDoc();
-          node != DocIdSetIterator.NO_MORE_DOCS;
-          node = nodesItr.nextDoc()) {
+      while (nodesItr.hasNext()) {
+        int node = nodesItr.nextInt();
         graphValues.seek(level, node);
         int n, count = 0;
         while ((n = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
@@ -471,10 +470,9 @@ public class TestKnnGraph extends LuceneTestCase {
           int[][] graphOnLevel = new int[graphValues.size()][];
           int countOnLevel = 0;
           boolean foundOrphan = false;
-          DocIdSetIterator nodesItr = graphValues.getAllNodesOnLevel(level);
-          for (int node = nodesItr.nextDoc();
-              node != DocIdSetIterator.NO_MORE_DOCS;
-              node = nodesItr.nextDoc()) {
+          NodesIterator nodesItr = graphValues.getNodesOnLevel(level);
+          while (nodesItr.hasNext()) {
+            int node = nodesItr.nextInt();
             graphValues.seek(level, node);
             int arc;
             List<Integer> friends = new ArrayList<>();
@@ -491,7 +489,7 @@ public class TestKnnGraph extends LuceneTestCase {
             countOnLevel++;
           }
           // System.out.println("Level[" + level + "] has [" + nodesCount + "] nodes.");
-          assertEquals(nodesItr.cost(), countOnLevel);
+          assertEquals(nodesItr.size(), countOnLevel);
           assertFalse("No nodes on level [" + level + "]", countOnLevel == 0);
           if (countOnLevel == 1) {
             assertTrue(

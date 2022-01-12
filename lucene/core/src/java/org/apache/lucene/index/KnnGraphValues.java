@@ -20,7 +20,8 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocIdSetIterator;
+import java.util.NoSuchElementException;
+import java.util.PrimitiveIterator;
 
 /**
  * Access to per-document neighbor lists in a (hierarchical) knn search graph.
@@ -63,10 +64,9 @@ public abstract class KnnGraphValues {
    * Get all nodes on a given level as node 0th ordinals
    *
    * @param level level for which to get all nodes
-   * @return an iterator over nodes where {@code nextDoc} returns a next node ordinal
+   * @return an iterator over nodes where {@code nextInt} returns a next node on the level
    */
-  // TODO: return a more suitable iterator over nodes than DocIdSetIterator
-  public abstract DocIdSetIterator getAllNodesOnLevel(int level) throws IOException;
+  public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
   /** Empty graph value */
   public static KnnGraphValues EMPTY =
@@ -96,8 +96,49 @@ public abstract class KnnGraphValues {
         }
 
         @Override
-        public DocIdSetIterator getAllNodesOnLevel(int level) {
-          return DocIdSetIterator.empty();
+        public NodesIterator getNodesOnLevel(int level) {
+          return NodesIterator.EMPTY;
         }
       };
+
+  public static final class NodesIterator implements PrimitiveIterator.OfInt {
+    public static NodesIterator EMPTY = new NodesIterator(0);
+
+    private final int[] nodes;
+    private final int size;
+    int cur = 0;
+
+    public NodesIterator(int[] nodes, int size) {
+      assert nodes != null;
+      assert size <= nodes.length;
+      this.nodes = nodes;
+      this.size = size;
+    }
+
+    public NodesIterator(int size) {
+      this.nodes = null;
+      this.size = size;
+    }
+
+    @Override
+    public int nextInt() {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      if (nodes == null) {
+        return cur++;
+      } else {
+        return nodes[cur++];
+      }
+    }
+
+    @Override
+    public boolean hasNext() {
+      return cur < size;
+    }
+
+    public int size() {
+      return size;
+    }
+  }
 }

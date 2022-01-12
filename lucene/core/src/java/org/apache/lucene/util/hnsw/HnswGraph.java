@@ -26,7 +26,6 @@ import java.util.List;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
@@ -302,36 +301,11 @@ public final class HnswGraph extends KnnGraphValues {
   }
 
   @Override
-  public DocIdSetIterator getAllNodesOnLevel(int level) {
-    return new DocIdSetIterator() {
-      int[] nodes = level == 0 ? null : nodesByLevel.get(level);
-      int size = level == 0 ? size() : graph.get(level).size();
-      int idx = -1;
-
-      @Override
-      public int docID() {
-        return level == 0 ? idx : nodes[idx];
-      }
-
-      @Override
-      public int nextDoc() {
-        idx++;
-        if (idx >= size) {
-          idx = NO_MORE_DOCS;
-          return NO_MORE_DOCS;
-        }
-        return level == 0 ? idx : nodes[idx];
-      }
-
-      @Override
-      public long cost() {
-        return size;
-      }
-
-      @Override
-      public int advance(int target) {
-        throw new UnsupportedOperationException("Not supported");
-      }
-    };
+  public NodesIterator getNodesOnLevel(int level) {
+    if (level == 0) {
+      return new NodesIterator(size());
+    } else {
+      return new NodesIterator(nodesByLevel.get(level), graph.get(level).size());
+    }
   }
 }

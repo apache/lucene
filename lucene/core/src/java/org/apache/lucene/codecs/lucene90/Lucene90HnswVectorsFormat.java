@@ -47,7 +47,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *             <ul>
  *               <li><b>[int32]</b> the number of neighbor nodes
  *               <li><b>array[int32]</b> the neighbor ordinals
- *               <li><b>array[int32]</b> padding from empty integers if the number of neigbors less
+ *               <li><b>array[int32]</b> padding from empty integers if the number of neighbors less
  *                   than the maximum number of connections (maxConn). Padding is equal to
  *                   ((maxConn-the number of neighbours) * 4) bytes.
  *             </ul>
@@ -63,7 +63,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int32]</b> vector similarity function ordinal
  *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
- *   <li><b>[vlong]</b> to this field's index in the .vex file
+ *   <li><b>[vlong]</b> offset to this field's index in the .vex file
  *   <li><b>[vlong]</b> length of this field's index data, in bytes
  *   <li><b>[int]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field

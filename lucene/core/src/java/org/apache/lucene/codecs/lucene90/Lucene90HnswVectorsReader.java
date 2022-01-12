@@ -36,7 +36,6 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -137,6 +136,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
               + versionVectorData,
           in);
     }
+    CodecUtil.retrieveChecksum(in);
     return in;
   }
 
@@ -356,7 +356,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         } else {
           int numNodesOnPrevLevel = level == 1 ? size : nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              graphOffsetsByLevel[level - 1] + (1 + maxConn) * 4 * numNodesOnPrevLevel;
+              graphOffsetsByLevel[level - 1] + (1 + maxConn) * Integer.BYTES * numNodesOnPrevLevel;
         }
       }
     }
@@ -496,7 +496,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = ((long) entry.maxConn + 1) * 4;
+      this.bytesForConns = ((long) entry.maxConn + 1) * Integer.BYTES;
     }
 
     @Override
@@ -505,6 +505,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
           level == 0
               ? targetOrd
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
+      assert targetIndex >= 0;
       long graphDataOffset = graphOffsetsByLevel[level] + targetIndex * bytesForConns;
       // unsafe; no bounds checking
       dataIn.seek(graphDataOffset);
@@ -539,67 +540,11 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public DocIdSetIterator getAllNodesOnLevel(int level) {
+    public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new DocIdSetIterator() {
-          int numNodes = size();
-          int idx = -1;
-
-          @Override
-          public int docID() {
-            return idx;
-          }
-
-          @Override
-          public int nextDoc() {
-            idx++;
-            if (idx >= numNodes) {
-              idx = NO_MORE_DOCS;
-              return NO_MORE_DOCS;
-            }
-            return idx;
-          }
-
-          @Override
-          public long cost() {
-            return numNodes;
-          }
-
-          @Override
-          public int advance(int target) {
-            throw new UnsupportedOperationException("Not supported");
-          }
-        };
+        return new NodesIterator(size());
       } else {
-        return new DocIdSetIterator() {
-          final int[] nodes = nodesByLevel[level];
-          int idx = -1;
-
-          @Override
-          public int docID() {
-            return nodes[idx];
-          }
-
-          @Override
-          public int nextDoc() {
-            idx++;
-            if (idx >= nodes.length) {
-              idx = NO_MORE_DOCS;
-              return NO_MORE_DOCS;
-            }
-            return nodes[idx];
-          }
-
-          @Override
-          public long cost() {
-            return nodes.length;
-          }
-
-          @Override
-          public int advance(int target) {
-            throw new UnsupportedOperationException("Not supported");
-          }
-        };
+        return new NodesIterator(nodesByLevel[level], nodesByLevel[level].length);
       }
     }
   }

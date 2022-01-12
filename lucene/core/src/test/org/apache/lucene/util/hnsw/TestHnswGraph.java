@@ -38,12 +38,12 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnGraphValues;
+import org.apache.lucene.index.KnnGraphValues.NodesIterator;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
@@ -128,21 +128,20 @@ public class TestHnswGraph extends LuceneTestCase {
 
     // assert equal nodes on each level
     for (int level = 0; level < g.numLevels(); level++) {
-      DocIdSetIterator nodesOnLevel = g.getAllNodesOnLevel(level);
-      DocIdSetIterator nodesOnLevel2 = h.getAllNodesOnLevel(level);
-      for (int node = nodesOnLevel.nextDoc(), node2 = nodesOnLevel2.nextDoc();
-          node != DocIdSetIterator.NO_MORE_DOCS && node2 != DocIdSetIterator.NO_MORE_DOCS;
-          node = nodesOnLevel.nextDoc(), node2 = nodesOnLevel2.nextDoc()) {
+      NodesIterator nodesOnLevel = g.getNodesOnLevel(level);
+      NodesIterator nodesOnLevel2 = h.getNodesOnLevel(level);
+      while (nodesOnLevel.hasNext() && nodesOnLevel2.hasNext()) {
+        int node = nodesOnLevel.nextInt();
+        int node2 = nodesOnLevel2.nextInt();
         assertEquals("nodes in the graphs are different", node, node2);
       }
     }
 
     // assert equal nodes' neighbours on each level
     for (int level = 0; level < g.numLevels(); level++) {
-      DocIdSetIterator nodesOnLevel = g.getAllNodesOnLevel(level);
-      for (int node = nodesOnLevel.nextDoc();
-          node != DocIdSetIterator.NO_MORE_DOCS;
-          node = nodesOnLevel.nextDoc()) {
+      NodesIterator nodesOnLevel = g.getNodesOnLevel(level);
+      while (nodesOnLevel.hasNext()) {
+        int node = nodesOnLevel.nextInt();
         g.seek(level, node);
         h.seek(level, node);
         assertEquals("arcs differ for node " + node, getNeighborNodes(g), getNeighborNodes(h));
