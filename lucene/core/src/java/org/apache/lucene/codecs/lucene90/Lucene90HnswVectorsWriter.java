@@ -26,11 +26,13 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -110,26 +112,18 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException {
+    writeVectorDataPadding();
+    long vectorDataOffset = vectorData.getFilePointer();
+
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
-    long pos = vectorData.getFilePointer();
-    // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
-    // CFS is not used, eg for larger indexes
-    long padding = (4 - (pos & 0x3)) & 0x3;
-    long vectorDataOffset = pos + padding;
-    for (int i = 0; i < padding; i++) {
-      vectorData.writeByte((byte) 0);
-    }
     // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
-    int[] docIds = new int[vectors.size()];
-    int count = 0;
-    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
-      // write vector
-      writeVectorValue(vectors);
-      docIds[count] = docV;
-    }
-    // count may be < vectors.size() e,g, if some documents were deleted
-    long[] offsets = new long[count];
+    int[] docIds = writeVectorData(vectors);
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+
+    // count may be < vectors.size() e,g, if some documents were deleted
+    int count = docIds.length;
+    long[] offsets = new long[count];
+
     long vectorIndexOffset = vectorIndex.getFilePointer();
     if (vectors instanceof RandomAccessVectorValuesProducer) {
       writeGraph(
@@ -145,6 +139,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       throw new IllegalArgumentException(
           "Indexing an HNSW graph requires a random access vector values, got " + vectors);
     }
+
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
     writeMeta(
         fieldInfo,
@@ -155,6 +150,80 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
         count,
         docIds);
     writeGraphOffsets(meta, offsets);
+  }
+
+  @Override
+  public void mergeField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    if (mergeState.infoStream.isEnabled("VV")) {
+      mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
+    }
+
+    writeVectorDataPadding();
+    long vectorDataOffset = vectorData.getFilePointer();
+
+    VectorValues vectors = VectorValuesMerger.mergeVectorValues(fieldInfo, mergeState);
+    int[] docIds = writeVectorData(vectors);
+    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+
+    // count may be < vectors.size() e,g, if some documents were deleted
+    int count = docIds.length;
+    long[] offsets = new long[count];
+    long vectorIndexOffset = vectorIndex.getFilePointer();
+    if (vectors instanceof RandomAccessVectorValuesProducer) {
+      writeGraph(
+          vectorIndex,
+          (RandomAccessVectorValuesProducer) vectors,
+          fieldInfo.getVectorSimilarityFunction(),
+          vectorIndexOffset,
+          offsets,
+          count,
+          maxConn,
+          beamWidth);
+    } else {
+      throw new IllegalArgumentException(
+          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
+    }
+
+    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+    writeMeta(
+        fieldInfo,
+        vectorDataOffset,
+        vectorDataLength,
+        vectorIndexOffset,
+        vectorIndexLength,
+        count,
+        docIds);
+    writeGraphOffsets(meta, offsets);
+    if (mergeState.infoStream.isEnabled("VV")) {
+      mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+    }
+  }
+
+  private void writeVectorDataPadding() throws IOException {
+    long pos = vectorData.getFilePointer();
+    // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
+    // CFS is not used, eg for larger indexes
+    long padding = (4 - (pos & 0x3)) & 0x3;
+    for (int i = 0; i < padding; i++) {
+      vectorData.writeByte((byte) 0);
+    }
+  }
+
+  private int[] writeVectorData(VectorValues vectors) throws IOException {
+    int[] docIds = new int[vectors.size()];
+    int count = 0;
+    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
+      // write vector
+      BytesRef binaryValue = vectors.binaryValue();
+      assert binaryValue.length == vectors.dimension() * Float.BYTES;
+      vectorData.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      docIds[count] = docV;
+    }
+
+    if (docIds.length > count) {
+      return ArrayUtil.copyOfSubArray(docIds, 0, count);
+    }
+    return docIds;
   }
 
   private void writeMeta(
@@ -178,13 +247,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       // TODO: delta-encode, or write as bitset
       meta.writeVInt(docIds[i]);
     }
-  }
-
-  private void writeVectorValue(VectorValues vectors) throws IOException {
-    // write vector value
-    BytesRef binaryValue = vectors.binaryValue();
-    assert binaryValue.length == vectors.dimension() * Float.BYTES;
-    vectorData.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
   }
 
   private void writeGraphOffsets(IndexOutput out, long[] offsets) throws IOException {

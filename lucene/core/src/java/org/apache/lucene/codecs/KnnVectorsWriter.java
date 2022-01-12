@@ -140,7 +140,7 @@ public abstract class KnnVectorsWriter implements Closeable {
    * reverse ordinal mapping for documents having values in order to support random access by dense
    * ordinal.
    */
-  private static class VectorValuesMerger extends VectorValues
+  public static class VectorValuesMerger extends VectorValues
       implements RandomAccessVectorValuesProducer {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
@@ -156,7 +156,7 @@ public abstract class KnnVectorsWriter implements Closeable {
     private int[] ordMap;
     private int ord;
 
-    static VectorValuesMerger mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+    public static VectorValuesMerger mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
       List<VectorValuesSub> subs = new ArrayList<>();
       int dimension = -1;
