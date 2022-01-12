@@ -31,21 +31,10 @@ import org.apache.lucene.facet.TopOrdAndIntQueue;
 /** Base class for all taxonomy-based facets that aggregate to a per-ords int[]. */
 public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
-  /**
-   * Dense ordinal values.
-   *
-   * <p>We are making this and {@link #sparseValues} protected for some expert usage. e.g. It can be
-   * checked which is being used before a loop instead of calling {@link #increment} for each
-   * iteration.
-   */
-  protected final int[] values;
+  /** Per-ordinal value. */
+  private final int[] values;
 
-  /**
-   * Sparse ordinal values.
-   *
-   * @see #values for why protected.
-   */
-  protected final IntIntHashMap sparseValues;
+  private final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
   protected IntTaxonomyFacets(
