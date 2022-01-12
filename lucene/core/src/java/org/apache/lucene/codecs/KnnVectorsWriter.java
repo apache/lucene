@@ -81,62 +81,22 @@ public abstract class KnnVectorsWriter implements Closeable {
           }
 
           @Override
-          public void close() throws IOException {
+          public void close() {
             throw new UnsupportedOperationException();
           }
 
           @Override
-          public void checkIntegrity() throws IOException {
+          public void checkIntegrity() {
             throw new UnsupportedOperationException();
           }
 
           @Override
           public VectorValues getVectorValues(String field) throws IOException {
-            List<VectorValuesSub> subs = new ArrayList<>();
-            int dimension = -1;
-            VectorSimilarityFunction similarityFunction = null;
-            int nonEmptySegmentIndex = 0;
-            for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-              KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-              if (knnVectorsReader != null) {
-                if (mergeFieldInfo != null && mergeFieldInfo.hasVectorValues()) {
-                  int segmentDimension = mergeFieldInfo.getVectorDimension();
-                  VectorSimilarityFunction segmentSimilarityFunction =
-                      mergeFieldInfo.getVectorSimilarityFunction();
-                  if (dimension == -1) {
-                    dimension = segmentDimension;
-                    similarityFunction = mergeFieldInfo.getVectorSimilarityFunction();
-                  } else if (dimension != segmentDimension) {
-                    throw new IllegalStateException(
-                        "Varying dimensions for vector-valued field "
-                            + mergeFieldInfo.name
-                            + ": "
-                            + dimension
-                            + "!="
-                            + segmentDimension);
-                  } else if (similarityFunction != segmentSimilarityFunction) {
-                    throw new IllegalStateException(
-                        "Varying similarity functions for vector-valued field "
-                            + mergeFieldInfo.name
-                            + ": "
-                            + similarityFunction
-                            + "!="
-                            + segmentSimilarityFunction);
-                  }
-                  VectorValues values = knnVectorsReader.getVectorValues(mergeFieldInfo.name);
-                  if (values != null) {
-                    subs.add(
-                        new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
-                  }
-                }
-              }
-            }
-            return new VectorValuesMerger(subs, mergeState);
+            return VectorValuesMerger.mergeVectorValues(mergeFieldInfo, mergeState);
           }
 
           @Override
-          public TopDocs search(String field, float[] target, int k, Bits acceptDocs)
-              throws IOException {
+          public TopDocs search(String field, float[] target, int k, Bits acceptDocs) {
             throw new UnsupportedOperationException();
           }
         });
@@ -192,7 +152,51 @@ public abstract class KnnVectorsWriter implements Closeable {
     private int[] ordMap;
     private int ord;
 
-    VectorValuesMerger(List<VectorValuesSub> subs, MergeState mergeState) throws IOException {
+    static VectorValuesMerger mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+        throws IOException {
+      List<VectorValuesSub> subs = new ArrayList<>();
+      int dimension = -1;
+      VectorSimilarityFunction similarityFunction = null;
+      int nonEmptySegmentIndex = 0;
+      for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+        KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
+        if (knnVectorsReader != null) {
+          if (fieldInfo != null && fieldInfo.hasVectorValues()) {
+            int segmentDimension = fieldInfo.getVectorDimension();
+            VectorSimilarityFunction segmentSimilarityFunction =
+                fieldInfo.getVectorSimilarityFunction();
+            if (dimension == -1) {
+              dimension = segmentDimension;
+              similarityFunction = fieldInfo.getVectorSimilarityFunction();
+            } else if (dimension != segmentDimension) {
+              throw new IllegalStateException(
+                  "Varying dimensions for vector-valued field "
+                      + fieldInfo.name
+                      + ": "
+                      + dimension
+                      + "!="
+                      + segmentDimension);
+            } else if (similarityFunction != segmentSimilarityFunction) {
+              throw new IllegalStateException(
+                  "Varying similarity functions for vector-valued field "
+                      + fieldInfo.name
+                      + ": "
+                      + similarityFunction
+                      + "!="
+                      + segmentSimilarityFunction);
+            }
+            VectorValues values = knnVectorsReader.getVectorValues(fieldInfo.name);
+            if (values != null) {
+              subs.add(new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
+            }
+          }
+        }
+      }
+      return new VectorValuesMerger(subs, mergeState);
+    }
+
+    private VectorValuesMerger(List<VectorValuesSub> subs, MergeState mergeState)
+        throws IOException {
       this.subs = subs;
       docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
       int totalCost = 0, totalSize = 0;
