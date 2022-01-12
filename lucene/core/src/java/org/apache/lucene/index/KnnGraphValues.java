@@ -101,13 +101,18 @@ public abstract class KnnGraphValues {
         }
       };
 
+  /**
+   * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total
+   * number of nodes to be iterated over.
+   */
   public static final class NodesIterator implements PrimitiveIterator.OfInt {
-    public static NodesIterator EMPTY = new NodesIterator(0);
+    static NodesIterator EMPTY = new NodesIterator(0);
 
     private final int[] nodes;
     private final int size;
     int cur = 0;
 
+    /** Constructor for iterator based on the nodes array up to the size */
     public NodesIterator(int[] nodes, int size) {
       assert nodes != null;
       assert size <= nodes.length;
@@ -115,6 +120,7 @@ public abstract class KnnGraphValues {
       this.size = size;
     }
 
+    /** Constructor for iterator based on the size */
     public NodesIterator(int size) {
       this.nodes = null;
       this.size = size;
@@ -137,6 +143,7 @@ public abstract class KnnGraphValues {
       return cur < size;
     }
 
+    /** The number of elements in this iterator * */
     public int size() {
       return size;
     }
