@@ -36,10 +36,10 @@ final class DocIdsWriter {
   private static final byte BPV_32_FOR_UTIL = (byte) 32 + 32;
 
   private final BKDForUtil forUtil = new BKDForUtil();
-  private final long[] scratch;
+  private final int[] scratch;
 
   DocIdsWriter(int maxPointsInLeaf) {
-    scratch = new long[maxPointsInLeaf];
+    scratch = new int[maxPointsInLeaf];
   }
 
   void writeDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
@@ -83,23 +83,19 @@ final class DocIdsWriter {
     if (count == BKDForUtil.BLOCK_SIZE) {
       if (Integer.toUnsignedLong(min2max) <= 0xFFFFL) {
         out.writeByte(DELTA_FOR_UTIL);
-        long[] delta = new long[count];
+        int[] delta = new int[count];
         for (int i = 0; i < count; i++) {
-          delta[i] = docIds[i] - min;
+          delta[i] = docIds[start + i] - min;
         }
         out.writeVInt(min);
         forUtil.encode16(delta, out);
       } else {
-        long[] longs = new long[count];
-        for (int i = 0; i < count; i++) {
-          longs[i] = docIds[i];
-        }
         if (Integer.toUnsignedLong(max) <= 0xFFFFFFL) {
           out.writeByte(BPV_24_FOR_UTIL);
-          forUtil.encode24(longs, out);
+          forUtil.encode24(start, docIds, out);
         } else {
           out.writeByte(BPV_32_FOR_UTIL);
-          forUtil.encode32(longs, out);
+          forUtil.encode32(start, docIds, out);
         }
       }
       return;
@@ -185,7 +181,7 @@ final class DocIdsWriter {
   }
 
   /** Read {@code count} integers into {@code docIDs}. */
-  void readInts(IndexInput in, int count, long[] docIDs) throws IOException {
+  void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case CONTINUOUS_IDS:
@@ -217,18 +213,18 @@ final class DocIdsWriter {
     }
   }
 
-  private void readBKDForUtilDelta(IndexInput in, int count, long[] docIDs) throws IOException {
+  private void readBKDForUtilDelta(IndexInput in, int count, int[] docIDs) throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
-    final long min = in.readVInt();
+    final int min = in.readVInt();
     forUtil.decode16(in, docIDs, min);
   }
 
-  private void readBKDForUtil24(IndexInput in, int count, long[] docIDs) throws IOException {
+  private void readBKDForUtil24(IndexInput in, int count, int[] docIDs) throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
     forUtil.decode24(in, docIDs);
   }
 
-  private void readBKDForUtil32(IndexInput in, int count, long[] docIDs) throws IOException {
+  private void readBKDForUtil32(IndexInput in, int count, int[] docIDs) throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
     forUtil.decode32(in, docIDs);
   }
@@ -242,7 +238,7 @@ final class DocIdsWriter {
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, long[] docIDs)
+  private static void readContinuousIds(IndexInput in, int count, int[] docIDs)
       throws IOException {
     int start = in.readVInt();
     for (int i = 0; i < count; i++) {
@@ -250,7 +246,7 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, long[] docIDs) throws IOException {
+  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
     DocIdSetIterator iterator = readBitSetIterator(in, count);
     int docId, pos = 0;
     while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -259,7 +255,7 @@ final class DocIdsWriter {
     assert pos == count : "pos: " + pos + "count: " + count;
   }
 
-  private static void readDeltaVInts(IndexInput in, int count, long[] docIDs) throws IOException {
+  private static void readDeltaVInts(IndexInput in, int count, int[] docIDs) throws IOException {
     int doc = 0;
     for (int i = 0; i < count; i++) {
       doc += in.readVInt();
@@ -267,13 +263,13 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readInts32(IndexInput in, int count, long[] docIDs) throws IOException {
+  private static void readInts32(IndexInput in, int count, int[] docIDs) throws IOException {
     for (int i = 0; i < count; i++) {
       docIDs[i] = in.readInt();
     }
   }
 
-  private static void readInts24(IndexInput in, int count, long[] docIDs) throws IOException {
+  private static void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
       long l1 = in.readLong();
@@ -389,7 +385,7 @@ final class DocIdsWriter {
     final int min = in.readVInt();
     forUtil.decode16(in, scratch, min);
     for (int i = 0; i < count; i++) {
-      visitor.visit((int) scratch[i]);
+      visitor.visit(scratch[i]);
     }
   }
 
@@ -398,7 +394,7 @@ final class DocIdsWriter {
     assert count == BKDForUtil.BLOCK_SIZE;
     forUtil.decode24(in, scratch);
     for (int i = 0; i < count; i++) {
-      visitor.visit((int) scratch[i]);
+      visitor.visit(scratch[i]);
     }
   }
 
@@ -407,7 +403,7 @@ final class DocIdsWriter {
     assert count == BKDForUtil.BLOCK_SIZE;
     forUtil.decode32(in, scratch);
     for (int i = 0; i < count; i++) {
-      visitor.visit((int) scratch[i]);
+      visitor.visit(scratch[i]);
     }
   }
 }

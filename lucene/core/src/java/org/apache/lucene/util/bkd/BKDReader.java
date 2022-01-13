@@ -702,7 +702,7 @@ public class BKDReader extends PointValues {
         visitor.grow(count);
         if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
           for (int i = 0; i < count; ++i) {
-            visitor.visit((int) scratchIterator.docIDs[i]);
+            visitor.visit(scratchIterator.docIDs[i]);
           }
           return;
         }
@@ -767,7 +767,7 @@ public class BKDReader extends PointValues {
 
           if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
             for (int i = 0; i < count; ++i) {
-              visitor.visit((int) scratchIterator.docIDs[i]);
+              visitor.visit(scratchIterator.docIDs[i]);
             }
             return;
           }
@@ -867,7 +867,7 @@ public class BKDReader extends PointValues {
             in.readBytes(
                 scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
           }
-          visitor.visit((int) scratchIterator.docIDs[i + j], scratchPackedValue);
+          visitor.visit(scratchIterator.docIDs[i + j], scratchPackedValue);
         }
         i += runLen;
       }
@@ -947,11 +947,11 @@ public class BKDReader extends PointValues {
     private int length;
     private int offset;
     private int docID;
-    final long[] docIDs;
+    final int[] docIDs;
     private final DocIdsWriter docIdsWriter;
 
     public BKDReaderDocIDSetIterator(int maxPointsInLeafNode) {
-      this.docIDs = new long[maxPointsInLeafNode];
+      this.docIDs = new int[maxPointsInLeafNode];
       this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode);
     }
 
@@ -973,7 +973,7 @@ public class BKDReader extends PointValues {
       if (idx == length) {
         docID = DocIdSetIterator.NO_MORE_DOCS;
       } else {
-        docID = (int) docIDs[offset + idx];
+        docID = docIDs[offset + idx];
         idx++;
       }
       return docID;

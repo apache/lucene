@@ -29,98 +29,60 @@ import org.apache.lucene.store.DataOutput;
 final class BKDForUtil {
 
   static final int BLOCK_SIZE = 512;
-  private static final long MASK32_8 = mask32(8);
-  private static final long MASK32_24 = mask32(24);
 
-  private static long expandMask32(long mask32) {
-    return mask32 | (mask32 << 32);
-  }
+  private final int[] tmp = new int[384];
 
-  private static long mask32(int bitsPerValue) {
-    return expandMask32((1L << bitsPerValue) - 1);
-  }
-
-  private static void expand16(long[] arr, final long base) {
-    for (int i = 0; i < 128; ++i) {
-      long l = arr[i];
-      arr[i] = ((l >>> 48) & 0xFFFFL) + base;
-      arr[128 + i] = ((l >>> 32) & 0xFFFFL) + base;
-      arr[256 + i] = ((l >>> 16) & 0xFFFFL) + base;
-      arr[384 + i] = (l & 0xFFFFL) + base;
-    }
-  }
-
-  private static void collapse16(long[] arr) {
-    for (int i = 0; i < 128; ++i) {
-      arr[i] = (arr[i] << 48) | (arr[128 + i] << 32) | (arr[256 + i] << 16) | arr[384 + i];
-    }
-  }
-
-  private static void expand32(long[] arr) {
+  void encode16(int[] ints, DataOutput out) throws IOException {
     for (int i = 0; i < 256; ++i) {
-      long l = arr[i];
-      arr[i] = l >>> 32;
-      arr[256 + i] = l & 0xFFFFFFFFL;
+      ints[i] = ints[256 + i] | (ints[i] << 16);
     }
-  }
-
-  private static void collapse32(long[] arr) {
-    for (int i = 0; i < 256; ++i) {
-      arr[i] = (arr[i] << 32) | arr[256 + i];
-    }
-  }
-
-  private final long[] tmp = new long[256];
-
-  void encode16(long[] longs, DataOutput out) throws IOException {
-    collapse16(longs);
-    for (int i = 0; i < 128; i++) {
-      out.writeLong(longs[i]);
-    }
-  }
-
-  void encode32(long[] longs, DataOutput out) throws IOException {
-    collapse32(longs);
     for (int i = 0; i < 256; i++) {
-      out.writeLong(longs[i]);
+      out.writeInt(ints[i]);
     }
   }
 
-  void encode24(long[] longs, DataOutput out) throws IOException {
-    collapse32(longs);
-    for (int i = 0; i < 192; ++i) {
-      tmp[i] = longs[i] << 8;
-    }
-    for (int i = 0; i < 64; i++) {
-      final int longIdx = i + 192;
-      tmp[i] |= (longs[longIdx] >>> 16) & MASK32_8;
-      tmp[i + 64] |= (longs[longIdx] >>> 8) & MASK32_8;
-      tmp[i + 128] |= longs[longIdx] & MASK32_8;
-    }
-    for (int i = 0; i < 192; ++i) {
-      out.writeLong(tmp[i]);
+  void encode32(int off, int[] ints, DataOutput out) throws IOException {
+    for (int i = 0; i < 512; i++) {
+      out.writeInt(ints[off + i]);
     }
   }
 
-  void decode16(DataInput in, long[] longs, long base) throws IOException {
-    in.readLongs(longs, 0, 128);
-    expand16(longs, base);
+  void encode24(int off, int[] ints, DataOutput out) throws IOException {
+    for (int i = 0; i < 384; ++i) {
+      tmp[i] = ints[off + i] << 8;
+    }
+    for (int i = 0; i < 128; i++) {
+      final int longIdx = off + i + 384;
+      tmp[i] |= (ints[longIdx] >>> 16) & 0xFF;
+      tmp[i + 128] |= (ints[longIdx] >>> 8) & 0xFF;
+      tmp[i + 256] |= ints[longIdx] & 0xFF;
+    }
+    for (int i = 0; i < 384; ++i) {
+      out.writeInt(tmp[i]);
+    }
   }
 
-  void decode24(DataInput in, long[] longs) throws IOException {
-    in.readLongs(tmp, 0, 192);
-    for (int i = 0; i < 192; ++i) {
-      longs[i] = (tmp[i] >>> 8) & MASK32_24;
+  void decode16(DataInput in, int[] ints, final int base) throws IOException {
+    in.readInts(ints, 0, 256);
+    for (int i = 0; i < 256; ++i) {
+      int l = ints[i];
+      ints[i] = (l >>> 16) + base;
+      ints[256 + i] = (l & 0xFFFF) + base;
     }
-    for (int i = 0; i < 64; i++) {
-      longs[i + 192] =
-          ((tmp[i] & MASK32_8) << 16) | ((tmp[i + 64] & MASK32_8) << 8) | (tmp[i + 128] & MASK32_8);
-    }
-    expand32(longs);
   }
 
-  void decode32(DataInput in, long[] longs) throws IOException {
-    in.readLongs(longs, 0, 256);
-    expand32(longs);
+  void decode24(DataInput in, int[] ints) throws IOException {
+    in.readInts(tmp, 0, 384);
+    for (int i = 0; i < 384; ++i) {
+      ints[i] = tmp[i] >>> 8;
+    }
+    for (int i = 0; i < 128; i++) {
+      ints[i + 384] =
+          ((tmp[i] & 0xFF) << 16) | ((tmp[i + 128] & 0xFF) << 8) | (tmp[i + 256] & 0xFF);
+    }
+  }
+
+  void decode32(DataInput in, int[] ints) throws IOException {
+    in.readInts(ints, 0, 512);
   }
 }

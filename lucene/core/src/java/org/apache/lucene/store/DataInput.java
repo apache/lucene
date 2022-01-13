@@ -169,6 +169,13 @@ public abstract class DataInput implements Cloneable {
     }
   }
 
+  public void readInts(int[] dst, int offset, int length) throws IOException {
+    Objects.checkFromIndexSize(offset, length, dst.length);
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] = readInt();
+    }
+  }
+
   /**
    * Reads a specified number of floats into an array at the specified offset.
    *
