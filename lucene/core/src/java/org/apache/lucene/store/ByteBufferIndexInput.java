@@ -187,7 +187,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       for (int i = 0; i < Integer.BYTES; ++i) {
         if (i < curBuf.limit()) {
           curIntBufferViews[i] =
-                  curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
+              curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
         } else {
           curIntBufferViews[i] = EMPTY_INTBUFFER;
         }
@@ -196,16 +196,16 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     try {
       final int position = curBuf.position();
       guard.getInts(
-              curIntBufferViews[position & 0x03].position(position >>> 2), dst, offset, length);
+          curIntBufferViews[position & 0x03].position(position >>> 2), dst, offset, length);
       // if the above call succeeded, then we know the below sum cannot overflow
       curBuf.position(position + (length << 2));
     } catch (
-            @SuppressWarnings("unused")
-                    BufferUnderflowException e) {
+        @SuppressWarnings("unused")
+        BufferUnderflowException e) {
       super.readInts(dst, offset, length);
     } catch (
-            @SuppressWarnings("unused")
-                    NullPointerException npe) {
+        @SuppressWarnings("unused")
+        NullPointerException npe) {
       throw new AlreadyClosedException("Already closed: " + this);
     }
   }

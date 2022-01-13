@@ -238,8 +238,7 @@ final class DocIdsWriter {
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, int[] docIDs)
-      throws IOException {
+  private static void readContinuousIds(IndexInput in, int count, int[] docIDs) throws IOException {
     int start = in.readVInt();
     for (int i = 0; i < count; i++) {
       docIDs[i] = start + i;
