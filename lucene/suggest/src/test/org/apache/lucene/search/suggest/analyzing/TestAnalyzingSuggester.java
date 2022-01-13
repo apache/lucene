@@ -32,14 +32,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CannedBinaryTokenStream;
-import org.apache.lucene.analysis.CannedBinaryTokenStream.BinaryToken;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.MockUTF16TermAttributeImpl;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -51,11 +43,19 @@ import org.apache.lucene.search.suggest.Input;
 import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.CannedBinaryTokenStream;
+import org.apache.lucene.tests.analysis.CannedBinaryTokenStream.BinaryToken;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.MockUTF16TermAttributeImpl;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestAnalyzingSuggester extends LuceneTestCase {
 
@@ -82,32 +82,32 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
         suggester.lookup(TestUtil.stringToCharSequence("f", random()), false, 2);
     assertEquals(1, results.size());
     assertEquals("foo", results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // top N of 1 for 'bar': we return this even though
     // barbar is higher because exactFirst is enabled:
     results = suggester.lookup(TestUtil.stringToCharSequence("bar", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals("bar", results.get(0).key.toString());
-    assertEquals(10, results.get(0).value, 0.01F);
+    assertEquals(10, results.get(0).value);
 
     // top N Of 2 for 'b'
     results = suggester.lookup(TestUtil.stringToCharSequence("b", random()), false, 2);
     assertEquals(2, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
     assertEquals("bar", results.get(1).key.toString());
-    assertEquals(10, results.get(1).value, 0.01F);
+    assertEquals(10, results.get(1).value);
 
     // top N of 3 for 'ba'
     results = suggester.lookup(TestUtil.stringToCharSequence("ba", random()), false, 3);
     assertEquals(3, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
     assertEquals("bar", results.get(1).key.toString());
-    assertEquals(10, results.get(1).value, 0.01F);
+    assertEquals(10, results.get(1).value);
     assertEquals("barbara", results.get(2).key.toString());
-    assertEquals(6, results.get(2).value, 0.01F);
+    assertEquals(6, results.get(2).value);
 
     IOUtils.close(analyzer, tempDir);
   }
@@ -132,7 +132,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
           suggester.lookup(TestUtil.stringToCharSequence("f", random()), false, 2);
       assertEquals(1, results.size());
       assertEquals("foo", results.get(0).key.toString());
-      assertEquals(50, results.get(0).value, 0.01F);
+      assertEquals(50, results.get(0).value);
       assertEquals(new BytesRef("hello"), results.get(0).payload);
 
       // top N of 1 for 'bar': we return this even though
@@ -140,30 +140,30 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
       results = suggester.lookup(TestUtil.stringToCharSequence("bar", random()), false, 1);
       assertEquals(1, results.size());
       assertEquals("bar", results.get(0).key.toString());
-      assertEquals(10, results.get(0).value, 0.01F);
+      assertEquals(10, results.get(0).value);
       assertEquals(new BytesRef("goodbye"), results.get(0).payload);
 
       // top N Of 2 for 'b'
       results = suggester.lookup(TestUtil.stringToCharSequence("b", random()), false, 2);
       assertEquals(2, results.size());
       assertEquals("barbar", results.get(0).key.toString());
-      assertEquals(12, results.get(0).value, 0.01F);
+      assertEquals(12, results.get(0).value);
       assertEquals(new BytesRef("thank you"), results.get(0).payload);
       assertEquals("bar", results.get(1).key.toString());
-      assertEquals(10, results.get(1).value, 0.01F);
+      assertEquals(10, results.get(1).value);
       assertEquals(new BytesRef("goodbye"), results.get(1).payload);
 
       // top N of 3 for 'ba'
       results = suggester.lookup(TestUtil.stringToCharSequence("ba", random()), false, 3);
       assertEquals(3, results.size());
       assertEquals("barbar", results.get(0).key.toString());
-      assertEquals(12, results.get(0).value, 0.01F);
+      assertEquals(12, results.get(0).value);
       assertEquals(new BytesRef("thank you"), results.get(0).payload);
       assertEquals("bar", results.get(1).key.toString());
-      assertEquals(10, results.get(1).value, 0.01F);
+      assertEquals(10, results.get(1).value);
       assertEquals(new BytesRef("goodbye"), results.get(1).payload);
       assertEquals("barbara", results.get(2).key.toString());
-      assertEquals(6, results.get(2).value, 0.01F);
+      assertEquals(6, results.get(2).value);
       assertEquals(new BytesRef("for all the fish"), results.get(2).payload);
     }
     IOUtils.close(analyzer, tempDir);
@@ -259,26 +259,26 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
     results = suggester.lookup(TestUtil.stringToCharSequence(input, random()), false, 1);
     assertEquals(1, results.size());
     assertEquals(input, results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // prefix of input stopping part way through christmas
     results =
         suggester.lookup(TestUtil.stringToCharSequence("the ghost of chris", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals(input, results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // omit the 'the' since it's a stopword, it's suggested anyway
     results = suggester.lookup(TestUtil.stringToCharSequence("ghost of chris", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals(input, results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // omit the 'the' and 'of' since they are stopwords, it's suggested anyway
     results = suggester.lookup(TestUtil.stringToCharSequence("ghost chris", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals(input, results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // trailing stopword "the"
     results =
@@ -286,7 +286,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
             TestUtil.stringToCharSequence("ghost christmas past the", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals(input, results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     IOUtils.close(standard, tempDir);
   }
@@ -911,7 +911,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
             new Comparator<TermFreq2>() {
               @Override
               public int compare(TermFreq2 left, TermFreq2 right) {
-                int cmp = Float.compare(right.weight, left.weight);
+                int cmp = Long.compare(right.weight, left.weight);
                 if (cmp == 0) {
                   return left.analyzedForm.compareTo(right.analyzedForm);
                 } else {
@@ -942,7 +942,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
       for (int hit = 0; hit < r.size(); hit++) {
         // System.out.println("  check hit " + hit);
         assertEquals(matches.get(hit).surfaceForm.toString(), r.get(hit).key.toString());
-        assertEquals(matches.get(hit).weight, r.get(hit).value, 0f);
+        assertEquals(matches.get(hit).weight, r.get(hit).value);
         if (doPayloads) {
           assertEquals(matches.get(hit).payload, r.get(hit).payload);
         }

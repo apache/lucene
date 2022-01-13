@@ -22,6 +22,8 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestDocIdSetBuilder extends LuceneTestCase {
 
@@ -128,9 +130,9 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
       for (j = 0; j < array.length; ) {
         final int l = TestUtil.nextInt(random(), 1, array.length - j);
         DocIdSetBuilder.BulkAdder adder = null;
-        for (long k = 0, budget = 0; k < l; ++k) {
+        for (int k = 0, budget = 0; k < l; ++k) {
           if (budget == 0 || rarely()) {
-            budget = TestUtil.nextLong(random(), 1, l - k + 5);
+            budget = TestUtil.nextInt(random(), 1, l - k + 5);
             adder = builder.grow(budget);
           }
           adder.add(array[j++]);
@@ -239,38 +241,6 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     builder = new DocIdSetBuilder(100, terms);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
-  }
-
-  @Nightly
-  public void testLotsOfDocs() throws IOException {
-    final int docCount = 1;
-    final long numDocs = (long) Integer.MAX_VALUE + 1;
-    PointValues values = new DummyPointValues(docCount, numDocs);
-    DocIdSetBuilder builder = new DocIdSetBuilder(100, values, "foo");
-    DocIdSetBuilder.BulkAdder adder = builder.grow(numDocs);
-    for (long i = 0; i < numDocs; ++i) {
-      adder.add(0);
-    }
-    DocIdSet result = builder.build();
-    assertTrue(result instanceof BitDocIdSet);
-    assertEquals(1, result.iterator().cost());
-  }
-
-  public void testLongOverflow() throws IOException {
-    {
-      DocIdSetBuilder builder = new DocIdSetBuilder(100);
-      builder.grow(1L);
-      Exception ex = expectThrows(ArithmeticException.class, () -> builder.grow(Long.MAX_VALUE));
-      assertEquals("long overflow", ex.getMessage());
-    }
-    {
-      DocIdSetBuilder builder = new DocIdSetBuilder(100);
-      builder.grow((long) Integer.MAX_VALUE + 1);
-      Exception ex =
-          expectThrows(
-              ArithmeticException.class, () -> builder.grow(Long.MAX_VALUE - Integer.MAX_VALUE));
-      assertEquals("long overflow", ex.getMessage());
-    }
   }
 
   private static class DummyTerms extends Terms {

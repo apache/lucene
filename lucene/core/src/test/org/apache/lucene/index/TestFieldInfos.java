@@ -22,13 +22,13 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFieldInfos extends LuceneTestCase {
 
@@ -125,7 +125,7 @@ public class TestFieldInfos extends LuceneTestCase {
     writer.commit();
     writer.forceMerge(1);
 
-    IndexReader reader = writer.getReader();
+    IndexReader reader = DirectoryReader.open(writer);
     FieldInfos fis = FieldInfos.getMergedFieldInfos(reader);
     assertEquals(fis.size(), 2);
     Iterator<FieldInfo> it = fis.iterator();
@@ -180,7 +180,7 @@ public class TestFieldInfos extends LuceneTestCase {
     writer.addDocument(d2);
     writer.commit();
 
-    IndexReader reader = writer.getReader();
+    IndexReader reader = DirectoryReader.open(writer);
     FieldInfos fis = FieldInfos.getMergedFieldInfos(reader);
 
     // test that attributes for f1 are introduced by d1,
@@ -203,7 +203,7 @@ public class TestFieldInfos extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
 
-    IndexReader reader = writer.getReader();
+    IndexReader reader = DirectoryReader.open(writer);
     FieldInfos actual = FieldInfos.getMergedFieldInfos(reader);
     FieldInfos expected = FieldInfos.EMPTY;
 
@@ -230,7 +230,7 @@ public class TestFieldInfos extends LuceneTestCase {
 
     writer.forceMerge(1);
 
-    IndexReader reader = writer.getReader();
+    IndexReader reader = DirectoryReader.open(writer);
     FieldInfos actual = FieldInfos.getMergedFieldInfos(reader);
     FieldInfos expected = reader.leaves().get(0).reader().getFieldInfos();
 

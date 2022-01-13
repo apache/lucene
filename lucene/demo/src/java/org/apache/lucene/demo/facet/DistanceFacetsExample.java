@@ -118,6 +118,8 @@ public class DistanceFacetsExample implements Closeable {
     writer.close();
   }
 
+  // TODO: Would be nice to augment this example with documents containing multiple "locations",
+  // adding the ability to compute distance facets for the multi-valued case (see LUCENE-10245)
   private DoubleValuesSource getDistanceValueSource() {
     Expression distance;
     try {

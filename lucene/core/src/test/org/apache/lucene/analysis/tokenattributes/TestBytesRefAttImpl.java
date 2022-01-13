@@ -17,9 +17,9 @@
 package org.apache.lucene.analysis.tokenattributes;
 
 import java.util.stream.Stream;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestBytesRefAttImpl extends LuceneTestCase {
 

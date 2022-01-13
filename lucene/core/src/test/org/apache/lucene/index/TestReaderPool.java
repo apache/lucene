@@ -30,11 +30,11 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.NullInfoStream;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.NullInfoStream;
 
 public class TestReaderPool extends LuceneTestCase {
 

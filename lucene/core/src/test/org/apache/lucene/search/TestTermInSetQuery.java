@@ -33,17 +33,18 @@ import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.RamUsageTester;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 public class TestTermInSetQuery extends LuceneTestCase {
@@ -186,7 +187,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
     final long actualRamBytesUsed = RamUsageTester.ramUsed(query);
     final long expectedRamBytesUsed = query.ramBytesUsed();
     // error margin within 5%
-    assertEquals(expectedRamBytesUsed, actualRamBytesUsed, actualRamBytesUsed / 20);
+    assertEquals(expectedRamBytesUsed, actualRamBytesUsed, actualRamBytesUsed / 20.d);
   }
 
   private static class TermsCountingDirectoryReaderWrapper extends FilterDirectoryReader {

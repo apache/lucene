@@ -27,14 +27,14 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
@@ -222,7 +222,8 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
     for (int i = 0; i < randomNumDocs; i++) {
       Document doc = new Document();
-      if (random().nextBoolean()) {
+      // ensure we index at least a document with long between 0 and 10
+      if (i == 0 || random().nextBoolean()) {
         doc.add(new LongPoint("long", i));
         doc.add(new NumericDocValuesField("long", i));
         doc.add(new StringField("string", "value", Store.NO));

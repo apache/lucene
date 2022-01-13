@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.pattern;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple Tests to ensure this factory is working */
 public class TestPatternTokenizerFactory extends BaseTokenStreamFactoryTestCase {

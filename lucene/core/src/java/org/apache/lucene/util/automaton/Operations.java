@@ -526,7 +526,7 @@ public final class Operations {
   }
 
   // Simple custom ArrayList<Transition>
-  private static final class TransitionList {
+  static final class TransitionList {
     // dest, min, max
     int[] transitions = new int[3];
     int next;
@@ -544,7 +544,7 @@ public final class Operations {
 
   // Holds all transitions that start on this int point, or
   // end at this point-1
-  private static final class PointTransitions implements Comparable<PointTransitions> {
+  static final class PointTransitions implements Comparable<PointTransitions> {
     int point;
     final TransitionList ends = new TransitionList();
     final TransitionList starts = new TransitionList();
@@ -571,7 +571,7 @@ public final class Operations {
     }
   }
 
-  private static final class PointTransitionSet {
+  static final class PointTransitionSet {
     int count;
     PointTransitions[] points = new PointTransitions[5];
 
@@ -1223,7 +1223,7 @@ public final class Operations {
   }
 
   /** Reverses the automaton, returning the new initial states. */
-  static Automaton reverse(Automaton a, Set<Integer> initialStates) {
+  public static Automaton reverse(Automaton a, Set<Integer> initialStates) {
 
     if (Operations.isEmpty(a)) {
       return new Automaton();

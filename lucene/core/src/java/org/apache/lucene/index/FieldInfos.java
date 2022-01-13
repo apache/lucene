@@ -48,6 +48,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
   public static final FieldInfos EMPTY = new FieldInfos(new FieldInfo[0]);
 
   private final boolean hasFreq;
+  private final boolean hasPostings;
   private final boolean hasProx;
   private final boolean hasPayloads;
   private final boolean hasOffsets;
@@ -67,6 +68,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
   /** Constructs a new FieldInfos from an array of FieldInfo objects */
   public FieldInfos(FieldInfo[] infos) {
     boolean hasVectors = false;
+    boolean hasPostings = false;
     boolean hasProx = false;
     boolean hasPayloads = false;
     boolean hasOffsets = false;
@@ -112,6 +114,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       }
 
       hasVectors |= info.hasVectors();
+      hasPostings |= info.getIndexOptions() != IndexOptions.NONE;
       hasProx |= info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
       hasFreq |= info.getIndexOptions() != IndexOptions.DOCS;
       hasOffsets |=
@@ -132,6 +135,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     this.hasVectors = hasVectors;
+    this.hasPostings = hasPostings;
     this.hasProx = hasProx;
     this.hasPayloads = hasPayloads;
     this.hasOffsets = hasOffsets;
@@ -198,6 +202,11 @@ public class FieldInfos implements Iterable<FieldInfo> {
   /** Returns true if any fields have freqs */
   public boolean hasFreq() {
     return hasFreq;
+  }
+
+  /** Returns true if any fields have postings */
+  public boolean hasPostings() {
+    return hasPostings;
   }
 
   /** Returns true if any fields have positions */

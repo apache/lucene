@@ -61,7 +61,6 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    * @param term Term containing field and possibly some pattern structure. The term text is
    *     ignored.
    * @param automaton Automaton to run, terms that are accepted are considered a match.
-   * @throws IllegalArgumentException if automaton is not determinized
    */
   public AutomatonQuery(final Term term, Automaton automaton) {
     this(term, automaton, false);
@@ -75,7 +74,6 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    * @param automaton Automaton to run, terms that are accepted are considered a match.
    * @param isBinary if true, this automaton is already binary and will not go through the
    *     UTF32ToUTF8 conversion
-   * @throws IllegalArgumentException if automaton is not determinized
    */
   public AutomatonQuery(final Term term, Automaton automaton, boolean isBinary) {
     super(term.field());
@@ -141,6 +139,10 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
   /** Returns the automaton used to create this query */
   public Automaton getAutomaton() {
     return automaton;
+  }
+
+  public CompiledAutomaton getCompiled() {
+    return compiled;
   }
 
   /** Is this a binary (byte) oriented automaton. See the constructor. */

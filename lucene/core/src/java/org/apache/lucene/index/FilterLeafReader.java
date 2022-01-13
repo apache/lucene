@@ -22,6 +22,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * A <code>FilterLeafReader</code> contains another LeafReader, which it uses as its basic source of
@@ -242,7 +243,8 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   /** Base class for filtering {@link PostingsEnum} implementations. */
-  public abstract static class FilterPostingsEnum extends PostingsEnum {
+  public abstract static class FilterPostingsEnum extends PostingsEnum
+      implements Unwrappable<PostingsEnum> {
     /** The underlying PostingsEnum instance. */
     protected final PostingsEnum in;
 
@@ -301,6 +303,11 @@ public abstract class FilterLeafReader extends LeafReader {
     @Override
     public long cost() {
       return in.cost();
+    }
+
+    @Override
+    public PostingsEnum unwrap() {
+      return in;
     }
   }
 

@@ -19,6 +19,7 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.search.DocIdSet;
+import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 
 public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
 
