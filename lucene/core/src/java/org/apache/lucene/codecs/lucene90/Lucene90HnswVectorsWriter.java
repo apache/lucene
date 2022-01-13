@@ -113,8 +113,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException {
-    writeVectorDataPadding();
-    long vectorDataOffset = vectorData.getFilePointer();
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
 
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
@@ -159,8 +158,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
     }
 
-    writeVectorDataPadding();
-    long vectorDataOffset = vectorData.getFilePointer();
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
 
     // write the merged vector data to a temporary file
     VectorValues vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
@@ -209,16 +207,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     writeGraphOffsets(meta, offsets);
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
-    }
-  }
-
-  private void writeVectorDataPadding() throws IOException {
-    long pos = vectorData.getFilePointer();
-    // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
-    // CFS is not used, eg for larger indexes
-    long padding = (4 - (pos & 0x3)) & 0x3;
-    for (int i = 0; i < padding; i++) {
-      vectorData.writeByte((byte) 0);
     }
   }
 
