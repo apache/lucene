@@ -247,7 +247,8 @@ public class SortedNumericSortField extends SortField {
     switch (type) {
       case INT:
         fieldComparator =
-            new IntComparator(numHits, getField(), (Integer) missingValue, reverse, enableSkipping) {
+            new IntComparator(
+                numHits, getField(), (Integer) missingValue, reverse, enableSkipping) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {
@@ -276,7 +277,8 @@ public class SortedNumericSortField extends SortField {
         break;
       case FLOAT:
         fieldComparator =
-            new FloatComparator(numHits, getField(), (Float) missingValue, reverse, enableSkipping) {
+            new FloatComparator(
+                numHits, getField(), (Float) missingValue, reverse, enableSkipping) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {
@@ -334,7 +336,8 @@ public class SortedNumericSortField extends SortField {
         break;
       case DOUBLE:
         fieldComparator =
-            new DoubleComparator(numHits, getField(), (Double) missingValue, reverse, enableSkipping) {
+            new DoubleComparator(
+                numHits, getField(), (Double) missingValue, reverse, enableSkipping) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {

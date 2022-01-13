@@ -495,7 +495,8 @@ public class SortField {
    *
    * @lucene.experimental
    * @param numHits number of top hits the queue will store
-   * @param enableSkipping true if the comparator can skip documents via {@link LeafFieldComparator#competitiveIterator()}
+   * @param enableSkipping true if the comparator can skip documents via {@link
+   *     LeafFieldComparator#competitiveIterator()}
    * @return {@link FieldComparator} to use when sorting
    */
   public FieldComparator<?> getComparator(final int numHits, boolean enableSkipping) {
@@ -520,7 +521,8 @@ public class SortField {
         break;
 
       case LONG:
-        fieldComparator = new LongComparator(numHits, field, (Long) missingValue, reverse, enableSkipping);
+        fieldComparator =
+            new LongComparator(numHits, field, (Long) missingValue, reverse, enableSkipping);
         break;
 
       case DOUBLE:
