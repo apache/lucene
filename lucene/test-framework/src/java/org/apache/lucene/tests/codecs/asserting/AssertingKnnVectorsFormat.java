@@ -71,9 +71,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void mergeField(FieldInfo mergeFieldInfo, MergeState mergeState) throws IOException {
-      assert mergeFieldInfo != null;
-      delegate.mergeField(mergeFieldInfo, mergeState);
+    public void merge(MergeState mergeState) throws IOException {
+      delegate.merge(mergeState);
     }
 
     @Override

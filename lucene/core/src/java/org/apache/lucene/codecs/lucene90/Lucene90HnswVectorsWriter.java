@@ -149,7 +149,30 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void merge(MergeState mergeState) throws IOException {
+    for (int i = 0; i < mergeState.fieldInfos.length; i++) {
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+      assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
+      if (reader != null) {
+        reader.checkIntegrity();
+      }
+    }
+
+    for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
+      if (fieldInfo.hasVectorValues()) {
+        if (mergeState.infoStream.isEnabled("VV")) {
+          mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
+        }
+        mergeField(fieldInfo, mergeState);
+        if (mergeState.infoStream.isEnabled("VV")) {
+          mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+        }
+      }
+    }
+    finish();
+  }
+
+  private void mergeField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
     }

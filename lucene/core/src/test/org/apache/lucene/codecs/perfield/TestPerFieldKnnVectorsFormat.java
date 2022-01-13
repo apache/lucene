@@ -179,9 +179,11 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         }
 
         @Override
-        public void mergeField(FieldInfo mergeFieldInfo, MergeState mergeState) throws IOException {
-          fieldsWritten.add(mergeFieldInfo.name);
-          writer.mergeField(mergeFieldInfo, mergeState);
+        public void merge(MergeState mergeState) throws IOException {
+          for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
+            fieldsWritten.add(fieldInfo.name);
+          }
+          writer.merge(mergeState);
         }
 
         @Override

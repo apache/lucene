@@ -19,7 +19,10 @@ package org.apache.lucene.codecs.perfield;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.TreeMap;
@@ -105,8 +108,28 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void mergeField(FieldInfo mergeFieldInfo, MergeState mergeState) throws IOException {
-      getInstance(mergeFieldInfo).mergeField(mergeFieldInfo, mergeState);
+    public final void merge(MergeState mergeState) throws IOException {
+      Map<KnnVectorsWriter, Collection<String>> writersToFields = new IdentityHashMap<>();
+
+      // Group each writer by the fields it handles
+      for (FieldInfo fi : mergeState.mergeFieldInfos) {
+        if (fi.hasVectorValues() == false) {
+          continue;
+        }
+        KnnVectorsWriter writer = getInstance(fi);
+        Collection<String> fields = writersToFields.computeIfAbsent(writer, k -> new ArrayList<>());
+        fields.add(fi.name);
+      }
+
+      // Delegate the merge to the appropriate writer
+      PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
+      try {
+        for (Map.Entry<KnnVectorsWriter, Collection<String>> e : writersToFields.entrySet()) {
+          e.getKey().merge(pfMergeState.apply(e.getValue()));
+        }
+      } finally {
+        pfMergeState.reset();
+      }
     }
 
     @Override

@@ -42,8 +42,12 @@ public abstract class KnnVectorsWriter implements Closeable {
   /** Called once at the end before close */
   public abstract void finish() throws IOException;
 
-  /** Merge the vector values from multiple segments, for all fields */
-  public final void merge(MergeState mergeState) throws IOException {
+  /**
+   * Merges the segment vectors for all fields. across all fields. This default implementation
+   * delegates to {@link #writeField}, passing a {@link KnnVectorsReader} that combines the vector
+   * values and ignores deleted documents.
+   */
+  public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
       KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
@@ -51,57 +55,48 @@ public abstract class KnnVectorsWriter implements Closeable {
         reader.checkIntegrity();
       }
     }
+
     for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
       if (fieldInfo.hasVectorValues()) {
-        mergeField(fieldInfo, mergeState);
+        if (mergeState.infoStream.isEnabled("VV")) {
+          mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
+        }
+
+        writeField(
+            fieldInfo,
+            new KnnVectorsReader() {
+              @Override
+              public long ramBytesUsed() {
+                return 0;
+              }
+
+              @Override
+              public void close() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public void checkIntegrity() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public VectorValues getVectorValues(String field) throws IOException {
+                return MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+              }
+
+              @Override
+              public TopDocs search(String field, float[] target, int k, Bits acceptDocs) {
+                throw new UnsupportedOperationException();
+              }
+            });
+
+        if (mergeState.infoStream.isEnabled("VV")) {
+          mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+        }
       }
     }
     finish();
-  }
-
-  /**
-   * Merges the vectors for the field specified in {@code mergeFieldInfo}. The default
-   * implementation calls {@link #writeField}, passing a {@link KnnVectorsReader} that combines the
-   * vector values and ignores deleted documents.
-   */
-  public void mergeField(FieldInfo mergeFieldInfo, final MergeState mergeState) throws IOException {
-    if (mergeState.infoStream.isEnabled("VV")) {
-      mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
-    }
-    // Create a new VectorValues by iterating over the sub vectors, mapping the resulting
-    // docids using docMaps in the mergeState.
-    writeField(
-        mergeFieldInfo,
-        new KnnVectorsReader() {
-          @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
-
-          @Override
-          public void close() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void checkIntegrity() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public VectorValues getVectorValues(String field) throws IOException {
-            return MergedVectorValues.mergeVectorValues(mergeFieldInfo, mergeState);
-          }
-
-          @Override
-          public TopDocs search(String field, float[] target, int k, Bits acceptDocs) {
-            throw new UnsupportedOperationException();
-          }
-        });
-
-    if (mergeState.infoStream.isEnabled("VV")) {
-      mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
-    }
   }
 
   /** Tracks state of one sub-reader that we are merging */
