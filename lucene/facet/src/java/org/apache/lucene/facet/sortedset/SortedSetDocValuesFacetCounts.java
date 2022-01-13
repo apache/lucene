@@ -61,7 +61,11 @@ import org.apache.lucene.util.LongValues;
  * <p><b>NOTE</b>: this class should be instantiated and then used from a single thread, because it
  * holds a thread-private instance of {@link SortedSetDocValues}.
  *
- * <p><b>NOTE:</b>: tie-break is by unicode sort order
+ * <p><b>NOTE</b>: tie-break is by unicode sort order
+ *
+ * <p><b>NOTE</b>: if you have multi-valued dims that require dim counts (see {@link FacetsConfig},
+ * make sure to provide your {@code FacetsConfig} instance when instantiating {@link
+ * SortedSetDocValuesReaderState}, or else dim counts can be inaccurate
  *
  * @lucene.experimental
  */
@@ -102,14 +106,17 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
     }
 
-    if (stateConfig.getDimConfig(dim).hierarchical) {
+    FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
+
+    if (dimConfig.hierarchical) {
       int pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
       if (pathOrd < 0) {
         // path was never indexed
         return null;
       }
       DimTree dimTree = state.getDimTree(dim);
-      return getDim(dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
+      int dimOrd = dimTree.dimStartOrd;
+      return getDim(dimConfig, dimOrd, dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
     } else {
       if (path.length > 0) {
         throw new IllegalArgumentException(
@@ -120,12 +127,26 @@ public class SortedSetDocValuesFacetCounts extends Facets {
         // means dimension was never indexed
         return null;
       }
-      return getDim(dim, null, -1, ordRange.iterator(), topN);
+      int dimOrd = ordRange.start;
+      PrimitiveIterator.OfInt childIt = ordRange.iterator();
+      if (dimConfig.multiValued && dimConfig.requireDimCount) {
+        // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
+        // the dimension and we need to skip past it so the iterator is positioned on the first
+        // child:
+        childIt.next();
+      }
+      return getDim(dimConfig, dimOrd, dim, null, -1, childIt, topN);
     }
   }
 
   private FacetResult getDim(
-      String dim, String[] path, int pathOrd, PrimitiveIterator.OfInt childOrds, int topN)
+      FacetsConfig.DimConfig dimConfig,
+      int dimOrd,
+      String dim,
+      String[] path,
+      int pathOrd,
+      PrimitiveIterator.OfInt childOrds,
+      int topN)
       throws IOException {
 
     TopOrdAndIntQueue q = null;
@@ -175,6 +196,16 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
     if (pathOrd == -1) {
       // not hierarchical facet
+
+      // see if dimCount is actually reliable or needs to be reset
+      if (dimConfig.multiValued) {
+        if (dimConfig.requireDimCount) {
+          dimCount = counts[dimOrd];
+        } else {
+          dimCount = -1; // dimCount is in accurate at this point, so set it to -1
+        }
+      }
+
       return new FacetResult(dim, emptyPath, dimCount, labelValues, childCount);
     } else {
       // hierarchical facet
@@ -347,15 +378,26 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
     List<FacetResult> results = new ArrayList<>();
     for (String dim : state.getDims()) {
-      if (stateConfig.getDimConfig(dim).hierarchical) {
+      FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
+      if (dimConfig.hierarchical) {
         DimTree dimTree = state.getDimTree(dim);
-        FacetResult fr = getDim(dim, emptyPath, dimTree.dimStartOrd, dimTree.iterator(), topN);
+        int dimOrd = dimTree.dimStartOrd;
+        FacetResult fr =
+            getDim(dimConfig, dimOrd, dim, emptyPath, dimOrd, dimTree.iterator(), topN);
         if (fr != null) {
           results.add(fr);
         }
       } else {
         OrdRange ordRange = state.getOrdRange(dim);
-        FacetResult fr = getDim(dim, emptyPath, -1, ordRange.iterator(), topN);
+        int dimOrd = ordRange.start;
+        PrimitiveIterator.OfInt childIt = ordRange.iterator();
+        if (dimConfig.multiValued && dimConfig.requireDimCount) {
+          // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
+          // the dimension and we need to skip past it so the iterator is positioned on the first
+          // child:
+          childIt.next();
+        }
+        FacetResult fr = getDim(dimConfig, dimOrd, dim, emptyPath, -1, childIt, topN);
         if (fr != null) {
           results.add(fr);
         }

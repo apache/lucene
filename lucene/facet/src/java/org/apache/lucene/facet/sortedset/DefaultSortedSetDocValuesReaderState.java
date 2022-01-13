@@ -201,7 +201,9 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
     BytesRef nextTerm = dv.lookupOrd(dimEndOrd);
     String[] nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
-    if (nextComponents.length != 2) {
+    // The first entry should always be length 1 or 2 (either just the dim itself if we explicitly
+    // indexed it, or the first child):
+    if (nextComponents.length > 2) {
       throw new IllegalArgumentException(
           "dimension not configured to handle hierarchical field; got: "
               + Arrays.toString(nextComponents)
@@ -224,6 +226,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
         break;
       }
 
+      // Each entry should have a length of exactly 2 since the dim is non-hierarchical:
       if (nextComponents.length != 2) {
         throw new IllegalArgumentException(
             "dimension not configured to handle hierarchical field; got: "

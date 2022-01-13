@@ -63,6 +63,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
   public void testBasic() throws Exception {
     FacetsConfig config = new FacetsConfig();
     config.setMultiValued("a", true);
+    config.setMultiValued("b", true);
+    config.setRequireDimCount("b", true);
     try (Directory dir = newDirectory();
         RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
       Document doc = new Document();
@@ -70,6 +72,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       doc.add(new SortedSetDocValuesFacetField("a", "bar"));
       doc.add(new SortedSetDocValuesFacetField("a", "zoo"));
       doc.add(new SortedSetDocValuesFacetField("b", "baz"));
+      doc.add(new SortedSetDocValuesFacetField("b", "buzz"));
       writer.addDocument(config.build(doc));
       if (random().nextBoolean()) {
         writer.commit();
@@ -77,6 +80,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
       doc = new Document();
       doc.add(new SortedSetDocValuesFacetField("a", "foo"));
+      doc.add(new SortedSetDocValuesFacetField("b", "buzz"));
       writer.addDocument(config.build(doc));
 
       // NRT open
@@ -85,18 +89,19 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // Per-top-reader state:
         SortedSetDocValuesReaderState state =
-            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader());
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
 
         ExecutorService exec = randomExecutorServiceOrNull();
         try {
           Facets facets = getAllFacets(searcher, state, exec);
 
-          // value should ideally be 2 but SSDV facets are bugged here
+          // value for dim a should be -1 since it's multivalued but doesn't require dim counts:
           assertEquals(
-              "dim=a path=[] value=4 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
+              "dim=a path=[] value=-1 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
               facets.getTopChildren(10, "a").toString());
+          // value for dim b should be 2 since it's multivalued but _does_ require dim counts:
           assertEquals(
-              "dim=b path=[] value=1 childCount=1\n  baz (1)\n",
+              "dim=b path=[] value=2 childCount=2\n  buzz (2)\n  baz (1)\n",
               facets.getTopChildren(10, "b").toString());
 
           // DrillDown:
@@ -115,6 +120,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
   public void testBasicHierarchical() throws Exception {
     FacetsConfig config = new FacetsConfig();
     config.setMultiValued("a", true);
+    config.setRequireDimCount("a", true);
     config.setMultiValued("c", true);
     config.setHierarchical("c", true);
     try (Directory dir = newDirectory();
@@ -152,10 +158,10 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         try {
           Facets facets = getAllFacets(searcher, state, exec);
 
-          // since a is not set to be hierarchical, it's value count will be bugged as ancestral
-          // paths are not indexed
+          // since a is not set to be hierarchical but _is_ multi-valued, we expect a value of 2
+          // (since two unique docs contain at least one value for this dim):
           assertEquals(
-              "dim=a path=[] value=4 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
+              "dim=a path=[] value=2 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
               facets.getTopChildren(10, "a").toString());
           assertEquals(
               "dim=b path=[] value=1 childCount=1\n  baz (1)\n",
