@@ -131,6 +131,7 @@ public abstract class KnnVectorsWriter implements Closeable {
     private int docId;
     private VectorValuesSub current;
 
+    /** Returns a merged view over all the segment's {@link VectorValues}. */
     public static MergedVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
