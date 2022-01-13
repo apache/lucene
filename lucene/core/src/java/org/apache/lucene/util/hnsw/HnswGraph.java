@@ -31,23 +31,21 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
- * Navigable Small-world graph. Provides efficient approximate nearest neighbor search for high
- * dimensional vectors. See <a href="https://doi.org/10.1016/j.is.2013.10.006">Approximate nearest
- * neighbor algorithm based on navigable small world graphs [2014]</a> and <a
- * href="https://arxiv.org/abs/1603.09320">this paper [2018]</a> for details.
+ * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
+ * for high dimensional vectors. See <a href="https://arxiv.org/abs/1603.09320">Efficient and robust
+ * approximate nearest neighbor search using Hierarchical Navigable Small World graphs [2018]</a>
+ * paper for details.
  *
- * <p>The nomenclature is a bit different here from what's used in those papers:
+ * <p>The nomenclature is a bit different here from what's used in the paper:
  *
  * <h2>Hyperparameters</h2>
  *
  * <ul>
- *   <li><code>numSeed</code> is the equivalent of <code>m</code> in the 2014 paper; it controls the
- *       number of random entry points to sample.
  *   <li><code>beamWidth</code> in {@link HnswGraphBuilder} has the same meaning as <code>efConst
- *       </code> in the 2018 paper. It is the number of nearest neighbor candidates to track while
+ *       </code> in the paper. It is the number of nearest neighbor candidates to track while
  *       searching the graph for each newly inserted node.
- *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the later paper; it controls
- *       how many of the <code>efConst</code> neighbors are connected to the new node
+ *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the paper; it controls how
+ *       many of the <code>efConst</code> neighbors are connected to the new node
  * </ul>
  *
  * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
@@ -116,17 +114,14 @@ public final class HnswGraph extends KnnGraphValues {
       Bits acceptOrds)
       throws IOException {
 
-    int size = graphValues.size();
-    int queueSize = Math.min(topK, 2 * size);
     NeighborQueue results;
-
     int[] eps = new int[] {graphValues.entryNode()};
     for (int level = graphValues.numLevels() - 1; level >= 1; level--) {
       results = searchLevel(query, 1, level, eps, vectors, similarityFunction, graphValues, null);
       eps[0] = results.pop();
     }
     results =
-        searchLevel(query, queueSize, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
+        searchLevel(query, topK, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
     return results;
   }
 
@@ -156,11 +151,10 @@ public final class HnswGraph extends KnnGraphValues {
       throws IOException {
 
     int size = graphValues.size();
-    int queueSize = Math.max(eps.length, topK);
     // MIN heap, holding the top results
-    NeighborQueue results = new NeighborQueue(queueSize, similarityFunction.reversed);
+    NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
     // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = new NeighborQueue(queueSize, !similarityFunction.reversed);
+    NeighborQueue candidates = new NeighborQueue(topK, !similarityFunction.reversed);
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
     SparseFixedBitSet visited = new SparseFixedBitSet(size);
     for (int ep : eps) {

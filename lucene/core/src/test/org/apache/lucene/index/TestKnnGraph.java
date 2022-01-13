@@ -207,6 +207,13 @@ public class TestKnnGraph extends LuceneTestCase {
     }
   }
 
+  /**
+   * Return a naive representation of an HNSW graph as a 3 dimensional array: 1st dim represents a
+   * graph layer. Each layer contains an array of arrays – a list of nodes and for each node a list
+   * of the node's neighbours. 2nd dim represents a node on a layer, and contains the node's
+   * neighbourhood, or {@code null} if a node is not present on this layer. 3rd dim represents
+   * neighbours of a node.
+   */
   private int[][][] getIndexedGraph(float[][] values, int mergePoint, long seed)
       throws IOException {
     HnswGraphBuilder.randSeed = seed;

@@ -155,7 +155,7 @@ public class TestHnswGraph extends LuceneTestCase {
   public void testAknnDiverse() throws IOException {
     int maxConn = 10;
     int nDoc = 100;
-    TestHnswGraph.CircularVectorValues vectors = new TestHnswGraph.CircularVectorValues(nDoc);
+    CircularVectorValues vectors = new CircularVectorValues(nDoc);
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
             vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
