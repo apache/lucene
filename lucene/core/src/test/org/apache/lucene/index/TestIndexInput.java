@@ -235,22 +235,7 @@ public class TestIndexInput extends LuceneTestCase {
     assertEquals("\u0000", is.readString());
     assertEquals("Lu\u0000ce\u0000ne", is.readString());
 
-    Exception expected =
-        expectThrows(
-            expectedEx,
-            () -> {
-              is.readVInt();
-            });
-    assertTrue(expected.getMessage().startsWith("Invalid vInt"));
-    assertEquals(1, is.readVInt()); // guard value
-
-    expected =
-        expectThrows(
-            expectedEx,
-            () -> {
-              is.readVLong();
-            });
-    assertTrue(expected.getMessage().startsWith("Invalid vLong"));
+    assertEquals(Integer.MAX_VALUE, is.readVInt());
     assertEquals(1L, is.readVLong()); // guard value
   }
 
