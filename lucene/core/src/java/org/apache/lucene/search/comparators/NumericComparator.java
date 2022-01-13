@@ -55,12 +55,12 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   private boolean canSkipDocuments;
 
   protected NumericComparator(
-      String field, T missingValue, boolean reverse, int sortPos, int bytesCount) {
+      String field, T missingValue, boolean reverse, boolean enableSkipping, int bytesCount) {
     this.field = field;
     this.missingValue = missingValue;
     this.reverse = reverse;
     // skipping functionality is only relevant for primary sort
-    this.canSkipDocuments = (sortPos == 0);
+    this.canSkipDocuments = enableSkipping;
     this.bytesCount = bytesCount;
     this.bytesComparator = ArrayUtil.getUnsignedComparator(bytesCount);
   }

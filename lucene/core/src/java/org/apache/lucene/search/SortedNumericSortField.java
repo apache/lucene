@@ -242,12 +242,12 @@ public class SortedNumericSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, int sortPos) {
+  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
     final FieldComparator<?> fieldComparator;
     switch (type) {
       case INT:
         fieldComparator =
-            new IntComparator(numHits, getField(), (Integer) missingValue, reverse, sortPos) {
+            new IntComparator(numHits, getField(), (Integer) missingValue, reverse, enableSkipping) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {
@@ -276,7 +276,7 @@ public class SortedNumericSortField extends SortField {
         break;
       case FLOAT:
         fieldComparator =
-            new FloatComparator(numHits, getField(), (Float) missingValue, reverse, sortPos) {
+            new FloatComparator(numHits, getField(), (Float) missingValue, reverse, enableSkipping) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {
@@ -305,7 +305,7 @@ public class SortedNumericSortField extends SortField {
         break;
       case LONG:
         fieldComparator =
-            new LongComparator(numHits, getField(), (Long) missingValue, reverse, sortPos) {
+            new LongComparator(numHits, getField(), (Long) missingValue, reverse, enableSkipping) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {
@@ -334,7 +334,7 @@ public class SortedNumericSortField extends SortField {
         break;
       case DOUBLE:
         fieldComparator =
-            new DoubleComparator(numHits, getField(), (Double) missingValue, reverse, sortPos) {
+            new DoubleComparator(numHits, getField(), (Double) missingValue, reverse, enableSkipping) {
               @Override
               public LeafFieldComparator getLeafComparator(LeafReaderContext context)
                   throws IOException {

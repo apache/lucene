@@ -240,7 +240,7 @@ public class BlockGroupingCollector extends SimpleCollector {
     reversed = new int[sortFields.length];
     for (int i = 0; i < sortFields.length; i++) {
       final SortField sortField = sortFields[i];
-      comparators[i] = sortField.getComparator(topNGroups, i);
+      comparators[i] = sortField.getComparator(topNGroups, false);
       reversed[i] = sortField.getReverse() ? -1 : 1;
     }
   }

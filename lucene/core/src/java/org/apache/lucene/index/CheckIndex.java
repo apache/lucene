@@ -1107,7 +1107,7 @@ public final class CheckIndex implements Closeable {
 
       for (int i = 0; i < fields.length; i++) {
         reverseMul[i] = fields[i].getReverse() ? -1 : 1;
-        comparators[i] = fields[i].getComparator(1, i).getLeafComparator(readerContext);
+        comparators[i] = fields[i].getComparator(1, false).getLeafComparator(readerContext);
       }
 
       int maxDoc = reader.maxDoc();

@@ -112,18 +112,18 @@ public class ToParentBlockJoinSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, int sortPos) {
+  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
     switch (getType()) {
       case STRING:
         return getStringComparator(numHits);
       case DOUBLE:
-        return getDoubleComparator(numHits, sortPos);
+        return getDoubleComparator(numHits, enableSkipping);
       case FLOAT:
-        return getFloatComparator(numHits, sortPos);
+        return getFloatComparator(numHits, enableSkipping);
       case LONG:
-        return getLongComparator(numHits, sortPos);
+        return getLongComparator(numHits, enableSkipping);
       case INT:
-        return getIntComparator(numHits, sortPos);
+        return getIntComparator(numHits, enableSkipping);
       case CUSTOM:
       case DOC:
       case REWRITEABLE:
@@ -154,8 +154,8 @@ public class ToParentBlockJoinSortField extends SortField {
     };
   }
 
-  private FieldComparator<?> getIntComparator(int numHits, int sortPos) {
-    return new IntComparator(numHits, getField(), (Integer) missingValue, getReverse(), sortPos) {
+  private FieldComparator<?> getIntComparator(int numHits, boolean enableSkipping) {
+    return new IntComparator(numHits, getField(), (Integer) missingValue, getReverse(), enableSkipping) {
       @Override
       public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
         return new IntLeafComparator(context) {
@@ -183,8 +183,8 @@ public class ToParentBlockJoinSortField extends SortField {
     };
   }
 
-  private FieldComparator<?> getLongComparator(int numHits, int sortPos) {
-    return new LongComparator(numHits, getField(), (Long) missingValue, getReverse(), sortPos) {
+  private FieldComparator<?> getLongComparator(int numHits, boolean enableSkipping) {
+    return new LongComparator(numHits, getField(), (Long) missingValue, getReverse(), enableSkipping) {
       @Override
       public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
         return new LongLeafComparator(context) {
@@ -212,8 +212,8 @@ public class ToParentBlockJoinSortField extends SortField {
     };
   }
 
-  private FieldComparator<?> getFloatComparator(int numHits, int sortPos) {
-    return new FloatComparator(numHits, getField(), (Float) missingValue, getReverse(), sortPos) {
+  private FieldComparator<?> getFloatComparator(int numHits, boolean enableSkipping) {
+    return new FloatComparator(numHits, getField(), (Float) missingValue, getReverse(), enableSkipping) {
       @Override
       public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
         return new FloatLeafComparator(context) {
@@ -249,9 +249,9 @@ public class ToParentBlockJoinSortField extends SortField {
     };
   }
 
-  private FieldComparator<?> getDoubleComparator(int numHits, int sortPost) {
+  private FieldComparator<?> getDoubleComparator(int numHits, boolean enableSkipping) {
     return new DoubleComparator(
-        numHits, getField(), (Double) missingValue, getReverse(), sortPost) {
+        numHits, getField(), (Double) missingValue, getReverse(), enableSkipping) {
       @Override
       public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
         return new DoubleLeafComparator(context) {
