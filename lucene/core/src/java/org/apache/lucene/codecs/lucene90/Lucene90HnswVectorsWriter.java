@@ -118,11 +118,9 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
     int[] docIds = writeVectorData(vectorData, vectors);
+    assert vectors.size() == docIds.length;
 
-    // count may be < vectors.size() e,g, if some documents were deleted
-    int count = docIds.length;
-    long[] offsets = new long[count];
-
+    long[] offsets = new long[docIds.length];
     long vectorIndexOffset = vectorIndex.getFilePointer();
     if (vectors instanceof RandomAccessVectorValuesProducer) {
       writeGraph(
@@ -131,7 +129,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
           fieldInfo.getVectorSimilarityFunction(),
           vectorIndexOffset,
           offsets,
-          count,
           maxConn,
           beamWidth);
     } else {
@@ -147,7 +144,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
         vectorDataLength,
         vectorIndexOffset,
         vectorIndexLength,
-        count,
         docIds);
     writeGraphOffsets(meta, offsets);
   }
@@ -181,9 +177,8 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       Lucene90HnswVectorsReader.OffHeapVectorValues offHeapVectors =
           new Lucene90HnswVectorsReader.OffHeapVectorValues(
               vectors.dimension(), docIds, vectorDataInput);
-      // count may be < vectors.size() e,g, if some documents were deleted
-      int count = docIds.length;
-      long[] offsets = new long[count];
+
+      long[] offsets = new long[docIds.length];
       long vectorIndexOffset = vectorIndex.getFilePointer();
       writeGraph(
           vectorIndex,
@@ -191,7 +186,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
           fieldInfo.getVectorSimilarityFunction(),
           vectorIndexOffset,
           offsets,
-          count,
           maxConn,
           beamWidth);
 
@@ -203,7 +197,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
           vectorDataLength,
           vectorIndexOffset,
           vectorIndexLength,
-          count,
           docIds);
       writeGraphOffsets(meta, offsets);
       success = true;
@@ -224,6 +217,11 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
+  /**
+   * Writes the vector values to the output and returns a mapping from dense ordinals to document
+   * IDs. The length of the returned array matches the total number of documents with a vector
+   * (which excludes deleted documents), so it may be less than {@link VectorValues#size()}.
+   */
   private static int[] writeVectorData(IndexOutput output, VectorValues vectors)
       throws IOException {
     int[] docIds = new int[vectors.size()];
@@ -248,7 +246,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       long vectorDataLength,
       long indexDataOffset,
       long indexDataLength,
-      int size,
       int[] docIds)
       throws IOException {
     meta.writeInt(field.number);
@@ -258,10 +255,10 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(indexDataOffset);
     meta.writeVLong(indexDataLength);
     meta.writeInt(field.getVectorDimension());
-    meta.writeInt(size);
-    for (int i = 0; i < size; i++) {
+    meta.writeInt(docIds.length);
+    for (int docId : docIds) {
       // TODO: delta-encode, or write as bitset
-      meta.writeVInt(docIds[i]);
+      meta.writeVInt(docId);
     }
   }
 
@@ -279,7 +276,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,
-      int count,
       int maxConn,
       int beamWidth)
       throws IOException {
@@ -289,7 +285,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
-    for (int ord = 0; ord < count; ord++) {
+    for (int ord = 0; ord < offsets.length; ord++) {
       // write graph
       offsets[ord] = graphData.getFilePointer() - graphDataOffset;
 
