@@ -70,7 +70,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     countAll(reader);
   }
 
-  private void count(List<MatchingDocs> matchingDocs) throws IOException {
+  private final void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
       SortedNumericDocValues multiValued =
           FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
