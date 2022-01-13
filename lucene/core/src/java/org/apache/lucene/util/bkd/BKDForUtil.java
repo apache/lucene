@@ -1,4 +1,3 @@
-// This file has been automatically generated, DO NOT EDIT
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -21,11 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
-// Inspired from https://fulmicoton.com/posts/bitpacking/
-// Encodes multiple integers in a long to get SIMD-like speedups.
-// If bitsPerValue <= 8 then we pack 8 ints per long
-// else if bitsPerValue <= 16 we pack 4 ints per long
-// else we pack 2 ints per long
 final class BKDForUtil {
 
   static final int BLOCK_SIZE = 512;
@@ -80,9 +74,5 @@ final class BKDForUtil {
       ints[i + 384] =
           ((tmp[i] & 0xFF) << 16) | ((tmp[i + 128] & 0xFF) << 8) | (tmp[i + 256] & 0xFF);
     }
-  }
-
-  void decode32(DataInput in, int[] ints) throws IOException {
-    in.readInts(ints, 0, 512);
   }
 }

@@ -28,12 +28,12 @@ final class DocIdsWriter {
 
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
-  private static final byte DELTA_VINT = (byte) 0;
   private static final byte DELTA_FOR_UTIL = (byte) 32 + 16;
-  private static final byte BPV_24 = (byte) 24;
-  private static final byte BPV_24_FOR_UTIL = (byte) 32 + 24;
+  private static final byte BPV_24 = (byte) 32 + 24;
   private static final byte BPV_32 = (byte) 32;
-  private static final byte BPV_32_FOR_UTIL = (byte) 32 + 32;
+  // These signs are legacy, should no longer be used in the writing side.
+  private static final byte LEGACY_DELTA_VINT = (byte) 0;
+  private static final byte LEGACY_BPV_24 = (byte) 24;
 
   private final BKDForUtil forUtil = new BKDForUtil();
   private final int[] scratch;
@@ -91,18 +91,25 @@ final class DocIdsWriter {
         forUtil.encode16(delta, out);
       } else {
         if (Integer.toUnsignedLong(max) <= 0xFFFFFFL) {
-          out.writeByte(BPV_24_FOR_UTIL);
+          out.writeByte(BPV_24);
           forUtil.encode24(start, docIds, out);
         } else {
-          out.writeByte(BPV_32_FOR_UTIL);
+          out.writeByte(BPV_32);
           forUtil.encode32(start, docIds, out);
         }
       }
       return;
     }
 
+    legacyWrite(sorted, docIds, start, count, out, max);
+  }
+
+  @Deprecated
+  private void legacyWrite(
+      boolean sorted, int[] docIds, int start, int count, DataOutput out, int max)
+      throws IOException {
     if (sorted) {
-      out.writeByte(DELTA_VINT);
+      out.writeByte(LEGACY_DELTA_VINT);
       int previous = 0;
       for (int i = 0; i < count; ++i) {
         int doc = docIds[start + i];
@@ -111,7 +118,7 @@ final class DocIdsWriter {
       }
     } else {
       if (Integer.toUnsignedLong(max) <= 0xffffff) {
-        out.writeByte(BPV_24);
+        out.writeByte(LEGACY_BPV_24);
         // write them the same way we are reading them.
         int i;
         for (i = 0; i < count - 7; i += 8) {
@@ -191,42 +198,38 @@ final class DocIdsWriter {
         readBitSet(in, count, docIDs);
         break;
       case DELTA_FOR_UTIL:
-        readBKDForUtilDelta(in, count, docIDs);
+        readDelta16(in, count, docIDs);
         break;
-      case BPV_32_FOR_UTIL:
-        readBKDForUtil32(in, count, docIDs);
-        break;
-      case BPV_24_FOR_UTIL:
-        readBKDForUtil24(in, count, docIDs);
-        break;
-      case DELTA_VINT:
-        readDeltaVInts(in, count, docIDs);
+      case BPV_24:
+        readInts24(in, count, docIDs);
         break;
       case BPV_32:
         readInts32(in, count, docIDs);
         break;
-      case BPV_24:
-        readInts24(in, count, docIDs);
+      case LEGACY_DELTA_VINT:
+        readLegacyDeltaVInts(in, count, docIDs);
+        break;
+      case LEGACY_BPV_24:
+        readLegacyInts24(in, count, docIDs);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
   }
 
-  private void readBKDForUtilDelta(IndexInput in, int count, int[] docIDs) throws IOException {
+  private void readDelta16(IndexInput in, int count, int[] docIDs) throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
     final int min = in.readVInt();
     forUtil.decode16(in, docIDs, min);
   }
 
-  private void readBKDForUtil24(IndexInput in, int count, int[] docIDs) throws IOException {
+  private void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
     forUtil.decode24(in, docIDs);
   }
 
-  private void readBKDForUtil32(IndexInput in, int count, int[] docIDs) throws IOException {
-    assert count == BKDForUtil.BLOCK_SIZE;
-    forUtil.decode32(in, docIDs);
+  private void readInts32(IndexInput in, int count, int[] docIDs) throws IOException {
+    in.readInts(docIDs, 0, count);
   }
 
   private static DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
@@ -254,7 +257,8 @@ final class DocIdsWriter {
     assert pos == count : "pos: " + pos + "count: " + count;
   }
 
-  private static void readDeltaVInts(IndexInput in, int count, int[] docIDs) throws IOException {
+  private static void readLegacyDeltaVInts(IndexInput in, int count, int[] docIDs)
+      throws IOException {
     int doc = 0;
     for (int i = 0; i < count; i++) {
       doc += in.readVInt();
@@ -262,13 +266,7 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readInts32(IndexInput in, int count, int[] docIDs) throws IOException {
-    for (int i = 0; i < count; i++) {
-      docIDs[i] = in.readInt();
-    }
-  }
-
-  private static void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
+  private static void readLegacyInts24(IndexInput in, int count, int[] docIDs) throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
       long l1 = in.readLong();
@@ -302,29 +300,26 @@ final class DocIdsWriter {
         readBitSet(in, count, visitor);
         break;
       case DELTA_FOR_UTIL:
-        readBKDForUtilDelta(in, count, visitor);
+        readDelta16(in, count, visitor);
         break;
-      case BPV_32_FOR_UTIL:
-        readBKDForUtil32(in, count, visitor);
-        break;
-      case BPV_24_FOR_UTIL:
-        readBKDForUtil24(in, count, visitor);
-        break;
-      case DELTA_VINT:
-        readDeltaVInts(in, count, visitor);
+      case BPV_24:
+        readInts24(in, count, visitor);
         break;
       case BPV_32:
         readInts32(in, count, visitor);
         break;
-      case BPV_24:
-        readInts24(in, count, visitor);
+      case LEGACY_DELTA_VINT:
+        readLegacyDeltaVInts(in, count, visitor);
+        break;
+      case LEGACY_BPV_24:
+        readLegacyInts24(in, count, visitor);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
   }
 
-  private static void readDeltaVInts(IndexInput in, int count, IntersectVisitor visitor)
+  private static void readLegacyDeltaVInts(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
     int doc = 0;
     for (int i = 0; i < count; i++) {
@@ -333,14 +328,7 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readInts32(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
-    for (int i = 0; i < count; i++) {
-      visitor.visit(in.readInt());
-    }
-  }
-
-  private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
+  private static void readLegacyInts24(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
@@ -378,8 +366,7 @@ final class DocIdsWriter {
     visitor.visit(new DocBaseBitSetIterator(bitSet, count, offset));
   }
 
-  private void readBKDForUtilDelta(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
+  private void readDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
     final int min = in.readVInt();
     forUtil.decode16(in, scratch, min);
@@ -388,8 +375,7 @@ final class DocIdsWriter {
     }
   }
 
-  private void readBKDForUtil24(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
+  private void readInts24(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     assert count == BKDForUtil.BLOCK_SIZE;
     forUtil.decode24(in, scratch);
     for (int i = 0; i < count; i++) {
@@ -397,10 +383,8 @@ final class DocIdsWriter {
     }
   }
 
-  private void readBKDForUtil32(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
-    assert count == BKDForUtil.BLOCK_SIZE;
-    forUtil.decode32(in, scratch);
+  private void readInts32(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+    in.readInts(scratch, 0, count);
     for (int i = 0; i < count; i++) {
       visitor.visit(scratch[i]);
     }
