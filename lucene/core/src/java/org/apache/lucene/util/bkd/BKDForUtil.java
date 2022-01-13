@@ -24,55 +24,79 @@ final class BKDForUtil {
 
   static final int BLOCK_SIZE = 512;
 
-  private final int[] tmp = new int[384];
+  private final int[] tmp;
 
-  void encode16(int[] ints, DataOutput out) throws IOException {
-    for (int i = 0; i < 256; ++i) {
-      ints[i] = ints[256 + i] | (ints[i] << 16);
+  BKDForUtil(int maxPointsInLeaf) {
+    tmp = new int[maxPointsInLeaf * 3 / 4];
+  }
+
+  void encode16(int len, int[] ints, DataOutput out) throws IOException {
+    final int halfLen = len >>> 1;
+    for (int i = 0; i < halfLen; ++i) {
+      ints[i] = ints[halfLen + i] | (ints[i] << 16);
     }
-    for (int i = 0; i < 256; i++) {
+    for (int i = 0; i < halfLen; i++) {
       out.writeInt(ints[i]);
+    }
+    if ((len & 1) == 1) {
+      out.writeShort((short) ints[len - 1]);
     }
   }
 
-  void encode32(int off, int[] ints, DataOutput out) throws IOException {
-    for (int i = 0; i < 512; i++) {
+  void encode32(int off, int len, int[] ints, DataOutput out) throws IOException {
+    for (int i = 0; i < len; i++) {
       out.writeInt(ints[off + i]);
     }
   }
 
-  void encode24(int off, int[] ints, DataOutput out) throws IOException {
-    for (int i = 0; i < 384; ++i) {
+  void encode24(int off, int len, int[] ints, DataOutput out) throws IOException {
+    final int quarterLen = len >>> 2;
+    final int quarterLen3 = quarterLen * 3;
+    for (int i = 0; i < quarterLen3; ++i) {
       tmp[i] = ints[off + i] << 8;
     }
-    for (int i = 0; i < 128; i++) {
-      final int longIdx = off + i + 384;
+    for (int i = 0; i < quarterLen; i++) {
+      final int longIdx = off + i + quarterLen3;
       tmp[i] |= (ints[longIdx] >>> 16) & 0xFF;
-      tmp[i + 128] |= (ints[longIdx] >>> 8) & 0xFF;
-      tmp[i + 256] |= ints[longIdx] & 0xFF;
+      tmp[i + quarterLen] |= (ints[longIdx] >>> 8) & 0xFF;
+      tmp[i + quarterLen * 2] |= ints[longIdx] & 0xFF;
     }
-    for (int i = 0; i < 384; ++i) {
+    for (int i = 0; i < quarterLen3; ++i) {
       out.writeInt(tmp[i]);
     }
+
+    final int remainder = len & 0x3;
+    for (int i = 0; i < remainder; i++) {
+      out.writeInt(ints[quarterLen * 4 + i]);
+    }
   }
 
-  void decode16(DataInput in, int[] ints, final int base) throws IOException {
-    in.readInts(ints, 0, 256);
-    for (int i = 0; i < 256; ++i) {
+  void decode16(DataInput in, int[] ints, int len, final int base) throws IOException {
+    final int halfLen = len >>> 1;
+    in.readInts(ints, 0, halfLen);
+    for (int i = 0; i < halfLen; ++i) {
       int l = ints[i];
       ints[i] = (l >>> 16) + base;
-      ints[256 + i] = (l & 0xFFFF) + base;
+      ints[halfLen + i] = (l & 0xFFFF) + base;
+    }
+    if ((len & 1) == 1) {
+      ints[len - 1] = Short.toUnsignedInt(in.readShort()) + base;
     }
   }
 
-  void decode24(DataInput in, int[] ints) throws IOException {
-    in.readInts(tmp, 0, 384);
-    for (int i = 0; i < 384; ++i) {
+  void decode24(DataInput in, int[] ints, int len) throws IOException {
+    final int quarterLen = len >>> 2;
+    final int quarterLen3 = quarterLen * 3;
+    in.readInts(tmp, 0, quarterLen3);
+    for (int i = 0; i < quarterLen3; ++i) {
       ints[i] = tmp[i] >>> 8;
     }
-    for (int i = 0; i < 128; i++) {
-      ints[i + 384] =
-          ((tmp[i] & 0xFF) << 16) | ((tmp[i + 128] & 0xFF) << 8) | (tmp[i + 256] & 0xFF);
+    for (int i = 0; i < quarterLen; i++) {
+      ints[i + quarterLen3] =
+          ((tmp[i] & 0xFF) << 16)
+              | ((tmp[i + quarterLen] & 0xFF) << 8)
+              | (tmp[i + quarterLen * 2] & 0xFF);
     }
+    in.readInts(ints, quarterLen << 2, len & 0x3);
   }
 }

@@ -35,26 +35,24 @@ final class DocIdsWriter {
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
   private static final byte LEGACY_BPV_24 = (byte) 24;
 
-  private final BKDForUtil forUtil = new BKDForUtil();
+  private final BKDForUtil forUtil;
   private final int[] scratch;
 
   DocIdsWriter(int maxPointsInLeaf) {
     scratch = new int[maxPointsInLeaf];
+    forUtil = new BKDForUtil(maxPointsInLeaf);
   }
 
   void writeDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
     // docs can be sorted either when all docs in a block have the same value
     // or when a segment is sorted
-    boolean sorted = true;
     boolean strictlySorted = true;
     int min = docIds[0];
     int max = docIds[0];
     for (int i = 1; i < count; ++i) {
       int last = docIds[start + i - 1];
       int current = docIds[start + i];
-      if (last > current) {
-        sorted = strictlySorted = false;
-      } else if (last == current) {
+      if (last >= current) {
         strictlySorted = false;
       }
       min = Math.min(min, current);
@@ -79,77 +77,21 @@ final class DocIdsWriter {
       }
     }
 
-    // special optimization when count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE (common case)
-    if (count == BKDForUtil.BLOCK_SIZE) {
-      if (Integer.toUnsignedLong(min2max) <= 0xFFFFL) {
-        out.writeByte(DELTA_FOR_UTIL);
-        int[] delta = new int[count];
-        for (int i = 0; i < count; i++) {
-          delta[i] = docIds[start + i] - min;
-        }
-        out.writeVInt(min);
-        forUtil.encode16(delta, out);
-      } else {
-        if (Integer.toUnsignedLong(max) <= 0xFFFFFFL) {
-          out.writeByte(BPV_24);
-          forUtil.encode24(start, docIds, out);
-        } else {
-          out.writeByte(BPV_32);
-          forUtil.encode32(start, docIds, out);
-        }
+    if (Integer.toUnsignedLong(min2max) <= 0xFFFFL) {
+      out.writeByte(DELTA_FOR_UTIL);
+      int[] delta = new int[count];
+      for (int i = 0; i < count; i++) {
+        delta[i] = docIds[start + i] - min;
       }
-      return;
-    }
-
-    legacyWrite(sorted, docIds, start, count, out, max);
-  }
-
-  @Deprecated
-  private void legacyWrite(
-      boolean sorted, int[] docIds, int start, int count, DataOutput out, int max)
-      throws IOException {
-    if (sorted) {
-      out.writeByte(LEGACY_DELTA_VINT);
-      int previous = 0;
-      for (int i = 0; i < count; ++i) {
-        int doc = docIds[start + i];
-        out.writeVInt(doc - previous);
-        previous = doc;
-      }
+      out.writeVInt(min);
+      forUtil.encode16(count, delta, out);
     } else {
-      if (Integer.toUnsignedLong(max) <= 0xffffff) {
-        out.writeByte(LEGACY_BPV_24);
-        // write them the same way we are reading them.
-        int i;
-        for (i = 0; i < count - 7; i += 8) {
-          int doc1 = docIds[start + i];
-          int doc2 = docIds[start + i + 1];
-          int doc3 = docIds[start + i + 2];
-          int doc4 = docIds[start + i + 3];
-          int doc5 = docIds[start + i + 4];
-          int doc6 = docIds[start + i + 5];
-          int doc7 = docIds[start + i + 6];
-          int doc8 = docIds[start + i + 7];
-          long l1 = (doc1 & 0xffffffL) << 40 | (doc2 & 0xffffffL) << 16 | ((doc3 >>> 8) & 0xffffL);
-          long l2 =
-              (doc3 & 0xffL) << 56
-                  | (doc4 & 0xffffffL) << 32
-                  | (doc5 & 0xffffffL) << 8
-                  | ((doc6 >> 16) & 0xffL);
-          long l3 = (doc6 & 0xffffL) << 48 | (doc7 & 0xffffffL) << 24 | (doc8 & 0xffffffL);
-          out.writeLong(l1);
-          out.writeLong(l2);
-          out.writeLong(l3);
-        }
-        for (; i < count; ++i) {
-          out.writeShort((short) (docIds[start + i] >>> 8));
-          out.writeByte((byte) docIds[start + i]);
-        }
+      if (Integer.toUnsignedLong(max) <= 0xFFFFFFL) {
+        out.writeByte(BPV_24);
+        forUtil.encode24(start, count, docIds, out);
       } else {
         out.writeByte(BPV_32);
-        for (int i = 0; i < count; ++i) {
-          out.writeInt(docIds[start + i]);
-        }
+        forUtil.encode32(start, count, docIds, out);
       }
     }
   }
@@ -218,14 +160,12 @@ final class DocIdsWriter {
   }
 
   private void readDelta16(IndexInput in, int count, int[] docIDs) throws IOException {
-    assert count == BKDForUtil.BLOCK_SIZE;
     final int min = in.readVInt();
-    forUtil.decode16(in, docIDs, min);
+    forUtil.decode16(in, docIDs, count, min);
   }
 
   private void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
-    assert count == BKDForUtil.BLOCK_SIZE;
-    forUtil.decode24(in, docIDs);
+    forUtil.decode24(in, docIDs, count);
   }
 
   private void readInts32(IndexInput in, int count, int[] docIDs) throws IOException {
@@ -367,17 +307,15 @@ final class DocIdsWriter {
   }
 
   private void readDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
-    assert count == BKDForUtil.BLOCK_SIZE;
     final int min = in.readVInt();
-    forUtil.decode16(in, scratch, min);
+    forUtil.decode16(in, scratch, count, min);
     for (int i = 0; i < count; i++) {
       visitor.visit(scratch[i]);
     }
   }
 
   private void readInts24(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
-    assert count == BKDForUtil.BLOCK_SIZE;
-    forUtil.decode24(in, scratch);
+    forUtil.decode24(in, scratch, count);
     for (int i = 0; i < count; i++) {
       visitor.visit(scratch[i]);
     }
