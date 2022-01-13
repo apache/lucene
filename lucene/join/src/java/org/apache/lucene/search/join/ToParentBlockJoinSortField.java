@@ -23,7 +23,6 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FilterNumericDocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -173,11 +172,6 @@ public class ToParentBlockJoinSortField extends SortField {
             }
             return BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children));
           }
-          // no sort optimization with points
-          @Override
-          protected PointValues getPointValues(LeafReaderContext context, String field) {
-            return null;
-          }
         };
       }
     };
@@ -201,11 +195,6 @@ public class ToParentBlockJoinSortField extends SortField {
               return DocValues.emptyNumeric();
             }
             return BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children));
-          }
-          // no sort optimization with points
-          @Override
-          protected PointValues getPointValues(LeafReaderContext context, String field) {
-            return null;
           }
         };
       }
@@ -238,11 +227,6 @@ public class ToParentBlockJoinSortField extends SortField {
               }
             };
           }
-          // no sort optimization with points
-          @Override
-          protected PointValues getPointValues(LeafReaderContext context, String field) {
-            return null;
-          }
         };
       }
       ;
@@ -274,11 +258,6 @@ public class ToParentBlockJoinSortField extends SortField {
                 return NumericUtils.sortableDoubleBits(super.longValue());
               }
             };
-          }
-          // no sort optimization with points
-          @Override
-          protected PointValues getPointValues(LeafReaderContext context, String field) {
-            return null;
           }
         };
       }
