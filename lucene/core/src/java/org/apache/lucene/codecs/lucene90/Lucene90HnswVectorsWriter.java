@@ -160,51 +160,65 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
 
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
 
-    // write the merged vector data to a temporary file
     VectorValues vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
-    int[] docIds = writeVectorData(tempVectorData, vectors);
-    tempVectorData.close();
+    IndexInput vectorDataInput = null;
+    boolean success = false;
+    try {
+      // write the merged vector data to a temporary file
+      int[] docIds = writeVectorData(tempVectorData, vectors);
+      IOUtils.close(tempVectorData);
 
-    // copy the temporary file vectors to the actual data file
-    IndexInput vectorDataInput =
-        segmentWriteState.directory.openInput(tempVectorData.getName(), segmentWriteState.context);
-    vectorData.copyBytes(vectorDataInput, vectorDataInput.length());
+      // copy the temporary file vectors to the actual data file
+      vectorDataInput =
+          segmentWriteState.directory.openInput(
+              tempVectorData.getName(), segmentWriteState.context);
+      vectorData.copyBytes(vectorDataInput, vectorDataInput.length());
 
-    // build the graph using the temporary vector data
-    Lucene90HnswVectorsReader.OffHeapVectorValues offHeapVectors =
-        new Lucene90HnswVectorsReader.OffHeapVectorValues(
-            vectors.dimension(), docIds, vectorDataInput);
-    // count may be < vectors.size() e,g, if some documents were deleted
-    int count = docIds.length;
-    long[] offsets = new long[count];
-    long vectorIndexOffset = vectorIndex.getFilePointer();
-    writeGraph(
-        vectorIndex,
-        offHeapVectors,
-        fieldInfo.getVectorSimilarityFunction(),
-        vectorIndexOffset,
-        offsets,
-        count,
-        maxConn,
-        beamWidth);
+      // build the graph using the temporary vector data
+      Lucene90HnswVectorsReader.OffHeapVectorValues offHeapVectors =
+          new Lucene90HnswVectorsReader.OffHeapVectorValues(
+              vectors.dimension(), docIds, vectorDataInput);
+      // count may be < vectors.size() e,g, if some documents were deleted
+      int count = docIds.length;
+      long[] offsets = new long[count];
+      long vectorIndexOffset = vectorIndex.getFilePointer();
+      writeGraph(
+          vectorIndex,
+          offHeapVectors,
+          fieldInfo.getVectorSimilarityFunction(),
+          vectorIndexOffset,
+          offsets,
+          count,
+          maxConn,
+          beamWidth);
 
-    vectorDataInput.close();
-    segmentWriteState.directory.deleteFile(tempVectorData.getName());
+      long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+      long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+      writeMeta(
+          fieldInfo,
+          vectorDataOffset,
+          vectorDataLength,
+          vectorIndexOffset,
+          vectorIndexLength,
+          count,
+          docIds);
+      writeGraphOffsets(meta, offsets);
+      success = true;
+    } finally {
+      IOUtils.close(vectorDataInput);
+      if (success) {
+        segmentWriteState.directory.deleteFile(tempVectorData.getName());
+        IOUtils.closeWhileHandlingException(tempVectorData);
+      } else {
+        IOUtils.closeWhileHandlingException(tempVectorData);
+        IOUtils.deleteFilesIgnoringExceptions(
+            segmentWriteState.directory, tempVectorData.getName());
+      }
+    }
 
-    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-    writeMeta(
-        fieldInfo,
-        vectorDataOffset,
-        vectorDataLength,
-        vectorIndexOffset,
-        vectorIndexLength,
-        count,
-        docIds);
-    writeGraphOffsets(meta, offsets);
     if (mergeState.infoStream.isEnabled("VV")) {
       mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
     }
