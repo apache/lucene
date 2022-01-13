@@ -227,7 +227,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       IOUtils.close(vectorDataInput);
       if (success) {
         segmentWriteState.directory.deleteFile(tempVectorData.getName());
-        IOUtils.closeWhileHandlingException(tempVectorData);
       } else {
         IOUtils.closeWhileHandlingException(tempVectorData);
         IOUtils.deleteFilesIgnoringExceptions(
