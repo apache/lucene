@@ -163,7 +163,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     long vectorDataOffset = vectorData.getFilePointer();
 
     // write the merged vector data to a temporary file
-    VectorValues vectors = VectorValuesMerger.mergeVectorValues(fieldInfo, mergeState);
+    VectorValues vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);

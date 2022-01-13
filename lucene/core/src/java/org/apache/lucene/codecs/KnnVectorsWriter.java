@@ -17,19 +17,13 @@
 
 package org.apache.lucene.codecs;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
@@ -96,7 +90,7 @@ public abstract class KnnVectorsWriter implements Closeable {
 
           @Override
           public VectorValues getVectorValues(String field) throws IOException {
-            return VectorValuesMerger.mergeVectorValues(mergeFieldInfo, mergeState);
+            return MergedVectorValues.mergeVectorValues(mergeFieldInfo, mergeState);
           }
 
           @Override
@@ -114,92 +108,47 @@ public abstract class KnnVectorsWriter implements Closeable {
   private static class VectorValuesSub extends DocIDMerger.Sub {
 
     final VectorValues values;
-    final int segmentIndex;
-    int count;
 
-    VectorValuesSub(int segmentIndex, MergeState.DocMap docMap, VectorValues values) {
+    VectorValuesSub(MergeState.DocMap docMap, VectorValues values) {
       super(docMap);
       this.values = values;
-      this.segmentIndex = segmentIndex;
       assert values.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      int docId = values.nextDoc();
-      if (docId != NO_MORE_DOCS) {
-        // Note: this does count deleted docs since they are present in the to-be-merged segment
-        ++count;
-      }
-      return docId;
+      return values.nextDoc();
     }
   }
 
-  /**
-   * View over multiple VectorValues supporting iterator-style access via DocIdMerger. Maintains a
-   * reverse ordinal mapping for documents having values in order to support random access by dense
-   * ordinal.
-   */
-  public static class VectorValuesMerger extends VectorValues
-      implements RandomAccessVectorValuesProducer {
+  /** View over multiple VectorValues supporting iterator-style access via DocIdMerger. */
+  public static class MergedVectorValues extends VectorValues {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
-    private final int[] ordBase;
     private final int cost;
-    private int size;
+    private final int size;
 
     private int docId;
     private VectorValuesSub current;
-    /* For each doc with a vector, record its ord in the segments being merged. This enables random
-     * access into the unmerged segments using the ords from the merged segment.
-     */
-    private int[] ordMap;
-    private int ord;
 
-    public static VectorValuesMerger mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+    public static MergedVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
+      assert fieldInfo != null && fieldInfo.hasVectorValues();
+
       List<VectorValuesSub> subs = new ArrayList<>();
-      int dimension = -1;
-      VectorSimilarityFunction similarityFunction = null;
-      int nonEmptySegmentIndex = 0;
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
         if (knnVectorsReader != null) {
-          if (fieldInfo != null && fieldInfo.hasVectorValues()) {
-            int segmentDimension = fieldInfo.getVectorDimension();
-            VectorSimilarityFunction segmentSimilarityFunction =
-                fieldInfo.getVectorSimilarityFunction();
-            if (dimension == -1) {
-              dimension = segmentDimension;
-              similarityFunction = fieldInfo.getVectorSimilarityFunction();
-            } else if (dimension != segmentDimension) {
-              throw new IllegalStateException(
-                  "Varying dimensions for vector-valued field "
-                      + fieldInfo.name
-                      + ": "
-                      + dimension
-                      + "!="
-                      + segmentDimension);
-            } else if (similarityFunction != segmentSimilarityFunction) {
-              throw new IllegalStateException(
-                  "Varying similarity functions for vector-valued field "
-                      + fieldInfo.name
-                      + ": "
-                      + similarityFunction
-                      + "!="
-                      + segmentSimilarityFunction);
-            }
-            VectorValues values = knnVectorsReader.getVectorValues(fieldInfo.name);
-            if (values != null) {
-              subs.add(new VectorValuesSub(nonEmptySegmentIndex++, mergeState.docMaps[i], values));
-            }
+          VectorValues values = knnVectorsReader.getVectorValues(fieldInfo.name);
+          if (values != null) {
+            subs.add(new VectorValuesSub(mergeState.docMaps[i], values));
           }
         }
       }
-      return new VectorValuesMerger(subs, mergeState);
+      return new MergedVectorValues(subs, mergeState);
     }
 
-    private VectorValuesMerger(List<VectorValuesSub> subs, MergeState mergeState)
+    private MergedVectorValues(List<VectorValuesSub> subs, MergeState mergeState)
         throws IOException {
       this.subs = subs;
       docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -208,20 +157,8 @@ public abstract class KnnVectorsWriter implements Closeable {
         totalCost += sub.values.cost();
         totalSize += sub.values.size();
       }
-      /* This size includes deleted docs, but when we iterate over docs here (nextDoc())
-       * we skip deleted docs. So we sneakily update this size once we observe that iteration is complete.
-       * That way by the time we are asked to do random access for graph building, we have a correct size.
-       */
       cost = totalCost;
       size = totalSize;
-      ordMap = new int[size];
-      ordBase = new int[subs.size()];
-      int lastBase = 0;
-      for (int k = 0; k < subs.size(); k++) {
-        int size = subs.get(k).values.size();
-        ordBase[k] = lastBase;
-        lastBase += size;
-      }
       docId = -1;
     }
 
@@ -235,12 +172,8 @@ public abstract class KnnVectorsWriter implements Closeable {
       current = docIdMerger.next();
       if (current == null) {
         docId = NO_MORE_DOCS;
-        /* update the size to reflect the number of *non-deleted* documents seen so we can support
-         * random access. */
-        size = ord;
       } else {
         docId = current.mappedDocID;
-        ordMap[ord++] = ordBase[current.segmentIndex] + current.count - 1;
       }
       return docId;
     }
@@ -253,11 +186,6 @@ public abstract class KnnVectorsWriter implements Closeable {
     @Override
     public BytesRef binaryValue() throws IOException {
       return current.values.binaryValue();
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new MergerRandomAccess();
     }
 
     @Override
@@ -278,53 +206,6 @@ public abstract class KnnVectorsWriter implements Closeable {
     @Override
     public int dimension() {
       return subs.get(0).values.dimension();
-    }
-
-    class MergerRandomAccess implements RandomAccessVectorValues {
-
-      private final List<RandomAccessVectorValues> raSubs;
-
-      MergerRandomAccess() {
-        raSubs = new ArrayList<>(subs.size());
-        for (VectorValuesSub sub : subs) {
-          if (sub.values instanceof RandomAccessVectorValuesProducer) {
-            raSubs.add(((RandomAccessVectorValuesProducer) sub.values).randomAccess());
-          } else {
-            throw new IllegalStateException(
-                "Cannot merge VectorValues without support for random access");
-          }
-        }
-      }
-
-      @Override
-      public int size() {
-        return size;
-      }
-
-      @Override
-      public int dimension() {
-        return VectorValuesMerger.this.dimension();
-      }
-
-      @Override
-      public float[] vectorValue(int target) throws IOException {
-        int unmappedOrd = ordMap[target];
-        int segmentOrd = Arrays.binarySearch(ordBase, unmappedOrd);
-        if (segmentOrd < 0) {
-          // get the index of the greatest lower bound
-          segmentOrd = -2 - segmentOrd;
-        }
-        while (segmentOrd < ordBase.length - 1 && ordBase[segmentOrd + 1] == ordBase[segmentOrd]) {
-          // forward over empty segments which will share the same ordBase
-          segmentOrd++;
-        }
-        return raSubs.get(segmentOrd).vectorValue(unmappedOrd - ordBase[segmentOrd]);
-      }
-
-      @Override
-      public BytesRef binaryValue(int targetOrd) throws IOException {
-        throw new UnsupportedOperationException();
-      }
     }
   }
 }
