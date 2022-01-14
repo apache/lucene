@@ -134,7 +134,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
   private static void accumulateSingleValuedDense(
       DocIdSetIterator it, NumericDocValues singleValued, int[] values) throws IOException {
-    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
       values[(int) singleValued.longValue()]++;
     }
   }
@@ -142,14 +142,14 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   private static void accumulateSingleValuedSparse(
       DocIdSetIterator it, NumericDocValues singleValued, IntIntHashMap sparseValues)
       throws IOException {
-    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
       sparseValues.addTo((int) singleValued.longValue(), 1);
     }
   }
 
   private static void accumulateMultiValuedDense(
       DocIdSetIterator it, SortedNumericDocValues multiValued, int[] values) throws IOException {
-    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
       for (int i = 0; i < multiValued.docValueCount(); i++) {
         values[(int) multiValued.nextValue()]++;
       }
@@ -159,7 +159,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   private static void accumulateMultiValuedSparse(
       DocIdSetIterator it, SortedNumericDocValues multiValued, IntIntHashMap sparseValues)
       throws IOException {
-    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
       for (int i = 0; i < multiValued.docValueCount(); i++) {
         sparseValues.addTo((int) multiValued.nextValue(), 1);
       }
