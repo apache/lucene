@@ -1130,7 +1130,7 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
   # important code paths. They're disabled by default to preserve a good
   # developer experience, but we enable them for smoke tests where we want good
   # coverage.
-  testArgs = '-Dtests.nigthly=true %s' % testArgs
+  testArgs = '-Dtests.nightly=true %s' % testArgs
 
   if FORCE_CLEAN:
     if os.path.exists(tmpDir):
