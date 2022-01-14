@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import com.carrotsearch.hppc.IntIntHashMap;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -85,15 +86,15 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
       if (singleValued != null) {
         if (values != null) {
-          accumulateSingleValuedDense(it, singleValued);
+          accumulateSingleValuedDense(it, singleValued, values);
         } else {
-          accumulateSingleValuedSparse(it, singleValued);
+          accumulateSingleValuedSparse(it, singleValued, sparseValues);
         }
       } else {
         if (values != null) {
-          accumulateMultiValuedDense(it, multiValued);
+          accumulateMultiValuedDense(it, multiValued, values);
         } else {
-          accumulateMultiValuedSparse(it, multiValued);
+          accumulateMultiValuedSparse(it, multiValued, sparseValues);
         }
       }
     }
@@ -115,15 +116,15 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
       if (singleValued != null) {
         if (liveDocs != null) {
-          accumulateSingleValuedWithLiveDocsCheck(singleValued, liveDocs);
+          accumulateSingleValuedWithLiveDocsCheck(singleValued, liveDocs, values);
         } else {
-          accumulateSingleValuedDense(singleValued, singleValued);
+          accumulateSingleValuedDense(singleValued, singleValued, values);
         }
       } else {
         if (liveDocs != null) {
-          accumulateMultiValuedWithLiveDocsCheck(multiValued, liveDocs);
+          accumulateMultiValuedWithLiveDocsCheck(multiValued, liveDocs, values);
         } else {
-          accumulateMultiValuedDense(multiValued, multiValued);
+          accumulateMultiValuedDense(multiValued, multiValued, values);
         }
       }
     }
@@ -131,22 +132,23 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     rollup();
   }
 
-  private void accumulateSingleValuedDense(DocIdSetIterator it, NumericDocValues singleValued)
-      throws IOException {
+  private static void accumulateSingleValuedDense(
+      DocIdSetIterator it, NumericDocValues singleValued, int[] values) throws IOException {
     while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
       values[(int) singleValued.longValue()]++;
     }
   }
 
-  private void accumulateSingleValuedSparse(DocIdSetIterator it, NumericDocValues singleValued)
+  private static void accumulateSingleValuedSparse(
+      DocIdSetIterator it, NumericDocValues singleValued, IntIntHashMap sparseValues)
       throws IOException {
     while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
       sparseValues.addTo((int) singleValued.longValue(), 1);
     }
   }
 
-  private void accumulateMultiValuedDense(DocIdSetIterator it, SortedNumericDocValues multiValued)
-      throws IOException {
+  private static void accumulateMultiValuedDense(
+      DocIdSetIterator it, SortedNumericDocValues multiValued, int[] values) throws IOException {
     while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
       for (int i = 0; i < multiValued.docValueCount(); i++) {
         values[(int) multiValued.nextValue()]++;
@@ -154,7 +156,8 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     }
   }
 
-  private void accumulateMultiValuedSparse(DocIdSetIterator it, SortedNumericDocValues multiValued)
+  private static void accumulateMultiValuedSparse(
+      DocIdSetIterator it, SortedNumericDocValues multiValued, IntIntHashMap sparseValues)
       throws IOException {
     while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
       for (int i = 0; i < multiValued.docValueCount(); i++) {
@@ -163,8 +166,8 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     }
   }
 
-  private void accumulateSingleValuedWithLiveDocsCheck(NumericDocValues singleValued, Bits liveDocs)
-      throws IOException {
+  private static void accumulateSingleValuedWithLiveDocsCheck(
+      NumericDocValues singleValued, Bits liveDocs, int[] values) throws IOException {
     for (int doc = singleValued.nextDoc();
         doc != DocIdSetIterator.NO_MORE_DOCS;
         doc = singleValued.nextDoc()) {
@@ -174,8 +177,8 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     }
   }
 
-  private void accumulateMultiValuedWithLiveDocsCheck(
-      SortedNumericDocValues multiValued, Bits liveDocs) throws IOException {
+  private static void accumulateMultiValuedWithLiveDocsCheck(
+      SortedNumericDocValues multiValued, Bits liveDocs, int[] values) throws IOException {
     for (int doc = multiValued.nextDoc();
         doc != DocIdSetIterator.NO_MORE_DOCS;
         doc = multiValued.nextDoc()) {
