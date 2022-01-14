@@ -85,27 +85,15 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
       if (singleValued != null) {
         if (values != null) {
-          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            values[(int) singleValued.longValue()]++;
-          }
+          accumulateSingleValuedDense(it, singleValued);
         } else {
-          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            sparseValues.addTo((int) singleValued.longValue(), 1);
-          }
+          accumulateSingleValuedSparse(it, singleValued);
         }
       } else {
         if (values != null) {
-          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            for (int i = 0; i < multiValued.docValueCount(); i++) {
-              values[(int) multiValued.nextValue()]++;
-            }
-          }
+          accumulateMultiValuedDense(it, multiValued);
         } else {
-          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            for (int i = 0; i < multiValued.docValueCount(); i++) {
-              sparseValues.addTo((int) multiValued.nextValue(), 1);
-            }
-          }
+          accumulateMultiValuedSparse(it, multiValued);
         }
       }
     }
@@ -127,43 +115,75 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
       if (singleValued != null) {
         if (liveDocs != null) {
-          for (int doc = singleValued.nextDoc();
-              doc != DocIdSetIterator.NO_MORE_DOCS;
-              doc = singleValued.nextDoc()) {
-            if (liveDocs.get(doc)) {
-              values[(int) singleValued.longValue()]++;
-            }
-          }
+          accumulateSingleValuedWithLiveDocsCheck(singleValued, liveDocs);
         } else {
-          for (int doc = singleValued.nextDoc();
-              doc != DocIdSetIterator.NO_MORE_DOCS;
-              doc = singleValued.nextDoc()) {
-            values[(int) singleValued.longValue()]++;
-          }
+          accumulateSingleValuedDense(singleValued, singleValued);
         }
       } else {
         if (liveDocs != null) {
-          for (int doc = multiValued.nextDoc();
-              doc != DocIdSetIterator.NO_MORE_DOCS;
-              doc = multiValued.nextDoc()) {
-            if (liveDocs.get(doc)) {
-              for (int i = 0; i < multiValued.docValueCount(); i++) {
-                values[(int) multiValued.nextValue()]++;
-              }
-            }
-          }
+          accumulateMultiValuedWithLiveDocsCheck(multiValued, liveDocs);
         } else {
-          for (int doc = multiValued.nextDoc();
-              doc != DocIdSetIterator.NO_MORE_DOCS;
-              doc = multiValued.nextDoc()) {
-            for (int i = 0; i < multiValued.docValueCount(); i++) {
-              values[(int) multiValued.nextValue()]++;
-            }
-          }
+          accumulateMultiValuedDense(multiValued, multiValued);
         }
       }
     }
 
     rollup();
+  }
+
+  private void accumulateSingleValuedDense(DocIdSetIterator it, NumericDocValues singleValued)
+      throws IOException {
+    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      values[(int) singleValued.longValue()]++;
+    }
+  }
+
+  private void accumulateSingleValuedSparse(DocIdSetIterator it, NumericDocValues singleValued)
+      throws IOException {
+    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      sparseValues.addTo((int) singleValued.longValue(), 1);
+    }
+  }
+
+  private void accumulateMultiValuedDense(DocIdSetIterator it, SortedNumericDocValues multiValued)
+      throws IOException {
+    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      for (int i = 0; i < multiValued.docValueCount(); i++) {
+        values[(int) multiValued.nextValue()]++;
+      }
+    }
+  }
+
+  private void accumulateMultiValuedSparse(DocIdSetIterator it, SortedNumericDocValues multiValued)
+      throws IOException {
+    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      for (int i = 0; i < multiValued.docValueCount(); i++) {
+        sparseValues.addTo((int) multiValued.nextValue(), 1);
+      }
+    }
+  }
+
+  private void accumulateSingleValuedWithLiveDocsCheck(NumericDocValues singleValued, Bits liveDocs)
+      throws IOException {
+    for (int doc = singleValued.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = singleValued.nextDoc()) {
+      if (liveDocs.get(doc)) {
+        values[(int) singleValued.longValue()]++;
+      }
+    }
+  }
+
+  private void accumulateMultiValuedWithLiveDocsCheck(
+      SortedNumericDocValues multiValued, Bits liveDocs) throws IOException {
+    for (int doc = multiValued.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = multiValued.nextDoc()) {
+      if (liveDocs.get(doc)) {
+        for (int i = 0; i < multiValued.docValueCount(); i++) {
+          values[(int) multiValued.nextValue()]++;
+        }
+      }
+    }
   }
 }

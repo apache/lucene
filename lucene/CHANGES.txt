@@ -164,7 +164,7 @@ Optimizations
   (Guo Feng, Greg Miller)
 
 * LUCENE-10380: Further optimize FastTaxonomyFacetCounts#countAll by moving the liveDocs null check
-  outside the loops. (Guo Feng, Greg Miller)
+  outside the loops and breaking out common functionality into separate methods. (Guo Feng, Greg Miller)
 
 Changes in runtime behavior
 ---------------------
