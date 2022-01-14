@@ -247,22 +247,12 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       int pos = curBuf.position();
       try {
         byte b = guard.getByte(curBuf);
-        if (b >= 0) return b;
         int i = b & 0x7F;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7F) << 7;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7F) << 14;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7F) << 21;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        // Warning: the next ands use 0x0F / 0xF0 - beware copy/paste errors:
-        i |= (b & 0x0F) << 28;
-        if ((b & 0xF0) == 0) return i;
-        throw new IOException("Invalid vInt detected (too many bits)");
+        for (int shift = 7; (b & 0x80) != 0; shift += 7) {
+          b = guard.getByte(curBuf);
+          i |= (b & 0x7F) << shift;
+        }
+        return i;
       } catch (
           @SuppressWarnings("unused")
           BufferUnderflowException e) {
@@ -283,33 +273,12 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       int pos = curBuf.position();
       try {
         byte b = guard.getByte(curBuf);
-        if (b >= 0) return b;
-        long i = b & 0x7FL;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7FL) << 7;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7FL) << 14;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7FL) << 21;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7FL) << 28;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7FL) << 35;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7FL) << 42;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7FL) << 49;
-        if (b >= 0) return i;
-        b = guard.getByte(curBuf);
-        i |= (b & 0x7FL) << 56;
-        if (b >= 0) return i;
-        throw new IOException("Invalid vLong detected (negative values disallowed)");
+        long i = b & 0x7F;
+        for (int shift = 7; (b & 0x80) != 0; shift += 7) {
+          b = guard.getByte(curBuf);
+          i |= (b & 0x7FL) << shift;
+        }
+        return i;
       } catch (
           @SuppressWarnings("unused")
           BufferUnderflowException e) {
