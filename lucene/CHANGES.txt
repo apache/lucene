@@ -163,6 +163,9 @@ Optimizations
 * LUCENE-10379: Count directly into the dense values array in FastTaxonomyFacetCounts#countAll.
   (Guo Feng, Greg Miller)
 
+* LUCENE-10380: Further optimize FastTaxonomyFacetCounts#countAll by moving the liveDocs null check
+  outside the loops. (Guo Feng, Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
