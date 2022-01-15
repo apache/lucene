@@ -79,24 +79,12 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       }
 
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
-
       DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
+
       DocIdSetIterator it =
           ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
 
-      if (singleValued != null) {
-        if (values != null) {
-          accumulateSingleValuedDense(it, singleValued, values);
-        } else {
-          accumulateSingleValuedSparse(it, singleValued, sparseValues);
-        }
-      } else {
-        if (values != null) {
-          accumulateMultiValuedDense(it, multiValued, values);
-        } else {
-          accumulateMultiValuedSparse(it, multiValued, sparseValues);
-        }
-      }
+      countOneSegment(it, singleValued, multiValued, values, sparseValues);
     }
 
     rollup();
@@ -111,25 +99,39 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
         continue;
       }
 
-      Bits liveDocs = context.reader().getLiveDocs();
-
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
-      if (singleValued != null) {
-        if (liveDocs != null) {
-          accumulateSingleValuedWithLiveDocsCheck(singleValued, liveDocs, values);
-        } else {
-          accumulateSingleValuedDense(singleValued, singleValued, values);
-        }
-      } else {
-        if (liveDocs != null) {
-          accumulateMultiValuedWithLiveDocsCheck(multiValued, liveDocs, values);
-        } else {
-          accumulateMultiValuedDense(multiValued, multiValued, values);
-        }
-      }
+      DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
+
+      Bits liveDocs = context.reader().getLiveDocs();
+      DocIdSetIterator it =
+          liveDocs != null ? new LiveDocCheckingDisi(valuesIt, liveDocs) : valuesIt;
+
+      countOneSegment(it, singleValued, multiValued, values, sparseValues);
     }
 
     rollup();
+  }
+
+  private static void countOneSegment(
+      DocIdSetIterator it,
+      NumericDocValues singleValued,
+      SortedNumericDocValues multiValued,
+      int[] values,
+      IntIntHashMap sparseValues)
+      throws IOException {
+    if (singleValued != null) {
+      if (values != null) {
+        accumulateSingleValuedDense(it, singleValued, values);
+      } else {
+        accumulateSingleValuedSparse(it, singleValued, sparseValues);
+      }
+    } else {
+      if (values != null) {
+        accumulateMultiValuedDense(it, multiValued, values);
+      } else {
+        accumulateMultiValuedSparse(it, multiValued, sparseValues);
+      }
+    }
   }
 
   private static void accumulateSingleValuedDense(
@@ -166,27 +168,46 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     }
   }
 
-  private static void accumulateSingleValuedWithLiveDocsCheck(
-      NumericDocValues singleValued, Bits liveDocs, int[] values) throws IOException {
-    for (int doc = singleValued.nextDoc();
-        doc != DocIdSetIterator.NO_MORE_DOCS;
-        doc = singleValued.nextDoc()) {
-      if (liveDocs.get(doc)) {
-        values[(int) singleValued.longValue()]++;
-      }
-    }
-  }
+  private static final class LiveDocCheckingDisi extends DocIdSetIterator {
+    private final DocIdSetIterator in;
+    private final Bits liveDocs;
 
-  private static void accumulateMultiValuedWithLiveDocsCheck(
-      SortedNumericDocValues multiValued, Bits liveDocs, int[] values) throws IOException {
-    for (int doc = multiValued.nextDoc();
-        doc != DocIdSetIterator.NO_MORE_DOCS;
-        doc = multiValued.nextDoc()) {
-      if (liveDocs.get(doc)) {
-        for (int i = 0; i < multiValued.docValueCount(); i++) {
-          values[(int) multiValued.nextValue()]++;
-        }
+    private int doc;
+
+    LiveDocCheckingDisi(DocIdSetIterator in, Bits liveDocs) {
+      assert in != null && liveDocs != null;
+      this.in = in;
+      this.liveDocs = liveDocs;
+      doc = in.docID();
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      if (doc == NO_MORE_DOCS) {
+        return NO_MORE_DOCS;
       }
+
+      do {
+        doc = in.nextDoc();
+      } while (doc != NO_MORE_DOCS && liveDocs.get(doc) == false);
+
+      return doc;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      // not needed since we only use this internally and only need #nextDoc
+      throw new UnsupportedOperationException("only nextDoc should be used");
+    }
+
+    @Override
+    public long cost() {
+      return in.cost();
     }
   }
 }
