@@ -112,8 +112,10 @@ public final class ByteArrayDataInput extends DataInput {
   public int readVInt() {
     try {
       return super.readVInt();
-    } catch (IOException e) {
-      throw new AssertionError();
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
+      throw new AssertionError("ByteArrayDataInput#readByte should not throw IOException");
     }
   }
 
@@ -121,8 +123,10 @@ public final class ByteArrayDataInput extends DataInput {
   public long readVLong() {
     try {
       return super.readVLong();
-    } catch (IOException e) {
-      throw new AssertionError();
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
+      throw new AssertionError("ByteArrayDataInput#readByte should not throw IOException");
     }
   }
 
