@@ -113,7 +113,7 @@ public final class ByteArrayDataInput extends DataInput {
     try {
       return super.readVInt();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new AssertionError();
     }
   }
 
@@ -122,7 +122,7 @@ public final class ByteArrayDataInput extends DataInput {
     try {
       return super.readVLong();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new AssertionError();
     }
   }
 
