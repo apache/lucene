@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -148,5 +149,10 @@ public abstract class GeoBaseCompositeShape<T extends GeoShape> extends BasePlan
     }
     GeoBaseCompositeShape<?> other = (GeoBaseCompositeShape<?>) o;
     return super.equals(other) && shapes.equals(other.shapes);
+  }
+
+  /** Returns an unmodifiable list of composed shapes. */
+  public List<T> getShapes() {
+    return Collections.unmodifiableList(shapes);
   }
 }

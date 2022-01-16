@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -74,7 +75,9 @@ public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     int docV;

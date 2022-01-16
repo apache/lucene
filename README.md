@@ -39,16 +39,16 @@ comprehensive documentation, visit:
 
 ### Basic steps:
   
-  0. Install OpenJDK 11 (or greater).
+  0. Install OpenJDK 17 (or greater).
   1. Clone Lucene's git repository (or download the source distribution).
   2. Run gradle launcher script (`gradlew`).
 
-### Step 0) Set up your development environment (OpenJDK 11 or greater)
+### Step 0) Set up your development environment (OpenJDK 17 or greater)
 
 We'll assume that you know how to get and set up the JDK - if you
 don't, then we suggest starting at https://jdk.java.net/ and learning
 more about Java, before returning to this README. Lucene runs with
-Java 11 or later. 
+Java 17 or later. 
 
 Lucene uses [Gradle](https://gradle.org/) for build control. Gradle is itself Java-based
 and may be incompatible with newer Java versions; you can still build and test 

@@ -588,7 +588,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     if len(in_lucene_folder) > 0:
       raise RuntimeError('lucene: unexpected files/dirs in artifact %s lucene/ folder: %s' % (artifact, in_lucene_folder))
   else:
-    is_in_list(in_root_folder, ['bin', 'docs', 'licenses', 'modules', 'modules-test-framework', 'modules-thirdparty'])
+    is_in_list(in_root_folder, ['bin', 'docs', 'licenses', 'modules', 'modules-thirdparty'])
 
   if len(in_root_folder) > 0:
     raise RuntimeError('lucene: unexpected files/dirs in artifact %s: %s' % (artifact, in_root_folder))
@@ -1130,7 +1130,7 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
   # important code paths. They're disabled by default to preserve a good
   # developer experience, but we enable them for smoke tests where we want good
   # coverage.
-  testArgs = '-Dtests.nigthly=true %s' % testArgs
+  testArgs = '-Dtests.nightly=true %s' % testArgs
 
   if FORCE_CLEAN:
     if os.path.exists(tmpDir):

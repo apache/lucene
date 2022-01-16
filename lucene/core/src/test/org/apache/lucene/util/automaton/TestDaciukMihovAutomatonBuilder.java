@@ -18,9 +18,9 @@ package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
 import java.util.Collections;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestDaciukMihovAutomatonBuilder extends LuceneTestCase {
 

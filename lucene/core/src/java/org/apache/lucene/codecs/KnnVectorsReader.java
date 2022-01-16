@@ -19,6 +19,7 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Accountable;
@@ -40,7 +41,11 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    */
   public abstract void checkIntegrity() throws IOException;
 
-  /** Returns the {@link VectorValues} for the given {@code field} */
+  /**
+   * Returns the {@link VectorValues} for the given {@code field}. The behavior is undefined if the
+   * given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * never {@code null}.
+   */
   public abstract VectorValues getVectorValues(String field) throws IOException;
 
   /**
@@ -52,6 +57,9 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * <p>The search is allowed to be approximate, meaning the results are not guaranteed to be the
    * true k closest neighbors. For large values of k (for example when k is close to the total
    * number of documents), the search may also retrieve fewer than k documents.
+   *
+   * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
+   * FieldInfo}. The return value is never {@code null}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query

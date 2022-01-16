@@ -19,6 +19,8 @@ package org.apache.lucene.util;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestFixedLengthBytesRefArray extends LuceneTestCase {
 

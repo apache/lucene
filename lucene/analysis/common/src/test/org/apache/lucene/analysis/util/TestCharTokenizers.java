@@ -19,12 +19,12 @@ package org.apache.lucene.analysis.util;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Locale;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.core.LetterTokenizer;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Testcase for {@link CharTokenizer} subclasses */
 public class TestCharTokenizers extends BaseTokenStreamTestCase {

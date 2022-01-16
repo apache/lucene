@@ -31,9 +31,9 @@ import org.apache.lucene.facet.taxonomy.TaxonomyFacetLabels;
 import org.apache.lucene.facet.taxonomy.TaxonomyFacetLabels.FacetLabelReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public abstract class FacetTestCase extends LuceneTestCase {
 
@@ -223,7 +223,7 @@ public abstract class FacetTestCase extends LuceneTestCase {
             } else if (b.value.doubleValue() > a.value.doubleValue()) {
               return 1;
             } else {
-              return 0;
+              return a.dim.compareTo(b.dim);
             }
           }
         });

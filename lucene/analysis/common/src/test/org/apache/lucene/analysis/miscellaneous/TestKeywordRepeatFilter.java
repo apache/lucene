@@ -17,9 +17,9 @@
 package org.apache.lucene.analysis.miscellaneous;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestKeywordRepeatFilter extends BaseTokenStreamTestCase {
 

@@ -67,12 +67,13 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     'dvupdates': 'testCreateIndexWithDocValuesUpdates',
     'emptyIndex': 'testCreateEmptyIndex'
   }[indextype]
-  ant_args = ' '.join([
+  gradle_args = ' '.join([
+    '-Ptests.useSecurityManager=false',
+    '-p lucene/%s' % module,
+    'test',
+    '--tests TestBackwardsCompatibility.%s' % test,
     '-Dtests.bwcdir=%s' % temp_dir,
-    '-Dtests.codec=default',
-    '-Dtests.useSecurityManager=false',
-    '-Dtestcase=TestBackwardsCompatibility',
-    '-Dtestmethod=%s' % test
+    '-Dtests.codec=default'
   ])
   base_dir = os.getcwd()
   bc_index_dir = os.path.join(temp_dir, dirname)
@@ -83,8 +84,8 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
   else:
     if os.path.exists(bc_index_dir):
       shutil.rmtree(bc_index_dir)
-    os.chdir(os.path.join(source, module))
-    scriptutil.run('ant test %s' % ant_args)
+    os.chdir(source)
+    scriptutil.run('./gradlew %s' % gradle_args)
     os.chdir(bc_index_dir)
     scriptutil.run('zip %s *' % filename)
     print('done')
@@ -167,8 +168,8 @@ def check_backcompat_tests():
   scriptutil.run('./gradlew -p lucene/backward-codecs test --tests TestBackwardsCompatibility')
   print('ok')
 
-def download_from_mirror(version, remotename, localname):
-  url = 'http://apache.cs.utah.edu/lucene/java/%s/%s' % (version, remotename)
+def download_from_cdn(version, remotename, localname):
+  url = 'http://dlcdn.apache.org/lucene/java/%s/%s' % (version, remotename)
   try:
     urllib.request.urlretrieve(url, localname)
     return True
@@ -199,9 +200,9 @@ def download_release(version, temp_dir, force):
 
   filename = 'lucene-%s-src.tgz' % version
   source_tgz = os.path.join(temp_dir, filename)
-  if not download_from_mirror(version, filename, source_tgz) and \
+  if not download_from_cdn(version, filename, source_tgz) and \
      not download_from_archives(version, filename, source_tgz):
-    raise Exception('Could not find version %s in apache mirror or archives' % version)
+    raise Exception('Could not find version %s in apache CDN or archives' % version)
 
   olddir = os.getcwd()
   os.chdir(temp_dir)
@@ -243,7 +244,7 @@ def main():
                        and (c.version.major > 6 or (c.version.major == 6 and c.version.minor >= 2))
   if should_make_sorted:
     create_and_add_index(source, 'sorted', c.version, current_version, c.temp_dir)
-  if c.version.minor == 0 and c.version.bugfix == 0 and c.version.major < current_version.major:
+  if c.version.minor == 0 and c.version.bugfix == 0 and current_version.is_back_compat_with(c.version):
     create_and_add_index(source, 'moreterms', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'dvupdates', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'emptyIndex', c.version, current_version, c.temp_dir)

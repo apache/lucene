@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis.bn;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Tests the BengaliAnalyzer */
 public class TestBengaliAnalyzer extends BaseTokenStreamTestCase {

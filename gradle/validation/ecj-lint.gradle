@@ -35,9 +35,10 @@ allprojects {
     // with a non-empty java.srcDirs. These tasks are then
     // attached to project's "ecjLint" task.
     def lintTasks = sourceSets.collect { sourceSet ->
-      def srcDirs = sourceSet.java.srcDirs.findAll { dir -> dir.exists() }
+      def srcDirs = sourceSet.java.sourceDirectories
+          .filter { dir -> dir.exists() }
 
-      tasks.create(sourceSet.getTaskName("ecjLint", null), JavaExec, {task ->
+      tasks.create(sourceSet.getTaskName("ecjLint", null), JavaExec, { JavaExec task ->
         // This dependency is on a configuration; technically it causes
         // all dependencies to be resolved before this task executes
         // (this includes scheduling tasks that compile the
@@ -72,22 +73,57 @@ allprojects {
         args += [ "-enableJavadoc" ]
         args += [ "-properties", file("${resources}/ecj.javadocs.prefs").absolutePath ]
 
-        doFirst {
-          tmpDst.mkdirs()
+        // We depend on modular paths.
+        def modularPaths = sourceSet.modularPathsForEcj
+        dependsOn modularPaths
 
-          // Add classpath locations at execution time (can't resolve the
+        // Add modular dependencies and their transitive dependencies to module path.
+        task.argumentProviders.add(modularPaths.compilationArguments)
+
+        // Add classpath, if needed.
+        task.argumentProviders.add((CommandLineArgumentProvider) {
+          // Add classpath locations in a lazy provider (can't resolve the
           // configuration at evaluation time). Filter out non-existing entries
           // (output folders for non-existing input source dirs like resources).
-          def cpath = sourceSet.compileClasspath.filter { p -> p.exists() }
+          FileCollection cpath = modularPaths.compilationClasspath.filter { p -> p.exists() }
           if (!cpath.isEmpty()) {
-            args += ["-classpath", cpath.asPath]
+            return ["-classpath", cpath.join(File.pathSeparator)]
+          } else {
+            return []
           }
+        })
 
-          // Add source location(s). Ideally we'd provide a set of files as in:
-          // args += sourceSet.java.files
-          // but this exceeds max allowed command line size. So we pass source
-          // directories instead:
-          args += srcDirs
+        // Place input files in an external file to dodge command line argument
+        // limits. We could pass a directory but ecj seems to be buggy: when it
+        // encounters a module-info.java file it no longer compiles other source files.
+        def inputsFile = file("${tmpDst}/ecj-inputs.txt")
+        task.argumentProviders.add((CommandLineArgumentProvider) {
+          return ["@" + inputsFile.absolutePath]
+        })
+
+        doFirst {
+          modularPaths.logCompilationPaths(logger)
+
+          tmpDst.mkdirs()
+
+          // escape filename accoring to ECJ's rules:
+          // https://github.com/eclipse/aspectj.eclipse.jdt.core/blob/a05312e746b9bc2b48b4b039f6e7b5e061b5b393/org.eclipse.jdt.core/batch/org/eclipse/jdt/internal/compiler/batch/Main.java#L1533-L1537
+          // Basically surround all whitespace by quotes:
+          def escapeFileName = { String s -> s.replaceAll(/ +/, /"$0"/) }
+          inputsFile.setText(
+            srcDirs.collectMany { dir ->
+              project.fileTree(
+                  dir: dir,
+                  include: "**/*.java",
+                  // Exclude the benchmark class with dependencies on nekohtml, which causes module-classpath conflicts and breaks ecj.
+                  exclude: "**/DemoHTMLParser.java"
+              ).files
+            }
+            // Try to sort all input files; a side-effect of this should be that module-info.java
+            // is placed first on the list, which works around ECJ bug:
+            // https://bugs.eclipse.org/bugs/show_bug.cgi?id=569833
+            .sort()
+            .collect {file -> escapeFileName(file.absolutePath.toString())}.join("\n"), "UTF-8")
         }
       })
     }

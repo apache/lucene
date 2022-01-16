@@ -19,8 +19,8 @@ package org.apache.lucene.store;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.store.RateLimiter.SimpleRateLimiter;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Simple testcase for RateLimiter.SimpleRateLimiter */

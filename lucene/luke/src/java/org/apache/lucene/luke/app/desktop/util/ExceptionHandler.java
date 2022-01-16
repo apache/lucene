@@ -18,7 +18,8 @@
 package org.apache.lucene.luke.app.desktop.util;
 
 import java.lang.invoke.MethodHandles;
-import org.apache.logging.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.lucene.luke.app.desktop.MessageBroker;
 import org.apache.lucene.luke.models.LukeException;
 import org.apache.lucene.luke.util.LoggerFactory;
@@ -32,10 +33,10 @@ public final class ExceptionHandler {
     if (t instanceof LukeException) {
       Throwable cause = t.getCause();
       String message = (cause == null) ? t.getMessage() : t.getMessage() + " " + cause.getMessage();
-      log.warn("Uncaught LukeException", t);
+      log.log(Level.WARNING, "Uncaught LukeException", t);
       messageBroker.showStatusMessage(message);
     } else {
-      log.error("Uncaught Exception", t);
+      log.log(Level.SEVERE, "Uncaught Exception", t);
       messageBroker.showUnknownErrorMessage();
     }
   }

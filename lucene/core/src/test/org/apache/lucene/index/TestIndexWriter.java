@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.index.DocHelper.TEXT_TYPE_STORED_WITH_TVS;
+import static org.apache.lucene.tests.index.DocHelper.TEXT_TYPE_STORED_WITH_TVS;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
@@ -51,11 +51,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -75,9 +70,6 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.mockfile.ExtrasFS;
-import org.apache.lucene.mockfile.FilterPath;
-import org.apache.lucene.mockfile.WindowsFS;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -88,7 +80,6 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -98,20 +89,31 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.store.NoLockFactory;
 import org.apache.lucene.store.SimpleFSLockFactory;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.index.SuppressingConcurrentMergeScheduler;
+import org.apache.lucene.tests.mockfile.ExtrasFS;
+import org.apache.lucene.tests.mockfile.FilterPath;
+import org.apache.lucene.tests.mockfile.WindowsFS;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automata;
@@ -1302,7 +1304,7 @@ public class TestIndexWriter extends LuceneTestCase {
       DirectoryReader r;
       if (iter == 0) {
         // use NRT
-        r = w.getReader();
+        r = DirectoryReader.open(w);
       } else {
         // don't use NRT
         w.commit();
@@ -1691,18 +1693,18 @@ public class TestIndexWriter extends LuceneTestCase {
     Document doc = new Document();
     doc.add(newStringField("id", "0", Field.Store.YES));
     w.addDocument(doc);
-    DirectoryReader r = w.getReader();
+    DirectoryReader r = DirectoryReader.open(w);
     long version = r.getVersion();
     r.close();
 
     w.addDocument(doc);
-    r = w.getReader();
+    r = DirectoryReader.open(w);
     long version2 = r.getVersion();
     r.close();
     assert (version2 > version);
 
     w.deleteDocuments(new Term("id", "0"));
-    r = w.getReader();
+    r = DirectoryReader.open(w);
     w.close();
     long version3 = r.getVersion();
     r.close();
@@ -2106,7 +2108,7 @@ public class TestIndexWriter extends LuceneTestCase {
         }
       }
     }
-    DirectoryReader reader = w.getReader();
+    DirectoryReader reader = DirectoryReader.open(w);
     assertEquals(docCount, reader.numDocs());
     List<LeafReaderContext> leaves = reader.leaves();
     for (LeafReaderContext leafReaderContext : leaves) {
@@ -2154,7 +2156,7 @@ public class TestIndexWriter extends LuceneTestCase {
         }
       }
     }
-    DirectoryReader reader = w.getReader();
+    DirectoryReader reader = DirectoryReader.open(w);
     assertEquals(docCount, reader.numDocs());
     List<LeafReaderContext> leaves = reader.leaves();
     for (LeafReaderContext leafReaderContext : leaves) {
@@ -2404,7 +2406,7 @@ public class TestIndexWriter extends LuceneTestCase {
     // match field a's "foo":
     w.deleteDocuments(new Term("a", "xxx"));
     w.deleteDocuments(new Term("b", "foo"));
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     w.close();
 
     // Make sure document was not (incorrectly) deleted:
@@ -2927,7 +2929,7 @@ public class TestIndexWriter extends LuceneTestCase {
               .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE);
       IndexWriter w = new IndexWriter(dir, iwc);
       w.commit();
-      reader = w.getReader();
+      reader = DirectoryReader.open(w);
       // we pull this commit to open it again later to check that we fail if a future file delete is
       // pending
       indexCommit = reader.getIndexCommit();
@@ -3597,7 +3599,7 @@ public class TestIndexWriter extends LuceneTestCase {
                 }
               });
       t.start();
-      try (IndexReader reader = writer.getReader()) {
+      try (IndexReader reader = DirectoryReader.open(writer)) {
         assertEquals(1, reader.numDocs());
       }
       ;
@@ -3655,7 +3657,7 @@ public class TestIndexWriter extends LuceneTestCase {
     d = new Document();
     d.add(new StringField("id", "doc-1", Field.Store.YES));
     writer.addDocument(d);
-    DirectoryReader reader = writer.getReader();
+    DirectoryReader reader = DirectoryReader.open(writer);
     SegmentCommitInfo segmentInfo =
         ((SegmentReader) reader.leaves().get(0).reader()).getSegmentInfo();
     SegmentCommitInfo originalInfo =
@@ -4271,7 +4273,7 @@ public class TestIndexWriter extends LuceneTestCase {
       assertEquals(6, writer.commit());
       assertEquals(6, writer.getMaxCompletedSequenceNumber());
       assertEquals(7, writer.addDocument(new Document()));
-      writer.getReader().close();
+      DirectoryReader.open(writer).close();
       // getReader moves seqNo by 2 since there is one DWPT that could still be in-flight
       assertEquals(9, writer.getMaxCompletedSequenceNumber());
     }
@@ -4381,7 +4383,7 @@ public class TestIndexWriter extends LuceneTestCase {
           new Thread(
               () -> {
                 try {
-                  writer.getReader().close();
+                  DirectoryReader.open(writer).close();
                 } catch (IOException e) {
                   throw new AssertionError(e);
                 }
@@ -4577,7 +4579,7 @@ public class TestIndexWriter extends LuceneTestCase {
     w.commit();
     w.updateDocument(new Term("id", "1"), d);
     w.commit();
-    try (DirectoryReader reader = w.getReader()) {
+    try (DirectoryReader reader = DirectoryReader.open(w)) {
       assertEquals(1, reader.numDocs());
     }
     IOUtils.close(w, dir);

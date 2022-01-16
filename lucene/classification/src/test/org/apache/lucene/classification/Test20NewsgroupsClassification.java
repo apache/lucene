@@ -60,10 +60,10 @@ import org.apache.lucene.search.similarities.LambdaTTF;
 import org.apache.lucene.search.similarities.Normalization;
 import org.apache.lucene.search.similarities.NormalizationH1;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Test;
 
 @LuceneTestCase.SuppressSysoutChecks(bugUrl = "none")
