@@ -126,7 +126,7 @@ Improvements
 Optimizations
 ---------------------
 
-* LUCENE-10366: Optimizer of ByteBufferIndexInput#readVInt/#readVLong. (Guo Feng)
+* LUCENE-10366: Override readVInt() and readVLong() in ByteBufferDataInput to help Hotspot inline method. (Guo Feng)
 
 * LUCENE-10329: Use computed block mask for DirectMonotonicReader#get. (Guo Feng)
 
