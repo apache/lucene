@@ -242,13 +242,13 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   @Override
   public final int readVInt() throws IOException {
-    //this can make JVM less confusing (see LUCENE-10366)
+    // this can make JVM less confusing (see LUCENE-10366)
     return super.readVInt();
   }
 
   @Override
   public final long readVLong() throws IOException {
-    //this can make JVM less confusing (see LUCENE-10366)
+    // this can make JVM less confusing (see LUCENE-10366)
     return super.readVLong();
   }
 
