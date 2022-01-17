@@ -242,54 +242,12 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   @Override
   public final int readVInt() throws IOException {
-    try {
-      // using #position instead of #mark here as #position is a final method
-      int pos = curBuf.position();
-      try {
-        byte b = guard.getByte(curBuf);
-        int i = b & 0x7F;
-        for (int shift = 7; (b & 0x80) != 0; shift += 7) {
-          b = guard.getByte(curBuf);
-          i |= (b & 0x7F) << shift;
-        }
-        return i;
-      } catch (
-          @SuppressWarnings("unused")
-          BufferUnderflowException e) {
-        curBuf.position(pos);
-        return super.readVInt();
-      }
-    } catch (
-        @SuppressWarnings("unused")
-        NullPointerException npe) {
-      throw new AlreadyClosedException("Already closed: " + this);
-    }
+    return super.readVInt();
   }
 
   @Override
   public final long readVLong() throws IOException {
-    try {
-      // using #position instead of #mark here as #position is a final method
-      int pos = curBuf.position();
-      try {
-        byte b = guard.getByte(curBuf);
-        long i = b & 0x7F;
-        for (int shift = 7; (b & 0x80) != 0; shift += 7) {
-          b = guard.getByte(curBuf);
-          i |= (b & 0x7FL) << shift;
-        }
-        return i;
-      } catch (
-          @SuppressWarnings("unused")
-          BufferUnderflowException e) {
-        curBuf.position(pos);
-        return super.readVLong();
-      }
-    } catch (
-        @SuppressWarnings("unused")
-        NullPointerException npe) {
-      throw new AlreadyClosedException("Already closed: " + this);
-    }
+    return super.readVLong();
   }
 
   @Override
