@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -65,7 +65,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
+public class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
 
   static final String META_CODEC_NAME = "Lucene90HnswVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene90HnswVectorsFormatData";
@@ -77,26 +77,33 @@ public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
+  /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
+  /**
+   * Default number of the size the size of the queue maintained while searching and the number of
+   * random entry points to sample during a graph construction.
+   */
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
    * {@link Lucene90HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
-  private final int maxConn;
+  final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
    * node. Defaults to to {@link Lucene90HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
-  private final int beamWidth;
+  final int beamWidth;
 
+  /** A constructor for vectors format with default parameters */
   public Lucene90HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
+  /** A constructor for vectors format */
   public Lucene90HnswVectorsFormat(int maxConn, int beamWidth) {
     super("Lucene90HnswVectorsFormat");
     this.maxConn = maxConn;
@@ -105,7 +112,7 @@ public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90HnswVectorsWriter(state, maxConn, beamWidth);
+    throw new UnsupportedOperationException("Old codecs may only be used for reading");
   }
 
   @Override

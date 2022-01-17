@@ -34,7 +34,7 @@ public class NeighborQueue {
   // Used to track the number of neighbors visited during a single graph traversal
   private int visitedCount;
 
-  NeighborQueue(int initialSize, boolean reversed) {
+  public NeighborQueue(int initialSize, boolean reversed) {
     if (reversed) {
       heap = LongHeap.create(LongHeap.Order.MAX, initialSize);
     } else {
@@ -102,7 +102,7 @@ public class NeighborQueue {
     return visitedCount;
   }
 
-  void setVisitedCount(int visitedCount) {
+  public void setVisitedCount(int visitedCount) {
     this.visitedCount = visitedCount;
   }
 

@@ -27,6 +27,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.analysis.tokenattributes;
   exports org.apache.lucene.codecs;
   exports org.apache.lucene.codecs.compressing;
+  exports org.apache.lucene.codecs.lucene91;
   exports org.apache.lucene.codecs.lucene90;
   exports org.apache.lucene.codecs.lucene90.blocktree;
   exports org.apache.lucene.codecs.lucene90.compressing;
@@ -59,11 +60,11 @@ module org.apache.lucene.core {
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
   provides org.apache.lucene.codecs.Codec with
-      org.apache.lucene.codecs.lucene90.Lucene90Codec;
+      org.apache.lucene.codecs.lucene91.Lucene91Codec;
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
-      org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
+      org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with

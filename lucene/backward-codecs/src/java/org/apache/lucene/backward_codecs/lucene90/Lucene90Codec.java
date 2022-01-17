@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
@@ -30,6 +30,16 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90CompoundFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90FieldInfosFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90LiveDocsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90NormsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90SegmentInfoFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90TermVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;

@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 9.0 file format.
+ * Lucene 9.1 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *
@@ -180,6 +180,9 @@
  *       of files, recording dimensionally indexed fields, to enable fast numeric range filtering
  *       and large numeric values like BigInteger and BigDecimal (1D) and geographic shape
  *       intersection (2D, 3D).
+ *   <li>{@link org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat Vector values}. The
+ *       vector format stores numeric vectors in a format optimized for random access and
+ *       computation, supporting high-dimensional nearest-neighbor search.
  * </ul>
  *
  * <p>Details on each of these are provided in their linked pages. </div> <a id="File_Naming"></a>
@@ -306,6 +309,12 @@
  * <td>.dii, .dim</td>
  * <td>Holds indexed points</td>
  * </tr>
+ * <tr>
+ * <td>{@link org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat Vector values}</td>
+ * <td>.vec, .vem</td>
+ * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data, and
+ * <code>.vem</code> the vector metadata</td>
+ * </tr>
  * </table>
  *
  * </div> <a id="Lock_File"></a>
@@ -393,6 +402,7 @@
  *   <li>In version 8.7, stored fields compression became adaptive to better handle documents with
  *       smaller stored fields.
  *   <li>In version 9.0, vector-valued fields were added.
+ *   <li>In version 9.1, vector-valued fields were modified to add a graph hierarchy.
  * </ul>
  *
  * <a id="Limitations"></a>
@@ -407,4 +417,4 @@
  * <code>UInt64</code> values, or better yet, {@link org.apache.lucene.store.DataOutput#writeVInt
  * VInt} values which have no limit. </div>
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene91;

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -47,7 +47,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -244,7 +243,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final SplittableRandom random = new SplittableRandom(checksumSeed);
     NeighborQueue results =
-        HnswGraph.search(
+        Lucene90HnswGraph.search(
             target,
             k,
             k,
@@ -291,6 +290,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     };
   }
 
+  /** Get knn graph values; used for testing */
   public KnnGraphValues getGraphValues(String field) throws IOException {
     FieldInfo info = fieldInfos.fieldInfo(field);
     if (info == null) {
@@ -477,7 +477,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public void seek(int targetOrd) throws IOException {
+    public void seek(int level, int targetOrd) throws IOException {
       // unsafe; no bounds checking
       dataIn.seek(entry.ordOffsets[targetOrd]);
       arcCount = dataIn.readInt();
@@ -498,6 +498,21 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       ++arcUpTo;
       arc += dataIn.readVInt();
       return arc;
+    }
+
+    @Override
+    public int numLevels() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int entryNode() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public NodesIterator getNodesOnLevel(int level) {
+      throw new UnsupportedOperationException();
     }
   }
 }

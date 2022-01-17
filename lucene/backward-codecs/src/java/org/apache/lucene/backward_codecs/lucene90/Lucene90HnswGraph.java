@@ -1,0 +1,134 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.lucene.backward_codecs.lucene90;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+import java.io.IOException;
+import java.util.SplittableRandom;
+import org.apache.lucene.index.KnnGraphValues;
+import org.apache.lucene.index.RandomAccessVectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.SparseFixedBitSet;
+import org.apache.lucene.util.hnsw.BoundsChecker;
+import org.apache.lucene.util.hnsw.NeighborQueue;
+
+/**
+ * Navigable Small-world graph used for backward compatibility only to search vector graphs built
+ * for pre 9.1 indices. There are no methods to build graphs, as no update is supported.
+ *
+ * <p>Navigable Small-world graph. Provides efficient approximate nearest neighbor search for high
+ * dimensional vectors. See <a href="https://doi.org/10.1016/j.is.2013.10.006">Approximate nearest
+ * neighbor algorithm based on navigable small world graphs [2014]</a> and <a
+ * href="https://arxiv.org/abs/1603.09320">this paper [2018]</a> for details. <code>numSeed</code>
+ * is the equivalent of <code>m</code> in the 2014 paper; it controls the number of random entry
+ * points to sample.
+ *
+ * <p>Note: The graph may be searched by multiple threads concurrently. Also note: there is no
+ * notion of deletions. Document searching built on top of this must do its own deletion-filtering.
+ */
+public final class Lucene90HnswGraph {
+
+  private Lucene90HnswGraph() {}
+  /**
+   * Searches for the nearest neighbors of a query vector.
+   *
+   * @param query search query vector
+   * @param topK the number of nodes to be returned
+   * @param numSeed the size of the queue maintained while searching, and controls the number of
+   *     random entry points to sample
+   * @param vectors vector values
+   * @param graphValues the graph values. May represent the entire graph, or a level in a
+   *     hierarchical graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param random a source of randomness, used for generating entry points to the graph
+   * @return a priority queue holding the closest neighbors found
+   */
+  public static NeighborQueue search(
+      float[] query,
+      int topK,
+      int numSeed,
+      RandomAccessVectorValues vectors,
+      VectorSimilarityFunction similarityFunction,
+      KnnGraphValues graphValues,
+      Bits acceptOrds,
+      SplittableRandom random)
+      throws IOException {
+    int size = graphValues.size();
+
+    // MIN heap, holding the top results
+    NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
+    // MAX heap, from which to pull the candidate nodes
+    NeighborQueue candidates = new NeighborQueue(numSeed, !similarityFunction.reversed);
+
+    // set of ordinals that have been visited by search on this layer, used to avoid backtracking
+    SparseFixedBitSet visited = new SparseFixedBitSet(size);
+    // get initial candidates at random
+    int boundedNumSeed = Math.min(numSeed, 2 * size);
+    for (int i = 0; i < boundedNumSeed; i++) {
+      int entryPoint = random.nextInt(size);
+      if (visited.getAndSet(entryPoint) == false) {
+        // explore the topK starting points of some random numSeed probes
+        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
+        candidates.add(entryPoint, score);
+        if (acceptOrds == null || acceptOrds.get(entryPoint)) {
+          results.add(entryPoint, score);
+        }
+      }
+    }
+
+    // Set the bound to the worst current result and below reject any newly-generated candidates
+    // failing to exceed this bound
+    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
+    bound.set(results.topScore());
+    while (candidates.size() > 0) {
+      // get the best candidate (closest or best scoring)
+      float topCandidateScore = candidates.topScore();
+      if (results.size() >= topK) {
+        if (bound.check(topCandidateScore)) {
+          break;
+        }
+      }
+      int topCandidateNode = candidates.pop();
+      graphValues.seek(0, topCandidateNode);
+      int friendOrd;
+      while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
+        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
+        if (visited.getAndSet(friendOrd)) {
+          continue;
+        }
+
+        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        if (results.size() < numSeed || bound.check(score) == false) {
+          candidates.add(friendOrd, score);
+          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+            results.insertWithOverflow(friendOrd, score);
+            bound.set(results.topScore());
+          }
+        }
+      }
+    }
+    while (results.size() > topK) {
+      results.pop();
+    }
+    results.setVisitedCount(visited.approximateCardinality());
+    return results;
+  }
+}
