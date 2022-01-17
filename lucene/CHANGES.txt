@@ -126,8 +126,7 @@ Improvements
 Optimizations
 ---------------------
 
-* LUCENE-10366: Override #readVInt and #readVLong for ByteBufferDataInput to avoid the abstraction
- confusion of #readByte. (Guo Feng)
+* LUCENE-10366: Optimizer of ByteBufferIndexInput#readVInt/#readVLong. (Guo Feng)
 
 * LUCENE-10329: Use computed block mask for DirectMonotonicReader#get. (Guo Feng)
 
