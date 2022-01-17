@@ -137,7 +137,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   }
 
   @Override
-  public void readLongs(long[] dst, int offset, int length) throws IOException {
+  public final void readLongs(long[] dst, int offset, int length) throws IOException {
     // ByteBuffer#getLong could work but it has some per-long overhead and there
     // is no ByteBuffer#getLongs to read multiple longs at once. So we use the
     // below trick in order to be able to leverage LongBuffer#get(long[]) to
