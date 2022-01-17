@@ -247,7 +247,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   private static ValueComparator loadComparator(
       SortField sortField, long topValue, LeafReaderContext context) throws IOException {
     @SuppressWarnings("unchecked")
-    FieldComparator<Long> fieldComparator = (FieldComparator<Long>) sortField.getComparator(1, 0);
+    FieldComparator<Long> fieldComparator =
+        (FieldComparator<Long>) sortField.getComparator(1, false);
     fieldComparator.setTopValue(topValue);
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);

@@ -258,7 +258,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
       comparators = new FieldComparator[sortFields.length];
       leafComparators = new LeafFieldComparator[sortFields.length];
       for (int i = 0; i < sortFields.length; i++) {
-        comparators[i] = sortFields[i].getComparator(1, i);
+        comparators[i] = sortFields[i].getComparator(1, false);
         leafComparators[i] = comparators[i].getLeafComparator(context);
         leafComparators[i].setScorer(scorer);
         leafComparators[i].copy(0, doc);
