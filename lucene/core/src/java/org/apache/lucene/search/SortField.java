@@ -495,12 +495,11 @@ public class SortField {
    *
    * @lucene.experimental
    * @param numHits number of top hits the queue will store
-   * @param sortPos position of this SortField within {@link Sort}. The comparator is primary if
-   *     sortPos==0, secondary if sortPos==1, etc. Some comparators can optimize themselves when
-   *     they are the primary sort.
+   * @param enableSkipping true if the comparator can skip documents via {@link
+   *     LeafFieldComparator#competitiveIterator()}
    * @return {@link FieldComparator} to use when sorting
    */
-  public FieldComparator<?> getComparator(final int numHits, final int sortPos) {
+  public FieldComparator<?> getComparator(final int numHits, boolean enableSkipping) {
     final FieldComparator<?> fieldComparator;
     switch (type) {
       case SCORE:
@@ -508,31 +507,32 @@ public class SortField {
         break;
 
       case DOC:
-        fieldComparator = new DocComparator(numHits, reverse, sortPos);
+        fieldComparator = new DocComparator(numHits, reverse, enableSkipping);
         break;
 
       case INT:
         fieldComparator =
-            new IntComparator(numHits, field, (Integer) missingValue, reverse, sortPos);
+            new IntComparator(numHits, field, (Integer) missingValue, reverse, enableSkipping);
         break;
 
       case FLOAT:
         fieldComparator =
-            new FloatComparator(numHits, field, (Float) missingValue, reverse, sortPos);
+            new FloatComparator(numHits, field, (Float) missingValue, reverse, enableSkipping);
         break;
 
       case LONG:
-        fieldComparator = new LongComparator(numHits, field, (Long) missingValue, reverse, sortPos);
+        fieldComparator =
+            new LongComparator(numHits, field, (Long) missingValue, reverse, enableSkipping);
         break;
 
       case DOUBLE:
         fieldComparator =
-            new DoubleComparator(numHits, field, (Double) missingValue, reverse, sortPos);
+            new DoubleComparator(numHits, field, (Double) missingValue, reverse, enableSkipping);
         break;
 
       case CUSTOM:
         assert comparatorSource != null;
-        fieldComparator = comparatorSource.newComparator(field, numHits, sortPos, reverse);
+        fieldComparator = comparatorSource.newComparator(field, numHits, enableSkipping, reverse);
         break;
 
       case STRING:
