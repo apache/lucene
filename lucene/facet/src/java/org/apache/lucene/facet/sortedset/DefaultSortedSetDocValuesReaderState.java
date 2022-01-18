@@ -74,12 +74,26 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   /**
    * Creates this without a config, pulling doc values from the default {@link
    * FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
+   *
+   * @deprecated Users should explicitly provide facet configuration during instantiation. See
+   *     {@link #DefaultSortedSetDocValuesReaderState(IndexReader, FacetsConfig)}. To maintain all
+   *     existing behavior, a "default" facet configuration can be provided with {@link
+   *     FacetsConfig#FacetsConfig()}.
    */
+  @Deprecated
   public DefaultSortedSetDocValuesReaderState(IndexReader reader) throws IOException {
     this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME, null);
   }
 
-  /** Creates this without a config, pulling doc values from the specified field. */
+  /**
+   * Creates this without a config, pulling doc values from the specified field.
+   *
+   * @deprecated Users should explicitly provide facet configuration during instantiation. See
+   *     {@link #DefaultSortedSetDocValuesReaderState(IndexReader, String, FacetsConfig)}. To
+   *     maintain all existing behavior, a "default" facet configuration can be provided with {@link
+   *     FacetsConfig#FacetsConfig()}.
+   */
+  @Deprecated
   public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field) throws IOException {
     this(reader, field, null);
   }

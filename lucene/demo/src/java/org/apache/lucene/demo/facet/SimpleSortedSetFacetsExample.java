@@ -88,7 +88,8 @@ public class SimpleSortedSetFacetsExample {
   private List<FacetResult> search() throws IOException {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
-    SortedSetDocValuesReaderState state = new DefaultSortedSetDocValuesReaderState(indexReader);
+    SortedSetDocValuesReaderState state =
+        new DefaultSortedSetDocValuesReaderState(indexReader, config);
 
     // Aggregatses the facet counts
     FacetsCollector fc = new FacetsCollector();
@@ -113,7 +114,8 @@ public class SimpleSortedSetFacetsExample {
   private FacetResult drillDown() throws IOException {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
-    SortedSetDocValuesReaderState state = new DefaultSortedSetDocValuesReaderState(indexReader);
+    SortedSetDocValuesReaderState state =
+        new DefaultSortedSetDocValuesReaderState(indexReader, config);
 
     // Now user drills down on Publish Year/2010:
     DrillDownQuery q = new DrillDownQuery(config);

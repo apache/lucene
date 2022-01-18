@@ -1068,7 +1068,7 @@ public class TestDrillSideways extends FacetTestCase {
     IndexSearcher s = getNewSearcher(r);
 
     if (doUseDV) {
-      sortedSetDVState = new DefaultSortedSetDocValuesReaderState(s.getIndexReader());
+      sortedSetDVState = new DefaultSortedSetDocValuesReaderState(s.getIndexReader(), config);
     } else {
       sortedSetDVState = null;
     }
