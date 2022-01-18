@@ -43,9 +43,9 @@ public abstract class KnnVectorsWriter implements Closeable {
   public abstract void finish() throws IOException;
 
   /**
-   * Merges the segment vectors for all fields. across all fields. This default implementation
-   * delegates to {@link #writeField}, passing a {@link KnnVectorsReader} that combines the vector
-   * values and ignores deleted documents.
+   * Merges the segment vectors for all fields. This default implementation delegates to {@link
+   * #writeField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
+   * deleted documents.
    */
   public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
