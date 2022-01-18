@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.PrimitiveIterator;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetUtils;
@@ -85,7 +84,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       throws IOException {
     this.state = state;
     this.field = state.getField();
-    this.stateConfig = Objects.requireNonNullElse(state.getFacetsConfig(), new FacetsConfig());
+    this.stateConfig = state.getFacetsConfig();
     this.dv = state.getDocValues();
     this.counts = new int[state.getSize()];
     if (hits == null) {
