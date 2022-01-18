@@ -112,37 +112,23 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
 
       if (singleValued != null) {
-        if (liveDocs == null) {
-          while (singleValued.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            increment((int) singleValued.longValue());
+        for (int doc = singleValued.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = singleValued.nextDoc()) {
+          if (liveDocs != null && liveDocs.get(doc) == false) {
+            continue;
           }
-        } else {
-          for (int doc = singleValued.nextDoc();
-              doc != DocIdSetIterator.NO_MORE_DOCS;
-              doc = singleValued.nextDoc()) {
-            if (liveDocs.get(doc)) {
-              increment((int) singleValued.longValue());
-            }
-          }
+          increment((int) singleValued.longValue());
         }
       } else {
-        if (liveDocs == null) {
-          while (multiValued.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            final int dvCount = multiValued.docValueCount();
-            for (int i = 0; i < dvCount; i++) {
-              increment((int) multiValued.nextValue());
-            }
+        for (int doc = multiValued.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = multiValued.nextDoc()) {
+          if (liveDocs != null && liveDocs.get(doc) == false) {
+            continue;
           }
-        } else {
-          for (int doc = multiValued.nextDoc();
-              doc != DocIdSetIterator.NO_MORE_DOCS;
-              doc = multiValued.nextDoc()) {
-            if (liveDocs.get(doc)) {
-              final int dvCount = multiValued.docValueCount();
-              for (int i = 0; i < dvCount; i++) {
-                increment((int) multiValued.nextValue());
-              }
-            }
+          for (int i = 0; i < multiValued.docValueCount(); i++) {
+            increment((int) multiValued.nextValue());
           }
         }
       }
