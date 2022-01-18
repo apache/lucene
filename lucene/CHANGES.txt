@@ -156,6 +156,9 @@ Optimizations
 
 * LUCENE-10356: Further optimize facet counting for single-valued TaxonomyFacetCounts. (Greg Miller)
 
+* LUCENE-10375: Speed up HNSW vectors merge by first writing combined vector
+  data to a file. (Julie Tibshirani, Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
