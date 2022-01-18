@@ -111,13 +111,19 @@ public class BKDReader extends PointValues {
   }
 
   private boolean isTreeBalanced() throws IOException {
-    if (version >= BKDWriter.VERSION_META_FILE) {
-      // Since lucene 8.6 all trees are unbalanced.
+    if (version >= BKDWriter.VERSION_META_FILE || numLeaves == 1) {
+      // since lucene 8.6 all trees are unbalanced.
+      // for only one leaf we can assume unbalanced.
       return false;
     }
     if (config.numDims > 1) {
-      // High dimensional tree in pre-8.6 indices are balanced.
+      // high dimensional tree in pre-8.6 indices are balanced.
+      assert 1 << MathUtil.log(numLeaves, 2) == numLeaves;
       return true;
+    }
+    if (1 << MathUtil.log(numLeaves, 2) != numLeaves) {
+      // if we don't have enough leaves to fill the last level then it is unbalanced
+      return false;
     }
     // count of the last node for unbalanced trees
     final int lastLeafNodePointCount = Math.toIntExact(pointCount % config.maxPointsInLeafNode);
@@ -125,7 +131,6 @@ public class BKDReader extends PointValues {
     PointTree pointTree = getPointTree();
     do {
       while (pointTree.moveToSibling()) {}
-      ;
     } while (pointTree.moveToChild());
     // count number of docs in the node
     final int[] count = new int[] {0};
