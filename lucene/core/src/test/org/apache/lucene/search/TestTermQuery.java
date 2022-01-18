@@ -91,16 +91,12 @@ public class TestTermQuery extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(reader);
     // use a collector rather than searcher.count() which would just read the
     // doc freq instead of creating a scorer
-    TotalHitCountCollector collector = new TotalHitCountCollector();
-    searcher.search(query, collector);
-    assertEquals(1, collector.getTotalHits());
+    assertEquals(1, searcher.count(query));
     TermQuery queryWithContext =
         new TermQuery(
             new Term("foo", "bar"),
             TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
-    collector = new TotalHitCountCollector();
-    searcher.search(queryWithContext, collector);
-    assertEquals(1, collector.getTotalHits());
+    assertEquals(1, searcher.count(queryWithContext));
 
     IOUtils.close(reader, w, dir);
   }
