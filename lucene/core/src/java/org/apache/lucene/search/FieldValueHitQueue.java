@@ -134,7 +134,7 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
     for (int i = 0; i < numComparators; ++i) {
       SortField field = fields[i];
       reverseMul[i] = field.reverse ? -1 : 1;
-      comparators[i] = field.getComparator(size, i);
+      comparators[i] = field.getComparator(size, i == 0);
     }
   }
 

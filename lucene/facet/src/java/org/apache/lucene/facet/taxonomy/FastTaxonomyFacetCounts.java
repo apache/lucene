@@ -84,13 +84,27 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
           ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
 
       if (singleValued != null) {
-        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          increment((int) singleValued.longValue());
+        if (values != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            values[(int) singleValued.longValue()]++;
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            sparseValues.addTo((int) singleValued.longValue(), 1);
+          }
         }
       } else {
-        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          for (int i = 0; i < multiValued.docValueCount(); i++) {
-            increment((int) multiValued.nextValue());
+        if (values != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              values[(int) multiValued.nextValue()]++;
+            }
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              sparseValues.addTo((int) multiValued.nextValue(), 1);
+            }
           }
         }
       }
@@ -100,6 +114,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   }
 
   private void countAll(IndexReader reader) throws IOException {
+    assert values != null;
     for (LeafReaderContext context : reader.leaves()) {
       SortedNumericDocValues multiValued =
           context.reader().getSortedNumericDocValues(indexFieldName);
@@ -117,19 +132,18 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
           if (liveDocs != null && liveDocs.get(doc) == false) {
             continue;
           }
-          increment((int) singleValued.longValue());
+          values[(int) singleValued.longValue()]++;
         }
-        continue;
-      }
-
-      for (int doc = multiValued.nextDoc();
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = multiValued.nextDoc()) {
-        if (liveDocs != null && liveDocs.get(doc) == false) {
-          continue;
-        }
-        for (int i = 0; i < multiValued.docValueCount(); i++) {
-          increment((int) multiValued.nextValue());
+      } else {
+        for (int doc = multiValued.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = multiValued.nextDoc()) {
+          if (liveDocs != null && liveDocs.get(doc) == false) {
+            continue;
+          }
+          for (int i = 0; i < multiValued.docValueCount(); i++) {
+            values[(int) multiValued.nextValue()]++;
+          }
         }
       }
     }
