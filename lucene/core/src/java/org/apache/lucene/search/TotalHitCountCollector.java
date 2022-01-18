@@ -16,10 +16,11 @@
  */
 package org.apache.lucene.search;
 
-/** Just counts the total number of hits.
- * For cases when this is the only collector used, {@link IndexSearcher#count(Query)}
- * can be called instead of {@link IndexSearcher#search(Query, Collector)} which will
- * automatically create an instance of this collector internally */
+/**
+ * Just counts the total number of hits. For cases when this is the only collector used, {@link
+ * IndexSearcher#count(Query)} can be called instead of {@link IndexSearcher#search(Query,
+ * Collector)} which will automatically create an instance of this collector internally
+ */
 public class TotalHitCountCollector extends SimpleCollector {
   private int totalHits;
 
