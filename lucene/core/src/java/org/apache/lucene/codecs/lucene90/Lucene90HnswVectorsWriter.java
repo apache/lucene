@@ -188,13 +188,15 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     try {
       // write the merged vector data to a temporary file
       int[] docIds = writeVectorData(tempVectorData, vectors);
+      CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
       // copy the temporary file vectors to the actual data file
       vectorDataInput =
           segmentWriteState.directory.openInput(
               tempVectorData.getName(), segmentWriteState.context);
-      vectorData.copyBytes(vectorDataInput, vectorDataInput.length());
+      vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
+      CodecUtil.retrieveChecksum(vectorDataInput);
 
       // build the graph using the temporary vector data
       Lucene90HnswVectorsReader.OffHeapVectorValues offHeapVectors =
