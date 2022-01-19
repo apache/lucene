@@ -107,13 +107,14 @@ public class BKDReader extends PointValues {
     }
     this.packedIndex = indexIn.slice("packedIndex", indexStartPointer, numIndexBytes);
     this.in = dataIn;
-    this.isTreeBalanced = isTreeBalanced();
+    // for only one leaf, balanced and unbalanced trees are the same
+    // we set it to unbalanced.
+    this.isTreeBalanced = numLeaves != 1 && isTreeBalanced();
   }
 
   private boolean isTreeBalanced() throws IOException {
-    if (version >= BKDWriter.VERSION_META_FILE || numLeaves == 1) {
+    if (version >= BKDWriter.VERSION_META_FILE) {
       // since lucene 8.6 all trees are unbalanced.
-      // for only one leaf we can assume unbalanced.
       return false;
     }
     if (config.numDims > 1) {
