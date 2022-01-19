@@ -509,8 +509,7 @@ public class BKDReader extends PointValues {
       }
       assert numLeaves == getNumLeavesSlow(nodeID) : numLeaves + " " + getNumLeavesSlow(nodeID);
       if (isTreeBalanced) {
-        // before lucene 8.6, high dimensional trees might have been constructed as fully balanced
-        // trees.
+        // before lucene 8.6, trees might have been constructed as fully balanced trees.
         return sizeFromBalancedTree(leftMostLeafNode, rightMostLeafNode);
       }
       // size for an unbalanced tree.
