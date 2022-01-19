@@ -38,7 +38,9 @@ import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
+import org.apache.lucene.facet.MultiDoubleValuesSource;
 import org.apache.lucene.facet.MultiFacets;
+import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -766,28 +768,67 @@ public class TestRangeFacetCounts extends FacetTestCase {
       } else {
         fastMatchQuery = null;
       }
-      LongValuesSource vs = LongValuesSource.fromLongField("field");
-      Facets facets = new LongRangeFacetCounts("field", vs, sfc, fastMatchQuery, ranges);
-      FacetResult result = facets.getTopChildren(10, "field");
-      assertEquals(numRange, result.labelValues.length);
-      for (int rangeID = 0; rangeID < numRange; rangeID++) {
-        if (VERBOSE) {
-          System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
-        }
-        LabelAndValue subNode = result.labelValues[rangeID];
-        assertEquals("r" + rangeID, subNode.label);
-        assertEquals(expectedCounts[rangeID], subNode.value.intValue());
 
-        LongRange range = ranges[rangeID];
-
-        // Test drill-down:
-        DrillDownQuery ddq = new DrillDownQuery(config);
+      if (random().nextBoolean()) {
+        LongValuesSource vs = LongValuesSource.fromLongField("field");
+        MultiLongValuesSource mvs = MultiLongValuesSource.fromLongField("field");
+        Facets facets;
         if (random().nextBoolean()) {
-          ddq.add("field", LongPoint.newRangeQuery("field", range.min, range.max));
+          facets = new LongRangeFacetCounts("field", vs, sfc, fastMatchQuery, ranges);
+        } else if (random().nextBoolean()) {
+          facets = new LongRangeFacetCounts("field", mvs, sfc, fastMatchQuery, ranges);
         } else {
-          ddq.add("field", range.getQuery(fastMatchQuery, vs));
+          facets =
+              new LongRangeFacetCounts(
+                  "field", MultiLongValuesSource.fromSingleValued(vs), sfc, fastMatchQuery, ranges);
         }
-        assertEquals(expectedCounts[rangeID], s.count(ddq));
+        FacetResult result = facets.getTopChildren(10, "field");
+        assertEquals(numRange, result.labelValues.length);
+        for (int rangeID = 0; rangeID < numRange; rangeID++) {
+          if (VERBOSE) {
+            System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
+          }
+          LabelAndValue subNode = result.labelValues[rangeID];
+          assertEquals("r" + rangeID, subNode.label);
+          assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+
+          LongRange range = ranges[rangeID];
+
+          // Test drill-down:
+          DrillDownQuery ddq = new DrillDownQuery(config);
+          if (random().nextBoolean()) {
+            ddq.add("field", LongPoint.newRangeQuery("field", range.min, range.max));
+          } else if (random().nextBoolean()) {
+            ddq.add("field", range.getQuery(fastMatchQuery, mvs));
+          } else {
+            ddq.add("field", range.getQuery(fastMatchQuery, vs));
+          }
+          assertEquals(expectedCounts[rangeID], s.count(ddq));
+        }
+      } else {
+        MultiLongValuesSource vs = MultiLongValuesSource.fromLongField("field");
+        Facets facets = new LongRangeFacetCounts("field", vs, sfc, fastMatchQuery, ranges);
+        FacetResult result = facets.getTopChildren(10, "field");
+        assertEquals(numRange, result.labelValues.length);
+        for (int rangeID = 0; rangeID < numRange; rangeID++) {
+          if (VERBOSE) {
+            System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
+          }
+          LabelAndValue subNode = result.labelValues[rangeID];
+          assertEquals("r" + rangeID, subNode.label);
+          assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+
+          LongRange range = ranges[rangeID];
+
+          // Test drill-down:
+          DrillDownQuery ddq = new DrillDownQuery(config);
+          if (random().nextBoolean()) {
+            ddq.add("field", LongPoint.newRangeQuery("field", range.min, range.max));
+          } else {
+            ddq.add("field", range.getQuery(fastMatchQuery, vs));
+          }
+          assertEquals(expectedCounts[rangeID], s.count(ddq));
+        }
       }
     }
 
@@ -924,7 +965,16 @@ public class TestRangeFacetCounts extends FacetTestCase {
       } else {
         fastMatchQuery = null;
       }
-      Facets facets = new LongRangeFacetCounts("field", null, sfc, fastMatchQuery, ranges);
+      Facets facets;
+      if (random().nextBoolean()) {
+        facets =
+            new LongRangeFacetCounts(
+                "field", MultiLongValuesSource.fromLongField("field"), sfc, fastMatchQuery, ranges);
+      } else {
+        facets =
+            new LongRangeFacetCounts(
+                "field", (MultiLongValuesSource) null, sfc, fastMatchQuery, ranges);
+      }
       FacetResult result = facets.getTopChildren(10, "field");
       assertEquals(numRange, result.labelValues.length);
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
@@ -1069,7 +1119,21 @@ public class TestRangeFacetCounts extends FacetTestCase {
         fastMatchFilter = null;
       }
       DoubleValuesSource vs = DoubleValuesSource.fromDoubleField("field");
-      Facets facets = new DoubleRangeFacetCounts("field", vs, sfc, fastMatchFilter, ranges);
+      MultiDoubleValuesSource mvs = MultiDoubleValuesSource.fromDoubleField("field");
+      Facets facets;
+      if (random().nextBoolean()) {
+        facets = new DoubleRangeFacetCounts("field", vs, sfc, fastMatchFilter, ranges);
+      } else if (random().nextBoolean()) {
+        facets =
+            new DoubleRangeFacetCounts(
+                "field",
+                MultiDoubleValuesSource.fromSingleValued(vs),
+                sfc,
+                fastMatchFilter,
+                ranges);
+      } else {
+        facets = new DoubleRangeFacetCounts("field", mvs, sfc, fastMatchFilter, ranges);
+      }
       FacetResult result = facets.getTopChildren(10, "field");
       assertEquals(numRange, result.labelValues.length);
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
@@ -1086,8 +1150,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
         DrillDownQuery ddq = new DrillDownQuery(config);
         if (random().nextBoolean()) {
           ddq.add("field", DoublePoint.newRangeQuery("field", range.min, range.max));
-        } else {
+        } else if (random().nextBoolean()) {
           ddq.add("field", range.getQuery(fastMatchFilter, vs));
+        } else {
+          ddq.add("field", range.getQuery(fastMatchFilter, mvs));
         }
 
         assertEquals(expectedCounts[rangeID], s.count(ddq));
@@ -1222,7 +1288,20 @@ public class TestRangeFacetCounts extends FacetTestCase {
       } else {
         fastMatchFilter = null;
       }
-      Facets facets = new DoubleRangeFacetCounts("field", null, sfc, fastMatchFilter, ranges);
+      Facets facets;
+      if (random().nextBoolean()) {
+        facets =
+            new DoubleRangeFacetCounts(
+                "field",
+                MultiDoubleValuesSource.fromDoubleField("field"),
+                sfc,
+                fastMatchFilter,
+                ranges);
+      } else {
+        facets =
+            new DoubleRangeFacetCounts(
+                "field", (MultiDoubleValuesSource) null, sfc, fastMatchFilter, ranges);
+      }
       FacetResult result = facets.getTopChildren(10, "field");
       assertEquals(numRange, result.labelValues.length);
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
@@ -1496,7 +1575,14 @@ public class TestRangeFacetCounts extends FacetTestCase {
       System.out.println("TEST: fastMatchFilter=" + fastMatchFilter);
     }
 
-    Facets facets = new DoubleRangeFacetCounts("field", vs, fc, fastMatchFilter, ranges);
+    Facets facets;
+    if (random().nextBoolean()) {
+      facets = new DoubleRangeFacetCounts("field", vs, fc, fastMatchFilter, ranges);
+    } else {
+      facets =
+          new DoubleRangeFacetCounts(
+              "field", MultiDoubleValuesSource.fromSingleValued(vs), fc, fastMatchFilter, ranges);
+    }
 
     assertEquals(
         "dim=field path=[] value=3 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
@@ -1504,7 +1590,13 @@ public class TestRangeFacetCounts extends FacetTestCase {
     assertTrue(fastMatchFilter == null || filterWasUsed.get());
 
     DrillDownQuery ddq = new DrillDownQuery(config);
-    ddq.add("field", ranges[1].getQuery(fastMatchFilter, vs));
+    if (random().nextBoolean()) {
+      ddq.add("field", ranges[1].getQuery(fastMatchFilter, vs));
+    } else {
+      ddq.add(
+          "field",
+          ranges[1].getQuery(fastMatchFilter, MultiDoubleValuesSource.fromSingleValued(vs)));
+    }
 
     // Test simple drill-down:
     assertEquals(1, s.search(ddq, 10).totalHits.value);
@@ -1521,7 +1613,11 @@ public class TestRangeFacetCounts extends FacetTestCase {
               throws IOException {
             assert drillSideways.length == 1;
             return new DoubleRangeFacetCounts(
-                "field", vs, drillSideways[0], fastMatchFilter, ranges);
+                "field",
+                MultiDoubleValuesSource.fromSingleValued(vs),
+                drillSideways[0],
+                fastMatchFilter,
+                ranges);
           }
 
           @Override

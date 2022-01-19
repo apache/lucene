@@ -22,7 +22,7 @@ description = 'Korean Morphological Analyzer'
 dependencies {
   moduleApi project(':lucene:core')
   moduleApi project(':lucene:analysis:common')
-  
-  testImplementation project(':lucene:test-framework')
+
+  moduleTestImplementation project(':lucene:test-framework')
 }
 

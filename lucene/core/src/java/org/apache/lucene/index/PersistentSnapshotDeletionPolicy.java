@@ -170,9 +170,8 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
 
   private synchronized void persist() throws IOException {
     String fileName = SNAPSHOTS_PREFIX + nextWriteGen;
-    IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT);
     boolean success = false;
-    try {
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
       CodecUtil.writeHeader(out, CODEC_NAME, VERSION_CURRENT);
       out.writeVInt(refCounts.size());
       for (Entry<Long, Integer> ent : refCounts.entrySet()) {
@@ -182,10 +181,7 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
       success = true;
     } finally {
       if (!success) {
-        IOUtils.closeWhileHandlingException(out);
         IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
-      } else {
-        IOUtils.close(out);
       }
     }
 

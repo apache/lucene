@@ -112,10 +112,14 @@ final class SegmentCoreReaders {
 
       final SegmentReadState segmentReadState =
           new SegmentReadState(cfsDir, si.info, coreFieldInfos, context);
-      final PostingsFormat format = codec.postingsFormat();
-      // Ask codec for its Fields
-      fields = format.fieldsProducer(segmentReadState);
-      assert fields != null;
+      if (coreFieldInfos.hasPostings()) {
+        final PostingsFormat format = codec.postingsFormat();
+        // Ask codec for its Fields
+        fields = format.fieldsProducer(segmentReadState);
+        assert fields != null;
+      } else {
+        fields = null;
+      }
       // ask codec for its Norms:
       // TODO: since we don't write any norms file if there are no norms,
       // kinda jaky to assume the codec handles the case of no norms file at all gracefully?!

@@ -32,6 +32,9 @@ Bug Fixes
 Other
 ---------------------
 
+* LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
+  (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
+
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
@@ -50,11 +53,34 @@ API Changes
   org.apache.lucene.* to org.apache.lucene.tests.* to avoid package name conflicts with the
   core module. (Dawid Weiss)
 
+* LUCENE-10183: KnnVectorsWriter#writeField to take KnnVectorsReader instead of VectorValues.
+  (Zach Chen, Michael Sokolov, Julie Tibshirani, Adrien Grand)
+
+* LUCENE-10335: Deprecate helper methods for resource loading in IOUtils and StopwordAnalyzerBase
+  that are not compatible with module system (Class#getResourceAsStream() and Class#getResource()
+  are caller sensitive in Java 11). Instead add utility method IOUtils#requireResourceNonNull(T)
+  to test existence of resource based on null return value.  (Uwe Schindler, Dawid Weiss)
+
+* LUCENE-10349: WordListLoader methods now return unmodifiable CharArraySets.  (Uwe Schindler)
+
+* LUCENE-10377: SortField.getComparator() has changed signature. The second parameter is now
+  a boolean indicating whether or not skipping should be enabled on the comparator. 
+  (Alan Woodward)
+
 New Features
 ---------------------
 
 * LUCENE-10255: Lucene JARs are now proper modules, with module descriptors and dependency information.
   (Chris Hegarty, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
+
+* LUCENE-10342: Lucene Core now depends on java.logging (JUL) module and reports
+  if MMapDirectory cannot unmap mapped ByteBuffers or RamUsageEstimator's object size
+  calculations may be off. This was added especially for users running Lucene with the
+  Java Module System where some optional features are not available by default or supported.
+  For all apps using Lucene it is strongly recommended, to explicitely require non-standard
+  JDK modules: jdk.unsupported (unmapping) and jdk.management (OOP size for RAM usage calculatons).
+  It is also recommended to install JUL logging adapters to feed the log events into your app's
+  logging system.  (Uwe Schindler, Dawid Weiss, Tomoko Uchida, Robert Muir)
 
 * LUCENE-10330: Make MMapDirectory tests fail by default, if unmapping does not work.
   (Uwe Schindler, Dawid Weiss)
@@ -79,6 +105,17 @@ New Features
 * LUCENE-10243: StandardTokenizer, UAX29URLEmailTokenizer, and HTMLStripCharFilter have
   been upgraded to Unicode 12.1  (Robert Muir)
 
+* LUCENE-10335: Add ModuleResourceLoader as complement to ClasspathResourceLoader.
+  (Uwe Schindler)
+
+* LUCENE-10245: MultiDoubleValues(Source) and MultiLongValues(Source) were added as multi-valued
+  versions of DoubleValues(Source) and LongValues(Source) to the facets module. LongValueFacetCounts,
+  LongRangeFacetCounts and DoubleRangeFacetCounts were augmented to support these new multi-valued
+  abstractions. DoubleRange and LongRange also support creating queries from these multi-valued
+  sources. (Greg Miller)
+
+* LUCENE-10250: Add support for arbitrary length hierarchical SSDV facets. (Marc D'mello)
+
 Improvements
 ---------------------
 
@@ -100,7 +137,7 @@ Improvements
 
 * LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
   with or without offsets enabled. (Patrick Zhai)
-  
+
 Optimizations
 ---------------------
 
@@ -115,6 +152,26 @@ Optimizations
 
 * LUCENE-10321: Tweak MultiRangeQuery interval tree creation to skip "pulling up" mins. (Greg Miller)
 
+* LUCENE-10252: ValueSource.asDoubleValues and asLongValues should not compute the score unless
+  asked to -- typically never.  This fixes a performance regression since 7.3 LUCENE-8099 when some
+  older boosting queries were replaced with this. (David Smiley)
+
+* LUCENE-10346: Optimize facet counting for single-valued TaxonomyFacetCounts. (Guo Feng)
+
+* LUCENE-10356: Further optimize facet counting for single-valued TaxonomyFacetCounts. (Greg Miller)
+
+* LUCENE-10379: Count directly into the dense values array in FastTaxonomyFacetCounts#countAll.
+  (Guo Feng, Greg Miller)
+
+* LUCENE-10375: Speed up HNSW vectors merge by first writing combined vector
+  data to a file. (Julie Tibshirani, Adrien Grand)
+
+Changes in runtime behavior
+---------------------
+
+* LUCENE-10291: Lucene now only writes files for terms and postings if at least
+  one field is indexed with postings. (Yannick Welsch)
+
 Bug Fixes
 ---------------------
 
@@ -122,11 +179,23 @@ Bug Fixes
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
-* LUCENE-10287: Fix Luke startup script to add jdk.unsupported module so
-  MMapDirectory is used when opening indexes. (Uwe Schindler)
-
 * LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
   (Zach Chen, Jim Ferenczi, Julie Tibshirani)
+
+* LUCENE-10349: Fix all analyzers to behave according to their documentation:
+  getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
+
+* LUCENE-10352: Add missing service provider entries: KoreanNumberFilterFactory,
+  DaitchMokotoffSoundexFilterFactory (Uwe Schindler, Robert Muir)
+
+* LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
+  DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
+
+* LLUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
+  Uwe Schindler)
+
+* LUCENE-10377: CheckIndex could incorrectly throw an error when checking index sorts
+  defined on older indexes. (Alan Woodward)
 
 Other
 ---------------------
@@ -137,6 +206,13 @@ Other
 
 * LUCENE-10310: TestXYDocValuesQueries#doRandomDistanceTest does not produce random circles with radius
   with '0' value any longer.
+
+* LUCENE-10352: Removed duplicate instances of StringMockResourceLoader and migrated class to
+  test-framework.  (Uwe Schindler, Robert Muir)
+
+* LUCENE-10352: Convert TestAllAnalyzersHaveFactories and TestRandomChains to a global integration test
+  and discover classes to check from module system. The test now checks all analyzer modules,
+  so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
 
 ======================= Lucene 9.0.0 =======================
 

@@ -43,6 +43,7 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.IOUtils;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 
@@ -91,8 +92,9 @@ public class TestLookupBenchmark extends LuceneTestCase {
   /** Collect the multilingual input for benchmarks/ tests. */
   public static List<Input> readTop50KWiki() throws Exception {
     List<Input> input = new ArrayList<>();
-    URL resource = TestLookupBenchmark.class.getResource("Top50KWiki.utf8");
-    assert resource != null : "Resource missing: Top50KWiki.utf8";
+    var name = "Top50KWiki.utf8";
+    URL resource =
+        IOUtils.requireResourceNonNull(TestLookupBenchmark.class.getResource(name), name);
 
     String line = null;
     BufferedReader br = new BufferedReader(new InputStreamReader(resource.openStream(), UTF_8));

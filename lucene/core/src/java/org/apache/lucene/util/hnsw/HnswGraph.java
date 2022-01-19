@@ -50,8 +50,8 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * </ul>
  *
  * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
- * thread-safe. Also note: there is no notion of deletions. Document searching built on top of this
- * must do its own deletion-filtering.
+ * thread-safe. The search method optionally takes a set of "accepted nodes", which can be used to
+ * exclude deleted documents.
  */
 public final class HnswGraph extends KnnGraphValues {
 

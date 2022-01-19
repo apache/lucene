@@ -34,16 +34,6 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(DirectMonotonicReader.class);
 
-  /** An instance that always returns {@code 0}. */
-  private static final LongValues EMPTY =
-      new LongValues() {
-
-        @Override
-        public long get(long index) {
-          return 0;
-        }
-      };
-
   /**
    * In-memory metadata that needs to be kept around for {@link DirectMonotonicReader} to read data
    * from disk.
@@ -111,7 +101,7 @@ public final class DirectMonotonicReader extends LongValues implements Accountab
     final LongValues[] readers = new LongValues[meta.numBlocks];
     for (int i = 0; i < meta.numBlocks; ++i) {
       if (meta.bpvs[i] == 0) {
-        readers[i] = EMPTY;
+        readers[i] = LongValues.ZEROES;
       } else if (merging
           && i < meta.numBlocks - 1 // we only know the number of values for the last block
           && meta.blockShift >= DirectReader.MERGE_BUFFER_SHIFT) {

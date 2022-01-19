@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -246,9 +247,9 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
    * module layer.
    */
   @Test
-  public void testAllOpenPackagesInSync() throws IOException {
+  public void testAllExportedPackagesInSync() throws IOException {
     for (var module : allCoreModules) {
-      Set<String> jarPackages = getJarPackages(module);
+      Set<String> jarPackages = getJarPackages(module, entry -> true);
       Set<ModuleDescriptor.Exports> moduleExports = new HashSet<>(module.descriptor().exports());
 
       if (module.descriptor().name().equals("org.apache.lucene.luke")) {
@@ -291,7 +292,36 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
     }
   }
 
-  private Set<String> getJarPackages(ModuleReference module) throws IOException {
+  /** This test ensures that all analysis modules open their resources files to core. */
+  @Test
+  public void testAllOpenAnalysisPackagesInSync() throws IOException {
+    for (var module : allCoreModules) {
+      if (false == module.descriptor().name().startsWith("org.apache.lucene.analysis.")) {
+        continue; // at moment we only want to open resources inside analysis packages
+      }
+
+      // We only collect resources from the JAR file which are:
+      // - stopword files (*.txt)
+      // - ICU break iterator rules (*.brk)
+      var filter = Pattern.compile("/[^/]+\\.(txt|brk)$");
+      Set<String> jarPackages = getJarPackages(module, filter.asPredicate());
+      Set<ModuleDescriptor.Opens> moduleOpens = module.descriptor().opens();
+
+      Assertions.assertThat(moduleOpens)
+          .as("Open packages in module: " + module.descriptor().name())
+          .allSatisfy(
+              export -> {
+                Assertions.assertThat(export.targets())
+                    .as("Opens should only be targeted to Lucene Core.")
+                    .containsExactly("org.apache.lucene.core");
+              })
+          .map(ModuleDescriptor.Opens::source)
+          .containsExactlyInAnyOrderElementsOf(jarPackages);
+    }
+  }
+
+  private Set<String> getJarPackages(ModuleReference module, Predicate<String> entryFilter)
+      throws IOException {
     try (ModuleReader reader = module.open()) {
       return reader
           .list()
@@ -299,7 +329,8 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               entry ->
                   !entry.startsWith("META-INF/")
                       && !entry.equals("module-info.class")
-                      && !entry.endsWith("/"))
+                      && !entry.endsWith("/")
+                      && entryFilter.test(entry))
           .map(entry -> entry.replaceAll("/[^/]+$", ""))
           .map(entry -> entry.replace('/', '.'))
           .collect(Collectors.toCollection(TreeSet::new));

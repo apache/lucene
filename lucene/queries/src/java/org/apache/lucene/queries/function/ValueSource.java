@@ -17,7 +17,6 @@
 package org.apache.lucene.queries.function;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -77,56 +76,75 @@ public abstract class ValueSource {
     return context;
   }
 
-  private static class ScoreAndDoc extends Scorable {
-
-    int current = -1;
+  private static class ScorableView extends Scorable {
+    final DoubleValues scores;
+    int docId = -1;
+    int scoresDocId = -1;
     float score = 0;
 
-    @Override
-    public int docID() {
-      return current;
+    public ScorableView(int docId, float score) {
+      this(null);
+      this.docId = this.scoresDocId = docId;
+      this.score = score;
+    }
+
+    public ScorableView(DoubleValues scores) {
+      this.scores = scores == null ? DoubleValues.EMPTY : scores;
     }
 
     @Override
-    public float score() {
+    public int docID() {
+      return docId;
+    }
+
+    @Override
+    public float score() throws IOException {
+      // ensure we calculate the score at most once
+      if (scoresDocId != docId) {
+        scoresDocId = docId;
+        if (scores.advanceExact(docId)) {
+          score = (float) scores.doubleValue();
+        } else {
+          score = 0;
+        }
+      }
       return score;
     }
   }
 
   /** Expose this ValueSource as a LongValuesSource */
   public LongValuesSource asLongValuesSource() {
-    return new WrappedLongValuesSource(this);
+    return new WrappedLongValuesSource(this, null);
   }
 
   private static class WrappedLongValuesSource extends LongValuesSource {
 
     private final ValueSource in;
+    private final IndexSearcher searcher;
 
-    private WrappedLongValuesSource(ValueSource in) {
+    private WrappedLongValuesSource(ValueSource in, IndexSearcher searcher) {
       this.in = in;
+      this.searcher = searcher;
     }
 
     @Override
     public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      Map<Object, Object> context = new IdentityHashMap<>();
-      ScoreAndDoc scorer = new ScoreAndDoc();
+      Map<Object, Object> context = newContext(searcher);
+
+      var scorer = new ScorableView(scores);
       context.put("scorer", scorer);
-      final FunctionValues fv = in.getValues(context, ctx);
+
+      FunctionValues fv = in.getValues(context, ctx);
       return new LongValues() {
 
         @Override
         public long longValue() throws IOException {
-          return fv.longVal(scorer.current);
+          return fv.longVal(scorer.docId);
         }
 
         @Override
         public boolean advanceExact(int doc) throws IOException {
-          scorer.current = doc;
-          if (scores != null && scores.advanceExact(doc)) {
-            scorer.score = (float) scores.doubleValue();
-          } else {
-            scorer.score = 0;
-          }
+          scorer.docId = doc;
           return fv.exists(doc);
         }
       };
@@ -162,7 +180,7 @@ public abstract class ValueSource {
 
     @Override
     public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return this;
+      return new WrappedLongValuesSource(in, searcher);
     }
   }
 
@@ -183,26 +201,22 @@ public abstract class ValueSource {
 
     @Override
     public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      Map<Object, Object> context = new HashMap<>();
-      ScoreAndDoc scorer = new ScoreAndDoc();
+      Map<Object, Object> context = newContext(searcher);
+
+      var scorer = new ScorableView(scores);
       context.put("scorer", scorer);
-      context.put("searcher", searcher);
+
       FunctionValues fv = in.getValues(context, ctx);
       return new DoubleValues() {
 
         @Override
         public double doubleValue() throws IOException {
-          return fv.doubleVal(scorer.current);
+          return fv.doubleVal(scorer.docId);
         }
 
         @Override
-        public boolean advanceExact(int doc) throws IOException {
-          scorer.current = doc;
-          if (scores != null && scores.advanceExact(doc)) {
-            scorer.score = (float) scores.doubleValue();
-          } else {
-            scorer.score = 0;
-          }
+        public boolean advanceExact(int doc) {
+          scorer.docId = doc;
           // ValueSource will return values even if exists() is false, generally a default
           // of some kind.  To preserve this behaviour with the iterator, we need to always
           // return 'true' here.
@@ -224,11 +238,8 @@ public abstract class ValueSource {
     @Override
     public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation)
         throws IOException {
-      Map<Object, Object> context = new HashMap<>();
-      ScoreAndDoc scorer = new ScoreAndDoc();
-      scorer.score = scoreExplanation.getValue().floatValue();
-      context.put("scorer", scorer);
-      context.put("searcher", searcher);
+      Map<Object, Object> context = newContext(searcher);
+      context.put("scorer", new ScorableView(docId, scoreExplanation.getValue().floatValue()));
       FunctionValues fv = in.getValues(context, ctx);
       return fv.explain(docId);
     }
@@ -370,7 +381,7 @@ public abstract class ValueSource {
 
     @Override
     public FieldComparator<Double> newComparator(
-        String fieldname, int numHits, int sortPos, boolean reversed) {
+        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
       return new ValueSourceComparator(context, numHits);
     }
   }

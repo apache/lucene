@@ -22,7 +22,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
+import java.util.PrimitiveIterator;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.Facets;
@@ -31,6 +32,7 @@ import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
+import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.DimTree;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.OrdRange;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
@@ -66,9 +68,12 @@ import org.apache.lucene.util.LongValues;
 public class SortedSetDocValuesFacetCounts extends Facets {
 
   final SortedSetDocValuesReaderState state;
+  final FacetsConfig stateConfig;
   final SortedSetDocValues dv;
   final String field;
   final int[] counts;
+
+  private static final String[] emptyPath = new String[0];
 
   /** Returns all facet counts, same result as searching on {@link MatchAllDocsQuery} but faster. */
   public SortedSetDocValuesFacetCounts(SortedSetDocValuesReaderState state) throws IOException {
@@ -80,8 +85,9 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       throws IOException {
     this.state = state;
     this.field = state.getField();
-    dv = state.getDocValues();
-    counts = new int[state.getSize()];
+    this.stateConfig = Objects.requireNonNullElse(state.getFacetsConfig(), new FacetsConfig());
+    this.dv = state.getDocValues();
+    this.counts = new int[state.getSize()];
     if (hits == null) {
       // browse only
       countAll();
@@ -95,17 +101,32 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     if (topN <= 0) {
       throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
     }
-    if (path.length > 0) {
-      throw new IllegalArgumentException("path should be 0 length");
+
+    if (stateConfig.getDimConfig(dim).hierarchical) {
+      int pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
+      if (pathOrd < 0) {
+        // path was never indexed
+        return null;
+      }
+      DimTree dimTree = state.getDimTree(dim);
+      return getDim(dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
+    } else {
+      if (path.length > 0) {
+        throw new IllegalArgumentException(
+            "Field is not configured as hierarchical, path should be 0 length");
+      }
+      OrdRange ordRange = state.getOrdRange(dim);
+      if (ordRange == null) {
+        // means dimension was never indexed
+        return null;
+      }
+      return getDim(dim, null, -1, ordRange.iterator(), topN);
     }
-    OrdRange ordRange = state.getOrdRange(dim);
-    if (ordRange == null) {
-      return null; // means dimension was never indexed
-    }
-    return getDim(dim, ordRange, topN);
   }
 
-  private FacetResult getDim(String dim, OrdRange ordRange, int topN) throws IOException {
+  private FacetResult getDim(
+      String dim, String[] path, int pathOrd, PrimitiveIterator.OfInt childOrds, int topN)
+      throws IOException {
 
     TopOrdAndIntQueue q = null;
 
@@ -115,7 +136,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     int childCount = 0;
 
     TopOrdAndIntQueue.OrdAndValue reuse = null;
-    for (int ord = ordRange.start; ord <= ordRange.end; ord++) {
+    while (childOrds.hasNext()) {
+      int ord = childOrds.next();
       if (counts[ord] > 0) {
         dimCount += counts[ord];
         childCount++;
@@ -145,12 +167,19 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     for (int i = labelValues.length - 1; i >= 0; i--) {
       TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
+      assert ordAndValue != null;
       final BytesRef term = dv.lookupOrd(ordAndValue.ord);
       String[] parts = FacetsConfig.stringToPath(term.utf8ToString());
-      labelValues[i] = new LabelAndValue(parts[1], ordAndValue.value);
+      labelValues[i] = new LabelAndValue(parts[parts.length - 1], ordAndValue.value);
     }
 
-    return new FacetResult(dim, new String[0], dimCount, labelValues, childCount);
+    if (pathOrd == -1) {
+      // not hierarchical facet
+      return new FacetResult(dim, emptyPath, dimCount, labelValues, childCount);
+    } else {
+      // hierarchical facet
+      return new FacetResult(dim, path, counts[pathOrd], labelValues, childCount);
+    }
   }
 
   private void countOneSegment(
@@ -317,10 +346,19 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   public List<FacetResult> getAllDims(int topN) throws IOException {
 
     List<FacetResult> results = new ArrayList<>();
-    for (Map.Entry<String, OrdRange> ent : state.getPrefixToOrdRange().entrySet()) {
-      FacetResult fr = getDim(ent.getKey(), ent.getValue(), topN);
-      if (fr != null) {
-        results.add(fr);
+    for (String dim : state.getDims()) {
+      if (stateConfig.getDimConfig(dim).hierarchical) {
+        DimTree dimTree = state.getDimTree(dim);
+        FacetResult fr = getDim(dim, emptyPath, dimTree.dimStartOrd, dimTree.iterator(), topN);
+        if (fr != null) {
+          results.add(fr);
+        }
+      } else {
+        OrdRange ordRange = state.getOrdRange(dim);
+        FacetResult fr = getDim(dim, emptyPath, -1, ordRange.iterator(), topN);
+        if (fr != null) {
+          results.add(fr);
+        }
       }
     }
 
