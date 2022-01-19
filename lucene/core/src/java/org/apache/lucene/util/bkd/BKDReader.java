@@ -107,7 +107,7 @@ public class BKDReader extends PointValues {
     }
     this.packedIndex = indexIn.slice("packedIndex", indexStartPointer, numIndexBytes);
     this.in = dataIn;
-    // for only one leaf, balanced and unbalanced trees are the same
+    // for only one leaf, balanced and unbalanced trees can be handled the same way
     // we set it to unbalanced.
     this.isTreeBalanced = numLeaves != 1 && isTreeBalanced();
   }
