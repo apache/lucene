@@ -501,8 +501,7 @@ public class FacetsConfig {
           if (dimConfig.multiValued && dimConfig.requireDimCount) {
             // If non-hierarchical but multi-valued and requiring dim count, make sure to
             // explicitly index the dimension so we can get accurate counts for it:
-            String dimString = pathToString(facetLabel.components, 1);
-            doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(dimString)));
+            doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(facetField.dim)));
           }
           String fullPath = pathToString(facetLabel.components, facetLabel.length);
           doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));

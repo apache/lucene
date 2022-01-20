@@ -115,8 +115,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
         return null;
       }
       DimTree dimTree = state.getDimTree(dim);
-      int dimOrd = dimTree.dimStartOrd;
-      return getDim(dimConfig, dimOrd, dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
+      return getPathResult(dimConfig, dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
     } else {
       if (path.length > 0) {
         throw new IllegalArgumentException(
@@ -135,13 +134,12 @@ public class SortedSetDocValuesFacetCounts extends Facets {
         // child:
         childIt.next();
       }
-      return getDim(dimConfig, dimOrd, dim, null, -1, childIt, topN);
+      return getPathResult(dimConfig, dim, null, dimOrd, childIt, topN);
     }
   }
 
-  private FacetResult getDim(
+  private FacetResult getPathResult(
       FacetsConfig.DimConfig dimConfig,
-      int dimOrd,
       String dim,
       String[] path,
       int pathOrd,
@@ -194,21 +192,17 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       labelValues[i] = new LabelAndValue(parts[parts.length - 1], ordAndValue.value);
     }
 
-    if (pathOrd == -1) {
-      // not hierarchical facet
-
+    if (dimConfig.hierarchical == false) {
       // see if dimCount is actually reliable or needs to be reset
       if (dimConfig.multiValued) {
         if (dimConfig.requireDimCount) {
-          dimCount = counts[dimOrd];
+          dimCount = counts[pathOrd];
         } else {
           dimCount = -1; // dimCount is in accurate at this point, so set it to -1
         }
       }
-
       return new FacetResult(dim, emptyPath, dimCount, labelValues, childCount);
     } else {
-      // hierarchical facet
       return new FacetResult(dim, path, counts[pathOrd], labelValues, childCount);
     }
   }
@@ -382,8 +376,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       if (dimConfig.hierarchical) {
         DimTree dimTree = state.getDimTree(dim);
         int dimOrd = dimTree.dimStartOrd;
-        FacetResult fr =
-            getDim(dimConfig, dimOrd, dim, emptyPath, dimOrd, dimTree.iterator(), topN);
+        FacetResult fr = getPathResult(dimConfig, dim, emptyPath, dimOrd, dimTree.iterator(), topN);
         if (fr != null) {
           results.add(fr);
         }
@@ -397,7 +390,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
           // child:
           childIt.next();
         }
-        FacetResult fr = getDim(dimConfig, dimOrd, dim, emptyPath, -1, childIt, topN);
+        FacetResult fr = getPathResult(dimConfig, dim, emptyPath, dimOrd, childIt, topN);
         if (fr != null) {
           results.add(fr);
         }
