@@ -63,6 +63,10 @@ API Changes
 
 * LUCENE-10349: WordListLoader methods now return unmodifiable CharArraySets.  (Uwe Schindler)
 
+* LUCENE-10377: SortField.getComparator() has changed signature. The second parameter is now
+  a boolean indicating whether or not skipping should be enabled on the comparator. 
+  (Alan Woodward)
+
 New Features
 ---------------------
 
@@ -156,6 +160,12 @@ Optimizations
 
 * LUCENE-10356: Further optimize facet counting for single-valued TaxonomyFacetCounts. (Greg Miller)
 
+* LUCENE-10379: Count directly into the dense values array in FastTaxonomyFacetCounts#countAll.
+  (Guo Feng, Greg Miller)
+
+* LUCENE-10375: Speed up HNSW vectors merge by first writing combined vector
+  data to a file. (Julie Tibshirani, Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
@@ -183,6 +193,9 @@ Bug Fixes
 
 * LLUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
   Uwe Schindler)
+
+* LUCENE-10377: CheckIndex could incorrectly throw an error when checking index sorts
+  defined on older indexes. (Alan Woodward)
 
 Other
 ---------------------

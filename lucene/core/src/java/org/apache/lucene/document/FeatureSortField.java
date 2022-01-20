@@ -44,7 +44,7 @@ final class FeatureSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, int sortPos) {
+  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
     return new FeatureComparator(numHits, getField(), featureName);
   }
 

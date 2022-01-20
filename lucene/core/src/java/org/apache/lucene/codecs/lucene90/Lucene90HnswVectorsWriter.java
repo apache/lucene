@@ -26,11 +26,14 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -110,26 +113,14 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException {
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
-    long pos = vectorData.getFilePointer();
-    // write floats aligned at 4 bytes. This will not survive CFS, but it shows a small benefit when
-    // CFS is not used, eg for larger indexes
-    long padding = (4 - (pos & 0x3)) & 0x3;
-    long vectorDataOffset = pos + padding;
-    for (int i = 0; i < padding; i++) {
-      vectorData.writeByte((byte) 0);
-    }
     // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
-    int[] docIds = new int[vectors.size()];
-    int count = 0;
-    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
-      // write vector
-      writeVectorValue(vectors);
-      docIds[count] = docV;
-    }
-    // count may be < vectors.size() e,g, if some documents were deleted
-    long[] offsets = new long[count];
-    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+    int[] docIds = writeVectorData(vectorData, vectors);
+    assert vectors.size() == docIds.length;
+
+    long[] offsets = new long[docIds.length];
     long vectorIndexOffset = vectorIndex.getFilePointer();
     if (vectors instanceof RandomAccessVectorValuesProducer) {
       writeGraph(
@@ -138,13 +129,14 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
           fieldInfo.getVectorSimilarityFunction(),
           vectorIndexOffset,
           offsets,
-          count,
           maxConn,
           beamWidth);
     } else {
       throw new IllegalArgumentException(
           "Indexing an HNSW graph requires a random access vector values, got " + vectors);
     }
+
+    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
     writeMeta(
         fieldInfo,
@@ -152,9 +144,124 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
         vectorDataLength,
         vectorIndexOffset,
         vectorIndexLength,
-        count,
         docIds);
     writeGraphOffsets(meta, offsets);
+  }
+
+  @Override
+  public void merge(MergeState mergeState) throws IOException {
+    for (int i = 0; i < mergeState.fieldInfos.length; i++) {
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+      assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
+      if (reader != null) {
+        reader.checkIntegrity();
+      }
+    }
+
+    for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
+      if (fieldInfo.hasVectorValues()) {
+        if (mergeState.infoStream.isEnabled("VV")) {
+          mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
+        }
+        mergeField(fieldInfo, mergeState);
+        if (mergeState.infoStream.isEnabled("VV")) {
+          mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+        }
+      }
+    }
+    finish();
+  }
+
+  private void mergeField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    if (mergeState.infoStream.isEnabled("VV")) {
+      mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
+    }
+
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+
+    VectorValues vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+    IndexOutput tempVectorData =
+        segmentWriteState.directory.createTempOutput(
+            vectorData.getName(), "temp", segmentWriteState.context);
+    IndexInput vectorDataInput = null;
+    boolean success = false;
+    try {
+      // write the merged vector data to a temporary file
+      int[] docIds = writeVectorData(tempVectorData, vectors);
+      CodecUtil.writeFooter(tempVectorData);
+      IOUtils.close(tempVectorData);
+
+      // copy the temporary file vectors to the actual data file
+      vectorDataInput =
+          segmentWriteState.directory.openInput(
+              tempVectorData.getName(), segmentWriteState.context);
+      vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
+      CodecUtil.retrieveChecksum(vectorDataInput);
+
+      // build the graph using the temporary vector data
+      Lucene90HnswVectorsReader.OffHeapVectorValues offHeapVectors =
+          new Lucene90HnswVectorsReader.OffHeapVectorValues(
+              vectors.dimension(), docIds, vectorDataInput);
+
+      long[] offsets = new long[docIds.length];
+      long vectorIndexOffset = vectorIndex.getFilePointer();
+      writeGraph(
+          vectorIndex,
+          offHeapVectors,
+          fieldInfo.getVectorSimilarityFunction(),
+          vectorIndexOffset,
+          offsets,
+          maxConn,
+          beamWidth);
+
+      long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+      long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+      writeMeta(
+          fieldInfo,
+          vectorDataOffset,
+          vectorDataLength,
+          vectorIndexOffset,
+          vectorIndexLength,
+          docIds);
+      writeGraphOffsets(meta, offsets);
+      success = true;
+    } finally {
+      IOUtils.close(vectorDataInput);
+      if (success) {
+        segmentWriteState.directory.deleteFile(tempVectorData.getName());
+      } else {
+        IOUtils.closeWhileHandlingException(tempVectorData);
+        IOUtils.deleteFilesIgnoringExceptions(
+            segmentWriteState.directory, tempVectorData.getName());
+      }
+    }
+
+    if (mergeState.infoStream.isEnabled("VV")) {
+      mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+    }
+  }
+
+  /**
+   * Writes the vector values to the output and returns a mapping from dense ordinals to document
+   * IDs. The length of the returned array matches the total number of documents with a vector
+   * (which excludes deleted documents), so it may be less than {@link VectorValues#size()}.
+   */
+  private static int[] writeVectorData(IndexOutput output, VectorValues vectors)
+      throws IOException {
+    int[] docIds = new int[vectors.size()];
+    int count = 0;
+    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
+      // write vector
+      BytesRef binaryValue = vectors.binaryValue();
+      assert binaryValue.length == vectors.dimension() * Float.BYTES;
+      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      docIds[count] = docV;
+    }
+
+    if (docIds.length > count) {
+      return ArrayUtil.copyOfSubArray(docIds, 0, count);
+    }
+    return docIds;
   }
 
   private void writeMeta(
@@ -163,7 +270,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       long vectorDataLength,
       long indexDataOffset,
       long indexDataLength,
-      int size,
       int[] docIds)
       throws IOException {
     meta.writeInt(field.number);
@@ -173,18 +279,11 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(indexDataOffset);
     meta.writeVLong(indexDataLength);
     meta.writeInt(field.getVectorDimension());
-    meta.writeInt(size);
-    for (int i = 0; i < size; i++) {
+    meta.writeInt(docIds.length);
+    for (int docId : docIds) {
       // TODO: delta-encode, or write as bitset
-      meta.writeVInt(docIds[i]);
+      meta.writeVInt(docId);
     }
-  }
-
-  private void writeVectorValue(VectorValues vectors) throws IOException {
-    // write vector value
-    BytesRef binaryValue = vectors.binaryValue();
-    assert binaryValue.length == vectors.dimension() * Float.BYTES;
-    vectorData.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
   }
 
   private void writeGraphOffsets(IndexOutput out, long[] offsets) throws IOException {
@@ -201,7 +300,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,
-      int count,
       int maxConn,
       int beamWidth)
       throws IOException {
@@ -211,7 +309,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
-    for (int ord = 0; ord < count; ord++) {
+    for (int ord = 0; ord < offsets.length; ord++) {
       // write graph
       offsets[ord] = graphData.getFilePointer() - graphDataOffset;
 

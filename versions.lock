@@ -26,6 +26,7 @@ ua.net.nlp:morfologik-ukrainian-search:4.9.1 (1 constraints: 10051b36)
 xerces:xercesImpl:2.12.0 (1 constraints: 3705353b)
 
 [Test dependencies]
+com.carrotsearch:procfork:1.0.6 (1 constraints: 0905f635)
 org.assertj:assertj-core:3.21.0 (1 constraints: 38053c3b)
 org.eclipse.jetty:jetty-continuation:9.4.41.v20210516 (1 constraints: 7907fe7c)
 org.eclipse.jetty:jetty-http:9.4.41.v20210516 (1 constraints: f60f2ccd)
