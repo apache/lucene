@@ -28,6 +28,8 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.RandomAccessVectorValues;
+import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -242,7 +244,8 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
   }
 
-  private static class SimpleTextVectorValues extends VectorValues {
+  private static class SimpleTextVectorValues extends VectorValues
+      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -281,6 +284,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     public BytesRef binaryValue() {
       ByteBuffer.wrap(binaryValue.bytes).asFloatBuffer().get(values[curOrd]);
       return binaryValue;
+    }
+
+    @Override
+    public RandomAccessVectorValues randomAccess() {
+      return this;
     }
 
     @Override
@@ -331,6 +339,16 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       for (int i = 0; i < floatStrings.length; i++) {
         value[i] = Float.parseFloat(floatStrings[i]);
       }
+    }
+
+    @Override
+    public float[] vectorValue(int targetOrd) throws IOException {
+      return values[targetOrd];
+    }
+
+    @Override
+    public BytesRef binaryValue(int targetOrd) throws IOException {
+      throw new UnsupportedOperationException();
     }
   }
 
