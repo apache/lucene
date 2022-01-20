@@ -39,6 +39,8 @@ public class NeighborQueue {
     REVERSED {
       @Override
       long apply(long v) {
+        // This cannot be just `-v` since Long.MIN_VALUE doesn't have a positive counterpart. It
+        // needs a function that returns MAX_VALUE for MIN_VALUE and vice-versa.
         return -1 - v;
       }
     };
