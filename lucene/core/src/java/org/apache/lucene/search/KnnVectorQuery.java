@@ -26,7 +26,9 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Uses {@link KnnVectorsReader#search} to perform nearest neighbour search. */
 public class KnnVectorQuery extends Query {
@@ -37,6 +39,7 @@ public class KnnVectorQuery extends Query {
   private final String field;
   private final float[] target;
   private final int k;
+  private Query filter;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -56,11 +59,34 @@ public class KnnVectorQuery extends Query {
     }
   }
 
+  /**
+   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
+   * given field. <code>target</code> vector.
+   *
+   * @param field a field that has been indexed as a {@link KnnVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find
+   * @param filter a filter applied before the vector search
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   */
+  public KnnVectorQuery(String field, float[] target, int k, Query filter) {
+    this(field, target, k);
+    this.filter = filter;
+  }
+
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
+    BitSet[] bitSets = null;
+
+    if(filter != null) {
+      IndexSearcher indexSearcher = new IndexSearcher(reader);
+      bitSets = new BitSet[reader.leaves().size()];
+      indexSearcher.search(filter, new BitSetCollector(bitSets));
+    }
+
     TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      perLeafResults[ctx.ord] = searchLeaf(ctx, k);
+      perLeafResults[ctx.ord] = searchLeaf(ctx, k, bitSets != null ? bitSets[ctx.ord] : null);
     }
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -70,9 +96,9 @@ public class KnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf) throws IOException {
+  private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf, Bits bitsFilter) throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
-    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, liveDocs);
+    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, bitsFilter != null ? bitsFilter : liveDocs);
     if (results == null) {
       return NO_RESULTS;
     }
@@ -82,6 +108,33 @@ public class KnnVectorQuery extends Query {
       }
     }
     return results;
+  }
+
+  private static class BitSetCollector extends SimpleCollector {
+
+    private final BitSet[] bitSets;
+    private BitSet leafBits;
+    private int docBase;
+
+    private BitSetCollector(BitSet[] bitSets) {
+      this.bitSets = bitSets;
+    }
+
+    @Override
+    public void collect(int doc) throws IOException {
+      leafBits.set(doc);
+    }
+
+    @Override
+    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+      this.leafBits = new FixedBitSet(context.reader().maxDoc());
+      bitSets[context.ord] = leafBits;
+    }
+
+    @Override
+    public org.apache.lucene.search.ScoreMode scoreMode() {
+      return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
+    }
   }
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
