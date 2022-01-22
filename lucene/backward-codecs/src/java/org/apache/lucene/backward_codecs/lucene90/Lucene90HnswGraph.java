@@ -20,6 +20,8 @@ package org.apache.lucene.backward_codecs.lucene90;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.SplittableRandom;
 import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
@@ -27,25 +29,56 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.hnsw.BoundsChecker;
+import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
- * Navigable Small-world graph used for backward compatibility only to search vector graphs built
- * for pre 9.1 indices. There are no methods to build graphs, as no update is supported.
- *
- * <p>Navigable Small-world graph. Provides efficient approximate nearest neighbor search for high
+ * Navigable Small-world graph. Provides efficient approximate nearest neighbor search for high
  * dimensional vectors. See <a href="https://doi.org/10.1016/j.is.2013.10.006">Approximate nearest
  * neighbor algorithm based on navigable small world graphs [2014]</a> and <a
- * href="https://arxiv.org/abs/1603.09320">this paper [2018]</a> for details. <code>numSeed</code>
- * is the equivalent of <code>m</code> in the 2014 paper; it controls the number of random entry
- * points to sample.
+ * href="https://arxiv.org/abs/1603.09320">this paper [2018]</a> for details.
  *
- * <p>Note: The graph may be searched by multiple threads concurrently. Also note: there is no
- * notion of deletions. Document searching built on top of this must do its own deletion-filtering.
+ * <p>The nomenclature is a bit different here from what's used in those papers:
+ *
+ * <h2>Hyperparameters</h2>
+ *
+ * <ul>
+ *   <li><code>numSeed</code> is the equivalent of <code>m</code> in the 2014 paper; it controls the
+ *       number of random entry points to sample.
+ *   <li><code>beamWidth</code> in {@link Lucene90HnswGraphBuilder} has the same meaning as <code>
+ *       efConst </code> in the 2018 paper. It is the number of nearest neighbor candidates to track
+ *       while searching the graph for each newly inserted node.
+ *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the later paper; it controls
+ *       how many of the <code>efConst</code> neighbors are connected to the new node
+ * </ul>
+ *
+ * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
+ * thread-safe. Also note: there is no notion of deletions. Document searching built on top of this
+ * must do its own deletion-filtering.
+ *
+ * <p>Graph building logic is preserved here only for tests.
  */
-public final class Lucene90HnswGraph {
+public final class Lucene90HnswGraph extends KnnGraphValues {
 
-  private Lucene90HnswGraph() {}
+  private final int maxConn;
+
+  // Each entry lists the top maxConn neighbors of a node. The nodes correspond to vectors added to
+  // HnswBuilder, and the
+  // node values are the ordinals of those vectors.
+  private final List<NeighborArray> graph;
+
+  // KnnGraphValues iterator members
+  private int upto;
+  private NeighborArray cur;
+
+  Lucene90HnswGraph(int maxConn) {
+    graph = new ArrayList<>();
+    // Typically with diversity criteria we see nodes not fully occupied; average fanout seems to be
+    // about 1/2 maxConn. There is some indexing time penalty for under-allocating, but saves RAM
+    graph.add(new NeighborArray(Math.max(32, maxConn / 4)));
+    this.maxConn = maxConn;
+  }
+
   /**
    * Searches for the nearest neighbors of a query vector.
    *
@@ -95,7 +128,8 @@ public final class Lucene90HnswGraph {
     }
 
     // Set the bound to the worst current result and below reject any newly-generated candidates
-    // failing to exceed this bound
+    // failing
+    // to exceed this bound
     BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
     bound.set(results.topScore());
     while (candidates.size() > 0) {
@@ -130,5 +164,53 @@ public final class Lucene90HnswGraph {
     }
     results.setVisitedCount(visited.approximateCardinality());
     return results;
+  }
+
+  /**
+   * Returns the {@link NeighborQueue} connected to the given node.
+   *
+   * @param node the node whose neighbors are returned
+   */
+  public NeighborArray getNeighbors(int node) {
+    return graph.get(node);
+  }
+
+  @Override
+  public int size() {
+    return graph.size();
+  }
+
+  int addNode() {
+    graph.add(new NeighborArray(maxConn + 1));
+    return graph.size() - 1;
+  }
+
+  @Override
+  public void seek(int level, int targetNode) {
+    cur = getNeighbors(targetNode);
+    upto = -1;
+  }
+
+  @Override
+  public int nextNeighbor() {
+    if (++upto < cur.size()) {
+      return cur.node()[upto];
+    }
+    return NO_MORE_DOCS;
+  }
+
+  @Override
+  public int numLevels() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int entryNode() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public NodesIterator getNodesOnLevel(int level) {
+    throw new UnsupportedOperationException();
   }
 }
