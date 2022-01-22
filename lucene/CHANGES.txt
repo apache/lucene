@@ -163,6 +163,9 @@ Optimizations
 * LUCENE-10379: Count directly into the dense values array in FastTaxonomyFacetCounts#countAll.
   (Guo Feng, Greg Miller)
 
+* LUCENE-10375: Speed up HNSW vectors merge by first writing combined vector
+  data to a file. (Julie Tibshirani, Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
