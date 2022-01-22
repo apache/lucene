@@ -256,7 +256,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new OffHeapVectorValues(fieldEntry, bytesSlice);
+    return new OffHeapVectorValues(fieldEntry.dimension, fieldEntry.ordToDoc, bytesSlice);
   }
 
   private Bits getAcceptOrds(Bits acceptDocs, FieldEntry fieldEntry) {
@@ -368,10 +368,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  private static class OffHeapVectorValues extends VectorValues
+  public static class OffHeapVectorValues extends VectorValues
       implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
 
-    final FieldEntry fieldEntry;
+    final int dimension;
+    final int[] ordToDoc;
     final IndexInput dataIn;
 
     final BytesRef binaryValue;
@@ -382,23 +383,24 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     int ord = -1;
     int doc = -1;
 
-    OffHeapVectorValues(FieldEntry fieldEntry, IndexInput dataIn) {
-      this.fieldEntry = fieldEntry;
+    OffHeapVectorValues(int dimension, int[] ordToDoc, IndexInput dataIn) {
+      this.dimension = dimension;
+      this.ordToDoc = ordToDoc;
       this.dataIn = dataIn;
-      byteSize = Float.BYTES * fieldEntry.dimension;
+      byteSize = Float.BYTES * dimension;
       byteBuffer = ByteBuffer.allocate(byteSize);
-      value = new float[fieldEntry.dimension];
+      value = new float[dimension];
       binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
     }
 
     @Override
     public int dimension() {
-      return fieldEntry.dimension;
+      return dimension;
     }
 
     @Override
     public int size() {
-      return fieldEntry.size();
+      return ordToDoc.length;
     }
 
     @Override
@@ -425,7 +427,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       if (++ord >= size()) {
         doc = NO_MORE_DOCS;
       } else {
-        doc = fieldEntry.ordToDoc[ord];
+        doc = ordToDoc[ord];
       }
       return doc;
     }
@@ -433,27 +435,27 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     @Override
     public int advance(int target) {
       assert docID() < target;
-      ord = Arrays.binarySearch(fieldEntry.ordToDoc, ord + 1, fieldEntry.ordToDoc.length, target);
+      ord = Arrays.binarySearch(ordToDoc, ord + 1, ordToDoc.length, target);
       if (ord < 0) {
         ord = -(ord + 1);
       }
-      assert ord <= fieldEntry.ordToDoc.length;
-      if (ord == fieldEntry.ordToDoc.length) {
+      assert ord <= ordToDoc.length;
+      if (ord == ordToDoc.length) {
         doc = NO_MORE_DOCS;
       } else {
-        doc = fieldEntry.ordToDoc[ord];
+        doc = ordToDoc[ord];
       }
       return doc;
     }
 
     @Override
     public long cost() {
-      return fieldEntry.size();
+      return ordToDoc.length;
     }
 
     @Override
     public RandomAccessVectorValues randomAccess() {
-      return new OffHeapVectorValues(fieldEntry, dataIn.clone());
+      return new OffHeapVectorValues(dimension, ordToDoc, dataIn.clone());
     }
 
     @Override
