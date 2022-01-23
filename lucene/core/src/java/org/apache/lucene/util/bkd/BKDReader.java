@@ -221,7 +221,6 @@ public class BKDReader extends PointValues {
     // if true the tree is balanced, otherwise unbalanced
     private final boolean isTreeBalanced;
 
-
     private BKDPointTree(
         IndexInput innerNodes,
         IndexInput leafNodes,

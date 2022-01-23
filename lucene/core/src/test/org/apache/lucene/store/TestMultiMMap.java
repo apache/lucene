@@ -18,6 +18,8 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
+
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.junit.BeforeClass;
@@ -115,6 +117,52 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
     // test double-close of slicer:
     slicer.close();
     mmapDir.close();
+  }
+
+  public void testReadInts() throws Exception {
+    int chunkSize = 1 << 10;
+    Directory mmapDir = getDirectory(createTempDir("testImplementations"), chunkSize);
+    IndexOutput io = mmapDir.createOutput("bytes", newIOContext(random()));
+    int size = 1 << 14; // add some buffer of 3 for slice tests
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+    io.writeBytes(bytes, bytes.length);
+    io.close();
+    IndexInput ii = mmapDir.openInput("bytes", newIOContext(random()));
+
+    ByteArrayDataInput bytesInput = new ByteArrayDataInput();
+    int[] actual = new int[size >>> 2];
+    int[] expected = new int[size >>> 2];
+    {
+      {
+        //test single impl
+        int len = RandomNumbers.randomIntBetween(random(), 20, chunkSize - 1);
+        IndexInput single = ii.slice("single", 0, len);
+        assertTrue(single instanceof ByteBufferIndexInput.SingleBufferImpl);
+        for (int iter=0; iter < 100; iter++) {
+          int fp = RandomNumbers.randomIntBetween(random(), 0, len - 20);
+          single.seek(fp);
+          bytesInput.reset(bytes, fp, size);
+          single.readInts(actual, 0, 4);
+          bytesInput.readInts(expected, 0, 4);
+          assertArrayEquals(expected, actual);
+        }
+      }
+    }
+    {
+      //test single impl
+      int len = RandomNumbers.randomIntBetween(random(), chunkSize + 1, size);
+      IndexInput multi = ii.slice("single", 0, len);
+      assertTrue(multi instanceof ByteBufferIndexInput.MultiBufferImpl);
+      for (int iter=0; iter < 100; iter++) {
+        int fp = RandomNumbers.randomIntBetween(random(), 0, len - 20);
+        multi.seek(fp);
+        bytesInput.reset(bytes, fp, size);
+        multi.readInts(actual, 0, 4);
+        bytesInput.readInts(expected, 0, 4);
+        assertArrayEquals(expected, actual);
+      }
+    }
   }
 
   // test has asserts specific to mmap impl...
