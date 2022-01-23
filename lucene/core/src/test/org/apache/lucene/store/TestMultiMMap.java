@@ -134,7 +134,7 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
     int[] expected = new int[size >>> 2];
     {
       {
-        // test multi impl
+        // test single impl
         int len = RandomNumbers.randomIntBetween(random(), 20, chunkSize - 1);
         IndexInput single = ii.slice("single", 0, len);
         assertTrue(single instanceof ByteBufferIndexInput.SingleBufferImpl);
@@ -149,7 +149,7 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
       }
     }
     {
-      // test single impl
+      // test multi impl
       int len = RandomNumbers.randomIntBetween(random(), chunkSize + 1, size);
       IndexInput multi = ii.slice("single", 0, len);
       assertTrue(multi instanceof ByteBufferIndexInput.MultiBufferImpl);

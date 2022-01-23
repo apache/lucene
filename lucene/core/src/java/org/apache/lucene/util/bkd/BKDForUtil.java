@@ -27,7 +27,7 @@ final class BKDForUtil {
   private final int[] tmp;
 
   BKDForUtil(int maxPointsInLeaf) {
-    tmp = new int[maxPointsInLeaf * 3 / 4];
+    tmp = new int[maxPointsInLeaf / 4 * 3];
   }
 
   void encode16(int len, int[] ints, DataOutput out) throws IOException {
@@ -97,6 +97,9 @@ final class BKDForUtil {
               | ((tmp[i + quarterLen] & 0xFF) << 8)
               | (tmp[i + quarterLen * 2] & 0xFF);
     }
-    in.readInts(ints, quarterLen << 2, len & 0x3);
+    int remainder = len & 0x3;
+    if (remainder > 0) {
+      in.readInts(ints, quarterLen << 2, remainder);
+    }
   }
 }

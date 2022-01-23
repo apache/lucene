@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.IntSupplier;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
@@ -33,15 +32,10 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestDocIdsWriter extends LuceneTestCase {
 
   public void testRandom() throws Exception {
-    rand(() -> BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-    rand(() -> 1 + random().nextInt(5000));
-  }
-
-  private void rand(IntSupplier size) throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int[] docIDs = new int[size.getAsInt()];
+        int[] docIDs = new int[1 + random().nextInt(5000)];
         final int bpv = TestUtil.nextInt(random(), 1, 32);
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
@@ -52,15 +46,10 @@ public class TestDocIdsWriter extends LuceneTestCase {
   }
 
   public void testSorted() throws Exception {
-    sorted(() -> BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-    sorted(() -> 1 + random().nextInt(5000));
-  }
-
-  private void sorted(IntSupplier size) throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int[] docIDs = new int[size.getAsInt()];
+        int[] docIDs = new int[1 + random().nextInt(5000)];
         final int bpv = TestUtil.nextInt(random(), 1, 32);
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
@@ -72,15 +61,10 @@ public class TestDocIdsWriter extends LuceneTestCase {
   }
 
   public void testCluster() throws Exception {
-    cluster(() -> BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-    cluster(() -> 1 + random().nextInt(5000));
-  }
-
-  private void cluster(IntSupplier size) throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int[] docIDs = new int[size.getAsInt()];
+        int[] docIDs = new int[1 + random().nextInt(5000)];
         int min = random().nextInt(1000);
         final int bpv = TestUtil.nextInt(random(), 1, 16);
         for (int i = 0; i < docIDs.length; ++i) {

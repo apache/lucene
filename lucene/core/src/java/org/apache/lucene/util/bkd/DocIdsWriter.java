@@ -79,12 +79,11 @@ final class DocIdsWriter {
 
     if (Integer.toUnsignedLong(min2max) <= 0xFFFFL) {
       out.writeByte(DELTA_FOR_UTIL);
-      int[] delta = new int[count];
       for (int i = 0; i < count; i++) {
-        delta[i] = docIds[start + i] - min;
+        scratch[i] = docIds[start + i] - min;
       }
       out.writeVInt(min);
-      forUtil.encode16(count, delta, out);
+      forUtil.encode16(count, scratch, out);
     } else {
       if (Integer.toUnsignedLong(max) <= 0xFFFFFFL) {
         out.writeByte(BPV_24);
