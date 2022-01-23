@@ -86,6 +86,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     this.curBuf = curBuf;
     curLongBufferViews = null;
     curFloatBufferViews = null;
+    curIntBufferViews = null;
   }
 
   @Override
@@ -537,6 +538,8 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     curBuf = null;
     curBufIndex = 0;
     curLongBufferViews = null;
+    curFloatBufferViews = null;
+    curIntBufferViews = null;
   }
 
   /** Optimization of ByteBufferIndexInput for when there is only one buffer */
