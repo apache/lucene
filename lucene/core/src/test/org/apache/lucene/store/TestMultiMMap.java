@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.store;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.nio.file.Path;
-
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.junit.BeforeClass;
@@ -135,11 +134,11 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
     int[] expected = new int[size >>> 2];
     {
       {
-        //test single impl
+        // test multi impl
         int len = RandomNumbers.randomIntBetween(random(), 20, chunkSize - 1);
         IndexInput single = ii.slice("single", 0, len);
         assertTrue(single instanceof ByteBufferIndexInput.SingleBufferImpl);
-        for (int iter=0; iter < 100; iter++) {
+        for (int iter = 0; iter < 100; iter++) {
           int fp = RandomNumbers.randomIntBetween(random(), 0, len - 20);
           single.seek(fp);
           bytesInput.reset(bytes, fp, size);
@@ -150,11 +149,11 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
       }
     }
     {
-      //test single impl
+      // test single impl
       int len = RandomNumbers.randomIntBetween(random(), chunkSize + 1, size);
       IndexInput multi = ii.slice("single", 0, len);
       assertTrue(multi instanceof ByteBufferIndexInput.MultiBufferImpl);
-      for (int iter=0; iter < 100; iter++) {
+      for (int iter = 0; iter < 100; iter++) {
         int fp = RandomNumbers.randomIntBetween(random(), 0, len - 20);
         multi.seek(fp);
         bytesInput.reset(bytes, fp, size);
