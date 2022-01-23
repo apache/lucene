@@ -34,11 +34,12 @@ import org.apache.lucene.util.InfoStream;
  */
 public final class HnswGraphBuilder {
 
-  // default random seed for level generation
+  /** Default random seed for level generation * */
   private static final long DEFAULT_RAND_SEED = System.currentTimeMillis();
+  /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 
-  // expose for testing.
+  /** Random seed for level generation; public to expose for testing * */
   public static long randSeed = DEFAULT_RAND_SEED;
 
   private final int maxConn;
@@ -123,6 +124,7 @@ public final class HnswGraphBuilder {
     return hnsw;
   }
 
+  /** Set info-stream to output debugging information * */
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
   }

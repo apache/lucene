@@ -36,7 +36,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 
 /**
@@ -304,7 +303,11 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     Lucene90HnswGraphBuilder hnswGraphBuilder =
         new Lucene90HnswGraphBuilder(
-            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+            vectorValues,
+            similarityFunction,
+            maxConn,
+            beamWidth,
+            Lucene90HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     Lucene90HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
