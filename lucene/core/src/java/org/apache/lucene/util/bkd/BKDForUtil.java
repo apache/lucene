@@ -25,7 +25,7 @@ final class BKDForUtil {
   private final int[] tmp;
 
   BKDForUtil(int maxPointsInLeaf) {
-    // For encode16/decode16, we do not need to use temp.
+    // For encode16/decode16, we do not need to use tmp array.
     // For encode24/decode24, we need a (3/4 * maxPointsInLeaf) length tmp array.
     // For encode32/decode32, we reuse the scratch in DocIdsWriter.
     // So (3/4 * maxPointsInLeaf) is enough here.
