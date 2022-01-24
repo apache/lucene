@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -85,7 +84,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
       throws IOException, InterruptedException {
     this.state = state;
     this.field = state.getField();
-    this.stateConfig = Objects.requireNonNullElse(state.getFacetsConfig(), new FacetsConfig());
+    this.stateConfig = state.getFacetsConfig();
     this.exec = exec;
     dv = state.getDocValues();
     counts = new AtomicIntegerArray(state.getSize());
