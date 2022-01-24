@@ -538,7 +538,6 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     curBuf = null;
     curBufIndex = 0;
     curLongBufferViews = null;
-    curFloatBufferViews = null;
     curIntBufferViews = null;
   }
 

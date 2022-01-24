@@ -22,12 +22,15 @@ import org.apache.lucene.store.DataOutput;
 
 final class BKDForUtil {
 
-  static final int BLOCK_SIZE = 512;
-
   private final int[] tmp;
 
   BKDForUtil(int maxPointsInLeaf) {
-    tmp = new int[maxPointsInLeaf / 4 * 3];
+    // For encode16/decode16, we do not need to use temp.
+    // For encode24/decode24, we need a (3/4 * maxPointsInLeaf) length tmp array.
+    // For encode32/decode32, we reuse the scratch in DocIdsWriter.
+    // So (3/4 * maxPointsInLeaf) is enough here.
+    final int len = (maxPointsInLeaf >>> 2) * 3;
+    tmp = new int[len];
   }
 
   void encode16(int len, int[] ints, DataOutput out) throws IOException {
