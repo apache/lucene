@@ -17,5 +17,15 @@
 
 SETLOCAL
 SET MODULES=%~dp0..
-start javaw --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --module org.apache.lucene.luke
+
+REM For distribution testing we want plain 'java' command, otherwise we can't block
+REM on luke invocation and can't intercept the return status.
+SET LAUNCH_CMD=start javaw
+IF NOT "%DISTRIBUTION_TESTING%"=="true" GOTO launch
+SET LAUNCH_CMD=java
+
+:launch
+%LAUNCH_CMD% --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --module org.apache.lucene.luke %*
+SET EXITVAL=%errorlevel%
+EXIT /b %EXITVAL%
 ENDLOCAL

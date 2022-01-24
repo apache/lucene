@@ -479,10 +479,14 @@ public class FacetsConfig {
       for (SortedSetDocValuesFacetField facetField : ent.getValue()) {
         FacetLabel facetLabel = new FacetLabel(facetField.dim, facetField.path);
         DimConfig dimConfig = getDimConfig(facetField.dim);
+
+        // For facet counts:
         if (dimConfig.hierarchical) {
+          // Index each member of the path explicitly. This is required for hierarchical counting
+          // to work properly since we need to ensure every unique path has a corresponding ordinal
+          // in the SSDV field:
           for (int i = 0; i < facetLabel.length; i++) {
             String fullPath = pathToString(facetLabel.components, i + 1);
-            // For facet counts:
             doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
           }
         } else {
@@ -494,10 +498,15 @@ public class FacetsConfig {
                     + facetField.path.length
                     + " components");
           }
+          if (dimConfig.multiValued && dimConfig.requireDimCount) {
+            // If non-hierarchical but multi-valued and requiring dim count, make sure to
+            // explicitly index the dimension so we can get accurate counts for it:
+            doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(facetField.dim)));
+          }
           String fullPath = pathToString(facetLabel.components, facetLabel.length);
-          // For facet counts:
           doc.add(new SortedSetDocValuesField(indexFieldName, new BytesRef(fullPath)));
         }
+
         // For drill-down:
         indexDrillDownTerms(doc, indexFieldName, dimConfig, facetLabel);
       }
