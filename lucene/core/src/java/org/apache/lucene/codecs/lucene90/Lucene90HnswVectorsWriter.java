@@ -122,6 +122,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
+      // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
       int[] docIds = writeVectorData(tempVectorData, vectors);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
