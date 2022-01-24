@@ -32,6 +32,8 @@ API Changes
   a boolean indicating whether or not skipping should be enabled on the comparator. 
   (Alan Woodward)
 
+* LUCENE-10381: Require users to provide FacetsConfig for SSDV faceting. (Greg Miller)
+
 New Features
 ---------------------
 
