@@ -64,8 +64,10 @@ API Changes
 * LUCENE-10349: WordListLoader methods now return unmodifiable CharArraySets.  (Uwe Schindler)
 
 * LUCENE-10377: SortField.getComparator() has changed signature. The second parameter is now
-  a boolean indicating whether or not skipping should be enabled on the comparator. 
+  a boolean indicating whether or not skipping should be enabled on the comparator.
   (Alan Woodward)
+
+* LUCENE-10381: Require users to provide FacetsConfig for SSDV faceting. (Greg Miller)
 
 New Features
 ---------------------
@@ -191,11 +193,14 @@ Bug Fixes
 * LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
   DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
 
-* LLUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
+* LUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
   Uwe Schindler)
 
 * LUCENE-10377: CheckIndex could incorrectly throw an error when checking index sorts
   defined on older indexes. (Alan Woodward)
+
+* LUCENE-9952: Address inaccurate dim counts for SSDV faceting in cases where a dim is configured
+  as multi-valued. (Greg Miller)
 
 Other
 ---------------------
