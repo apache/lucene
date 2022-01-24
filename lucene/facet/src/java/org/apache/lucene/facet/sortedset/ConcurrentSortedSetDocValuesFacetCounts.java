@@ -130,7 +130,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
         // child:
         childIt.next();
       }
-      return getPathResult(dimConfig, dim, null, -dimOrd, childIt, topN);
+      return getPathResult(dimConfig, dim, null, dimOrd, childIt, topN);
     }
   }
 
