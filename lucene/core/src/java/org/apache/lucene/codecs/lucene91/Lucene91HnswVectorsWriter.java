@@ -27,7 +27,6 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnGraphValues.NodesIterator;
-import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -114,76 +113,17 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException {
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
-    if ((vectors instanceof RandomAccessVectorValuesProducer) == false) {
-      throw new IllegalArgumentException(
-          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
-    }
 
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
-    int[] docIds = writeVectorData(vectorData, vectors);
-    assert vectors.size() == docIds.length;
-    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-
-    long vectorIndexOffset = vectorIndex.getFilePointer();
-    HnswGraph graph =
-        vectors.size() == 0
-            ? null
-            : writeGraph(
-                (RandomAccessVectorValuesProducer) vectors,
-                fieldInfo.getVectorSimilarityFunction());
-    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-
-    writeMeta(
-        fieldInfo,
-        vectorDataOffset,
-        vectorDataLength,
-        vectorIndexOffset,
-        vectorIndexLength,
-        docIds,
-        graph);
-  }
-
-  @Override
-  public void merge(MergeState mergeState) throws IOException {
-    for (int i = 0; i < mergeState.fieldInfos.length; i++) {
-      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
-      assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
-      if (reader != null) {
-        reader.checkIntegrity();
-      }
-    }
-
-    for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
-      if (fieldInfo.hasVectorValues()) {
-        if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
-        }
-        mergeField(fieldInfo, mergeState);
-        if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
-        }
-      }
-    }
-    finish();
-  }
-
-  private void mergeField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (mergeState.infoStream.isEnabled("VV")) {
-      mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
-    }
-
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-
-    VectorValues vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
     IndexInput vectorDataInput = null;
     boolean success = false;
     try {
-      // write the merged vector data to a temporary file
+      // write the vector data to a temporary file
+      // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
       int[] docIds = writeVectorData(tempVectorData, vectors);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -224,10 +164,6 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
         IOUtils.deleteFilesIgnoringExceptions(
             segmentWriteState.directory, tempVectorData.getName());
       }
-    }
-
-    if (mergeState.infoStream.isEnabled("VV")) {
-      mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
     }
   }
 
