@@ -243,7 +243,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
-
   public void testAlignedInts() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testAlignedInts"))) {
       try (IndexOutput out = dir.createOutput("Ints", newIOContext(random()))) {
@@ -291,7 +290,8 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       final int length = TestUtil.nextInt(random(), 1, 16);
       try (IndexOutput out = dir.createOutput("Ints", newIOContext(random()))) {
         byte[] b =
-                new byte[offset + length * Integer.BYTES - TestUtil.nextInt(random(), 1, Integer.BYTES)];
+            new byte
+                [offset + length * Integer.BYTES - TestUtil.nextInt(random(), 1, Integer.BYTES)];
         random().nextBytes(b);
         out.writeBytes(b, b.length);
       }
