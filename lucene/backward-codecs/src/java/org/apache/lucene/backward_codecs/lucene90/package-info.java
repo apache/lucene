@@ -16,4 +16,4 @@
  */
 
 /** Lucene 9.0 file format. */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;

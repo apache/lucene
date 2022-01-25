@@ -37,9 +37,9 @@ import java.util.Locale;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene90.Lucene90Codec;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsReader;
+import org.apache.lucene.codecs.lucene91.Lucene91Codec;
+import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
@@ -253,7 +253,7 @@ public class KnnGraphTester {
             ((PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) leafReader).getVectorReader())
                 .getFieldReader(KNN_FIELD);
         KnnGraphValues knnValues =
-            ((Lucene90HnswVectorsReader) vectorsReader).getGraphValues(KNN_FIELD);
+            ((Lucene91HnswVectorsReader) vectorsReader).getGraphValues(KNN_FIELD);
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());
       }
@@ -267,7 +267,7 @@ public class KnnGraphTester {
           new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
-        builder.addGraphNode(values.vectorValue(i));
+        builder.addGraphNode(i, values.vectorValue(i));
         System.out.println("\nITERATION " + i);
         dumpGraph(builder.hnsw);
       }
@@ -276,7 +276,7 @@ public class KnnGraphTester {
 
   private void dumpGraph(HnswGraph hnsw) {
     for (int i = 0; i < hnsw.size(); i++) {
-      NeighborArray neighbors = hnsw.getNeighbors(i);
+      NeighborArray neighbors = hnsw.getNeighbors(0, i);
       System.out.printf(Locale.ROOT, "%5d", i);
       NeighborArray sorted = new NeighborArray(neighbors.size());
       for (int j = 0; j < neighbors.size(); j++) {
@@ -308,7 +308,7 @@ public class KnnGraphTester {
     int count = 0;
     int[] leafHist = new int[numDocs];
     for (int node = 0; node < numDocs; node++) {
-      knnValues.seek(node);
+      knnValues.seek(0, node);
       int n = 0;
       while (knnValues.nextNeighbor() != NO_MORE_DOCS) {
         ++n;
@@ -580,10 +580,10 @@ public class KnnGraphTester {
   private int createIndex(Path docsPath, Path indexPath) throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
     iwc.setCodec(
-        new Lucene90Codec() {
+        new Lucene91Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene90HnswVectorsFormat(maxConn, beamWidth);
+            return new Lucene91HnswVectorsFormat(maxConn, beamWidth);
           }
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
