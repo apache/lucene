@@ -19,7 +19,7 @@ package org.apache.lucene.search;
 /**
  * Just counts the total number of hits. For cases when this is the only collector used, {@link
  * IndexSearcher#count(Query)} should be called instead of {@link IndexSearcher#search(Query,
- * Collector)} as the former is faster whenever the match can be returned directly from the index
+ * Collector)} as the former is faster whenever the count can be returned directly from the index
  * statistics.
  */
 public class TotalHitCountCollector extends SimpleCollector {
