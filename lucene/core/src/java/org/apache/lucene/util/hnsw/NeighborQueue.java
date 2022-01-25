@@ -100,7 +100,7 @@ public class NeighborQueue {
     int size = size();
     int[] nodes = new int[size];
     for (int i = 0; i < size; i++) {
-      nodes[i] = (int) heap.get(i + 1);
+      nodes[i] = (int) order.apply(heap.get(i + 1));
     }
     return nodes;
   }
