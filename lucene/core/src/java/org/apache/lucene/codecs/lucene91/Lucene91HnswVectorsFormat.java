@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene91;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -35,14 +35,23 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  * <p>This file stores all the floating-point vector data ordered by field, document ordinal, and
  * vector dimension. The floats are stored in little-endian byte order.
  *
- * <h2>.vex (vector index) file</h2>
+ * <h2>.vex (vector index)</h2>
  *
- * <p>Stores graphs connecting the documents for each field. For each document having a vector for a
- * given field, this is stored as:
+ * <p>Stores graphs connecting the documents for each field organized as a list of nodes' neighbours
+ * as following:
  *
  * <ul>
- *   <li><b>[int32]</b> the number of neighbor nodes
- *   <li><b>array[vint]</b> the neighbor ordinals, delta-encoded (initially subtracting -1)
+ *   <li>For each level:
+ *       <ul>
+ *         <li>For each node:
+ *             <ul>
+ *               <li><b>[int32]</b> the number of neighbor nodes
+ *               <li><b>array[int32]</b> the neighbor ordinals
+ *               <li><b>array[int32]</b> padding from empty integers if the number of neighbors less
+ *                   than the maximum number of connections (maxConn). Padding is equal to
+ *                   ((maxConn-the number of neighbours) * 4) bytes.
+ *             </ul>
+ *       </ul>
  * </ul>
  *
  * <h2>.vem (vector metadata) file</h2>
@@ -59,17 +68,23 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
  *   <li><b>array[vint]</b> the docids of documents having vectors, in order
- *   <li><b>array[vlong]</b> for each document having a vector, the offset (delta-encoded relative
- *       to the previous document) of its entry in the .vex file
+ *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
+ *   <li><b>[int]</b> number of levels in the graph
+ *   <li>Graph nodes by level. For each level
+ *       <ul>
+ *         <li><b>[int]</b> the number of nodes on this level
+ *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
+ *             the the level 0th nodes ordinals.
+ *       </ul>
  * </ul>
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
+public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
 
-  static final String META_CODEC_NAME = "Lucene90HnswVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene90HnswVectorsFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "Lucene90HnswVectorsFormatIndex";
+  static final String META_CODEC_NAME = "Lucene91HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene91HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "Lucene91HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -77,45 +92,49 @@ public final class Lucene90HnswVectorsFormat extends KnnVectorsFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
+  /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
+  /**
+   * Default number of the size of the queue maintained while searching during a graph construction.
+   */
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
-   * {@link Lucene90HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
+   * {@link Lucene91HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
   private final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene90HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
+   * node. Defaults to to {@link Lucene91HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
   private final int beamWidth;
 
-  public Lucene90HnswVectorsFormat() {
+  public Lucene91HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
-  public Lucene90HnswVectorsFormat(int maxConn, int beamWidth) {
-    super("Lucene90HnswVectorsFormat");
+  public Lucene91HnswVectorsFormat(int maxConn, int beamWidth) {
+    super("Lucene91HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
   }
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90HnswVectorsWriter(state, maxConn, beamWidth);
+    return new Lucene91HnswVectorsWriter(state, maxConn, beamWidth);
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene90HnswVectorsReader(state);
+    return new Lucene91HnswVectorsReader(state);
   }
 
   @Override
   public String toString() {
-    return "Lucene90HnswVectorsFormat(name = Lucene90HnswVectorsFormat, maxConn = "
+    return "Lucene91HnswVectorsFormat(name = Lucene91HnswVectorsFormat, maxConn = "
         + maxConn
         + ", beamWidth="
         + beamWidth

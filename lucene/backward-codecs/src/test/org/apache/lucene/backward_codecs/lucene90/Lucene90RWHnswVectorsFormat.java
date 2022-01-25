@@ -15,5 +15,29 @@
  * limitations under the License.
  */
 
-/** Lucene 9.0 file format. */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
+
+import java.io.IOException;
+import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.SegmentWriteState;
+
+public class Lucene90RWHnswVectorsFormat extends Lucene90HnswVectorsFormat {
+
+  public Lucene90RWHnswVectorsFormat(int maxConn, int beamWidth) {
+    super(maxConn, beamWidth);
+  }
+
+  @Override
+  public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene90HnswVectorsWriter(state, maxConn, beamWidth);
+  }
+
+  @Override
+  public String toString() {
+    return "Lucene90RWHnswVectorsFormat(name = Lucene90RWHnswVectorsFormat, maxConn = "
+        + maxConn
+        + ", beamWidth="
+        + beamWidth
+        + ")";
+  }
+}

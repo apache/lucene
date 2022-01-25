@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -35,8 +35,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 
 /**
@@ -235,11 +233,15 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       int maxConn,
       int beamWidth)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(
-            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+    Lucene90HnswGraphBuilder hnswGraphBuilder =
+        new Lucene90HnswGraphBuilder(
+            vectorValues,
+            similarityFunction,
+            maxConn,
+            beamWidth,
+            Lucene90HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
+    Lucene90HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
     for (int ord = 0; ord < offsets.length; ord++) {
       // write graph
