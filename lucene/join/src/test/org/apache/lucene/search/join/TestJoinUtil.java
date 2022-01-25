@@ -681,15 +681,14 @@ public class TestJoinUtil extends LuceneTestCase {
       Query joinQuery =
           JoinUtil.createJoinQuery(
               "join_field", fromQuery, toQuery, searcher, scoreMode, ordinalMap, min, max);
-      TotalHitCountCollector collector = new TotalHitCountCollector();
-      searcher.search(joinQuery, collector);
+      int totalHits = searcher.count(joinQuery);
       int expectedCount = 0;
       for (int numChildDocs : childDocsPerParent) {
         if (numChildDocs >= min && numChildDocs <= max) {
           expectedCount++;
         }
       }
-      assertEquals(expectedCount, collector.getTotalHits());
+      assertEquals(expectedCount, totalHits);
     }
     searcher.getIndexReader().close();
     dir.close();
