@@ -201,7 +201,7 @@ public class TestHnswGraph extends LuceneTestCase {
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, 16, 100, random().nextInt());
+            vectors, VectorSimilarityFunction.EUCLIDEAN, 16, 100, random().nextInt());
     HnswGraph hnsw = builder.build(vectors);
 
     // Skip over half of the documents that are closest to the query vector
@@ -215,7 +215,7 @@ public class TestHnswGraph extends LuceneTestCase {
             10,
             10,
             vectors.randomAccess(),
-            VectorSimilarityFunction.DOT_PRODUCT,
+            VectorSimilarityFunction.EUCLIDEAN,
             hnsw,
             acceptOrds,
             new SplittableRandom(random().nextLong()));
