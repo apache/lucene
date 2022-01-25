@@ -945,7 +945,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(policy);
-    searcher.count(query.build());
+    searcher.search(query.build(), new TotalHitCountCollector());
 
     reader.close();
     dir.close();
