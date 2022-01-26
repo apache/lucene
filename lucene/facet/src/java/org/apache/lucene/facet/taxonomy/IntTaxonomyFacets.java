@@ -56,39 +56,19 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   void rollup() throws IOException {
     // Rollup any necessary dims:
     int[] children = null;
-    if (values != null) {
-      for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
-        String dim = ent.getKey();
-        DimConfig ft = ent.getValue();
-        if (ft.hierarchical && ft.multiValued == false) {
-          int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
-          // It can be -1 if this field was declared in the
-          // config but never indexed:
-          if (dimRootOrd > 0) {
-            if (children == null) {
-              // lazy init
-              children = getChildren();
-            }
-            values[dimRootOrd] += rollup(children[dimRootOrd]);
+    for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
+      String dim = ent.getKey();
+      DimConfig ft = ent.getValue();
+      if (ft.hierarchical && ft.multiValued == false) {
+        int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
+        // It can be -1 if this field was declared in the
+        // config but never indexed:
+        if (dimRootOrd > 0) {
+          if (children == null) {
+            // lazy init
+            children = getChildren();
           }
-        }
-      }
-    } else {
-      assert sparseValues != null;
-      for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
-        String dim = ent.getKey();
-        DimConfig ft = ent.getValue();
-        if (ft.hierarchical && ft.multiValued == false) {
-          int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
-          // It can be -1 if this field was declared in the
-          // config but never indexed:
-          if (dimRootOrd > 0) {
-            if (children == null) {
-              // lazy init
-              children = getChildren();
-            }
-            sparseValues.addTo(dimRootOrd, rollup(children[dimRootOrd]));
-          }
+          increment(dimRootOrd, rollup(children[dimRootOrd]));
         }
       }
     }
@@ -98,20 +78,21 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     int[] children = getChildren();
     int[] siblings = getSiblings();
     int sum = 0;
-    if (values != null) {
-      while (ord != TaxonomyReader.INVALID_ORDINAL) {
-        values[ord] += rollup(children[ord]);
-        sum += values[ord];
-        ord = siblings[ord];
-      }
-    } else {
-      assert sparseValues != null;
-      while (ord != TaxonomyReader.INVALID_ORDINAL) {
-        sum += sparseValues.addTo(ord, rollup(children[ord]));
-        ord = siblings[ord];
-      }
+    while (ord != TaxonomyReader.INVALID_ORDINAL) {
+      increment(ord, rollup(children[ord]));
+      sum += getValue(ord);
+      ord = siblings[ord];
     }
     return sum;
+  }
+
+  /** Increment the count for this ordinal by {@code amount}.. */
+  private void increment(int ordinal, int amount) {
+    if (sparseValues != null) {
+      sparseValues.addTo(ordinal, amount);
+    } else {
+      values[ordinal] += amount;
+    }
   }
 
   /** Get the count for this ordinal. */
