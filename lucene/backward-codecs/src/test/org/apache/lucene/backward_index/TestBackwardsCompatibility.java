@@ -168,6 +168,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
       KnnVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+  private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   public void testCreateCFS() throws IOException {
     createIndex("index.cfs", true, false);
@@ -1303,9 +1304,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         if (values != null) {
           assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
           for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
-            float[] expectedVector = {0.1f, 0.1f, 0.1f + cnt};
+            float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};
             assertArrayEquals(
-                "vectors do not match for doc=" + cnt, expectedVector, values.vectorValue(), 1e-4f);
+                "vectors do not match for doc=" + cnt, expectedVector, values.vectorValue(), 0);
             cnt++;
           }
         }
@@ -1313,11 +1314,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(DOCS_COUNT, cnt);
 
       // test KNN search
-      float[] queryVector = {0.1f, 0.1f, 0.1f};
-      KnnVectorQuery query = new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, 10);
-      TopDocs results = searcher.search(query, 10);
-      ScoreDoc[] scoreDocs = results.scoreDocs;
-      assertEquals("Wrong number of hits in KNN search", 10, scoreDocs.length);
+      ScoreDoc[] scoreDocs = assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
       for (int i = 0; i < scoreDocs.length; i++) {
         int id = Integer.parseInt(reader.document(scoreDocs[i].doc).get("id"));
         int expectedId = i < DELETED_ID ? i : i + 1;
@@ -1326,6 +1323,21 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
 
     reader.close();
+  }
+
+  private static ScoreDoc[] assertKNNSearch(
+      IndexSearcher searcher,
+      float[] queryVector,
+      int k,
+      int expectedHitsCount,
+      String expectedFirstDocId)
+      throws IOException {
+    ScoreDoc[] hits =
+        searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
+    assertEquals("wrong number of hits", expectedHitsCount, hits.length);
+    Document d = searcher.doc(hits[0].doc);
+    assertEquals("wrong first document", expectedFirstDocId, d.get("id"));
+    return hits;
   }
 
   public void changeIndexWithAdds(Random random, Directory dir, Version nameVersion)
@@ -1351,7 +1363,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     assertEquals("wrong doc count", expected, writer.getDocStats().numDocs);
     writer.close();
 
-    // make sure searching sees right # hits fot term search
+    // make sure searching sees right # hits for term search
     IndexReader reader = DirectoryReader.open(dir);
     IndexSearcher searcher = newSearcher(reader);
     ScoreDoc[] hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
@@ -1359,14 +1371,16 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     assertEquals("wrong first document", "0", d.get("id"));
     doTestHits(hits, 44, searcher.getIndexReader());
 
-    // make sure searching sees right # hits for KNN search
     if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
-      float[] queryVector = {0.1f, 0.1f, 0.1f};
-      hits =
-          searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, 1000), 1000).scoreDocs;
-      assertEquals("wrong number of hits", 44, hits.length);
-      d = searcher.doc(hits[0].doc);
-      assertEquals("wrong first document", "0", d.get("id"));
+      // make sure KNN search sees all hits (graph may not be used if k is big)
+      assertKNNSearch(searcher, KNN_VECTOR, 1000, 44, "0");
+      // make sure KNN search using HNSW graph sees newly added docs
+      assertKNNSearch(
+          searcher,
+          new float[] {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * 44},
+          10,
+          10,
+          "44");
     }
     reader.close();
 
@@ -1389,21 +1403,23 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     doTestHits(hits, 44, searcher.getIndexReader());
     assertEquals("wrong first document", "0", d.get("id"));
 
-    // make sure searching sees right # hits for KNN search
     if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
-      float[] queryVector = {0.1f, 0.1f, 0.1f};
-      hits =
-          searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, 1000), 1000).scoreDocs;
-      assertEquals("wrong number of hits", 44, hits.length);
-      d = searcher.doc(hits[0].doc);
-      assertEquals("wrong first document", "0", d.get("id"));
+      // make sure KNN search sees all hits
+      assertKNNSearch(searcher, KNN_VECTOR, 1000, 44, "0");
+      // make sure KNN search using HNSW graph sees newly added docs
+      assertKNNSearch(
+          searcher,
+          new float[] {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * 44},
+          10,
+          10,
+          "44");
     }
     reader.close();
   }
 
   public void changeIndexNoAdds(Random random, Directory dir, Version nameVersion)
       throws IOException {
-    // make sure searching sees right # hits fot term search
+    // make sure searching sees right # hits for term search
     DirectoryReader reader = DirectoryReader.open(dir);
     IndexSearcher searcher = newSearcher(reader);
     ScoreDoc[] hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
@@ -1411,14 +1427,11 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     Document d = searcher.doc(hits[0].doc);
     assertEquals("wrong first document", "0", d.get("id"));
 
-    // make sure searching sees right # hits for KNN search
     if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
-      float[] queryVector = {0.1f, 0.1f, 0.1f};
-      hits =
-          searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, 1000), 1000).scoreDocs;
-      assertEquals("wrong number of hits", 34, hits.length);
-      d = searcher.doc(hits[0].doc);
-      assertEquals("wrong first document", "0", d.get("id"));
+      // make sure KNN search sees all hits
+      assertKNNSearch(searcher, KNN_VECTOR, 1000, 34, "0");
+      // make sure KNN search using HNSW graph retrieves correct results
+      assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
     }
     reader.close();
 
@@ -1437,12 +1450,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     doTestHits(hits, 34, searcher.getIndexReader());
     // make sure searching sees right # hits for KNN search
     if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
-      float[] queryVector = {0.1f, 0.1f, 0.1f};
-      hits =
-          searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, 1000), 1000).scoreDocs;
-      assertEquals("wrong number of hits", 34, hits.length);
-      d = searcher.doc(hits[0].doc);
-      assertEquals("wrong first document", "0", d.get("id"));
+      // make sure KNN search sees all hits
+      assertKNNSearch(searcher, KNN_VECTOR, 1000, 34, "0");
+      // make sure KNN search using HNSW graph retrieves correct results
+      assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
     }
     reader.close();
   }
@@ -1559,7 +1570,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     customType4.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     doc.add(new Field("content6", "here is more content with aaa aaa aaa", customType4));
 
-    float[] vector = {0.1f, 0.1f, 0.1f + id};
+    float[] vector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * id};
     doc.add(new KnnVectorField(KNN_VECTOR_FIELD, vector, KNN_VECTOR_FIELD_TYPE));
 
     // TODO:
