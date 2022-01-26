@@ -168,6 +168,8 @@ Optimizations
 * LUCENE-10375: Speed up HNSW vectors merge by first writing combined vector
   data to a file. (Julie Tibshirani, Adrien Grand)
 
+* LUCENE-10388: Remove MultiLevelSkipListReader#SkipBuffer to make JVM less confused. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
