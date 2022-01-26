@@ -21,7 +21,10 @@ import java.util.Collection;
 
 /**
  * Collector manager based on {@link TotalHitCountCollector} that allows users to parallelize
- * counting the number of hits.
+ * counting the number of hits, expected to be used mostly wrapped in {@link MultiCollectorManager}.
+ * For cases when this is the only collector manager used, {@link IndexSearcher#count(Query)} should
+ * be called instead of {@link IndexSearcher#search(Query, CollectorManager)} as the former is
+ * faster whenever the count can be returned directly from the index statistics.
  */
 public class TotalHitCountCollectorManager
     implements CollectorManager<TotalHitCountCollector, Integer> {

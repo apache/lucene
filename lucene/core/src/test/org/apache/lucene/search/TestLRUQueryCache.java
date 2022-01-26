@@ -181,8 +181,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
                                 return new FilterCollector(new TotalHitCountCollector()) {
                                   @Override
                                   public ScoreMode scoreMode() {
-                                    return ScoreMode
-                                        .COMPLETE; // will not use the cache because of scores
+                                    // will not use the cache because of scores
+                                    return ScoreMode.COMPLETE;
                                   }
                                 };
                               }
