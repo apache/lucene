@@ -70,6 +70,8 @@ API Changes
   a boolean indicating whether or not skipping should be enabled on the comparator.
   (Alan Woodward)
 
+* LUCENE-10381: Require users to provide FacetsConfig for SSDV faceting. (Greg Miller)
+
 * LUCENE-10368: IntTaxonomyFacets has been deprecated and is no longer a supported extension point
   for user-created faceting implementations. (Greg Miller)
 
@@ -169,6 +171,9 @@ Optimizations
 * LUCENE-10379: Count directly into the dense values array in FastTaxonomyFacetCounts#countAll.
   (Guo Feng, Greg Miller)
 
+* LUCENE-10375: Speed up HNSW vectors merge by first writing combined vector
+  data to a file. (Julie Tibshirani, Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
@@ -194,11 +199,14 @@ Bug Fixes
 * LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
   DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
 
-* LLUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
+* LUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
   Uwe Schindler)
 
 * LUCENE-10377: CheckIndex could incorrectly throw an error when checking index sorts
   defined on older indexes. (Alan Woodward)
+
+* LUCENE-9952: Address inaccurate dim counts for SSDV faceting in cases where a dim is configured
+  as multi-valued. (Greg Miller)
 
 Other
 ---------------------

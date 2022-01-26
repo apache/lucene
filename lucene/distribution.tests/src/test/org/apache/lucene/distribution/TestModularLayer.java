@@ -51,28 +51,12 @@ import org.junit.Test;
  * default {@code LuceneTestCase} configuration setup is not used (you have to annotate test for
  * JUnit, for example).
  */
-public class TestModularLayer {
-  /** A path to a directory with an expanded Lucene distribution. */
-  private static final String DISTRIBUTION_PROPERTY = "lucene.distribution.dir";
-
-  /** The expected distribution version of Lucene modules. */
-  private static final String VERSION_PROPERTY = "lucene.distribution.version";
-
+public class TestModularLayer extends AbstractLuceneDistributionTest {
   /** Only core Lucene modules, no third party modules. */
   private static Set<ModuleReference> allCoreModules;
 
   /** {@link ModuleFinder} resolving only the Lucene modules. */
   private static ModuleFinder coreModulesFinder;
-
-  /** Ensure Lucene classes are not directly visible. */
-  @BeforeClass
-  public static void checkLuceneNotInClasspath() {
-    Assertions.assertThatThrownBy(
-            () -> {
-              Class.forName("org.apache.lucene.index.IndexWriter");
-            })
-        .isInstanceOf(ClassNotFoundException.class);
-  }
 
   /**
    * We accept external properties that point to the assembled set of distribution modules and to
@@ -86,7 +70,7 @@ public class TestModularLayer {
       throw new AssertionError(DISTRIBUTION_PROPERTY + " property is required for this test.");
     }
 
-    Path modulesPath = Paths.get(modulesPropertyValue).resolve("modules");
+    Path modulesPath = getDistributionPath().resolve("modules");
     if (!Files.isDirectory(modulesPath)) {
       throw new AssertionError(
           DISTRIBUTION_PROPERTY

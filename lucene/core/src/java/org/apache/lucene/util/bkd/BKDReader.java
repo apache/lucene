@@ -44,6 +44,8 @@ public class BKDReader extends PointValues {
   final long minLeafBlockFP;
 
   final IndexInput packedIndex;
+  // if true, the tree is a legacy balanced tree
+  private final boolean isTreeBalanced;
 
   /**
    * Caller must pre-seek the provided {@link IndexInput} to the index location that {@link
@@ -105,6 +107,52 @@ public class BKDReader extends PointValues {
     }
     this.packedIndex = indexIn.slice("packedIndex", indexStartPointer, numIndexBytes);
     this.in = dataIn;
+    // for only one leaf, balanced and unbalanced trees can be handled the same way
+    // we set it to unbalanced.
+    this.isTreeBalanced = numLeaves != 1 && isTreeBalanced();
+  }
+
+  private boolean isTreeBalanced() throws IOException {
+    if (version >= BKDWriter.VERSION_META_FILE) {
+      // since lucene 8.6 all trees are unbalanced.
+      return false;
+    }
+    if (config.numDims > 1) {
+      // high dimensional tree in pre-8.6 indices are balanced.
+      assert 1 << MathUtil.log(numLeaves, 2) == numLeaves;
+      return true;
+    }
+    if (1 << MathUtil.log(numLeaves, 2) != numLeaves) {
+      // if we don't have enough leaves to fill the last level then it is unbalanced
+      return false;
+    }
+    // count of the last node for unbalanced trees
+    final int lastLeafNodePointCount = Math.toIntExact(pointCount % config.maxPointsInLeafNode);
+    // navigate to last node
+    PointTree pointTree = getPointTree();
+    do {
+      while (pointTree.moveToSibling()) {}
+    } while (pointTree.moveToChild());
+    // count number of docs in the node
+    final int[] count = new int[] {0};
+    pointTree.visitDocIDs(
+        new IntersectVisitor() {
+          @Override
+          public void visit(int docID) {
+            count[0]++;
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) {
+            throw new AssertionError();
+          }
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            throw new AssertionError();
+          }
+        });
+    return count[0] != lastLeafNodePointCount;
   }
 
   @Override
@@ -117,7 +165,8 @@ public class BKDReader extends PointValues {
         version,
         pointCount,
         minPackedValue,
-        maxPackedValue);
+        maxPackedValue,
+        isTreeBalanced);
   }
 
   private static class BKDPointTree implements PointTree {
@@ -168,6 +217,8 @@ public class BKDReader extends PointValues {
         scratchMaxIndexPackedValue;
     private final int[] commonPrefixLengths;
     private final BKDReaderDocIDSetIterator scratchIterator;
+    // if true the tree is balanced, otherwise unbalanced
+    private final boolean isTreeBalanced;
 
     private BKDPointTree(
         IndexInput innerNodes,
@@ -177,7 +228,8 @@ public class BKDReader extends PointValues {
         int version,
         long pointCount,
         byte[] minPackedValue,
-        byte[] maxPackedValue)
+        byte[] maxPackedValue,
+        boolean isTreeBalanced)
         throws IOException {
       this(
           innerNodes,
@@ -194,7 +246,8 @@ public class BKDReader extends PointValues {
           new byte[config.packedBytesLength],
           new byte[config.packedIndexBytesLength],
           new byte[config.packedIndexBytesLength],
-          new int[config.numDims]);
+          new int[config.numDims],
+          isTreeBalanced);
       // read root node
       readNodeData(false);
     }
@@ -214,12 +267,14 @@ public class BKDReader extends PointValues {
         byte[] scratchDataPackedValue,
         byte[] scratchMinIndexPackedValue,
         byte[] scratchMaxIndexPackedValue,
-        int[] commonPrefixLengths) {
+        int[] commonPrefixLengths,
+        boolean isTreeBalanced) {
       this.config = config;
       this.version = version;
       this.nodeID = nodeID;
       this.nodeRoot = nodeID;
       this.level = level;
+      this.isTreeBalanced = isTreeBalanced;
       leafNodeOffset = numLeaves;
       this.innerNodes = innerNodes;
       this.leafNodes = leafNodes;
@@ -268,7 +323,8 @@ public class BKDReader extends PointValues {
               scratchDataPackedValue,
               scratchMinIndexPackedValue,
               scratchMaxIndexPackedValue,
-              commonPrefixLengths);
+              commonPrefixLengths,
+              isTreeBalanced);
       index.leafBlockFPStack[index.level] = leafBlockFPStack[level];
       if (isLeafNode() == false) {
         // copy node data
@@ -452,8 +508,8 @@ public class BKDReader extends PointValues {
         numLeaves = rightMostLeafNode - leftMostLeafNode + 1 + leafNodeOffset;
       }
       assert numLeaves == getNumLeavesSlow(nodeID) : numLeaves + " " + getNumLeavesSlow(nodeID);
-      if (version < BKDWriter.VERSION_META_FILE && config.numDims > 1) {
-        // before lucene 8.6, high dimensional trees were constructed as fully balanced trees.
+      if (isTreeBalanced) {
+        // before lucene 8.6, trees might have been constructed as fully balanced trees.
         return sizeFromBalancedTree(leftMostLeafNode, rightMostLeafNode);
       }
       // size for an unbalanced tree.
