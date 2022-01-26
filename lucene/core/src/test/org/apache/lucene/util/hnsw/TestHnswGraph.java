@@ -365,7 +365,6 @@ public class TestHnswGraph extends LuceneTestCase {
         actual);
   }
 
-  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-10389")
   public void testRandom() throws IOException {
     int size = atLeast(100);
     int dim = atLeast(10);
@@ -384,7 +383,10 @@ public class TestHnswGraph extends LuceneTestCase {
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
-          HnswGraph.search(query, topK, vectors, similarityFunction, hnsw, acceptOrds);
+          HnswGraph.search(query, 100, vectors, similarityFunction, hnsw, acceptOrds);
+      while (actual.size() > topK) {
+        actual.pop();
+      }
       NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
@@ -399,7 +401,7 @@ public class TestHnswGraph extends LuceneTestCase {
     }
     double overlap = totalMatches / (double) (100 * topK);
     System.out.println("overlap=" + overlap + " totalMatches=" + totalMatches);
-    assertTrue("overlap=" + overlap, overlap > 0.8);
+    assertTrue("overlap=" + overlap, overlap > 0.9);
   }
 
   private int computeOverlap(int[] a, int[] b) {
