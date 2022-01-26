@@ -52,6 +52,24 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
   }
 
+  /** Increment the count for this ordinal by {@code amount}.. */
+  void increment(int ordinal, int amount) {
+    if (sparseValues != null) {
+      sparseValues.addTo(ordinal, amount);
+    } else {
+      values[ordinal] += amount;
+    }
+  }
+
+  /** Get the count for this ordinal. */
+  int getValue(int ordinal) {
+    if (sparseValues != null) {
+      return sparseValues.get(ordinal);
+    } else {
+      return values[ordinal];
+    }
+  }
+
   /** Rolls up any single-valued hierarchical dimensions. */
   void rollup() throws IOException {
     // Rollup any necessary dims:
@@ -84,24 +102,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
     return sum;
-  }
-
-  /** Increment the count for this ordinal by {@code amount}.. */
-  private void increment(int ordinal, int amount) {
-    if (sparseValues != null) {
-      sparseValues.addTo(ordinal, amount);
-    } else {
-      values[ordinal] += amount;
-    }
-  }
-
-  /** Get the count for this ordinal. */
-  private int getValue(int ordinal) {
-    if (sparseValues != null) {
-      return sparseValues.get(ordinal);
-    } else {
-      return values[ordinal];
-    }
   }
 
   /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
