@@ -365,6 +365,7 @@ public class TestHnswGraph extends LuceneTestCase {
         actual);
   }
 
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-10389")
   public void testRandom() throws IOException {
     int size = atLeast(100);
     int dim = atLeast(10);
