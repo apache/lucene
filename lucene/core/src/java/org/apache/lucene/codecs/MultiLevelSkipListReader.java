@@ -42,15 +42,6 @@ public abstract class MultiLevelSkipListReader implements Closeable {
   /** number of levels in this skip list */
   protected int numberOfSkipLevels;
 
-  // Expert: defines the number of top skip levels to buffer in memory.
-  // Reducing this number results in less memory usage, but possibly
-  // slower performance due to more random I/Os.
-  // Please notice that the space each level occupies is limited by
-  // the skipInterval. The top level can not contain more than
-  // skipLevel entries, the second top level can not contain more
-  // than skipLevel^2 entries and so forth.
-  private int numberOfLevelsToBuffer = 1;
-
   private int docCount;
 
   /** skipStream for each level. */
@@ -219,25 +210,18 @@ public abstract class MultiLevelSkipListReader implements Closeable {
 
     skipStream[0].seek(skipPointer[0]);
 
-    int toBuffer = numberOfLevelsToBuffer;
-
     for (int i = numberOfSkipLevels - 1; i > 0; i--) {
       // the length of the current level
       long length = readLevelLength(skipStream[0]);
 
       // the start pointer of the current level
       skipPointer[i] = skipStream[0].getFilePointer();
-      if (toBuffer > 0) {
-        // buffer this level
-        skipStream[i] = new SkipBuffer(skipStream[0], (int) length);
-        toBuffer--;
-      } else {
-        // clone this stream, it is already at the start of the current level
-        skipStream[i] = skipStream[0].clone();
 
-        // move base stream beyond the current level
-        skipStream[0].seek(skipStream[0].getFilePointer() + length);
-      }
+      // clone this stream, it is already at the start of the current level
+      skipStream[i] = skipStream[0].clone();
+
+      // move base stream beyond the current level
+      skipStream[0].seek(skipStream[0].getFilePointer() + length);
     }
 
     // use base stream for the lowest level
@@ -278,55 +262,5 @@ public abstract class MultiLevelSkipListReader implements Closeable {
   protected void setLastSkipData(int level) {
     lastDoc = skipDoc[level];
     lastChildPointer = childPointer[level];
-  }
-
-  /** used to buffer the top skip levels */
-  private static final class SkipBuffer extends IndexInput {
-    private byte[] data;
-    private long pointer;
-    private int pos;
-
-    SkipBuffer(IndexInput input, int length) throws IOException {
-      super("SkipBuffer on " + input);
-      data = new byte[length];
-      pointer = input.getFilePointer();
-      input.readBytes(data, 0, length);
-    }
-
-    @Override
-    public void close() {
-      data = null;
-    }
-
-    @Override
-    public long getFilePointer() {
-      return pointer + pos;
-    }
-
-    @Override
-    public long length() {
-      return data.length;
-    }
-
-    @Override
-    public byte readByte() {
-      return data[pos++];
-    }
-
-    @Override
-    public void readBytes(byte[] b, int offset, int len) {
-      System.arraycopy(data, pos, b, offset, len);
-      pos += len;
-    }
-
-    @Override
-    public void seek(long pos) {
-      this.pos = (int) (pos - pointer);
-    }
-
-    @Override
-    public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      throw new UnsupportedOperationException();
-    }
   }
 }

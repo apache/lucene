@@ -14,29 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
 
-/**
- * Just counts the total number of hits. For cases when this is the only collector used, {@link
- * IndexSearcher#count(Query)} should be called instead of {@link IndexSearcher#search(Query,
- * Collector)} as the former is faster whenever the count can be returned directly from the index
- * statistics.
- */
-public class TotalHitCountCollector extends SimpleCollector {
-  private int totalHits;
+package org.apache.lucene.backward_codecs.lucene90;
 
-  /** Returns how many hits matched the search. */
-  public int getTotalHits() {
-    return totalHits;
+import java.io.IOException;
+import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.SegmentWriteState;
+
+public class Lucene90RWHnswVectorsFormat extends Lucene90HnswVectorsFormat {
+
+  public Lucene90RWHnswVectorsFormat(int maxConn, int beamWidth) {
+    super(maxConn, beamWidth);
   }
 
   @Override
-  public void collect(int doc) {
-    totalHits++;
+  public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene90HnswVectorsWriter(state, maxConn, beamWidth);
   }
 
   @Override
-  public ScoreMode scoreMode() {
-    return ScoreMode.COMPLETE_NO_SCORES;
+  public String toString() {
+    return "Lucene90RWHnswVectorsFormat(name = Lucene90RWHnswVectorsFormat, maxConn = "
+        + maxConn
+        + ", beamWidth="
+        + beamWidth
+        + ")";
   }
 }
