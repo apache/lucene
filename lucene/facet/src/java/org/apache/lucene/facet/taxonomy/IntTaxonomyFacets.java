@@ -28,7 +28,16 @@ import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 
-/** Base class for all taxonomy-based facets that aggregate to a per-ords int[]. */
+/**
+ * Base class for all taxonomy-based facets that aggregate to a per-ords int[].
+ *
+ * @deprecated Visibility of this class will be reduced to pkg-private in a future version. This
+ *     class is meant to host common code as an internal implementation detail to {@link
+ *     FastTaxonomyFacetCounts} and {@link TaxonomyFacetSumIntAssociations},and is not intended as
+ *     an extension point for user-created {@code Facets} implementations. If your code is relying
+ *     on this, please migrate necessary functionality down into your own class.
+ */
+@Deprecated
 public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   /**
