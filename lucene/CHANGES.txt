@@ -12,6 +12,9 @@ API Changes
   classes no longer determinize NFAs. Instead it is the responsibility
   of the caller to determinize.  (Robert Muir)
 
+* LUCENE-10368: IntTaxonomyFacets has been make pkg-private and serves only as an internal
+  implementation detail of taxonomy-faceting. (Greg Miller)
+
 New Features
 ---------------------
 
@@ -68,6 +71,9 @@ API Changes
   (Alan Woodward)
 
 * LUCENE-10381: Require users to provide FacetsConfig for SSDV faceting. (Greg Miller)
+
+* LUCENE-10368: IntTaxonomyFacets has been deprecated and is no longer a supported extension point
+  for user-created faceting implementations. (Greg Miller)
 
 New Features
 ---------------------
