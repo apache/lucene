@@ -74,12 +74,26 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   /**
    * Creates this without a config, pulling doc values from the default {@link
    * FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
+   *
+   * @deprecated Users should explicitly provide facet configuration during instantiation. See
+   *     {@link #DefaultSortedSetDocValuesReaderState(IndexReader, FacetsConfig)}. To maintain all
+   *     existing behavior, a "default" facet configuration can be provided with {@link
+   *     FacetsConfig#FacetsConfig()}.
    */
+  @Deprecated
   public DefaultSortedSetDocValuesReaderState(IndexReader reader) throws IOException {
     this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME, null);
   }
 
-  /** Creates this without a config, pulling doc values from the specified field. */
+  /**
+   * Creates this without a config, pulling doc values from the specified field.
+   *
+   * @deprecated Users should explicitly provide facet configuration during instantiation. See
+   *     {@link #DefaultSortedSetDocValuesReaderState(IndexReader, String, FacetsConfig)}. To
+   *     maintain all existing behavior, a "default" facet configuration can be provided with {@link
+   *     FacetsConfig#FacetsConfig()}.
+   */
+  @Deprecated
   public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field) throws IOException {
     this(reader, field, null);
   }
@@ -201,7 +215,9 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
     BytesRef nextTerm = dv.lookupOrd(dimEndOrd);
     String[] nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
-    if (nextComponents.length != 2) {
+    // The first entry should always be length 1 or 2 (either just the dim itself if we explicitly
+    // indexed it, or the first child):
+    if (nextComponents.length > 2) {
       throw new IllegalArgumentException(
           "dimension not configured to handle hierarchical field; got: "
               + Arrays.toString(nextComponents)
@@ -224,6 +240,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
         break;
       }
 
+      // Each entry should have a length of exactly 2 since the dim is non-hierarchical:
       if (nextComponents.length != 2) {
         throw new IllegalArgumentException(
             "dimension not configured to handle hierarchical field; got: "

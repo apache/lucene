@@ -36,10 +36,10 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -172,9 +172,18 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       KnnVectorsWriter writer = delegate.fieldsWriter(state);
       return new KnnVectorsWriter() {
         @Override
-        public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+        public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+            throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.writeField(fieldInfo, values);
+          writer.writeField(fieldInfo, knnVectorsReader);
+        }
+
+        @Override
+        public void merge(MergeState mergeState) throws IOException {
+          for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
+            fieldsWritten.add(fieldInfo.name);
+          }
+          writer.merge(mergeState);
         }
 
         @Override
