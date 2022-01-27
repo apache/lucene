@@ -167,7 +167,8 @@ public final class HnswGraph extends KnnGraphValues {
       }
     }
 
-    // A bound that holds the minimum similarity to the query vector that a vector must have to be
+    // A bound that holds the minimum similarity to the query vector that a candidate vector must
+    // have to be
     // considered.
     BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
     if (results.size() >= topK) {
