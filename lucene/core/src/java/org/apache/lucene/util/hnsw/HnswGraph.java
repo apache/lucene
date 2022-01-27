@@ -167,17 +167,17 @@ public final class HnswGraph extends KnnGraphValues {
       }
     }
 
-    // Set the bound to the worst current result and below reject any newly-generated candidates
-    // failing to exceed this bound
+    // A bound that holds the minimum similarity to the query vector that a candidate vector must
+    // have to be considered.
     BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
-    bound.set(results.topScore());
+    if (results.size() >= topK) {
+      bound.set(results.topScore());
+    }
     while (candidates.size() > 0) {
       // get the best candidate (closest or best scoring)
       float topCandidateScore = candidates.topScore();
-      if (results.size() >= topK) {
-        if (bound.check(topCandidateScore)) {
-          break;
-        }
+      if (bound.check(topCandidateScore)) {
+        break;
       }
       int topCandidateNode = candidates.pop();
       graphValues.seek(level, topCandidateNode);
@@ -189,11 +189,12 @@ public final class HnswGraph extends KnnGraphValues {
         }
 
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.size() < topK || bound.check(score) == false) {
+        if (bound.check(score) == false) {
           candidates.add(friendOrd, score);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            results.insertWithOverflow(friendOrd, score);
-            bound.set(results.topScore());
+            if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
+              bound.set(results.topScore());
+            }
           }
         }
       }
