@@ -3239,7 +3239,7 @@ public class IndexWriter
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(mergeDirectory);
     Codec codec = config.getCodec();
     // We set the min version to null for now, it will be set later by SegmentMerger
-    SegmentInfo info =
+    SegmentInfo segInfo =
       new SegmentInfo(
         directoryOrig,
         Version.LATEST,
@@ -3252,9 +3252,11 @@ public class IndexWriter
         StringHelper.randomId(),
         Collections.emptyMap(),
         config.getIndexSort());
+    merge.setMergeInfo(new SegmentCommitInfo(segInfo, 0, numSoftDeleted,
+        -1L, -1L, -1L, StringHelper.randomId()));
 
     List<CodecReader> readers = merge.getMergeReader().stream().map(r -> r.codecReader).collect(Collectors.toList());
-    SegmentMerger merger = new SegmentMerger(readers, info, infoStream, trackingDir, globalFieldNumberMap, context);
+    SegmentMerger merger = new SegmentMerger(readers, merge.getMergeInfo().info, infoStream, trackingDir, globalFieldNumberMap, context);
 
     if (!merger.shouldMerge()) {
       return;
@@ -3265,6 +3267,7 @@ public class IndexWriter
 //          assert merges.areEnabled();
       runningAddIndexesMerges.add(merger);
     }
+    merge.mergeStartNS = System.nanoTime();
     try {
       merger.merge(); // merge 'em
     } finally {
@@ -3273,13 +3276,13 @@ public class IndexWriter
         notifyAll();
       }
     }
-    SegmentCommitInfo infoPerCommit =
-      new SegmentCommitInfo(info, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId());
+//    SegmentCommitInfo infoPerCommit =
+//      new SegmentCommitInfo(info, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId());
 
-    info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
+    merge.getMergeInfo().info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
     trackingDir.clearCreatedFiles();
 
-    setDiagnostics(info, SOURCE_ADDINDEXES_READERS);
+    setDiagnostics(merge.getMergeInfo().info, SOURCE_ADDINDEXES_READERS);
 
     final MergePolicy mergePolicy = config.getMergePolicy();
     boolean useCompoundFile;
@@ -3290,32 +3293,32 @@ public class IndexWriter
 //            return;
 //          }
       ensureOpen();
-      useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, infoPerCommit, this);
+      useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, merge.getMergeInfo(), this);
     }
 
     // Now create the compound file if needed
     if (useCompoundFile) {
-      Collection<String> filesToDelete = infoPerCommit.files();
-      TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
+      Collection<String> filesToDelete = merge.getMergeInfo().files();
+      TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(mergeDirectory);
       // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
       // createCompoundFile tries to cleanup, but it might not always be able to...
       try {
-        createCompoundFile(infoStream, trackingCFSDir, info, context, this::deleteNewFiles);
+        createCompoundFile(infoStream, trackingCFSDir, merge.getMergeInfo().info, context, this::deleteNewFiles);
       } finally {
         // delete new non cfs files directly: they were never
         // registered with IFD
         deleteNewFiles(filesToDelete);
       }
-      info.setUseCompoundFile(true);
+      merge.getMergeInfo().info.setUseCompoundFile(true);
     }
 
     // Have codec write SegmentInfo.  Must do this after
     // creating CFS so that 1) .si isn't slurped into CFS,
     // and 2) .si reflects useCompoundFile=true change
     // above:
-    codec.segmentInfoFormat().write(trackingDir, info, context);
+    codec.segmentInfoFormat().write(trackingDir, merge.getMergeInfo().info, context);
 
-    info.addFiles(trackingDir.getCreatedFiles());
+    merge.getMergeInfo().info.addFiles(trackingDir.getCreatedFiles());
 
     // Register the new segment
     synchronized (this) {
@@ -3329,7 +3332,7 @@ public class IndexWriter
       // Now reserve the docs, just before we update SIS:
       reserveDocs(numDocs);
 
-      segmentInfos.add(infoPerCommit);
+      segmentInfos.add(merge.getMergeInfo());
 //          seqNo = docWriter.getNextSequenceNumber();
       checkpoint();
     }
