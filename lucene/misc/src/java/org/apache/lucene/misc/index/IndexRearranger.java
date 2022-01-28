@@ -53,16 +53,40 @@ public class IndexRearranger {
   protected final Directory input, output;
   protected final IndexWriterConfig config;
   protected final List<DocumentSelector> documentSelectors;
+  protected final boolean determinedOrder;
+
+  /**
+   * Constructor
+   *
+   * @param input input dir
+   * @param output output dir
+   * @param config index writer config
+   * @param documentSelectors specify what document is desired in the rearranged index segments,
+   *     each selector correspond to one segment
+   * @param determinedOrder make sure the rearranged index have the segment order aligned with the
+   *     documentSelectors order, note if this option is enabled, documentSelectors can only select
+   *     document exclusively, that is, one document in the original index can't be appeared more
+   *     than once in the rearranged index
+   */
+  public IndexRearranger(
+      Directory input,
+      Directory output,
+      IndexWriterConfig config,
+      List<DocumentSelector> documentSelectors,
+      boolean determinedOrder) {
+    this.input = input;
+    this.output = output;
+    this.config = config;
+    this.documentSelectors = documentSelectors;
+    this.determinedOrder = determinedOrder;
+  }
 
   public IndexRearranger(
       Directory input,
       Directory output,
       IndexWriterConfig config,
       List<DocumentSelector> documentSelectors) {
-    this.input = input;
-    this.output = output;
-    this.config = config;
-    this.documentSelectors = documentSelectors;
+    this(input, output, config, documentSelectors, true);
   }
 
   public void execute() throws Exception {
@@ -87,6 +111,9 @@ public class IndexRearranger {
         future.get();
       }
       executor.shutdown();
+    }
+    if (determinedOrder == false) {
+      return;
     }
     List<SegmentCommitInfo> ordered = new ArrayList<>();
     try (IndexReader reader = DirectoryReader.open(output)) {
