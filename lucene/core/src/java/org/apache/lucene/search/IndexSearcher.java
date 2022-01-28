@@ -440,7 +440,11 @@ public class IndexSearcher {
     }
   }
 
-  /** Count how many documents match the given query. */
+  /**
+   * Count how many documents match the given query. May be faster than counting number of hits by
+   * collecting all matches, as the number of hits is retrieved from the index statistics when
+   * possible.
+   */
   public int count(Query query) throws IOException {
     query = rewrite(query);
     final Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
