@@ -32,6 +32,10 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -84,6 +88,25 @@ public class IndexRearranger {
       }
       executor.shutdown();
     }
+    List<SegmentCommitInfo> ordered = new ArrayList<>();
+    try (IndexReader reader = DirectoryReader.open(output)) {
+      for (DocumentSelector ds : documentSelectors) {
+        boolean found = false;
+        for (LeafReaderContext context : reader.leaves()) {
+          SegmentReader sr = (SegmentReader) context.reader();
+          if (ds.getFilteredLiveDocs(sr).nextSetBit(0) != DocIdSetIterator.NO_MORE_DOCS) {
+            assert found == false;
+            found = true;
+            ordered.add(sr.getSegmentInfo());
+          }
+        }
+        assert found;
+      }
+    }
+    SegmentInfos sis = SegmentInfos.readLatestCommit(output);
+    sis.clear();
+    sis.addAll(ordered);
+    sis.commit(output);
   }
 
   private static void addOneSegment(
