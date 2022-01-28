@@ -170,8 +170,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
                     final Query q = new TermQuery(new Term("color", value));
                     TotalHitCountCollectorManager collectorManager =
                         new TotalHitCountCollectorManager();
-                    final int totalHits1 =
-                        searcher.search(q, collectorManager); // will use the cache
+                    // will use the cache
+                    final int totalHits1 = searcher.search(q, collectorManager);
                     final long totalHits2 =
                         searcher.search(
                             q,
