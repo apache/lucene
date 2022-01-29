@@ -1215,7 +1215,9 @@ public class TestDrillSideways extends FacetTestCase {
           .search(
               ddq,
               new SimpleCollectorManager(
-                  numDocs, Comparator.comparing(cr -> cr.docAndScore.doc), ScoreMode.COMPLETE_NO_SCORES));
+                  numDocs,
+                  Comparator.comparing(cr -> cr.docAndScore.doc),
+                  ScoreMode.COMPLETE_NO_SCORES));
 
       // Also separately verify that DS respects the
       // scoreSubDocsAtOnce method, to ensure that all
