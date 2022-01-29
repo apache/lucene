@@ -60,7 +60,7 @@ final class BKDForUtil {
     }
     for (int i = 0; i < quarterLen; i++) {
       final int longIdx = off + i + quarterLen3;
-      tmp[i] |= (ints[longIdx] >>> 16) & 0xFF;
+      tmp[i] |= ints[longIdx] >>> 16;
       tmp[i + quarterLen] |= (ints[longIdx] >>> 8) & 0xFF;
       tmp[i + quarterLen * 2] |= ints[longIdx] & 0xFF;
     }
