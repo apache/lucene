@@ -192,7 +192,11 @@ public class DrillSideways {
    * ExecutorService} was supplied to the ctor, since {@code Collector}s are not thread-safe. If
    * interested in concurrent drill sideways, please use one of the other static {@code search}
    * methods.
+   *
+   * @deprecated This method is deprecated in interest of the {@link #search(DrillDownQuery,
+   *     CollectorManager)} method.
    */
+  @Deprecated
   public DrillSidewaysResult search(DrillDownQuery query, Collector hitCollector)
       throws IOException {
 
@@ -285,53 +289,42 @@ public class DrillSideways {
       }
       final int fTopN = Math.min(topN, limit);
 
-      if (executor != null) { // We have an executor, let use the multi-threaded version
+      final CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
+          new CollectorManager<>() {
 
-        final CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
-            new CollectorManager<>() {
+            @Override
+            public TopFieldCollector newCollector() {
+              return TopFieldCollector.create(sort, fTopN, after, Integer.MAX_VALUE);
+            }
 
-              @Override
-              public TopFieldCollector newCollector() {
-                return TopFieldCollector.create(sort, fTopN, after, Integer.MAX_VALUE);
-              }
+            @Override
+            public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) {
+              final TopFieldDocs[] topFieldDocs = new TopFieldDocs[collectors.size()];
+              int pos = 0;
+              for (TopFieldCollector collector : collectors)
+                topFieldDocs[pos++] = collector.topDocs();
+              return TopDocs.merge(sort, topN, topFieldDocs);
+            }
+          };
 
-              @Override
-              public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) {
-                final TopFieldDocs[] topFieldDocs = new TopFieldDocs[collectors.size()];
-                int pos = 0;
-                for (TopFieldCollector collector : collectors)
-                  topFieldDocs[pos++] = collector.topDocs();
-                return TopDocs.merge(sort, topN, topFieldDocs);
-              }
-            };
-        ConcurrentDrillSidewaysResult<TopFieldDocs> r = searchConcurrently(query, collectorManager);
-        TopFieldDocs topDocs = r.collectorResult;
-        if (doDocScores) {
-          TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
-        }
-        return new DrillSidewaysResult(
-            r.facets,
-            topDocs,
-            r.drillDownFacetsCollector,
-            r.drillSidewaysFacetsCollector,
-            r.drillSidewaysDims);
-
+      final ConcurrentDrillSidewaysResult<TopFieldDocs> r;
+      if (executor != null) {
+        // We have an executor, let use the multi-threaded version
+        r = searchConcurrently(query, collectorManager);
       } else {
-
-        final TopFieldCollector hitCollector =
-            TopFieldCollector.create(sort, fTopN, after, Integer.MAX_VALUE);
-        DrillSidewaysResult r = search(query, hitCollector);
-        TopFieldDocs topDocs = hitCollector.topDocs();
-        if (doDocScores) {
-          TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
-        }
-        return new DrillSidewaysResult(
-            r.facets,
-            topDocs,
-            r.drillDownFacetsCollector,
-            r.drillSidewaysFacetsCollector,
-            r.drillSidewaysDims);
+        r = searchSequentially(query, collectorManager);
       }
+
+      TopFieldDocs topDocs = r.collectorResult;
+      if (doDocScores) {
+        TopFieldCollector.populateScores(topDocs.scoreDocs, searcher, query);
+      }
+      return new DrillSidewaysResult(
+          r.facets,
+          r.collectorResult,
+          r.drillDownFacetsCollector,
+          r.drillSidewaysFacetsCollector,
+          r.drillSidewaysDims);
     } else {
       return search(after, query, topN);
     }
@@ -351,45 +344,36 @@ public class DrillSideways {
     }
     final int fTopN = Math.min(topN, limit);
 
-    if (executor != null) { // We have an executor, let use the multi-threaded version
+    final CollectorManager<TopScoreDocCollector, TopDocs> collectorManager =
+        new CollectorManager<>() {
 
-      final CollectorManager<TopScoreDocCollector, TopDocs> collectorManager =
-          new CollectorManager<>() {
+          @Override
+          public TopScoreDocCollector newCollector() {
+            return TopScoreDocCollector.create(fTopN, after, Integer.MAX_VALUE);
+          }
 
-            @Override
-            public TopScoreDocCollector newCollector() {
-              return TopScoreDocCollector.create(fTopN, after, Integer.MAX_VALUE);
-            }
+          @Override
+          public TopDocs reduce(Collection<TopScoreDocCollector> collectors) {
+            final TopDocs[] topDocs = new TopDocs[collectors.size()];
+            int pos = 0;
+            for (TopScoreDocCollector collector : collectors) topDocs[pos++] = collector.topDocs();
+            return TopDocs.merge(topN, topDocs);
+          }
+        };
 
-            @Override
-            public TopDocs reduce(Collection<TopScoreDocCollector> collectors) {
-              final TopDocs[] topDocs = new TopDocs[collectors.size()];
-              int pos = 0;
-              for (TopScoreDocCollector collector : collectors)
-                topDocs[pos++] = collector.topDocs();
-              return TopDocs.merge(topN, topDocs);
-            }
-          };
-      ConcurrentDrillSidewaysResult<TopDocs> r = searchConcurrently(query, collectorManager);
-      return new DrillSidewaysResult(
-          r.facets,
-          r.collectorResult,
-          r.drillDownFacetsCollector,
-          r.drillSidewaysFacetsCollector,
-          r.drillSidewaysDims);
-
+    final ConcurrentDrillSidewaysResult<TopDocs> r;
+    if (executor != null) {
+      // We have an executor, let use the multi-threaded version
+      r = searchConcurrently(query, collectorManager);
     } else {
-
-      TopScoreDocCollector hitCollector =
-          TopScoreDocCollector.create(topN, after, Integer.MAX_VALUE);
-      DrillSidewaysResult r = search(query, hitCollector);
-      return new DrillSidewaysResult(
-          r.facets,
-          hitCollector.topDocs(),
-          r.drillDownFacetsCollector,
-          r.drillSidewaysFacetsCollector,
-          r.drillSidewaysDims);
+      r = searchSequentially(query, collectorManager);
     }
+    return new DrillSidewaysResult(
+        r.facets,
+        r.collectorResult,
+        r.drillDownFacetsCollector,
+        r.drillSidewaysFacetsCollector,
+        r.drillSidewaysDims);
   }
 
   /**
