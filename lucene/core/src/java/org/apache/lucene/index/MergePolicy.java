@@ -232,6 +232,14 @@ public abstract class MergePolicy {
       mergeReaders = List.of();
     }
 
+    /**
+     * Create a OneMerge directly from CodecReaders.
+     * Used to merge incoming readers in {@link IndexWriter#addIndexes(CodecReader...)}. This
+     * OneMerge works directly on readers and has an empty segments list.
+     *
+     * @param codecReaders Codec readers to merge
+     * @param readerFactory Function to create a MergeReader from a CodecReader.
+     */
     public OneMerge(List<CodecReader> codecReaders, Function<CodecReader, MergeReader> readerFactory) {
       List<MergeReader> readers = new ArrayList<>(codecReaders.size());
       codecReaders.forEach(r -> readers.add(readerFactory.apply(r)));

@@ -3202,6 +3202,13 @@ public class IndexWriter
     }
   }
 
+  /**
+   * Runs merge on a OneMerge created from CodecReaders. This is used by to merge
+   * incoming readers in {@link IndexWriter#addIndexes(CodecReader...)}
+   * @param merge OneMerge object initialized from readers. This merge object has an empty
+   *              segments list
+   * @throws IOException
+   */
   public void addIndexesReaderMerge(MergePolicy.OneMerge merge) throws IOException {
 
     merge.mergeInit();
