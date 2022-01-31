@@ -3136,7 +3136,7 @@ public class IndexWriter
     synchronized (this) {
       ensureOpen();
       if (merges.areEnabled() == false) {
-        return docWriter.getNextSequenceNumber();
+        throw new UnsupportedOperationException("Merges are disabled on current writer. Cannot execute addIndexes(CodecReaders...) API");
       }
     }
 
@@ -3160,24 +3160,22 @@ public class IndexWriter
       this.writer = writer;
     }
 
-    public void registerMerge(MergePolicy.OneMerge merge) {
+    public synchronized void registerMerge(MergePolicy.OneMerge merge) {
       pendingAddIndexesMerges.add(merge);
-      pendingMerges.add(merge);
     }
 
     @Override
-    public MergePolicy.OneMerge getNextMerge() {
+    public synchronized MergePolicy.OneMerge getNextMerge() {
       if (hasPendingMerges() == false) {
         return null;
       }
       MergePolicy.OneMerge merge = pendingAddIndexesMerges.remove();
-      pendingMerges.removeFirst();
       runningMerges.add(merge);
       return merge;
     }
 
     @Override
-    public void onMergeFinished(MergePolicy.OneMerge merge) {
+    public synchronized void onMergeFinished(MergePolicy.OneMerge merge) {
       runningMerges.remove(merge);
     }
 
@@ -3196,8 +3194,10 @@ public class IndexWriter
         tragicEvent(tragedy, "addIndexes(CodecReader...)");
         throw tragedy;
       } finally {
-        merge.close(success, false, mr -> {});
-        onMergeFinished(merge);
+        synchronized (this) {
+          merge.close(success, false, mr -> {});
+          onMergeFinished(merge);
+        }
       }
     }
   }
@@ -3212,6 +3212,7 @@ public class IndexWriter
   public void addIndexesReaderMerge(MergePolicy.OneMerge merge) throws IOException {
 
     merge.mergeInit();
+    merge.checkAborted();
 
     // long so we can detect int overflow:
     long numDocs = 0;
@@ -3271,7 +3272,6 @@ public class IndexWriter
 
     synchronized (this) {
       ensureOpen();
-//          assert merges.areEnabled();
       runningAddIndexesMerges.add(merger);
     }
     merge.mergeStartNS = System.nanoTime();

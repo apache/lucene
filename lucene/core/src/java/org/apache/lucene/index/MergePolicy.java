@@ -194,6 +194,7 @@ public abstract class MergePolicy {
     long mergeGen; // used by IndexWriter
     boolean isExternal; // used by IndexWriter
     int maxNumSegments = -1; // used by IndexWriter
+    boolean isAddIndexesMerge;
 
     /** Estimated size in bytes of the merged segment. */
     public volatile long estimatedMergeBytes; // used by IndexWriter
@@ -230,6 +231,7 @@ public abstract class MergePolicy {
       totalMaxDoc = segments.stream().mapToInt(i -> i.info.maxDoc()).sum();
       mergeProgress = new OneMergeProgress();
       mergeReaders = List.of();
+      isAddIndexesMerge = false;
     }
 
     /**
@@ -247,6 +249,7 @@ public abstract class MergePolicy {
       segments = List.of();
       totalMaxDoc = codecReaders.stream().mapToInt(IndexReader::maxDoc).sum();
       mergeProgress = new OneMergeProgress();
+      isAddIndexesMerge = true;
     }
 
     /**
@@ -278,7 +281,9 @@ public abstract class MergePolicy {
       } finally {
         final List<MergeReader> readers = mergeReaders;
         mergeReaders = List.of();
-        IOUtils.applyToAll(readers, readerConsumer);
+        if (!isAddIndexesMerge) {
+          IOUtils.applyToAll(readers, readerConsumer);
+        }
       }
     }
 
