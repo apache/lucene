@@ -114,7 +114,6 @@ public class KnnVectorQuery extends Query {
 
     private final BitSet[] bitSets;
     private BitSet leafBits;
-    private int docBase;
 
     private BitSetCollector(BitSet[] bitSets) {
       this.bitSets = bitSets;

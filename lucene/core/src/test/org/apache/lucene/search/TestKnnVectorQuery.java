@@ -99,6 +99,23 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+
+  /**
+   * Tests that a KnnVectorQuery applies the filter query
+   */
+  public void testFindWithFilter() throws IOException {
+    try (Directory indexStore =
+             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+         IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      TermQuery filter = new TermQuery(new Term("id", "id0"));
+      KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, filter);
+      assertMatches(searcher, kvq, 1);
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(0, topDocs.scoreDocs[0].doc);
+    }
+  }
+
   /** testDimensionMismatch */
   public void testDimensionMismatch() throws IOException {
     try (Directory indexStore =
