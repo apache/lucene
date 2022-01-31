@@ -176,7 +176,7 @@ public class SearchGroup<T> {
       reversed = new int[sortFields.length];
       for (int compIDX = 0; compIDX < sortFields.length; compIDX++) {
         final SortField sortField = sortFields[compIDX];
-        comparators[compIDX] = sortField.getComparator(1, compIDX);
+        comparators[compIDX] = sortField.getComparator(1, false);
         reversed[compIDX] = sortField.getReverse() ? -1 : 1;
       }
     }

@@ -183,7 +183,7 @@ public class TestRegExp extends LuceneTestCase {
         break;
       case 6:
         // replace all chars with .
-        result.append(replacementPart.replaceAll(".", "."));
+        result.append(".".repeat(replacementPart.length()));
         break;
       case 7:
         // OR with uppercase chars eg [aA] (many of these sorts of expression in the wild..

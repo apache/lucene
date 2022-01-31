@@ -45,7 +45,7 @@ dependencies {
   moduleImplementation project(':lucene:analysis:stempel')
   moduleImplementation project(':lucene:suggest')
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }
 
 // Configure main class name for all JARs.

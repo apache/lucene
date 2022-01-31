@@ -105,15 +105,13 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final Terms terms(String field) throws IOException {
-    // ensureOpen(); no; getPostingsReader calls this
-    FieldsProducer fieldsProducer = getPostingsReader();
-    if (fieldsProducer == null) {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getIndexOptions() == IndexOptions.NONE) {
+      // Field does not exist or does not index postings
       return null;
     }
-    // We could check the FieldInfo IndexOptions but there's no point since
-    //   PostingsReader will simply return null for fields that don't exist or that have no terms
-    // index.
-    return fieldsProducer.terms(field);
+    return getPostingsReader().terms(field);
   }
 
   // returns the FieldInfo that corresponds to the given field and type, or

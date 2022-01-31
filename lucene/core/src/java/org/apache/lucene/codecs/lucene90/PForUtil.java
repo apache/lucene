@@ -60,7 +60,7 @@ final class PForUtil {
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, DataOutput out) throws IOException {
     // Determine the top MAX_EXCEPTIONS + 1 values
-    final LongHeap top = LongHeap.create(LongHeap.Order.MIN, MAX_EXCEPTIONS + 1);
+    final LongHeap top = new LongHeap(MAX_EXCEPTIONS + 1);
     for (int i = 0; i <= MAX_EXCEPTIONS; ++i) {
       top.push(longs[i]);
     }

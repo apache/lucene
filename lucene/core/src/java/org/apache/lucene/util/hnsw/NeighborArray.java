@@ -32,7 +32,7 @@ public class NeighborArray {
   float[] score;
   int[] node;
 
-  NeighborArray(int maxSize) {
+  public NeighborArray(int maxSize) {
     node = new int[maxSize];
     score = new float[maxSize];
   }
@@ -60,11 +60,15 @@ public class NeighborArray {
     return node;
   }
 
+  public float[] score() {
+    return score;
+  }
+
   public void clear() {
     size = 0;
   }
 
-  void removeLast() {
+  public void removeLast() {
     size--;
   }
 

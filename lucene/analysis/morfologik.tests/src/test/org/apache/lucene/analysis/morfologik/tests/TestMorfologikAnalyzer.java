@@ -19,28 +19,24 @@ package org.apache.lucene.analysis.morfologik.tests;
 import org.apache.lucene.analysis.morfologik.MorfologikAnalyzer;
 import org.apache.lucene.analysis.uk.UkrainianMorfologikAnalyzer;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Assert;
-import org.junit.Test;
 
-public class TestMorfologikAnalyzer {
-  @Test
+public class TestMorfologikAnalyzer extends LuceneTestCase {
   public void testMorfologikAnalyzerLoads() {
     var analyzer = new MorfologikAnalyzer();
     Assert.assertNotNull(analyzer);
   }
 
-  @Test
   public void testUkrainianMorfologikAnalyzerLoads() {
     var analyzer = new UkrainianMorfologikAnalyzer();
     Assert.assertNotNull(analyzer);
   }
 
-  @Test
   public void testWeAreModule() {
     Assert.assertTrue(this.getClass().getModule().isNamed());
   }
 
-  @Test
   public void testLuceneIsAModule() {
     Assert.assertTrue(IndexWriter.class.getModule().isNamed());
   }

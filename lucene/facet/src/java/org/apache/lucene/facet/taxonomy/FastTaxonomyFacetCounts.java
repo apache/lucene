@@ -70,20 +70,43 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     countAll(reader);
   }
 
-  private final void count(List<MatchingDocs> matchingDocs) throws IOException {
+  private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      SortedNumericDocValues dv =
+      SortedNumericDocValues multiValued =
           FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
-      if (dv == null) {
+      if (multiValued == null) {
         continue;
       }
 
-      DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
 
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        for (int i = 0; i < dv.docValueCount(); i++) {
-          increment((int) dv.nextValue());
+      DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
+      DocIdSetIterator it =
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+
+      if (singleValued != null) {
+        if (values != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            values[(int) singleValued.longValue()]++;
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            sparseValues.addTo((int) singleValued.longValue(), 1);
+          }
+        }
+      } else {
+        if (values != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              values[(int) multiValued.nextValue()]++;
+            }
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              sparseValues.addTo((int) multiValued.nextValue(), 1);
+            }
+          }
         }
       }
     }
@@ -91,33 +114,37 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     rollup();
   }
 
-  private final void countAll(IndexReader reader) throws IOException {
+  private void countAll(IndexReader reader) throws IOException {
+    assert values != null;
     for (LeafReaderContext context : reader.leaves()) {
-      SortedNumericDocValues dv = FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
-      if (dv == null) {
+      SortedNumericDocValues multiValued =
+          FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
+      if (multiValued == null) {
         continue;
       }
 
       Bits liveDocs = context.reader().getLiveDocs();
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
 
-      NumericDocValues ndv = DocValues.unwrapSingleton(dv);
-      if (ndv != null) {
-        for (int doc = ndv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = ndv.nextDoc()) {
+      if (singleValued != null) {
+        for (int doc = singleValued.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = singleValued.nextDoc()) {
           if (liveDocs != null && liveDocs.get(doc) == false) {
             continue;
           }
-          increment((int) ndv.longValue());
+          values[(int) singleValued.longValue()]++;
         }
-        continue;
-      }
-
-      for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
-        if (liveDocs != null && liveDocs.get(doc) == false) {
-          continue;
-        }
-
-        for (int i = 0; i < dv.docValueCount(); i++) {
-          increment((int) dv.nextValue());
+      } else {
+        for (int doc = multiValued.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = multiValued.nextDoc()) {
+          if (liveDocs != null && liveDocs.get(doc) == false) {
+            continue;
+          }
+          for (int i = 0; i < multiValued.docValueCount(); i++) {
+            values[(int) multiValued.nextValue()]++;
+          }
         }
       }
     }

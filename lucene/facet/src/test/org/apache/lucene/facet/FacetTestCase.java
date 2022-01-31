@@ -238,7 +238,7 @@ public abstract class FacetTestCase extends LuceneTestCase {
             } else if (b.value.doubleValue() > a.value.doubleValue()) {
               return 1;
             } else {
-              return 0;
+              return a.dim.compareTo(b.dim);
             }
           }
         });

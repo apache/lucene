@@ -26,6 +26,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 
+@SuppressWarnings("BoxedPrimitiveEquality")
 public class TestPriorityQueue extends LuceneTestCase {
 
   private static class IntegerQueue extends PriorityQueue<Integer> {

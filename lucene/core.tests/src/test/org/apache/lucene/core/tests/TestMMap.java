@@ -17,12 +17,11 @@
 package org.apache.lucene.core.tests;
 
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Assert;
-import org.junit.Test;
 
-public class TestMMap {
-  @Test
-  public void testUnmapSupported() throws Exception {
+public class TestMMap extends LuceneTestCase {
+  public void testUnmapSupported() {
     final Module module = MMapDirectory.class.getModule();
     Assert.assertTrue("Lucene Core is not loaded as module", module.isNamed());
     Assert.assertTrue(

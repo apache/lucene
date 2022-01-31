@@ -150,12 +150,11 @@ class ValidateSourcePatternsTask extends DefaultTask {
       (~$/\n\s*var\s+.*=.*<>.*/$) : 'Diamond operators should not be used with var'
     ]
 
-    def found = 0;
     def violations = new TreeSet();
     def reportViolation = { f, name ->
-      logger.error('{}: {}', name, f);
-      violations.add(name);
-      found++;
+      String msg = String.format(Locale.ROOT, "%s: %s", f, name)
+      logger.error(msg)
+      violations.add(msg)
     }
 
     def javadocsPattern = ~$/(?sm)^\Q/**\E(.*?)\Q*/\E/$;
@@ -254,9 +253,10 @@ class ValidateSourcePatternsTask extends DefaultTask {
     }
     progress.completed()
 
-    if (found) {
-      throw new GradleException(String.format(Locale.ENGLISH, 'Found %d violations in source files (%s).',
-        found, violations.join(', ')));
+    if (!violations.isEmpty()) {
+      throw new GradleException(String.format(Locale.ENGLISH, 'Found %d source violation(s):\n  %s',
+        violations.size(),
+        violations.join('\n  ')))
     }
   }
 }
