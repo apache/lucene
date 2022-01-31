@@ -97,8 +97,8 @@ public class KnnVectorQuery extends Query {
   }
 
   private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf, Bits bitsFilter) throws IOException {
-    Bits liveDocs = ctx.reader().getLiveDocs();
-    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, bitsFilter != null ? bitsFilter : liveDocs);
+
+    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, bitsFilter != null ? bitsFilter : ctx.reader().getLiveDocs());
     if (results == null) {
       return NO_RESULTS;
     }
