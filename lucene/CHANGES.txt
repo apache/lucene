@@ -124,6 +124,10 @@ New Features
 
 * LUCENE-10250: Add support for arbitrary length hierarchical SSDV facets. (Marc D'mello)
 
+* LUCENE-10395: Add support for TotalHitCountCollectorManager, a collector manager
+  based on TotalHitCountCollector that allows users to parallelize counting the
+  number of hits. (Luca Cavanna, Adrien Grand)
+
 Improvements
 ---------------------
 
