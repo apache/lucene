@@ -3130,7 +3130,7 @@ public class IndexWriter
     for (CodecReader leaf: readers) {
       validateMergeReader(leaf);
       for (FieldInfo fi: leaf.getFieldInfos()) {
-        globalFieldNumberMap.verifyField(fi);
+        globalFieldNumberMap.verifyFieldInfo(fi);
       }
       numDocs += leaf.numDocs();
     }
@@ -3139,7 +3139,8 @@ public class IndexWriter
     synchronized (this) {
       ensureOpen();
       if (merges.areEnabled() == false) {
-        throw new UnsupportedOperationException("Merges are disabled on current writer. Cannot execute addIndexes(CodecReaders...) API");
+        throw new UnsupportedOperationException("Merges are disabled on current writer. " +
+          "Cannot execute addIndexes(CodecReaders...) API");
       }
     }
 
@@ -3286,8 +3287,6 @@ public class IndexWriter
         notifyAll();
       }
     }
-//    SegmentCommitInfo infoPerCommit =
-//      new SegmentCommitInfo(info, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId());
 
     merge.getMergeInfo().info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
     trackingDir.clearCreatedFiles();
@@ -3296,12 +3295,7 @@ public class IndexWriter
 
     final MergePolicy mergePolicy = config.getMergePolicy();
     boolean useCompoundFile;
-    synchronized (this) { // Guard segmentInfos
-//          if (merges.areEnabled() == false) {
-//            // Safe: these files must exist
-//            deleteNewFiles(infoPerCommit.files());
-//            return;
-//          }
+    synchronized (this) {
       ensureOpen();
       useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, merge.getMergeInfo(), this);
     }
@@ -3332,18 +3326,10 @@ public class IndexWriter
 
     // Register the new segment
     synchronized (this) {
-//          if (merges.areEnabled() == false) {
-//            // Safe: these files must exist
-//            deleteNewFiles(infoPerCommit.files());
-//            return;
-//          }
       ensureOpen();
-
-      // Now reserve the docs, just before we update SIS:
+      // Reserve the docs, just before we update SIS:
       reserveDocs(numDocs);
-
       segmentInfos.add(merge.getMergeInfo());
-//          seqNo = docWriter.getNextSequenceNumber();
       checkpoint();
     }
   }
@@ -4898,19 +4884,21 @@ public class IndexWriter
           suppressExceptions == false,
           droppedSegment,
           mr -> {
-            final SegmentReader sr = mr.reader;
-            final ReadersAndUpdates rld = getPooledInstance(sr.getOriginalSegmentInfo(), false);
-            // We still hold a ref so it should not have been removed:
-            assert rld != null;
-            if (drop) {
-              rld.dropChanges();
-            } else {
-              rld.dropMergingUpdates();
-            }
-            rld.release(sr);
-            release(rld);
-            if (drop) {
-              readerPool.drop(rld.info);
+            if (merge.usesPooledReaders) {
+              final SegmentReader sr = mr.reader;
+              final ReadersAndUpdates rld = getPooledInstance(sr.getOriginalSegmentInfo(), false);
+              // We still hold a ref so it should not have been removed:
+              assert rld != null;
+              if (drop) {
+                rld.dropChanges();
+              } else {
+                rld.dropMergingUpdates();
+              }
+              rld.release(sr);
+              release(rld);
+              if (drop) {
+                readerPool.drop(rld.info);
+              }
             }
           });
     } else {

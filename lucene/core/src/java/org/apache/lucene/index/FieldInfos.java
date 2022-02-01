@@ -352,7 +352,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.softDeletesFieldName = softDeletesFieldName;
     }
 
-    public void verifyField(FieldInfo fi) {
+    public void verifyFieldInfo(FieldInfo fi) {
       String fieldName = fi.getName();
       verifySoftDeletedFieldName(fieldName, fi.isSoftDeletesField());
       if (nameToNumber.containsKey(fieldName)) {
