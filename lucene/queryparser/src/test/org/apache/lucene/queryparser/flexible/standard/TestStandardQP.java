@@ -16,8 +16,14 @@
  */
 package org.apache.lucene.queryparser.flexible.standard;
 
+import java.util.Locale;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DateTools.Resolution;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler;
@@ -25,9 +31,12 @@ import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfi
 import org.apache.lucene.queryparser.util.QueryParserTestBase;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.WildcardQuery;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 
@@ -190,5 +199,53 @@ public class TestStandardQP extends QueryParserTestBase {
     CommonQueryParserConfiguration cqpc = getParserConfig(qpAnalyzer);
     setDefaultOperatorAND(cqpc);
     assertQueryEquals(cqpc, "field", "term phrase term", "+term +(+phrase1 +phrase2) +term");
+  }
+
+  public void testBooleanQueryExceedingMaxClauses() throws Exception {
+    int prior = IndexSearcher.getMaxClauseCount();
+    try {
+      // Lower the max clause count to a very small value.
+      IndexSearcher.setMaxClauseCount(2);
+
+      StandardQueryParser qp = new StandardQueryParser();
+      qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
+
+      // Make sure the query parses fine with either operator.
+      qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
+      qp.parse("t000 t001 t002", "field");
+      qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
+      qp.parse("t000 t001 t002", "field");
+
+      // Run an actual search and verify everything works.
+      qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
+      try (Directory dir = newDirectory();
+          IndexWriter w =
+              new IndexWriter(
+                  dir,
+                  newIndexWriterConfig(
+                      new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false)))) {
+        for (int i = 0; i < 100; i++) {
+          Document d = new Document();
+          d.add(new StringField("field", String.format(Locale.ROOT, "t%03d", i), Field.Store.NO));
+          w.addDocument(d);
+        }
+        w.commit();
+
+        try (var liveReader = DirectoryReader.open(w)) {
+          IndexSearcher searcher = new IndexSearcher(liveReader);
+
+          qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
+          TopDocs topDocs =
+              searcher.search(qp.parse("(t000 x001 x002) OR (x000 t001 x002)", "field"), 10);
+          assertEquals(2, topDocs.scoreDocs.length);
+
+          qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
+          topDocs = searcher.search(qp.parse("t000 t001 t002 t003 t004 t005", "field"), 10);
+          assertEquals(6, topDocs.scoreDocs.length);
+        }
+      }
+    } finally {
+      IndexSearcher.setMaxClauseCount(prior);
+    }
   }
 }

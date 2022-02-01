@@ -29,7 +29,6 @@ import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.document.DateTools;
-import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeParseException;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler;
 import org.apache.lucene.queryparser.flexible.standard.parser.ParseException;
@@ -574,17 +573,6 @@ public class TestPrecedenceQueryParser extends LuceneTestCase {
         QueryNodeParseException.class,
         () -> {
           assertQueryEquals("\"some phrase", null, "abc");
-        });
-  }
-
-  // ParseException expected due to too many boolean clauses
-  public void testBooleanQuery() throws Exception {
-    IndexSearcher.setMaxClauseCount(2);
-    expectThrows(
-        QueryNodeException.class,
-        () -> {
-          getParser(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false))
-              .parse("one two three", "field");
         });
   }
 

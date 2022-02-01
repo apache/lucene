@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.queryparser.flexible.standard.builders;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.builders.QueryTreeBuilder;
 import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
@@ -28,59 +30,96 @@ import org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuerySyntaxI
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.IndexSearcher.TooManyClauses;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermInSetQuery;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.util.BytesRef;
 
 /**
- * Builds a {@link BooleanQuery} object from a {@link BooleanQueryNode} object. Every children in
- * the {@link BooleanQueryNode} object must be already tagged using {@link
- * QueryTreeBuilder#QUERY_TREE_BUILDER_TAGID} with a {@link Query} object. <br>
- * <br>
- * It takes in consideration if the children is a {@link ModifierQueryNode} to define the {@link
+ * Builds a {@link BooleanQuery} object from a {@link BooleanQueryNode} object. Every child in the
+ * {@link BooleanQueryNode} object must be already tagged using {@link
+ * QueryTreeBuilder#QUERY_TREE_BUILDER_TAGID} with a {@link Query} object.
+ *
+ * <p>It takes in consideration if the children is a {@link ModifierQueryNode} to define the {@link
  * BooleanClause}.
+ *
+ * <p>If the set of children exceeds {@link #MIN_CLAUSES_TO_OPTIMIZE} then an attempt is made to
+ * convert individual {@link TermQuery} sub-clauses into a single {@link TermInSetQuery}. This
+ * allows a larger number of sub-clauses (than {@link IndexSearcher#getMaxClauseCount()}) and
+ * typically runs much faster.
  */
 public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
-
-  public BooleanQueryNodeBuilder() {
-    // empty constructor
-  }
+  /**
+   * Minimum number of Boolean sub-clauses required for the {@link TermInSetQuery} optimisation to
+   * be attempted. This is computed dynamically and is a minimum of 128 or 25% of the current {@link
+   * IndexSearcher#getMaxClauseCount()}.
+   */
+  public final int MIN_CLAUSES_TO_OPTIMIZE = Math.min(IndexSearcher.getMaxClauseCount() / 4, 128);
 
   @Override
   public BooleanQuery build(QueryNode queryNode) throws QueryNodeException {
     BooleanQueryNode booleanNode = (BooleanQueryNode) queryNode;
 
-    BooleanQuery.Builder bQuery = new BooleanQuery.Builder();
+    BooleanQuery.Builder builder = new BooleanQuery.Builder();
     List<QueryNode> children = booleanNode.getChildren();
+    if (children == null || children.isEmpty()) {
+      return builder.build();
+    }
 
-    if (children != null) {
-
-      for (QueryNode child : children) {
-        Object obj = child.getTag(QueryTreeBuilder.QUERY_TREE_BUILDER_TAGID);
-
-        if (obj != null) {
-          Query query = (Query) obj;
-
-          try {
-            bQuery.add(query, getModifierValue(child));
-
-          } catch (TooManyClauses ex) {
-
-            throw new QueryNodeException(
-                new MessageImpl(
-                    QueryParserMessages.TOO_MANY_BOOLEAN_CLAUSES,
-                    IndexSearcher.getMaxClauseCount(),
-                    queryNode.toQueryString(new EscapeQuerySyntaxImpl())),
-                ex);
-          }
-        }
+    List<BooleanClause> boolClauses = new ArrayList<>();
+    for (QueryNode child : children) {
+      Object obj = child.getTag(QueryTreeBuilder.QUERY_TREE_BUILDER_TAGID);
+      if (obj != null) {
+        Query clause = (Query) obj;
+        BooleanClause.Occur occur = getModifierValue(child);
+        boolClauses.add(new BooleanClause(clause, occur));
       }
     }
 
-    return bQuery.build();
+    try {
+      if (boolClauses.size() < MIN_CLAUSES_TO_OPTIMIZE) {
+        boolClauses.forEach(builder::add);
+      } else {
+        List<BooleanClause> termQueries = new ArrayList<>();
+        for (BooleanClause clause : boolClauses) {
+          if (clause.getQuery() instanceof TermQuery) {
+            termQueries.add(clause);
+          } else {
+            builder.add(clause);
+          }
+        }
+
+        termQueries.stream()
+            .collect(
+                Collectors.groupingBy(clause -> ((TermQuery) clause.getQuery()).getTerm().field()))
+            .forEach(
+                (field, fieldClauses) -> {
+                  fieldClauses.stream()
+                      .collect(Collectors.groupingBy(BooleanClause::getOccur))
+                      .forEach(
+                          (occur, occurClauses) -> {
+                            List<BytesRef> terms =
+                                occurClauses.stream()
+                                    .map(
+                                        clause -> ((TermQuery) clause.getQuery()).getTerm().bytes())
+                                    .collect(Collectors.toList());
+                            Query termInSet = new TermInSetQuery(field, terms);
+                            builder.add(termInSet, occur);
+                          });
+                });
+      }
+      return builder.build();
+    } catch (IndexSearcher.TooManyClauses ex) {
+      throw new QueryNodeException(
+          new MessageImpl(
+              QueryParserMessages.TOO_MANY_BOOLEAN_CLAUSES,
+              IndexSearcher.getMaxClauseCount(),
+              queryNode.toQueryString(new EscapeQuerySyntaxImpl())),
+          ex);
+    }
   }
 
   private static BooleanClause.Occur getModifierValue(QueryNode node) {
-
     if (node instanceof ModifierQueryNode) {
       ModifierQueryNode mNode = ((ModifierQueryNode) node);
       switch (mNode.getModifier()) {
@@ -92,6 +131,9 @@ public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
 
         case MOD_NONE:
           return BooleanClause.Occur.SHOULD;
+
+        default:
+          throw new RuntimeException("Unreachable.");
       }
     }
 

@@ -973,12 +973,6 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertParseException("secret AND illegal) AND access:confidential");
   }
 
-  public void testBooleanQuery() throws Exception {
-    IndexSearcher.setMaxClauseCount(2);
-    Analyzer purWhitespaceAnalyzer = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
-    assertParseException("one two three", purWhitespaceAnalyzer);
-  }
-
   /** This test differs from TestPrecedenceQueryParser */
   public void testPrecedence() throws Exception {
     CommonQueryParserConfiguration qp =

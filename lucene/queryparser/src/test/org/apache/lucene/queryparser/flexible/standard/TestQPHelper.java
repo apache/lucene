@@ -1026,19 +1026,6 @@ public class TestQPHelper extends LuceneTestCase {
         });
   }
 
-  // too many boolean clauses, so ParseException is expected
-  public void testBooleanQuery() throws Exception {
-    IndexSearcher.setMaxClauseCount(2);
-    expectThrows(
-        QueryNodeException.class,
-        () -> {
-          StandardQueryParser qp = new StandardQueryParser();
-          qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
-
-          qp.parse("one two three", "field");
-        });
-  }
-
   /** This test differs from TestPrecedenceQueryParser */
   public void testPrecedence() throws Exception {
     StandardQueryParser qp = new StandardQueryParser();
