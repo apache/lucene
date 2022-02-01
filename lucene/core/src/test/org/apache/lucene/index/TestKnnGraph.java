@@ -172,9 +172,11 @@ public class TestKnnGraph extends LuceneTestCase {
     int numDoc = atLeast(100);
     int[] dims = new int[numVectorFields];
     float[][][] values = new float[numVectorFields][][];
+    FieldType[] fieldTypes = new FieldType[numVectorFields];
     for (int field = 0; field < numVectorFields; field++) {
       dims[field] = atLeast(3);
       values[field] = randomVectors(numDoc, dims[field]);
+      fieldTypes[field] = KnnVectorField.createFieldType(dims[field], similarityFunction);
     }
 
     try (Directory dir = newDirectory();
@@ -184,8 +186,7 @@ public class TestKnnGraph extends LuceneTestCase {
         for (int field = 0; field < numVectorFields; field++) {
           float[] vector = values[field][docID];
           if (vector != null) {
-            FieldType fieldType = KnnVectorField.createFieldType(vector.length, similarityFunction);
-            doc.add(new KnnVectorField(KNN_GRAPH_FIELD + field, vector, fieldType));
+            doc.add(new KnnVectorField(KNN_GRAPH_FIELD + field, vector, fieldTypes[field]));
           }
         }
         String idString = Integer.toString(docID);
@@ -428,7 +429,6 @@ public class TestKnnGraph extends LuceneTestCase {
     try (DirectoryReader dr = DirectoryReader.open(iw)) {
       for (LeafReaderContext ctx : dr.leaves()) {
         LeafReader reader = ctx.reader();
-        VectorValues vectorValues = reader.getVectorValues(vectorField);
         PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
             (PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) reader).getVectorReader();
         if (perFieldReader == null) {
@@ -436,7 +436,11 @@ public class TestKnnGraph extends LuceneTestCase {
         }
         Lucene91HnswVectorsReader vectorReader =
             (Lucene91HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
+        if (vectorReader == null) {
+          continue;
+        }
         KnnGraphValues graphValues = vectorReader.getGraphValues(vectorField);
+        VectorValues vectorValues = reader.getVectorValues(vectorField);
         if (vectorValues == null) {
           assert graphValues == null;
           continue;
