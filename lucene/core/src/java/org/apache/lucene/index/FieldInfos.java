@@ -352,6 +352,14 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.softDeletesFieldName = softDeletesFieldName;
     }
 
+    public void verifyField(FieldInfo fi) {
+      String fieldName = fi.getName();
+      verifySoftDeletedFieldName(fieldName, fi.isSoftDeletesField());
+      if (nameToNumber.containsKey(fieldName)) {
+        verifySameSchema(fi);
+      }
+    }
+
     /**
      * Returns the global field number for the given field name. If the name does not exist yet it
      * tries to add it with the given preferred field number assigned if possible otherwise the

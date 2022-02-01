@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.util.IOSupplier;
 
@@ -36,6 +37,11 @@ public final class NoMergePolicy extends MergePolicy {
   @Override
   public MergeSpecification findMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext) {
+    return null;
+  }
+
+  @Override
+  public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
     return null;
   }
 

@@ -3129,6 +3129,9 @@ public class IndexWriter
     long numDocs = 0;
     for (CodecReader leaf: readers) {
       validateMergeReader(leaf);
+      for (FieldInfo fi: leaf.getFieldInfos()) {
+        globalFieldNumberMap.verifyField(fi);
+      }
       numDocs += leaf.numDocs();
     }
     testReserveDocs(numDocs);

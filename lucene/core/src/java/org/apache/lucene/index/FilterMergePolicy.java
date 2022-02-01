@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.Unwrappable;
@@ -45,6 +46,11 @@ public class FilterMergePolicy extends MergePolicy implements Unwrappable<MergeP
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {
     return in.findMerges(mergeTrigger, segmentInfos, mergeContext);
+  }
+
+  @Override
+  public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+    return in.findMerges(readers);
   }
 
   @Override
