@@ -506,6 +506,12 @@ public final class CheckIndex implements Closeable {
     setInfoStream(out, false);
   }
 
+  private static void msg(PrintStream out, ByteArrayOutputStream msg) {
+    if (out != null) {
+      out.println(msg.toString(StandardCharsets.UTF_8));
+    }
+  }
+
   private static void msg(PrintStream out, String msg) {
     if (out != null) {
       out.println(msg);
@@ -778,21 +784,21 @@ public final class CheckIndex implements Closeable {
         } catch (InterruptedException e) {
           // the segment test output should come before interrupted exception message that follows,
           // hence it's not emitted from finally clause
-          infoStream.println(output.toString(StandardCharsets.UTF_8));
+          msg(infoStream, output);
           msg(
               infoStream,
               "ERROR: Interrupted exception occurred when getting segment check result for segment "
                   + info.info.name);
           if (infoStream != null) e.printStackTrace(infoStream);
         } catch (ExecutionException e) {
-          infoStream.println(output.toString(StandardCharsets.UTF_8));
+          msg(infoStream, output.toString(StandardCharsets.UTF_8));
 
           assert failFast;
           throw new CheckIndexException(
               "Segment " + info.info.name + " check failed.", e.getCause());
         }
 
-        infoStream.print(output.toString(StandardCharsets.UTF_8));
+        msg(infoStream, output);
 
         processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
