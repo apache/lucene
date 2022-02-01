@@ -212,7 +212,11 @@ public class TestStandardQP extends QueryParserTestBase {
 
       // Make sure the query parses fine with either operator.
       qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
-      qp.parse("t000 t001 t002", "field");
+      expectThrows(
+          QueryNodeException.class,
+          () -> {
+            qp.parse("t000 t001 t002", "field");
+          });
       qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
       qp.parse("t000 t001 t002", "field");
 
@@ -235,12 +239,21 @@ public class TestStandardQP extends QueryParserTestBase {
           IndexSearcher searcher = new IndexSearcher(liveReader);
 
           qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
-          TopDocs topDocs =
-              searcher.search(qp.parse("(t000 x001 x002) OR (x000 t001 x002)", "field"), 10);
-          assertEquals(2, topDocs.scoreDocs.length);
+          expectThrows(
+              QueryNodeException.class,
+              () -> {
+                searcher.search(qp.parse("(t000 x001 x002) OR (x000 t001 x002)", "field"), 10);
+              });
+
+          qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
+          expectThrows(
+              QueryNodeException.class,
+              () -> {
+                searcher.search(qp.parse("t002 t003 t004", "field"), 10);
+              });
 
           qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
-          topDocs = searcher.search(qp.parse("t000 t001 t002 t003 t004 t005", "field"), 10);
+          TopDocs topDocs = searcher.search(qp.parse("t000 t001 t002 t003 t004 t005", "field"), 10);
           assertEquals(6, topDocs.scoreDocs.length);
         }
       }

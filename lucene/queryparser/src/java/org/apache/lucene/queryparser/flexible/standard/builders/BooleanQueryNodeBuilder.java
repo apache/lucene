@@ -82,7 +82,8 @@ public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
       } else {
         List<BooleanClause> termQueries = new ArrayList<>();
         for (BooleanClause clause : boolClauses) {
-          if (clause.getQuery() instanceof TermQuery) {
+          if (clause.getQuery() instanceof TermQuery
+              && clause.getOccur() == BooleanClause.Occur.SHOULD) {
             termQueries.add(clause);
           } else {
             builder.add(clause);
