@@ -494,9 +494,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    //we use an unrealistic query that exposes its own Weight#count
+    // we use an unrealistic query that exposes its own Weight#count
     Query fallbackQuery = new MatchNoDocsQuery();
-    //the index is not sorted on this field, the fallback query is used
+    // the index is not sorted on this field, the fallback query is used
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("another", 1, 42, fallbackQuery);
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
