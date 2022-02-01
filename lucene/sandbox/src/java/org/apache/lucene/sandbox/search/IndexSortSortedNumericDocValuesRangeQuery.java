@@ -176,7 +176,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         if (disi != null) {
           return disi.lastDoc - disi.firstDoc;
         }
-        return super.count(context);
+        return fallbackWeight.count(context);
       }
     };
   }
