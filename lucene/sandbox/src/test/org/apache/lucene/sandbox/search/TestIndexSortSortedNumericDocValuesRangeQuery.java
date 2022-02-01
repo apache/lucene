@@ -38,6 +38,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -95,7 +96,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     }
   }
 
-  private void assertSameHits(IndexSearcher searcher, Query q1, Query q2, boolean scores)
+  private static void assertSameHits(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
@@ -167,41 +168,46 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexSearcher searcher = newSearcher(reader);
 
     // Test ranges consisting of one value.
-    assertEquals(1, searcher.count(createQuery("field", -80, -80)));
-    assertEquals(1, searcher.count(createQuery("field", -5, -5)));
-    assertEquals(2, searcher.count(createQuery("field", 0, 0)));
-    assertEquals(1, searcher.count(createQuery("field", 30, 30)));
-    assertEquals(1, searcher.count(createQuery("field", 35, 35)));
+    assertNumberOfHits(searcher, createQuery("field", -80, -80), 1);
+    assertNumberOfHits(searcher, createQuery("field", -5, -5), 1);
+    assertNumberOfHits(searcher, createQuery("field", 0, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", 30, 30), 1);
+    assertNumberOfHits(searcher, createQuery("field", 35, 35), 1);
 
-    assertEquals(0, searcher.count(createQuery("field", -90, -90)));
-    assertEquals(0, searcher.count(createQuery("field", 5, 5)));
-    assertEquals(0, searcher.count(createQuery("field", 40, 40)));
+    assertNumberOfHits(searcher, createQuery("field", -90, -90), 0);
+    assertNumberOfHits(searcher, createQuery("field", 5, 5), 0);
+    assertNumberOfHits(searcher, createQuery("field", 40, 40), 0);
 
     // Test the lower end of the document value range.
-    assertEquals(2, searcher.count(createQuery("field", -90, -4)));
-    assertEquals(2, searcher.count(createQuery("field", -80, -4)));
-    assertEquals(1, searcher.count(createQuery("field", -70, -4)));
-    assertEquals(2, searcher.count(createQuery("field", -80, -5)));
+    assertNumberOfHits(searcher, createQuery("field", -90, -4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -80, -4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -70, -4), 1);
+    assertNumberOfHits(searcher, createQuery("field", -80, -5), 2);
 
     // Test the upper end of the document value range.
-    assertEquals(1, searcher.count(createQuery("field", 25, 34)));
-    assertEquals(2, searcher.count(createQuery("field", 25, 35)));
-    assertEquals(2, searcher.count(createQuery("field", 25, 36)));
-    assertEquals(2, searcher.count(createQuery("field", 30, 35)));
+    assertNumberOfHits(searcher, createQuery("field", 25, 34), 1);
+    assertNumberOfHits(searcher, createQuery("field", 25, 35), 2);
+    assertNumberOfHits(searcher, createQuery("field", 25, 36), 2);
+    assertNumberOfHits(searcher, createQuery("field", 30, 35), 2);
 
     // Test multiple occurrences of the same value.
-    assertEquals(2, searcher.count(createQuery("field", -4, 4)));
-    assertEquals(2, searcher.count(createQuery("field", -4, 0)));
-    assertEquals(2, searcher.count(createQuery("field", 0, 4)));
-    assertEquals(3, searcher.count(createQuery("field", 0, 30)));
+    assertNumberOfHits(searcher, createQuery("field", -4, 4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -4, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", 0, 4), 2);
+    assertNumberOfHits(searcher, createQuery("field", 0, 30), 3);
 
     // Test ranges that span all documents.
-    assertEquals(6, searcher.count(createQuery("field", -80, 35)));
-    assertEquals(6, searcher.count(createQuery("field", -90, 40)));
+    assertNumberOfHits(searcher, createQuery("field", -80, 35), 6);
+    assertNumberOfHits(searcher, createQuery("field", -90, 40), 6);
 
     writer.close();
     reader.close();
     dir.close();
+  }
+
+  private static void assertNumberOfHits(IndexSearcher searcher, Query query, int numberOfHits) throws IOException {
+    assertEquals(numberOfHits, searcher.search(query, new TotalHitCountCollectorManager()).intValue());
+    assertEquals(numberOfHits, searcher.count(query));
   }
 
   public void testIndexSortDocValuesWithOddLength() throws Exception {
@@ -229,38 +235,38 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexSearcher searcher = newSearcher(reader);
 
     // Test ranges consisting of one value.
-    assertEquals(1, searcher.count(createQuery("field", -80, -80)));
-    assertEquals(1, searcher.count(createQuery("field", -5, -5)));
-    assertEquals(2, searcher.count(createQuery("field", 0, 0)));
-    assertEquals(1, searcher.count(createQuery("field", 5, 5)));
-    assertEquals(1, searcher.count(createQuery("field", 30, 30)));
-    assertEquals(1, searcher.count(createQuery("field", 35, 35)));
+    assertNumberOfHits(searcher, createQuery("field", -80, -80), 1);
+    assertNumberOfHits(searcher, createQuery("field", -5, -5), 1);
+    assertNumberOfHits(searcher, createQuery("field", 0, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", 5, 5), 1);
+    assertNumberOfHits(searcher, createQuery("field", 30, 30), 1);
+    assertNumberOfHits(searcher, createQuery("field", 35, 35), 1);
 
-    assertEquals(0, searcher.count(createQuery("field", -90, -90)));
-    assertEquals(0, searcher.count(createQuery("field", 6, 6)));
-    assertEquals(0, searcher.count(createQuery("field", 40, 40)));
+    assertNumberOfHits(searcher, createQuery("field", -90, -90), 0);
+    assertNumberOfHits(searcher, createQuery("field", 6, 6), 0);
+    assertNumberOfHits(searcher, createQuery("field", 40, 40), 0);
 
     // Test the lower end of the document value range.
-    assertEquals(2, searcher.count(createQuery("field", -90, -4)));
-    assertEquals(2, searcher.count(createQuery("field", -80, -4)));
-    assertEquals(1, searcher.count(createQuery("field", -70, -4)));
-    assertEquals(2, searcher.count(createQuery("field", -80, -5)));
+    assertNumberOfHits(searcher, createQuery("field", -90, -4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -80, -4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -70, -4), 1);
+    assertNumberOfHits(searcher, createQuery("field", -80, -5), 2);
 
     // Test the upper end of the document value range.
-    assertEquals(1, searcher.count(createQuery("field", 25, 34)));
-    assertEquals(2, searcher.count(createQuery("field", 25, 35)));
-    assertEquals(2, searcher.count(createQuery("field", 25, 36)));
-    assertEquals(2, searcher.count(createQuery("field", 30, 35)));
+    assertNumberOfHits(searcher, createQuery("field", 25, 34), 1);
+    assertNumberOfHits(searcher, createQuery("field", 25, 35), 2);
+    assertNumberOfHits(searcher, createQuery("field", 25, 36), 2);
+    assertNumberOfHits(searcher, createQuery("field", 30, 35), 2);
 
     // Test multiple occurrences of the same value.
-    assertEquals(2, searcher.count(createQuery("field", -4, 4)));
-    assertEquals(2, searcher.count(createQuery("field", -4, 0)));
-    assertEquals(2, searcher.count(createQuery("field", 0, 4)));
-    assertEquals(4, searcher.count(createQuery("field", 0, 30)));
+    assertNumberOfHits(searcher, createQuery("field", -4, 4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -4, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", 0, 4), 2);
+    assertNumberOfHits(searcher, createQuery("field", 0, 30), 4);
 
     // Test ranges that span all documents.
-    assertEquals(7, searcher.count(createQuery("field", -80, 35)));
-    assertEquals(7, searcher.count(createQuery("field", -90, 40)));
+    assertNumberOfHits(searcher, createQuery("field", -80, 35), 7);
+    assertNumberOfHits(searcher, createQuery("field", -90, 40), 7);
 
     writer.close();
     reader.close();
@@ -285,10 +291,10 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     DirectoryReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    assertEquals(1, searcher.count(createQuery("field", 42, 43)));
-    assertEquals(1, searcher.count(createQuery("field", 42, 42)));
-    assertEquals(0, searcher.count(createQuery("field", 41, 41)));
-    assertEquals(0, searcher.count(createQuery("field", 43, 43)));
+    assertNumberOfHits(searcher, createQuery("field", 42, 43), 1);
+    assertNumberOfHits(searcher, createQuery("field", 42, 42), 1);
+    assertNumberOfHits(searcher, createQuery("field", 41, 41), 0);
+    assertNumberOfHits(searcher, createQuery("field", 43, 43), 0);
 
     writer.close();
     reader.close();
@@ -316,11 +322,11 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     DirectoryReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    assertEquals(2, searcher.count(createQuery("field", -70, 0)));
-    assertEquals(2, searcher.count(createQuery("field", -2, 35)));
+    assertNumberOfHits(searcher, createQuery("field", -70, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", -2, 35), 2);
 
-    assertEquals(4, searcher.count(createQuery("field", -80, 35)));
-    assertEquals(4, searcher.count(createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE)));
+    assertNumberOfHits(searcher, createQuery("field", -80, 35), 4);
+    assertNumberOfHits(searcher, createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE), 4);
 
     writer.close();
     reader.close();
