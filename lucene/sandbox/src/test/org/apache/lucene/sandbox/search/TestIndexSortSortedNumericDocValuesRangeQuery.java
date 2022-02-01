@@ -474,7 +474,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertNotEquals(-1, weight.count(context));
+      assertEquals(1, weight.count(context));
     }
 
     writer.close();
@@ -500,7 +500,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("another", 1, 42, fallbackQuery);
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertNotEquals(-1, weight.count(context));
+      assertEquals(0, weight.count(context));
     }
 
     writer.close();
