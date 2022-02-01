@@ -181,15 +181,16 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     };
   }
 
-  private BoundedDocSetIdIterator getDocIdSetIteratorOrNull(LeafReaderContext context) throws IOException {
+  private BoundedDocSetIdIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
+      throws IOException {
     SortedNumericDocValues sortedNumericValues =
-            DocValues.getSortedNumeric(context.reader(), field);
+        DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
     if (numericValues != null) {
       Sort indexSort = context.reader().getMetaData().getSort();
       if (indexSort != null
-              && indexSort.getSort().length > 0
-              && indexSort.getSort()[0].getField().equals(field)) {
+          && indexSort.getSort().length > 0
+          && indexSort.getSort()[0].getField().equals(field)) {
 
         SortField sortField = indexSort.getSort()[0];
         return getDocIdSetIterator(sortField, context, numericValues);

@@ -205,8 +205,10 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
-  private static void assertNumberOfHits(IndexSearcher searcher, Query query, int numberOfHits) throws IOException {
-    assertEquals(numberOfHits, searcher.search(query, new TotalHitCountCollectorManager()).intValue());
+  private static void assertNumberOfHits(IndexSearcher searcher, Query query, int numberOfHits)
+      throws IOException {
+    assertEquals(
+        numberOfHits, searcher.search(query, new TotalHitCountCollectorManager()).intValue());
     assertEquals(numberOfHits, searcher.count(query));
   }
 
