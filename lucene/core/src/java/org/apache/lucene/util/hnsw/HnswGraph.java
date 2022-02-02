@@ -27,6 +27,7 @@ import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 
@@ -94,6 +95,29 @@ public final class HnswGraph extends KnnGraphValues {
   }
 
   /**
+   * Holds data structures that are used by each {@link #searchLevel} call. These can be expensive
+   * to allocate, so whenever possible they're cleared and reused across calls.
+   */
+  static class HnswSearchState {
+    final NeighborQueue candidates;
+    final BitSet visited;
+
+    /**
+     * @param candidates max heap containing the candidate nodes to explore
+     * @param visited tracks nodes that have already been visited while searching a layer
+     */
+    public HnswSearchState(NeighborQueue candidates, BitSet visited) {
+      this.candidates = candidates;
+      this.visited = visited;
+    }
+
+    public void clear() {
+      candidates.clear();
+      visited.clear(0, visited.length());
+    }
+  }
+
+  /**
    * Searches HNSW graph for the nearest neighbors of a query vector.
    *
    * @param query search query vector
@@ -113,15 +137,20 @@ public final class HnswGraph extends KnnGraphValues {
       KnnGraphValues graphValues,
       Bits acceptOrds)
       throws IOException {
-
     NeighborQueue results;
+    HnswSearchState state =
+        new HnswSearchState(
+            new NeighborQueue(topK, similarityFunction.reversed == false),
+            new SparseFixedBitSet(vectors.size()));
     int[] eps = new int[] {graphValues.entryNode()};
     for (int level = graphValues.numLevels() - 1; level >= 1; level--) {
-      results = searchLevel(query, 1, level, eps, vectors, similarityFunction, graphValues, null);
+      results =
+          searchLevel(query, 1, level, eps, vectors, similarityFunction, graphValues, null, state);
       eps[0] = results.pop();
     }
     results =
-        searchLevel(query, topK, 0, eps, vectors, similarityFunction, graphValues, acceptOrds);
+        searchLevel(
+            query, topK, 0, eps, vectors, similarityFunction, graphValues, acceptOrds, state);
     return results;
   }
 
@@ -137,6 +166,7 @@ public final class HnswGraph extends KnnGraphValues {
    * @param graphValues the graph values
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
+   * @param state contains pre-allocated data structures for the search (may not be cleared)
    * @return a priority queue holding the closest neighbors found
    */
   static NeighborQueue searchLevel(
@@ -147,20 +177,17 @@ public final class HnswGraph extends KnnGraphValues {
       RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
       KnnGraphValues graphValues,
-      Bits acceptOrds)
+      Bits acceptOrds,
+      HnswSearchState state)
       throws IOException {
-
     int size = graphValues.size();
-    // MIN heap, holding the top results
     NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
-    // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = new NeighborQueue(topK, !similarityFunction.reversed);
-    // set of ordinals that have been visited by search on this layer, used to avoid backtracking
-    SparseFixedBitSet visited = new SparseFixedBitSet(size);
+    state.clear();
+
     for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
+      if (state.visited.getAndSet(ep) == false) {
         float score = similarityFunction.compare(query, vectors.vectorValue(ep));
-        candidates.add(ep, score);
+        state.candidates.add(ep, score);
         if (acceptOrds == null || acceptOrds.get(ep)) {
           results.add(ep, score);
         }
@@ -173,24 +200,24 @@ public final class HnswGraph extends KnnGraphValues {
     if (results.size() >= topK) {
       bound.set(results.topScore());
     }
-    while (candidates.size() > 0) {
+    while (state.candidates.size() > 0) {
       // get the best candidate (closest or best scoring)
-      float topCandidateScore = candidates.topScore();
+      float topCandidateScore = state.candidates.topScore();
       if (bound.check(topCandidateScore)) {
         break;
       }
-      int topCandidateNode = candidates.pop();
+      int topCandidateNode = state.candidates.pop();
       graphValues.seek(level, topCandidateNode);
       int friendOrd;
       while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd)) {
+        if (state.visited.getAndSet(friendOrd)) {
           continue;
         }
 
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         if (bound.check(score) == false) {
-          candidates.add(friendOrd, score);
+          state.candidates.add(friendOrd, score);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
               bound.set(results.topScore());
@@ -202,7 +229,7 @@ public final class HnswGraph extends KnnGraphValues {
     while (results.size() > topK) {
       results.pop();
     }
-    results.setVisitedCount(visited.approximateCardinality());
+    results.setVisitedCount(state.visited.approximateCardinality());
     return results;
   }
 
