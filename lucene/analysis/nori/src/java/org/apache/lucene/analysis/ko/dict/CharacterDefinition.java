@@ -19,10 +19,13 @@ package org.apache.lucene.analysis.ko.dict;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+
+import org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOUtils;
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
 
 /** Character category data. */
 public final class CharacterDefinition {
@@ -73,10 +76,12 @@ public final class CharacterDefinition {
   public static final byte HANJANUMERIC = (byte) CharacterClass.HANJANUMERIC.ordinal();
 
   private CharacterDefinition() throws IOException {
+    String resourcePath = getClass().getSimpleName();
+    DictionaryResourceLoader resourceLoader = new DictionaryResourceLoader(ResourceScheme.CLASSPATH, resourcePath, CharacterDefinition.class);
     InputStream is = null;
     boolean success = false;
     try {
-      is = BinaryDictionary.getClassResource(getClass(), FILENAME_SUFFIX);
+      is = resourceLoader.getResource(FILENAME_SUFFIX);
       is = new BufferedInputStream(is);
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);

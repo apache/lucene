@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
-import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.ResourceScheme;
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
 
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;

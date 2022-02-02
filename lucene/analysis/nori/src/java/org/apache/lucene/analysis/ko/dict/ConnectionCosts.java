@@ -20,9 +20,12 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+
+import org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
 
 /** n-gram connection cost data */
 public final class ConnectionCosts {
@@ -36,14 +39,15 @@ public final class ConnectionCosts {
 
   /**
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param resourcePath - where to load resources from, without the ".dat" suffix
+   * @param path - where to load resources from, without the ".dat" suffix
    */
-  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String resourcePath)
+  public ConnectionCosts(ResourceScheme scheme, String path)
       throws IOException {
+    String resourcePath = "/" + path.replace('.', '/');
+    DictionaryResourceLoader resourceLoader = new DictionaryResourceLoader(scheme, resourcePath, ConnectionCosts.class);
     try (InputStream is =
         new BufferedInputStream(
-            BinaryDictionary.getResource(
-                scheme, "/" + resourcePath.replace('.', '/') + FILENAME_SUFFIX))) {
+          resourceLoader.getResource(FILENAME_SUFFIX))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       this.forwardSize = in.readVInt();
@@ -64,7 +68,7 @@ public final class ConnectionCosts {
   }
 
   private ConnectionCosts() throws IOException {
-    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
+    this(ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
   }
 
   public int get(int forwardId, int backwardId) {

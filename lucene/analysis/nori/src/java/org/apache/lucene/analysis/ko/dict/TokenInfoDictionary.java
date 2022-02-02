@@ -23,6 +23,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
 
 /**
  * Binary dictionary implementation for a known-word dictionary model: Words are encoded into an FST
@@ -47,7 +48,7 @@ public final class TokenInfoDictionary extends BinaryDictionary {
       throws IOException {
     super(resourceScheme, resourcePath);
     FST<Long> fst;
-    try (InputStream is = new BufferedInputStream(getResource(FST_FILENAME_SUFFIX))) {
+    try (InputStream is = new BufferedInputStream(resourceLoader.getResource(FST_FILENAME_SUFFIX))) {
       DataInput in = new InputStreamDataInput(is);
       fst = new FST<>(in, in, PositiveIntOutputs.getSingleton());
     }
