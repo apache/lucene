@@ -26,12 +26,10 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.CollectionStatistics;
-import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
@@ -343,16 +341,17 @@ public class TestOmitTf extends LuceneTestCase {
     dir.close();
   }
 
-  private static abstract class ScoreAssertingCollector extends SimpleCollector {
-      Scorable scorer;
-      @Override
-      public ScoreMode scoreMode() {
-          return ScoreMode.COMPLETE;
-      }
+  private abstract static class ScoreAssertingCollector extends SimpleCollector {
+    Scorable scorer;
 
-      @Override
-      public void setScorer(Scorable scorer) throws IOException {
-          this.scorer = scorer;
-      }
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE;
+    }
+
+    @Override
+    public void setScorer(Scorable scorer) throws IOException {
+      this.scorer = scorer;
+    }
   }
 }
