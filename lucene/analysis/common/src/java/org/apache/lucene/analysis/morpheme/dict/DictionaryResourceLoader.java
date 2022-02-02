@@ -35,16 +35,6 @@ public class DictionaryResourceLoader {
     };
   }
 
-  public static InputStream getClassResource(Class<?> clazz, String suffix)
-    throws IOException {
-    final InputStream is = clazz.getResourceAsStream(clazz.getSimpleName() + suffix);
-    if (is == null) {
-      throw new FileNotFoundException(
-        "Not in classpath: " + clazz.getName().replace('.', '/') + suffix);
-    }
-    return is;
-  }
-
   private static InputStream getClassResource(String path, Class<?> clazz) throws IOException {
     // TODO: may not work on module-mode
     return IOUtils.requireResourceNonNull(clazz.getResourceAsStream(path), path);
