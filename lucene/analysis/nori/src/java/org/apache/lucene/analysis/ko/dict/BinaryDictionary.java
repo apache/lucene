@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
+
 import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -29,8 +31,6 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IntsRef;
-
-import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
 
 /** Base class for a binary-encoded in-memory dictionary. */
 public abstract class BinaryDictionary implements Dictionary {
@@ -70,11 +70,14 @@ public abstract class BinaryDictionary implements Dictionary {
         resourcePath = "/".concat(resourcePath);
       }
     }
-    this.resourceLoader = new DictionaryResourceLoader(resourceScheme, resourcePath, BinaryDictionary.class);
+    this.resourceLoader =
+        new DictionaryResourceLoader(resourceScheme, resourcePath, BinaryDictionary.class);
     int[] targetMapOffsets, targetMap;
     ByteBuffer buffer;
-    try (InputStream mapIS = new BufferedInputStream(resourceLoader.getResource(TARGETMAP_FILENAME_SUFFIX));
-        InputStream posIS = new BufferedInputStream(resourceLoader.getResource(POSDICT_FILENAME_SUFFIX));
+    try (InputStream mapIS =
+            new BufferedInputStream(resourceLoader.getResource(TARGETMAP_FILENAME_SUFFIX));
+        InputStream posIS =
+            new BufferedInputStream(resourceLoader.getResource(POSDICT_FILENAME_SUFFIX));
         // no buffering here, as we load in one large buffer
         InputStream dictIS = resourceLoader.getResource(DICT_FILENAME_SUFFIX)) {
       DataInput in = new InputStreamDataInput(mapIS);

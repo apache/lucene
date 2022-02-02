@@ -16,8 +16,9 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
-import java.io.IOException;
 import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
+
+import java.io.IOException;
 
 /** Dictionary for unknown-word handling. */
 public final class UnknownDictionary extends BinaryDictionary {

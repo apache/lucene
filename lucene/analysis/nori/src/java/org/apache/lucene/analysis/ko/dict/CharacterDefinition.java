@@ -16,16 +16,15 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-
 import org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
-import org.apache.lucene.util.IOUtils;
-import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
 
 /** Character category data. */
 public final class CharacterDefinition {
@@ -77,12 +76,10 @@ public final class CharacterDefinition {
 
   private CharacterDefinition() throws IOException {
     String resourcePath = getClass().getSimpleName();
-    DictionaryResourceLoader resourceLoader = new DictionaryResourceLoader(ResourceScheme.CLASSPATH, resourcePath, CharacterDefinition.class);
-    InputStream is = null;
-    boolean success = false;
-    try {
-      is = resourceLoader.getResource(FILENAME_SUFFIX);
-      is = new BufferedInputStream(is);
+    DictionaryResourceLoader resourceLoader =
+        new DictionaryResourceLoader(
+            ResourceScheme.CLASSPATH, resourcePath, CharacterDefinition.class);
+    try (InputStream is = new BufferedInputStream(resourceLoader.getResource(FILENAME_SUFFIX))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       in.readBytes(characterCategoryMap, 0, characterCategoryMap.length);
@@ -90,13 +87,6 @@ public final class CharacterDefinition {
         final byte b = in.readByte();
         invokeMap[i] = (b & 0x01) != 0;
         groupMap[i] = (b & 0x02) != 0;
-      }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(is);
-      } else {
-        IOUtils.closeWhileHandlingException(is);
       }
     }
   }

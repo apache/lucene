@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-
 import org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
-import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
 
 /** n-gram connection cost data */
 public final class ConnectionCosts {
@@ -41,13 +41,11 @@ public final class ConnectionCosts {
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
    * @param path - where to load resources from, without the ".dat" suffix
    */
-  public ConnectionCosts(ResourceScheme scheme, String path)
-      throws IOException {
+  public ConnectionCosts(ResourceScheme scheme, String path) throws IOException {
     String resourcePath = "/" + path.replace('.', '/');
-    DictionaryResourceLoader resourceLoader = new DictionaryResourceLoader(scheme, resourcePath, ConnectionCosts.class);
-    try (InputStream is =
-        new BufferedInputStream(
-          resourceLoader.getResource(FILENAME_SUFFIX))) {
+    DictionaryResourceLoader resourceLoader =
+        new DictionaryResourceLoader(scheme, resourcePath, ConnectionCosts.class);
+    try (InputStream is = new BufferedInputStream(resourceLoader.getResource(FILENAME_SUFFIX))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       this.forwardSize = in.readVInt();

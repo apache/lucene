@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.ko;
 
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -34,7 +36,6 @@ import org.apache.lucene.analysis.ko.tokenattributes.PartOfSpeechAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.ReadingAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
-import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
 
 public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
   private Analyzer analyzer,
