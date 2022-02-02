@@ -131,8 +131,9 @@ New Features
 Improvements
 ---------------------
 
-* LUCENE-10399: Handle large boolean expressions better in flexible query parser by
-  optimizing large clause lists into simpler TermInSet queries (Dawid Weiss)
+* LUCENE-10399: Add an optional rewrite of disjunction boolean expressions in the
+  flexible query parser: BooleanQueryNodeBuilder.setMinClauseCountForDisjunctionOptimization,
+  converting large boolean queries into simpler (but scoreless) TermInSet queries (Dawid Weiss)
 
 * LUCENE-10313: use java util logging in Luke. Add dynamic log filtering. Drop
   the persistent log previously written to ~/.luke.d/luke.log. Configure Java's default
