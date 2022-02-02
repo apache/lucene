@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
@@ -88,31 +87,31 @@ public class TestSimilarity extends LuceneTestCase {
     bq.add(new TermQuery(b), BooleanClause.Occur.SHOULD);
     // System.out.println(bq.toString("field"));
     searcher.search(
-            bq.build(),
-            new CollectorManager<SimpleCollector, Void>() {
-                @Override
-                public SimpleCollector newCollector() {
-                    return new ScoreAssertingCollector() {
-                        private int base = 0;
-                        @Override
-                        public void collect(int doc) throws IOException {
-                            // System.out.println("Doc=" + doc + " score=" + score);
-                            assertEquals((float) doc + base + 1, scorer.score(), 0);
-                        }
+        bq.build(),
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
+              private int base = 0;
 
-                        @Override
-                        protected void doSetNextReader(LeafReaderContext context) {
-                            base = context.docBase;
-                        }
-                    };
-                }
+              @Override
+              public void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + score);
+                assertEquals((float) doc + base + 1, scorer.score(), 0);
+              }
 
-                @Override
-                public Void reduce(Collection<SimpleCollector> collectors) {
-                    return null;
-                }
-            }
-    );
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) {
+                base = context.docBase;
+              }
+            };
+          }
+
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
 
     PhraseQuery pq = new PhraseQuery(a.field(), a.bytes(), c.bytes());
     // System.out.println(pq.toString("field"));
@@ -126,39 +125,40 @@ public class TestSimilarity extends LuceneTestCase {
     store.close();
   }
 
-  private static void assertScore(IndexSearcher searcher, Query query, float score) throws IOException {
-      searcher.search(
-              query,
-              new CollectorManager<SimpleCollector, Void>() {
-                  @Override
-                  public SimpleCollector newCollector() {
-                      return new ScoreAssertingCollector() {
-                          @Override
-                          public final void collect(int doc) throws IOException {
-                              // System.out.println("Doc=" + doc + " score=" + score);
-                              assertEquals(score, scorer.score(), 0);
-                          }
-                      };
-                  }
+  private static void assertScore(IndexSearcher searcher, Query query, float score)
+      throws IOException {
+    searcher.search(
+        query,
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
+              @Override
+              public final void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + score);
+                assertEquals(score, scorer.score(), 0);
+              }
+            };
+          }
 
-                  @Override
-                  public Void reduce(Collection<SimpleCollector> collectors) {
-                      return null;
-                  }
-              });
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
   }
 
-  private static abstract class ScoreAssertingCollector extends SimpleCollector {
-      Scorable scorer;
+  private abstract static class ScoreAssertingCollector extends SimpleCollector {
+    Scorable scorer;
 
-      @Override
-      public final void setScorer(Scorable scorer) {
-          this.scorer = scorer;
-      }
+    @Override
+    public final void setScorer(Scorable scorer) {
+      this.scorer = scorer;
+    }
 
-      @Override
-      public final ScoreMode scoreMode() {
-          return ScoreMode.COMPLETE;
-      }
+    @Override
+    public final ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE;
+    }
   }
 }

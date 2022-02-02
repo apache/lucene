@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -126,21 +125,21 @@ public class TestConjunctions extends LuceneTestCase {
     Query q = b.build();
     IndexSearcher s = new IndexSearcher(r);
     s.search(
-            q,
-            new CollectorManager<TestCollector, Void>() {
-              @Override
-              public TestCollector newCollector() {
-                return new TestCollector();
-              }
+        q,
+        new CollectorManager<TestCollector, Void>() {
+          @Override
+          public TestCollector newCollector() {
+            return new TestCollector();
+          }
 
-              @Override
-              public Void reduce(Collection<TestCollector> collectors) {
-                for (TestCollector collector : collectors) {
-                  assertTrue(collector.setScorerCalled.get());
-                }
-                return null;
-              }
-            });
+          @Override
+          public Void reduce(Collection<TestCollector> collectors) {
+            for (TestCollector collector : collectors) {
+              assertTrue(collector.setScorerCalled.get());
+            }
+            return null;
+          }
+        });
     IOUtils.close(r, w, dir);
   }
 

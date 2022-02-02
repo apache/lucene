@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -242,35 +241,35 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
   /** checks that no scores are infinite */
   private void assertSaneScoring(PhraseQuery pq, IndexSearcher searcher) throws Exception {
     searcher.search(
-            pq,
-            new CollectorManager<SimpleCollector, Void>() {
+        pq,
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+              Scorer scorer;
+
               @Override
-              public SimpleCollector newCollector() {
-                return new SimpleCollector() {
-                  Scorer scorer;
-
-                  @Override
-                  public void setScorer(Scorable scorer) {
-                    this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
-                  }
-
-                  @Override
-                  public void collect(int doc) throws IOException {
-                    assertFalse(Float.isInfinite(scorer.score()));
-                  }
-
-                  @Override
-                  public ScoreMode scoreMode() {
-                    return ScoreMode.COMPLETE;
-                  }
-                };
+              public void setScorer(Scorable scorer) {
+                this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
               }
 
               @Override
-              public Void reduce(Collection<SimpleCollector> collectors) {
-                return null;
+              public void collect(int doc) throws IOException {
+                assertFalse(Float.isInfinite(scorer.score()));
               }
-            });
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
+          }
+
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
     QueryUtils.check(random(), pq, searcher);
   }
 

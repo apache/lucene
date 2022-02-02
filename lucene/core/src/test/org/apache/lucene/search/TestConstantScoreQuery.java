@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -62,43 +61,43 @@ public class TestConstantScoreQuery extends LuceneTestCase {
       throws IOException {
     final AtomicInteger count = new AtomicInteger();
     searcher.search(
-            q,
-            new CollectorManager<SimpleCollector, Void>() {
+        q,
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+              private Scorable scorer;
+
               @Override
-              public SimpleCollector newCollector() {
-                return new SimpleCollector() {
-                  private Scorable scorer;
-
-                  @Override
-                  public void setScorer(Scorable scorer) {
-                    this.scorer = scorer;
-                    if (innerScorerClass != null) {
-                      Scorable innerScorer = rootScorer(scorer);
-                      assertEquals(
-                              "inner Scorer is implemented by wrong class",
-                              innerScorerClass,
-                              innerScorer.getClass());
-                    }
-                  }
-
-                  @Override
-                  public void collect(int doc) throws IOException {
-                    assertEquals("Score differs from expected", expectedScore, this.scorer.score(), 0);
-                    count.incrementAndGet();
-                  }
-
-                  @Override
-                  public ScoreMode scoreMode() {
-                    return ScoreMode.COMPLETE;
-                  }
-                };
+              public void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+                if (innerScorerClass != null) {
+                  Scorable innerScorer = rootScorer(scorer);
+                  assertEquals(
+                      "inner Scorer is implemented by wrong class",
+                      innerScorerClass,
+                      innerScorer.getClass());
+                }
               }
 
               @Override
-              public Void reduce(Collection<SimpleCollector> collectors) {
-                return null;
+              public void collect(int doc) throws IOException {
+                assertEquals("Score differs from expected", expectedScore, this.scorer.score(), 0);
+                count.incrementAndGet();
               }
-            });
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
+          }
+
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
     assertEquals("invalid number of results", 1, count.get());
   }
 

@@ -257,49 +257,52 @@ public class TestDoubleValuesSource extends LuceneTestCase {
   private void testExplanations(Query q, DoubleValuesSource vs) throws IOException {
     DoubleValuesSource rewritten = vs.rewrite(searcher);
     searcher.search(
-            q,
-            new CollectorManager<SimpleCollector, Void>() {
+        q,
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+
+              DoubleValues v;
+              LeafReaderContext ctx;
+
               @Override
-              public SimpleCollector newCollector() {
-                return new SimpleCollector() {
-
-                  DoubleValues v;
-                  LeafReaderContext ctx;
-
-                  @Override
-                  protected void doSetNextReader(LeafReaderContext context) {
-                    this.ctx = context;
-                  }
-
-                  @Override
-                  public void setScorer(Scorable scorer) throws IOException {
-                    this.v = rewritten.getValues(this.ctx, DoubleValuesSource.fromScorer(scorer));
-                  }
-
-                  @Override
-                  public void collect(int doc) throws IOException {
-                    Explanation scoreExpl = searcher.explain(q, ctx.docBase + doc);
-                    if (this.v.advanceExact(doc)) {
-                      CheckHits.verifyExplanation(
-                              "", doc, (float) v.doubleValue(), true, rewritten.explain(ctx, doc, scoreExpl));
-                    } else {
-                      assertFalse(rewritten.explain(ctx, doc, scoreExpl).isMatch());
-                    }
-                  }
-
-                  @Override
-                  public ScoreMode scoreMode() {
-                    return vs.needsScores() ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
-                  }
-                };
+              protected void doSetNextReader(LeafReaderContext context) {
+                this.ctx = context;
               }
 
               @Override
-              public Void reduce(Collection<SimpleCollector> collectors) {
-                return null;
+              public void setScorer(Scorable scorer) throws IOException {
+                this.v = rewritten.getValues(this.ctx, DoubleValuesSource.fromScorer(scorer));
               }
-            }
-    );
+
+              @Override
+              public void collect(int doc) throws IOException {
+                Explanation scoreExpl = searcher.explain(q, ctx.docBase + doc);
+                if (this.v.advanceExact(doc)) {
+                  CheckHits.verifyExplanation(
+                      "",
+                      doc,
+                      (float) v.doubleValue(),
+                      true,
+                      rewritten.explain(ctx, doc, scoreExpl));
+                } else {
+                  assertFalse(rewritten.explain(ctx, doc, scoreExpl).isMatch());
+                }
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return vs.needsScores() ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+              }
+            };
+          }
+
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
   }
 
   public void testQueryDoubleValuesSource() throws Exception {
@@ -322,44 +325,44 @@ public class TestDoubleValuesSource extends LuceneTestCase {
   private void doTestQueryDoubleValuesSources(Query q) throws Exception {
     DoubleValuesSource vs = DoubleValuesSource.fromQuery(q).rewrite(searcher);
     searcher.search(
-            q,
-            new CollectorManager<SimpleCollector, Void>() {
+        q,
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+
+              DoubleValues v;
+              Scorable scorer;
+              LeafReaderContext ctx;
+
               @Override
-              public SimpleCollector newCollector() {
-                return new SimpleCollector() {
-
-                  DoubleValues v;
-                  Scorable scorer;
-                  LeafReaderContext ctx;
-
-                  @Override
-                  protected void doSetNextReader(LeafReaderContext context) {
-                    this.ctx = context;
-                  }
-
-                  @Override
-                  public void setScorer(Scorable scorer) throws IOException {
-                    this.scorer = scorer;
-                    this.v = vs.getValues(this.ctx, DoubleValuesSource.fromScorer(scorer));
-                  }
-
-                  @Override
-                  public void collect(int doc) throws IOException {
-                    assertTrue(v.advanceExact(doc));
-                    assertEquals(scorer.score(), v.doubleValue(), 0.00001);
-                  }
-
-                  @Override
-                  public ScoreMode scoreMode() {
-                    return ScoreMode.COMPLETE;
-                  }
-                };
+              protected void doSetNextReader(LeafReaderContext context) {
+                this.ctx = context;
               }
 
               @Override
-              public Void reduce(Collection<SimpleCollector> collectors) {
-                return null;
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+                this.v = vs.getValues(this.ctx, DoubleValuesSource.fromScorer(scorer));
               }
-            });
+
+              @Override
+              public void collect(int doc) throws IOException {
+                assertTrue(v.advanceExact(doc));
+                assertEquals(scorer.score(), v.doubleValue(), 0.00001);
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
+          }
+
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
   }
 }
