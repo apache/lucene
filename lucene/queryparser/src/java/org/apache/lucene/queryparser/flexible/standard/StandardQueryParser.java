@@ -16,10 +16,6 @@
  */
 package org.apache.lucene.queryparser.flexible.standard;
 
-import java.util.Locale;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.TooManyListenersException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DateTools;
 import org.apache.lucene.document.DateTools.Resolution;
@@ -37,6 +33,11 @@ import org.apache.lucene.queryparser.flexible.standard.processors.StandardQueryN
 import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
+
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.TooManyListenersException;
 
 /**
  * The {@link StandardQueryParser} is a pre-assembled query parser that supports most features of

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.queryparser.flexible.standard;
 
-import java.util.Locale;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DateTools.Resolution;
 import org.apache.lucene.document.Document;
@@ -26,6 +25,9 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
+import org.apache.lucene.queryparser.flexible.core.nodes.BooleanQueryNode;
+import org.apache.lucene.queryparser.flexible.standard.builders.BooleanQueryNodeBuilder;
+import org.apache.lucene.queryparser.flexible.standard.builders.StandardQueryTreeBuilder;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler.Operator;
 import org.apache.lucene.queryparser.util.QueryParserTestBase;
@@ -39,6 +41,8 @@ import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
+
+import java.util.Locale;
 
 /** Tests QueryParser. */
 public class TestStandardQP extends QueryParserTestBase {
@@ -175,16 +179,16 @@ public class TestStandardQP extends QueryParserTestBase {
 
   @Override
   public void testNewFieldQuery() throws Exception {
-    /** ordinary behavior, synonyms form uncoordinated boolean query */
+    /* ordinary behavior, synonyms form uncoordinated boolean query */
     StandardQueryParser dumb = getParser(new Analyzer1());
     BooleanQuery.Builder expanded = new BooleanQuery.Builder();
     expanded.add(new TermQuery(new Term("field", "dogs")), BooleanClause.Occur.SHOULD);
     expanded.add(new TermQuery(new Term("field", "dog")), BooleanClause.Occur.SHOULD);
     assertEquals(expanded.build(), dumb.parse("\"dogs\"", "field"));
-    /** even with the phrase operator the behavior is the same */
+    /* even with the phrase operator the behavior is the same */
     assertEquals(expanded.build(), dumb.parse("dogs", "field"));
 
-    /** custom behavior, the synonyms are expanded, unless you use quote operator */
+    /* custom behavior, the synonyms are expanded, unless you use quote operator */
     // TODO test something like "SmartQueryParser()"
   }
 
@@ -205,56 +209,79 @@ public class TestStandardQP extends QueryParserTestBase {
     int prior = IndexSearcher.getMaxClauseCount();
     try {
       // Lower the max clause count to a very small value.
-      IndexSearcher.setMaxClauseCount(2);
+      IndexSearcher.setMaxClauseCount(3);
 
-      StandardQueryParser qp = new StandardQueryParser();
-      qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
+      // Check the defaults.
+      {
+        StandardQueryParser qp = new StandardQueryParser();
+        qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
 
-      // Make sure the query parses fine with either operator.
-      qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
-      expectThrows(
-          QueryNodeException.class,
-          () -> {
-            qp.parse("t000 t001 t002", "field");
-          });
-      qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
-      qp.parse("t000 t001 t002", "field");
+        // We can't optimize conjunction clauses so this should fail.
+        qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
+        expectThrows(
+            QueryNodeException.class,
+            () -> {
+              qp.parse("t000 t001 t002 t004", "field");
+            });
 
-      // Run an actual search and verify everything works.
-      qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
-      try (Directory dir = newDirectory();
-          IndexWriter w =
-              new IndexWriter(
-                  dir,
-                  newIndexWriterConfig(
-                      new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false)))) {
-        for (int i = 0; i < 100; i++) {
-          Document d = new Document();
-          d.add(new StringField("field", String.format(Locale.ROOT, "t%03d", i), Field.Store.NO));
-          w.addDocument(d);
-        }
-        w.commit();
+        // We can optimize disjunction clauses but this is an opt-in option
+        // since it changes scoring. By default, it should also fail.
+        qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
+        expectThrows(
+            QueryNodeException.class,
+            () -> {
+              qp.parse("t000 t001 t002 t003", "field");
+            });
+      }
 
-        try (var liveReader = DirectoryReader.open(w)) {
-          IndexSearcher searcher = new IndexSearcher(liveReader);
+      // Check non-default options.
+      {
+        StandardQueryParser qp = new StandardQueryParser();
+        StandardQueryTreeBuilder customQueryBuilder = new StandardQueryTreeBuilder();
+        BooleanQueryNodeBuilder booleanQueryNodeBuilder = new BooleanQueryNodeBuilder();
+        customQueryBuilder.setBuilder(BooleanQueryNode.class, booleanQueryNodeBuilder);
+        qp.setQueryBuilder(customQueryBuilder);
+        qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
 
-          qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
-          expectThrows(
-              QueryNodeException.class,
-              () -> {
-                searcher.search(qp.parse("(t000 x001 x002) OR (x000 t001 x002)", "field"), 10);
-              });
+        booleanQueryNodeBuilder.setMinClauseCountForDisjunctionOptimization(
+            IndexSearcher.getMaxClauseCount());
 
-          qp.setDefaultOperator(StandardQueryConfigHandler.Operator.AND);
-          expectThrows(
-              QueryNodeException.class,
-              () -> {
-                searcher.search(qp.parse("t002 t003 t004", "field"), 10);
-              });
+        // We do agree to optimize disjunction clauses now, even sacrificing the scoring function.
+        qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
+        qp.parse("t000 t001 t002 t003", "field");
 
-          qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
-          TopDocs topDocs = searcher.search(qp.parse("t000 t001 t002 t003 t004 t005", "field"), 10);
-          assertEquals(6, topDocs.scoreDocs.length);
+        // Run some searches and verify everything works.
+        try (Directory dir = newDirectory();
+            IndexWriter w =
+                new IndexWriter(
+                    dir,
+                    newIndexWriterConfig(
+                        new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false)))) {
+          for (int i = 0; i < 100; i++) {
+            Document d = new Document();
+            d.add(new StringField("field", String.format(Locale.ROOT, "t%03d", i), Field.Store.NO));
+            w.addDocument(d);
+          }
+          w.commit();
+
+          try (var liveReader = DirectoryReader.open(w)) {
+            IndexSearcher searcher = new IndexSearcher(liveReader);
+
+            qp.setDefaultOperator(StandardQueryConfigHandler.Operator.OR);
+            TopDocs topDocs =
+                searcher.search(qp.parse("t000 t001 t002 t003 t004 t005", "field"), 10);
+            assertEquals(6, topDocs.scoreDocs.length);
+
+            // Check if fields are split/ merged properly when the optimization is applied.
+            IndexSearcher.setMaxClauseCount(4);
+            topDocs =
+                searcher.search(
+                    qp.parse(
+                        "field:(t000 t001 t002 t003 t004) OR otherField:(t005 t006) OR field:t007",
+                        "missingField"),
+                    10);
+            assertEquals(6, topDocs.scoreDocs.length);
+          }
         }
       }
     } finally {

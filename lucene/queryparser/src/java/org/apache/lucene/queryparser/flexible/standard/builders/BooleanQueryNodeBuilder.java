@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.queryparser.flexible.standard.builders;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.builders.QueryTreeBuilder;
 import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
@@ -35,26 +32,30 @@ import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 /**
  * Builds a {@link BooleanQuery} object from a {@link BooleanQueryNode} object. Every child in the
  * {@link BooleanQueryNode} object must be already tagged using {@link
  * QueryTreeBuilder#QUERY_TREE_BUILDER_TAGID} with a {@link Query} object.
  *
- * <p>It takes in consideration if the children is a {@link ModifierQueryNode} to define the {@link
+ * <p>It takes in consideration if the child is a {@link ModifierQueryNode} to define the {@link
  * BooleanClause}.
  *
- * <p>If the set of children exceeds {@link #MIN_CLAUSES_TO_OPTIMIZE} then an attempt is made to
- * convert individual {@link TermQuery} sub-clauses into a single {@link TermInSetQuery}. This
- * allows a larger number of sub-clauses (than {@link IndexSearcher#getMaxClauseCount()}) and
- * typically runs much faster.
+ * <p>This node builder can make an optional attempt to optimize sub-clauses of a Boolean node. This
+ * may be useful to allow a larger number of sub-clauses than {@link
+ * IndexSearcher#getMaxClauseCount()} by default permits and to make queries run faster. See {@link
+ * #setMinClauseCountForDisjunctionOptimization(int)} for caveats of using such optimisations.
  */
 public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
-  /**
-   * Minimum number of Boolean sub-clauses required for the {@link TermInSetQuery} optimisation to
-   * be attempted. This is computed dynamically and is a minimum of 128 or 25% of the current {@link
-   * IndexSearcher#getMaxClauseCount()}.
-   */
-  public final int MIN_CLAUSES_TO_OPTIMIZE = Math.min(IndexSearcher.getMaxClauseCount() / 4, 128);
+
+  /** @see #setMinClauseCountForDisjunctionOptimization(int) */
+  private int minClauseCountForDisjunctions = Integer.MAX_VALUE;
 
   @Override
   public BooleanQuery build(QueryNode queryNode) throws QueryNodeException {
@@ -66,7 +67,7 @@ public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
       return builder.build();
     }
 
-    List<BooleanClause> boolClauses = new ArrayList<>();
+    ArrayList<BooleanClause> boolClauses = new ArrayList<>();
     for (QueryNode child : children) {
       Object obj = child.getTag(QueryTreeBuilder.QUERY_TREE_BUILDER_TAGID);
       if (obj != null) {
@@ -77,38 +78,14 @@ public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
     }
 
     try {
-      if (boolClauses.size() < MIN_CLAUSES_TO_OPTIMIZE) {
-        boolClauses.forEach(builder::add);
-      } else {
-        List<BooleanClause> termQueries = new ArrayList<>();
-        for (BooleanClause clause : boolClauses) {
-          if (clause.getQuery() instanceof TermQuery
-              && clause.getOccur() == BooleanClause.Occur.SHOULD) {
-            termQueries.add(clause);
-          } else {
-            builder.add(clause);
-          }
-        }
+      maybeOptimizeDisjunctions(boolClauses, builder);
 
-        termQueries.stream()
-            .collect(
-                Collectors.groupingBy(clause -> ((TermQuery) clause.getQuery()).getTerm().field()))
-            .forEach(
-                (field, fieldClauses) -> {
-                  fieldClauses.stream()
-                      .collect(Collectors.groupingBy(BooleanClause::getOccur))
-                      .forEach(
-                          (occur, occurClauses) -> {
-                            List<BytesRef> terms =
-                                occurClauses.stream()
-                                    .map(
-                                        clause -> ((TermQuery) clause.getQuery()).getTerm().bytes())
-                                    .collect(Collectors.toList());
-                            Query termInSet = new TermInSetQuery(field, terms);
-                            builder.add(termInSet, occur);
-                          });
-                });
+      // All remaining clauses.
+      boolClauses.forEach(builder::add);
+      if (boolClauses.size() < minClauseCountForDisjunctions) {
+        return builder.build();
       }
+
       return builder.build();
     } catch (IndexSearcher.TooManyClauses ex) {
       throw new QueryNodeException(
@@ -120,24 +97,72 @@ public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
     }
   }
 
-  private static BooleanClause.Occur getModifierValue(QueryNode node) {
-    if (node instanceof ModifierQueryNode) {
-      ModifierQueryNode mNode = ((ModifierQueryNode) node);
-      switch (mNode.getModifier()) {
-        case MOD_REQ:
-          return BooleanClause.Occur.MUST;
+  /**
+   * Replaces multiple {@link TermQuery} disjunctions with a single {@link TermInSetQuery} clause.
+   * This changes document scoring but is sometimes better than nothing (when the query would
+   * otherwise break on {@link IndexSearcher#getMaxClauseCount()} or be prohibitively expensive to
+   * execute.
+   *
+   * @see #setMinClauseCountForDisjunctionOptimization(int)
+   */
+  private void maybeOptimizeDisjunctions(
+      ArrayList<BooleanClause> boolClauses, BooleanQuery.Builder builder) {
+    Predicate<BooleanClause> candidate =
+        clause ->
+            clause.getQuery() instanceof TermQuery
+                && clause.getOccur() == BooleanClause.Occur.SHOULD;
 
-        case MOD_NOT:
-          return BooleanClause.Occur.MUST_NOT;
-
-        case MOD_NONE:
-          return BooleanClause.Occur.SHOULD;
-
-        default:
-          throw new RuntimeException("Unreachable.");
-      }
+    // Fast check if we have a chance at all.
+    if (boolClauses.size() < minClauseCountForDisjunctions
+        || boolClauses.stream().filter(candidate).count() < minClauseCountForDisjunctions) {
+      return;
     }
 
-    return BooleanClause.Occur.SHOULD;
+    // Group clauses by field and replace if they exceed the threshold.
+    Set<BooleanClause> replaced = new HashSet<>();
+    boolClauses.stream()
+        .filter(candidate)
+        .collect(Collectors.groupingBy(clause -> ((TermQuery) clause.getQuery()).getTerm().field()))
+        .forEach(
+            (field, fieldClauses) -> {
+              if (fieldClauses.size() >= minClauseCountForDisjunctions) {
+                List<BytesRef> terms =
+                    fieldClauses.stream()
+                        .map(clause -> ((TermQuery) clause.getQuery()).getTerm().bytes())
+                        .collect(Collectors.toList());
+
+                Query termInSet = new TermInSetQuery(field, terms);
+                builder.add(termInSet, BooleanClause.Occur.SHOULD);
+                replaced.addAll(fieldClauses);
+              }
+            });
+
+    boolClauses.removeIf(replaced::contains);
+  }
+
+  private static BooleanClause.Occur getModifierValue(QueryNode node) {
+    if (node instanceof ModifierQueryNode mNode) {
+      return switch (mNode.getModifier()) {
+        case MOD_REQ -> BooleanClause.Occur.MUST;
+        case MOD_NOT -> BooleanClause.Occur.MUST_NOT;
+        case MOD_NONE -> BooleanClause.Occur.SHOULD;
+      };
+    } else {
+      return BooleanClause.Occur.SHOULD;
+    }
+  }
+
+  /**
+   * Sets the minimum number of boolean {@link BooleanClause.Occur#SHOULD} (disjunction) sub-clauses
+   * before they are converted to a single {@link TermInSetQuery}. This allows parsing much larger
+   * sets of clauses than ({@link IndexSearcher#getMaxClauseCount()}) would normally allow and it
+   * can speed up queries significantly. However, <em>using this function will change document
+   * scoring because {@link TermInSetQuery} is a constant-score query.</em>.
+   *
+   * @param minClauseCount Minimum subclause count for the optimization to kick in (inclusive).
+   *     Typically, this is set to {@link IndexSearcher#getMaxClauseCount()}.
+   */
+  public void setMinClauseCountForDisjunctionOptimization(int minClauseCount) {
+    this.minClauseCountForDisjunctions = minClauseCount;
   }
 }
