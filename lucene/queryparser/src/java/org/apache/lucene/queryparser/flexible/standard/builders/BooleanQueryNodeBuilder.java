@@ -16,6 +16,12 @@
  */
 package org.apache.lucene.queryparser.flexible.standard.builders;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.builders.QueryTreeBuilder;
 import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
@@ -31,13 +37,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 /**
  * Builds a {@link BooleanQuery} object from a {@link BooleanQueryNode} object. Every child in the
@@ -153,11 +152,12 @@ public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
   }
 
   /**
-   * Sets the minimum number of boolean {@link BooleanClause.Occur#SHOULD} (disjunction) sub-clauses
-   * before they are converted to a single {@link TermInSetQuery}. This allows parsing much larger
-   * sets of clauses than ({@link IndexSearcher#getMaxClauseCount()}) would normally allow and it
-   * can speed up queries significantly. However, <em>using this function will change document
-   * scoring because {@link TermInSetQuery} is a constant-score query.</em>.
+   * Sets the minimum number of boolean {@link org.apache.lucene.search.BooleanClause.Occur#SHOULD}
+   * (disjunction) sub-clauses before they are converted to a single {@link TermInSetQuery}. This
+   * allows parsing much larger sets of clauses than ({@link IndexSearcher#getMaxClauseCount()})
+   * would normally allow and it can speed up queries significantly. However, <em>using this
+   * function will change document scoring because {@link TermInSetQuery} is a constant-score
+   * query.</em>.
    *
    * @param minClauseCount Minimum subclause count for the optimization to kick in (inclusive).
    *     Typically, this is set to {@link IndexSearcher#getMaxClauseCount()}.

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.queryparser.flexible.standard;
 
+import java.util.Locale;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DateTools.Resolution;
 import org.apache.lucene.document.Document;
@@ -41,8 +42,6 @@ import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
-
-import java.util.Locale;
 
 /** Tests QueryParser. */
 public class TestStandardQP extends QueryParserTestBase {
