@@ -81,24 +81,7 @@ public class TestSimilarity extends LuceneTestCase {
     Term b = new Term("field", "b");
     Term c = new Term("field", "c");
 
-    searcher.search(
-            new TermQuery(b),
-            new CollectorManager<SimpleCollector, Void>() {
-                @Override
-                public SimpleCollector newCollector() {
-                    return new ScoreAssertingCollector() {
-                        @Override
-                        public final void collect(int doc) throws IOException {
-                            assertEquals(1.0f, scorer.score(), 0);
-                        }
-                    };
-                }
-
-                @Override
-                public Void reduce(Collection<SimpleCollector> collectors) {
-                    return null;
-                }
-            });
+    assertScore(searcher, new TermQuery(b), 1.0f);
 
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
     bq.add(new TermQuery(a), BooleanClause.Occur.SHOULD);
@@ -112,7 +95,7 @@ public class TestSimilarity extends LuceneTestCase {
                     return new ScoreAssertingCollector() {
                         private int base = 0;
                         @Override
-                        public final void collect(int doc) throws IOException {
+                        public void collect(int doc) throws IOException {
                             // System.out.println("Doc=" + doc + " score=" + score);
                             assertEquals((float) doc + base + 1, scorer.score(), 0);
                         }
@@ -133,50 +116,36 @@ public class TestSimilarity extends LuceneTestCase {
 
     PhraseQuery pq = new PhraseQuery(a.field(), a.bytes(), c.bytes());
     // System.out.println(pq.toString("field"));
-    searcher.search(
-            pq,
-            new CollectorManager<SimpleCollector, Void>() {
-                @Override
-                public SimpleCollector newCollector() {
-                    return new ScoreAssertingCollector() {
-                        @Override
-                        public final void collect(int doc) throws IOException {
-                            // System.out.println("Doc=" + doc + " score=" + score);
-                            assertEquals(1.0f, scorer.score(), 0);
-                        }
-                    };
-                }
-
-                @Override
-                public Void reduce(Collection<SimpleCollector> collectors) {
-                    return null;
-                }
-            });
+    assertScore(searcher, pq, 1.0f);
 
     pq = new PhraseQuery(2, a.field(), a.bytes(), b.bytes());
     // System.out.println(pq.toString("field"));
-    searcher.search(
-            pq,
-            new CollectorManager<SimpleCollector, Void>() {
-                @Override
-                public SimpleCollector newCollector() {
-                    return new ScoreAssertingCollector() {
-                        @Override
-                        public final void collect(int doc) throws IOException {
-                            // System.out.println("Doc=" + doc + " score=" + score);
-                            assertEquals(0.5f, scorer.score(), 0);
-                        }
-                    };
-                }
-
-                @Override
-                public Void reduce(Collection<SimpleCollector> collectors) {
-                    return null;
-                }
-            });
+    assertScore(searcher, pq, 0.5f);
 
     reader.close();
     store.close();
+  }
+
+  private static void assertScore(IndexSearcher searcher, Query query, float score) throws IOException {
+      searcher.search(
+              query,
+              new CollectorManager<SimpleCollector, Void>() {
+                  @Override
+                  public SimpleCollector newCollector() {
+                      return new ScoreAssertingCollector() {
+                          @Override
+                          public final void collect(int doc) throws IOException {
+                              // System.out.println("Doc=" + doc + " score=" + score);
+                              assertEquals(score, scorer.score(), 0);
+                          }
+                      };
+                  }
+
+                  @Override
+                  public Void reduce(Collection<SimpleCollector> collectors) {
+                      return null;
+                  }
+              });
   }
 
   private static abstract class ScoreAssertingCollector extends SimpleCollector {
