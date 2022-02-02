@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,7 +45,8 @@ public final class TokenInfoDictionary extends BinaryDictionary {
       throws IOException {
     super(resourceScheme, resourcePath);
     FST<Long> fst;
-    try (InputStream is = new BufferedInputStream(getResource(FST_FILENAME_SUFFIX))) {
+    try (InputStream is =
+        new BufferedInputStream(resourceLoader.getResource(FST_FILENAME_SUFFIX))) {
       DataInput in = new InputStreamDataInput(is);
       fst = new FST<>(in, in, PositiveIntOutputs.getSingleton());
     }

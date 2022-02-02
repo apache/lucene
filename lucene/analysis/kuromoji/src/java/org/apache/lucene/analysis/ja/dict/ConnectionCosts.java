@@ -16,10 +16,13 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -38,10 +41,11 @@ public final class ConnectionCosts {
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
    * @param path - where to load resources from, without the ".dat" suffix
    */
-  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
-    try (InputStream is =
-        new BufferedInputStream(
-            BinaryDictionary.getResource(scheme, "/" + path.replace('.', '/') + FILENAME_SUFFIX))) {
+  public ConnectionCosts(ResourceScheme scheme, String path) throws IOException {
+    String resourcePath = "/" + path.replace('.', '/');
+    DictionaryResourceLoader resourceLoader =
+        new DictionaryResourceLoader(scheme, resourcePath, ConnectionCosts.class);
+    try (InputStream is = new BufferedInputStream(resourceLoader.getResource(FILENAME_SUFFIX))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       forwardSize = in.readVInt();
@@ -62,7 +66,7 @@ public final class ConnectionCosts {
   }
 
   private ConnectionCosts() throws IOException {
-    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
+    this(ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
   }
 
   public int get(int forwardId, int backwardId) {

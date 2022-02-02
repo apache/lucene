@@ -16,9 +16,12 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+import static org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader.ResourceScheme;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import org.apache.lucene.analysis.morpheme.dict.DictionaryResourceLoader;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -68,8 +71,11 @@ public final class CharacterDefinition {
   public static final byte KANJINUMERIC = (byte) CharacterClass.KANJINUMERIC.ordinal();
 
   private CharacterDefinition() throws IOException {
-    try (InputStream is =
-        new BufferedInputStream(BinaryDictionary.getClassResource(getClass(), FILENAME_SUFFIX))) {
+    String resourcePath = getClass().getSimpleName();
+    DictionaryResourceLoader resourceLoader =
+        new DictionaryResourceLoader(
+            ResourceScheme.CLASSPATH, resourcePath, CharacterDefinition.class);
+    try (InputStream is = new BufferedInputStream(resourceLoader.getResource(FILENAME_SUFFIX))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       in.readBytes(characterCategoryMap, 0, characterCategoryMap.length);
