@@ -26,10 +26,12 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
@@ -224,19 +226,7 @@ public class TestOmitTf extends LuceneTestCase {
         new CollectorManager<SimpleCollector, Void>() {
           @Override
           public SimpleCollector newCollector() {
-            return new SimpleCollector() {
-              private Scorable scorer;
-
-              @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-
-              @Override
-              public void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
+            return new ScoreAssertingCollector() {
               @Override
               public void collect(int doc) throws IOException {
                 // System.out.println("Q1: Doc=" + doc + " score=" + score);
@@ -257,19 +247,7 @@ public class TestOmitTf extends LuceneTestCase {
         new CollectorManager<SimpleCollector, Void>() {
           @Override
           public SimpleCollector newCollector() {
-            return new SimpleCollector() {
-              private Scorable scorer;
-
-              @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-
-              @Override
-              public void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
+            return new ScoreAssertingCollector() {
               @Override
               public void collect(int doc) throws IOException {
                 // System.out.println("Q2: Doc=" + doc + " score=" + score);
@@ -290,19 +268,7 @@ public class TestOmitTf extends LuceneTestCase {
         new CollectorManager<SimpleCollector, Void>() {
           @Override
           public SimpleCollector newCollector() {
-            return new SimpleCollector() {
-              private Scorable scorer;
-
-              @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-
-              @Override
-              public void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
+            return new ScoreAssertingCollector() {
               @Override
               public void collect(int doc) throws IOException {
                 // System.out.println("Q1: Doc=" + doc + " score=" + score);
@@ -324,19 +290,7 @@ public class TestOmitTf extends LuceneTestCase {
         new CollectorManager<SimpleCollector, Void>() {
           @Override
           public SimpleCollector newCollector() {
-            return new SimpleCollector() {
-              private Scorable scorer;
-
-              @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-
-              @Override
-              public void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
+            return new ScoreAssertingCollector() {
               @Override
               public void collect(int doc) throws IOException {
                 float score = scorer.score();
@@ -387,5 +341,18 @@ public class TestOmitTf extends LuceneTestCase {
     assertEquals(ir.getSumDocFreq("foo"), ir.getSumTotalTermFreq("foo"));
     ir.close();
     dir.close();
+  }
+
+  private static abstract class ScoreAssertingCollector extends SimpleCollector {
+      Scorable scorer;
+      @Override
+      public ScoreMode scoreMode() {
+          return ScoreMode.COMPLETE;
+      }
+
+      @Override
+      public void setScorer(Scorable scorer) throws IOException {
+          this.scorer = scorer;
+      }
   }
 }
