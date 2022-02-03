@@ -33,31 +33,23 @@ import org.apache.lucene.util.SparseFixedBitSet;
  */
 public final class HnswGraphSearcher {
   private final VectorSimilarityFunction similarityFunction;
-  private final Bits acceptOrds;
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
    */
   private final NeighborQueue candidates;
-
   private final BitSet visited;
 
   /**
    * Creates a new graph searcher.
    *
    * @param similarityFunction the similarity function to compare vectors
-   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
-   *     {@code null} if they are all allowed to match.
    * @param candidates max heap that will track the candidate nodes to explore
    * @param visited bit set that will track nodes that have already been visited
    */
   HnswGraphSearcher(
-      VectorSimilarityFunction similarityFunction,
-      Bits acceptOrds,
-      NeighborQueue candidates,
-      BitSet visited) {
+      VectorSimilarityFunction similarityFunction, NeighborQueue candidates, BitSet visited) {
     this.similarityFunction = similarityFunction;
-    this.acceptOrds = acceptOrds;
     this.candidates = candidates;
     this.visited = visited;
   }
@@ -86,16 +78,15 @@ public final class HnswGraphSearcher {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            acceptOrds,
             new NeighborQueue(topK, similarityFunction.reversed == false),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graphValues.entryNode()};
     for (int level = graphValues.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graphValues);
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graphValues, null);
       eps[0] = results.pop();
     }
-    results = graphSearcher.searchLevel(query, topK, 0, eps, vectors, graphValues);
+    results = graphSearcher.searchLevel(query, topK, 0, eps, vectors, graphValues, acceptOrds);
     return results;
   }
 
@@ -108,6 +99,8 @@ public final class HnswGraphSearcher {
    * @param eps the entry points for search at this level expressed as level 0th ordinals
    * @param vectors vector values
    * @param graphValues the graph values
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
    * @return a priority queue holding the closest neighbors found
    */
   NeighborQueue searchLevel(
@@ -116,7 +109,8 @@ public final class HnswGraphSearcher {
       int level,
       final int[] eps,
       RandomAccessVectorValues vectors,
-      KnnGraphValues graphValues)
+      KnnGraphValues graphValues,
+      Bits acceptOrds)
       throws IOException {
     int size = graphValues.size();
     NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
