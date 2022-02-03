@@ -303,7 +303,8 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
       // We only collect resources from the JAR file which are:
       // - stopword files (*.txt)
       // - ICU break iterator rules (*.brk)
-      var filter = Pattern.compile("/[^/]+\\.(txt|brk)$");
+      // - morpheme dictionary data (*.dat)
+      var filter = Pattern.compile("/[^/]+\\.(txt|brk|dat)$");
       Set<String> jarPackages = getJarPackages(module, filter.asPredicate());
       Set<ModuleDescriptor.Opens> moduleOpens = module.descriptor().opens();
 
@@ -312,8 +313,8 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
           .allSatisfy(
               export -> {
                 Assertions.assertThat(export.targets())
-                    .as("Opens should only be targeted to Lucene Core.")
-                    .containsExactly("org.apache.lucene.core");
+                    .as("Opens should only be targeted to Lucene Core or Analysis Common.")
+                    .allMatch(target -> target.equals("org.apache.lucene.core") || target.equals("org.apache.lucene.analysis.common"));
               })
           .map(ModuleDescriptor.Opens::source)
           .containsExactlyInAnyOrderElementsOf(jarPackages);
