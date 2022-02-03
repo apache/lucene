@@ -1187,7 +1187,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
     BadQuery query = new BadQuery();
-    searcher.search(query, new TotalHitCountCollector());
+    searcher.search(query, new TotalHitCountCollectorManager());
     query.i[0] += 1; // change the hashCode!
 
     try {
