@@ -66,26 +66,27 @@ public final class TokenInfoDictionary extends BinaryDictionary {
     this(
         openFileOrThrowRuntimeException(Paths.get(resourceLocation + TARGETMAP_FILENAME_SUFFIX)),
         openFileOrThrowRuntimeException(Paths.get(resourceLocation + POSDICT_FILENAME_SUFFIX)),
-        openFileOrThrowRuntimeException(Paths.get(resourceLocation + DICT_FILENAME_SUFFIX)));
+        openFileOrThrowRuntimeException(Paths.get(resourceLocation + DICT_FILENAME_SUFFIX)),
+        openFileOrThrowRuntimeException(Paths.get(resourceLocation + FST_FILENAME_SUFFIX)));
   }
 
   private TokenInfoDictionary() throws IOException {
     this(
         getClassResourceOrThrowRuntimeException(TARGETMAP_FILENAME_SUFFIX),
         getClassResourceOrThrowRuntimeException(POSDICT_FILENAME_SUFFIX),
-        getClassResourceOrThrowRuntimeException(DICT_FILENAME_SUFFIX));
+        getClassResourceOrThrowRuntimeException(DICT_FILENAME_SUFFIX),
+        getClassResourceOrThrowRuntimeException(FST_FILENAME_SUFFIX));
   }
 
   private TokenInfoDictionary(
       Supplier<InputStream> targetMapResource,
       Supplier<InputStream> posResource,
-      Supplier<InputStream> dictResource)
+      Supplier<InputStream> dictResource,
+      Supplier<InputStream> fstResource)
       throws IOException {
     super(targetMapResource, posResource, dictResource);
     FST<Long> fst;
-    try (InputStream is =
-        new BufferedInputStream(
-            getClassResourceOrThrowRuntimeException(FST_FILENAME_SUFFIX).get())) {
+    try (InputStream is = new BufferedInputStream(fstResource.get())) {
       DataInput in = new InputStreamDataInput(is);
       fst = new FST<>(in, in, PositiveIntOutputs.getSingleton());
     }

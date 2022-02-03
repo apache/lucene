@@ -120,7 +120,7 @@ public final class ConnectionCosts {
     return () -> {
       try {
         return IOUtils.requireResourceNonNull(
-            TokenInfoDictionary.class.getResourceAsStream(resourcePath), resourcePath);
+            ConnectionCosts.class.getResourceAsStream(resourcePath), resourcePath);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
