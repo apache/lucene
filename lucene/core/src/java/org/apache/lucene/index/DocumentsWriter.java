@@ -89,7 +89,6 @@ final class DocumentsWriter implements Closeable, Accountable {
   private final LiveIndexWriterConfig config;
 
   private final AtomicInteger numDocsInRAM = new AtomicInteger(0);
-  private final AtomicInteger pendingUpdateOperations = new AtomicInteger(0);
 
   // TODO: cut over to BytesRefHash in BufferedDeletes
   volatile DocumentsWriterDeleteQueue deleteQueue;
@@ -347,8 +346,7 @@ final class DocumentsWriter implements Closeable, Accountable {
         numDocsInRAM.get() != 0
             || anyDeletions()
             || ticketQueue.hasTickets()
-            || pendingChangesInCurrentFullFlush
-            || pendingUpdateOperations.get() > 0;
+            || pendingChangesInCurrentFullFlush;
     if (infoStream.isEnabled("DW") && anyChanges) {
       infoStream.message(
           "DW",
@@ -429,20 +427,13 @@ final class DocumentsWriter implements Closeable, Accountable {
       // This must happen after we've pulled the DWPT because IW.close
       // waits for all DWPT to be released:
       ensureOpen();
-      pendingUpdateOperations.incrementAndGet();
-      final int dwptNumDocs = dwpt.getNumDocsInRAM();
       try {
-        seqNo = dwpt.updateDocuments(docs, delNode, flushNotifications);
+        seqNo =
+            dwpt.updateDocuments(docs, delNode, flushNotifications, numDocsInRAM::incrementAndGet);
       } finally {
         if (dwpt.isAborted()) {
           flushControl.doOnAbort(dwpt);
         }
-        // We don't know how many documents were actually
-        // counted as indexed, so we must subtract here to
-        // accumulate our separate counter:
-        numDocsInRAM.addAndGet(dwpt.getNumDocsInRAM() - dwptNumDocs);
-        // anyChanges() is now correct after `numDocsInRAM` is adjusted.
-        pendingUpdateOperations.decrementAndGet();
       }
       final boolean isUpdate = delNode != null && delNode.isDelete();
       flushingDWPT = flushControl.doAfterDocument(dwpt, isUpdate);
