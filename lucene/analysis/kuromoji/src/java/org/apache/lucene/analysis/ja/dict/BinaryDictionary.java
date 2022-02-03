@@ -269,6 +269,7 @@ public abstract class BinaryDictionary implements Dictionary {
     }
   }
 
+  @Deprecated
   private static InputStream getClassResource(String path) throws IOException {
     return IOUtils.requireResourceNonNull(BinaryDictionary.class.getResourceAsStream(path), path);
   }
