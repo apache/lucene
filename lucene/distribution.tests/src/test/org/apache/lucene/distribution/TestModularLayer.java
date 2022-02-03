@@ -314,7 +314,10 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               export -> {
                 Assertions.assertThat(export.targets())
                     .as("Opens should only be targeted to Lucene Core or Analysis Common.")
-                    .allMatch(target -> target.equals("org.apache.lucene.core") || target.equals("org.apache.lucene.analysis.common"));
+                    .allMatch(
+                        target ->
+                            target.equals("org.apache.lucene.core")
+                                || target.equals("org.apache.lucene.analysis.common"));
               })
           .map(ModuleDescriptor.Opens::source)
           .containsExactlyInAnyOrderElementsOf(jarPackages);
