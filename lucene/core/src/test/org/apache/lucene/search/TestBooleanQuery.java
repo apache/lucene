@@ -493,7 +493,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     final AtomicBoolean matched = new AtomicBoolean();
     searcher.search(
         bq,
-        new CollectorManager<SimpleCollector, Boolean>() {
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
           public SimpleCollector newCollector() {
             return new SimpleCollector() {
@@ -528,7 +528,7 @@ public class TestBooleanQuery extends LuceneTestCase {
           }
 
           @Override
-          public Boolean reduce(Collection<SimpleCollector> collectors) {
+          public Void reduce(Collection<SimpleCollector> collectors) {
             return null;
           }
         });
