@@ -25,6 +25,9 @@ module org.apache.lucene.analysis.nori {
   exports org.apache.lucene.analysis.ko.tokenattributes;
   exports org.apache.lucene.analysis.ko.util;
 
+  opens org.apache.lucene.analysis.ko.dict to
+      org.apache.lucene.analysis.common;
+
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.ko.KoreanTokenizerFactory;
   provides org.apache.lucene.analysis.TokenFilterFactory with

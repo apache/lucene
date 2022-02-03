@@ -30,6 +30,8 @@ module org.apache.lucene.analysis.kuromoji {
       org.apache.lucene.core;
   opens org.apache.lucene.analysis.ja.completion to
       org.apache.lucene.core;
+  opens org.apache.lucene.analysis.ja.dict to
+      org.apache.lucene.analysis.common;
 
   provides org.apache.lucene.analysis.CharFilterFactory with
       org.apache.lucene.analysis.ja.JapaneseIterationMarkCharFilterFactory;
