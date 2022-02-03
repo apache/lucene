@@ -19,17 +19,11 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.index.KnnGraphValues;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
@@ -92,145 +86,6 @@ public final class HnswGraph extends KnnGraphValues {
     for (int l = 1; l < numLevels; l++) {
       nodesByLevel.add(new int[] {0});
     }
-  }
-
-  /**
-   * Holds data structures that are used by each {@link #searchLevel} call. These can be expensive
-   * to allocate, so whenever possible they're cleared and reused across calls.
-   */
-  static class HnswSearchState {
-    final NeighborQueue candidates;
-    final BitSet visited;
-
-    /**
-     * @param candidates max heap containing the candidate nodes to explore
-     * @param visited tracks nodes that have already been visited while searching a layer
-     */
-    public HnswSearchState(NeighborQueue candidates, BitSet visited) {
-      this.candidates = candidates;
-      this.visited = visited;
-    }
-
-    public void clear() {
-      candidates.clear();
-      visited.clear(0, visited.length());
-    }
-  }
-
-  /**
-   * Searches HNSW graph for the nearest neighbors of a query vector.
-   *
-   * @param query search query vector
-   * @param topK the number of nodes to be returned
-   * @param vectors vector values
-   * @param graphValues the graph values. May represent the entire graph, or a level in a
-   *     hierarchical graph.
-   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
-   *     {@code null} if they are all allowed to match.
-   * @return a priority queue holding the closest neighbors found
-   */
-  public static NeighborQueue search(
-      float[] query,
-      int topK,
-      RandomAccessVectorValues vectors,
-      VectorSimilarityFunction similarityFunction,
-      KnnGraphValues graphValues,
-      Bits acceptOrds)
-      throws IOException {
-    NeighborQueue results;
-    HnswSearchState state =
-        new HnswSearchState(
-            new NeighborQueue(topK, similarityFunction.reversed == false),
-            new SparseFixedBitSet(vectors.size()));
-    int[] eps = new int[] {graphValues.entryNode()};
-    for (int level = graphValues.numLevels() - 1; level >= 1; level--) {
-      results =
-          searchLevel(query, 1, level, eps, vectors, similarityFunction, graphValues, null, state);
-      eps[0] = results.pop();
-    }
-    results =
-        searchLevel(
-            query, topK, 0, eps, vectors, similarityFunction, graphValues, acceptOrds, state);
-    return results;
-  }
-
-  /**
-   * Searches for the nearest neighbors of a query vector in a given level
-   *
-   * @param query search query vector
-   * @param topK the number of nearest to query results to return
-   * @param level level to search
-   * @param eps the entry points for search at this level expressed as level 0th ordinals
-   * @param vectors vector values
-   * @param similarityFunction similarity function
-   * @param graphValues the graph values
-   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
-   *     {@code null} if they are all allowed to match.
-   * @param state contains pre-allocated data structures for the search (may not be cleared)
-   * @return a priority queue holding the closest neighbors found
-   */
-  static NeighborQueue searchLevel(
-      float[] query,
-      int topK,
-      int level,
-      final int[] eps,
-      RandomAccessVectorValues vectors,
-      VectorSimilarityFunction similarityFunction,
-      KnnGraphValues graphValues,
-      Bits acceptOrds,
-      HnswSearchState state)
-      throws IOException {
-    int size = graphValues.size();
-    NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
-    state.clear();
-
-    for (int ep : eps) {
-      if (state.visited.getAndSet(ep) == false) {
-        float score = similarityFunction.compare(query, vectors.vectorValue(ep));
-        state.candidates.add(ep, score);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.add(ep, score);
-        }
-      }
-    }
-
-    // A bound that holds the minimum similarity to the query vector that a candidate vector must
-    // have to be considered.
-    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
-    if (results.size() >= topK) {
-      bound.set(results.topScore());
-    }
-    while (state.candidates.size() > 0) {
-      // get the best candidate (closest or best scoring)
-      float topCandidateScore = state.candidates.topScore();
-      if (bound.check(topCandidateScore)) {
-        break;
-      }
-      int topCandidateNode = state.candidates.pop();
-      graphValues.seek(level, topCandidateNode);
-      int friendOrd;
-      while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (state.visited.getAndSet(friendOrd)) {
-          continue;
-        }
-
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (bound.check(score) == false) {
-          state.candidates.add(friendOrd, score);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
-              bound.set(results.topScore());
-            }
-          }
-        }
-      }
-    }
-    while (results.size() > topK) {
-      results.pop();
-    }
-    results.setVisitedCount(state.visited.approximateCardinality());
-    return results;
   }
 
   /**
