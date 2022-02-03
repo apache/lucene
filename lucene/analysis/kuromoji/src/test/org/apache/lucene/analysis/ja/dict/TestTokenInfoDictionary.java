@@ -58,6 +58,7 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
     assertEquals(2, dict.getWordCost(wordId));
   }
 
+  @SuppressWarnings("deprecation")
   private TokenInfoDictionary newDictionary(String... entries) throws Exception {
     Path dir = createTempDir();
     try (OutputStream out = Files.newOutputStream(dir.resolve("test.csv"));

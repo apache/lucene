@@ -20,9 +20,14 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOUtils;
 
 /** n-gram connection cost data */
 public final class ConnectionCosts {
@@ -37,7 +42,9 @@ public final class ConnectionCosts {
   /**
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
    * @param path - where to load resources from, without the ".dat" suffix
+   * @deprecated replaced by {@link #ConnectionCosts(String)}
    */
+  @Deprecated
   public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
     try (InputStream is =
         new BufferedInputStream(
@@ -61,8 +68,63 @@ public final class ConnectionCosts {
     }
   }
 
+  /**
+   * Create a {@link ConnectionCosts} from an external resource path.
+   *
+   * @param resourceLocation where to load resources from
+   * @throws IOException
+   */
+  public ConnectionCosts(String resourceLocation) throws IOException {
+    this(openFileOrThrowRuntimeException(Paths.get(resourceLocation + FILENAME_SUFFIX)));
+  }
+
   private ConnectionCosts() throws IOException {
-    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
+    this(getClassResourceOrThrowRuntimeException(FILENAME_SUFFIX));
+  }
+
+  private ConnectionCosts(Supplier<InputStream> connectionCostResource) throws IOException {
+    try (InputStream is = new BufferedInputStream(connectionCostResource.get())) {
+      final DataInput in = new InputStreamDataInput(is);
+      CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
+      forwardSize = in.readVInt();
+      int backwardSize = in.readVInt();
+      int size = forwardSize * backwardSize;
+
+      // copy the matrix into a direct byte buffer
+      final ByteBuffer tmpBuffer = ByteBuffer.allocateDirect(size * 2);
+      int accum = 0;
+      for (int j = 0; j < backwardSize; j++) {
+        for (int i = 0; i < forwardSize; i++) {
+          accum += in.readZInt();
+          tmpBuffer.putShort((short) accum);
+        }
+      }
+      buffer = tmpBuffer.asReadOnlyBuffer();
+    }
+  }
+
+  private static Supplier<InputStream> openFileOrThrowRuntimeException(Path path)
+      throws RuntimeException {
+    return () -> {
+      try {
+        return Files.newInputStream(path);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    };
+  }
+
+  private static Supplier<InputStream> getClassResourceOrThrowRuntimeException(String suffix)
+      throws RuntimeException {
+    final String resourcePath = ConnectionCosts.class.getSimpleName() + suffix;
+    return () -> {
+      try {
+        return IOUtils.requireResourceNonNull(
+            TokenInfoDictionary.class.getResourceAsStream(resourcePath), resourcePath);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    };
   }
 
   public int get(int forwardId, int backwardId) {

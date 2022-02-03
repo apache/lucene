@@ -19,8 +19,11 @@ package org.apache.lucene.analysis.ja.dict;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Paths;
+import java.util.function.Supplier;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
 
@@ -38,7 +41,9 @@ public final class TokenInfoDictionary extends BinaryDictionary {
    * @param resourceScheme - scheme for loading resources (FILE or CLASSPATH).
    * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
    *     scheme only, use this class's name as the path.
+   * @deprecated replaced by {@link #TokenInfoDictionary(String)}
    */
+  @Deprecated
   public TokenInfoDictionary(ResourceScheme resourceScheme, String resourcePath)
       throws IOException {
     super(resourceScheme, resourcePath);
@@ -51,8 +56,54 @@ public final class TokenInfoDictionary extends BinaryDictionary {
     this.fst = new TokenInfoFST(fst, true);
   }
 
+  /**
+   * Create a {@link TokenInfoDictionary} from an external resource path.
+   *
+   * @param resourceLocation where to load resources (dictionaries) from.
+   * @throws IOException
+   */
+  public TokenInfoDictionary(String resourceLocation) throws IOException {
+    this(
+        openFileOrThrowRuntimeException(Paths.get(resourceLocation + TARGETMAP_FILENAME_SUFFIX)),
+        openFileOrThrowRuntimeException(Paths.get(resourceLocation + POSDICT_FILENAME_SUFFIX)),
+        openFileOrThrowRuntimeException(Paths.get(resourceLocation + DICT_FILENAME_SUFFIX)));
+  }
+
   private TokenInfoDictionary() throws IOException {
-    this(ResourceScheme.CLASSPATH, null);
+    this(
+        getClassResourceOrThrowRuntimeException(TARGETMAP_FILENAME_SUFFIX),
+        getClassResourceOrThrowRuntimeException(POSDICT_FILENAME_SUFFIX),
+        getClassResourceOrThrowRuntimeException(DICT_FILENAME_SUFFIX));
+  }
+
+  private TokenInfoDictionary(
+      Supplier<InputStream> targetMapResource,
+      Supplier<InputStream> posResource,
+      Supplier<InputStream> dictResource)
+      throws IOException {
+    super(targetMapResource, posResource, dictResource);
+    FST<Long> fst;
+    try (InputStream is =
+        new BufferedInputStream(
+            getClassResourceOrThrowRuntimeException(FST_FILENAME_SUFFIX).get())) {
+      DataInput in = new InputStreamDataInput(is);
+      fst = new FST<>(in, in, PositiveIntOutputs.getSingleton());
+    }
+    // TODO: some way to configure?
+    this.fst = new TokenInfoFST(fst, true);
+  }
+
+  private static Supplier<InputStream> getClassResourceOrThrowRuntimeException(String suffix)
+      throws RuntimeException {
+    final String resourcePath = TokenInfoDictionary.class.getSimpleName() + suffix;
+    return () -> {
+      try {
+        return IOUtils.requireResourceNonNull(
+            TokenInfoDictionary.class.getResourceAsStream(resourcePath), resourcePath);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    };
   }
 
   public TokenInfoFST getFST() {

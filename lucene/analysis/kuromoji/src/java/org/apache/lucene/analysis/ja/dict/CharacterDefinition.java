@@ -22,6 +22,7 @@ import java.io.InputStream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOUtils;
 
 /** Character category data. */
 public final class CharacterDefinition {
@@ -68,8 +69,11 @@ public final class CharacterDefinition {
   public static final byte KANJINUMERIC = (byte) CharacterClass.KANJINUMERIC.ordinal();
 
   private CharacterDefinition() throws IOException {
+    final String resourcePath = CharacterDefinition.class.getSimpleName() + FILENAME_SUFFIX;
     try (InputStream is =
-        new BufferedInputStream(BinaryDictionary.getClassResource(getClass(), FILENAME_SUFFIX))) {
+        new BufferedInputStream(
+            IOUtils.requireResourceNonNull(
+                CharacterDefinition.class.getResourceAsStream(resourcePath), resourcePath))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       in.readBytes(characterCategoryMap, 0, characterCategoryMap.length);

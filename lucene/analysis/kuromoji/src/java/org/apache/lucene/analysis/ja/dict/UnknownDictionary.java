@@ -17,6 +17,10 @@
 package org.apache.lucene.analysis.ja.dict;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Paths;
+import java.util.function.Supplier;
+import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
 public final class UnknownDictionary extends BinaryDictionary {
@@ -27,13 +31,44 @@ public final class UnknownDictionary extends BinaryDictionary {
    * @param scheme scheme for loading resources (FILE or CLASSPATH).
    * @param path where to load resources from; a path, including the file base name without
    *     extension; this is used to match multiple files with the same base name.
+   * @deprecated replaced by {@link #UnknownDictionary(String)}
    */
+  @Deprecated
   public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
     super(scheme, path);
   }
 
+  /**
+   * Create a {@link UnknownDictionary} from an external resource path.
+   *
+   * @param resourceLocation where to load resources (dictionaries) from.
+   * @throws IOException
+   */
+  public UnknownDictionary(String resourceLocation) throws IOException {
+    super(
+        openFileOrThrowRuntimeException(Paths.get(resourceLocation + TARGETMAP_FILENAME_SUFFIX)),
+        openFileOrThrowRuntimeException(Paths.get(resourceLocation + POSDICT_FILENAME_SUFFIX)),
+        openFileOrThrowRuntimeException(Paths.get(resourceLocation + DICT_FILENAME_SUFFIX)));
+  }
+
   private UnknownDictionary() throws IOException {
-    super();
+    super(
+        getClassResourceOrThrowRuntimeException(TARGETMAP_FILENAME_SUFFIX),
+        getClassResourceOrThrowRuntimeException(POSDICT_FILENAME_SUFFIX),
+        getClassResourceOrThrowRuntimeException(DICT_FILENAME_SUFFIX));
+  }
+
+  private static Supplier<InputStream> getClassResourceOrThrowRuntimeException(String suffix)
+      throws RuntimeException {
+    final String resourcePath = UnknownDictionary.class.getSimpleName() + suffix;
+    return () -> {
+      try {
+        return IOUtils.requireResourceNonNull(
+            UnknownDictionary.class.getResourceAsStream(resourcePath), resourcePath);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    };
   }
 
   public int lookup(char[] text, int offset, int len) {

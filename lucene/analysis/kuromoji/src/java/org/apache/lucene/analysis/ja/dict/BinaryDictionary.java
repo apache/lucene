@@ -18,14 +18,15 @@ package org.apache.lucene.analysis.ja.dict;
 
 import java.io.BufferedInputStream;
 import java.io.EOFException;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -36,6 +37,7 @@ import org.apache.lucene.util.IntsRef;
 public abstract class BinaryDictionary implements Dictionary {
 
   /** Used to specify where (dictionary) resources get loaded from. */
+  @Deprecated
   public enum ResourceScheme {
     CLASSPATH,
     FILE
@@ -58,15 +60,12 @@ public abstract class BinaryDictionary implements Dictionary {
   private final String[] inflTypeDict;
   private final String[] inflFormDict;
 
-  protected BinaryDictionary() throws IOException {
-    this(ResourceScheme.CLASSPATH, null);
-  }
-
   /**
    * @param resourceScheme - scheme for loading resources (FILE or CLASSPATH).
    * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
    *     scheme only, use this class's name as the path.
    */
+  @Deprecated
   protected BinaryDictionary(ResourceScheme resourceScheme, String resourcePath)
       throws IOException {
     this.resourceScheme = resourceScheme;
@@ -154,6 +153,98 @@ public abstract class BinaryDictionary implements Dictionary {
     this.buffer = buffer;
   }
 
+  protected BinaryDictionary(
+      Supplier<InputStream> targetMapResource,
+      Supplier<InputStream> posResource,
+      Supplier<InputStream> dictResource)
+      throws IOException {
+    this.resourceScheme = null;
+    this.resourcePath = null;
+
+    int[] targetMapOffsets = null, targetMap = null;
+    String[] posDict = null;
+    String[] inflFormDict = null;
+    String[] inflTypeDict = null;
+    ByteBuffer buffer = null;
+    try (InputStream mapIS = new BufferedInputStream(targetMapResource.get());
+        InputStream posIS = new BufferedInputStream(posResource.get());
+        // no buffering here, as we load in one large buffer
+        InputStream dictIS = dictResource.get()) {
+      DataInput in = new InputStreamDataInput(mapIS);
+      CodecUtil.checkHeader(in, TARGETMAP_HEADER, VERSION, VERSION);
+      targetMap = new int[in.readVInt()];
+      targetMapOffsets = new int[in.readVInt()];
+      int accum = 0, sourceId = 0;
+      for (int ofs = 0; ofs < targetMap.length; ofs++) {
+        final int val = in.readVInt();
+        if ((val & 0x01) != 0) {
+          targetMapOffsets[sourceId] = ofs;
+          sourceId++;
+        }
+        accum += val >>> 1;
+        targetMap[ofs] = accum;
+      }
+      if (sourceId + 1 != targetMapOffsets.length)
+        throw new IOException(
+            "targetMap file format broken; targetMap.length="
+                + targetMap.length
+                + ", targetMapOffsets.length="
+                + targetMapOffsets.length
+                + ", sourceId="
+                + sourceId);
+      targetMapOffsets[sourceId] = targetMap.length;
+
+      in = new InputStreamDataInput(posIS);
+      CodecUtil.checkHeader(in, POSDICT_HEADER, VERSION, VERSION);
+      int posSize = in.readVInt();
+      posDict = new String[posSize];
+      inflTypeDict = new String[posSize];
+      inflFormDict = new String[posSize];
+      for (int j = 0; j < posSize; j++) {
+        posDict[j] = in.readString();
+        inflTypeDict[j] = in.readString();
+        inflFormDict[j] = in.readString();
+        // this is how we encode null inflections
+        if (inflTypeDict[j].length() == 0) {
+          inflTypeDict[j] = null;
+        }
+        if (inflFormDict[j].length() == 0) {
+          inflFormDict[j] = null;
+        }
+      }
+
+      in = new InputStreamDataInput(dictIS);
+      CodecUtil.checkHeader(in, DICT_HEADER, VERSION, VERSION);
+      final int size = in.readVInt();
+      final ByteBuffer tmpBuffer = ByteBuffer.allocateDirect(size);
+      final ReadableByteChannel channel = Channels.newChannel(dictIS);
+      final int read = channel.read(tmpBuffer);
+      if (read != size) {
+        throw new EOFException("Cannot read whole dictionary");
+      }
+      buffer = tmpBuffer.asReadOnlyBuffer();
+    }
+
+    this.targetMap = targetMap;
+    this.targetMapOffsets = targetMapOffsets;
+    this.posDict = posDict;
+    this.inflTypeDict = inflTypeDict;
+    this.inflFormDict = inflFormDict;
+    this.buffer = buffer;
+  }
+
+  protected static Supplier<InputStream> openFileOrThrowRuntimeException(Path path)
+      throws RuntimeException {
+    return () -> {
+      try {
+        return Files.newInputStream(path);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    };
+  }
+
+  @Deprecated
   protected final InputStream getResource(String suffix) throws IOException {
     switch (resourceScheme) {
       case CLASSPATH:
@@ -165,6 +256,7 @@ public abstract class BinaryDictionary implements Dictionary {
     }
   }
 
+  @Deprecated
   public static final InputStream getResource(ResourceScheme scheme, String path)
       throws IOException {
     switch (scheme) {
@@ -175,17 +267,6 @@ public abstract class BinaryDictionary implements Dictionary {
       default:
         throw new IllegalStateException("unknown resource scheme " + scheme);
     }
-  }
-
-  // util, reused by ConnectionCosts and CharacterDefinition
-  public static final InputStream getClassResource(Class<?> clazz, String suffix)
-      throws IOException {
-    final InputStream is = clazz.getResourceAsStream(clazz.getSimpleName() + suffix);
-    if (is == null) {
-      throw new FileNotFoundException(
-          "Not in classpath: " + clazz.getName().replace('.', '/') + suffix);
-    }
-    return is;
   }
 
   private static InputStream getClassResource(String path) throws IOException {
