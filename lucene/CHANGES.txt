@@ -128,6 +128,9 @@ New Features
   based on TotalHitCountCollector that allows users to parallelize counting the
   number of hits. (Luca Cavanna, Adrien Grand)
 
+* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
+  to speed up computing the number of hits when possible. (Luca Cavanna, Adrien Grand)
+
 Improvements
 ---------------------
 
