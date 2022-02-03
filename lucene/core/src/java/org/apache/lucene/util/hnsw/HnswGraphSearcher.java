@@ -38,6 +38,7 @@ public final class HnswGraphSearcher {
    * to allocate, so they're cleared and reused across calls.
    */
   private final NeighborQueue candidates;
+
   private final BitSet visited;
 
   /**
