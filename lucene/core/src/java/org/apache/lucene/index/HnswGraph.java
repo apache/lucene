@@ -22,16 +22,34 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 
 /**
- * Access to per-document neighbor lists in a (hierarchical) knn search graph.
+ * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
+ * for high dimensional vectors. See <a href="https://arxiv.org/abs/1603.09320">Efficient and robust
+ * approximate nearest neighbor search using Hierarchical Navigable Small World graphs [2018]</a>
+ * paper for details.
  *
- * @lucene.experimental
+ * <p>The nomenclature is a bit different here from what's used in the paper:
+ *
+ * <h2>Hyperparameters</h2>
+ *
+ * <ul>
+ *   <li><code>beamWidth</code> in {@link HnswGraphBuilder} has the same meaning as <code>efConst
+ *       </code> in the paper. It is the number of nearest neighbor candidates to track while
+ *       searching the graph for each newly inserted node.
+ *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the paper; it controls how
+ *       many of the <code>efConst</code> neighbors are connected to the new node
+ * </ul>
+ *
+ * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
+ * thread-safe. The search method optionally takes a set of "accepted nodes", which can be used to
+ * exclude deleted documents.
  */
-public abstract class KnnGraphValues {
+public abstract class HnswGraph {
 
   /** Sole constructor */
-  protected KnnGraphValues() {}
+  protected HnswGraph() {}
 
   /**
    * Move the pointer to exactly the given {@code level}'s {@code target}. After this method
@@ -69,8 +87,8 @@ public abstract class KnnGraphValues {
   public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
   /** Empty graph value */
-  public static KnnGraphValues EMPTY =
-      new KnnGraphValues() {
+  public static HnswGraph EMPTY =
+      new HnswGraph() {
 
         @Override
         public int nextNeighbor() {

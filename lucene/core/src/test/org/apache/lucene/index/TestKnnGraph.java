@@ -40,7 +40,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.KnnGraphValues.NodesIterator;
+import org.apache.lucene.index.HnswGraph.NodesIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -239,7 +239,7 @@ public class TestKnnGraph extends LuceneTestCase {
                 ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
         Lucene91HnswVectorsReader vectorReader =
             (Lucene91HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
-        graph = copyGraph(vectorReader.getGraphValues(KNN_GRAPH_FIELD));
+        graph = copyGraph(vectorReader.getGraph(KNN_GRAPH_FIELD));
       }
     }
     return graph;
@@ -259,7 +259,7 @@ public class TestKnnGraph extends LuceneTestCase {
     return values;
   }
 
-  int[][][] copyGraph(KnnGraphValues graphValues) throws IOException {
+  int[][][] copyGraph(HnswGraph graphValues) throws IOException {
     int[][][] graph = new int[graphValues.numLevels()][][];
     int size = graphValues.size();
     int[] scratch = new int[maxConn];
@@ -439,7 +439,7 @@ public class TestKnnGraph extends LuceneTestCase {
         if (vectorReader == null) {
           continue;
         }
-        KnnGraphValues graphValues = vectorReader.getGraphValues(vectorField);
+        HnswGraph graphValues = vectorReader.getGraph(vectorField);
         VectorValues vectorValues = reader.getVectorValues(vectorField);
         if (vectorValues == null) {
           assert graphValues == null;

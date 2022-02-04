@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import org.apache.lucene.index.HnswGraph;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -54,7 +55,7 @@ public final class HnswGraphBuilder {
   private final BoundsChecker bound;
   private final HnswGraphSearcher graphSearcher;
 
-  final HnswGraph hnsw;
+  final OnHeapHnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
 
@@ -95,7 +96,7 @@ public final class HnswGraphBuilder {
     this.ml = 1 / Math.log(1.0 * maxConn);
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw = new HnswGraph(maxConn, levelOfFirstNode);
+    this.hnsw = new OnHeapHnswGraph(maxConn, levelOfFirstNode);
     this.graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
@@ -113,7 +114,7 @@ public final class HnswGraphBuilder {
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public HnswGraph build(RandomAccessVectorValues vectors) throws IOException {
+  public OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
     if (vectors == vectorValues) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");

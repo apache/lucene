@@ -22,32 +22,14 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.index.KnnGraphValues;
+import org.apache.lucene.index.HnswGraph;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
- * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
- * for high dimensional vectors. See <a href="https://arxiv.org/abs/1603.09320">Efficient and robust
- * approximate nearest neighbor search using Hierarchical Navigable Small World graphs [2018]</a>
- * paper for details.
- *
- * <p>The nomenclature is a bit different here from what's used in the paper:
- *
- * <h2>Hyperparameters</h2>
- *
- * <ul>
- *   <li><code>beamWidth</code> in {@link HnswGraphBuilder} has the same meaning as <code>efConst
- *       </code> in the paper. It is the number of nearest neighbor candidates to track while
- *       searching the graph for each newly inserted node.
- *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the paper; it controls how
- *       many of the <code>efConst</code> neighbors are connected to the new node
- * </ul>
- *
- * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
- * thread-safe. The search method optionally takes a set of "accepted nodes", which can be used to
- * exclude deleted documents.
+ * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
+ * construct the HNSW graph before it's written to the index.
  */
-public final class HnswGraph extends KnnGraphValues {
+public final class OnHeapHnswGraph extends HnswGraph {
 
   private final int maxConn;
   private int numLevels; // the current number of levels in the graph
@@ -68,7 +50,7 @@ public final class HnswGraph extends KnnGraphValues {
   private int upto;
   private NeighborArray cur;
 
-  HnswGraph(int maxConn, int levelOfFirstNode) {
+  OnHeapHnswGraph(int maxConn, int levelOfFirstNode) {
     this.maxConn = maxConn;
     this.numLevels = levelOfFirstNode + 1;
     this.graph = new ArrayList<>(numLevels);
