@@ -48,12 +48,13 @@ import org.apache.lucene.util.NamedThreadFactory;
  * <p>TODO: another possible (faster) approach to do this is to manipulate FlushPolicy and
  * MergePolicy at indexing time to create small desired segments first and merge them accordingly
  * for details please see: https://markmail.org/message/lbtdntclpnocmfuf
+ *
+ * @lucene.experimental
  */
 public class IndexRearranger {
   protected final Directory input, output;
   protected final IndexWriterConfig config;
   protected final List<DocumentSelector> documentSelectors;
-  protected final boolean determinedOrder;
 
   /**
    * Constructor
@@ -63,30 +64,16 @@ public class IndexRearranger {
    * @param config index writer config
    * @param documentSelectors specify what document is desired in the rearranged index segments,
    *     each selector correspond to one segment
-   * @param determinedOrder make sure the rearranged index have the segment order aligned with the
-   *     documentSelectors order, note if this option is enabled, documentSelectors can only select
-   *     document exclusively, that is, one document in the original index can't be appeared more
-   *     than once in the rearranged index
    */
   public IndexRearranger(
       Directory input,
       Directory output,
       IndexWriterConfig config,
-      List<DocumentSelector> documentSelectors,
-      boolean determinedOrder) {
+      List<DocumentSelector> documentSelectors) {
     this.input = input;
     this.output = output;
     this.config = config;
     this.documentSelectors = documentSelectors;
-    this.determinedOrder = determinedOrder;
-  }
-
-  public IndexRearranger(
-      Directory input,
-      Directory output,
-      IndexWriterConfig config,
-      List<DocumentSelector> documentSelectors) {
-    this(input, output, config, documentSelectors, true);
   }
 
   public void execute() throws Exception {
@@ -112,9 +99,6 @@ public class IndexRearranger {
       }
       executor.shutdown();
     }
-    if (determinedOrder == false) {
-      return;
-    }
     List<SegmentCommitInfo> ordered = new ArrayList<>();
     try (IndexReader reader = DirectoryReader.open(output)) {
       for (DocumentSelector ds : documentSelectors) {
@@ -122,7 +106,9 @@ public class IndexRearranger {
         for (LeafReaderContext context : reader.leaves()) {
           SegmentReader sr = (SegmentReader) context.reader();
           if (ds.getFilteredLiveDocs(sr).nextSetBit(0) != DocIdSetIterator.NO_MORE_DOCS) {
-            assert found == false;
+            if (found) {
+              throw new IllegalStateException("A document selector can't match more than 1 rearranged segments");
+            }
             found = true;
             ordered.add(sr.getSegmentInfo());
           }
