@@ -107,7 +107,8 @@ public class IndexRearranger {
           SegmentReader sr = (SegmentReader) context.reader();
           if (ds.getFilteredLiveDocs(sr).nextSetBit(0) != DocIdSetIterator.NO_MORE_DOCS) {
             if (found) {
-              throw new IllegalStateException("A document selector can't match more than 1 rearranged segments");
+              throw new IllegalStateException(
+                  "A document selector can't match more than 1 rearranged segments");
             }
             found = true;
             ordered.add(sr.getSegmentInfo());
