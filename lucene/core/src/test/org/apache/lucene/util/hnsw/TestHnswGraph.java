@@ -167,7 +167,8 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
-            null);
+            null,
+            Integer.MAX_VALUE);
 
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
@@ -206,7 +207,8 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
-            acceptOrds);
+            acceptOrds,
+            Integer.MAX_VALUE);
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
@@ -239,7 +241,8 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors.randomAccess(),
             VectorSimilarityFunction.EUCLIDEAN,
             hnsw,
-            acceptOrds);
+            acceptOrds,
+            Integer.MAX_VALUE);
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
@@ -250,6 +253,31 @@ public class TestHnswGraph extends LuceneTestCase {
     // We still expect to get reasonable recall. The lowest non-skipped docIds
     // are closest to the query vector: sum(500,509) = 5045
     assertTrue("sum(result docs)=" + sum, sum < 5100);
+  }
+
+  public void testVisitedLimit() throws IOException {
+    int nDoc = 100;
+    int maxConn = 16;
+    CircularVectorValues vectors = new CircularVectorValues(nDoc);
+    HnswGraphBuilder builder =
+        new HnswGraphBuilder(
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(vectors);
+
+    int topK = 10;
+    int visitedLimit = random().nextInt(10) + 10;
+    NeighborQueue nn =
+        HnswGraphSearcher.search(
+            new float[] {1, 0},
+            topK,
+            vectors.randomAccess(),
+            VectorSimilarityFunction.DOT_PRODUCT,
+            hnsw,
+            createRandomAcceptOrds(0, vectors.size),
+            visitedLimit);
+    assertTrue(nn.incomplete());
+    // The visited count shouldn't be much over the limit
+    assertTrue(nn.visitedCount() < visitedLimit + 5);
   }
 
   public void testBoundsCheckerMax() {
@@ -382,7 +410,8 @@ public class TestHnswGraph extends LuceneTestCase {
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
-          HnswGraphSearcher.search(query, 100, vectors, similarityFunction, hnsw, acceptOrds);
+          HnswGraphSearcher.search(
+              query, 100, vectors, similarityFunction, hnsw, acceptOrds, Integer.MAX_VALUE);
       while (actual.size() > topK) {
         actual.pop();
       }

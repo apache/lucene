@@ -35,12 +35,16 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -227,8 +231,21 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
-
     OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+
+    DocIdSetIterator acceptIterator = null;
+    int visitedLimit = Integer.MAX_VALUE;
+
+    if (acceptDocs instanceof BitSet acceptBitSet) {
+      visitedLimit = acceptBitSet.cardinality();
+      acceptIterator = new BitSetIterator(acceptBitSet, visitedLimit);
+      // If there <= k possible matches, short-circuit and perform exact search, since HNSW must
+      // always visit at least k documents.
+      if (visitedLimit <= k) {
+        return exactSearch(target, k, fieldEntry.similarityFunction, vectorValues, acceptIterator);
+      }
+    }
+
     NeighborQueue results =
         HnswGraphSearcher.search(
             target,
@@ -236,7 +253,14 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             vectorValues,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
-            getAcceptOrds(acceptDocs, fieldEntry));
+            getAcceptOrds(acceptDocs, fieldEntry),
+            visitedLimit);
+
+    // If we stopped HNSW search early because it visited too many nodes, fall back to exact search
+    if (results.incomplete()) {
+      assert acceptIterator != null;
+      return exactSearch(target, k, fieldEntry.similarityFunction, vectorValues, acceptIterator);
+    }
 
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
@@ -251,6 +275,36 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     return new TopDocs(
         new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
         scoreDocs);
+  }
+
+  private TopDocs exactSearch(
+      float[] target,
+      int k,
+      VectorSimilarityFunction similarityFunction,
+      VectorValues vectorValues,
+      DocIdSetIterator acceptIterator)
+      throws IOException {
+    HitQueue topK = new HitQueue(k, false);
+
+    int doc;
+    while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      if (vectorValues.docID() > doc) {
+        continue;
+      }
+      int vectorDoc = vectorValues.advance(doc);
+      if (vectorDoc == doc) {
+        float[] vector = vectorValues.vectorValue();
+        float score = similarityFunction.convertToScore(similarityFunction.compare(vector, target));
+        topK.insertWithOverflow(new ScoreDoc(doc, score));
+      }
+    }
+    ScoreDoc[] topScoreDocs = new ScoreDoc[topK.size()];
+    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
+      topScoreDocs[i] = topK.pop();
+    }
+
+    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
+    return new TopDocs(totalHits, topScoreDocs);
   }
 
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
