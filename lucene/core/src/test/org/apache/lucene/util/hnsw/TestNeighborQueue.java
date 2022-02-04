@@ -19,7 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestNeighbors extends LuceneTestCase {
+public class TestNeighborQueue extends LuceneTestCase {
 
   public void testNeighborsProduct() {
     // make sure we have the sign correct
@@ -65,6 +65,17 @@ public class TestNeighbors extends LuceneTestCase {
     NeighborQueue nn = new NeighborQueue(2, false);
     nn.setVisitedCount(100);
     assertEquals(100, nn.visitedCount());
+  }
+
+  public void testClear() {
+    NeighborQueue nn = new NeighborQueue(2, false);
+    nn.add(1, 1.1f);
+    nn.add(2, -2.2f);
+    nn.setVisitedCount(42);
+    nn.clear();
+
+    assertEquals(0, nn.size());
+    assertEquals(0, nn.visitedCount());
   }
 
   public void testMaxSizeQueue() {

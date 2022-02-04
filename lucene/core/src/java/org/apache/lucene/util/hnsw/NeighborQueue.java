@@ -115,6 +115,11 @@ public class NeighborQueue {
     return NumericUtils.sortableIntToFloat((int) (order.apply(heap.top()) >> 32));
   }
 
+  public void clear() {
+    heap.clear();
+    visitedCount = 0;
+  }
+
   public int visitedCount() {
     return visitedCount;
   }
