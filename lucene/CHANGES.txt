@@ -220,6 +220,9 @@ Bug Fixes
 * LUCENE-10401: Fix lookups on empty doc-value terms dictionaries to no longer
   throw an ArrayIndexOutOfBoundsException. (Adrien Grand)
 
+* LUCENE-10402: Prefix intervals should declare their automaton as binary, otherwise prefixes
+  containing multibyte characters will not correctly match. (Alan Woodward)
+
 Other
 ---------------------
 
