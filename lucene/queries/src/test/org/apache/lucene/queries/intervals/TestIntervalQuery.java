@@ -33,6 +33,11 @@ import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
+import static org.apache.lucene.queries.intervals.Intervals.containing;
+import static org.apache.lucene.queries.intervals.Intervals.extend;
+import static org.apache.lucene.queries.intervals.Intervals.or;
+import static org.apache.lucene.queries.intervals.Intervals.term;
+
 public class TestIntervalQuery extends LuceneTestCase {
 
   private IndexSearcher searcher;
@@ -50,9 +55,9 @@ public class TestIntervalQuery extends LuceneTestCase {
             random(),
             directory,
             newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
-    for (int i = 0; i < docFields.length; i++) {
+    for (String docField : docFields) {
       Document doc = new Document();
-      doc.add(newTextField(field, docFields[i], Field.Store.YES));
+      doc.add(newTextField(field, docField, Field.Store.YES));
       writer.addDocument(doc);
     }
     reader = writer.getReader();
@@ -67,7 +72,7 @@ public class TestIntervalQuery extends LuceneTestCase {
     super.tearDown();
   }
 
-  private String[] docFields = {
+  private final String[] docFields = {
     "w1 w2 w3 w4 w5",
     "w1 w3 w2 w3",
     "w1 xx w2 w4 yy w3",
@@ -168,7 +173,7 @@ public class TestIntervalQuery extends LuceneTestCase {
     assertTrue(explain.toString().contains(field));
   }
 
-  public void testNullConstructorArgs() throws IOException {
+  public void testNullConstructorArgs() {
     expectThrows(NullPointerException.class, () -> new IntervalQuery(null, Intervals.term("z")));
     expectThrows(NullPointerException.class, () -> new IntervalQuery("field", null));
   }
@@ -422,5 +427,10 @@ public class TestIntervalQuery extends LuceneTestCase {
   public void testUnicodePrefix() throws IOException {
     Query q = new IntervalQuery(field, Intervals.prefix(new BytesRef("場")));
     checkHits(q, new int[] {11});
+  }
+
+  public void testExtendDisjunctions() throws IOException {
+    Query q = new IntervalQuery(field, or(term("XXX"), containing(extend(term("message"), 0, 10), term("intend"))));
+    checkHits(q, new int[] {});
   }
 }
