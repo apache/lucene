@@ -21,9 +21,9 @@ import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Lucene 9.0 vector format, which encodes numeric vector values and an optional associated graph
