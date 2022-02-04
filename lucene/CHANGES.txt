@@ -220,6 +220,9 @@ Bug Fixes
 * LUCENE-10401: Fix lookups on empty doc-value terms dictionaries to no longer
   throw an ArrayIndexOutOfBoundsException. (Adrien Grand)
 
+* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
+   as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
+
 Other
 ---------------------
 
