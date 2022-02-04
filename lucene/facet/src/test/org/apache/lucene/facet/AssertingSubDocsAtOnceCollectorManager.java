@@ -16,11 +16,16 @@
  */
 package org.apache.lucene.facet;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.SimpleCollector;
 
-public class AssertingSubDocsAtOnceCollectorManager
-    implements CollectorManager<AssertingSubDocsAtOnceCollector, Object> {
+class AssertingSubDocsAtOnceCollectorManager implements CollectorManager<SimpleCollector, Object> {
 
   @Override
   public AssertingSubDocsAtOnceCollector newCollector() {
@@ -28,7 +33,44 @@ public class AssertingSubDocsAtOnceCollectorManager
   }
 
   @Override
-  public Object reduce(Collection<AssertingSubDocsAtOnceCollector> collectors) {
+  public Object reduce(Collection<SimpleCollector> collectors) {
     return null;
+  }
+
+  /** Verifies in collect() that all child subScorers are on the collected doc. */
+  static class AssertingSubDocsAtOnceCollector extends SimpleCollector {
+
+    // TODO: allow wrapping another Collector
+
+    List<Scorable> allScorers;
+
+    @Override
+    public void setScorer(Scorable s) throws IOException {
+      // Gathers all scorers, including s and "under":
+      allScorers = new ArrayList<>();
+      allScorers.add(s);
+      int upto = 0;
+      while (upto < allScorers.size()) {
+        s = allScorers.get(upto++);
+        for (Scorable.ChildScorable sub : s.getChildren()) {
+          allScorers.add(sub.child);
+        }
+      }
+    }
+
+    @Override
+    public void collect(int docID) {
+      for (Scorable s : allScorers) {
+        if (docID != s.docID()) {
+          throw new IllegalStateException(
+              "subScorer=" + s + " has docID=" + s.docID() + " != collected docID=" + docID);
+        }
+      }
+    }
+
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE_NO_SCORES;
+    }
   }
 }
