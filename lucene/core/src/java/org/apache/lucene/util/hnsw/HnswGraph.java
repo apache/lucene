@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.index;
+package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
+import org.apache.lucene.index.VectorValues;
 
 /**
  * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
