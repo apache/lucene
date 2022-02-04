@@ -46,7 +46,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -229,15 +229,15 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     k = Math.min(k, fieldEntry.size());
 
     OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
-    // use a seed that is fixed for the index so we get reproducible results for the same query
     NeighborQueue results =
-        HnswGraph.search(
+        HnswGraphSearcher.search(
             target,
             k,
             vectorValues,
             fieldEntry.similarityFunction,
             getGraphValues(fieldEntry),
             getAcceptOrds(acceptDocs, fieldEntry));
+
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {

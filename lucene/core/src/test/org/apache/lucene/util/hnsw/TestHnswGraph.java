@@ -162,7 +162,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraph hnsw = builder.build(vectors);
     // run some searches
     NeighborQueue nn =
-        HnswGraph.search(
+        HnswGraphSearcher.search(
             new float[] {1, 0},
             10,
             vectors.randomAccess(),
@@ -201,7 +201,7 @@ public class TestHnswGraph extends LuceneTestCase {
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
-        HnswGraph.search(
+        HnswGraphSearcher.search(
             new float[] {1, 0},
             10,
             vectors.randomAccess(),
@@ -234,7 +234,7 @@ public class TestHnswGraph extends LuceneTestCase {
       acceptOrds.set(i);
     }
     NeighborQueue nn =
-        HnswGraph.search(
+        HnswGraphSearcher.search(
             new float[] {1, 0},
             10,
             vectors.randomAccess(),
@@ -383,7 +383,7 @@ public class TestHnswGraph extends LuceneTestCase {
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
-          HnswGraph.search(query, 100, vectors, similarityFunction, hnsw, acceptOrds);
+          HnswGraphSearcher.search(query, 100, vectors, similarityFunction, hnsw, acceptOrds);
       while (actual.size() > topK) {
         actual.pop();
       }
