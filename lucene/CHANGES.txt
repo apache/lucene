@@ -189,6 +189,9 @@ Bug Fixes
 * LUCENE-10402: Prefix intervals should declare their automaton as binary, otherwise prefixes
   containing multibyte characters will not correctly match. (Alan Woodward)
 
+* LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
+  in a disjunction. (Alan Woodward, Dawid Weiss)
+
 Other
 ---------------------
 
