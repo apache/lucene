@@ -29,6 +29,7 @@ import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /**
  * Factory functions for creating {@link IntervalsSource interval sources}.
@@ -157,7 +158,13 @@ public final class Intervals {
    * @throws IllegalStateException if the prefix expands to more than {@code maxExpansions} terms
    */
   public static IntervalsSource prefix(BytesRef prefix, int maxExpansions) {
-    CompiledAutomaton ca = new CompiledAutomaton(PrefixQuery.toAutomaton(prefix));
+    CompiledAutomaton ca =
+        new CompiledAutomaton(
+            PrefixQuery.toAutomaton(prefix),
+            null,
+            true,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            true);
     return new MultiTermIntervalsSource(ca, maxExpansions, prefix.utf8ToString() + "*");
   }
 
