@@ -1131,7 +1131,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
     private long seekTermsIndex(BytesRef text) throws IOException {
       long lo = 0L;
-      long hi = (entry.termsDictSize - 1) >>> entry.termsDictIndexShift;
+      long hi = (entry.termsDictSize - 1) >> entry.termsDictIndexShift;
       while (lo <= hi) {
         final long mid = (lo + hi) >>> 1;
         getTermFromIndex(mid);
@@ -1144,7 +1144,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
 
       assert hi < 0 || getTermFromIndex(hi).compareTo(text) <= 0;
-      assert hi == ((entry.termsDictSize - 1) >>> entry.termsDictIndexShift)
+      assert hi == ((entry.termsDictSize - 1) >> entry.termsDictIndexShift)
           || getTermFromIndex(hi + 1).compareTo(text) > 0;
 
       return hi;
@@ -1193,9 +1193,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public SeekStatus seekCeil(BytesRef text) throws IOException {
       final long block = seekBlock(text);
       if (block == -1) {
-        // before the first term
-        seekExact(0L);
-        return SeekStatus.NOT_FOUND;
+        // before the first term, or empty terms dict
+        if (entry.termsDictSize == 0) {
+          ord = 0;
+          return SeekStatus.END;
+        } else {
+          seekExact(0L);
+          return SeekStatus.NOT_FOUND;
+        }
       }
       final long blockAddress = blockAddresses.get(block);
       this.ord = block << TERMS_DICT_BLOCK_LZ4_SHIFT;

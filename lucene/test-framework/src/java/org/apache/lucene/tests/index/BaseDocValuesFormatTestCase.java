@@ -886,6 +886,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     SortedDocValues dv = getOnlyLeafReader(ireader).getSortedDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
+    TermsEnum termsEnum = dv.termsEnum();
+    assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef("lucene")));
+    assertEquals(-1, dv.lookupTerm(new BytesRef("lucene")));
+
     ireader.close();
     directory.close();
   }
@@ -2143,6 +2148,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(0, dv.getValueCount());
 
+    TermsEnum termsEnum = dv.termsEnum();
+    assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef("lucene")));
+    assertEquals(-1, dv.lookupTerm(new BytesRef("lucene")));
+
     ireader.close();
     directory.close();
   }
@@ -3381,6 +3391,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     SortedDocValues dv = getOnlyLeafReader(ireader).getSortedDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
 
+    TermsEnum termsEnum = dv.termsEnum();
+    assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef("lucene")));
+    assertEquals(-1, dv.lookupTerm(new BytesRef("lucene")));
+
     ireader.close();
     directory.close();
   }
@@ -3410,6 +3425,11 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
+
+    TermsEnum termsEnum = dv.termsEnum();
+    assertFalse(termsEnum.seekExact(new BytesRef("lucene")));
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef("lucene")));
+    assertEquals(-1, dv.lookupTerm(new BytesRef("lucene")));
 
     ireader.close();
     directory.close();
