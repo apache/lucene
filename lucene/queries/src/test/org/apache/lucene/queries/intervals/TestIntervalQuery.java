@@ -17,6 +17,11 @@
 
 package org.apache.lucene.queries.intervals;
 
+import static org.apache.lucene.queries.intervals.Intervals.containing;
+import static org.apache.lucene.queries.intervals.Intervals.extend;
+import static org.apache.lucene.queries.intervals.Intervals.or;
+import static org.apache.lucene.queries.intervals.Intervals.term;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -32,11 +37,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-
-import static org.apache.lucene.queries.intervals.Intervals.containing;
-import static org.apache.lucene.queries.intervals.Intervals.extend;
-import static org.apache.lucene.queries.intervals.Intervals.or;
-import static org.apache.lucene.queries.intervals.Intervals.term;
 
 public class TestIntervalQuery extends LuceneTestCase {
 
@@ -430,7 +430,9 @@ public class TestIntervalQuery extends LuceneTestCase {
   }
 
   public void testExtendDisjunctions() throws IOException {
-    Query q = new IntervalQuery(field, or(term("XXX"), containing(extend(term("message"), 0, 10), term("intend"))));
+    Query q =
+        new IntervalQuery(
+            field, or(term("XXX"), containing(extend(term("message"), 0, 10), term("intend"))));
     checkHits(q, new int[] {});
   }
 }
