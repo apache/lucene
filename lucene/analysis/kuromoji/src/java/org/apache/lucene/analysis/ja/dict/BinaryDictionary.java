@@ -157,59 +157,27 @@ public abstract class BinaryDictionary implements Dictionary {
       Supplier<InputStream> posResource,
       Supplier<InputStream> dictResource)
       throws IOException {
-    int[] targetMapOffsets = null, targetMap = null;
-    String[] posDict = null;
-    String[] inflFormDict = null;
-    String[] inflTypeDict = null;
-    ByteBuffer buffer = null;
-    try (InputStream mapIS = new BufferedInputStream(targetMapResource.get());
-        InputStream posIS = new BufferedInputStream(posResource.get());
-        // no buffering here, as we load in one large buffer
-        InputStream dictIS = dictResource.get()) {
-      DataInput in = new InputStreamDataInput(mapIS);
+    try (InputStream mapIS = new BufferedInputStream(targetMapResource.get())) {
+      final DataInput in = new InputStreamDataInput(mapIS);
       CodecUtil.checkHeader(in, TARGETMAP_HEADER, VERSION, VERSION);
-      targetMap = new int[in.readVInt()];
-      targetMapOffsets = new int[in.readVInt()];
-      int accum = 0, sourceId = 0;
-      for (int ofs = 0; ofs < targetMap.length; ofs++) {
-        final int val = in.readVInt();
-        if ((val & 0x01) != 0) {
-          targetMapOffsets[sourceId] = ofs;
-          sourceId++;
-        }
-        accum += val >>> 1;
-        targetMap[ofs] = accum;
-      }
-      if (sourceId + 1 != targetMapOffsets.length)
-        throw new IOException(
-            "targetMap file format broken; targetMap.length="
-                + targetMap.length
-                + ", targetMapOffsets.length="
-                + targetMapOffsets.length
-                + ", sourceId="
-                + sourceId);
-      targetMapOffsets[sourceId] = targetMap.length;
+      this.targetMap = new int[in.readVInt()];
+      this.targetMapOffsets = new int[in.readVInt()];
+      populateTargetMap(in, this.targetMap, this.targetMapOffsets);
+    }
 
-      in = new InputStreamDataInput(posIS);
+    try (InputStream posIS = new BufferedInputStream(posResource.get())) {
+      DataInput in = new InputStreamDataInput(posIS);
       CodecUtil.checkHeader(in, POSDICT_HEADER, VERSION, VERSION);
-      int posSize = in.readVInt();
-      posDict = new String[posSize];
-      inflTypeDict = new String[posSize];
-      inflFormDict = new String[posSize];
-      for (int j = 0; j < posSize; j++) {
-        posDict[j] = in.readString();
-        inflTypeDict[j] = in.readString();
-        inflFormDict[j] = in.readString();
-        // this is how we encode null inflections
-        if (inflTypeDict[j].length() == 0) {
-          inflTypeDict[j] = null;
-        }
-        if (inflFormDict[j].length() == 0) {
-          inflFormDict[j] = null;
-        }
-      }
+      final int posSize = in.readVInt();
+      this.posDict = new String[posSize];
+      this.inflTypeDict = new String[posSize];
+      this.inflFormDict = new String[posSize];
+      populatePosDict(in, posSize, this.posDict, this.inflTypeDict, this.inflFormDict);
+    }
 
-      in = new InputStreamDataInput(dictIS);
+    // no buffering here, as we load in one large buffer
+    try (InputStream dictIS = dictResource.get()) {
+      final DataInput in = new InputStreamDataInput(dictIS);
       CodecUtil.checkHeader(in, DICT_HEADER, VERSION, VERSION);
       final int size = in.readVInt();
       final ByteBuffer tmpBuffer = ByteBuffer.allocateDirect(size);
@@ -218,15 +186,48 @@ public abstract class BinaryDictionary implements Dictionary {
       if (read != size) {
         throw new EOFException("Cannot read whole dictionary");
       }
-      buffer = tmpBuffer.asReadOnlyBuffer();
+      this.buffer = tmpBuffer.asReadOnlyBuffer();
     }
+  }
 
-    this.targetMap = targetMap;
-    this.targetMapOffsets = targetMapOffsets;
-    this.posDict = posDict;
-    this.inflTypeDict = inflTypeDict;
-    this.inflFormDict = inflFormDict;
-    this.buffer = buffer;
+  private static void populateTargetMap(DataInput in, int[] targetMap, int[] targetMapOffsets)
+      throws IOException {
+    int accum = 0, sourceId = 0;
+    for (int ofs = 0; ofs < targetMap.length; ofs++) {
+      final int val = in.readVInt();
+      if ((val & 0x01) != 0) {
+        targetMapOffsets[sourceId] = ofs;
+        sourceId++;
+      }
+      accum += val >>> 1;
+      targetMap[ofs] = accum;
+    }
+    if (sourceId + 1 != targetMapOffsets.length)
+      throw new IOException(
+          "targetMap file format broken; targetMap.length="
+              + targetMap.length
+              + ", targetMapOffsets.length="
+              + targetMapOffsets.length
+              + ", sourceId="
+              + sourceId);
+    targetMapOffsets[sourceId] = targetMap.length;
+  }
+
+  private static void populatePosDict(
+      DataInput in, int posSize, String[] posDict, String[] inflTypeDict, String[] inflFormDict)
+      throws IOException {
+    for (int j = 0; j < posSize; j++) {
+      posDict[j] = in.readString();
+      inflTypeDict[j] = in.readString();
+      inflFormDict[j] = in.readString();
+      // this is how we encode null inflections
+      if (inflTypeDict[j].length() == 0) {
+        inflTypeDict[j] = null;
+      }
+      if (inflFormDict[j].length() == 0) {
+        inflFormDict[j] = null;
+      }
+    }
   }
 
   /*

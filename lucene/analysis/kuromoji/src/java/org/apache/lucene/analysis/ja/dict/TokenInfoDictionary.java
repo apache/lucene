@@ -51,18 +51,22 @@ public final class TokenInfoDictionary extends BinaryDictionary {
   public TokenInfoDictionary(ResourceScheme resourceScheme, String resourcePath)
       throws IOException {
     this(
-      resourceScheme == ResourceScheme.FILE ?
-        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX))) :
-        wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
-      resourceScheme == ResourceScheme.FILE ?
-        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX))) :
-        wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
-      resourceScheme == ResourceScheme.FILE ?
-        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX))) :
-        wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)),
-      resourceScheme == ResourceScheme.FILE ?
-        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(resourcePath + FST_FILENAME_SUFFIX))) :
-        wrapInputStreamSupplier(() -> getClassResource(FST_FILENAME_SUFFIX)));
+        resourceScheme == ResourceScheme.FILE
+            ? wrapInputStreamSupplier(
+                () -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX)))
+            : wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
+        resourceScheme == ResourceScheme.FILE
+            ? wrapInputStreamSupplier(
+                () -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX)))
+            : wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
+        resourceScheme == ResourceScheme.FILE
+            ? wrapInputStreamSupplier(
+                () -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX)))
+            : wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)),
+        resourceScheme == ResourceScheme.FILE
+            ? wrapInputStreamSupplier(
+                () -> Files.newInputStream(Paths.get(resourcePath + FST_FILENAME_SUFFIX)))
+            : wrapInputStreamSupplier(() -> getClassResource(FST_FILENAME_SUFFIX)));
   }
 
   /**

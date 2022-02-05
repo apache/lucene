@@ -23,7 +23,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
 import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
@@ -40,16 +39,18 @@ public final class UnknownDictionary extends BinaryDictionary {
   @Deprecated
   public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
     super(
-      scheme == ResourceScheme.FILE ?
-        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(path + TARGETMAP_FILENAME_SUFFIX))) :
-        wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
-      scheme == ResourceScheme.FILE ?
-        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(path + POSDICT_FILENAME_SUFFIX))) :
-        wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
-      scheme == ResourceScheme.FILE ?
-        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(path + DICT_FILENAME_SUFFIX))) :
-        wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX))
-    );
+        scheme == ResourceScheme.FILE
+            ? wrapInputStreamSupplier(
+                () -> Files.newInputStream(Paths.get(path + TARGETMAP_FILENAME_SUFFIX)))
+            : wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
+        scheme == ResourceScheme.FILE
+            ? wrapInputStreamSupplier(
+                () -> Files.newInputStream(Paths.get(path + POSDICT_FILENAME_SUFFIX)))
+            : wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
+        scheme == ResourceScheme.FILE
+            ? wrapInputStreamSupplier(
+                () -> Files.newInputStream(Paths.get(path + DICT_FILENAME_SUFFIX)))
+            : wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)));
   }
 
   /**
