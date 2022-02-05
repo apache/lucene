@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+import static org.apache.lucene.util.IOUtils.ResourceSupplier;
+
 import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -25,7 +27,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.function.Supplier;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -58,9 +59,9 @@ public abstract class BinaryDictionary implements Dictionary {
   private final String[] inflFormDict;
 
   protected BinaryDictionary(
-      Supplier<InputStream> targetMapResource,
-      Supplier<InputStream> posResource,
-      Supplier<InputStream> dictResource)
+      ResourceSupplier<InputStream> targetMapResource,
+      ResourceSupplier<InputStream> posResource,
+      ResourceSupplier<InputStream> dictResource)
       throws IOException {
     try (InputStream mapIS = new BufferedInputStream(targetMapResource.get())) {
       final DataInput in = new InputStreamDataInput(mapIS);
@@ -95,8 +96,8 @@ public abstract class BinaryDictionary implements Dictionary {
     }
   }
 
-  private static void populateTargetMap(
-      DataInput in, int[] targetMap, int[] targetMapOffsets) throws IOException {
+  private static void populateTargetMap(DataInput in, int[] targetMap, int[] targetMapOffsets)
+      throws IOException {
     int accum = 0, sourceId = 0;
     for (int ofs = 0; ofs < targetMap.length; ofs++) {
       final int val = in.readVInt();

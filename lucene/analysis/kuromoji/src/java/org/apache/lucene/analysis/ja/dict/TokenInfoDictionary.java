@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.analysis.ja.util.DictionaryIOUtil.wrapInputStreamSupplier;
+import static org.apache.lucene.util.IOUtils.ResourceSupplier;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -24,7 +24,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.function.Supplier;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOUtils;
@@ -52,21 +51,17 @@ public final class TokenInfoDictionary extends BinaryDictionary {
       throws IOException {
     this(
         resourceScheme == ResourceScheme.FILE
-            ? wrapInputStreamSupplier(
-                () -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX)))
-            : wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
+            ? () -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX))
+            : () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
         resourceScheme == ResourceScheme.FILE
-            ? wrapInputStreamSupplier(
-                () -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX)))
-            : wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
+            ? () -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX))
+            : () -> getClassResource(POSDICT_FILENAME_SUFFIX),
         resourceScheme == ResourceScheme.FILE
-            ? wrapInputStreamSupplier(
-                () -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX)))
-            : wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)),
+            ? () -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX))
+            : () -> getClassResource(DICT_FILENAME_SUFFIX),
         resourceScheme == ResourceScheme.FILE
-            ? wrapInputStreamSupplier(
-                () -> Files.newInputStream(Paths.get(resourcePath + FST_FILENAME_SUFFIX)))
-            : wrapInputStreamSupplier(() -> getClassResource(FST_FILENAME_SUFFIX)));
+            ? () -> Files.newInputStream(Paths.get(resourcePath + FST_FILENAME_SUFFIX))
+            : () -> getClassResource(FST_FILENAME_SUFFIX));
   }
 
   /**
@@ -81,25 +76,25 @@ public final class TokenInfoDictionary extends BinaryDictionary {
   public TokenInfoDictionary(Path targetMapFile, Path posDictFile, Path dictFile, Path fstFile)
       throws IOException {
     this(
-        wrapInputStreamSupplier(() -> Files.newInputStream(targetMapFile)),
-        wrapInputStreamSupplier(() -> Files.newInputStream(posDictFile)),
-        wrapInputStreamSupplier(() -> Files.newInputStream(dictFile)),
-        wrapInputStreamSupplier(() -> Files.newInputStream(fstFile)));
+        () -> Files.newInputStream(targetMapFile),
+        () -> Files.newInputStream(posDictFile),
+        () -> Files.newInputStream(dictFile),
+        () -> Files.newInputStream(fstFile));
   }
 
   private TokenInfoDictionary() throws IOException {
     this(
-        wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
-        wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
-        wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)),
-        wrapInputStreamSupplier(() -> getClassResource(FST_FILENAME_SUFFIX)));
+        () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
+        () -> getClassResource(POSDICT_FILENAME_SUFFIX),
+        () -> getClassResource(DICT_FILENAME_SUFFIX),
+        () -> getClassResource(FST_FILENAME_SUFFIX));
   }
 
   private TokenInfoDictionary(
-      Supplier<InputStream> targetMapResource,
-      Supplier<InputStream> posResource,
-      Supplier<InputStream> dictResource,
-      Supplier<InputStream> fstResource)
+      ResourceSupplier<InputStream> targetMapResource,
+      ResourceSupplier<InputStream> posResource,
+      ResourceSupplier<InputStream> dictResource,
+      ResourceSupplier<InputStream> fstResource)
       throws IOException {
     super(targetMapResource, posResource, dictResource);
     FST<Long> fst;

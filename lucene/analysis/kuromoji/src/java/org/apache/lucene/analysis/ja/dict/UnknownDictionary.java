@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.analysis.ja.util.DictionaryIOUtil.wrapInputStreamSupplier;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -40,17 +38,14 @@ public final class UnknownDictionary extends BinaryDictionary {
   public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
     super(
         scheme == ResourceScheme.FILE
-            ? wrapInputStreamSupplier(
-                () -> Files.newInputStream(Paths.get(path + TARGETMAP_FILENAME_SUFFIX)))
-            : wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
+            ? () -> Files.newInputStream(Paths.get(path + TARGETMAP_FILENAME_SUFFIX))
+            : () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
         scheme == ResourceScheme.FILE
-            ? wrapInputStreamSupplier(
-                () -> Files.newInputStream(Paths.get(path + POSDICT_FILENAME_SUFFIX)))
-            : wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
+            ? () -> Files.newInputStream(Paths.get(path + POSDICT_FILENAME_SUFFIX))
+            : () -> getClassResource(POSDICT_FILENAME_SUFFIX),
         scheme == ResourceScheme.FILE
-            ? wrapInputStreamSupplier(
-                () -> Files.newInputStream(Paths.get(path + DICT_FILENAME_SUFFIX)))
-            : wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)));
+            ? () -> Files.newInputStream(Paths.get(path + DICT_FILENAME_SUFFIX))
+            : () -> getClassResource(DICT_FILENAME_SUFFIX));
   }
 
   /**
@@ -63,16 +58,16 @@ public final class UnknownDictionary extends BinaryDictionary {
    */
   public UnknownDictionary(Path targetMapFile, Path posDictFile, Path dictFile) throws IOException {
     super(
-        wrapInputStreamSupplier(() -> Files.newInputStream(targetMapFile)),
-        wrapInputStreamSupplier(() -> Files.newInputStream(posDictFile)),
-        wrapInputStreamSupplier(() -> Files.newInputStream(dictFile)));
+        () -> Files.newInputStream(targetMapFile),
+        () -> Files.newInputStream(posDictFile),
+        () -> Files.newInputStream(dictFile));
   }
 
   private UnknownDictionary() throws IOException {
     super(
-        wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
-        wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
-        wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)));
+        () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
+        () -> getClassResource(POSDICT_FILENAME_SUFFIX),
+        () -> getClassResource(DICT_FILENAME_SUFFIX));
   }
 
   private static InputStream getClassResource(String suffix) throws IOException {

@@ -526,4 +526,14 @@ public final class IOUtils {
   public interface IOFunction<T, R> {
     R apply(T t) throws IOException;
   }
+
+  /**
+   * A resource supplier function that may throw on IOException
+   *
+   * @see java.util.function.Supplier
+   */
+  @FunctionalInterface
+  public interface ResourceSupplier<T> {
+    T get() throws IOException;
+  }
 }

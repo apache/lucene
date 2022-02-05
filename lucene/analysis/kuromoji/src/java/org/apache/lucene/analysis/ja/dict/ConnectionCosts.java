@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.analysis.ja.util.DictionaryIOUtil.wrapInputStreamSupplier;
+import static org.apache.lucene.util.IOUtils.ResourceSupplier;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.function.Supplier;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -50,8 +49,8 @@ public final class ConnectionCosts {
   public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
     this(
         scheme == BinaryDictionary.ResourceScheme.FILE
-            ? wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(path + FILENAME_SUFFIX)))
-            : wrapInputStreamSupplier(() -> getClassResource(FILENAME_SUFFIX)));
+            ? () -> Files.newInputStream(Paths.get(path + FILENAME_SUFFIX))
+            : () -> getClassResource(FILENAME_SUFFIX));
   }
 
   /**
@@ -61,14 +60,14 @@ public final class ConnectionCosts {
    * @throws IOException if resource was not found or broken
    */
   public ConnectionCosts(Path connectionCostsFile) throws IOException {
-    this(wrapInputStreamSupplier(() -> Files.newInputStream(connectionCostsFile)));
+    this(() -> Files.newInputStream(connectionCostsFile));
   }
 
   private ConnectionCosts() throws IOException {
-    this(wrapInputStreamSupplier(() -> getClassResource(FILENAME_SUFFIX)));
+    this(() -> getClassResource(FILENAME_SUFFIX));
   }
 
-  private ConnectionCosts(Supplier<InputStream> connectionCostResource) throws IOException {
+  private ConnectionCosts(ResourceSupplier<InputStream> connectionCostResource) throws IOException {
     try (InputStream is = new BufferedInputStream(connectionCostResource.get())) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
