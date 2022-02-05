@@ -166,7 +166,7 @@ public abstract class BinaryDictionary implements Dictionary {
     }
 
     try (InputStream posIS = new BufferedInputStream(posResource.get())) {
-      DataInput in = new InputStreamDataInput(posIS);
+      final DataInput in = new InputStreamDataInput(posIS);
       CodecUtil.checkHeader(in, POSDICT_HEADER, VERSION, VERSION);
       final int posSize = in.readVInt();
       this.posDict = new String[posSize];
