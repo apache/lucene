@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.function.Supplier;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
@@ -43,7 +43,7 @@ public final class ConnectionCosts {
   /**
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
    * @param path - where to load resources from, without the ".dat" suffix
-   * @deprecated replaced by {@link #ConnectionCosts(String)}
+   * @deprecated replaced by {@link #ConnectionCosts(Path)}
    */
   @Deprecated
   public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
@@ -72,13 +72,11 @@ public final class ConnectionCosts {
   /**
    * Create a {@link ConnectionCosts} from an external resource path.
    *
-   * @param resourceLocation where to load resources from
+   * @param connectionCostsFile where to load connection costs resource
    * @throws IOException if resource was not found or broken
    */
-  public ConnectionCosts(String resourceLocation) throws IOException {
-    this(
-        wrapInputStreamSupplier(
-            () -> Files.newInputStream(Paths.get(resourceLocation + FILENAME_SUFFIX))));
+  public ConnectionCosts(Path connectionCostsFile) throws IOException {
+    this(wrapInputStreamSupplier(() -> Files.newInputStream(connectionCostsFile)));
   }
 
   private ConnectionCosts() throws IOException {

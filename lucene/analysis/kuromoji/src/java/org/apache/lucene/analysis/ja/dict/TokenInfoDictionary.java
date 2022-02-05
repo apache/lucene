@@ -22,7 +22,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.function.Supplier;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -44,7 +44,7 @@ public final class TokenInfoDictionary extends BinaryDictionary {
    * @param resourceScheme - scheme for loading resources (FILE or CLASSPATH).
    * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
    *     scheme only, use this class's name as the path.
-   * @deprecated replaced by {@link #TokenInfoDictionary(String)}
+   * @deprecated replaced by {@link #TokenInfoDictionary(Path, Path, Path, Path)}
    */
   @Deprecated
   public TokenInfoDictionary(ResourceScheme resourceScheme, String resourcePath)
@@ -62,19 +62,19 @@ public final class TokenInfoDictionary extends BinaryDictionary {
   /**
    * Create a {@link TokenInfoDictionary} from an external resource path.
    *
-   * @param resourceLocation where to load resources (dictionaries) from.
+   * @param targetMapFile where to load target map resource
+   * @param posDictFile where to load POS dictionary resource
+   * @param dictFile where to load dictionary entries resource
+   * @param fstFile where to load encoded FST data resource
    * @throws IOException if resource was not found or broken
    */
-  public TokenInfoDictionary(String resourceLocation) throws IOException {
+  public TokenInfoDictionary(Path targetMapFile, Path posDictFile, Path dictFile, Path fstFile)
+      throws IOException {
     this(
-        wrapInputStreamSupplier(
-            () -> Files.newInputStream(Paths.get(resourceLocation + TARGETMAP_FILENAME_SUFFIX))),
-        wrapInputStreamSupplier(
-            () -> Files.newInputStream(Paths.get(resourceLocation + POSDICT_FILENAME_SUFFIX))),
-        wrapInputStreamSupplier(
-            () -> Files.newInputStream(Paths.get(resourceLocation + DICT_FILENAME_SUFFIX))),
-        wrapInputStreamSupplier(
-            () -> Files.newInputStream(Paths.get(resourceLocation + FST_FILENAME_SUFFIX))));
+        wrapInputStreamSupplier(() -> Files.newInputStream(targetMapFile)),
+        wrapInputStreamSupplier(() -> Files.newInputStream(posDictFile)),
+        wrapInputStreamSupplier(() -> Files.newInputStream(dictFile)),
+        wrapInputStreamSupplier(() -> Files.newInputStream(fstFile)));
   }
 
   private TokenInfoDictionary() throws IOException {

@@ -21,7 +21,7 @@ import static org.apache.lucene.analysis.ja.util.DictionaryIOUtil.wrapInputStrea
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
@@ -33,7 +33,7 @@ public final class UnknownDictionary extends BinaryDictionary {
    * @param scheme scheme for loading resources (FILE or CLASSPATH).
    * @param path where to load resources from; a path, including the file base name without
    *     extension; this is used to match multiple files with the same base name.
-   * @deprecated replaced by {@link #UnknownDictionary(String)}
+   * @deprecated replaced by {@link #UnknownDictionary(Path, Path, Path)}
    */
   @Deprecated
   public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
@@ -43,17 +43,16 @@ public final class UnknownDictionary extends BinaryDictionary {
   /**
    * Create a {@link UnknownDictionary} from an external resource path.
    *
-   * @param resourceLocation where to load resources (dictionaries) from.
+   * @param targetMapFile where to load target map resource
+   * @param posDictFile where to load POS dictionary resource
+   * @param dictFile where to load dictionary entries resource
    * @throws IOException if resource was not found or broken
    */
-  public UnknownDictionary(String resourceLocation) throws IOException {
+  public UnknownDictionary(Path targetMapFile, Path posDictFile, Path dictFile) throws IOException {
     super(
-        wrapInputStreamSupplier(
-            () -> Files.newInputStream(Paths.get(resourceLocation + TARGETMAP_FILENAME_SUFFIX))),
-        wrapInputStreamSupplier(
-            () -> Files.newInputStream(Paths.get(resourceLocation + POSDICT_FILENAME_SUFFIX))),
-        wrapInputStreamSupplier(
-            () -> Files.newInputStream(Paths.get(resourceLocation + DICT_FILENAME_SUFFIX))));
+        wrapInputStreamSupplier(() -> Files.newInputStream(targetMapFile)),
+        wrapInputStreamSupplier(() -> Files.newInputStream(posDictFile)),
+        wrapInputStreamSupplier(() -> Files.newInputStream(dictFile)));
   }
 
   private UnknownDictionary() throws IOException {
