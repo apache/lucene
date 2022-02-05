@@ -16,12 +16,13 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+import static org.apache.lucene.analysis.ja.util.DictionaryIOUtil.wrapInputStreamSupplier;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Supplier;
 import org.apache.lucene.codecs.CodecUtil;
@@ -72,14 +73,16 @@ public final class ConnectionCosts {
    * Create a {@link ConnectionCosts} from an external resource path.
    *
    * @param resourceLocation where to load resources from
-   * @throws IOException
+   * @throws IOException if resource was not found or broken
    */
   public ConnectionCosts(String resourceLocation) throws IOException {
-    this(openFileOrThrowRuntimeException(Paths.get(resourceLocation + FILENAME_SUFFIX)));
+    this(
+        wrapInputStreamSupplier(
+            () -> Files.newInputStream(Paths.get(resourceLocation + FILENAME_SUFFIX))));
   }
 
   private ConnectionCosts() throws IOException {
-    this(getClassResourceOrThrowRuntimeException(FILENAME_SUFFIX));
+    this(wrapInputStreamSupplier(() -> getClassResource(FILENAME_SUFFIX)));
   }
 
   private ConnectionCosts(Supplier<InputStream> connectionCostResource) throws IOException {
@@ -103,28 +106,10 @@ public final class ConnectionCosts {
     }
   }
 
-  private static Supplier<InputStream> openFileOrThrowRuntimeException(Path path)
-      throws RuntimeException {
-    return () -> {
-      try {
-        return Files.newInputStream(path);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    };
-  }
-
-  private static Supplier<InputStream> getClassResourceOrThrowRuntimeException(String suffix)
-      throws RuntimeException {
+  private static InputStream getClassResource(String suffix) throws IOException {
     final String resourcePath = ConnectionCosts.class.getSimpleName() + suffix;
-    return () -> {
-      try {
-        return IOUtils.requireResourceNonNull(
-            ConnectionCosts.class.getResourceAsStream(resourcePath), resourcePath);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    };
+    return IOUtils.requireResourceNonNull(
+        ConnectionCosts.class.getResourceAsStream(resourcePath), resourcePath);
   }
 
   public int get(int forwardId, int backwardId) {

@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Supplier;
 import org.apache.lucene.codecs.CodecUtil;
@@ -231,17 +230,6 @@ public abstract class BinaryDictionary implements Dictionary {
     this.inflTypeDict = inflTypeDict;
     this.inflFormDict = inflFormDict;
     this.buffer = buffer;
-  }
-
-  protected static Supplier<InputStream> openFileOrThrowRuntimeException(Path path)
-      throws RuntimeException {
-    return () -> {
-      try {
-        return Files.newInputStream(path);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    };
   }
 
   @Deprecated

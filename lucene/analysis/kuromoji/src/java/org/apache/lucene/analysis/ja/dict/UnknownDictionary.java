@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+import static org.apache.lucene.analysis.ja.util.DictionaryIOUtil.wrapInputStreamSupplier;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.function.Supplier;
 import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
@@ -42,33 +44,29 @@ public final class UnknownDictionary extends BinaryDictionary {
    * Create a {@link UnknownDictionary} from an external resource path.
    *
    * @param resourceLocation where to load resources (dictionaries) from.
-   * @throws IOException
+   * @throws IOException if resource was not found or broken
    */
   public UnknownDictionary(String resourceLocation) throws IOException {
     super(
-        openFileOrThrowRuntimeException(Paths.get(resourceLocation + TARGETMAP_FILENAME_SUFFIX)),
-        openFileOrThrowRuntimeException(Paths.get(resourceLocation + POSDICT_FILENAME_SUFFIX)),
-        openFileOrThrowRuntimeException(Paths.get(resourceLocation + DICT_FILENAME_SUFFIX)));
+        wrapInputStreamSupplier(
+            () -> Files.newInputStream(Paths.get(resourceLocation + TARGETMAP_FILENAME_SUFFIX))),
+        wrapInputStreamSupplier(
+            () -> Files.newInputStream(Paths.get(resourceLocation + POSDICT_FILENAME_SUFFIX))),
+        wrapInputStreamSupplier(
+            () -> Files.newInputStream(Paths.get(resourceLocation + DICT_FILENAME_SUFFIX))));
   }
 
   private UnknownDictionary() throws IOException {
     super(
-        getClassResourceOrThrowRuntimeException(TARGETMAP_FILENAME_SUFFIX),
-        getClassResourceOrThrowRuntimeException(POSDICT_FILENAME_SUFFIX),
-        getClassResourceOrThrowRuntimeException(DICT_FILENAME_SUFFIX));
+        wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
+        wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
+        wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)));
   }
 
-  private static Supplier<InputStream> getClassResourceOrThrowRuntimeException(String suffix)
-      throws RuntimeException {
+  private static InputStream getClassResource(String suffix) throws IOException {
     final String resourcePath = UnknownDictionary.class.getSimpleName() + suffix;
-    return () -> {
-      try {
-        return IOUtils.requireResourceNonNull(
-            UnknownDictionary.class.getResourceAsStream(resourcePath), resourcePath);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    };
+    return IOUtils.requireResourceNonNull(
+        UnknownDictionary.class.getResourceAsStream(resourcePath), resourcePath);
   }
 
   public int lookup(char[] text, int offset, int len) {

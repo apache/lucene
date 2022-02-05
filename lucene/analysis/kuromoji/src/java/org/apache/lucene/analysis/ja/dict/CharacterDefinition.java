@@ -69,11 +69,7 @@ public final class CharacterDefinition {
   public static final byte KANJINUMERIC = (byte) CharacterClass.KANJINUMERIC.ordinal();
 
   private CharacterDefinition() throws IOException {
-    final String resourcePath = CharacterDefinition.class.getSimpleName() + FILENAME_SUFFIX;
-    try (InputStream is =
-        new BufferedInputStream(
-            IOUtils.requireResourceNonNull(
-                CharacterDefinition.class.getResourceAsStream(resourcePath), resourcePath))) {
+    try (InputStream is = new BufferedInputStream(getClassResource(FILENAME_SUFFIX))) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       in.readBytes(characterCategoryMap, 0, characterCategoryMap.length);
@@ -83,6 +79,12 @@ public final class CharacterDefinition {
         groupMap[i] = (b & 0x02) != 0;
       }
     }
+  }
+
+  private static InputStream getClassResource(String suffix) throws IOException {
+    final String resourcePath = CharacterDefinition.class.getSimpleName() + FILENAME_SUFFIX;
+    return IOUtils.requireResourceNonNull(
+        CharacterDefinition.class.getResourceAsStream(resourcePath), resourcePath);
   }
 
   public byte getCharacterClass(char c) {
