@@ -528,7 +528,7 @@ public final class IOUtils {
   }
 
   /**
-   * A resource supplier function that may throw on IOException
+   * A resource supplier function that may throw an IOException
    *
    * @see java.util.function.Supplier
    */
