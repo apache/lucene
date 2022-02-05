@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.function.Supplier;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -49,14 +50,19 @@ public final class TokenInfoDictionary extends BinaryDictionary {
   @Deprecated
   public TokenInfoDictionary(ResourceScheme resourceScheme, String resourcePath)
       throws IOException {
-    super(resourceScheme, resourcePath);
-    FST<Long> fst;
-    try (InputStream is = new BufferedInputStream(getResource(FST_FILENAME_SUFFIX))) {
-      DataInput in = new InputStreamDataInput(is);
-      fst = new FST<>(in, in, PositiveIntOutputs.getSingleton());
-    }
-    // TODO: some way to configure?
-    this.fst = new TokenInfoFST(fst, true);
+    this(
+      resourceScheme == ResourceScheme.FILE ?
+        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX))) :
+        wrapInputStreamSupplier(() -> getClassResource(TARGETMAP_FILENAME_SUFFIX)),
+      resourceScheme == ResourceScheme.FILE ?
+        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX))) :
+        wrapInputStreamSupplier(() -> getClassResource(POSDICT_FILENAME_SUFFIX)),
+      resourceScheme == ResourceScheme.FILE ?
+        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX))) :
+        wrapInputStreamSupplier(() -> getClassResource(DICT_FILENAME_SUFFIX)),
+      resourceScheme == ResourceScheme.FILE ?
+        wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(resourcePath + FST_FILENAME_SUFFIX))) :
+        wrapInputStreamSupplier(() -> getClassResource(FST_FILENAME_SUFFIX)));
   }
 
   /**

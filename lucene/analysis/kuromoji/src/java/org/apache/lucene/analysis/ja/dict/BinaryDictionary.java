@@ -59,11 +59,12 @@ public abstract class BinaryDictionary implements Dictionary {
   private final String[] inflTypeDict;
   private final String[] inflFormDict;
 
-  /**
+  /*
    * @param resourceScheme - scheme for loading resources (FILE or CLASSPATH).
    * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
    *     scheme only, use this class's name as the path.
    */
+  /*
   @Deprecated
   protected BinaryDictionary(ResourceScheme resourceScheme, String resourcePath)
       throws IOException {
@@ -151,6 +152,7 @@ public abstract class BinaryDictionary implements Dictionary {
     this.inflFormDict = inflFormDict;
     this.buffer = buffer;
   }
+  */
 
   protected BinaryDictionary(
       Supplier<InputStream> targetMapResource,
@@ -232,6 +234,7 @@ public abstract class BinaryDictionary implements Dictionary {
     this.buffer = buffer;
   }
 
+  /*
   @Deprecated
   protected final InputStream getResource(String suffix) throws IOException {
     switch (resourceScheme) {
@@ -243,6 +246,7 @@ public abstract class BinaryDictionary implements Dictionary {
         throw new IllegalStateException("unknown resource scheme " + resourceScheme);
     }
   }
+  */
 
   @Deprecated
   public static final InputStream getResource(ResourceScheme scheme, String path)
