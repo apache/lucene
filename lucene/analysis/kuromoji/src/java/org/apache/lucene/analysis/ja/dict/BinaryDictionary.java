@@ -51,8 +51,6 @@ public abstract class BinaryDictionary implements Dictionary {
   public static final String POSDICT_HEADER = "kuromoji_dict_pos";
   public static final int VERSION = 1;
 
-  private final ResourceScheme resourceScheme;
-  private final String resourcePath;
   private final ByteBuffer buffer;
   private final int[] targetMapOffsets, targetMap;
   private final String[] posDict;
@@ -159,9 +157,6 @@ public abstract class BinaryDictionary implements Dictionary {
       Supplier<InputStream> posResource,
       Supplier<InputStream> dictResource)
       throws IOException {
-    this.resourceScheme = null;
-    this.resourcePath = null;
-
     int[] targetMapOffsets = null, targetMap = null;
     String[] posDict = null;
     String[] inflFormDict = null;
