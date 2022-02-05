@@ -491,7 +491,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
   }
 
   // Make sure loading custom dictionaries from classpath works:
-  @SuppressWarnings("deprecation")
+  @SuppressWarnings("removal")
   public void testCustomDictionary() throws Exception {
     Tokenizer tokenizer =
         new JapaneseTokenizer(

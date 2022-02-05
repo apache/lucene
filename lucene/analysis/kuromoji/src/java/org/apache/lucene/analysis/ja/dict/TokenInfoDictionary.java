@@ -47,7 +47,7 @@ public final class TokenInfoDictionary extends BinaryDictionary {
    *     scheme only, use this class's name as the path.
    * @deprecated replaced by {@link #TokenInfoDictionary(Path, Path, Path, Path)}
    */
-  @Deprecated
+  @Deprecated(forRemoval = true, since = "9.1")
   public TokenInfoDictionary(ResourceScheme resourceScheme, String resourcePath)
       throws IOException {
     this(

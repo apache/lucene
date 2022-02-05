@@ -36,7 +36,7 @@ public final class UnknownDictionary extends BinaryDictionary {
    *     extension; this is used to match multiple files with the same base name.
    * @deprecated replaced by {@link #UnknownDictionary(Path, Path, Path)}
    */
-  @Deprecated
+  @Deprecated(forRemoval = true, since = "9.1")
   public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
     super(
         scheme == ResourceScheme.FILE

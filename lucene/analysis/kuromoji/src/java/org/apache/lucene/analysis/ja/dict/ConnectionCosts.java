@@ -46,7 +46,7 @@ public final class ConnectionCosts {
    * @param path - where to load resources from, without the ".dat" suffix
    * @deprecated replaced by {@link #ConnectionCosts(Path)}
    */
-  @Deprecated
+  @Deprecated(forRemoval = true, since = "9.1")
   public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
     this(
         scheme == BinaryDictionary.ResourceScheme.FILE
