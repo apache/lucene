@@ -528,7 +528,10 @@ public final class IOUtils {
   }
 
   /**
-   * A resource supplier function that may throw an IOException
+   * A resource supplier function that may throw an IOException.
+   *
+   * <p>Note that this would open a resource such as a File. Consumers should make sure to close the
+   * resource (e.g., use try-with-resources)
    *
    * @see java.util.function.Supplier
    */
