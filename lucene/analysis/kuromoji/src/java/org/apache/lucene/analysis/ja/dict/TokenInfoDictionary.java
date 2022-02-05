@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.util.IOUtils.ResourceSupplier;
+import static org.apache.lucene.util.IOUtils.IOSupplier;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -91,10 +91,10 @@ public final class TokenInfoDictionary extends BinaryDictionary {
   }
 
   private TokenInfoDictionary(
-      ResourceSupplier<InputStream> targetMapResource,
-      ResourceSupplier<InputStream> posResource,
-      ResourceSupplier<InputStream> dictResource,
-      ResourceSupplier<InputStream> fstResource)
+      IOSupplier<InputStream> targetMapResource,
+      IOSupplier<InputStream> posResource,
+      IOSupplier<InputStream> dictResource,
+      IOSupplier<InputStream> fstResource)
       throws IOException {
     super(targetMapResource, posResource, dictResource);
     FST<Long> fst;

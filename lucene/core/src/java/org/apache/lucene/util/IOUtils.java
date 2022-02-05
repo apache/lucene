@@ -533,7 +533,7 @@ public final class IOUtils {
    * @see java.util.function.Supplier
    */
   @FunctionalInterface
-  public interface ResourceSupplier<T> {
+  public interface IOSupplier<T> {
     T get() throws IOException;
   }
 }

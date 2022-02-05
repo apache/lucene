@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.util.IOUtils.ResourceSupplier;
+import static org.apache.lucene.util.IOUtils.IOSupplier;
 
 import java.io.BufferedInputStream;
 import java.io.EOFException;
@@ -59,9 +59,9 @@ public abstract class BinaryDictionary implements Dictionary {
   private final String[] inflFormDict;
 
   protected BinaryDictionary(
-      ResourceSupplier<InputStream> targetMapResource,
-      ResourceSupplier<InputStream> posResource,
-      ResourceSupplier<InputStream> dictResource)
+      IOSupplier<InputStream> targetMapResource,
+      IOSupplier<InputStream> posResource,
+      IOSupplier<InputStream> dictResource)
       throws IOException {
     try (InputStream mapIS = new BufferedInputStream(targetMapResource.get())) {
       final DataInput in = new InputStreamDataInput(mapIS);

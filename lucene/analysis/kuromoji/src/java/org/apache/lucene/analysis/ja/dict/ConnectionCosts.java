@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.util.IOUtils.ResourceSupplier;
+import static org.apache.lucene.util.IOUtils.IOSupplier;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -67,7 +67,7 @@ public final class ConnectionCosts {
     this(() -> getClassResource(FILENAME_SUFFIX));
   }
 
-  private ConnectionCosts(ResourceSupplier<InputStream> connectionCostResource) throws IOException {
+  private ConnectionCosts(IOSupplier<InputStream> connectionCostResource) throws IOException {
     try (InputStream is = new BufferedInputStream(connectionCostResource.get())) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
