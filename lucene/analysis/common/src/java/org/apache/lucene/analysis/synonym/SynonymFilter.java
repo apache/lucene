@@ -192,9 +192,7 @@ public final class SynonymFilter extends TokenFilter {
 
     public void add(char[] output, int offset, int len, int endOffset, int posLength) {
       if (count == outputs.length) {
-        // nocommit: adding a comment to try to get hunspell checks to fire in github
         outputs = ArrayUtil.grow(outputs);
-        int nocommit = 1; // is github too smart that it didn't run checks on a comment addition?
       }
       if (count == endOffsets.length) {
         final int[] next = new int[ArrayUtil.oversize(1 + count, Integer.BYTES)];
