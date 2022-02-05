@@ -57,101 +57,6 @@ public abstract class BinaryDictionary implements Dictionary {
   private final String[] inflTypeDict;
   private final String[] inflFormDict;
 
-  /*
-   * @param resourceScheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
-   *     scheme only, use this class's name as the path.
-   */
-  /*
-  @Deprecated
-  protected BinaryDictionary(ResourceScheme resourceScheme, String resourcePath)
-      throws IOException {
-    this.resourceScheme = resourceScheme;
-    if (resourcePath == null) {
-      if (resourceScheme != ResourceScheme.CLASSPATH) {
-        throw new IllegalArgumentException(
-            "resourcePath must be supplied with FILE resource scheme");
-      }
-      this.resourcePath = getClass().getSimpleName();
-    } else {
-      if (resourceScheme == ResourceScheme.CLASSPATH && !resourcePath.startsWith("/")) {
-        resourcePath = "/".concat(resourcePath);
-      }
-      this.resourcePath = resourcePath;
-    }
-    int[] targetMapOffsets = null, targetMap = null;
-    String[] posDict = null;
-    String[] inflFormDict = null;
-    String[] inflTypeDict = null;
-    ByteBuffer buffer = null;
-    try (InputStream mapIS = new BufferedInputStream(getResource(TARGETMAP_FILENAME_SUFFIX));
-        InputStream posIS = new BufferedInputStream(getResource(POSDICT_FILENAME_SUFFIX));
-        // no buffering here, as we load in one large buffer
-        InputStream dictIS = getResource(DICT_FILENAME_SUFFIX)) {
-      DataInput in = new InputStreamDataInput(mapIS);
-      CodecUtil.checkHeader(in, TARGETMAP_HEADER, VERSION, VERSION);
-      targetMap = new int[in.readVInt()];
-      targetMapOffsets = new int[in.readVInt()];
-      int accum = 0, sourceId = 0;
-      for (int ofs = 0; ofs < targetMap.length; ofs++) {
-        final int val = in.readVInt();
-        if ((val & 0x01) != 0) {
-          targetMapOffsets[sourceId] = ofs;
-          sourceId++;
-        }
-        accum += val >>> 1;
-        targetMap[ofs] = accum;
-      }
-      if (sourceId + 1 != targetMapOffsets.length)
-        throw new IOException(
-            "targetMap file format broken; targetMap.length="
-                + targetMap.length
-                + ", targetMapOffsets.length="
-                + targetMapOffsets.length
-                + ", sourceId="
-                + sourceId);
-      targetMapOffsets[sourceId] = targetMap.length;
-
-      in = new InputStreamDataInput(posIS);
-      CodecUtil.checkHeader(in, POSDICT_HEADER, VERSION, VERSION);
-      int posSize = in.readVInt();
-      posDict = new String[posSize];
-      inflTypeDict = new String[posSize];
-      inflFormDict = new String[posSize];
-      for (int j = 0; j < posSize; j++) {
-        posDict[j] = in.readString();
-        inflTypeDict[j] = in.readString();
-        inflFormDict[j] = in.readString();
-        // this is how we encode null inflections
-        if (inflTypeDict[j].length() == 0) {
-          inflTypeDict[j] = null;
-        }
-        if (inflFormDict[j].length() == 0) {
-          inflFormDict[j] = null;
-        }
-      }
-
-      in = new InputStreamDataInput(dictIS);
-      CodecUtil.checkHeader(in, DICT_HEADER, VERSION, VERSION);
-      final int size = in.readVInt();
-      final ByteBuffer tmpBuffer = ByteBuffer.allocateDirect(size);
-      final ReadableByteChannel channel = Channels.newChannel(dictIS);
-      final int read = channel.read(tmpBuffer);
-      if (read != size) {
-        throw new EOFException("Cannot read whole dictionary");
-      }
-      buffer = tmpBuffer.asReadOnlyBuffer();
-    }
-
-    this.targetMap = targetMap;
-    this.targetMapOffsets = targetMapOffsets;
-    this.posDict = posDict;
-    this.inflTypeDict = inflTypeDict;
-    this.inflFormDict = inflFormDict;
-    this.buffer = buffer;
-  }
-  */
-
   protected BinaryDictionary(
       Supplier<InputStream> targetMapResource,
       Supplier<InputStream> posResource,
@@ -229,20 +134,6 @@ public abstract class BinaryDictionary implements Dictionary {
       }
     }
   }
-
-  /*
-  @Deprecated
-  protected final InputStream getResource(String suffix) throws IOException {
-    switch (resourceScheme) {
-      case CLASSPATH:
-        return getClassResource(resourcePath + suffix);
-      case FILE:
-        return Files.newInputStream(Paths.get(resourcePath + suffix));
-      default:
-        throw new IllegalStateException("unknown resource scheme " + resourceScheme);
-    }
-  }
-  */
 
   @Deprecated(forRemoval = true, since = "9.1")
   public static final InputStream getResource(ResourceScheme scheme, String path)
