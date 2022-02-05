@@ -190,7 +190,7 @@ public abstract class BinaryDictionary implements Dictionary {
     }
   }
 
-  private static synchronized void populateTargetMap(
+  private static void populateTargetMap(
       DataInput in, int[] targetMap, int[] targetMapOffsets) throws IOException {
     int accum = 0, sourceId = 0;
     for (int ofs = 0; ofs < targetMap.length; ofs++) {
@@ -213,7 +213,7 @@ public abstract class BinaryDictionary implements Dictionary {
     targetMapOffsets[sourceId] = targetMap.length;
   }
 
-  private static synchronized void populatePosDict(
+  private static void populatePosDict(
       DataInput in, int posSize, String[] posDict, String[] inflTypeDict, String[] inflFormDict)
       throws IOException {
     for (int j = 0; j < posSize; j++) {
