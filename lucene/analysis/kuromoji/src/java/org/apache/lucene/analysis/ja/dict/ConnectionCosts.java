@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.function.Supplier;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
@@ -47,26 +48,10 @@ public final class ConnectionCosts {
    */
   @Deprecated
   public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
-    try (InputStream is =
-        new BufferedInputStream(
-            BinaryDictionary.getResource(scheme, "/" + path.replace('.', '/') + FILENAME_SUFFIX))) {
-      final DataInput in = new InputStreamDataInput(is);
-      CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
-      forwardSize = in.readVInt();
-      int backwardSize = in.readVInt();
-      int size = forwardSize * backwardSize;
-
-      // copy the matrix into a direct byte buffer
-      final ByteBuffer tmpBuffer = ByteBuffer.allocateDirect(size * 2);
-      int accum = 0;
-      for (int j = 0; j < backwardSize; j++) {
-        for (int i = 0; i < forwardSize; i++) {
-          accum += in.readZInt();
-          tmpBuffer.putShort((short) accum);
-        }
-      }
-      buffer = tmpBuffer.asReadOnlyBuffer();
-    }
+    this(
+        scheme == BinaryDictionary.ResourceScheme.FILE
+            ? wrapInputStreamSupplier(() -> Files.newInputStream(Paths.get(path + FILENAME_SUFFIX)))
+            : wrapInputStreamSupplier(() -> getClassResource(FILENAME_SUFFIX)));
   }
 
   /**
