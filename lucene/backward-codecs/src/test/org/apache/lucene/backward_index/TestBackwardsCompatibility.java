@@ -17,7 +17,7 @@
 package org.apache.lucene.backward_index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.Version.LUCENE_10_0_0;
+import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -163,8 +163,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private static final int DOCS_COUNT = 35;
   private static final int DELETED_ID = 7;
 
-  // change version to 9 when we update 9 backward indices to include KNN field
-  private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_10_0_0.major;
+  private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
       KnnVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
@@ -1038,9 +1037,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void testSearchOldIndex() throws IOException {
+  public void testSearchOldIndex() throws Exception {
     for (String name : oldNames) {
-      searchIndex(oldIndexDirs.get(name), name, Version.MIN_SUPPORTED_MAJOR);
+      Version version = Version.parse(name.substring(0, name.indexOf('-')));
+      searchIndex(oldIndexDirs.get(name), name, Version.MIN_SUPPORTED_MAJOR, version);
     }
 
     if (TEST_NIGHTLY) {
@@ -1048,7 +1048,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         Path oldIndexDir = createTempDir(name);
         TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
         try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
-          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR);
+          Version version = Version.parse(name.substring(0, name.indexOf('-')));
+          searchIndex(dir, name, MIN_BINARY_SUPPORTED_MAJOR, version);
         }
       }
     }
@@ -1085,7 +1086,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     }
   }
 
-  public void searchIndex(Directory dir, String oldName, int minIndexMajorVersion)
+  public void searchIndex(
+      Directory dir, String oldName, int minIndexMajorVersion, Version nameVersion)
       throws IOException {
     // QueryParser parser = new QueryParser("contents", new MockAnalyzer(random));
     // Query query = parser.parse("handle:1");
@@ -1296,7 +1298,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         searcher.getIndexReader());
 
     // test vector values and KNN search
-    if (minIndexMajorVersion >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
+    if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
       // test vector values
       int cnt = 0;
       for (LeafReaderContext ctx : reader.leaves()) {

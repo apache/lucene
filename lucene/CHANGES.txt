@@ -80,6 +80,10 @@ API Changes
   resource path in those classes are deprecated; These are replaced with the new constructors and planned to be
   removed in a future release. (Tomoko Uchida, Uwe Schindler, Mike Sokolov)
 
+* LUCENE-10050: Deprecate DrillSideways#search(Query, Collector) in favor of
+  DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
+  IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
+
 New Features
 ---------------------
 
@@ -133,6 +137,9 @@ New Features
   based on TotalHitCountCollector that allows users to parallelize counting the
   number of hits. (Luca Cavanna, Adrien Grand)
 
+* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
+  to speed up computing the number of hits when possible. (Luca Cavanna, Adrien Grand)
+
 Improvements
 ---------------------
 
@@ -154,6 +161,9 @@ Improvements
 
 * LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
   with or without offsets enabled. (Patrick Zhai)
+
+* LUCENE-10054 Make HnswGraph hierarchical (Mayya Sharipova, Julie Tibshirani, Mike Sokolov,
+  Adrien Grand)
 
 Optimizations
 ---------------------
@@ -218,6 +228,15 @@ Bug Fixes
 
 * LUCENE-9952: Address inaccurate dim counts for SSDV faceting in cases where a dim is configured
   as multi-valued. (Greg Miller)
+
+* LUCENE-10401: Fix lookups on empty doc-value terms dictionaries to no longer
+  throw an ArrayIndexOutOfBoundsException. (Adrien Grand)
+
+* LUCENE-10402: Prefix intervals should declare their automaton as binary, otherwise prefixes
+  containing multibyte characters will not correctly match. (Alan Woodward)
+
+* LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
+  in a disjunction. (Alan Woodward, Dawid Weiss)
 
 Other
 ---------------------

@@ -26,6 +26,7 @@ import java.util.SplittableRandom;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -51,6 +52,8 @@ public final class HnswGraphBuilder {
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
   private final BoundsChecker bound;
+  private final HnswGraphSearcher graphSearcher;
+
   final HnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
@@ -93,6 +96,11 @@ public final class HnswGraphBuilder {
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
     this.hnsw = new HnswGraph(maxConn, levelOfFirstNode);
+    this.graphSearcher =
+        new HnswGraphSearcher(
+            similarityFunction,
+            new NeighborQueue(beamWidth, similarityFunction.reversed == false),
+            new FixedBitSet(vectorValues.size()));
     bound = BoundsChecker.create(similarityFunction.reversed);
     scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
@@ -140,17 +148,16 @@ public final class HnswGraphBuilder {
     for (int level = nodeLevel; level > curMaxLevel; level--) {
       hnsw.addNode(level, node);
     }
+
     // for levels > nodeLevel search with topk = 1
     for (int level = curMaxLevel; level > nodeLevel; level--) {
-      candidates =
-          HnswGraph.searchLevel(value, 1, level, eps, vectorValues, similarityFunction, hnsw, null);
+      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectorValues, hnsw, null);
       eps = new int[] {candidates.pop()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
       candidates =
-          HnswGraph.searchLevel(
-              value, beamWidth, level, eps, vectorValues, similarityFunction, hnsw, null);
+          graphSearcher.searchLevel(value, beamWidth, level, eps, vectorValues, hnsw, null);
       eps = candidates.nodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
