@@ -51,7 +51,7 @@ public final class ConnectionCosts {
     this(
         scheme == BinaryDictionary.ResourceScheme.FILE
             ? () -> Files.newInputStream(Paths.get(path + FILENAME_SUFFIX))
-            : () -> getClassResource(FILENAME_SUFFIX));
+            : ConnectionCosts::getClassResource);
   }
 
   /**
@@ -65,7 +65,7 @@ public final class ConnectionCosts {
   }
 
   private ConnectionCosts() throws IOException {
-    this(() -> getClassResource(FILENAME_SUFFIX));
+    this(ConnectionCosts::getClassResource);
   }
 
   private ConnectionCosts(IOSupplier<InputStream> connectionCostResource) throws IOException {
@@ -89,8 +89,8 @@ public final class ConnectionCosts {
     }
   }
 
-  private static InputStream getClassResource(String suffix) throws IOException {
-    final String resourcePath = ConnectionCosts.class.getSimpleName() + suffix;
+  private static InputStream getClassResource() throws IOException {
+    final String resourcePath = ConnectionCosts.class.getSimpleName() + FILENAME_SUFFIX;
     return IOUtils.requireResourceNonNull(
         ConnectionCosts.class.getResourceAsStream(resourcePath), resourcePath);
   }
