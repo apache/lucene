@@ -46,6 +46,7 @@ public final class ConnectionCosts {
    * @deprecated replaced by {@link #ConnectionCosts(Path)}
    */
   @Deprecated(forRemoval = true, since = "9.1")
+  @SuppressWarnings("removal")
   public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
     this(
         scheme == BinaryDictionary.ResourceScheme.FILE

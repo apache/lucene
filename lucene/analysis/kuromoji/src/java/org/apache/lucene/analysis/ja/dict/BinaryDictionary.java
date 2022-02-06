@@ -37,7 +37,7 @@ import org.apache.lucene.util.IntsRef;
 public abstract class BinaryDictionary implements Dictionary {
 
   /** Used to specify where (dictionary) resources get loaded from. */
-  @Deprecated
+  @Deprecated(forRemoval = true, since = "9.1")
   public enum ResourceScheme {
     CLASSPATH,
     FILE

@@ -35,6 +35,7 @@ public final class UnknownDictionary extends BinaryDictionary {
    * @deprecated replaced by {@link #UnknownDictionary(Path, Path, Path)}
    */
   @Deprecated(forRemoval = true, since = "9.1")
+  @SuppressWarnings("removal")
   public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
     super(
         scheme == ResourceScheme.FILE
