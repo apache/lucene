@@ -75,6 +75,10 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been deprecated and is no longer a supported extension point
   for user-created faceting implementations. (Greg Miller)
 
+* LUCENE-10050: Deprecate DrillSideways#search(Query, Collector) in favor of
+  DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
+  IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
+
 New Features
 ---------------------
 
@@ -155,6 +159,9 @@ Improvements
 * LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
   with or without offsets enabled. (Patrick Zhai)
 
+* LUCENE-10054 Make HnswGraph hierarchical (Mayya Sharipova, Julie Tibshirani, Mike Sokolov,
+  Adrien Grand)
+
 Optimizations
 ---------------------
 
@@ -218,6 +225,15 @@ Bug Fixes
 
 * LUCENE-9952: Address inaccurate dim counts for SSDV faceting in cases where a dim is configured
   as multi-valued. (Greg Miller)
+
+* LUCENE-10401: Fix lookups on empty doc-value terms dictionaries to no longer
+  throw an ArrayIndexOutOfBoundsException. (Adrien Grand)
+
+* LUCENE-10402: Prefix intervals should declare their automaton as binary, otherwise prefixes
+  containing multibyte characters will not correctly match. (Alan Woodward)
+
+* LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
+  in a disjunction. (Alan Woodward, Dawid Weiss)
 
 Other
 ---------------------
