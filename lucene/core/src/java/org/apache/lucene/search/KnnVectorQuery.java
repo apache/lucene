@@ -78,7 +78,7 @@ public class KnnVectorQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     BitSet[] bitSets = null;
 
-    if(filter != null) {
+    if (filter != null) {
       IndexSearcher indexSearcher = new IndexSearcher(reader);
       bitSets = new BitSet[reader.leaves().size()];
       indexSearcher.search(filter, new BitSetCollector(bitSets));
@@ -96,9 +96,14 @@ public class KnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf, Bits bitsFilter) throws IOException {
+  private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf, Bits bitsFilter)
+      throws IOException {
+    // If the filter is non-null, then it already handles live docs
+    if (bitsFilter == null) {
+      bitsFilter = ctx.reader().getLiveDocs();
+    }
 
-    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, bitsFilter != null ? bitsFilter : ctx.reader().getLiveDocs());
+    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, bitsFilter);
     if (results == null) {
       return NO_RESULTS;
     }
