@@ -85,7 +85,7 @@ final class DocIdsWriter {
       out.writeVInt(min);
       forUtil.encode16(count, scratch, out);
     } else {
-      if (max <= 0xFFFFFFL) {
+      if (max <= 0xFFFFFF) {
         out.writeByte(BPV_24);
         forUtil.encode24(start, count, docIds, out);
       } else {
