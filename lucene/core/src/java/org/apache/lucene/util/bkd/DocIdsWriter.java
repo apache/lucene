@@ -77,7 +77,7 @@ final class DocIdsWriter {
       }
     }
 
-    if (min2max <= 0xFFFFL) {
+    if (min2max <= 0xFFFF) {
       out.writeByte(DELTA_FOR_UTIL);
       for (int i = 0; i < count; i++) {
         scratch[i] = docIds[start + i] - min;
