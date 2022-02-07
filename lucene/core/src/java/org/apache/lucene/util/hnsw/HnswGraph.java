@@ -19,11 +19,10 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import org.apache.lucene.index.KnnGraphValues;
-import org.apache.lucene.util.ArrayUtil;
+import java.io.IOException;
+import java.util.NoSuchElementException;
+import java.util.PrimitiveIterator;
+import org.apache.lucene.index.VectorValues;
 
 /**
  * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
@@ -47,142 +46,124 @@ import org.apache.lucene.util.ArrayUtil;
  * thread-safe. The search method optionally takes a set of "accepted nodes", which can be used to
  * exclude deleted documents.
  */
-public final class HnswGraph extends KnnGraphValues {
+public abstract class HnswGraph {
 
-  private final int maxConn;
-  private int numLevels; // the current number of levels in the graph
-  private int entryNode; // the current graph entry node on the top level
-
-  // Nodes by level expressed as the level 0's nodes' ordinals.
-  // As level 0 contains all nodes, nodesByLevel.get(0) is null.
-  private final List<int[]> nodesByLevel;
-
-  // graph is a list of graph levels.
-  // Each level is represented as List<NeighborArray> – nodes' connections on this level.
-  // Each entry in the list has the top maxConn neighbors of a node. The nodes correspond to vectors
-  // added to HnswBuilder, and the node values are the ordinals of those vectors.
-  // Thus, on all levels, neighbors expressed as the level 0's nodes' ordinals.
-  private final List<List<NeighborArray>> graph;
-
-  // KnnGraphValues iterator members
-  private int upto;
-  private NeighborArray cur;
-
-  HnswGraph(int maxConn, int levelOfFirstNode) {
-    this.maxConn = maxConn;
-    this.numLevels = levelOfFirstNode + 1;
-    this.graph = new ArrayList<>(numLevels);
-    this.entryNode = 0;
-    for (int i = 0; i < numLevels; i++) {
-      graph.add(new ArrayList<>());
-      // Typically with diversity criteria we see nodes not fully occupied;
-      // average fanout seems to be about 1/2 maxConn.
-      // There is some indexing time penalty for under-allocating, but saves RAM
-      graph.get(i).add(new NeighborArray(Math.max(32, maxConn / 4)));
-    }
-
-    this.nodesByLevel = new ArrayList<>(numLevels);
-    nodesByLevel.add(null); // we don't need this for 0th level, as it contains all nodes
-    for (int l = 1; l < numLevels; l++) {
-      nodesByLevel.add(new int[] {0});
-    }
-  }
+  /** Sole constructor */
+  protected HnswGraph() {}
 
   /**
-   * Returns the {@link NeighborQueue} connected to the given node.
+   * Move the pointer to exactly the given {@code level}'s {@code target}. After this method
+   * returns, call {@link #nextNeighbor()} to return successive (ordered) connected node ordinals.
    *
    * @param level level of the graph
-   * @param node the node whose neighbors are returned, represented as an ordinal on the level 0.
+   * @param target ordinal of a node in the graph, must be &ge; 0 and &lt; {@link
+   *     VectorValues#size()}.
    */
-  public NeighborArray getNeighbors(int level, int node) {
-    if (level == 0) {
-      return graph.get(level).get(node);
-    }
-    int nodeIndex = Arrays.binarySearch(nodesByLevel.get(level), 0, graph.get(level).size(), node);
-    assert nodeIndex >= 0;
-    return graph.get(level).get(nodeIndex);
-  }
+  public abstract void seek(int level, int target) throws IOException;
 
-  @Override
-  public int size() {
-    return graph.get(0).size(); // all nodes are located on the 0th level
-  }
+  /** Returns the number of nodes in the graph */
+  public abstract int size();
 
   /**
-   * Add node on the given level
+   * Iterates over the neighbor list. It is illegal to call this method after it returns
+   * NO_MORE_DOCS without calling {@link #seek(int, int)}, which resets the iterator.
    *
-   * @param level level to add a node on
-   * @param node the node to add, represented as an ordinal on the level 0.
+   * @return a node ordinal in the graph, or NO_MORE_DOCS if the iteration is complete.
    */
-  public void addNode(int level, int node) {
-    if (level > 0) {
-      // if the new node introduces a new level, add more levels to the graph,
-      // and make this node the graph's new entry point
-      if (level >= numLevels) {
-        for (int i = numLevels; i <= level; i++) {
-          graph.add(new ArrayList<>());
-          nodesByLevel.add(new int[] {node});
+  public abstract int nextNeighbor() throws IOException;
+
+  /** Returns the number of levels of the graph */
+  public abstract int numLevels() throws IOException;
+
+  /** Returns graph's entry point on the top level * */
+  public abstract int entryNode() throws IOException;
+
+  /**
+   * Get all nodes on a given level as node 0th ordinals
+   *
+   * @param level level for which to get all nodes
+   * @return an iterator over nodes where {@code nextInt} returns a next node on the level
+   */
+  public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
+
+  /** Empty graph value */
+  public static HnswGraph EMPTY =
+      new HnswGraph() {
+
+        @Override
+        public int nextNeighbor() {
+          return NO_MORE_DOCS;
         }
-        numLevels = level + 1;
-        entryNode = node;
+
+        @Override
+        public void seek(int level, int target) {}
+
+        @Override
+        public int size() {
+          return 0;
+        }
+
+        @Override
+        public int numLevels() {
+          return 0;
+        }
+
+        @Override
+        public int entryNode() {
+          return 0;
+        }
+
+        @Override
+        public NodesIterator getNodesOnLevel(int level) {
+          return NodesIterator.EMPTY;
+        }
+      };
+
+  /**
+   * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total
+   * number of nodes to be iterated over.
+   */
+  public static final class NodesIterator implements PrimitiveIterator.OfInt {
+    static NodesIterator EMPTY = new NodesIterator(0);
+
+    private final int[] nodes;
+    private final int size;
+    int cur = 0;
+
+    /** Constructor for iterator based on the nodes array up to the size */
+    public NodesIterator(int[] nodes, int size) {
+      assert nodes != null;
+      assert size <= nodes.length;
+      this.nodes = nodes;
+      this.size = size;
+    }
+
+    /** Constructor for iterator based on the size */
+    public NodesIterator(int size) {
+      this.nodes = null;
+      this.size = size;
+    }
+
+    @Override
+    public int nextInt() {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      if (nodes == null) {
+        return cur++;
       } else {
-        // Add this node id to this level's nodes
-        int[] nodes = nodesByLevel.get(level);
-        int idx = graph.get(level).size();
-        if (idx < nodes.length) {
-          nodes[idx] = node;
-        } else {
-          nodes = ArrayUtil.grow(nodes);
-          nodes[idx] = node;
-          nodesByLevel.set(level, nodes);
-        }
+        return nodes[cur++];
       }
     }
 
-    graph.get(level).add(new NeighborArray(maxConn + 1));
-  }
-
-  @Override
-  public void seek(int level, int targetNode) {
-    cur = getNeighbors(level, targetNode);
-    upto = -1;
-  }
-
-  @Override
-  public int nextNeighbor() {
-    if (++upto < cur.size()) {
-      return cur.node[upto];
+    @Override
+    public boolean hasNext() {
+      return cur < size;
     }
-    return NO_MORE_DOCS;
-  }
 
-  /**
-   * Returns the current number of levels in the graph
-   *
-   * @return the current number of levels in the graph
-   */
-  @Override
-  public int numLevels() {
-    return numLevels;
-  }
-
-  /**
-   * Returns the graph's current entry node on the top level shown as ordinals of the nodes on 0th
-   * level
-   *
-   * @return the graph's current entry node on the top level
-   */
-  @Override
-  public int entryNode() {
-    return entryNode;
-  }
-
-  @Override
-  public NodesIterator getNodesOnLevel(int level) {
-    if (level == 0) {
-      return new NodesIterator(size());
-    } else {
-      return new NodesIterator(nodesByLevel.get(level), graph.get(level).size());
+    /** The number of elements in this iterator * */
+    public int size() {
+      return size;
     }
   }
 }

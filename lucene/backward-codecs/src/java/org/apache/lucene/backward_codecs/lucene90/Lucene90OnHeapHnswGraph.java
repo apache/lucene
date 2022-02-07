@@ -23,42 +23,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
-import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.hnsw.BoundsChecker;
+import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
- * Navigable Small-world graph. Provides efficient approximate nearest neighbor search for high
- * dimensional vectors. See <a href="https://doi.org/10.1016/j.is.2013.10.006">Approximate nearest
- * neighbor algorithm based on navigable small world graphs [2014]</a> and <a
- * href="https://arxiv.org/abs/1603.09320">this paper [2018]</a> for details.
- *
- * <p>The nomenclature is a bit different here from what's used in those papers:
- *
- * <h2>Hyperparameters</h2>
- *
- * <ul>
- *   <li><code>numSeed</code> is the equivalent of <code>m</code> in the 2014 paper; it controls the
- *       number of random entry points to sample.
- *   <li><code>beamWidth</code> in {@link Lucene90HnswGraphBuilder} has the same meaning as <code>
- *       efConst </code> in the 2018 paper. It is the number of nearest neighbor candidates to track
- *       while searching the graph for each newly inserted node.
- *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the later paper; it controls
- *       how many of the <code>efConst</code> neighbors are connected to the new node
- * </ul>
- *
- * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
- * thread-safe. Also note: there is no notion of deletions. Document searching built on top of this
- * must do its own deletion-filtering.
- *
- * <p>Graph building logic is preserved here only for tests.
+ * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
+ * construct the HNSW graph before it's written to the index.
  */
-public final class Lucene90HnswGraph extends KnnGraphValues {
+public final class Lucene90OnHeapHnswGraph extends HnswGraph {
 
   private final int maxConn;
 
@@ -71,7 +49,7 @@ public final class Lucene90HnswGraph extends KnnGraphValues {
   private int upto;
   private NeighborArray cur;
 
-  Lucene90HnswGraph(int maxConn) {
+  Lucene90OnHeapHnswGraph(int maxConn) {
     graph = new ArrayList<>();
     // Typically with diversity criteria we see nodes not fully occupied; average fanout seems to be
     // about 1/2 maxConn. There is some indexing time penalty for under-allocating, but saves RAM
@@ -100,7 +78,7 @@ public final class Lucene90HnswGraph extends KnnGraphValues {
       int numSeed,
       RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
-      KnnGraphValues graphValues,
+      HnswGraph graphValues,
       Bits acceptOrds,
       SplittableRandom random)
       throws IOException {
