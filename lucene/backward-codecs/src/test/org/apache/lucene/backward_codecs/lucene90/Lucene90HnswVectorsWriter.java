@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -26,7 +26,6 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -36,8 +35,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 
 /**
@@ -114,79 +111,16 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
-    // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
-    int[] docIds = writeVectorData(vectorData, vectors);
-    assert vectors.size() == docIds.length;
 
-    long[] offsets = new long[docIds.length];
-    long vectorIndexOffset = vectorIndex.getFilePointer();
-    if (vectors instanceof RandomAccessVectorValuesProducer) {
-      writeGraph(
-          vectorIndex,
-          (RandomAccessVectorValuesProducer) vectors,
-          fieldInfo.getVectorSimilarityFunction(),
-          vectorIndexOffset,
-          offsets,
-          maxConn,
-          beamWidth);
-    } else {
-      throw new IllegalArgumentException(
-          "Indexing an HNSW graph requires a random access vector values, got " + vectors);
-    }
-
-    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-    writeMeta(
-        fieldInfo,
-        vectorDataOffset,
-        vectorDataLength,
-        vectorIndexOffset,
-        vectorIndexLength,
-        docIds);
-    writeGraphOffsets(meta, offsets);
-  }
-
-  @Override
-  public void merge(MergeState mergeState) throws IOException {
-    for (int i = 0; i < mergeState.fieldInfos.length; i++) {
-      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
-      assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
-      if (reader != null) {
-        reader.checkIntegrity();
-      }
-    }
-
-    for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
-      if (fieldInfo.hasVectorValues()) {
-        if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
-        }
-        mergeField(fieldInfo, mergeState);
-        if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
-        }
-      }
-    }
-    finish();
-  }
-
-  private void mergeField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (mergeState.infoStream.isEnabled("VV")) {
-      mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
-    }
-
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-
-    VectorValues vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
     IndexInput vectorDataInput = null;
     boolean success = false;
     try {
-      // write the merged vector data to a temporary file
+      // write the vector data to a temporary file
+      // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
       int[] docIds = writeVectorData(tempVectorData, vectors);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -234,10 +168,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
         IOUtils.deleteFilesIgnoringExceptions(
             segmentWriteState.directory, tempVectorData.getName());
       }
-    }
-
-    if (mergeState.infoStream.isEnabled("VV")) {
-      mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
     }
   }
 
@@ -303,11 +233,15 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       int maxConn,
       int beamWidth)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(
-            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+    Lucene90HnswGraphBuilder hnswGraphBuilder =
+        new Lucene90HnswGraphBuilder(
+            vectorValues,
+            similarityFunction,
+            maxConn,
+            beamWidth,
+            Lucene90HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
+    Lucene90HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
     for (int ord = 0; ord < offsets.length; ord++) {
       // write graph

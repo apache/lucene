@@ -158,7 +158,7 @@ public final class Intervals {
    * @throws IllegalStateException if the prefix expands to more than {@code maxExpansions} terms
    */
   public static IntervalsSource prefix(BytesRef prefix, int maxExpansions) {
-    CompiledAutomaton ca = new CompiledAutomaton(PrefixQuery.toAutomaton(prefix));
+    CompiledAutomaton ca = new CompiledAutomaton(PrefixQuery.toAutomaton(prefix), null, true, true);
     return new MultiTermIntervalsSource(ca, maxExpansions, prefix.utf8ToString() + "*");
   }
 

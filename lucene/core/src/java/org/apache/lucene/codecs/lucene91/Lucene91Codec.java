@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene91;
 
 import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
@@ -30,19 +30,29 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90CompoundFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90FieldInfosFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90LiveDocsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90NormsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90SegmentInfoFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90TermVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
 /**
- * Implements the Lucene 9.0 index format
+ * Implements the Lucene 9.1 index format
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *
- * @see org.apache.lucene.codecs.lucene90 package documentation for file format details.
+ * @see org.apache.lucene.codecs.lucene91 package documentation for file format details.
  * @lucene.experimental
  */
-public class Lucene90Codec extends Codec {
+public class Lucene91Codec extends Codec {
 
   /** Configuration option for the codec. */
   public enum Mode {
@@ -70,7 +80,7 @@ public class Lucene90Codec extends Codec {
       new PerFieldPostingsFormat() {
         @Override
         public PostingsFormat getPostingsFormatForField(String field) {
-          return Lucene90Codec.this.getPostingsFormatForField(field);
+          return Lucene91Codec.this.getPostingsFormatForField(field);
         }
       };
 
@@ -79,7 +89,7 @@ public class Lucene90Codec extends Codec {
       new PerFieldDocValuesFormat() {
         @Override
         public DocValuesFormat getDocValuesFormatForField(String field) {
-          return Lucene90Codec.this.getDocValuesFormatForField(field);
+          return Lucene91Codec.this.getDocValuesFormatForField(field);
         }
       };
 
@@ -88,14 +98,14 @@ public class Lucene90Codec extends Codec {
       new PerFieldKnnVectorsFormat() {
         @Override
         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-          return Lucene90Codec.this.getKnnVectorsFormatForField(field);
+          return Lucene91Codec.this.getKnnVectorsFormatForField(field);
         }
       };
 
   private final StoredFieldsFormat storedFieldsFormat;
 
   /** Instantiates a new codec. */
-  public Lucene90Codec() {
+  public Lucene91Codec() {
     this(Mode.BEST_SPEED);
   }
 
@@ -104,13 +114,13 @@ public class Lucene90Codec extends Codec {
    *
    * @param mode stored fields compression mode to use for newly flushed/merged segments.
    */
-  public Lucene90Codec(Mode mode) {
-    super("Lucene90");
+  public Lucene91Codec(Mode mode) {
+    super("Lucene91");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene90PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
-    this.defaultKnnVectorsFormat = new Lucene90HnswVectorsFormat();
+    this.defaultKnnVectorsFormat = new Lucene91HnswVectorsFormat();
   }
 
   @Override
@@ -186,7 +196,7 @@ public class Lucene90Codec extends Codec {
   /**
    * Returns the vectors format that should be used for writing new segments of <code>field</code>
    *
-   * <p>The default implementation always returns "Lucene90".
+   * <p>The default implementation always returns "Lucene91".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation.

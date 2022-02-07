@@ -62,7 +62,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
     execute(
         launcher,
         0,
-        5,
+        60,
         (output) -> {
           Assertions.assertThat(output).contains("[Vader] Hello, Luke.");
         });

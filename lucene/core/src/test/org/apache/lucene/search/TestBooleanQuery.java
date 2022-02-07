@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -492,33 +493,43 @@ public class TestBooleanQuery extends LuceneTestCase {
     final AtomicBoolean matched = new AtomicBoolean();
     searcher.search(
         bq,
-        new SimpleCollector() {
-          int docBase;
-          Scorable scorer;
-
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            super.doSetNextReader(context);
-            docBase = context.docBase;
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+              int docBase;
+              Scorable scorer;
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) throws IOException {
+                super.doSetNextReader(context);
+                docBase = context.docBase;
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+
+              @Override
+              public void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                final float actualScore = scorer.score();
+                final float expectedScore =
+                    searcher.explain(bq2, docBase + doc).getValue().floatValue();
+                assertEquals(expectedScore, actualScore, 10e-5);
+                matched.set(true);
+              }
+            };
           }
 
           @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
-          }
-
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {
-            this.scorer = scorer;
-          }
-
-          @Override
-          public void collect(int doc) throws IOException {
-            final float actualScore = scorer.score();
-            final float expectedScore =
-                searcher.explain(bq2, docBase + doc).getValue().floatValue();
-            assertEquals(expectedScore, actualScore, 10e-5);
-            matched.set(true);
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
           }
         });
     assertTrue(matched.get());
@@ -538,10 +549,9 @@ public class TestBooleanQuery extends LuceneTestCase {
     w.commit();
 
     DirectoryReader reader = w.getReader();
-    final IndexSearcher searcher = new IndexSearcher(reader);
+    final IndexSearcher searcher = newSearcher(reader);
 
     BooleanQuery.Builder qBuilder = new BooleanQuery.Builder();
-    BooleanQuery q = qBuilder.build();
     qBuilder.add(new TermQuery(new Term("field", "a")), Occur.FILTER);
 
     // With a single clause, we will rewrite to the underlying
@@ -551,7 +561,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     // Now with two clauses, we will get a conjunction scorer
     // Make sure it returns null scores
     qBuilder.add(new TermQuery(new Term("field", "b")), Occur.FILTER);
-    q = qBuilder.build();
+    BooleanQuery q = qBuilder.build();
     assertSameScoresWithoutFilters(searcher, q);
 
     // Now with a scoring clause, we need to make sure that

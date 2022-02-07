@@ -117,7 +117,7 @@ public abstract class KnnVectorsWriter implements Closeable {
   }
 
   /** View over multiple VectorValues supporting iterator-style access via DocIdMerger. */
-  public static class MergedVectorValues extends VectorValues {
+  private static class MergedVectorValues extends VectorValues {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
     private final int cost;
@@ -127,7 +127,7 @@ public abstract class KnnVectorsWriter implements Closeable {
     private VectorValuesSub current;
 
     /** Returns a merged view over all the segment's {@link VectorValues}. */
-    public static MergedVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+    static MergedVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
 
