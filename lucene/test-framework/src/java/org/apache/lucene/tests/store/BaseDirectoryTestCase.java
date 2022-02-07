@@ -243,6 +243,65 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testAlignedInts() throws Exception {
+    try (Directory dir = getDirectory(createTempDir("testAlignedInts"))) {
+      try (IndexOutput out = dir.createOutput("Ints", newIOContext(random()))) {
+        out.writeInt(3);
+        out.writeInt(Integer.MAX_VALUE);
+        out.writeInt(-3);
+      }
+      try (IndexInput input = dir.openInput("Ints", newIOContext(random()))) {
+        assertEquals(12, input.length());
+        int[] i = new int[4];
+        input.readInts(i, 1, 3);
+        assertArrayEquals(new int[] {0, 3, Integer.MAX_VALUE, -3}, i);
+        assertEquals(12, input.getFilePointer());
+      }
+    }
+  }
+
+  public void testUnalignedInts() throws Exception {
+    int padding = random().nextInt(3) + 1;
+    try (Directory dir = getDirectory(createTempDir("testUnalignedInts"))) {
+      try (IndexOutput out = dir.createOutput("Ints", newIOContext(random()))) {
+        for (int i = 0; i < padding; i++) {
+          out.writeByte((byte) 2);
+        }
+        out.writeInt(3);
+        out.writeInt(Integer.MAX_VALUE);
+        out.writeInt(-3);
+      }
+      try (IndexInput input = dir.openInput("Ints", newIOContext(random()))) {
+        assertEquals(12 + padding, input.length());
+        for (int i = 0; i < padding; i++) {
+          assertEquals(2, input.readByte());
+        }
+        int[] i = new int[4];
+        input.readInts(i, 1, 3);
+        assertArrayEquals(new int[] {0, 3, Integer.MAX_VALUE, -3}, i);
+        assertEquals(12 + padding, input.getFilePointer());
+      }
+    }
+  }
+
+  public void testIntsUnderflow() throws Exception {
+    try (Directory dir = getDirectory(createTempDir("testIntsUnderflow"))) {
+      final int offset = random().nextInt(4);
+      final int length = TestUtil.nextInt(random(), 1, 16);
+      try (IndexOutput out = dir.createOutput("Ints", newIOContext(random()))) {
+        byte[] b =
+            new byte
+                [offset + length * Integer.BYTES - TestUtil.nextInt(random(), 1, Integer.BYTES)];
+        random().nextBytes(b);
+        out.writeBytes(b, b.length);
+      }
+      try (IndexInput input = dir.openInput("Ints", newIOContext(random()))) {
+        input.seek(offset);
+        expectThrows(EOFException.class, () -> input.readInts(new int[length], 0, length));
+      }
+    }
+  }
+
   public void testAlignedFloats() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testAlignedFloats"))) {
       try (IndexOutput out = dir.createOutput("Floats", newIOContext(random()))) {

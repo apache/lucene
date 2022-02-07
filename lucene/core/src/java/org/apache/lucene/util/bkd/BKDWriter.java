@@ -130,6 +130,7 @@ public class BKDWriter implements Closeable {
   private final long totalPointCount;
 
   private final int maxDoc;
+  private final DocIdsWriter docIdsWriter;
 
   public BKDWriter(
       int maxDoc,
@@ -165,7 +166,7 @@ public class BKDWriter implements Closeable {
 
     // Maximum number of points we hold in memory at any time
     maxPointsSortInHeap = (int) ((maxMBSortInHeap * 1024 * 1024) / (config.bytesPerDoc));
-
+    docIdsWriter = new DocIdsWriter(config.maxPointsInLeafNode);
     // Finally, we must be able to hold at least the leaf node in heap during build:
     if (maxPointsSortInHeap < config.maxPointsInLeafNode) {
       throw new IllegalArgumentException(
@@ -1288,7 +1289,7 @@ public class BKDWriter implements Closeable {
       throws IOException {
     assert count > 0 : "config.maxPointsInLeafNode=" + config.maxPointsInLeafNode;
     out.writeVInt(count);
-    DocIdsWriter.writeDocIds(docIDs, start, count, out);
+    docIdsWriter.writeDocIds(docIDs, start, count, out);
   }
 
   private void writeLeafBlockPackedValues(
