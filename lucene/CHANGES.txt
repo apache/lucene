@@ -15,6 +15,8 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been make pkg-private and serves only as an internal
   implementation detail of taxonomy-faceting. (Greg Miller)
 
+* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji (Tomoko Uchida)
+
 New Features
 ---------------------
 
