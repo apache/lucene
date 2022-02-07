@@ -20,34 +20,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
 public final class UnknownDictionary extends BinaryDictionary {
 
   private final CharacterDefinition characterDefinition = CharacterDefinition.getInstance();
-
-  /**
-   * @param scheme scheme for loading resources (FILE or CLASSPATH).
-   * @param path where to load resources from; a path, including the file base name without
-   *     extension; this is used to match multiple files with the same base name.
-   * @deprecated replaced by {@link #UnknownDictionary(Path, Path, Path)}
-   */
-  @Deprecated(forRemoval = true, since = "9.1")
-  @SuppressWarnings("removal")
-  public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
-    super(
-        scheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(path + TARGETMAP_FILENAME_SUFFIX))
-            : () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
-        scheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(path + POSDICT_FILENAME_SUFFIX))
-            : () -> getClassResource(POSDICT_FILENAME_SUFFIX),
-        scheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(path + DICT_FILENAME_SUFFIX))
-            : () -> getClassResource(DICT_FILENAME_SUFFIX));
-  }
 
   /**
    * Create a {@link UnknownDictionary} from an external resource path.
