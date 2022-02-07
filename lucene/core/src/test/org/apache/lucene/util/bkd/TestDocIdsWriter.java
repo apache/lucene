@@ -156,8 +156,9 @@ public class TestDocIdsWriter extends LuceneTestCase {
     dir.deleteFile("tmp");
   }
 
-  //This is a fork of legacy DocIdsWriter to test backward compatibility.
-  private static void legacyWriteDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
+  // This is a fork of legacy DocIdsWriter to test backward compatibility.
+  private static void legacyWriteDocIds(int[] docIds, int start, int count, DataOutput out)
+      throws IOException {
     boolean sorted = true;
     for (int i = 1; i < count; ++i) {
       if (docIds[start + i - 1] > docIds[start + i]) {
@@ -193,10 +194,10 @@ public class TestDocIdsWriter extends LuceneTestCase {
           int doc8 = docIds[start + i + 7];
           long l1 = (doc1 & 0xffffffL) << 40 | (doc2 & 0xffffffL) << 16 | ((doc3 >>> 8) & 0xffffL);
           long l2 =
-                  (doc3 & 0xffL) << 56
-                          | (doc4 & 0xffffffL) << 32
-                          | (doc5 & 0xffffffL) << 8
-                          | ((doc6 >> 16) & 0xffL);
+              (doc3 & 0xffL) << 56
+                  | (doc4 & 0xffffffL) << 32
+                  | (doc5 & 0xffffffL) << 8
+                  | ((doc6 >> 16) & 0xffL);
           long l3 = (doc6 & 0xffffL) << 48 | (doc7 & 0xffffffL) << 24 | (doc8 & 0xffffffL);
           out.writeLong(l1);
           out.writeLong(l2);
@@ -214,5 +215,4 @@ public class TestDocIdsWriter extends LuceneTestCase {
       }
     }
   }
-
 }
