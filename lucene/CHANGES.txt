@@ -190,6 +190,8 @@ Optimizations
 
 * LUCENE-10388: Remove MultiLevelSkipListReader#SkipBuffer to make JVM less confused. (Guo Feng)
 
+* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
 Changes in runtime behavior
 ---------------------
 
