@@ -75,6 +75,11 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been deprecated and is no longer a supported extension point
   for user-created faceting implementations. (Greg Miller)
 
+* LUCENE-10400: Add constructors that take external resource Paths to dictionary classes in Kuromoji:
+  ConnectionCosts, TokenInfoDictionary, and UnknownDictionary. Old constructors that take resource scheme and
+  resource path in those classes are deprecated; These are replaced with the new constructors and planned to be
+  removed in a future release. (Tomoko Uchida, Uwe Schindler, Mike Sokolov)
+
 * LUCENE-10050: Deprecate DrillSideways#search(Query, Collector) in favor of
   DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
   IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
