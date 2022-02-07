@@ -195,6 +195,9 @@ Bug Fixes
 
 * LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
   in a disjunction. (Alan Woodward, Dawid Weiss)
+  
+* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
+   as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
 
 Other
 ---------------------
