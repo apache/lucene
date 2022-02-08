@@ -140,13 +140,20 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
-      // build the graph using the temporary vector data
+      int count = docsWithField.cardinality();
+      int[] docIds = null;
+      if (count < maxDoc) {
+        docIds = new int[count];
+        DocIdSetIterator iter = docsWithField.iterator();
+        for (int doc = iter.nextDoc(), i = 0;
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = iter.nextDoc(), i++) {
+          docIds[i] = doc;
+        }
+      }
       Lucene91HnswVectorsReader.OffHeapVectorValues offHeapVectors =
           new Lucene91HnswVectorsReader.OffHeapVectorValues(
-              vectors.dimension(),
-              docsWithField.cardinality(),
-              null, // graph construction doesn't need to know docIds
-              vectorDataInput);
+              vectors.dimension(), count, docIds, vectorDataInput);
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
@@ -158,7 +165,8 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
           vectorDataLength,
           vectorIndexOffset,
           vectorIndexLength,
-          docsWithField,
+          count,
+          docIds,
           graph);
       success = true;
     } finally {
@@ -195,7 +203,8 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       long vectorDataLength,
       long vectorIndexOffset,
       long vectorIndexLength,
-      DocsWithFieldSet docsWithField,
+      int count,
+      int[] docIds,
       OnHeapHnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
@@ -207,18 +216,13 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeInt(field.getVectorDimension());
 
     // write docIDs
-    int count = docsWithField.cardinality();
     meta.writeInt(count);
-    if (count == maxDoc) {
+    if (docIds == null) {
       meta.writeShort((short) -1); // dense marker, each document has a vector value
     } else {
       meta.writeShort((short) 0); // sparse marker, some documents don't have vector values
-      // write delta-encoded docIDs
-      DocIdSetIterator iter = docsWithField.iterator();
-      int lastDoc = 0;
-      for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-        meta.writeVInt((doc - lastDoc));
-        lastDoc = doc;
+      for (int docId : docIds) {
+        meta.writeVInt(docId);
       }
     }
 

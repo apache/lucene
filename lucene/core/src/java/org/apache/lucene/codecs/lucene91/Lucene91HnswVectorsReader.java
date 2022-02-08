@@ -315,7 +315,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final int dimension;
     private final int size;
     final int[] ordToDoc;
-    final IntUnaryOperator ordToDocOperator;
+    private final IntUnaryOperator ordToDocOperator;
     final int[][] nodesByLevel;
     // for each level the start offsets in vectorIndex file from where to read neighbours
     final long[] graphOffsetsByLevel;
@@ -333,13 +333,16 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       if (denseSparseMarker == -1) {
         ordToDoc = null; // each document has a vector value
       } else {
+        assert denseSparseMarker == 0;
+        // TODO: Can we read docIDs from disk directly instead of loading giant arrays in memory?
+        //  Or possibly switch to something like DirectMonotonicReader if it doesn't slow down
+        // searches.
+
         // as not all docs have vector values, fill a mapping from dense vector ordinals to docIds
         ordToDoc = new int[size];
-        int lastDoc = 0;
         for (int i = 0; i < size; i++) {
-          int doc = input.readVInt() + lastDoc;
+          int doc = input.readVInt();
           ordToDoc[i] = doc;
-          lastDoc = doc;
         }
       }
       ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
