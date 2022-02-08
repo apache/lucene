@@ -17,7 +17,6 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
@@ -33,6 +32,14 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestDocIdsWriter extends LuceneTestCase {
 
   public void testRandom() throws Exception {
+    innerTestRandom(false);
+  }
+
+  public void testLegacyRandom() throws Exception {
+    innerTestRandom(true);
+  }
+
+  private void innerTestRandom(boolean legacy) throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
@@ -41,12 +48,20 @@ public class TestDocIdsWriter extends LuceneTestCase {
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
-        test(dir, docIDs);
+        test(dir, docIDs, legacy);
       }
     }
   }
 
   public void testSorted() throws Exception {
+    innerTestSorted(false);
+  }
+
+  public void testLegacySorted() throws Exception {
+    innerTestSorted(true);
+  }
+
+  private void innerTestSorted(boolean legacy) throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
@@ -55,8 +70,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
-        Arrays.sort(docIDs);
-        test(dir, docIDs);
+        test(dir, docIDs, legacy);
       }
     }
   }
@@ -71,7 +85,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = min + TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
-        test(dir, docIDs);
+        test(dir, docIDs, false);
       }
     }
   }
@@ -87,7 +101,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
           set.add(small + random().nextInt(size * 16));
         }
         int[] docIDs = set.stream().mapToInt(t -> t).sorted().toArray();
-        test(dir, docIDs);
+        test(dir, docIDs, false);
       }
     }
   }
@@ -102,16 +116,16 @@ public class TestDocIdsWriter extends LuceneTestCase {
         for (int i = 0; i < docIDs.length; i++) {
           docIDs[i] = start + i;
         }
-        test(dir, docIDs);
+        test(dir, docIDs, false);
       }
     }
   }
 
-  private void test(Directory dir, int[] ints) throws Exception {
+  private void test(Directory dir, int[] ints, boolean legacy) throws Exception {
     final long len;
     DocIdsWriter docIdsWriter = new DocIdsWriter(ints.length);
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
-      if (rarely()) {
+      if (legacy) {
         legacyWriteDocIds(ints, 0, ints.length, out);
       } else {
         docIdsWriter.writeDocIds(ints, 0, ints.length, out);
