@@ -19,6 +19,7 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -134,6 +135,11 @@ final class ByteBufferGuard {
   }
 
   public void getLongs(LongBuffer receiver, long[] dst, int offset, int length) {
+    ensureValid();
+    receiver.get(dst, offset, length);
+  }
+
+  public void getInts(IntBuffer receiver, int[] dst, int offset, int length) {
     ensureValid();
     receiver.get(dst, offset, length);
   }

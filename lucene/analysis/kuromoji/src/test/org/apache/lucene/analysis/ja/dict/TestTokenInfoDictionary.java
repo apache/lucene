@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.analysis.ja.dict.BinaryDictionary.ResourceScheme;
+import static org.apache.lucene.analysis.ja.dict.BinaryDictionary.DICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.ja.dict.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.ja.dict.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.ja.dict.TokenInfoDictionary.FST_FILENAME_SUFFIX;
 
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -77,7 +80,11 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
     DictionaryBuilder.build(DictionaryFormat.IPADIC, dir, dir, "utf-8", true);
     String dictionaryPath = TokenInfoDictionary.class.getName().replace('.', '/');
     // We must also load the other files (in BinaryDictionary) from the correct path
-    return new TokenInfoDictionary(ResourceScheme.FILE, dir.resolve(dictionaryPath).toString());
+    return new TokenInfoDictionary(
+        dir.resolve(dictionaryPath + TARGETMAP_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + POSDICT_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + DICT_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + FST_FILENAME_SUFFIX));
   }
 
   public void testPutException() {

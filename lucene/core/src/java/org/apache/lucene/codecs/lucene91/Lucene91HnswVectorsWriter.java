@@ -27,7 +27,6 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.KnnGraphValues.NodesIterator;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -37,9 +36,10 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
+import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -140,13 +140,14 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
+      // build the graph using the temporary vector data
       Lucene91HnswVectorsReader.OffHeapVectorValues offHeapVectors =
           new Lucene91HnswVectorsReader.OffHeapVectorValues(
               vectors.dimension(),
               docsWithField.cardinality(),
               null, // graph construction doesn't need to know docIds
               vectorDataInput);
-      HnswGraph graph =
+      OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
               : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarityFunction());
@@ -195,7 +196,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       long vectorIndexOffset,
       long vectorIndexLength,
       DocsWithFieldSet docsWithField,
-      HnswGraph graph)
+      OnHeapHnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
@@ -240,7 +241,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private HnswGraph writeGraph(
+  private OnHeapHnswGraph writeGraph(
       RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
 
@@ -249,7 +250,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
         new HnswGraphBuilder(
             vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    HnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
+    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
