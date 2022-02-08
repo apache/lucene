@@ -370,6 +370,54 @@ public abstract class PointRangeQuery extends Query {
       }
 
       @Override
+      public int count(LeafReaderContext context) throws IOException {
+        LeafReader reader = context.reader();
+
+        PointValues values = reader.getPointValues(field);
+        if (values == null) {
+          // No docs in this segment indexed any points or this field did not contain any points
+          return 0;
+        }
+
+        if (values.getNumIndexDimensions() != numDims) {
+          throw new IllegalArgumentException(
+              "field=\""
+                  + field
+                  + "\" was indexed with numIndexDimensions="
+                  + values.getNumIndexDimensions()
+                  + " but this query has numDims="
+                  + numDims);
+        }
+        if (bytesPerDim != values.getBytesPerDimension()) {
+          throw new IllegalArgumentException(
+              "field=\""
+                  + field
+                  + "\" was indexed with bytesPerDim="
+                  + values.getBytesPerDimension()
+                  + " but this query has bytesPerDim="
+                  + bytesPerDim);
+        }
+
+        if (reader.hasDeletions() == false
+            && numDims == 1
+            && values.getDocCount() == reader.maxDoc()
+            && values.getDocCount() == values.size()) {
+          // if all documents have at-least one point and the number of points equals the number of
+          // documents
+          final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+          final IntersectVisitor visitor = getIntersectVisitor(result);
+          values.intersect(visitor);
+          DocIdSetIterator iterator = result.build().iterator();
+          int numMatchingDocs = 0;
+          while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            numMatchingDocs++;
+          }
+          return numMatchingDocs;
+        }
+        return super.count(context);
+      }
+
+      @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
       }

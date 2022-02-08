@@ -82,7 +82,7 @@ public final class DocValuesFieldExistsQuery extends Query {
         final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
         if (fieldInfo == null || fieldInfo.getDocValuesType() == DocValuesType.NONE) {
           return 0; // the field doesn't index doc values
-        } else if (!reader.hasDeletions()) {
+        } else if (reader.hasDeletions() == false) {
           if (fieldInfo.getPointDimensionCount() > 0) {
             return reader.getPointValues(field).getDocCount();
           } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
