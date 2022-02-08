@@ -156,7 +156,12 @@ public abstract class LongValuesSource implements SegmentCacheable {
     return new ConstantLongValuesSource(value);
   }
 
-  private static class ConstantLongValuesSource extends LongValuesSource {
+  /**
+   * A ConstantLongValuesSource that always returns a constant value
+   *
+   * @lucene.internal
+   */
+  public static class ConstantLongValuesSource extends LongValuesSource {
 
     private final long value;
 
@@ -210,6 +215,11 @@ public abstract class LongValuesSource implements SegmentCacheable {
     @Override
     public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
       return this;
+    }
+
+    /** Get the constant value. */
+    public long getValue() {
+      return value;
     }
   }
 
