@@ -17,6 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
@@ -70,6 +71,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
+        Arrays.sort(docIDs);
         test(dir, docIDs, legacy);
       }
     }
