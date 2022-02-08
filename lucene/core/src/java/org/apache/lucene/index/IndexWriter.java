@@ -3124,35 +3124,85 @@ public class IndexWriter
    */
   public long addIndexes(CodecReader... readers) throws IOException {
     ensureOpen();
-
-    // Best effort up front validations
+    long seqNo;
     long numDocs = 0;
-    for (CodecReader leaf: readers) {
-      validateMergeReader(leaf);
-      for (FieldInfo fi: leaf.getFieldInfos()) {
-        globalFieldNumberMap.verifyFieldInfo(fi);
-      }
-      numDocs += leaf.numDocs();
-    }
-    testReserveDocs(numDocs);
+    final int mergeTimeoutInSeconds = 600;
 
-    synchronized (this) {
-      ensureOpen();
-      if (merges.areEnabled() == false) {
-        throw new UnsupportedOperationException("Merges are disabled on current writer. " +
-          "Cannot execute addIndexes(CodecReaders...) API");
+    try {
+      // Best effort up front validations
+      for (CodecReader leaf: readers) {
+        validateMergeReader(leaf);
+        for (FieldInfo fi: leaf.getFieldInfos()) {
+          globalFieldNumberMap.verifyFieldInfo(fi);
+        }
+        numDocs += leaf.numDocs();
       }
+      testReserveDocs(numDocs);
+
+      synchronized (this) {
+        ensureOpen();
+        if (merges.areEnabled() == false) {
+          throw new UnsupportedOperationException("Merges are disabled on current writer. " +
+            "Cannot execute addIndexes(CodecReaders...) API");
+        }
+      }
+
+      MergePolicy mergePolicy = config.getMergePolicy();
+      MergePolicy.MergeSpecification spec = mergePolicy.findMerges(Arrays.asList(readers));
+      boolean mergesComplete = false;
+      if (spec != null && spec.merges.size() > 0) {
+        try {
+          spec.merges.forEach(addIndexesMergeSource::registerMerge);
+          mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
+          mergesComplete = spec.await(mergeTimeoutInSeconds, TimeUnit.SECONDS);
+        } finally {
+          if (!mergesComplete) {
+            // TODO - Delete all interim files created
+            // TODO - check how to cleanup/abort ongoing merges post timeout
+            for (MergePolicy.OneMerge merge: spec.merges) {
+              deleteNewFiles(merge.getMergeInfo().files());
+            }
+          }
+        }
+      }
+
+      if (mergesComplete) {
+        List<SegmentCommitInfo> infos = new ArrayList<>();
+        long totalMaxDoc = 0;
+        for (MergePolicy.OneMerge merge: spec.merges) {
+          totalMaxDoc += merge.totalMaxDoc;
+          infos.add(merge.getMergeInfo());
+        }
+        synchronized (this) {
+          boolean success = false;
+          try {
+            ensureOpen();
+            // Reserve the docs, just before we update SIS:
+            reserveDocs(totalMaxDoc);
+            seqNo = docWriter.getNextSequenceNumber();
+            success = true;
+          } finally {
+            if (!success) {
+              for (SegmentCommitInfo sipc : infos) {
+                // Safe: these files must exist
+                deleteNewFiles(sipc.files());
+              }
+            }
+          }
+          segmentInfos.addAll(infos);
+          checkpoint();
+        }
+      } else {
+        // We should normally not reach here, as an earlier call should throw an exception.
+        throw new MergePolicy.MergeException("Could not complete merges within configured timeout of [" + mergeTimeoutInSeconds + "] seconds");
+      }
+    } catch (VirtualMachineError tragedy) {
+      tragicEvent(tragedy, "addIndexes(CodecReader...)");
+      throw tragedy;
     }
 
-    MergePolicy mergePolicy = config.getMergePolicy();
-    MergePolicy.MergeSpecification spec = mergePolicy.findMerges(Arrays.asList(readers));
-    if (spec != null && spec.merges.size() > 0) {
-      spec.merges.forEach(addIndexesMergeSource::registerMerge);
-      mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
-      spec.await(5, TimeUnit.MINUTES);
-    }
     maybeMerge();
-    return docWriter.getNextSequenceNumber();
+    return seqNo;
   }
 
   private class AddIndexesMergeSource implements MergeScheduler.MergeSource {
@@ -3324,14 +3374,7 @@ public class IndexWriter
 
     merge.getMergeInfo().info.addFiles(trackingDir.getCreatedFiles());
 
-    // Register the new segment
-    synchronized (this) {
-      ensureOpen();
-      // Reserve the docs, just before we update SIS:
-      reserveDocs(numDocs);
-      segmentInfos.add(merge.getMergeInfo());
-      checkpoint();
-    }
+    // We register all segments for the addIndexes API together to maintain transactionality.
   }
 
   /** Copies the segment files as-is into the IndexWriter's directory. */
