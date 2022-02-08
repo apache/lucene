@@ -160,6 +160,9 @@ Optimizations
 
 * LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
 
+* LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
+  matching clauses is a constant. (LuYunCheng via Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
