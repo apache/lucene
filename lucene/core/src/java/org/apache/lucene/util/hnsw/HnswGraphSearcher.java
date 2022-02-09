@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
@@ -57,9 +58,6 @@ public final class HnswGraphSearcher {
   /**
    * Searches HNSW graph for the nearest neighbors of a query vector.
    *
-   * <p>If the search stops early because it reaches the visited nodes limit, then the results will
-   * be marked incomplete through {@link NeighborQueue#incomplete()}.
-   *
    * @param query search query vector
    * @param topK the number of nodes to be returned
    * @param vectors the vector values
@@ -70,6 +68,7 @@ public final class HnswGraphSearcher {
    *     {@code null} if they are all allowed to match.
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
+   * @throws CollectionTerminatedException if search stops early because it hit {@code visitedLimit}
    */
   public static NeighborQueue search(
       float[] query,
@@ -152,11 +151,6 @@ public final class HnswGraphSearcher {
       bound.set(results.topScore());
     }
     while (candidates.size() > 0) {
-      if (numVisited > visitedLimit) {
-        results.markIncomplete();
-        break;
-      }
-
       // get the best candidate (closest or best scoring)
       float topCandidateScore = candidates.topScore();
       if (bound.check(topCandidateScore)) {
@@ -177,7 +171,10 @@ public final class HnswGraphSearcher {
               }
             }
           }
-          numVisited++;
+
+          if (numVisited++ > visitedLimit) {
+            throw new CollectionTerminatedException();
+          }
         }
       }
     }

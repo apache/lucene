@@ -21,6 +21,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
@@ -66,10 +67,12 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @param k the number of docs to return
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @throws CollectionTerminatedException if search stops early because it hit {@code visitedLimit}
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    */
-  public abstract TopDocs search(String field, float[] target, int k, Bits acceptDocs)
-      throws IOException;
+  public abstract TopDocs search(
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

@@ -42,9 +42,11 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -221,6 +223,38 @@ public class TestHnswGraph extends LuceneTestCase {
     assertTrue("sum(result docs)=" + sum, sum < 75);
   }
 
+  public void testSearchWithSelectiveAcceptOrds() throws IOException {
+    int nDoc = 100;
+    int maxConn = 16;
+    CircularVectorValues vectors = new CircularVectorValues(nDoc);
+    HnswGraphBuilder builder =
+        new HnswGraphBuilder(
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(vectors);
+    // Only mark a few vectors as accepted
+    BitSet acceptOrds = new FixedBitSet(vectors.size);
+    for (int i = 0; i < vectors.size; i += random().nextInt(15, 20)) {
+      acceptOrds.set(i);
+    }
+
+    // Check the search finds all accepted vectors
+    int numAccepted = acceptOrds.cardinality();
+    NeighborQueue nn =
+        HnswGraphSearcher.search(
+            new float[] {1, 0},
+            numAccepted,
+            vectors.randomAccess(),
+            VectorSimilarityFunction.DOT_PRODUCT,
+            hnsw,
+            acceptOrds,
+            Integer.MAX_VALUE);
+    int[] nodes = nn.nodes();
+    assertEquals(numAccepted, nodes.length);
+    for (int node : nodes) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
+    }
+  }
+
   public void testSearchWithSkewedAcceptOrds() throws IOException {
     int nDoc = 1000;
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
@@ -266,18 +300,17 @@ public class TestHnswGraph extends LuceneTestCase {
 
     int topK = 10;
     int visitedLimit = random().nextInt(10) + 10;
-    NeighborQueue nn =
-        HnswGraphSearcher.search(
-            new float[] {1, 0},
-            topK,
-            vectors.randomAccess(),
-            VectorSimilarityFunction.DOT_PRODUCT,
-            hnsw,
-            createRandomAcceptOrds(0, vectors.size),
-            visitedLimit);
-    assertTrue(nn.incomplete());
-    // The visited count shouldn't be much over the limit
-    assertTrue(nn.visitedCount() < visitedLimit + 5);
+    expectThrows(
+        CollectionTerminatedException.class,
+        () ->
+            HnswGraphSearcher.search(
+                new float[] {1, 0},
+                topK,
+                vectors.randomAccess(),
+                VectorSimilarityFunction.DOT_PRODUCT,
+                hnsw,
+                createRandomAcceptOrds(0, vectors.size),
+                visitedLimit));
   }
 
   public void testBoundsCheckerMax() {

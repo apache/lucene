@@ -27,7 +27,9 @@ import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -91,7 +93,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10);
-      assertMatches(searcher, kvq, reader.numDocs());
+      assertMatches(searcher, kvq, 3);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(2, topDocs.scoreDocs[0].doc);
       assertEquals(0, topDocs.scoreDocs[1].doc);
@@ -100,16 +102,29 @@ public class TestKnnVectorQuery extends LuceneTestCase {
   }
 
   /** Tests that a KnnVectorQuery applies the filter query */
-  public void testFindWithFilter() throws IOException {
+  public void testSimpleFilter() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
-      TermQuery filter = new TermQuery(new Term("id", "id0"));
-      KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, filter);
-      assertMatches(searcher, kvq, 1);
+      Query filter = new TermQuery(new Term("id", "id2"));
+      Query kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
-      assertEquals(0, topDocs.scoreDocs[0].doc);
+      assertEquals(1, topDocs.totalHits.value);
+      assertEquals(2, topDocs.scoreDocs[0].doc);
+    }
+  }
+
+  public void testMatchNoneFilter() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      Query filter = new TermQuery(new Term("id", "nonexistent"));
+      Query kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, filter);
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(0, topDocs.totalHits.value);
     }
   }
 
@@ -469,6 +484,61 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /** Tests with random vectors and a random filter. Uses RandomIndexWriter. */
+  public void testRandomWithFilter() throws IOException {
+    int numDocs = 100;
+    int dimension = atLeast(5);
+    int numIters = atLeast(10);
+    try (Directory d = newDirectory()) {
+      RandomIndexWriter w = new RandomIndexWriter(random(), d);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(new KnnVectorField("field", randomVector(dimension)));
+        doc.add(new NumericDocValuesField("tag", i));
+        doc.add(new IntPoint("tag", i));
+        w.addDocument(doc);
+      }
+      w.close();
+
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader);
+        for (int i = 0; i < numIters; i++) {
+          int lower = random().nextInt(numDocs / 2);
+
+          // Check that when filter is restrictive, we use exact search
+          Query filter = IntPoint.newRangeQuery("tag", lower, lower + 39);
+          KnnVectorQuery query = new KnnVectorQuery("field", randomVector(dimension), 50, filter);
+          TopDocs results = searcher.search(query, numDocs);
+          assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
+          assertEquals(results.totalHits.value, 40);
+
+          // Check that when filter cost is less than k, we use exact search
+          filter = IntPoint.newRangeQuery("tag", lower, lower + 2);
+          query = new KnnVectorQuery("field", randomVector(dimension), 10, filter);
+          results = searcher.search(query, numDocs);
+          assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
+          assertEquals(results.totalHits.value, 3);
+
+          // Check results when k is small and filter is not restrictive
+          filter = IntPoint.newRangeQuery("tag", lower, lower + 50);
+          query = new KnnVectorQuery("field", randomVector(dimension), 5, filter);
+          results =
+              searcher.search(query, numDocs, new Sort(new SortField("tag", SortField.Type.INT)));
+          assertEquals(5, results.scoreDocs.length);
+          assertTrue(results.totalHits.value >= results.scoreDocs.length);
+
+          for (ScoreDoc scoreDoc : results.scoreDocs) {
+            FieldDoc fieldDoc = (FieldDoc) scoreDoc;
+            assertEquals(1, fieldDoc.fields.length);
+
+            int tag = (int) fieldDoc.fields[0];
+            assertTrue(lower <= tag && tag <= lower + 50);
+          }
+        }
+      }
+    }
+  }
+
   public void testDeletes() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -564,6 +634,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   private Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
@@ -573,6 +644,13 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       doc.add(new StringField("id", "id" + i, Field.Store.NO));
       writer.addDocument(doc);
     }
+    // Add some documents without a vector
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("other", "value", Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
     writer.close();
     return indexStore;
   }

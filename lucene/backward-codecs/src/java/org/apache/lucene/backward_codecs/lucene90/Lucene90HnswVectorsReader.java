@@ -229,7 +229,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0) {

@@ -54,9 +54,6 @@ public class NeighborQueue {
   // Used to track the number of neighbors visited during a single graph traversal
   private int visitedCount;
 
-  // Whether the greedy search stopped early because it reached the visited nodes limit
-  private boolean isIncomplete;
-
   public NeighborQueue(int initialSize, boolean reversed) {
     this.heap = new LongHeap(initialSize);
     this.order = reversed ? Order.REVERSED : Order.NATURAL;
@@ -129,14 +126,6 @@ public class NeighborQueue {
 
   public void setVisitedCount(int visitedCount) {
     this.visitedCount = visitedCount;
-  }
-
-  public boolean incomplete() {
-    return isIncomplete;
-  }
-
-  public void markIncomplete() {
-    this.isIncomplete = true;
   }
 
   @Override

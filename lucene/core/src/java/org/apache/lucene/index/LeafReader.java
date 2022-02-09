@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -224,11 +225,13 @@ public abstract class LeafReader extends IndexReader {
    * @param k the number of docs to return
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
+   * @throws CollectionTerminatedException if search stops early because it hit {@code visitedLimit}
    * @lucene.experimental
    */
-  public abstract TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
-      throws IOException;
+  public abstract TopDocs searchNearestVectors(
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

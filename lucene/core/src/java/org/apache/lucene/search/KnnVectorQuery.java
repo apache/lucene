@@ -21,12 +21,17 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -76,17 +81,23 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
-    BitSet[] bitSets = null;
+    TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
 
+    BitSetCollector filterCollector = null;
     if (filter != null) {
+      filterCollector = new BitSetCollector(reader.leaves().size());
       IndexSearcher indexSearcher = new IndexSearcher(reader);
-      bitSets = new BitSet[reader.leaves().size()];
-      indexSearcher.search(filter, new BitSetCollector(bitSets));
+      indexSearcher.search(filter, filterCollector);
     }
 
-    TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
-      perLeafResults[ctx.ord] = searchLeaf(ctx, k, bitSets != null ? bitSets[ctx.ord] : null);
+      TopDocs results = searchLeaf(ctx, k, filterCollector);
+      if (results != null && ctx.docBase > 0) {
+        for (ScoreDoc scoreDoc : results.scoreDocs) {
+          scoreDoc.doc += ctx.docBase;
+        }
+      }
+      perLeafResults[ctx.ord] = results != null ? results : NO_RESULTS;
     }
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -96,43 +107,98 @@ public class KnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf, Bits bitsFilter)
+  private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf, BitSetCollector filterCollector)
       throws IOException {
-    // If the filter is non-null, then it already handles live docs
-    if (bitsFilter == null) {
-      bitsFilter = ctx.reader().getLiveDocs();
-    }
 
-    TopDocs results = ctx.reader().searchNearestVectors(field, target, kPerLeaf, bitsFilter);
-    if (results == null) {
-      return NO_RESULTS;
-    }
-    if (ctx.docBase > 0) {
-      for (ScoreDoc scoreDoc : results.scoreDocs) {
-        scoreDoc.doc += ctx.docBase;
+    if (filterCollector == null) {
+      Bits acceptDocs = ctx.reader().getLiveDocs();
+      return ctx.reader()
+          .searchNearestVectors(field, target, kPerLeaf, acceptDocs, Integer.MAX_VALUE);
+    } else {
+      BitSetIterator filterIterator = filterCollector.getIterator(ctx.ord);
+      if (filterIterator == null || filterIterator.cost() == 0) {
+        return NO_RESULTS;
+      }
+
+      if (filterIterator.cost() <= k) {
+        // If there <= k possible matches, short-circuit and perform exact search, since HNSW must
+        // always visit at least k documents
+        return exactSearch(ctx, target, k, filterIterator);
+      }
+
+      try {
+        // The filter iterator already incorporates live docs
+        Bits acceptDocs = filterIterator.getBitSet();
+        int visitedLimit = (int) filterIterator.cost();
+        return ctx.reader().searchNearestVectors(field, target, kPerLeaf, acceptDocs, visitedLimit);
+      } catch (
+          @SuppressWarnings("unused")
+          CollectionTerminatedException e) {
+        // We stopped the kNN search because it visited too many nodes, so fall back to exact search
+        return exactSearch(ctx, target, k, filterIterator);
       }
     }
-    return results;
+  }
+
+  private TopDocs exactSearch(
+      LeafReaderContext context, float[] target, int k, DocIdSetIterator acceptIterator)
+      throws IOException {
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      // The field does not exist or does not index vectors
+      return NO_RESULTS;
+    }
+
+    VectorSimilarityFunction similarityFunction = fi.getVectorSimilarityFunction();
+    VectorValues vectorValues = context.reader().getVectorValues(field);
+
+    HitQueue queue = new HitQueue(k, false);
+    DocIdSetIterator iterator =
+        ConjunctionUtils.intersectIterators(List.of(acceptIterator, vectorValues));
+
+    int doc;
+    while ((doc = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      float[] vector = vectorValues.vectorValue();
+      float score = similarityFunction.convertToScore(similarityFunction.compare(vector, target));
+      queue.insertWithOverflow(new ScoreDoc(doc, score));
+    }
+    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
+    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
+      topScoreDocs[i] = queue.pop();
+    }
+
+    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
+    return new TopDocs(totalHits, topScoreDocs);
   }
 
   private static class BitSetCollector extends SimpleCollector {
 
     private final BitSet[] bitSets;
-    private BitSet leafBits;
+    private final int[] cost;
+    private int ord;
 
-    private BitSetCollector(BitSet[] bitSets) {
-      this.bitSets = bitSets;
+    private BitSetCollector(int numLeaves) {
+      this.bitSets = new BitSet[numLeaves];
+      this.cost = new int[bitSets.length];
+    }
+
+    public BitSetIterator getIterator(int contextOrd) {
+      if (bitSets[contextOrd] == null) {
+        return null;
+      }
+      return new BitSetIterator(bitSets[contextOrd], cost[contextOrd]);
     }
 
     @Override
     public void collect(int doc) throws IOException {
-      leafBits.set(doc);
+      bitSets[ord].set(doc);
+      cost[ord]++;
     }
 
     @Override
     protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      this.leafBits = new FixedBitSet(context.reader().maxDoc());
-      bitSets[context.ord] = leafBits;
+      bitSets[context.ord] = new FixedBitSet(context.reader().maxDoc());
+      ord = context.ord;
     }
 
     @Override
