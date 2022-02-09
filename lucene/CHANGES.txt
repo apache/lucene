@@ -202,6 +202,9 @@ Optimizations
 * LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
   matching clauses is a constant. (LuYunCheng via Adrien Grand)
 
+* LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
+  (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
