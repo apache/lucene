@@ -23,6 +23,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
@@ -253,5 +254,12 @@ public class TestConstantScoreQuery extends LuceneTestCase {
     reader.close();
     w.close();
     dir.close();
+  }
+
+  public void testRewriteBubblesUpMatchNoDocsQuery() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    Query query = new ConstantScoreQuery(new MatchNoDocsQuery());
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
   }
 }

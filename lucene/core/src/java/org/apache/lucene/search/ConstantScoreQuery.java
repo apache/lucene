@@ -43,6 +43,11 @@ public final class ConstantScoreQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     Query rewritten = query.rewrite(reader);
 
+    if (rewritten.getClass() == MatchNoDocsQuery.class) {
+      // bubble up MatchNoDocsQuery
+      return rewritten;
+    }
+
     if (rewritten != query) {
       return new ConstantScoreQuery(rewritten);
     }

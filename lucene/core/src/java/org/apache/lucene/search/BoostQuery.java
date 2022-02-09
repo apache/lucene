@@ -85,6 +85,11 @@ public final class BoostQuery extends Query {
       return new BoostQuery(in.query, boost * in.boost);
     }
 
+    if (rewritten.getClass() == MatchNoDocsQuery.class) {
+      // bubble up MatchNoDocsQuery
+      return rewritten;
+    }
+
     if (boost == 0f && rewritten.getClass() != ConstantScoreQuery.class) {
       // so that we pass needScores=false
       return new BoostQuery(new ConstantScoreQuery(rewritten), 0f);
