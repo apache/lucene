@@ -34,6 +34,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -170,6 +171,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
       entry.missingBytes = 0;
     }
     entry.byteWidth = meta.readByte();
+    entry.valuesLength = meta.readLong();
 
     return entry;
   }
@@ -281,62 +283,90 @@ class DirectDocValuesProducer extends DocValuesProducer {
 
   private NumericRawValues loadNumeric(NumericEntry entry) throws IOException {
     IndexInput data = this.data.clone();
-    data.seek(entry.offset + entry.missingBytes);
+    final RandomAccessInput slice =
+        data.randomAccessSlice(entry.offset + entry.missingBytes, entry.valuesLength);
+    final boolean[] valuesCached = new boolean[entry.count];
     switch (entry.byteWidth) {
       case 1:
         {
-          final byte[] values = new byte[entry.count];
-          data.readBytes(values, 0, entry.count);
           return new NumericRawValues() {
+            final byte[] values = new byte[entry.count];
+
             @Override
-            public long get(int docID) {
-              return values[docID];
+            public long get(int docID) throws IOException {
+              if (valuesCached[docID]) {
+                return values[docID];
+              }
+              byte value;
+              synchronized (this) {
+                value = slice.readByte(docID);
+              }
+              values[docID] = value;
+              valuesCached[docID] = true;
+              return value;
             }
           };
         }
-
       case 2:
         {
-          final short[] values = new short[entry.count];
-          for (int i = 0; i < entry.count; i++) {
-            values[i] = data.readShort();
-          }
           return new NumericRawValues() {
+            final short[] values = new short[entry.count];
+
             @Override
-            public long get(int docID) {
-              return values[docID];
+            public long get(int docID) throws IOException {
+              if (valuesCached[docID]) {
+                return values[docID];
+              }
+              short value;
+              synchronized (this) {
+                value = slice.readShort(((long) docID) << 1);
+              }
+              values[docID] = value;
+              valuesCached[docID] = true;
+              return value;
             }
           };
         }
-
       case 4:
         {
-          final int[] values = new int[entry.count];
-          for (int i = 0; i < entry.count; i++) {
-            values[i] = data.readInt();
-          }
           return new NumericRawValues() {
+            final int[] values = new int[entry.count];
+
             @Override
-            public long get(int docID) {
-              return values[docID];
+            public long get(int docID) throws IOException {
+              if (valuesCached[docID]) {
+                return values[docID];
+              }
+              int value;
+              synchronized (this) {
+                value = slice.readInt(((long) docID) << 2);
+              }
+              values[docID] = value;
+              valuesCached[docID] = true;
+              return value;
             }
           };
         }
-
       case 8:
         {
-          final long[] values = new long[entry.count];
-          for (int i = 0; i < entry.count; i++) {
-            values[i] = data.readLong();
-          }
           return new NumericRawValues() {
+            final long[] values = new long[entry.count];
+
             @Override
-            public long get(int docID) {
-              return values[docID];
+            public long get(int docID) throws IOException {
+              if (valuesCached[docID]) {
+                return values[docID];
+              }
+              long value;
+              synchronized (this) {
+                value = slice.readLong(((long) docID) << 3);
+              }
+              values[docID] = value;
+              valuesCached[docID] = true;
+              return value;
             }
           };
         }
-
       default:
         throw new AssertionError();
     }
@@ -493,13 +523,13 @@ class DirectDocValuesProducer extends DocValuesProducer {
         int upto;
         long cost = -1;
 
-        private void setDocument(int docID) {
+        private void setDocument(int docID) throws IOException {
           valueStart = (int) docToAddress.get(docID);
           valueLimit = (int) docToAddress.get(docID + 1);
         }
 
         @Override
-        public long nextValue() {
+        public long nextValue() throws IOException {
           return values.get(valueStart + upto++);
         }
 
@@ -509,7 +539,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public boolean advanceExact(int target) {
+        public boolean advanceExact(int target) throws IOException {
           docID = target;
           setDocument(docID);
           upto = 0;
@@ -522,7 +552,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public int nextDoc() {
+        public int nextDoc() throws IOException {
           assert docID != NO_MORE_DOCS;
           while (true) {
             docID++;
@@ -540,7 +570,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public int advance(int target) {
+        public int advance(int target) throws IOException {
           if (target < docID) {
             throw new IllegalArgumentException(
                 "cannot advance backwards: docID=" + docID + " target=" + target);
@@ -560,7 +590,11 @@ class DirectDocValuesProducer extends DocValuesProducer {
             return cost;
           }
           for (int docID = 0; docID < maxDoc; docID++) {
-            setDocument(docID);
+            try {
+              setDocument(docID);
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
             if (docValueCount() != 0) {
               cost++;
             }
@@ -608,7 +642,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
         long ord;
         long cost = -1;
 
-        private long innerNextOrd() {
+        private long innerNextOrd() throws IOException {
           if (ordUpto == ordLimit) {
             return NO_MORE_ORDS;
           } else {
@@ -616,13 +650,13 @@ class DirectDocValuesProducer extends DocValuesProducer {
           }
         }
 
-        private void setDocument(int docID) {
+        private void setDocument(int docID) throws IOException {
           ordUpto = (int) docToOrdAddress.get(docID);
           ordLimit = (int) docToOrdAddress.get(docID + 1);
         }
 
         @Override
-        public long nextOrd() {
+        public long nextOrd() throws IOException {
           long result = ord;
           if (result != NO_MORE_ORDS) {
             ord = innerNextOrd();
@@ -641,7 +675,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public boolean advanceExact(int target) {
+        public boolean advanceExact(int target) throws IOException {
           docID = target;
           setDocument(docID);
           ord = innerNextOrd();
@@ -654,7 +688,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public int nextDoc() {
+        public int nextDoc() throws IOException {
           assert docID != NO_MORE_DOCS;
           docID++;
           while (docID < maxDoc) {
@@ -670,7 +704,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public int advance(int target) {
+        public int advance(int target) throws IOException {
           if (target < docID) {
             throw new IllegalArgumentException(
                 "cannot advance backwards: docID=" + docID + " target=" + target);
@@ -690,9 +724,13 @@ class DirectDocValuesProducer extends DocValuesProducer {
             return cost;
           }
           for (int docID = 0; docID < maxDoc; docID++) {
-            setDocument(docID);
-            if (innerNextOrd() != NO_MORE_ORDS) {
-              cost++;
+            try {
+              setDocument(docID);
+              if (innerNextOrd() != NO_MORE_ORDS) {
+                cost++;
+              }
+            } catch (IOException e) {
+              throw new RuntimeException(e);
             }
           }
           return cost;
@@ -766,7 +804,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
     }
 
     @Override
-    public int nextDoc() {
+    public int nextDoc() throws IOException {
       docID++;
       while (docID < maxDoc) {
         value = values.get(docID);
@@ -780,7 +818,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
     }
 
     @Override
-    public int advance(int target) {
+    public int advance(int target) throws IOException {
       assert target >= docID : "target=" + target + " docID=" + docID;
       if (target == NO_MORE_DOCS) {
         this.docID = NO_MORE_DOCS;
@@ -804,8 +842,12 @@ class DirectDocValuesProducer extends DocValuesProducer {
         return cost;
       }
       for (int docID = 0; docID < maxDoc; docID++) {
-        if (values.get(docID) != 0 || docsWithField.get(docID)) {
-          cost++;
+        try {
+          if (values.get(docID) != 0 || docsWithField.get(docID)) {
+            cost++;
+          }
+        } catch (IOException e) {
+          throw new RuntimeException(e);
         }
       }
       return cost;
@@ -845,7 +887,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
     }
 
     @Override
-    public int nextDoc() {
+    public int nextDoc() throws IOException {
       assert docID != NO_MORE_DOCS;
       docID++;
       while (docID < maxDoc) {
@@ -860,7 +902,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
     }
 
     @Override
-    public int advance(int target) {
+    public int advance(int target) throws IOException {
       if (target < docID) {
         throw new IllegalArgumentException(
             "cannot advance backwards: docID=" + docID + " target=" + target);
@@ -887,8 +929,12 @@ class DirectDocValuesProducer extends DocValuesProducer {
         return cost;
       }
       for (int docID = 0; docID < maxDoc; docID++) {
-        if ((int) numericRawValues.get(docID) != -1) {
-          cost++;
+        try {
+          if ((int) numericRawValues.get(docID) != -1) {
+            cost++;
+          }
+        } catch (IOException e) {
+          throw new RuntimeException(e);
         }
       }
       return cost;
@@ -934,7 +980,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
   }
 
   abstract static class NumericRawValues {
-    public abstract long get(int docID);
+    public abstract long get(int docID) throws IOException;
   }
 
   static class SortedRawValues {
@@ -972,6 +1018,7 @@ class DirectDocValuesProducer extends DocValuesProducer {
     long missingOffset;
     long missingBytes;
     byte byteWidth;
+    long valuesLength;
   }
 
   static class BinaryEntry {

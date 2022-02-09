@@ -280,6 +280,7 @@ class DirectDocValuesConsumer extends DocValuesConsumer {
     }
     meta.writeByte(byteWidth);
 
+    long startOffset = data.getFilePointer();
     values = (SortedNumericDocNullableValues) valuesProducer.getSortedNumeric(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       for (int i = 0, docValueCount = values.docValueCount(); i < docValueCount; ++i) {
@@ -304,6 +305,7 @@ class DirectDocValuesConsumer extends DocValuesConsumer {
         }
       }
     }
+    meta.writeLong(data.getFilePointer() - startOffset);
   }
 
   @Override
