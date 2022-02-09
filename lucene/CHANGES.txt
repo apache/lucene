@@ -144,6 +144,8 @@ New Features
 
 * LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
 
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss)
+
 Improvements
 ---------------------
 

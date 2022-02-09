@@ -48,6 +48,14 @@ import org.apache.lucene.util.automaton.Operations;
  * {@link #or(boolean, IntervalsSource...)} factory method to prevent rewriting.
  */
 public final class Intervals {
+  /**
+   * The default number of expansions in:
+   *
+   * <ul>
+   *   <li>{@link #multiterm(CompiledAutomaton, String)}
+   * </ul>
+   */
+  public static final int DEFAULT_MAX_EXPANSIONS = 128;
 
   private Intervals() {}
 
@@ -140,18 +148,19 @@ public final class Intervals {
   /**
    * Return an {@link IntervalsSource} over the disjunction of all terms that begin with a prefix
    *
-   * @throws IllegalStateException if the prefix expands to more than 128 terms
+   * @throws IllegalStateException if the prefix expands to more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
    */
   public static IntervalsSource prefix(BytesRef prefix) {
-    return prefix(prefix, 128);
+    return prefix(prefix, DEFAULT_MAX_EXPANSIONS);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that begin with a
    * prefix
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param prefix the prefix to expand
    * @param maxExpansions the maximum number of terms to expand to
@@ -165,19 +174,20 @@ public final class Intervals {
   /**
    * Return an {@link IntervalsSource} over the disjunction of all terms that match a wildcard glob
    *
-   * @throws IllegalStateException if the wildcard glob expands to more than 128 terms
+   * @throws IllegalStateException if the wildcard glob expands to more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
    * @see WildcardQuery for glob format
    */
   public static IntervalsSource wildcard(BytesRef wildcard) {
-    return wildcard(wildcard, 128);
+    return wildcard(wildcard, DEFAULT_MAX_EXPANSIONS);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that match a
    * wildcard glob
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param wildcard the glob to expand
    * @param maxExpansions the maximum number of terms to expand to
@@ -199,18 +209,19 @@ public final class Intervals {
    *
    * @param ca an automaton accepting matching terms
    * @param pattern string representation of the given automaton, mostly used in exception messages
-   * @throws IllegalStateException if the automaton accepts more than 128 terms
+   * @throws IllegalStateException if the automaton accepts more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
    */
   public static IntervalsSource multiterm(CompiledAutomaton ca, String pattern) {
-    return multiterm(ca, 128, pattern);
+    return multiterm(ca, DEFAULT_MAX_EXPANSIONS, pattern);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that are accepted
    * by the given automaton
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param ca an automaton accepting matching terms
    * @param maxExpansions the maximum number of terms to expand to
