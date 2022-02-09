@@ -387,13 +387,30 @@ public abstract class PointRangeQuery extends Query {
 
         if (reader.hasDeletions() == false
             && numDims == 1
-            && values.getDocCount() == reader.maxDoc()
             && values.getDocCount() == values.size()) {
-          // if all documents have at-least one point and the number of points equals the number of
-          // documents
-          final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
-          final IntersectVisitor visitor = getIntersectVisitor(result);
-          return (int) values.countPoints(visitor);
+          // if all documents have at-most one point
+          final int[] intersectingLeafNodeCount = {0};
+          // create a custom IntersectVisitor that records the number of leafNodes that matched
+          final IntersectVisitor visitor =
+              new IntersectVisitor() {
+                @Override
+                public void visit(int docID) {
+                  intersectingLeafNodeCount[0]++;
+                }
+
+                @Override
+                public void visit(int docID, byte[] packedValue) {
+                  if (matches(packedValue)) {
+                    visit(docID);
+                  }
+                }
+
+                @Override
+                public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                  return relate(minPackedValue, maxPackedValue);
+                }
+              };
+          return (int) values.countPoints(visitor) + intersectingLeafNodeCount[0];
         }
         return super.count(context);
       }

@@ -407,7 +407,8 @@ public abstract class PointValues {
           return cellCount;
         } else {
           // we have reached a leaf node here.
-          // add logic here/figure out what to do
+          pointTree.visitDocValues(visitor);
+          return 0; // the visitor has safely recorded the number of leaf nodes that matched
         }
       default:
         throw new IllegalArgumentException("Unreachable code");
