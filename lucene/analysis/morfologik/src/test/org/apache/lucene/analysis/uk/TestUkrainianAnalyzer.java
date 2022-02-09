@@ -104,5 +104,7 @@ public class TestUkrainianAnalyzer extends BaseTokenStreamTestCase {
   public void testDefaultStopWords() {
     CharArraySet stopwords = UkrainianMorfologikAnalyzer.getDefaultStopwords();
     assertTrue(stopwords.contains("аби"));
+    stopwords.remove("аби");
+    assertTrue(UkrainianMorfologikAnalyzer.getDefaultStopwords().contains("аби"));
   }
 }
