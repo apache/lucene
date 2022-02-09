@@ -258,14 +258,10 @@ public abstract class PointRangeQuery extends Query {
         };
       }
 
-      @Override
-      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        LeafReader reader = context.reader();
-
-        PointValues values = reader.getPointValues(field);
+      public boolean checkValidPointValues(PointValues values) throws IOException {
         if (values == null) {
           // No docs in this segment/field indexed any points
-          return null;
+          return false;
         }
 
         if (values.getNumIndexDimensions() != numDims) {
@@ -285,6 +281,17 @@ public abstract class PointRangeQuery extends Query {
                   + values.getBytesPerDimension()
                   + " but this query has bytesPerDim="
                   + bytesPerDim);
+        }
+        return true;
+      }
+
+      @Override
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        LeafReader reader = context.reader();
+
+        PointValues values = reader.getPointValues(field);
+        if (checkValidPointValues(values) == false) {
+          return null;
         }
 
         boolean allDocsMatch;
@@ -374,28 +381,8 @@ public abstract class PointRangeQuery extends Query {
         LeafReader reader = context.reader();
 
         PointValues values = reader.getPointValues(field);
-        if (values == null) {
-          // No docs in this segment indexed any points or this field did not contain any points
+        if (checkValidPointValues(values) == false) {
           return 0;
-        }
-
-        if (values.getNumIndexDimensions() != numDims) {
-          throw new IllegalArgumentException(
-              "field=\""
-                  + field
-                  + "\" was indexed with numIndexDimensions="
-                  + values.getNumIndexDimensions()
-                  + " but this query has numDims="
-                  + numDims);
-        }
-        if (bytesPerDim != values.getBytesPerDimension()) {
-          throw new IllegalArgumentException(
-              "field=\""
-                  + field
-                  + "\" was indexed with bytesPerDim="
-                  + values.getBytesPerDimension()
-                  + " but this query has bytesPerDim="
-                  + bytesPerDim);
         }
 
         if (reader.hasDeletions() == false
@@ -406,13 +393,7 @@ public abstract class PointRangeQuery extends Query {
           // documents
           final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
           final IntersectVisitor visitor = getIntersectVisitor(result);
-          values.intersect(visitor);
-          DocIdSetIterator iterator = result.build().iterator();
-          int numMatchingDocs = 0;
-          while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            numMatchingDocs++;
-          }
-          return numMatchingDocs;
+          return (int) values.countPoints(visitor);
         }
         return super.count(context);
       }
