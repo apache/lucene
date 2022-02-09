@@ -228,6 +228,8 @@ Other
   and discover classes to check from module system. The test now checks all analyzer modules,
   so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
 
+* LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
