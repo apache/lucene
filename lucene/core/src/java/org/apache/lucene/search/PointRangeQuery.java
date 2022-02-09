@@ -258,7 +258,7 @@ public abstract class PointRangeQuery extends Query {
         };
       }
 
-      public boolean checkValidPointValues(PointValues values) throws IOException {
+      private boolean checkValidPointValues(PointValues values) throws IOException {
         if (values == null) {
           // No docs in this segment/field indexed any points
           return false;
