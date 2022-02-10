@@ -206,7 +206,7 @@ public final class Intervals {
   }
 
   /**
-   * The fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
+   * A fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
    * within the specified {@code maxEdits} from the provided term.
    *
    * @see #fuzzyTerm(String, int, int, boolean, int)
@@ -225,9 +225,11 @@ public final class Intervals {
   }
 
   /**
-   * The fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
-   * within the specified {@code maxEdits} from the provided term. The implementation is similar to
-   * that of {@link org.apache.lucene.search.FuzzyQuery}.
+   * A fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
+   * within the specified {@code maxEdits} from the provided term.
+   *
+   * <p>The implementation is delegated to a {@link #multiterm(CompiledAutomaton, int, String)}
+   * interval source, with an automaton sourced from {@link org.apache.lucene.search.FuzzyQuery}.
    *
    * @param term the term to search for
    * @param maxEdits must be {@code >= 0} and {@code <=} {@link
