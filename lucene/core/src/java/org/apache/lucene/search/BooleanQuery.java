@@ -191,7 +191,9 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     return clauses.iterator();
   }
 
-  BooleanQuery rewriteNoScoring() {
+  // Utility method for rewriting BooleanQuery when scores are not needed.
+  // This is called from ConstantScoreQuery#rewrite
+  BooleanQuery rewriteNoScoring(IndexReader reader) throws IOException {
     boolean actuallyRewritten = false;
     BooleanQuery.Builder newQuery =
         new BooleanQuery.Builder().setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
@@ -202,7 +204,10 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
     for (BooleanClause clause : clauses) {
       Query query = clause.getQuery();
-      Query rewritten = ConstantScoreQuery.rewriteNoScoring(query);
+      Query rewritten = new ConstantScoreQuery(query).rewrite(reader);
+      if (rewritten instanceof ConstantScoreQuery) {
+        rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+      }
       BooleanClause.Occur occur = clause.getOccur();
       if (occur == Occur.SHOULD && keepShould == false) {
         // ignore clause
@@ -229,16 +234,6 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    if (scoreMode.needsScores() == false) {
-      Query rewritten = rewriteNoScoring();
-      if (this != rewritten) {
-        // Pass it back to IndexSearcher#rewrite, which might find new opportunities for rewriting
-        rewritten = searcher.rewrite(rewritten);
-      }
-      if (this != rewritten) {
-        return rewritten.createWeight(searcher, scoreMode, boost);
-      }
-    }
     return new BooleanWeight(this, searcher, scoreMode, boost);
   }
 
@@ -282,7 +277,10 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         Query rewritten = query.rewrite(reader);
         if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
           // Clauses that are not involved in scoring can get some extra simplifications
-          rewritten = ConstantScoreQuery.rewriteNoScoring(rewritten);
+          rewritten = new ConstantScoreQuery(rewritten).rewrite(reader);
+          if (rewritten instanceof ConstantScoreQuery) {
+            rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+          }
         }
         if (rewritten != query || query.getClass() == MatchNoDocsQuery.class) {
           // rewrite clause

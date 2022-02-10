@@ -411,6 +411,13 @@ final class BooleanWeight extends Weight {
       return null;
     }
 
+    if (scoreMode.needsScores() == false
+        && minShouldMatch == 0
+        && scorers.get(Occur.MUST).size() + scorers.get(Occur.FILTER).size() > 0) {
+      // Purely optional clauses are useless without scoring.
+      scorers.get(Occur.SHOULD).clear();
+    }
+
     return new Boolean2ScorerSupplier(this, scorers, scoreMode, minShouldMatch);
   }
 }

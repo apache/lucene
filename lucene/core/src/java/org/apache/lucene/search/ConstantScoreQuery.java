@@ -43,7 +43,7 @@ public final class ConstantScoreQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     Query rewritten = query.rewrite(reader);
     // Take advantage of the fact that scores are not needed to perform some extra simplifications
-    rewritten = rewriteNoScoring(rewritten);
+    rewritten = rewriteNoScoring(rewritten, reader);
 
     if (rewritten.getClass() == MatchNoDocsQuery.class) {
       // bubble up MatchNoDocsQuery
@@ -69,13 +69,13 @@ public final class ConstantScoreQuery extends Query {
    * Perform some simplifications that are only legal when a query is not expected to produce
    * scores.
    */
-  static Query rewriteNoScoring(Query query) {
+  private static Query rewriteNoScoring(Query query, IndexReader reader) throws IOException {
     if (query instanceof BoostQuery) {
       return ((BoostQuery) query).getQuery();
     } else if (query instanceof ConstantScoreQuery) {
       return ((ConstantScoreQuery) query).getQuery();
     } else if (query instanceof BooleanQuery) {
-      return ((BooleanQuery) query).rewriteNoScoring();
+      return ((BooleanQuery) query).rewriteNoScoring(reader);
     } else {
       return query;
     }
@@ -132,7 +132,8 @@ public final class ConstantScoreQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    final ScoreMode subScoreMode = scoreMode.needsScores() ? ScoreMode.COMPLETE_NO_SCORES : scoreMode;
+    final Weight innerWeight = searcher.createWeight(query, subScoreMode, 1f);
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost) {
         @Override

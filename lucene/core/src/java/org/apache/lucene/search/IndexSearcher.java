@@ -446,6 +446,8 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
+    // Wrapping with ConstantScoreQuery enables a few additional rewrite optimizations
+    query = new ConstantScoreQuery(query);
     query = rewrite(query);
     final Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
 
@@ -551,6 +553,10 @@ public class IndexSearcher {
    *     clauses.
    */
   public void search(Query query, Collector results) throws IOException {
+    if (results.scoreMode().needsScores() == false) {
+      // Take advantage of the few extra rewrite rules of ConstantScoreQuery.
+      query = new ConstantScoreQuery(query);
+    }
     query = rewrite(query);
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
   }
@@ -682,6 +688,10 @@ public class IndexSearcher {
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
     final C firstCollector = collectorManager.newCollector();
+    if (firstCollector.scoreMode().needsScores() == false) {
+      // Take advantage of the few extra rewrite rules of ConstantScoreQuery.
+      query = new ConstantScoreQuery(query);
+    }
     query = rewrite(query);
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
     return search(weight, collectorManager, firstCollector);
