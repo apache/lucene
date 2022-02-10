@@ -230,7 +230,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     if (scoreMode.needsScores() == false) {
-      Query rewritten = ConstantScoreQuery.rewriteNoScoring(this);
+      Query rewritten = rewriteNoScoring();
       if (this != rewritten) {
         // Pass it back to IndexSearcher#rewrite, which might find new opportunities for rewriting
         rewritten = searcher.rewrite(rewritten);
