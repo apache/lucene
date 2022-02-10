@@ -144,7 +144,7 @@ public class CheckHits {
   }
 
   /**
-   * Tests that a query matches the an expected set of documents using Hits.
+   * Tests that a query matches the expected set of documents using Hits.
    *
    * <p>Note that when using the Hits API, documents will only be returned if they have a positive
    * normalized score.
@@ -159,16 +159,16 @@ public class CheckHits {
       Random random, Query query, String defaultFieldName, IndexSearcher searcher, int[] results)
       throws IOException {
 
-    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
+    ScoreDoc[] hits = searcher.search(query, Math.max(10, results.length * 2)).scoreDocs;
 
     Set<Integer> correct = new TreeSet<>();
-    for (int i = 0; i < results.length; i++) {
-      correct.add(Integer.valueOf(results[i]));
+    for (int result : results) {
+      correct.add(result);
     }
 
     Set<Integer> actual = new TreeSet<>();
-    for (int i = 0; i < hits.length; i++) {
-      actual.add(Integer.valueOf(hits[i].doc));
+    for (ScoreDoc hit : hits) {
+      actual.add(hit.doc);
     }
 
     assertEquals(query.toString(defaultFieldName), correct, actual);
