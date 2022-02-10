@@ -486,7 +486,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   /** Tests with random vectors and a random filter. Uses RandomIndexWriter. */
   public void testRandomWithFilter() throws IOException {
-    int numDocs = 100;
+    int numDocs = 200;
     int dimension = atLeast(5);
     int numIters = atLeast(10);
     try (Directory d = newDirectory()) {
@@ -503,14 +503,14 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = newSearcher(reader);
         for (int i = 0; i < numIters; i++) {
-          int lower = random().nextInt(numDocs / 2);
+          int lower = random().nextInt(50);
 
           // Check that when filter is restrictive, we use exact search
-          Query filter = IntPoint.newRangeQuery("tag", lower, lower + 39);
-          KnnVectorQuery query = new KnnVectorQuery("field", randomVector(dimension), 50, filter);
+          Query filter = IntPoint.newRangeQuery("tag", lower, lower + 6);
+          KnnVectorQuery query = new KnnVectorQuery("field", randomVector(dimension), 5, filter);
           TopDocs results = searcher.search(query, numDocs);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
-          assertEquals(results.totalHits.value, 40);
+          assertEquals(results.totalHits.value, 5);
 
           // Check that when filter cost is less than k, we use exact search
           filter = IntPoint.newRangeQuery("tag", lower, lower + 2);
@@ -520,19 +520,19 @@ public class TestKnnVectorQuery extends LuceneTestCase {
           assertEquals(results.totalHits.value, 3);
 
           // Check results when k is small and filter is not restrictive
-          filter = IntPoint.newRangeQuery("tag", lower, lower + 50);
+          filter = IntPoint.newRangeQuery("tag", lower, lower + 150);
           query = new KnnVectorQuery("field", randomVector(dimension), 5, filter);
           results =
               searcher.search(query, numDocs, new Sort(new SortField("tag", SortField.Type.INT)));
-          assertEquals(5, results.scoreDocs.length);
           assertTrue(results.totalHits.value >= results.scoreDocs.length);
+          assertEquals(5, results.scoreDocs.length);
 
           for (ScoreDoc scoreDoc : results.scoreDocs) {
             FieldDoc fieldDoc = (FieldDoc) scoreDoc;
             assertEquals(1, fieldDoc.fields.length);
 
             int tag = (int) fieldDoc.fields[0];
-            assertTrue(lower <= tag && tag <= lower + 50);
+            assertTrue(lower <= tag && tag <= lower + 150);
           }
         }
       }
