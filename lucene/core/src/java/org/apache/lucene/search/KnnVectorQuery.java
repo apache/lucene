@@ -163,7 +163,8 @@ public class KnnVectorQuery extends Query {
     VectorSimilarityFunction similarityFunction = fi.getVectorSimilarityFunction();
     VectorValues vectorValues = context.reader().getVectorValues(field);
 
-    HitQueue queue = new HitQueue(k, false);
+    HitQueue queue = new HitQueue(k, true);
+    ScoreDoc topDoc = queue.top();
     DocIdSetIterator iterator =
         ConjunctionUtils.intersectIterators(List.of(acceptIterator, vectorValues));
 
@@ -171,8 +172,18 @@ public class KnnVectorQuery extends Query {
     while ((doc = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       float[] vector = vectorValues.vectorValue();
       float score = similarityFunction.convertToScore(similarityFunction.compare(vector, target));
-      queue.insertWithOverflow(new ScoreDoc(doc, score));
+      if (score >= topDoc.score) {
+        topDoc.score = score;
+        topDoc.doc = doc;
+        topDoc = queue.updateTop();
+      }
     }
+
+    // Remove any remaining sentinel values
+    while (queue.size() > 0 && queue.top().score < 0) {
+      queue.pop();
+    }
+
     ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
     for (int i = topScoreDocs.length - 1; i >= 0; i--) {
       topScoreDocs[i] = queue.pop();
