@@ -49,8 +49,7 @@ import org.apache.lucene.util.FixedBitSet;
  */
 public class KnnVectorQuery extends Query {
 
-  private static final TopDocs NO_RESULTS =
-      new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+  private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
   private final String field;
   private final float[] target;
@@ -102,13 +101,13 @@ public class KnnVectorQuery extends Query {
     }
 
     for (LeafReaderContext ctx : reader.leaves()) {
-      TopDocs results = searchLeaf(ctx, k, filterCollector);
-      if (results != null && ctx.docBase > 0) {
+      TopDocs results = searchLeaf(ctx, filterCollector);
+      if (ctx.docBase > 0) {
         for (ScoreDoc scoreDoc : results.scoreDocs) {
           scoreDoc.doc += ctx.docBase;
         }
       }
-      perLeafResults[ctx.ord] = results != null ? results : NO_RESULTS;
+      perLeafResults[ctx.ord] = results;
     }
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -118,13 +117,12 @@ public class KnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, int kPerLeaf, BitSetCollector filterCollector)
+  private TopDocs searchLeaf(LeafReaderContext ctx, BitSetCollector filterCollector)
       throws IOException {
 
     if (filterCollector == null) {
       Bits acceptDocs = ctx.reader().getLiveDocs();
-      return ctx.reader()
-          .searchNearestVectors(field, target, kPerLeaf, acceptDocs, Integer.MAX_VALUE);
+      return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE);
     } else {
       BitSetIterator filterIterator = filterCollector.getIterator(ctx.ord);
       if (filterIterator == null || filterIterator.cost() == 0) {
@@ -134,25 +132,31 @@ public class KnnVectorQuery extends Query {
       if (filterIterator.cost() <= k) {
         // If there <= k possible matches, short-circuit and perform exact search, since HNSW must
         // always visit at least k documents
-        return exactSearch(ctx, target, k, filterIterator);
+        return exactSearch(ctx, filterIterator);
       }
 
       try {
         // The filter iterator already incorporates live docs
         Bits acceptDocs = filterIterator.getBitSet();
         int visitedLimit = (int) filterIterator.cost();
-        return ctx.reader().searchNearestVectors(field, target, kPerLeaf, acceptDocs, visitedLimit);
+        return approximateSearch(ctx, acceptDocs, visitedLimit);
       } catch (
           @SuppressWarnings("unused")
           CollectionTerminatedException e) {
         // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-        return exactSearch(ctx, target, k, filterIterator);
+        return exactSearch(ctx, filterIterator);
       }
     }
   }
 
-  private TopDocs exactSearch(
-      LeafReaderContext context, float[] target, int k, DocIdSetIterator acceptIterator)
+  private TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    TopDocs results =
+        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+    return results != null ? results : NO_RESULTS;
+  }
+
+  private TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
       throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
@@ -205,10 +209,10 @@ public class KnnVectorQuery extends Query {
     }
 
     /**
-     * Return an iterator whose {@link BitSet} contains the matching documents,
-     * and whose {@link BitSetIterator#cost()} is the exact cardinality. If the
-     * leaf was never visited, then return null.
-     **/
+     * Return an iterator whose {@link BitSet} contains the matching documents, and whose {@link
+     * BitSetIterator#cost()} is the exact cardinality. If the leaf was never visited, then return
+     * null.
+     */
     public BitSetIterator getIterator(int contextOrd) {
       if (bitSets[contextOrd] == null) {
         return null;
