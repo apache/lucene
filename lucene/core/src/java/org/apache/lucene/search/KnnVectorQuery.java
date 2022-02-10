@@ -21,7 +21,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnVectorField;
@@ -97,7 +96,12 @@ public class KnnVectorQuery extends Query {
     if (filter != null) {
       filterCollector = new BitSetCollector(reader.leaves().size());
       IndexSearcher indexSearcher = new IndexSearcher(reader);
-      indexSearcher.search(filter, filterCollector);
+      BooleanQuery booleanQuery =
+          new BooleanQuery.Builder()
+              .add(filter, BooleanClause.Occur.FILTER)
+              .add(new KnnVectorFieldExistsQuery(field), BooleanClause.Occur.FILTER)
+              .build();
+      indexSearcher.search(booleanQuery, filterCollector);
     }
 
     for (LeafReaderContext ctx : reader.leaves()) {
@@ -169,12 +173,12 @@ public class KnnVectorQuery extends Query {
 
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
-    DocIdSetIterator iterator =
-        ConjunctionUtils.intersectIterators(List.of(acceptIterator, vectorValues));
-
     int doc;
-    while ((doc = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+    while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      int vectorDoc = vectorValues.advance(doc);
+      assert vectorDoc == doc;
       float[] vector = vectorValues.vectorValue();
+
       float score = similarityFunction.convertToScore(similarityFunction.compare(vector, target));
       if (score >= topDoc.score) {
         topDoc.score = score;

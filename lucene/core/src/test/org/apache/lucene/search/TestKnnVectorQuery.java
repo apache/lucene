@@ -115,13 +115,13 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
-  public void testMatchNoneFilter() throws IOException {
+  public void testFilterWithNoVectorMatches() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
-      Query filter = new TermQuery(new Term("id", "nonexistent"));
+      Query filter = new TermQuery(new Term("other", "value"));
       Query kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(0, topDocs.totalHits.value);
