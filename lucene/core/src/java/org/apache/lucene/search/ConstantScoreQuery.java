@@ -42,8 +42,16 @@ public final class ConstantScoreQuery extends Query {
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
     Query rewritten = query.rewrite(reader);
-    // Take advantage of the fact that scores are not needed to perform some extra simplifications
-    rewritten = rewriteNoScoring(rewritten, reader);
+
+    // Do some extra simplifications that are legal since scores are not needed on the wrapped
+    // query.
+    if (rewritten instanceof BoostQuery) {
+      rewritten = ((BoostQuery) rewritten).getQuery();
+    } else if (rewritten instanceof ConstantScoreQuery) {
+      rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+    } else if (rewritten instanceof BooleanQuery) {
+      rewritten = ((BooleanQuery) rewritten).rewriteNoScoring(reader);
+    }
 
     if (rewritten.getClass() == MatchNoDocsQuery.class) {
       // bubble up MatchNoDocsQuery
@@ -63,22 +71,6 @@ public final class ConstantScoreQuery extends Query {
     }
 
     return super.rewrite(reader);
-  }
-
-  /**
-   * Perform some simplifications that are only legal when a query is not expected to produce
-   * scores.
-   */
-  private static Query rewriteNoScoring(Query query, IndexReader reader) throws IOException {
-    if (query instanceof BoostQuery) {
-      return ((BoostQuery) query).getQuery();
-    } else if (query instanceof ConstantScoreQuery) {
-      return ((ConstantScoreQuery) query).getQuery();
-    } else if (query instanceof BooleanQuery) {
-      return ((BooleanQuery) query).rewriteNoScoring(reader);
-    } else {
-      return query;
-    }
   }
 
   @Override
@@ -132,7 +124,8 @@ public final class ConstantScoreQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    final ScoreMode subScoreMode = scoreMode.needsScores() ? ScoreMode.COMPLETE_NO_SCORES : scoreMode;
+    final ScoreMode subScoreMode =
+        scoreMode.needsScores() ? ScoreMode.COMPLETE_NO_SCORES : scoreMode;
     final Weight innerWeight = searcher.createWeight(query, subScoreMode, 1f);
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost) {
