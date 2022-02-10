@@ -370,52 +370,6 @@ public abstract class PointValues {
   }
 
   /**
-   * Finds the number of points matching the provided range conditions. Using this method is faster
-   * than calling {@link #intersect(IntersectVisitor)} to get the count of intersecting points. This
-   * method does not enforce live documents, therefore it should only be used when there are no
-   * deleted documents.
-   */
-  public final long countPoints(IntersectVisitor visitor) throws IOException {
-    final PointTree pointTree = getPointTree();
-    long countPoints = countPoints(visitor, pointTree);
-    assert pointTree.moveToParent()
-        == false; // just checking to make sure we ended the tree search at the root node
-    return countPoints;
-  }
-
-  private long countPoints(IntersectVisitor visitor, PointTree pointTree) throws IOException {
-    Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
-    switch (r) {
-      case CELL_OUTSIDE_QUERY:
-        // This cell is fully outside the query shape: return 0 as the count of its nodes
-        return 0;
-      case CELL_INSIDE_QUERY:
-        // This cell is fully inside the query shape: return the size of the entire node as the
-        // count
-        return pointTree.size();
-      case CELL_CROSSES_QUERY:
-        /*
-        The cell crosses the shape boundary, or the cell fully contains the query, so we fall
-        through and do full counting.
-        */
-        if (pointTree.moveToChild()) {
-          int cellCount = 0;
-          do {
-            cellCount += countPoints(visitor, pointTree);
-          } while (pointTree.moveToSibling());
-          pointTree.moveToParent();
-          return cellCount;
-        } else {
-          // we have reached a leaf node here.
-          pointTree.visitDocValues(visitor);
-          return 0; // the visitor has safely recorded the number of leaf nodes that matched
-        }
-      default:
-        throw new IllegalArgumentException("Unreachable code");
-    }
-  }
-
-  /**
    * Estimate the number of points that would be visited by {@link #intersect} with the given {@link
    * IntersectVisitor}. This should run many times faster than {@link #intersect(IntersectVisitor)}.
    */

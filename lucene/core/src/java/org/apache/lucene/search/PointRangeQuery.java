@@ -19,6 +19,8 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -389,30 +391,72 @@ public abstract class PointRangeQuery extends Query {
             && numDims == 1
             && values.getDocCount() == values.size()) {
           // if all documents have at-most one point
-          final int[] intersectingLeafNodeCount = {0};
-          // create a custom IntersectVisitor that records the number of leafNodes that matched
-          final IntersectVisitor visitor =
-              new IntersectVisitor() {
-                @Override
-                public void visit(int docID) {
-                  intersectingLeafNodeCount[0]++;
-                }
-
-                @Override
-                public void visit(int docID, byte[] packedValue) {
-                  if (matches(packedValue)) {
-                    visit(docID);
-                  }
-                }
-
-                @Override
-                public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                  return relate(minPackedValue, maxPackedValue);
-                }
-              };
-          return (int) values.countPoints(visitor) + intersectingLeafNodeCount[0];
+          return (int) pointCount(values.getPointTree(), this::relate, this::matches);
         }
         return super.count(context);
+      }
+
+      private long pointCount(
+          PointValues.PointTree pointTree,
+          BiFunction<byte[], byte[], Relation> nodeComparator,
+          Predicate<byte[]> leafComparator)
+          throws IOException {
+        final int[] matchingLeafNodeCount = {0};
+        // create a custom IntersectVisitor that records the number of leafNodes that matched
+        final IntersectVisitor visitor =
+            new IntersectVisitor() {
+              @Override
+              public void visit(int docID) {
+                // this branch should be unreachable
+                throw new UnsupportedOperationException(
+                    "This IntersectVisitor does not perform any actions on a "
+                        + "docID="
+                        + docID
+                        + " node being visited");
+              }
+
+              @Override
+              public void visit(int docID, byte[] packedValue) {
+                if (leafComparator.test(packedValue)) {
+                  matchingLeafNodeCount[0]++;
+                }
+              }
+
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                return nodeComparator.apply(minPackedValue, maxPackedValue);
+              }
+            };
+        Relation r =
+            nodeComparator.apply(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+        switch (r) {
+          case CELL_OUTSIDE_QUERY:
+            // This cell is fully outside the query shape: return 0 as the count of its nodes
+            return 0L;
+          case CELL_INSIDE_QUERY:
+            // This cell is fully inside the query shape: return the size of the entire node as the
+            // count
+            return pointTree.size();
+          case CELL_CROSSES_QUERY:
+            /*
+            The cell crosses the shape boundary, or the cell fully contains the query, so we fall
+            through and do full counting.
+            */
+            if (pointTree.moveToChild()) {
+              int cellCount = 0;
+              do {
+                cellCount += pointCount(pointTree, nodeComparator, leafComparator);
+              } while (pointTree.moveToSibling());
+              pointTree.moveToParent();
+              return cellCount;
+            } else {
+              // we have reached a leaf node here.
+              pointTree.visitDocValues(visitor);
+              return matchingLeafNodeCount[0];
+            }
+          default:
+            throw new IllegalArgumentException("Unreachable code");
+        }
       }
 
       @Override
