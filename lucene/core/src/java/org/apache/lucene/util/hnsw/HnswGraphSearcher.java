@@ -161,19 +161,22 @@ public final class HnswGraphSearcher {
       int friendOrd;
       while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd) == false) {
-          float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-          if (bound.check(score) == false) {
-            candidates.add(friendOrd, score);
-            if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-              if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
-                bound.set(results.topScore());
-              }
-            }
-          }
+        if (visited.getAndSet(friendOrd)) {
+          continue;
+        }
 
-          if (numVisited++ > visitedLimit) {
-            throw new CollectionTerminatedException();
+        numVisited++;
+        if (numVisited > visitedLimit) {
+          throw new CollectionTerminatedException();
+        }
+
+        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        if (bound.check(score) == false) {
+          candidates.add(friendOrd, score);
+          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+            if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
+              bound.set(results.topScore());
+            }
           }
         }
       }
