@@ -132,6 +132,9 @@ public final class ConstantScoreQuery extends Query {
       case TOP_DOCS_WITH_SCORES:
         innerScoreMode = ScoreMode.TOP_DOCS;
         break;
+      case TOP_DOCS:
+      case COMPLETE:
+      case COMPLETE_NO_SCORES:
       default:
         innerScoreMode = scoreMode;
         break;
