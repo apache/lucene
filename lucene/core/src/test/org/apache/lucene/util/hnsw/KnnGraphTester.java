@@ -678,7 +678,7 @@ public class KnnGraphTester {
       }
 
       @Override
-      public int dimension() {
+      public int getNumDimensions() {
         return dim;
       }
 

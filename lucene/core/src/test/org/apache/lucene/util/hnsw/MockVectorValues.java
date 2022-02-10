@@ -59,7 +59,7 @@ class MockVectorValues extends VectorValues
   }
 
   @Override
-  public int dimension() {
+  public int getNumDimensions() {
     return dimension;
   }
 

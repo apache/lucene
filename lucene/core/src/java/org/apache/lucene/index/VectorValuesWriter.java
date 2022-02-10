@@ -204,8 +204,8 @@ class VectorValuesWriter {
     }
 
     @Override
-    public int dimension() {
-      return delegate.dimension();
+    public int getNumDimensions() {
+      return delegate.getNumDimensions();
     }
 
     @Override
@@ -238,8 +238,8 @@ class VectorValuesWriter {
         }
 
         @Override
-        public int dimension() {
-          return delegateRA.dimension();
+        public int getNumDimensions() {
+          return delegateRA.getNumDimensions();
         }
 
         @Override
@@ -289,7 +289,7 @@ class VectorValuesWriter {
     }
 
     @Override
-    public int dimension() {
+    public int getNumDimensions() {
       return dimension;
     }
 

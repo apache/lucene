@@ -394,7 +394,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public int dimension() {
+    public int getNumDimensions() {
       return dimension;
     }
 

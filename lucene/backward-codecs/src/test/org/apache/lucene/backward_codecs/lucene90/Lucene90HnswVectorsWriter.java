@@ -135,7 +135,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       // build the graph using the temporary vector data
       Lucene90HnswVectorsReader.OffHeapVectorValues offHeapVectors =
           new Lucene90HnswVectorsReader.OffHeapVectorValues(
-              vectors.dimension(), docIds, vectorDataInput);
+              vectors.getNumDimensions(), docIds, vectorDataInput);
 
       long[] offsets = new long[docIds.length];
       long vectorIndexOffset = vectorIndex.getFilePointer();
@@ -183,7 +183,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
       // write vector
       BytesRef binaryValue = vectors.binaryValue();
-      assert binaryValue.length == vectors.dimension() * Float.BYTES;
+      assert binaryValue.length == vectors.getNumDimensions() * Float.BYTES;
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
       docIds[count] = docV;
     }
