@@ -35,7 +35,18 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
-/** Uses {@link KnnVectorsReader#search} to perform nearest neighbour search. */
+/**
+ * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
+ *
+ * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
+ * executes the filter for each leaf, then chooses a strategy dynamically:
+ *
+ * <ul>
+ *   <li>If the filter cost is less than k, just execute an exact search
+ *   <li>Otherwise run a kNN search subject to the filter
+ *   <li>the kNN search visits too many vectors without completing, stop and run an exact search
+ * </ul>
+ */
 public class KnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS =
@@ -44,7 +55,7 @@ public class KnnVectorQuery extends Query {
   private final String field;
   private final float[] target;
   private final int k;
-  private Query filter;
+  private final Query filter;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -56,12 +67,7 @@ public class KnnVectorQuery extends Query {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnVectorQuery(String field, float[] target, int k) {
-    this.field = field;
-    this.target = target;
-    this.k = k;
-    if (k < 1) {
-      throw new IllegalArgumentException("k must be at least 1, got: " + k);
-    }
+    this(field, target, k, null);
   }
 
   /**
@@ -75,7 +81,12 @@ public class KnnVectorQuery extends Query {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnVectorQuery(String field, float[] target, int k, Query filter) {
-    this(field, target, k);
+    this.field = field;
+    this.target = target;
+    this.k = k;
+    if (k < 1) {
+      throw new IllegalArgumentException("k must be at least 1, got: " + k);
+    }
     this.filter = filter;
   }
 
