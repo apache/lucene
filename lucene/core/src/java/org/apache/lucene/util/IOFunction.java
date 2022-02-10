@@ -25,6 +25,7 @@ import java.io.IOException;
  * @param <T> the type of the input to the function
  * @param <R> the type of the result of the function
  */
+@FunctionalInterface
 public interface IOFunction<T, R> {
   /** Applies this function to the given argument */
   R apply(T t) throws IOException;
