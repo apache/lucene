@@ -499,8 +499,8 @@ public final class IOUtils {
    * suppressed.
    */
   @SuppressWarnings("StreamToIterable")
-  public static <T> void applyToAll(Collection<T> collection, IOConsumer<T> consumer)
-      throws IOException {
+  public static <T> void applyToAll(
+      Collection<T> collection, org.apache.lucene.util.IOConsumer<T> consumer) throws IOException {
     IOUtils.close(
         collection.stream().filter(Objects::nonNull).map(t -> (Closeable) () -> consumer.accept(t))
             ::iterator);
@@ -512,6 +512,7 @@ public final class IOUtils {
    * @see java.util.function.Consumer
    */
   @FunctionalInterface
+  @Deprecated(forRemoval = true, since = "9.1")
   public interface IOConsumer<T> {
     /** Performs this operation on the given argument. */
     void accept(T input) throws IOException;
@@ -523,20 +524,8 @@ public final class IOUtils {
    * @see java.util.function.Function
    */
   @FunctionalInterface
+  @Deprecated(forRemoval = true, since = "9.1")
   public interface IOFunction<T, R> {
     R apply(T t) throws IOException;
-  }
-
-  /**
-   * A resource supplier function that may throw an IOException.
-   *
-   * <p>Note that this would open a resource such as a File. Consumers should make sure to close the
-   * resource (e.g., use try-with-resources)
-   *
-   * @see java.util.function.Supplier
-   */
-  @FunctionalInterface
-  public interface IOSupplier<T> {
-    T get() throws IOException;
   }
 }
