@@ -204,6 +204,11 @@ public class KnnVectorQuery extends Query {
       this.cost = new int[bitSets.length];
     }
 
+    /**
+     * Return an iterator whose {@link BitSet} contains the matching documents,
+     * and whose {@link BitSetIterator#cost()} is the exact cardinality. If the
+     * leaf was never visited, then return null.
+     **/
     public BitSetIterator getIterator(int contextOrd) {
       if (bitSets[contextOrd] == null) {
         return null;
