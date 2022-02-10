@@ -17,9 +17,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK
-      uses: actions/setup-java@v1
+      uses: actions/setup-java@v2
       with:
+        distribution: 'temurin'
         java-version: 17
+        java-package: jdk
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - uses: actions/cache@v2
