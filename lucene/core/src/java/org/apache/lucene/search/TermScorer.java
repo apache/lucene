@@ -75,7 +75,6 @@ public final class TermScorer extends Scorer {
     return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
   }
 
-  @Override
   public float smoothingScore(int docId) throws IOException {
     return docScorer.score(docId, 0);
   }
