@@ -439,12 +439,12 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
   private Query randomWrapper(Random random, Query query) {
     switch (random.nextInt(2)) {
-    case 0:
-      return new BoostQuery(query, TestUtil.nextInt(random, 0, 4));
-    case 1:
-      return new ConstantScoreQuery(query);
-    default:
-      throw new AssertionError();
+      case 0:
+        return new BoostQuery(query, TestUtil.nextInt(random, 0, 4));
+      case 1:
+        return new ConstantScoreQuery(query);
+      default:
+        throw new AssertionError();
     }
   }
 
@@ -624,42 +624,54 @@ public class TestBooleanRewrites extends LuceneTestCase {
   public void testDiscardShouldClauses() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
 
-    Query query1 = new ConstantScoreQuery(new BooleanQuery.Builder()
-        .add(new TermQuery(new Term("field", "a")), Occur.MUST)
-        .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
-        .build());
+    Query query1 =
+        new ConstantScoreQuery(
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "a")), Occur.MUST)
+                .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
+                .build());
     Query rewritten1 = new ConstantScoreQuery(new TermQuery(new Term("field", "a")));
     assertEquals(rewritten1, searcher.rewrite(query1));
-    
-    Query query2 = new ConstantScoreQuery(new BooleanQuery.Builder()
-        .add(new TermQuery(new Term("field", "a")), Occur.MUST)
-        .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
-        .add(new TermQuery(new Term("field", "c")), Occur.FILTER)
-        .build());
-    Query rewritten2 = new ConstantScoreQuery(new BooleanQuery.Builder()
-        .add(new TermQuery(new Term("field", "a")), Occur.FILTER)
-        .add(new TermQuery(new Term("field", "c")), Occur.FILTER)
-        .build());
+
+    Query query2 =
+        new ConstantScoreQuery(
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "a")), Occur.MUST)
+                .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "c")), Occur.FILTER)
+                .build());
+    Query rewritten2 =
+        new ConstantScoreQuery(
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "a")), Occur.FILTER)
+                .add(new TermQuery(new Term("field", "c")), Occur.FILTER)
+                .build());
     assertEquals(rewritten2, searcher.rewrite(query2));
 
-    Query query3 = new ConstantScoreQuery(new BooleanQuery.Builder()
-        .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
-        .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
-        .build());
+    Query query3 =
+        new ConstantScoreQuery(
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
+                .build());
     assertSame(query3, searcher.rewrite(query3));
 
-    Query query4 = new ConstantScoreQuery(new BooleanQuery.Builder()
-        .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
-        .add(new TermQuery(new Term("field", "b")), Occur.MUST_NOT)
-        .build());
+    Query query4 =
+        new ConstantScoreQuery(
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "b")), Occur.MUST_NOT)
+                .build());
     assertSame(query4, searcher.rewrite(query4));
 
-    Query query5 = new ConstantScoreQuery(new BooleanQuery.Builder()
-        .setMinimumNumberShouldMatch(1)
-        .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
-        .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
-        .add(new TermQuery(new Term("field", "c")), Occur.FILTER)
-        .build());
+    Query query5 =
+        new ConstantScoreQuery(
+            new BooleanQuery.Builder()
+                .setMinimumNumberShouldMatch(1)
+                .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "c")), Occur.FILTER)
+                .build());
     assertSame(query5, searcher.rewrite(query5));
   }
 
