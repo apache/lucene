@@ -25,10 +25,12 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.apache.lucene.util.automaton.Operations;
 
 /**
@@ -201,6 +203,49 @@ public final class Intervals {
             WildcardQuery.toAutomaton(
                 new Term("", wildcard), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
     return new MultiTermIntervalsSource(ca, maxExpansions, wildcard.utf8ToString());
+  }
+
+  /**
+   * The fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
+   * within the specified {@code maxEdits} from the provided term.
+   *
+   * @see #fuzzyTerm(String, int, int, boolean, int)
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}, use {@link FuzzyQuery#defaultMaxEdits} for
+   *     the default, if needed.
+   */
+  public static IntervalsSource fuzzyTerm(String term, int maxEdits) {
+    return fuzzyTerm(
+        term,
+        maxEdits,
+        FuzzyQuery.defaultPrefixLength,
+        FuzzyQuery.defaultTranspositions,
+        DEFAULT_MAX_EXPANSIONS);
+  }
+
+  /**
+   * The fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
+   * within the specified {@code maxEdits} from the provided term. The implementation is similar to
+   * that of {@link org.apache.lucene.search.FuzzyQuery}.
+   *
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}, use {@link FuzzyQuery#defaultMaxEdits} for
+   *     the default, if needed.
+   * @param prefixLength length of common (non-fuzzy) prefix
+   * @param maxExpansions the maximum number of terms to match. Setting {@code maxExpansions} to
+   *     higher than the default value of {@link #DEFAULT_MAX_EXPANSIONS} can be both slow and
+   *     memory-intensive
+   * @param transpositions true if transpositions should be treated as a primitive edit operation.
+   *     If this is false, comparisons will implement the classic Levenshtein algorithm.
+   */
+  public static IntervalsSource fuzzyTerm(
+      String term, int maxEdits, int prefixLength, boolean transpositions, int maxExpansions) {
+    return Intervals.multiterm(
+        FuzzyQuery.getFuzzyAutomaton(term, maxEdits, prefixLength, transpositions),
+        maxExpansions,
+        term + "~" + maxEdits);
   }
 
   /**

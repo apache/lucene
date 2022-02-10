@@ -18,7 +18,6 @@ package org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn;
 
 import java.util.Locale;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.intervals.Intervals;
 import org.apache.lucene.queries.intervals.IntervalsSource;
 import org.apache.lucene.search.FuzzyQuery;
@@ -42,9 +41,12 @@ public class FuzzyTerm extends IntervalFunction {
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    var fuzzyQuery = new FuzzyQuery(new Term(field, term), maxEdits);
-    var automaton = fuzzyQuery.getAutomata();
-    return Intervals.multiterm(automaton, maxExpansions, toString());
+    return Intervals.fuzzyTerm(
+        term,
+        maxEdits,
+        FuzzyQuery.defaultPrefixLength,
+        FuzzyQuery.defaultTranspositions,
+        maxExpansions);
   }
 
   @Override
