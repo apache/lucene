@@ -31,7 +31,6 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
@@ -47,6 +46,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -243,7 +243,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final SplittableRandom random = new SplittableRandom(checksumSeed);
     NeighborQueue results =
-        Lucene90HnswGraph.search(
+        Lucene90OnHeapHnswGraph.search(
             target,
             k,
             k,
@@ -291,7 +291,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Get knn graph values; used for testing */
-  public KnnGraphValues getGraphValues(String field) throws IOException {
+  public HnswGraph getGraphValues(String field) throws IOException {
     FieldInfo info = fieldInfos.fieldInfo(field);
     if (info == null) {
       throw new IllegalArgumentException("No such field '" + field + "'");
@@ -300,14 +300,14 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     if (entry != null && entry.indexDataLength > 0) {
       return getGraphValues(entry);
     } else {
-      return KnnGraphValues.EMPTY;
+      return HnswGraph.EMPTY;
     }
   }
 
-  private KnnGraphValues getGraphValues(FieldEntry entry) throws IOException {
+  private HnswGraph getGraphValues(FieldEntry entry) throws IOException {
     IndexInput bytesSlice =
         vectorIndex.slice("graph-data", entry.indexDataOffset, entry.indexDataLength);
-    return new IndexedKnnGraphReader(entry, bytesSlice);
+    return new OffHeapHnswGraph(entry, bytesSlice);
   }
 
   @Override
@@ -465,7 +465,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class IndexedKnnGraphReader extends KnnGraphValues {
+  private static final class OffHeapHnswGraph extends HnswGraph {
 
     final FieldEntry entry;
     final IndexInput dataIn;
@@ -474,7 +474,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     int arcUpTo;
     int arc;
 
-    IndexedKnnGraphReader(FieldEntry entry, IndexInput dataIn) {
+    OffHeapHnswGraph(FieldEntry entry, IndexInput dataIn) {
       this.entry = entry;
       this.dataIn = dataIn;
     }

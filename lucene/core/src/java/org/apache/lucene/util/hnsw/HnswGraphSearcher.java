@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
@@ -62,8 +61,8 @@ public final class HnswGraphSearcher {
    * @param topK the number of nodes to be returned
    * @param vectors the vector values
    * @param similarityFunction the similarity function to compare vectors
-   * @param graphValues the graph values. May represent the entire graph, or a level in a
-   *     hierarchical graph.
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
    * @return a priority queue holding the closest neighbors found
@@ -73,7 +72,7 @@ public final class HnswGraphSearcher {
       int topK,
       RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
-      KnnGraphValues graphValues,
+      HnswGraph graph,
       Bits acceptOrds)
       throws IOException {
     HnswGraphSearcher graphSearcher =
@@ -82,12 +81,12 @@ public final class HnswGraphSearcher {
             new NeighborQueue(topK, similarityFunction.reversed == false),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
-    int[] eps = new int[] {graphValues.entryNode()};
-    for (int level = graphValues.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graphValues, null);
+    int[] eps = new int[] {graph.entryNode()};
+    for (int level = graph.numLevels() - 1; level >= 1; level--) {
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null);
       eps[0] = results.pop();
     }
-    results = graphSearcher.searchLevel(query, topK, 0, eps, vectors, graphValues, acceptOrds);
+    results = graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds);
     return results;
   }
 
@@ -99,7 +98,7 @@ public final class HnswGraphSearcher {
    * @param level level to search
    * @param eps the entry points for search at this level expressed as level 0th ordinals
    * @param vectors vector values
-   * @param graphValues the graph values
+   * @param graph the graph values
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
    * @return a priority queue holding the closest neighbors found
@@ -110,10 +109,10 @@ public final class HnswGraphSearcher {
       int level,
       final int[] eps,
       RandomAccessVectorValues vectors,
-      KnnGraphValues graphValues,
+      HnswGraph graph,
       Bits acceptOrds)
       throws IOException {
-    int size = graphValues.size();
+    int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
     clearScratchState();
 
@@ -140,9 +139,9 @@ public final class HnswGraphSearcher {
         break;
       }
       int topCandidateNode = candidates.pop();
-      graphValues.seek(level, topCandidateNode);
+      graph.seek(level, topCandidateNode);
       int friendOrd;
-      while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
+      while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;

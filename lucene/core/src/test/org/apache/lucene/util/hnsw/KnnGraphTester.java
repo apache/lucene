@@ -50,7 +50,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
@@ -252,8 +251,7 @@ public class KnnGraphTester {
         KnnVectorsReader vectorsReader =
             ((PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) leafReader).getVectorReader())
                 .getFieldReader(KNN_FIELD);
-        KnnGraphValues knnValues =
-            ((Lucene91HnswVectorsReader) vectorsReader).getGraphValues(KNN_FIELD);
+        HnswGraph knnValues = ((Lucene91HnswVectorsReader) vectorsReader).getGraph(KNN_FIELD);
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());
       }
@@ -274,7 +272,7 @@ public class KnnGraphTester {
     }
   }
 
-  private void dumpGraph(HnswGraph hnsw) {
+  private void dumpGraph(OnHeapHnswGraph hnsw) {
     for (int i = 0; i < hnsw.size(); i++) {
       NeighborArray neighbors = hnsw.getNeighbors(0, i);
       System.out.printf(Locale.ROOT, "%5d", i);
@@ -303,7 +301,7 @@ public class KnnGraphTester {
   }
 
   @SuppressForbidden(reason = "Prints stuff")
-  private void printGraphFanout(KnnGraphValues knnValues, int numDocs) throws IOException {
+  private void printGraphFanout(HnswGraph knnValues, int numDocs) throws IOException {
     int min = Integer.MAX_VALUE, max = 0, total = 0;
     int count = 0;
     int[] leafHist = new int[numDocs];

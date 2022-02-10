@@ -30,7 +30,7 @@ import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
- * Builder for HNSW graph. See {@link Lucene90HnswGraph} for a gloss on the algorithm and the
+ * Builder for HNSW graph. See {@link Lucene90OnHeapHnswGraph} for a gloss on the algorithm and the
  * meaning of the hyperparameters.
  *
  * <p>This class is preserved here only for tests.
@@ -53,7 +53,7 @@ public final class Lucene90HnswGraphBuilder {
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
   private final BoundsChecker bound;
-  final Lucene90HnswGraph hnsw;
+  final Lucene90OnHeapHnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
 
@@ -90,7 +90,7 @@ public final class Lucene90HnswGraphBuilder {
     }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
-    this.hnsw = new Lucene90HnswGraph(maxConn);
+    this.hnsw = new Lucene90OnHeapHnswGraph(maxConn);
     bound = BoundsChecker.create(similarityFunction.reversed);
     random = new SplittableRandom(seed);
     scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));
@@ -104,7 +104,7 @@ public final class Lucene90HnswGraphBuilder {
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public Lucene90HnswGraph build(RandomAccessVectorValues vectors) throws IOException {
+  public Lucene90OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
     if (vectors == vectorValues) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -143,7 +143,7 @@ public final class Lucene90HnswGraphBuilder {
   void addGraphNode(float[] value) throws IOException {
     // We pass 'null' for acceptOrds because there are no deletions while building the graph
     NeighborQueue candidates =
-        Lucene90HnswGraph.search(
+        Lucene90OnHeapHnswGraph.search(
             value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, null, random);
 
     int node = hnsw.addNode();
