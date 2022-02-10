@@ -191,38 +191,36 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     return clauses.iterator();
   }
 
-  private BooleanQuery rewriteNoScoring() {
-    boolean keepShould =
+  BooleanQuery rewriteNoScoring() {
+    boolean actuallyRewritten = false;
+    BooleanQuery.Builder newQuery =
+        new BooleanQuery.Builder().setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
+
+    final boolean keepShould =
         getMinimumNumberShouldMatch() > 0
             || (clauseSets.get(Occur.MUST).size() + clauseSets.get(Occur.FILTER).size() == 0);
 
-    if (clauseSets.get(Occur.MUST).size() == 0 && keepShould) {
-      return this;
-    }
-    BooleanQuery.Builder newQuery = new BooleanQuery.Builder();
-
-    newQuery.setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
     for (BooleanClause clause : clauses) {
-      switch (clause.getOccur()) {
-        case MUST:
-          {
-            newQuery.add(clause.getQuery(), Occur.FILTER);
-            break;
-          }
-        case SHOULD:
-          {
-            if (keepShould) {
-              newQuery.add(clause);
-            }
-            break;
-          }
-        case FILTER:
-        case MUST_NOT:
-        default:
-          {
-            newQuery.add(clause);
-          }
+      Query query = clause.getQuery();
+      Query rewritten = ConstantScoreQuery.rewriteNoScoring(query);
+      BooleanClause.Occur occur = clause.getOccur();
+      if (occur == Occur.SHOULD && keepShould == false) {
+        // ignore clause
+        actuallyRewritten = true;
+      } else if (occur == Occur.MUST) {
+        // replace MUST clauses with FILTER clauses
+        newQuery.add(rewritten, Occur.FILTER);
+        actuallyRewritten = true;
+      } else if (query != rewritten) {
+        newQuery.add(rewritten, occur);
+        actuallyRewritten = true;
+      } else {
+        newQuery.add(clause);
       }
+    }
+
+    if (actuallyRewritten == false) {
+      return this;
     }
 
     return newQuery.build();
@@ -231,11 +229,17 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    BooleanQuery query = this;
     if (scoreMode.needsScores() == false) {
-      query = rewriteNoScoring();
+      Query rewritten = ConstantScoreQuery.rewriteNoScoring(this);
+      if (this != rewritten) {
+        // Pass it back to IndexSearcher#rewrite, which might find new opportunities for rewriting
+        rewritten = searcher.rewrite(rewritten);
+      }
+      if (this != rewritten) {
+        return rewritten.createWeight(searcher, scoreMode, boost);
+      }
     }
-    return new BooleanWeight(query, searcher, scoreMode, boost);
+    return new BooleanWeight(this, searcher, scoreMode, boost);
   }
 
   @Override
@@ -274,12 +278,17 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       boolean actuallyRewritten = false;
       for (BooleanClause clause : this) {
         Query query = clause.getQuery();
+        BooleanClause.Occur occur = clause.getOccur();
         Query rewritten = query.rewrite(reader);
+        if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
+          // Clauses that are not involved in scoring can get some extra simplifications
+          rewritten = ConstantScoreQuery.rewriteNoScoring(rewritten);
+        }
         if (rewritten != query || query.getClass() == MatchNoDocsQuery.class) {
           // rewrite clause
           actuallyRewritten = true;
           if (rewritten.getClass() == MatchNoDocsQuery.class) {
-            switch (clause.getOccur()) {
+            switch (occur) {
               case SHOULD:
               case MUST_NOT:
                 // the clause can be safely ignored
@@ -289,7 +298,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
                 return rewritten;
             }
           } else {
-            builder.add(rewritten, clause.getOccur());
+            builder.add(rewritten, occur);
           }
         } else {
           // leave as-is

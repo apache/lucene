@@ -207,6 +207,9 @@ Optimizations
 * LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
   (Adrien Grand)
 
+* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
+  (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 

@@ -42,6 +42,8 @@ public final class ConstantScoreQuery extends Query {
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
     Query rewritten = query.rewrite(reader);
+    // Take advantage of the fact that scores are not needed to perform some extra simplifications
+    rewritten = rewriteNoScoring(rewritten);
 
     if (rewritten.getClass() == MatchNoDocsQuery.class) {
       // bubble up MatchNoDocsQuery
@@ -61,6 +63,22 @@ public final class ConstantScoreQuery extends Query {
     }
 
     return super.rewrite(reader);
+  }
+
+  /**
+   * Perform some simplifications that are only legal when a query is not expected to produce
+   * scores.
+   */
+  static Query rewriteNoScoring(Query query) {
+    if (query instanceof BoostQuery) {
+      return ((BoostQuery) query).getQuery();
+    } else if (query instanceof ConstantScoreQuery) {
+      return ((ConstantScoreQuery) query).getQuery();
+    } else if (query instanceof BooleanQuery) {
+      return ((BooleanQuery) query).rewriteNoScoring();
+    } else {
+      return query;
+    }
   }
 
   @Override
