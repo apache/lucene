@@ -1,0 +1,16 @@
+name: 'Setup'
+description: 'Setup environment for CI jobs'
+
+inputs:
+  java-version:
+    description: 'JDK version'
+    required: false
+    default: '17'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up JDK
+      uses: actions/setup-java@v1
+      with:
+        java-version: ${{ inputs.java-version }}

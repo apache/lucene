@@ -16,10 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up JDK
-      uses: actions/setup-java@v1
-      with:
-        java-version: 17
+    - uses: ./.github/actions/setup-action
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - uses: actions/cache@v2
