@@ -46,6 +46,9 @@ public class TestNeedsScores extends LuceneTestCase {
     }
     reader = iw.getReader();
     searcher = newSearcher(reader);
+    // Needed so that the cache doesn't consume weights with ScoreMode.COMPLETE_NO_SCORES for the
+    // purpose of populating the cache.
+    searcher.setQueryCache(null);
     iw.close();
   }
 

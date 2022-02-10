@@ -124,9 +124,19 @@ public final class ConstantScoreQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    final ScoreMode subScoreMode =
-        scoreMode.needsScores() ? ScoreMode.COMPLETE_NO_SCORES : scoreMode;
-    final Weight innerWeight = searcher.createWeight(query, subScoreMode, 1f);
+    final ScoreMode innerScoreMode;
+    switch (scoreMode) {
+      case TOP_SCORES:
+        innerScoreMode = ScoreMode.COMPLETE_NO_SCORES;
+        break;
+      case TOP_DOCS_WITH_SCORES:
+        innerScoreMode = ScoreMode.TOP_DOCS;
+        break;
+      default:
+        innerScoreMode = scoreMode;
+        break;
+    }
+    final Weight innerWeight = searcher.createWeight(query, innerScoreMode, 1f);
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost) {
         @Override
