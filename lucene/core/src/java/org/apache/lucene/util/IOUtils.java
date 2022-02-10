@@ -510,6 +510,7 @@ public final class IOUtils {
    * An IO operation with a single input.
    *
    * @see java.util.function.Consumer
+   * @deprecated was replaced by {@link org.apache.lucene.util.IOConsumer}.
    */
   @FunctionalInterface
   @Deprecated(forRemoval = true, since = "9.1")
@@ -522,6 +523,7 @@ public final class IOUtils {
    * A Function that may throw an IOException
    *
    * @see java.util.function.Function
+   * @deprecated was replaced by {@link org.apache.lucene.util.IOFunction}.
    */
   @FunctionalInterface
   @Deprecated(forRemoval = true, since = "9.1")
