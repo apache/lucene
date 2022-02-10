@@ -414,7 +414,7 @@ public abstract class PointRangeQuery extends Query {
           BiFunction<byte[], byte[], Relation> nodeComparator,
           Predicate<byte[]> leafComparator)
           throws IOException {
-        final int[] matchingLeafNodeCount = {0};
+        final int[] matchingNodeCount = {0};
         // create a custom IntersectVisitor that records the number of leafNodes that matched
         final IntersectVisitor visitor =
             new IntersectVisitor() {
@@ -431,7 +431,7 @@ public abstract class PointRangeQuery extends Query {
               @Override
               public void visit(int docID, byte[] packedValue) {
                 if (leafComparator.test(packedValue)) {
-                  matchingLeafNodeCount[0]++;
+                  matchingNodeCount[0]++;
                 }
               }
 
@@ -440,32 +440,44 @@ public abstract class PointRangeQuery extends Query {
                 return nodeComparator.apply(minPackedValue, maxPackedValue);
               }
             };
+        pointCount(visitor, pointTree, nodeComparator, leafComparator, matchingNodeCount);
+        return matchingNodeCount[0];
+      }
+
+      private void pointCount(
+          IntersectVisitor visitor,
+          PointValues.PointTree pointTree,
+          BiFunction<byte[], byte[], Relation> nodeComparator,
+          Predicate<byte[]> leafComparator,
+          int[] matchingNodeCount)
+          throws IOException {
         Relation r =
             nodeComparator.apply(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
         switch (r) {
           case CELL_OUTSIDE_QUERY:
             // This cell is fully outside the query shape: return 0 as the count of its nodes
-            return 0L;
+            return;
           case CELL_INSIDE_QUERY:
             // This cell is fully inside the query shape: return the size of the entire node as the
             // count
-            return pointTree.size();
+            matchingNodeCount[0] += pointTree.size();
+            return;
           case CELL_CROSSES_QUERY:
             /*
             The cell crosses the shape boundary, or the cell fully contains the query, so we fall
             through and do full counting.
             */
             if (pointTree.moveToChild()) {
-              int cellCount = 0;
               do {
-                cellCount += pointCount(pointTree, nodeComparator, leafComparator);
+                pointCount(visitor, pointTree, nodeComparator, leafComparator, matchingNodeCount);
               } while (pointTree.moveToSibling());
               pointTree.moveToParent();
-              return cellCount;
+              return;
             } else {
               // we have reached a leaf node here.
               pointTree.visitDocValues(visitor);
-              return matchingLeafNodeCount[0];
+              return; // our leaf node count has been safely saved in the matchingNodeCount
+              // array by the visitor
             }
           default:
             throw new IllegalArgumentException("Unreachable code");
