@@ -396,6 +396,19 @@ public abstract class PointRangeQuery extends Query {
         return super.count(context);
       }
 
+      /**
+       * Finds the number of points matching the provided range conditions. Using this method is
+       * faster than calling {@link PointValues#intersect(IntersectVisitor)} to get the count of
+       * intersecting points. This method does not enforce live documents, therefore it should only
+       * be used when there are no deleted documents.
+       *
+       * @param pointTree start node of the count operation
+       * @param nodeComparator comparator to be used for checking whether the internal node is
+       *     inside the range
+       * @param leafComparator comparator to be used for checking whether the leaf node is inside
+       *     the range
+       * @return count of points that match the range
+       */
       private long pointCount(
           PointValues.PointTree pointTree,
           BiFunction<byte[], byte[], Relation> nodeComparator,
