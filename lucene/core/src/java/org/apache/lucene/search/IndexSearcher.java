@@ -446,9 +446,7 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
-    // Wrapping with ConstantScoreQuery enables a few additional rewrite optimizations
-    query = new ConstantScoreQuery(query);
-    query = rewrite(query);
+    query = rewrite(query, false);
     final Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
 
     final CollectorManager<ShortcutHitCountCollector, Integer> shortcutCollectorManager =
@@ -553,11 +551,7 @@ public class IndexSearcher {
    *     clauses.
    */
   public void search(Query query, Collector results) throws IOException {
-    if (results.scoreMode().needsScores() == false) {
-      // Take advantage of the few extra rewrite rules of ConstantScoreQuery.
-      query = new ConstantScoreQuery(query);
-    }
-    query = rewrite(query);
+    query = rewrite(query, results.scoreMode().needsScores());
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
   }
 
@@ -688,11 +682,7 @@ public class IndexSearcher {
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
     final C firstCollector = collectorManager.newCollector();
-    if (firstCollector.scoreMode().needsScores() == false) {
-      // Take advantage of the few extra rewrite rules of ConstantScoreQuery.
-      query = new ConstantScoreQuery(query);
-    }
-    query = rewrite(query);
+    query = rewrite(query, firstCollector.scoreMode().needsScores());
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
     return search(weight, collectorManager, firstCollector);
   }
@@ -803,6 +793,15 @@ public class IndexSearcher {
     }
     query.visit(getNumClausesCheckVisitor());
     return query;
+  }
+
+  private Query rewrite(Query original, boolean needsScores) throws IOException {
+    if (needsScores) {
+      return rewrite(original);
+    } else {
+      // Take advantage of the few extra rewrite rules of ConstantScoreQuery.
+      return rewrite(new ConstantScoreQuery(original));
+    }
   }
 
   /**
