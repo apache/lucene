@@ -39,15 +39,6 @@ public abstract class VectorValues extends DocIdSetIterator {
   public abstract int dimension();
 
   /**
-   * TODO: should we use cost() for this? We rely on its always being exactly the number of
-   * documents having a value for this field, which is not guaranteed by the cost() contract, but in
-   * all the implementations so far they are the same.
-   *
-   * @return the number of vectors returned by this iterator
-   */
-  public abstract int size();
-
-  /**
    * Return the vector value for the current document ID. It is illegal to call this method when the
    * iterator is not positioned: before advancing, or after failing to advance. The returned array
    * may be shared across calls, re-used, and modified as the iterator advances.
@@ -74,12 +65,6 @@ public abstract class VectorValues extends DocIdSetIterator {
    */
   public static final VectorValues EMPTY =
       new VectorValues() {
-
-        @Override
-        public int size() {
-          return 0;
-        }
-
         @Override
         public int dimension() {
           return 0;

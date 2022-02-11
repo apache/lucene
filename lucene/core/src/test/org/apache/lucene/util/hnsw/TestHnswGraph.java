@@ -105,7 +105,6 @@ public class TestHnswGraph extends LuceneTestCase {
         for (LeafReaderContext ctx : reader.leaves()) {
           VectorValues values = ctx.reader().getVectorValues("field");
           assertEquals(dim, values.dimension());
-          assertEquals(nVec, values.size());
           assertEquals(indexedDoc, ctx.reader().maxDoc());
           assertEquals(indexedDoc, ctx.reader().numDocs());
           assertVectorsEqual(v3, values);

@@ -209,18 +209,13 @@ class VectorValuesWriter {
     }
 
     @Override
-    public int size() {
-      return delegate.size();
-    }
-
-    @Override
     public int advance(int target) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public long cost() {
-      return size();
+      return delegate.cost();
     }
 
     @Override

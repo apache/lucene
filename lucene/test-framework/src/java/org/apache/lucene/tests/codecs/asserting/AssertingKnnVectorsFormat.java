@@ -108,7 +108,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       VectorValues values = delegate.getVectorValues(field);
       assert values != null;
       assert values.docID() == -1;
-      assert values.size() >= 0;
       assert values.dimension() > 0;
       return values;
     }

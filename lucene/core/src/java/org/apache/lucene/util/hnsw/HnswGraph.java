@@ -56,8 +56,7 @@ public abstract class HnswGraph {
    * returns, call {@link #nextNeighbor()} to return successive (ordered) connected node ordinals.
    *
    * @param level level of the graph
-   * @param target ordinal of a node in the graph, must be &ge; 0 and &lt; {@link
-   *     VectorValues#size()}.
+   * @param target ordinal of a node in the graph, must be &ge; 0.
    */
   public abstract void seek(int level, int target) throws IOException;
 

@@ -2606,16 +2606,6 @@ public final class CheckIndex implements Closeable {
               }
               ++docCount;
             }
-            if (docCount != values.size()) {
-              throw new CheckIndexException(
-                  "Field \""
-                      + fieldInfo.name
-                      + "\" has size="
-                      + values.size()
-                      + " but when iterated, returns "
-                      + docCount
-                      + " docs with values");
-            }
             status.totalVectorValues += docCount;
           }
         }

@@ -46,8 +46,10 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.VectorUtil;
 
 /**
@@ -549,7 +551,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (DirectoryReader r = DirectoryReader.open(w)) {
         VectorValues values = getOnlyLeafReader(r).getVectorValues("v");
         assertNotNull(values);
-        assertEquals(1, values.size());
+        assertEquals(1, getVectorValuesSize(getOnlyLeafReader(r), "v"));
       }
       w.deleteDocuments(new Term("id", "0"));
       w.forceMerge(1);
@@ -557,7 +559,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         LeafReader leafReader = getOnlyLeafReader(r);
         VectorValues values = leafReader.getVectorValues("v");
         assertNotNull(values);
-        assertEquals(0, values.size());
+        assertEquals(0, getVectorValuesSize(leafReader, "v"));
 
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
@@ -622,7 +624,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           for (LeafReaderContext ctx : r.leaves()) {
             VectorValues vectors = ctx.reader().getVectorValues(fieldName);
             if (vectors != null) {
-              docCount += vectors.size();
+              docCount += getVectorValuesSize(ctx.reader(), fieldName);
               while (vectors.nextDoc() != NO_MORE_DOCS) {
                 checksum += vectors.vectorValue()[0];
               }
@@ -683,7 +685,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
         VectorValues vectorValues = leaf.getVectorValues(fieldName);
         assertEquals(2, vectorValues.dimension());
-        assertEquals(3, vectorValues.size());
+        assertEquals(3, getVectorValuesSize(leaf, fieldName));
         assertEquals("1", leaf.document(vectorValues.nextDoc()).get("id"));
         assertEquals(-1f, vectorValues.vectorValue()[0], 0);
         assertEquals("2", leaf.document(vectorValues.nextDoc()).get("id"));
@@ -717,7 +719,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
         VectorValues vectorValues = leaf.getVectorValues("field1");
         assertEquals(1, vectorValues.dimension());
-        assertEquals(2, vectorValues.size());
+        assertEquals(2, getVectorValuesSize(leaf, "field1"));
         vectorValues.nextDoc();
         assertEquals(1f, vectorValues.vectorValue()[0], 0);
         vectorValues.nextDoc();
@@ -726,7 +728,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
         VectorValues vectorValues2 = leaf.getVectorValues("field2");
         assertEquals(3, vectorValues2.dimension());
-        assertEquals(2, vectorValues2.size());
+        assertEquals(2, getVectorValuesSize(leaf, "field2"));
         vectorValues2.nextDoc();
         assertEquals(2f, vectorValues2.vectorValue()[1], 0);
         vectorValues2.nextDoc();
@@ -735,7 +737,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
         VectorValues vectorValues3 = leaf.getVectorValues("field3");
         assertEquals(3, vectorValues3.dimension());
-        assertEquals(1, vectorValues3.size());
+        assertEquals(1, getVectorValuesSize(leaf, "field3"));
         vectorValues3.nextDoc();
         assertEquals(1f, vectorValues3.vectorValue()[0], 0);
         assertEquals(NO_MORE_DOCS, vectorValues3.nextDoc());
@@ -796,7 +798,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           if (vectorValues == null) {
             continue;
           }
-          totalSize += vectorValues.size();
+          totalSize += getVectorValuesSize(ctx.reader(), fieldName);
           int docId;
           while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
             float[] v = vectorValues.vectorValue();
@@ -879,7 +881,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
           // assert that searchNearestVectors returns the expected number of documents,
           // in descending score order
-          int size = ctx.reader().getVectorValues(fieldName).size();
+          int size = getVectorValuesSize (ctx.reader(), fieldName);
           int k = random().nextInt(size / 2 + 1) + 1;
           if (k > numLiveDocsWithVectors) {
             k = numLiveDocsWithVectors;
@@ -927,6 +929,17 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     doc.add(new StringField("id", idString, Field.Store.YES));
     Term idTerm = new Term("id", idString);
     iw.updateDocument(idTerm, doc);
+  }
+
+  private int getVectorValuesSize(LeafReader reader, String field) throws IOException {
+    int size = 0;
+    VectorValues values = reader.getVectorValues(field);
+    int docV = values.nextDoc();
+    while (docV != NO_MORE_DOCS) {
+      docV = values.nextDoc();
+      size++;
+    }
+    return size;
   }
 
   private float[] randomVector(int dim) {
@@ -990,21 +1003,25 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         try (IndexReader reader = DirectoryReader.open(w)) {
           LeafReader r = getOnlyLeafReader(reader);
           VectorValues vectorValues = r.getVectorValues(fieldName);
-          int[] vectorDocs = new int[vectorValues.size() + 1];
-          int cur = -1;
-          while (++cur < vectorValues.size() + 1) {
-            vectorDocs[cur] = vectorValues.nextDoc();
-            if (cur != 0) {
-              assertTrue(vectorDocs[cur] > vectorDocs[cur - 1]);
+          int count = 0;
+          int[] vectorDocs = IntsRef.EMPTY_INTS;
+          for (int docV = vectorValues.nextDoc(); docV != NO_MORE_DOCS; docV = vectorValues.nextDoc(), count++) {
+            vectorDocs = ArrayUtil.growExact(vectorDocs, count + 1);
+            vectorDocs[count] = docV;
+            if (count != 0) {
+              assertTrue(vectorDocs[count] > vectorDocs[count - 1]);
             }
           }
           vectorValues = r.getVectorValues(fieldName);
-          cur = -1;
+          int cur = -1;
           for (int i = 0; i < numdocs; i++) {
             // randomly advance to i
             if (random().nextInt(4) == 3) {
-              while (vectorDocs[++cur] < i)
+              while (++cur < vectorDocs.length && vectorDocs[cur] < i)
                 ;
+              if (i > vectorDocs.length) {
+                break;
+              }
               assertEquals(vectorDocs[cur], vectorValues.advance(i));
               assertEquals(vectorDocs[cur], vectorValues.docID());
               if (vectorValues.docID() == NO_MORE_DOCS) {

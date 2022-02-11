@@ -121,7 +121,6 @@ public abstract class KnnVectorsWriter implements Closeable {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
     private final int cost;
-    private final int size;
 
     private int docId;
     private VectorValuesSub current;
@@ -151,10 +150,8 @@ public abstract class KnnVectorsWriter implements Closeable {
       int totalCost = 0, totalSize = 0;
       for (VectorValuesSub sub : subs) {
         totalCost += sub.values.cost();
-        totalSize += sub.values.size();
       }
       cost = totalCost;
-      size = totalSize;
       docId = -1;
     }
 
@@ -187,11 +184,6 @@ public abstract class KnnVectorsWriter implements Closeable {
     @Override
     public int advance(int target) {
       throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int size() {
-      return size;
     }
 
     @Override

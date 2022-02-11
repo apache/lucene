@@ -35,6 +35,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
@@ -169,18 +170,18 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
   /**
    * Writes the vector values to the output and returns a mapping from dense ordinals to document
-   * IDs. The length of the returned array matches the total number of documents with a vector
-   * (which excludes deleted documents), so it may be less than {@link VectorValues#size()}.
+   * IDs.
    */
   private static int[] writeVectorData(IndexOutput output, VectorValues vectors)
       throws IOException {
-    int[] docIds = new int[vectors.size()];
+    int[] docIds = IntsRef.EMPTY_INTS;
     int count = 0;
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
       // write vector
       BytesRef binaryValue = vectors.binaryValue();
       assert binaryValue.length == vectors.dimension() * Float.BYTES;
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      docIds = ArrayUtil.grow(docIds, count + 1);
       docIds[count] = docV;
     }
 

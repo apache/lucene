@@ -154,10 +154,12 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
     HitQueue topK = new HitQueue(k, false);
     int doc;
+    int count = 0;
     while ((doc = values.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
         continue;
       }
+      count++;
       float[] vector = values.vectorValue();
       float score = vectorSimilarity.convertToScore(vectorSimilarity.compare(vector, target));
       topK.insertWithOverflow(new ScoreDoc(doc, score));
@@ -166,7 +168,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     for (int i = topScoreDocs.length - 1; i >= 0; i--) {
       topScoreDocs[i] = topK.pop();
     }
-    return new TopDocs(new TotalHits(values.size(), TotalHits.Relation.EQUAL_TO), topScoreDocs);
+    return new TopDocs(new TotalHits(count, TotalHits.Relation.EQUAL_TO), topScoreDocs);
   }
 
   @Override
