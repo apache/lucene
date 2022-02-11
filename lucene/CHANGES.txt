@@ -146,6 +146,9 @@ Improvements
 * LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
   with or without offsets enabled. (Patrick Zhai)
 
+* LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
+  (Patrick Zhai)
+
 Optimizations
 ---------------------
 
