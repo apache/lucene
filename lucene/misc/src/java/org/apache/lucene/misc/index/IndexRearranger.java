@@ -102,19 +102,25 @@ public class IndexRearranger {
     List<SegmentCommitInfo> ordered = new ArrayList<>();
     try (IndexReader reader = DirectoryReader.open(output)) {
       for (DocumentSelector ds : documentSelectors) {
-        boolean found = false;
+        int foundLeaf = -1;
         for (LeafReaderContext context : reader.leaves()) {
           SegmentReader sr = (SegmentReader) context.reader();
-          if (ds.getFilteredLiveDocs(sr).nextSetBit(0) != DocIdSetIterator.NO_MORE_DOCS) {
-            if (found) {
+          int docFound = ds.getFilteredLiveDocs(sr).nextSetBit(0);
+          if (docFound != DocIdSetIterator.NO_MORE_DOCS) {
+            if (foundLeaf != -1) {
               throw new IllegalStateException(
-                  "A document selector can't match more than 1 rearranged segments");
+                  "Document selector "
+                      + ds
+                      + " has matched more than 1 segments. Matched segments order: "
+                      + foundLeaf
+                      + ", "
+                      + context.ord);
             }
-            found = true;
+            foundLeaf = context.ord;
             ordered.add(sr.getSegmentInfo());
           }
         }
-        assert found;
+        assert foundLeaf != -1;
       }
     }
     SegmentInfos sis = SegmentInfos.readLatestCommit(output);
