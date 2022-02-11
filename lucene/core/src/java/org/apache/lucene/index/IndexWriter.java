@@ -2336,6 +2336,9 @@ public class IndexWriter
         case COMMIT:
           spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, this);
           break;
+        case ADD_INDEXES:
+          throw new IllegalStateException("Merges with ADD_INDEXES trigger should be " +
+            "called from within the addIndexes() API flow");
         case EXPLICIT:
         case FULL_FLUSH:
         case MERGE_FINISHED:
@@ -3266,7 +3269,7 @@ public class IndexWriter
    * incoming readers in {@link IndexWriter#addIndexes(CodecReader...)}
    * @param merge OneMerge object initialized from readers. This merge object has an empty
    *              segments list
-   * @throws IOException
+   * @throws IOException if there is a low-level IO error
    */
   public void addIndexesReaderMerge(MergePolicy.OneMerge merge) throws IOException {
 
