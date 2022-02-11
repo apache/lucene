@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -493,15 +494,31 @@ public abstract class MergePolicy {
       return b.toString();
     }
 
+    CompletableFuture<Void> getMergeCompletedFutures() {
+      return CompletableFuture.allOf(
+        merges.stream()
+          .map(m -> m.mergeCompleted)
+          .collect(Collectors.toList())
+          .toArray(CompletableFuture<?>[]::new));
+    }
+
+    /** Waits, until interrupted, for all merges to complete. */
+    boolean await() {
+      try {
+        CompletableFuture<Void> future = getMergeCompletedFutures();
+        future.get();
+        return true;
+      } catch (InterruptedException e) {
+        throw new ThreadInterruptedException(e);
+      } catch (@SuppressWarnings("unused") ExecutionException | CancellationException e) {
+        return false;
+      }
+    }
+
     /** Waits if necessary for at most the given time for all merges. */
     boolean await(long timeout, TimeUnit unit) {
       try {
-        CompletableFuture<Void> future =
-            CompletableFuture.allOf(
-                merges.stream()
-                    .map(m -> m.mergeCompleted)
-                    .collect(Collectors.toList())
-                    .toArray(CompletableFuture<?>[]::new));
+        CompletableFuture<Void> future = getMergeCompletedFutures();
         future.get(timeout, unit);
         return true;
       } catch (InterruptedException e) {

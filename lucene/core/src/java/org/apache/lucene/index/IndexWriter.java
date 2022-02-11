@@ -3154,11 +3154,10 @@ public class IndexWriter
         try {
           spec.merges.forEach(addIndexesMergeSource::registerMerge);
           mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
-          mergesComplete = spec.await(mergeTimeoutInSeconds, TimeUnit.SECONDS);
+          mergesComplete = spec.await();
         } finally {
           if (!mergesComplete) {
-            // TODO - Delete all interim files created
-            // TODO - check how to cleanup/abort ongoing merges post timeout
+            // nocommit -- ensure all intermediate files are deleted
             for (MergePolicy.OneMerge merge: spec.merges) {
               deleteNewFiles(merge.getMergeInfo().files());
             }
@@ -3171,26 +3170,32 @@ public class IndexWriter
         long totalMaxDoc = 0;
         for (MergePolicy.OneMerge merge: spec.merges) {
           totalMaxDoc += merge.totalMaxDoc;
-          infos.add(merge.getMergeInfo());
+          if (merge.getMergeInfo() != null) {
+            infos.add(merge.getMergeInfo());
+          }
         }
+
+        // nocommit -- add tests for this transactional behavior
         synchronized (this) {
-          boolean success = false;
-          try {
-            ensureOpen();
-            // Reserve the docs, just before we update SIS:
-            reserveDocs(totalMaxDoc);
-            seqNo = docWriter.getNextSequenceNumber();
-            success = true;
-          } finally {
-            if (!success) {
-              for (SegmentCommitInfo sipc : infos) {
-                // Safe: these files must exist
-                deleteNewFiles(sipc.files());
+          if (infos.isEmpty() == false) {
+            boolean success = false;
+            try {
+              ensureOpen();
+              // Reserve the docs, just before we update SIS:
+              reserveDocs(totalMaxDoc);
+              success = true;
+            } finally {
+              if (!success) {
+                for (SegmentCommitInfo sipc : infos) {
+                  // Safe: these files must exist
+                  deleteNewFiles(sipc.files());
+                }
               }
             }
+            segmentInfos.addAll(infos);
+            checkpoint();
           }
-          segmentInfos.addAll(infos);
-          checkpoint();
+          seqNo = docWriter.getNextSequenceNumber();
         }
       } else {
         // We should normally not reach here, as an earlier call should throw an exception.
@@ -3314,11 +3319,9 @@ public class IndexWriter
         StringHelper.randomId(),
         Collections.emptyMap(),
         config.getIndexSort());
-    merge.setMergeInfo(new SegmentCommitInfo(segInfo, 0, numSoftDeleted,
-        -1L, -1L, -1L, StringHelper.randomId()));
 
     List<CodecReader> readers = merge.getMergeReader().stream().map(r -> r.codecReader).collect(Collectors.toList());
-    SegmentMerger merger = new SegmentMerger(readers, merge.getMergeInfo().info, infoStream, trackingDir, globalFieldNumberMap, context);
+    SegmentMerger merger = new SegmentMerger(readers, segInfo, infoStream, trackingDir, globalFieldNumberMap, context);
 
     if (!merger.shouldMerge()) {
       return;
@@ -3338,6 +3341,8 @@ public class IndexWriter
       }
     }
 
+    merge.setMergeInfo(new SegmentCommitInfo(segInfo, 0, numSoftDeleted,
+        -1L, -1L, -1L, StringHelper.randomId()));
     merge.getMergeInfo().info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
     trackingDir.clearCreatedFiles();
 
@@ -3373,8 +3378,11 @@ public class IndexWriter
     codec.segmentInfoFormat().write(trackingDir, merge.getMergeInfo().info, context);
 
     merge.getMergeInfo().info.addFiles(trackingDir.getCreatedFiles());
+    // Return without registering the segment files with IndexWriter.
+    // We do this together for all merges triggered by an addIndexes API,
+    // to retain transactionality.
 
-    // We register all segments for the addIndexes API together to maintain transactionality.
+    // nocommit -- tests failing
   }
 
   /** Copies the segment files as-is into the IndexWriter's directory. */
