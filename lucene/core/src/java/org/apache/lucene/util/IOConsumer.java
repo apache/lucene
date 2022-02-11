@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
-
 /**
  * An IO operation with a single input that may throw an IOException.
  *
@@ -26,5 +24,4 @@ import java.io.IOException;
  */
 @FunctionalInterface
 @SuppressWarnings("removal")
-public interface IOConsumer<T> extends IOUtils.IOConsumer<T> {
-}
+public interface IOConsumer<T> extends IOUtils.IOConsumer<T> {}

@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
-
 /**
  * A Function that may throw an IOException
  *
@@ -27,5 +25,4 @@ import java.io.IOException;
  */
 @FunctionalInterface
 @SuppressWarnings("removal")
-public interface IOFunction<T, R> extends IOUtils.IOFunction<T, R>{
-}
+public interface IOFunction<T, R> extends IOUtils.IOFunction<T, R> {}
