@@ -25,7 +25,6 @@ import java.io.IOException;
  * @param <T> the consumer's input type.
  */
 @FunctionalInterface
-public interface IOConsumer<T> {
-  /** Performs this operation on the given argument. */
-  void accept(T input) throws IOException;
+@SuppressWarnings("removal")
+public interface IOConsumer<T> extends IOUtils.IOConsumer<T> {
 }
