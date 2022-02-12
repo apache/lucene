@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
+
 /**
  * A Function that may throw an IOException
  *
@@ -25,4 +27,14 @@ package org.apache.lucene.util;
  */
 @FunctionalInterface
 @SuppressWarnings("removal")
-public interface IOFunction<T, R> extends IOUtils.IOFunction<T, R> {}
+public interface IOFunction<T, R> extends IOUtils.IOFunction<T, R> {
+  /**
+   * Applies this function to the given argument.
+   *
+   * @param t the function argument
+   * @return the function result
+   * @throws IOException if producing the result throws an {@link IOException}
+   */
+  @Override
+  R apply(T t) throws IOException;
+}

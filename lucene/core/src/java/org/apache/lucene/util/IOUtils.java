@@ -499,8 +499,8 @@ public final class IOUtils {
    * suppressed.
    */
   @SuppressWarnings("StreamToIterable")
-  public static <T> void applyToAll(
-      Collection<T> collection, org.apache.lucene.util.IOConsumer<T> consumer) throws IOException {
+  public static <T> void applyToAll(Collection<T> collection, IOConsumer<T> consumer)
+      throws IOException {
     IOUtils.close(
         collection.stream().filter(Objects::nonNull).map(t -> (Closeable) () -> consumer.accept(t))
             ::iterator);
@@ -528,6 +528,7 @@ public final class IOUtils {
   @FunctionalInterface
   @Deprecated(forRemoval = true, since = "9.1")
   public interface IOFunction<T, R> {
+    /** Applies this function to the given argument. */
     R apply(T t) throws IOException;
   }
 }
