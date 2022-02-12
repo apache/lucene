@@ -440,19 +440,14 @@ public abstract class PointRangeQuery extends Query {
                 return nodeComparator.apply(minPackedValue, maxPackedValue);
               }
             };
-        pointCount(visitor, pointTree, nodeComparator, leafComparator, matchingNodeCount);
+        pointCount(visitor, pointTree, matchingNodeCount);
         return matchingNodeCount[0];
       }
 
       private void pointCount(
-          IntersectVisitor visitor,
-          PointValues.PointTree pointTree,
-          BiFunction<byte[], byte[], Relation> nodeComparator,
-          Predicate<byte[]> leafComparator,
-          int[] matchingNodeCount)
+          IntersectVisitor visitor, PointValues.PointTree pointTree, int[] matchingNodeCount)
           throws IOException {
-        Relation r =
-            nodeComparator.apply(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+        Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
         switch (r) {
           case CELL_OUTSIDE_QUERY:
             // This cell is fully outside the query shape: return 0 as the count of its nodes
@@ -469,16 +464,15 @@ public abstract class PointRangeQuery extends Query {
             */
             if (pointTree.moveToChild()) {
               do {
-                pointCount(visitor, pointTree, nodeComparator, leafComparator, matchingNodeCount);
+                pointCount(visitor, pointTree, matchingNodeCount);
               } while (pointTree.moveToSibling());
               pointTree.moveToParent();
-              return;
             } else {
               // we have reached a leaf node here.
               pointTree.visitDocValues(visitor);
-              return; // our leaf node count has been safely saved in the matchingNodeCount
-              // array by the visitor
+              // leaf node count is saved in the matchingNodeCount array by the visitor
             }
+            return;
           default:
             throw new IllegalArgumentException("Unreachable code");
         }
