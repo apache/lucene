@@ -67,7 +67,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[vlong]</b> length of this field's index data, in bytes
  *   <li><b>[int]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>[int16]</b> if equals to -1, dense – all documents have values for a field. If equals to
+ *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
  *       0, sparse – some documents missing values.
  *   <li><b>array[vint]</b> for sparse case, the docids of documents having vectors, in order
  *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have

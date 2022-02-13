@@ -329,7 +329,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       dimension = input.readInt();
       size = input.readInt();
 
-      int denseSparseMarker = input.readShort();
+      int denseSparseMarker = input.readByte();
       if (denseSparseMarker == -1) {
         ordToDoc = null; // each document has a vector value
       } else {
@@ -392,19 +392,18 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   static class OffHeapVectorValues extends VectorValues
       implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
 
-    final int dimension;
-    final int size;
-    final int[] ordToDoc;
-    final IntUnaryOperator ordToDocOperator;
-    final IndexInput dataIn;
+    private final int dimension;
+    private final int size;
+    private final int[] ordToDoc;
+    private final IntUnaryOperator ordToDocOperator;
+    private final IndexInput dataIn;
+    private final BytesRef binaryValue;
+    private final ByteBuffer byteBuffer;
+    private final int byteSize;
+    private final float[] value;
 
-    final BytesRef binaryValue;
-    final ByteBuffer byteBuffer;
-    final int byteSize;
-    final float[] value;
-
-    int ord = -1;
-    int doc = -1;
+    private int ord = -1;
+    private int doc = -1;
 
     OffHeapVectorValues(int dimension, int size, int[] ordToDoc, IndexInput dataIn) {
       this.dimension = dimension;
