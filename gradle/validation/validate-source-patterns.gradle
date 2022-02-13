@@ -173,22 +173,8 @@ class ValidateSourcePatternsTask extends DefaultTask {
     def validSPINameJavadocTag = ~$/(?s)\s*\*\s*@lucene\.spi\s+\{@value #NAME\}/$;
 
     def isLicense = { matcher, ratDocument ->
-      boolean retValue = false
-      Exception rethrow = null
-      int retries = 5
-      do {
-        try {
-          licenseMatcher.reset()
-          retValue = lineSplitter.split(matcher.group(1)).any { licenseMatcher.match(ratDocument, it) }
-          if (retValue) break
-        } catch (StringIndexOutOfBoundsException | RuntimeException e) {
-          logger.error("Exception thrown=" + e + ", retries: " + retries + ", matcher.group(1)=" + matcher.group(1))
-          rethrow = e
-        }
-      } while (retries-- > 0)
-      
-      if (rethrow != null) throw rethrow
-      return retValue
+      licenseMatcher.reset()
+      return lineSplitter.split(matcher.group(1)).any { licenseMatcher.match(ratDocument, it) }
     }
 
     def checkLicenseHeaderPrecedes = { f, description, contentPattern, commentPattern, text, ratDocument ->
@@ -218,12 +204,11 @@ class ValidateSourcePatternsTask extends DefaultTask {
     progress.start(this.name, this.name)
 
     sourceFiles.each { f ->
-      progress.progress("Scanning ${f.name}")
-      logger.debug('Scanning source file: {}', f);
-
-      def text = f.getText('UTF-8');
-
       try {
+        progress.progress("Scanning ${f.name}")
+        logger.debug('Scanning source file: {}', f);
+
+        def text = f.getText('UTF-8');
         invalidPatterns.each { pattern, name ->
           if (pattern.matcher(text).find()) {
             reportViolation(f, name);
@@ -272,7 +257,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
         }
       } catch (e) {
         e.printStackTrace()
-        throw new GradleException("Unhandled exception while validating patterns on file: " + f + ", content: >>" + text + "<<", e)
+        throw new GradleException("Unhandled exception while validating patterns on file: " + f, e)
       }
     }
 
