@@ -107,9 +107,6 @@ allprojects {
       workingDir testsCwd
       useJUnit()
 
-      include '**/*Test.class', '**/Test*.class'
-      exclude '**/*$*'
-
       minHeapSize = resolvedTestOption("tests.minheapsize")
       maxHeapSize = resolvedTestOption("tests.heapsize")
 
@@ -127,6 +124,7 @@ allprojects {
       // (if the runner JVM does not support them, it will fail tests):
       jvmArgs '--add-modules', 'jdk.unsupported,jdk.management'
 
+      // tests are not ran in module mode so we add the incubator module explicitely:
       jvmArgs "--add-modules", "jdk.incubator.foreign"
 
       systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
