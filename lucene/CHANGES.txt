@@ -86,6 +86,9 @@ API Changes
   DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
   IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
 
+* LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
+  (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
+
 New Features
 ---------------------
 
