@@ -32,8 +32,8 @@ public class DoubleComparator extends NumericComparator<Double> {
   protected double bottom;
 
   public DoubleComparator(
-      int numHits, String field, Double missingValue, boolean reverse, int sortPos) {
-    super(field, missingValue != null ? missingValue : 0.0, reverse, sortPos, Double.BYTES);
+      int numHits, String field, Double missingValue, boolean reverse, boolean enableSkipping) {
+    super(field, missingValue != null ? missingValue : 0.0, reverse, enableSkipping, Double.BYTES);
     values = new double[numHits];
   }
 

@@ -30,10 +30,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
-import org.apache.lucene.analysis.ja.dict.BinaryDictionary.ResourceScheme;
 import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ja.dict.TokenInfoDictionary;
-import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.apache.lucene.analysis.ja.tokenattributes.*;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -488,31 +485,6 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
         new int[] {0, 1, 2},
         new int[] {1, 2, 4},
         4);
-  }
-
-  // Make sure loading custom dictionaries from classpath works:
-  public void testCustomDictionary() throws Exception {
-    Tokenizer tokenizer =
-        new JapaneseTokenizer(
-            newAttributeFactory(),
-            new TokenInfoDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/TokenInfoDictionary"),
-            new UnknownDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/UnknownDictionary"),
-            new ConnectionCosts(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/ConnectionCosts"),
-            readDict(),
-            true,
-            false,
-            Mode.SEARCH);
-    try (Analyzer a = makeAnalyzer(tokenizer)) {
-      assertTokenStreamContents(
-          a.tokenStream("foo", "abcd"),
-          new String[] {"a", "b", "cd"},
-          new int[] {0, 1, 2},
-          new int[] {1, 2, 4},
-          4);
-    }
   }
 
   // HMM: fails (segments as a/b/cd/efghij)... because the

@@ -24,6 +24,9 @@ module org.apache.lucene.analysis.stempel {
   exports org.apache.lucene.analysis.stempel;
   exports org.egothor.stemmer;
 
+  opens org.apache.lucene.analysis.pl to
+      org.apache.lucene.core;
+
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.analysis.stempel.StempelPolishStemFilterFactory;
 }

@@ -29,5 +29,5 @@ dependencies {
   moduleImplementation 'org.ow2.asm:asm'
   moduleImplementation 'org.ow2.asm:asm-commons'
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }

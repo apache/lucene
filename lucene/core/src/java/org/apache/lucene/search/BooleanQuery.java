@@ -275,10 +275,22 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       for (BooleanClause clause : this) {
         Query query = clause.getQuery();
         Query rewritten = query.rewrite(reader);
-        if (rewritten != query) {
+        if (rewritten != query || query.getClass() == MatchNoDocsQuery.class) {
           // rewrite clause
           actuallyRewritten = true;
-          builder.add(rewritten, clause.getOccur());
+          if (rewritten.getClass() == MatchNoDocsQuery.class) {
+            switch (clause.getOccur()) {
+              case SHOULD:
+              case MUST_NOT:
+                // the clause can be safely ignored
+                break;
+              case MUST:
+              case FILTER:
+                return rewritten;
+            }
+          } else {
+            builder.add(rewritten, clause.getOccur());
+          }
         } else {
           // leave as-is
           builder.add(clause);

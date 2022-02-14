@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * This class can be used if the token attributes of a TokenStream are intended to be consumed more
@@ -31,6 +32,9 @@ import org.apache.lucene.util.AttributeSource;
  * although only before {@link #incrementToken()} is called the first time. Prior to Lucene 5, it
  * was never propagated.
  */
+@IgnoreRandomChains(
+    reason =
+        "doesn't actual reset itself! TODO: this statement is probably obsolete as of LUCENE-6121")
 public final class CachingTokenFilter extends TokenFilter {
   private List<AttributeSource.State> cache = null;
   private Iterator<AttributeSource.State> iterator = null;

@@ -26,6 +26,11 @@ module org.apache.lucene.analysis.kuromoji {
   exports org.apache.lucene.analysis.ja.tokenattributes;
   exports org.apache.lucene.analysis.ja.util;
 
+  opens org.apache.lucene.analysis.ja to
+      org.apache.lucene.core;
+  opens org.apache.lucene.analysis.ja.completion to
+      org.apache.lucene.core;
+
   provides org.apache.lucene.analysis.CharFilterFactory with
       org.apache.lucene.analysis.ja.JapaneseIterationMarkCharFilterFactory;
   provides org.apache.lucene.analysis.TokenizerFactory with

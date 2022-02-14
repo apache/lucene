@@ -17,12 +17,16 @@
 package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Stack;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState.OrdRange;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -51,20 +55,29 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
   private final Map<String, OrdinalMap> cachedOrdMaps = new HashMap<>();
 
+  private final FacetsConfig config;
+
+  /** Used for hierarchical dims. */
+  private final Map<String, DimTree> prefixToDimTree = new HashMap<>();
+
+  /** Used for flat dims. */
   private final Map<String, OrdRange> prefixToOrdRange = new HashMap<>();
 
   /**
-   * Creates this, pulling doc values from the default {@link
+   * Creates this with a config, pulling doc values from the default {@link
    * FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
    */
-  public DefaultSortedSetDocValuesReaderState(IndexReader reader) throws IOException {
-    this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
+  public DefaultSortedSetDocValuesReaderState(IndexReader reader, FacetsConfig config)
+      throws IOException {
+    this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME, config);
   }
 
   /** Creates this, pulling doc values from the specified field. */
-  public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field) throws IOException {
-    this.field = field;
-    this.reader = reader;
+  public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field, FacetsConfig config)
+      throws IOException {
+    this.field = Objects.requireNonNull(field);
+    this.reader = Objects.requireNonNull(reader);
+    this.config = Objects.requireNonNull(config);
 
     // We need this to create thread-safe MultiSortedSetDV
     // per collector:
@@ -79,38 +92,142 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     }
     valueCount = (int) dv.getValueCount();
 
-    // TODO: we can make this more efficient if eg we can be
-    // "involved" when OrdinalMap is being created?  Ie see
-    // each term/ord it's assigning as it goes...
-    String lastDim = null;
-    int startOrd = -1;
-
-    // TODO: this approach can work for full hierarchy?;
-    // TaxoReader can't do this since ords are not in
-    // "sorted order" ... but we should generalize this to
-    // support arbitrary hierarchy:
-    for (int ord = 0; ord < valueCount; ord++) {
-      final BytesRef term = dv.lookupOrd(ord);
+    int ord = 0;
+    while (ord != valueCount) {
+      BytesRef term = dv.lookupOrd(ord);
       String[] components = FacetsConfig.stringToPath(term.utf8ToString());
-      if (components.length != 2) {
-        throw new IllegalArgumentException(
-            "this class can only handle 2 level hierarchy (dim/value); got: "
-                + Arrays.toString(components)
-                + " "
-                + term.utf8ToString());
+      String dim = components[0];
+      if (config.getDimConfig(dim).hierarchical) {
+        ord = createOneHierarchicalFacetDimState(dv, ord) + 1;
+      } else {
+        ord = createOneFlatFacetDimState(dv, ord) + 1;
       }
-      if (!components[0].equals(lastDim)) {
-        if (lastDim != null) {
-          prefixToOrdRange.put(lastDim, new OrdRange(startOrd, ord - 1));
+    }
+  }
+
+  // returns last ord of dimension
+  private int createOneHierarchicalFacetDimState(SortedSetDocValues dv, int dimStartOrd)
+      throws IOException {
+    List<Boolean> hasChildren = new ArrayList<>();
+    List<Integer> siblings = new ArrayList<>();
+
+    // stack of paths with unfulfilled siblings
+    Stack<OrdAndComponent> siblingStack = new Stack<>();
+
+    int dimEndOrd = dimStartOrd;
+
+    BytesRef nextTerm = dv.lookupOrd(dimEndOrd);
+    String[] nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
+    String dim = nextComponents[0];
+
+    while (true) {
+      String[] components = nextComponents;
+
+      int ord = dimEndOrd - dimStartOrd;
+
+      while (siblingStack.empty() == false
+          && siblingStack.peek().component.length >= components.length) {
+        OrdAndComponent possibleSibling = siblingStack.pop();
+        if (possibleSibling.component.length == components.length) {
+          // lengths are equal, all non-siblings of equal length will have already been popped off
+          // so this must be sibling
+          siblings.set(possibleSibling.ord, ord);
         }
-        startOrd = ord;
-        lastDim = components[0];
       }
+
+      if (dimEndOrd + 1 == valueCount) {
+        // current ord needs to be added, can't have children or siblings
+        siblings.add(-1);
+        hasChildren.add(false);
+        break;
+      }
+
+      nextTerm = dv.lookupOrd(dimEndOrd + 1);
+      nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
+
+      if (nextComponents[0].equals(components[0]) == false) {
+        // current ord needs to be added, can't have children or siblings
+        siblings.add(-1);
+        hasChildren.add(false);
+        break;
+      }
+
+      if (components.length < nextComponents.length) {
+        // next ord must be a direct child of current ord, this is because we are indexing all
+        // ancestral paths
+        hasChildren.add(ord, true);
+        // we don't know if this ord has a sibling or where it's sibling could be yet
+        siblingStack.push(new OrdAndComponent(ord, components));
+        // we still add INVALID_ORDINAL, which will be replaced if a valid sibling is found
+        siblings.add(ord, INVALID_ORDINAL);
+      } else if (components.length == nextComponents.length) {
+        // next ord must be a sibling of current and there are no direct children of current, this
+        // is because we
+        // are indexing all ancestral paths
+        siblings.add(ord, ord + 1);
+        hasChildren.add(ord, false);
+      } else {
+        // components.length > nextComponents.length
+        // next ord is neither sibling nor child
+        siblings.add(ord, INVALID_ORDINAL);
+        hasChildren.add(ord, false);
+      }
+
+      dimEndOrd++;
     }
 
-    if (lastDim != null) {
-      prefixToOrdRange.put(lastDim, new OrdRange(startOrd, valueCount - 1));
+    prefixToDimTree.put(dim, new DimTree(dimStartOrd, siblings, hasChildren));
+
+    return dimEndOrd;
+  }
+
+  // returns last ord of dimension
+  private int createOneFlatFacetDimState(SortedSetDocValues dv, int dimStartOrd)
+      throws IOException {
+
+    int dimEndOrd = dimStartOrd;
+
+    BytesRef nextTerm = dv.lookupOrd(dimEndOrd);
+    String[] nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
+    // The first entry should always be length 1 or 2 (either just the dim itself if we explicitly
+    // indexed it, or the first child):
+    if (nextComponents.length > 2) {
+      throw new IllegalArgumentException(
+          "dimension not configured to handle hierarchical field; got: "
+              + Arrays.toString(nextComponents)
+              + " "
+              + nextTerm.utf8ToString());
     }
+    String dim = nextComponents[0];
+
+    while (true) {
+      String[] components = nextComponents;
+
+      if (dimEndOrd + 1 == valueCount) {
+        break;
+      }
+
+      nextTerm = dv.lookupOrd(dimEndOrd + 1);
+      nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
+
+      if (nextComponents[0].equals(components[0]) == false) {
+        break;
+      }
+
+      // Each entry should have a length of exactly 2 since the dim is non-hierarchical:
+      if (nextComponents.length != 2) {
+        throw new IllegalArgumentException(
+            "dimension not configured to handle hierarchical field; got: "
+                + Arrays.toString(nextComponents)
+                + " "
+                + nextTerm.utf8ToString());
+      }
+
+      dimEndOrd++;
+    }
+    prefixToOrdRange.put(dim, new OrdRange(dimStartOrd, dimEndOrd));
+
+    return dimEndOrd;
   }
 
   /** Return the memory usage of this object in bytes. Negative values are illegal. */
@@ -194,18 +311,6 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     return new MultiSortedSetDocValues(values, starts, map, cost);
   }
 
-  /** Returns mapping from prefix to {@link OrdRange}. */
-  @Override
-  public Map<String, OrdRange> getPrefixToOrdRange() {
-    return prefixToOrdRange;
-  }
-
-  /** Returns the {@link OrdRange} for this dimension. */
-  @Override
-  public OrdRange getOrdRange(String dim) {
-    return prefixToOrdRange.get(dim);
-  }
-
   /** Indexed field we are reading. */
   @Override
   public String getField() {
@@ -221,5 +326,73 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   @Override
   public int getSize() {
     return valueCount;
+  }
+
+  @Override
+  public FacetsConfig getFacetsConfig() {
+    return config;
+  }
+
+  @Override
+  public Iterable<String> getDims() {
+    return () ->
+        new Iterator<>() {
+
+          final Iterator<String> dimTreeIterator = prefixToDimTree.keySet().iterator();
+          final Iterator<String> ordRangeIterator = prefixToOrdRange.keySet().iterator();
+
+          @Override
+          public boolean hasNext() {
+            return ordRangeIterator.hasNext() || dimTreeIterator.hasNext();
+          }
+
+          @Override
+          public String next() {
+            if (dimTreeIterator.hasNext()) {
+              return dimTreeIterator.next();
+            } else if (ordRangeIterator.hasNext()) {
+              return ordRangeIterator.next();
+            } else {
+              return null;
+            }
+          }
+        };
+  }
+
+  /* Flat facet operations */
+
+  @Override
+  public Map<String, OrdRange> getPrefixToOrdRange() {
+    return prefixToOrdRange;
+  }
+
+  @Override
+  public OrdRange getOrdRange(String dim) {
+    if (config.getDimConfig(dim).hierarchical) {
+      throw new UnsupportedOperationException(
+          "This operation is only supported for flat dimensions");
+    }
+    return prefixToOrdRange.get(dim);
+  }
+
+  /* Hierarchical facet operations */
+
+  @Override
+  public DimTree getDimTree(String dim) {
+    if (config.getDimConfig(dim).hierarchical == false) {
+      throw new UnsupportedOperationException(
+          "This opperation is only supported for hierarchical facets");
+    }
+    return prefixToDimTree.get(dim);
+  }
+
+  private static final class OrdAndComponent {
+    int ord;
+    String[] component;
+
+    public OrdAndComponent(int ord, String[] component) {
+      this.ord = ord;
+      this.component = component;
+    }
   }
 }

@@ -34,16 +34,6 @@ public final class LegacyDirectMonotonicReader extends LongValues implements Acc
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(LegacyDirectMonotonicReader.class);
 
-  /** An instance that always returns {@code 0}. */
-  private static final LongValues EMPTY =
-      new LongValues() {
-
-        @Override
-        public long get(long index) {
-          return 0;
-        }
-      };
-
   /**
    * In-memory metadata that needs to be kept around for {@link LegacyDirectMonotonicReader} to read
    * data from disk.
@@ -105,7 +95,7 @@ public final class LegacyDirectMonotonicReader extends LongValues implements Acc
     final LongValues[] readers = new LongValues[meta.numBlocks];
     for (int i = 0; i < meta.mins.length; ++i) {
       if (meta.bpvs[i] == 0) {
-        readers[i] = EMPTY;
+        readers[i] = LongValues.ZEROES;
       } else {
         readers[i] = LegacyDirectReader.getInstance(data, meta.bpvs[i], meta.offsets[i]);
       }

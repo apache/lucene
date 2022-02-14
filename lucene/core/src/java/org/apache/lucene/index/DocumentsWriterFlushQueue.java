@@ -22,7 +22,7 @@ import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment;
-import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IOConsumer;
 
 /** @lucene.internal */
 final class DocumentsWriterFlushQueue {
@@ -97,7 +97,7 @@ final class DocumentsWriterFlushQueue {
     return ticketCount.get() != 0;
   }
 
-  private void innerPurge(IOUtils.IOConsumer<FlushTicket> consumer) throws IOException {
+  private void innerPurge(IOConsumer<FlushTicket> consumer) throws IOException {
     assert purgeLock.isHeldByCurrentThread();
     while (true) {
       final FlushTicket head;
@@ -131,7 +131,7 @@ final class DocumentsWriterFlushQueue {
     }
   }
 
-  void forcePurge(IOUtils.IOConsumer<FlushTicket> consumer) throws IOException {
+  void forcePurge(IOConsumer<FlushTicket> consumer) throws IOException {
     assert !Thread.holdsLock(this);
     purgeLock.lock();
     try {
@@ -141,7 +141,7 @@ final class DocumentsWriterFlushQueue {
     }
   }
 
-  void tryPurge(IOUtils.IOConsumer<FlushTicket> consumer) throws IOException {
+  void tryPurge(IOConsumer<FlushTicket> consumer) throws IOException {
     assert !Thread.holdsLock(this);
     if (purgeLock.tryLock()) {
       try {

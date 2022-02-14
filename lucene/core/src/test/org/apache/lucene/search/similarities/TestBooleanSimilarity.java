@@ -120,7 +120,7 @@ public class TestBooleanSimilarity extends BaseSimilarityTestCase {
               100,
               maxTermFrequency,
               uniqueTermCount);
-      assertEquals(sim2.computeNorm(state), sim1.computeNorm(state), 0f);
+      assertEquals(sim2.computeNorm(state), sim1.computeNorm(state));
     }
   }
 

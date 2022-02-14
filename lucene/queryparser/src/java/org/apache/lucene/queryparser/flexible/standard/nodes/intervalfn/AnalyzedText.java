@@ -50,7 +50,7 @@ public class AnalyzedText extends IntervalFunction {
     }
   }
 
-  private boolean requiresQuotes(String term) {
+  static boolean requiresQuotes(String term) {
     return Pattern.compile("[\\s]").matcher(term).find();
   }
 }

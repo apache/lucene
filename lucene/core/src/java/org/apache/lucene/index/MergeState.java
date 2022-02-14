@@ -132,7 +132,11 @@ public class MergeState {
         termVectorsReaders[i] = termVectorsReaders[i].getMergeInstance();
       }
 
-      fieldsProducers[i] = reader.getPostingsReader().getMergeInstance();
+      fieldsProducers[i] = reader.getPostingsReader();
+      if (fieldsProducers[i] != null) {
+        fieldsProducers[i] = fieldsProducers[i].getMergeInstance();
+      }
+
       pointsReaders[i] = reader.getPointsReader();
       if (pointsReaders[i] != null) {
         pointsReaders[i] = pointsReaders[i].getMergeInstance();

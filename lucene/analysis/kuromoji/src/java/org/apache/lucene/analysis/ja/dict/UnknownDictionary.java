@@ -17,6 +17,10 @@
 package org.apache.lucene.analysis.ja.dict;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
 public final class UnknownDictionary extends BinaryDictionary {
@@ -24,16 +28,31 @@ public final class UnknownDictionary extends BinaryDictionary {
   private final CharacterDefinition characterDefinition = CharacterDefinition.getInstance();
 
   /**
-   * @param scheme scheme for loading resources (FILE or CLASSPATH).
-   * @param path where to load resources from; a path, including the file base name without
-   *     extension; this is used to match multiple files with the same base name.
+   * Create a {@link UnknownDictionary} from an external resource path.
+   *
+   * @param targetMapFile where to load target map resource
+   * @param posDictFile where to load POS dictionary resource
+   * @param dictFile where to load dictionary entries resource
+   * @throws IOException if resource was not found or broken
    */
-  public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
-    super(scheme, path);
+  public UnknownDictionary(Path targetMapFile, Path posDictFile, Path dictFile) throws IOException {
+    super(
+        () -> Files.newInputStream(targetMapFile),
+        () -> Files.newInputStream(posDictFile),
+        () -> Files.newInputStream(dictFile));
   }
 
   private UnknownDictionary() throws IOException {
-    super();
+    super(
+        () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
+        () -> getClassResource(POSDICT_FILENAME_SUFFIX),
+        () -> getClassResource(DICT_FILENAME_SUFFIX));
+  }
+
+  private static InputStream getClassResource(String suffix) throws IOException {
+    final String resourcePath = UnknownDictionary.class.getSimpleName() + suffix;
+    return IOUtils.requireResourceNonNull(
+        UnknownDictionary.class.getResourceAsStream(resourcePath), resourcePath);
   }
 
   public int lookup(char[] text, int offset, int len) {
