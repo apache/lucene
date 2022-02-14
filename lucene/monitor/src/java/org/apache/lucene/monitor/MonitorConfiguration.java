@@ -34,7 +34,6 @@ public class MonitorConfiguration {
   private long purgeFrequency = 5;
   private TimeUnit purgeFrequencyUnits = TimeUnit.MINUTES;
   private QueryDecomposer queryDecomposer = new QueryDecomposer();
-  private Path indexPath = null;
   private MonitorQuerySerializer serializer;
   private Boolean readOnly = false;
   private DirectoryProviderFunctionalInterface directoryProvider;
@@ -61,25 +60,24 @@ public class MonitorConfiguration {
     return directoryProvider;
   }
 
-  public MonitorConfiguration setDirectoryProvider(DirectoryProviderFunctionalInterface directoryProvider) {
+  public MonitorConfiguration setDirectoryProvider(
+      DirectoryProviderFunctionalInterface directoryProvider) {
     this.directoryProvider = directoryProvider;
     return this;
   }
 
   public MonitorConfiguration setIndexPath(Path indexPath, MonitorQuerySerializer serializer) {
-    this.indexPath = indexPath;
     this.serializer = serializer;
     this.directoryProvider = () -> FSDirectory.open(indexPath);
     return this;
   }
 
   public IndexWriter buildIndexWriter() throws IOException {
-    if(directoryProvider != null){
+    if (directoryProvider != null) {
       return new IndexWriter(directoryProvider.apply(), getIndexWriterConfig());
     } else {
-      return new IndexWriter( new ByteBuffersDirectory(), getIndexWriterConfig());
+      return new IndexWriter(new ByteBuffersDirectory(), getIndexWriterConfig());
     }
-
   }
 
   protected IndexWriterConfig getIndexWriterConfig() {
@@ -145,5 +143,4 @@ public class MonitorConfiguration {
   public int getQueryUpdateBufferSize() {
     return queryUpdateBufferSize;
   }
-
 }

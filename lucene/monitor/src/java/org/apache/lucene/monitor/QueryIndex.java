@@ -82,11 +82,11 @@ class QueryIndex implements Closeable {
 
   QueryIndex(MonitorConfiguration config, Presearcher presearcher) throws IOException {
     this.readOnly = config.isReadOnly();
-    if (readOnly){
+    if (readOnly) {
       this.writer = null;
-      if (config.getDirectoryProvider() == null){
+      if (config.getDirectoryProvider() == null) {
         throw new IllegalStateException(
-                "You must specify a Directory when configuring a Monitor as read-only.");
+            "You must specify a Directory when configuring a Monitor as read-only.");
       }
       Directory directory = config.getDirectoryProvider().apply();
       this.manager = new SearcherManager(directory, new TermsHashBuilder());
@@ -160,9 +160,8 @@ class QueryIndex implements Closeable {
   }
 
   void commit(List<MonitorQuery> updates) throws IOException {
-    if (readOnly){
-      throw new IllegalStateException(
-              "Monitor is readOnly cannot commit");
+    if (readOnly) {
+      throw new IllegalStateException("Monitor is readOnly cannot commit");
     }
     List<Indexable> indexables = buildIndexables(updates);
     synchronized (commitLock) {
@@ -370,16 +369,15 @@ class QueryIndex implements Closeable {
 
   @Override
   public void close() throws IOException {
-    if (readOnly){
+    if (readOnly) {
       IOUtils.close(manager);
     } else {
       IOUtils.close(manager, writer, writer.getDirectory());
     }
-
   }
 
   int numDocs() throws IOException {
-    if (readOnly){
+    if (readOnly) {
       IndexSearcher searcher = manager.acquire();
       return searcher.getIndexReader().numDocs();
     }
@@ -391,9 +389,8 @@ class QueryIndex implements Closeable {
   }
 
   void deleteQueries(Iterable<String> ids) throws IOException {
-    if (readOnly){
-      throw new IllegalStateException(
-              "Monitor is readOnly cannot delete queries");
+    if (readOnly) {
+      throw new IllegalStateException("Monitor is readOnly cannot delete queries");
     }
     for (String id : ids) {
       writer.deleteDocuments(new Term(FIELDS.query_id, id));
@@ -402,9 +399,8 @@ class QueryIndex implements Closeable {
   }
 
   void clear() throws IOException {
-    if (readOnly){
-      throw new IllegalStateException(
-              "Monitor is readOnly cannot clear");
+    if (readOnly) {
+      throw new IllegalStateException("Monitor is readOnly cannot clear");
     }
     writer.deleteAll();
     commit(Collections.emptyList());
