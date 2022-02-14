@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
@@ -102,8 +101,10 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertFalse((new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
-    assertFalse((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -123,9 +124,12 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertFalse((new DocValuesFieldExistsQuery("dv1")).rewrite(reader) instanceof MatchAllDocsQuery);
-    assertFalse((new DocValuesFieldExistsQuery("dv2")).rewrite(reader) instanceof MatchAllDocsQuery);
-    assertFalse((new DocValuesFieldExistsQuery("dv3")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv1")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv2")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv3")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }

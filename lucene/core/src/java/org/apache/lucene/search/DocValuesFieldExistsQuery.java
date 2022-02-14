@@ -70,12 +70,12 @@ public final class DocValuesFieldExistsQuery extends Query {
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
     int rewritableReaders = 0;
-    for (LeafReaderContext context: reader.leaves()) {
+    for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
       Terms terms = leaf.terms(field);
       PointValues pointValues = leaf.getPointValues(field);
-      if ((terms != null && terms.getDocCount() == leaf.maxDoc()) ||
-        (pointValues != null && pointValues.getDocCount() == leaf.maxDoc())) {
+      if ((terms != null && terms.getDocCount() == leaf.maxDoc())
+          || (pointValues != null && pointValues.getDocCount() == leaf.maxDoc())) {
         rewritableReaders++;
       }
     }
