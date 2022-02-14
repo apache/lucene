@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.util.IOUtils.IOSupplier;
-
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
