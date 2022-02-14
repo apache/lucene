@@ -103,8 +103,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
     assertFalse(
         (new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
-    assertFalse(
-        (new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
