@@ -25,7 +25,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.store.ByteBuffersDirectory;
-import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 /** Encapsulates various configuration settings for a Monitor's query index */
@@ -37,6 +36,8 @@ public class MonitorConfiguration {
   private QueryDecomposer queryDecomposer = new QueryDecomposer();
   private Path indexPath = null;
   private MonitorQuerySerializer serializer;
+  private Boolean readOnly = false;
+  private DirectoryProviderFunctionalInterface directoryProvider;
 
   private static IndexWriterConfig defaultIndexWriterConfig() {
     IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
@@ -47,16 +48,38 @@ public class MonitorConfiguration {
     return iwc;
   }
 
+  public MonitorConfiguration setReadOnly(Boolean readOnly) {
+    this.readOnly = readOnly;
+    return this;
+  }
+
+  public Boolean isReadOnly() {
+    return readOnly;
+  }
+
+  public DirectoryProviderFunctionalInterface getDirectoryProvider() {
+    return directoryProvider;
+  }
+
+  public MonitorConfiguration setDirectoryProvider(DirectoryProviderFunctionalInterface directoryProvider) {
+    this.directoryProvider = directoryProvider;
+    return this;
+  }
+
   public MonitorConfiguration setIndexPath(Path indexPath, MonitorQuerySerializer serializer) {
     this.indexPath = indexPath;
     this.serializer = serializer;
+    this.directoryProvider = () -> FSDirectory.open(indexPath);
     return this;
   }
 
   public IndexWriter buildIndexWriter() throws IOException {
-    Directory directory =
-        indexPath == null ? new ByteBuffersDirectory() : FSDirectory.open(indexPath);
-    return new IndexWriter(directory, getIndexWriterConfig());
+    if(directoryProvider != null){
+      return new IndexWriter(directoryProvider.apply(), getIndexWriterConfig());
+    } else {
+      return new IndexWriter( new ByteBuffersDirectory(), getIndexWriterConfig());
+    }
+
   }
 
   protected IndexWriterConfig getIndexWriterConfig() {
@@ -122,4 +145,5 @@ public class MonitorConfiguration {
   public int getQueryUpdateBufferSize() {
     return queryUpdateBufferSize;
   }
+
 }

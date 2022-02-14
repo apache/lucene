@@ -131,7 +131,7 @@ public class Monitor implements Closeable {
   }
 
   /** @return Statistics for the internal query index and cache */
-  public QueryCacheStats getQueryCacheStats() {
+  public QueryCacheStats getQueryCacheStats() throws IOException {
     return new QueryCacheStats(queryIndex.numDocs(), queryIndex.cacheSize(), lastPurged);
   }
 
@@ -287,7 +287,7 @@ public class Monitor implements Closeable {
   }
 
   /** @return the number of queries (after decomposition) stored in this Monitor */
-  public int getDisjunctCount() {
+  public int getDisjunctCount() throws IOException {
     return queryIndex.numDocs();
   }
 

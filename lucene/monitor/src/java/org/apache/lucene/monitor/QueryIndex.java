@@ -36,15 +36,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -54,6 +46,7 @@ import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.IOUtils;
@@ -71,6 +64,7 @@ class QueryIndex implements Closeable {
   private final QueryDecomposer decomposer;
   private final MonitorQuerySerializer serializer;
   private final Presearcher presearcher;
+  private final Boolean readOnly;
 
   /* Used to cache updates while a purge is ongoing */
   private volatile Map<String, QueryCacheEntry> purgeCache = null;
@@ -87,8 +81,20 @@ class QueryIndex implements Closeable {
   final Map<IndexReader.CacheKey, QueryTermFilter> termFilters = new HashMap<>();
 
   QueryIndex(MonitorConfiguration config, Presearcher presearcher) throws IOException {
-    this.writer = config.buildIndexWriter();
-    this.manager = new SearcherManager(writer, true, true, new TermsHashBuilder());
+    this.readOnly = config.isReadOnly();
+    if (readOnly){
+      this.writer = null;
+      if (config.getDirectoryProvider() == null){
+        throw new IllegalStateException(
+                "You must specify a Directory when configuring a Monitor as read-only.");
+      }
+      Directory directory = config.getDirectoryProvider().apply();
+      this.manager = new SearcherManager(directory, new TermsHashBuilder());
+    } else {
+      this.writer = config.buildIndexWriter();
+      this.manager = new SearcherManager(writer, true, true, new TermsHashBuilder());
+    }
+
     this.decomposer = config.getQueryDecomposer();
     this.serializer = config.getQuerySerializer();
     this.presearcher = presearcher;
@@ -154,6 +160,10 @@ class QueryIndex implements Closeable {
   }
 
   void commit(List<MonitorQuery> updates) throws IOException {
+    if (readOnly){
+      throw new IllegalStateException(
+              "Monitor is readOnly cannot commit");
+    }
     List<Indexable> indexables = buildIndexables(updates);
     synchronized (commitLock) {
       purgeLock.readLock().lock();
@@ -360,10 +370,19 @@ class QueryIndex implements Closeable {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(manager, writer, writer.getDirectory());
+    if (readOnly){
+      IOUtils.close(manager);
+    } else {
+      IOUtils.close(manager, writer, writer.getDirectory());
+    }
+
   }
 
-  int numDocs() {
+  int numDocs() throws IOException {
+    if (readOnly){
+      IndexSearcher searcher = manager.acquire();
+      return searcher.getIndexReader().numDocs();
+    }
     return writer.getDocStats().numDocs;
   }
 
@@ -372,6 +391,10 @@ class QueryIndex implements Closeable {
   }
 
   void deleteQueries(Iterable<String> ids) throws IOException {
+    if (readOnly){
+      throw new IllegalStateException(
+              "Monitor is readOnly cannot delete queries");
+    }
     for (String id : ids) {
       writer.deleteDocuments(new Term(FIELDS.query_id, id));
     }
@@ -379,6 +402,10 @@ class QueryIndex implements Closeable {
   }
 
   void clear() throws IOException {
+    if (readOnly){
+      throw new IllegalStateException(
+              "Monitor is readOnly cannot clear");
+    }
     writer.deleteAll();
     commit(Collections.emptyList());
   }

@@ -153,9 +153,13 @@ public class TestCachePurging extends MonitorTestBase {
       monitor.addQueryIndexUpdateListener(
           new MonitorUpdateListener() {
             @Override
-            public void onPurge() {
+            public void onPurge()  {
               // It can sometimes take a couple of purge runs to get everything in sync
-              if (monitor.getQueryCacheStats().cachedQueries == 99) latch.countDown();
+              try {
+                if (monitor.getQueryCacheStats().cachedQueries == 99) latch.countDown();
+              } catch (IOException e) {
+                // Ignore
+              }
             }
           });
 
