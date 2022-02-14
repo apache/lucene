@@ -234,22 +234,6 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
         concurrentResult.facets.getTopChildren(10, "Size").toString());
 
-    // Now do the same thing but use a Collector directly:
-    SimpleCollector collector = new SimpleCollector(ScoreMode.COMPLETE_NO_SCORES);
-    // Make sure our Collector _does not_ need scores to ensure IndexSearcher tries to cache:
-    assertFalse(collector.scoreMode().needsScores());
-    // If we incorrectly cache here, the "sideways" FacetsCollectors will get populated with counts
-    // for the deleted
-    // docs. Make sure they don't:
-    DrillSidewaysResult result = ds.search(ddq, collector);
-    assertEquals(2, collector.hits.size());
-    assertEquals(
-        "dim=Color path=[] value=4 childCount=3\n  Blue (2)\n  Red (1)\n  Green (1)\n",
-        result.facets.getTopChildren(10, "Color").toString());
-    assertEquals(
-        "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
-        result.facets.getTopChildren(10, "Size").toString());
-
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
@@ -1230,25 +1214,10 @@ public class TestDrillSideways extends FacetTestCase {
       getNewDrillSideways(s, config, tr)
           .search(
               ddq,
-              new org.apache.lucene.search.SimpleCollector() {
-                int lastDocID;
-
-                @Override
-                public void collect(int doc) {
-                  assert doc > lastDocID;
-                  lastDocID = doc;
-                }
-
-                @Override
-                protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                  lastDocID = -1;
-                }
-
-                @Override
-                public ScoreMode scoreMode() {
-                  return ScoreMode.COMPLETE_NO_SCORES;
-                }
-              });
+              new SimpleCollectorManager(
+                  numDocs,
+                  Comparator.comparing(cr -> cr.docAndScore.doc),
+                  ScoreMode.COMPLETE_NO_SCORES));
 
       // Also separately verify that DS respects the
       // scoreSubDocsAtOnce method, to ensure that all
@@ -1259,7 +1228,7 @@ public class TestDrillSideways extends FacetTestCase {
         // easily possible for one of the DD terms to be on
         // a future docID:
         getNewDrillSidewaysScoreSubdocsAtOnce(s, config, tr)
-            .search(ddq, new AssertingSubDocsAtOnceCollector());
+            .search(ddq, new AssertingSubDocsAtOnceCollectorManager());
       }
 
       Sort sort = new Sort(new SortField("id", SortField.Type.STRING));
@@ -1970,16 +1939,8 @@ public class TestDrillSideways extends FacetTestCase {
     SimpleCollectorManager manager =
         new SimpleCollectorManager(
             10, (a, b) -> Float.compare(b.docAndScore.score, a.docAndScore.score));
-    SimpleCollector collector = manager.newCollector();
 
-    // Sometimes pass in a Collector and sometimes CollectorManager
-    // so that we can test both DrillSidewaysResult and ConcurrentDrillSidewaysResult
-    DrillSidewaysResult r;
-    if (random().nextBoolean()) {
-      r = ds.search(ddq, collector);
-    } else {
-      r = ds.search(ddq, manager);
-    }
+    DrillSidewaysResult r = ds.search(ddq, manager);
 
     // compute Facets using exposed FacetCollectors from DrillSidewaysResult
     Map<String, Facets> drillSidewaysFacets = new HashMap<>();

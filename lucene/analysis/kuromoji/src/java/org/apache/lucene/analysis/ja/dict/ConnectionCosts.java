@@ -20,9 +20,13 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.IOUtils;
 
 /** n-gram connection cost data */
 public final class ConnectionCosts {
@@ -35,13 +39,21 @@ public final class ConnectionCosts {
   private final int forwardSize;
 
   /**
-   * @param scheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param path - where to load resources from, without the ".dat" suffix
+   * Create a {@link ConnectionCosts} from an external resource path.
+   *
+   * @param connectionCostsFile where to load connection costs resource
+   * @throws IOException if resource was not found or broken
    */
-  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
-    try (InputStream is =
-        new BufferedInputStream(
-            BinaryDictionary.getResource(scheme, "/" + path.replace('.', '/') + FILENAME_SUFFIX))) {
+  public ConnectionCosts(Path connectionCostsFile) throws IOException {
+    this(() -> Files.newInputStream(connectionCostsFile));
+  }
+
+  private ConnectionCosts() throws IOException {
+    this(ConnectionCosts::getClassResource);
+  }
+
+  private ConnectionCosts(IOSupplier<InputStream> connectionCostResource) throws IOException {
+    try (InputStream is = new BufferedInputStream(connectionCostResource.get())) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       forwardSize = in.readVInt();
@@ -61,8 +73,10 @@ public final class ConnectionCosts {
     }
   }
 
-  private ConnectionCosts() throws IOException {
-    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
+  private static InputStream getClassResource() throws IOException {
+    final String resourcePath = ConnectionCosts.class.getSimpleName() + FILENAME_SUFFIX;
+    return IOUtils.requireResourceNonNull(
+        ConnectionCosts.class.getResourceAsStream(resourcePath), resourcePath);
   }
 
   public int get(int forwardId, int backwardId) {

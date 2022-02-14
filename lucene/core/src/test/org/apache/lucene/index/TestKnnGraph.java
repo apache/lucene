@@ -40,7 +40,6 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.KnnGraphValues.NodesIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -54,6 +53,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.junit.After;
 import org.junit.Before;
@@ -172,9 +173,11 @@ public class TestKnnGraph extends LuceneTestCase {
     int numDoc = atLeast(100);
     int[] dims = new int[numVectorFields];
     float[][][] values = new float[numVectorFields][][];
+    FieldType[] fieldTypes = new FieldType[numVectorFields];
     for (int field = 0; field < numVectorFields; field++) {
       dims[field] = atLeast(3);
       values[field] = randomVectors(numDoc, dims[field]);
+      fieldTypes[field] = KnnVectorField.createFieldType(dims[field], similarityFunction);
     }
 
     try (Directory dir = newDirectory();
@@ -184,8 +187,7 @@ public class TestKnnGraph extends LuceneTestCase {
         for (int field = 0; field < numVectorFields; field++) {
           float[] vector = values[field][docID];
           if (vector != null) {
-            FieldType fieldType = KnnVectorField.createFieldType(vector.length, similarityFunction);
-            doc.add(new KnnVectorField(KNN_GRAPH_FIELD + field, vector, fieldType));
+            doc.add(new KnnVectorField(KNN_GRAPH_FIELD + field, vector, fieldTypes[field]));
           }
         }
         String idString = Integer.toString(docID);
@@ -238,7 +240,7 @@ public class TestKnnGraph extends LuceneTestCase {
                 ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
         Lucene91HnswVectorsReader vectorReader =
             (Lucene91HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
-        graph = copyGraph(vectorReader.getGraphValues(KNN_GRAPH_FIELD));
+        graph = copyGraph(vectorReader.getGraph(KNN_GRAPH_FIELD));
       }
     }
     return graph;
@@ -258,7 +260,7 @@ public class TestKnnGraph extends LuceneTestCase {
     return values;
   }
 
-  int[][][] copyGraph(KnnGraphValues graphValues) throws IOException {
+  int[][][] copyGraph(HnswGraph graphValues) throws IOException {
     int[][][] graph = new int[graphValues.numLevels()][][];
     int size = graphValues.size();
     int[] scratch = new int[maxConn];
@@ -428,7 +430,6 @@ public class TestKnnGraph extends LuceneTestCase {
     try (DirectoryReader dr = DirectoryReader.open(iw)) {
       for (LeafReaderContext ctx : dr.leaves()) {
         LeafReader reader = ctx.reader();
-        VectorValues vectorValues = reader.getVectorValues(vectorField);
         PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
             (PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) reader).getVectorReader();
         if (perFieldReader == null) {
@@ -436,7 +437,11 @@ public class TestKnnGraph extends LuceneTestCase {
         }
         Lucene91HnswVectorsReader vectorReader =
             (Lucene91HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
-        KnnGraphValues graphValues = vectorReader.getGraphValues(vectorField);
+        if (vectorReader == null) {
+          continue;
+        }
+        HnswGraph graphValues = vectorReader.getGraph(vectorField);
+        VectorValues vectorValues = reader.getVectorValues(vectorField);
         if (vectorValues == null) {
           assert graphValues == null;
           continue;

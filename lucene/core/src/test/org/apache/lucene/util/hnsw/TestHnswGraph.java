@@ -37,8 +37,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.KnnGraphValues;
-import org.apache.lucene.index.KnnGraphValues.NodesIterator;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
@@ -51,6 +49,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 
 /** Tests HNSW KNN graphs */
 public class TestHnswGraph extends LuceneTestCase {
@@ -110,19 +109,19 @@ public class TestHnswGraph extends LuceneTestCase {
           assertEquals(indexedDoc, ctx.reader().maxDoc());
           assertEquals(indexedDoc, ctx.reader().numDocs());
           assertVectorsEqual(v3, values);
-          KnnGraphValues graphValues =
+          HnswGraph graphValues =
               ((Lucene91HnswVectorsReader)
                       ((PerFieldKnnVectorsFormat.FieldsReader)
                               ((CodecReader) ctx.reader()).getVectorReader())
                           .getFieldReader("field"))
-                  .getGraphValues("field");
+                  .getGraph("field");
           assertGraphEqual(hnsw, graphValues);
         }
       }
     }
   }
 
-  private void assertGraphEqual(KnnGraphValues g, KnnGraphValues h) throws IOException {
+  private void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
     assertEquals("the number of levels in the graphs are different!", g.numLevels(), h.numLevels());
     assertEquals("the number of nodes in the graphs are different!", g.size(), h.size());
 
@@ -159,10 +158,10 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
             vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
-    HnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors);
     // run some searches
     NeighborQueue nn =
-        HnswGraph.search(
+        HnswGraphSearcher.search(
             new float[] {1, 0},
             10,
             vectors.randomAccess(),
@@ -197,11 +196,11 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
             vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
-    HnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors);
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
-        HnswGraph.search(
+        HnswGraphSearcher.search(
             new float[] {1, 0},
             10,
             vectors.randomAccess(),
@@ -226,7 +225,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
             vectors, VectorSimilarityFunction.EUCLIDEAN, 16, 100, random().nextInt());
-    HnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors);
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
@@ -234,7 +233,7 @@ public class TestHnswGraph extends LuceneTestCase {
       acceptOrds.set(i);
     }
     NeighborQueue nn =
-        HnswGraph.search(
+        HnswGraphSearcher.search(
             new float[] {1, 0},
             10,
             vectors.randomAccess(),
@@ -354,7 +353,7 @@ public class TestHnswGraph extends LuceneTestCase {
     assertLevel0Neighbors(builder.hnsw, 5, 1, 4);
   }
 
-  private void assertLevel0Neighbors(HnswGraph graph, int node, int... expected) {
+  private void assertLevel0Neighbors(OnHeapHnswGraph graph, int node, int... expected) {
     Arrays.sort(expected);
     NeighborArray nn = graph.getNeighbors(0, node);
     int[] actual = ArrayUtil.copyOfSubArray(nn.node, 0, nn.size());
@@ -376,14 +375,14 @@ public class TestHnswGraph extends LuceneTestCase {
     int topK = 5;
     HnswGraphBuilder builder =
         new HnswGraphBuilder(vectors, similarityFunction, maxConn, 30, random().nextLong());
-    HnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors);
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
-          HnswGraph.search(query, 100, vectors, similarityFunction, hnsw, acceptOrds);
+          HnswGraphSearcher.search(query, 100, vectors, similarityFunction, hnsw, acceptOrds);
       while (actual.size() > topK) {
         actual.pop();
       }
@@ -505,7 +504,7 @@ public class TestHnswGraph extends LuceneTestCase {
     return value;
   }
 
-  private Set<Integer> getNeighborNodes(KnnGraphValues g) throws IOException {
+  private Set<Integer> getNeighborNodes(HnswGraph g) throws IOException {
     Set<Integer> neighbors = new HashSet<>();
     for (int n = g.nextNeighbor(); n != NO_MORE_DOCS; n = g.nextNeighbor()) {
       neighbors.add(n);

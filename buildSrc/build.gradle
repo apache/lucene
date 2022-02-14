@@ -21,7 +21,7 @@ repositories {
 
 ext {
   // Minimum Java version required to compile buildSrc.
-  minJavaVersion = JavaVersion.VERSION_11
+  minJavaVersion = JavaVersion.VERSION_17
 }
 
 

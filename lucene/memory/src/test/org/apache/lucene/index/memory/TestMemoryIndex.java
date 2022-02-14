@@ -430,6 +430,30 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals("quick brown fox", binaryDocValues.binaryValue().utf8ToString());
   }
 
+  public void testBigBinaryDocValues() throws Exception {
+    Document doc = new Document();
+    byte[] bytes = new byte[33 * 1024];
+    random().nextBytes(bytes);
+    doc.add(new BinaryDocValuesField("binary", new BytesRef(bytes)));
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer, true, true);
+    LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
+    BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("binary");
+    assertEquals(0, binaryDocValues.nextDoc());
+    assertArrayEquals(bytes, binaryDocValues.binaryValue().bytes);
+  }
+
+  public void testBigSortedDocValues() throws Exception {
+    Document doc = new Document();
+    byte[] bytes = new byte[33 * 1024];
+    random().nextBytes(bytes);
+    doc.add(new SortedDocValuesField("binary", new BytesRef(bytes)));
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer, true, true);
+    LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
+    SortedDocValues sortedDocValues = leafReader.getSortedDocValues("binary");
+    assertEquals(0, sortedDocValues.nextDoc());
+    assertArrayEquals(bytes, sortedDocValues.lookupOrd(0).bytes);
+  }
+
   public void testPointValues() throws Exception {
     List<Function<Long, IndexableField>> fieldFunctions =
         Arrays.asList(

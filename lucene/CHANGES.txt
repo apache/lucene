@@ -15,6 +15,8 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been make pkg-private and serves only as an internal
   implementation detail of taxonomy-faceting. (Greg Miller)
 
+* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji (Tomoko Uchida)
+
 New Features
 ---------------------
 
@@ -75,6 +77,18 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been deprecated and is no longer a supported extension point
   for user-created faceting implementations. (Greg Miller)
 
+* LUCENE-10400: Add constructors that take external resource Paths to dictionary classes in Kuromoji:
+  ConnectionCosts, TokenInfoDictionary, and UnknownDictionary. Old constructors that take resource scheme and
+  resource path in those classes are deprecated; These are replaced with the new constructors and planned to be
+  removed in a future release. (Tomoko Uchida, Uwe Schindler, Mike Sokolov)
+
+* LUCENE-10050: Deprecate DrillSideways#search(Query, Collector) in favor of
+  DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
+  IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
+
+* LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
+  (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
+
 New Features
 ---------------------
 
@@ -124,6 +138,18 @@ New Features
 
 * LUCENE-10250: Add support for arbitrary length hierarchical SSDV facets. (Marc D'mello)
 
+* LUCENE-10395: Add support for TotalHitCountCollectorManager, a collector manager
+  based on TotalHitCountCollector that allows users to parallelize counting the
+  number of hits. (Luca Cavanna, Adrien Grand)
+
+* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
+  to speed up computing the number of hits when possible. (Luca Cavanna, Adrien Grand)
+
+* LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
+
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
+  Alan Woodward)
+
 Improvements
 ---------------------
 
@@ -145,6 +171,9 @@ Improvements
 
 * LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
   with or without offsets enabled. (Patrick Zhai)
+
+* LUCENE-10054 Make HnswGraph hierarchical (Mayya Sharipova, Julie Tibshirani, Mike Sokolov,
+  Adrien Grand)
 
 * LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
   (Patrick Zhai)
@@ -178,6 +207,14 @@ Optimizations
   data to a file. (Julie Tibshirani, Adrien Grand)
 
 * LUCENE-10388: Remove MultiLevelSkipListReader#SkipBuffer to make JVM less confused. (Guo Feng)
+
+* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
+* LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
+  matching clauses is a constant. (LuYunCheng via Adrien Grand)
+
+* LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
+  (Adrien Grand)
 
 Changes in runtime behavior
 ---------------------
@@ -213,6 +250,18 @@ Bug Fixes
 * LUCENE-9952: Address inaccurate dim counts for SSDV faceting in cases where a dim is configured
   as multi-valued. (Greg Miller)
 
+* LUCENE-10401: Fix lookups on empty doc-value terms dictionaries to no longer
+  throw an ArrayIndexOutOfBoundsException. (Adrien Grand)
+
+* LUCENE-10402: Prefix intervals should declare their automaton as binary, otherwise prefixes
+  containing multibyte characters will not correctly match. (Alan Woodward)
+
+* LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
+  in a disjunction. (Alan Woodward, Dawid Weiss)
+  
+* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
+   as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
+
 Other
 ---------------------
 
@@ -229,6 +278,8 @@ Other
 * LUCENE-10352: Convert TestAllAnalyzersHaveFactories and TestRandomChains to a global integration test
   and discover classes to check from module system. The test now checks all analyzer modules,
   so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
+
+* LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
 
 ======================= Lucene 9.0.0 =======================
 
