@@ -26,8 +26,7 @@ import java.io.IOException;
  * @param <R> the type of the result of the function
  */
 @FunctionalInterface
-@SuppressWarnings("removal")
-public interface IOFunction<T, R> extends IOUtils.IOFunction<T, R> {
+public interface IOFunction<T, R> {
   /**
    * Applies this function to the given argument.
    *
@@ -35,6 +34,5 @@ public interface IOFunction<T, R> extends IOUtils.IOFunction<T, R> {
    * @return the function result
    * @throws IOException if producing the result throws an {@link IOException}
    */
-  @Override
   R apply(T t) throws IOException;
 }
