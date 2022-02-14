@@ -102,6 +102,7 @@ allprojects {
                     break
 
                 case ":lucene:analysis:common":
+                case ":lucene:analysis.tests":
                     exclude "src/**/*.aff"
                     exclude "src/**/*.dic"
                     exclude "src/**/*.good"

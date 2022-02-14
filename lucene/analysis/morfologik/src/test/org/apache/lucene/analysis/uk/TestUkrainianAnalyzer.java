@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.uk;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Test case for UkrainianAnalyzer. */
@@ -98,5 +99,12 @@ public class TestUkrainianAnalyzer extends BaseTokenStreamTestCase {
     Analyzer analyzer = new UkrainianMorfologikAnalyzer();
     checkRandomData(random(), analyzer, 200 * RANDOM_MULTIPLIER);
     analyzer.close();
+  }
+
+  public void testDefaultStopWords() {
+    CharArraySet stopwords = UkrainianMorfologikAnalyzer.getDefaultStopwords();
+    assertTrue(stopwords.contains("аби"));
+    stopwords.remove("аби");
+    assertTrue(UkrainianMorfologikAnalyzer.getDefaultStopwords().contains("аби"));
   }
 }

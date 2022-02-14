@@ -21,8 +21,5 @@ description = 'Module tests for :lucene:core'
 
 dependencies {
   moduleTestImplementation project(':lucene:core')
-  moduleTestImplementation("junit:junit", {
-    exclude group: "org.hamcrest"
-  })
-  moduleTestImplementation "org.hamcrest:hamcrest"
+  moduleTestImplementation project(':lucene:test-framework')
 }

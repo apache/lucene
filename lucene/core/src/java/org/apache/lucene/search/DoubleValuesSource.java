@@ -25,7 +25,6 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.comparators.DoubleComparator;
 
 /**
@@ -483,8 +482,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public FieldComparator<Double> newComparator(
-        String fieldname, int numHits, int sortPos, boolean reversed) {
-      return new DoubleComparator(numHits, fieldname, missingValue, reversed, sortPos) {
+        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
+      return new DoubleComparator(numHits, fieldname, missingValue, reversed, false) {
         @Override
         public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
           DoubleValuesHolder holder = new DoubleValuesHolder();
@@ -497,11 +496,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
                 LeafReaderContext context, String field) {
               ctx = context;
               return asNumericDocValues(holder, Double::doubleToLongBits);
-            }
-
-            @Override
-            protected PointValues getPointValues(LeafReaderContext context, String field) {
-              return null;
             }
 
             @Override

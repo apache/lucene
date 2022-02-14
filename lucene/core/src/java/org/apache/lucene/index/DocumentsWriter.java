@@ -33,6 +33,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
@@ -180,8 +181,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     return false;
   }
 
-  void purgeFlushTickets(
-      boolean forced, IOUtils.IOConsumer<DocumentsWriterFlushQueue.FlushTicket> consumer)
+  void purgeFlushTickets(boolean forced, IOConsumer<DocumentsWriterFlushQueue.FlushTicket> consumer)
       throws IOException {
     if (forced) {
       ticketQueue.forcePurge(consumer);
@@ -427,17 +427,13 @@ final class DocumentsWriter implements Closeable, Accountable {
       // This must happen after we've pulled the DWPT because IW.close
       // waits for all DWPT to be released:
       ensureOpen();
-      final int dwptNumDocs = dwpt.getNumDocsInRAM();
       try {
-        seqNo = dwpt.updateDocuments(docs, delNode, flushNotifications);
+        seqNo =
+            dwpt.updateDocuments(docs, delNode, flushNotifications, numDocsInRAM::incrementAndGet);
       } finally {
         if (dwpt.isAborted()) {
           flushControl.doOnAbort(dwpt);
         }
-        // We don't know how many documents were actually
-        // counted as indexed, so we must subtract here to
-        // accumulate our separate counter:
-        numDocsInRAM.addAndGet(dwpt.getNumDocsInRAM() - dwptNumDocs);
       }
       final boolean isUpdate = delNode != null && delNode.isDelete();
       flushingDWPT = flushControl.doAfterDocument(dwpt, isUpdate);
@@ -612,7 +608,7 @@ final class DocumentsWriter implements Closeable, Accountable {
      * is called. The caller must ensure that the purge happens without an index writer lock being
      * held.
      *
-     * @see DocumentsWriter#purgeFlushTickets(boolean, IOUtils.IOConsumer)
+     * @see DocumentsWriter#purgeFlushTickets(boolean, IOConsumer)
      */
     void onTicketBacklog();
   }

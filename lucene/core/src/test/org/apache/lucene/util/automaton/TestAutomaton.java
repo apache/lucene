@@ -1027,7 +1027,7 @@ public class TestAutomaton extends LuceneTestCase {
               System.out.println("  prefixes=" + prefixes);
             }
 
-            for (int prefix : prefixes) {
+            for (int prefix : prefixes.stream().mapToInt(Integer::intValue).toArray()) {
               // prefix is a leading ascii byte; we retain <prefix>* in a
               Automaton a2 = new Automaton();
               int init = a2.createState();

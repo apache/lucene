@@ -37,8 +37,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -556,9 +554,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       w.deleteDocuments(new Term("id", "0"));
       w.forceMerge(1);
       try (DirectoryReader r = DirectoryReader.open(w)) {
-        VectorValues values = getOnlyLeafReader(r).getVectorValues("v");
+        LeafReader leafReader = getOnlyLeafReader(r);
+        VectorValues values = leafReader.getVectorValues("v");
         assertNotNull(values);
         assertEquals(0, values.size());
+
+        // assert that knn search doesn't fail on a field with all deleted docs
+        TopDocs results =
+            leafReader.searchNearestVectors("v", randomVector(3), 1, leafReader.getLiveDocs());
+        assertEquals(0, results.scoreDocs.length);
       }
     }
   }
@@ -687,12 +691,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals("4", leaf.document(vectorValues.nextDoc()).get("id"));
         assertEquals(0, vectorValues.vectorValue()[0], 0);
         assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
-
-        RandomAccessVectorValues ra =
-            ((RandomAccessVectorValuesProducer) vectorValues).randomAccess();
-        assertEquals(-1f, ra.vectorValue(0)[0], 0);
-        assertEquals(1f, ra.vectorValue(1)[0], 0);
-        assertEquals(0f, ra.vectorValue(2)[0], 0);
       }
     }
   }

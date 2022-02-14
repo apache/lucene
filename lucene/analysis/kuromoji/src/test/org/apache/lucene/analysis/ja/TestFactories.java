@@ -36,6 +36,7 @@ import org.apache.lucene.analysis.miscellaneous.DelimitedTermFrequencyTokenFilte
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.Version;

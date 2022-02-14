@@ -95,6 +95,9 @@ class MergeReaderWrapper extends LeafReader {
     // We could check the FieldInfo IndexOptions but there's no point since
     //   PostingsReader will simply return null for fields that don't exist or that have no terms
     // index.
+    if (fields == null) {
+      return null;
+    }
     return fields.terms(field);
   }
 

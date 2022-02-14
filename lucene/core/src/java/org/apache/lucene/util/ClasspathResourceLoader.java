@@ -22,6 +22,13 @@ import java.io.InputStream;
 /**
  * Simple {@link ResourceLoader} that uses {@link ClassLoader#getResourceAsStream(String)} and
  * {@link Class#forName(String,boolean,ClassLoader)} to open resources and classes, respectively.
+ *
+ * <p>To use this class with the Java Module System, you must open all modules on classpath that
+ * contain resources to the {@code org.apache.lucene.core} module, otherwise resources can't be
+ * looked up. It is recommended to use {@link ModuleResourceLoader} for such use cases as this would
+ * limit to certain modules.
+ *
+ * @see ModuleResourceLoader
  */
 public final class ClasspathResourceLoader implements ResourceLoader {
   private final Class<?> clazz;
@@ -54,7 +61,12 @@ public final class ClasspathResourceLoader implements ResourceLoader {
         (clazz != null)
             ? clazz.getResourceAsStream(resource)
             : loader.getResourceAsStream(resource);
-    if (stream == null) throw new IOException("Resource not found: " + resource);
+    if (stream == null) {
+      throw new IOException(
+          "Resource not found (if you use Java Module System, make sure to open "
+              + "module and package containing resources to 'org.apache.lucene.core' module): "
+              + resource);
+    }
     return stream;
   }
 
@@ -64,16 +76,6 @@ public final class ClasspathResourceLoader implements ResourceLoader {
       return Class.forName(cname, true, loader).asSubclass(expectedType);
     } catch (Exception e) {
       throw new RuntimeException("Cannot load class: " + cname, e);
-    }
-  }
-
-  @Override
-  public <T> T newInstance(String cname, Class<T> expectedType) {
-    Class<? extends T> clazz = findClass(cname, expectedType);
-    try {
-      return clazz.getConstructor().newInstance();
-    } catch (Exception e) {
-      throw new RuntimeException("Cannot create instance: " + cname, e);
     }
   }
 }

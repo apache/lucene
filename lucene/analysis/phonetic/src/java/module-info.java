@@ -26,6 +26,7 @@ module org.apache.lucene.analysis.phonetic {
 
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.analysis.phonetic.BeiderMorseFilterFactory,
+      org.apache.lucene.analysis.phonetic.DaitchMokotoffSoundexFilterFactory,
       org.apache.lucene.analysis.phonetic.DoubleMetaphoneFilterFactory,
       org.apache.lucene.analysis.phonetic.PhoneticFilterFactory;
 }

@@ -13,5 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+org.apache.lucene.analysis.ko.KoreanNumberFilterFactory
 org.apache.lucene.analysis.ko.KoreanPartOfSpeechStopFilterFactory
 org.apache.lucene.analysis.ko.KoreanReadingFormFilterFactory
