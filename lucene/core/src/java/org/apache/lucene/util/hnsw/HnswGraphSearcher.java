@@ -22,7 +22,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
@@ -68,7 +67,6 @@ public final class HnswGraphSearcher {
    *     {@code null} if they are all allowed to match.
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
-   * @throws CollectionTerminatedException if search stops early because it hit {@code visitedLimit}
    */
   public static NeighborQueue search(
       float[] query,
@@ -86,18 +84,25 @@ public final class HnswGraphSearcher {
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
+    int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
-      visitedLimit -= results.visitedCount();
       eps[0] = results.pop();
+
+      numVisited += results.visitedCount();
+      visitedLimit -= results.visitedCount();
     }
     results =
         graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
+    results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }
 
   /**
    * Searches for the nearest neighbors of a query vector in a given level.
+   *
+   * <p>If the search stops early because it reaches the visited nodes limit, then the results will
+   * be marked incomplete through {@link NeighborQueue#incomplete()}.
    *
    * @param query search query vector
    * @param topK the number of nearest to query results to return
@@ -156,6 +161,12 @@ public final class HnswGraphSearcher {
       if (bound.check(topCandidateScore)) {
         break;
       }
+
+      if (numVisited >= visitedLimit) {
+        results.markIncomplete();
+        break;
+      }
+
       int topCandidateNode = candidates.pop();
       graph.seek(level, topCandidateNode);
       int friendOrd;
@@ -165,12 +176,8 @@ public final class HnswGraphSearcher {
           continue;
         }
 
-        numVisited++;
-        if (numVisited > visitedLimit) {
-          throw new CollectionTerminatedException();
-        }
-
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        numVisited++;
         if (bound.check(score) == false) {
           candidates.add(friendOrd, score);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {

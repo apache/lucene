@@ -42,7 +42,6 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
@@ -290,7 +289,7 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   public void testVisitedLimit() throws IOException {
-    int nDoc = 100;
+    int nDoc = 500;
     int maxConn = 16;
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     HnswGraphBuilder builder =
@@ -298,19 +297,20 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors);
 
-    int topK = 10;
-    int visitedLimit = random().nextInt(10) + 10;
-    expectThrows(
-        CollectionTerminatedException.class,
-        () ->
-            HnswGraphSearcher.search(
-                new float[] {1, 0},
-                topK,
-                vectors.randomAccess(),
-                VectorSimilarityFunction.DOT_PRODUCT,
-                hnsw,
-                createRandomAcceptOrds(0, vectors.size),
-                visitedLimit));
+    int topK = 50;
+    int visitedLimit = topK + random().nextInt(5);
+    NeighborQueue nn =
+        HnswGraphSearcher.search(
+            new float[] {1, 0},
+            topK,
+            vectors.randomAccess(),
+            VectorSimilarityFunction.DOT_PRODUCT,
+            hnsw,
+            createRandomAcceptOrds(0, vectors.size),
+            visitedLimit);
+    assertTrue(nn.incomplete());
+    // The visited count shouldn't be much over the limit
+    assertTrue(nn.visitedCount() < visitedLimit + 3);
   }
 
   public void testBoundsCheckerMax() {

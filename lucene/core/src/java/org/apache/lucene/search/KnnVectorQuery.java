@@ -139,14 +139,14 @@ public class KnnVectorQuery extends Query {
         return exactSearch(ctx, filterIterator);
       }
 
-      try {
-        // The filter iterator already incorporates live docs
-        Bits acceptDocs = filterIterator.getBitSet();
-        int visitedLimit = (int) filterIterator.cost();
-        return approximateSearch(ctx, acceptDocs, visitedLimit);
-      } catch (
-          @SuppressWarnings("unused")
-          CollectionTerminatedException e) {
+      // Perform the approximate kNN search
+      Bits acceptDocs =
+          filterIterator.getBitSet(); // The filter iterator already incorporates live docs
+      int visitedLimit = (int) filterIterator.cost();
+      TopDocs results = approximateSearch(ctx, acceptDocs, visitedLimit);
+      if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
+        return results;
+      } else {
         // We stopped the kNN search because it visited too many nodes, so fall back to exact search
         return exactSearch(ctx, filterIterator);
       }
