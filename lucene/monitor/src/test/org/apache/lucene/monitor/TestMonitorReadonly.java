@@ -39,7 +39,7 @@ public class TestMonitorReadonly extends MonitorTestBase {
     doc.add(newTextField(FIELD, "This is a test document", Field.Store.NO));
 
     MonitorConfiguration writeConfig =
-        new MonitorConfiguration().setDirectoryProvider(() -> FSDirectory.open(indexDirectory));
+        new MonitorConfiguration().setDirectoryProvider(() -> FSDirectory.open(indexDirectory), MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
 
     try (Monitor writeMonitor = new Monitor(ANALYZER, writeConfig)) {
       TermQuery query = new TermQuery(new Term(FIELD, "test"));
@@ -71,9 +71,7 @@ public class TestMonitorReadonly extends MonitorTestBase {
 
     MonitorConfiguration readConfig =
         new MonitorConfiguration()
-            .setReadOnly(true)
-            .setIndexPath(
-                indexDirectory, MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
+            .setDirectoryProvider(() -> FSDirectory.open(indexDirectory), MonitorQuerySerializer.fromParser(MonitorTestBase::parse), true);
 
     try (Monitor readMonitor1 = new Monitor(ANALYZER, readConfig)) {
       MatchingQueries<QueryMatch> matches = readMonitor1.match(doc, QueryMatch.SIMPLE_MATCHER);

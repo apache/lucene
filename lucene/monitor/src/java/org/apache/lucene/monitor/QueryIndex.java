@@ -88,7 +88,7 @@ class QueryIndex implements Closeable {
         throw new IllegalStateException(
             "You must specify a Directory when configuring a Monitor as read-only.");
       }
-      Directory directory = config.getDirectoryProvider().apply();
+      Directory directory = config.getDirectoryProvider().get();
       this.manager = new SearcherManager(directory, new TermsHashBuilder());
     } else {
       this.writer = config.buildIndexWriter();

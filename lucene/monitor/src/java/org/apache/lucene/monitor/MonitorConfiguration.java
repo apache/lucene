@@ -49,11 +49,6 @@ public class MonitorConfiguration {
     return iwc;
   }
 
-  public MonitorConfiguration setReadOnly(Boolean readOnly) {
-    this.readOnly = readOnly;
-    return this;
-  }
-
   public Boolean isReadOnly() {
     return readOnly;
   }
@@ -62,8 +57,16 @@ public class MonitorConfiguration {
     return directoryProvider;
   }
 
-  public MonitorConfiguration setDirectoryProvider(IOSupplier<Directory> directoryProvider) {
+  public MonitorConfiguration setDirectoryProvider(IOSupplier<Directory> directoryProvider, MonitorQuerySerializer serializer, Boolean readOnly) {
     this.directoryProvider = directoryProvider;
+    this.serializer = serializer;
+    this.readOnly = readOnly;
+    return this;
+  }
+
+  public MonitorConfiguration setDirectoryProvider(IOSupplier<Directory> directoryProvider, MonitorQuerySerializer serializer) {
+    this.directoryProvider = directoryProvider;
+    this.serializer = serializer;
     return this;
   }
 
