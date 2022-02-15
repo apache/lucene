@@ -175,6 +175,9 @@ Improvements
 * LUCENE-10054 Make HnswGraph hierarchical (Mayya Sharipova, Julie Tibshirani, Mike Sokolov,
   Adrien Grand)
 
+* LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
+  (Patrick Zhai)
+
 Optimizations
 ---------------------
 
