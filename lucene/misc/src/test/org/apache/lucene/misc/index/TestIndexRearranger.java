@@ -18,7 +18,6 @@
 package org.apache.lucene.misc.index;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -105,24 +104,19 @@ public class TestIndexRearranger extends LuceneTestCase {
 
   private static void assertSequentialIndex(Directory dir, int docNum, int segNum)
       throws IOException {
-    HashSet<Long> seenOrds = new HashSet<>();
     IndexReader reader = DirectoryReader.open(dir);
+    long lastOrd = -1;
     for (int i = 0; i < segNum; i++) {
       LeafReader leafReader = reader.leaves().get(i).reader();
       NumericDocValues numericDocValues = leafReader.getNumericDocValues("ord");
 
-      assertTrue(numericDocValues.advanceExact(0));
-      long lastOrd = numericDocValues.longValue();
-      seenOrds.add(lastOrd);
-
-      for (int doc = 1; doc < leafReader.numDocs(); doc++) {
+      for (int doc = 0; doc < leafReader.numDocs(); doc++) {
         assertTrue(numericDocValues.advanceExact(doc));
         assertEquals(numericDocValues.longValue(), lastOrd + 1);
         lastOrd = numericDocValues.longValue();
-        seenOrds.add(lastOrd);
       }
     }
-    assertEquals(docNum, seenOrds.size());
+    assertEquals(docNum, lastOrd + 1);
     reader.close();
   }
 
@@ -151,7 +145,7 @@ public class TestIndexRearranger extends LuceneTestCase {
     w.close();
   }
 
-  private class OddDocSelector implements IndexRearranger.DocumentSelector {
+  private static class OddDocSelector implements IndexRearranger.DocumentSelector {
 
     @Override
     public BitSet getFilteredLiveDocs(CodecReader reader) throws IOException {
@@ -170,7 +164,7 @@ public class TestIndexRearranger extends LuceneTestCase {
     }
   }
 
-  private class EvenDocSelector implements IndexRearranger.DocumentSelector {
+  private static class EvenDocSelector implements IndexRearranger.DocumentSelector {
 
     @Override
     public BitSet getFilteredLiveDocs(CodecReader reader) throws IOException {
