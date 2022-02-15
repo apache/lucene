@@ -134,8 +134,8 @@ public class KnnVectorQuery extends Query {
       }
 
       if (filterIterator.cost() <= k) {
-        // If there <= k possible matches, short-circuit and perform exact search, since HNSW must
-        // always visit at least k documents
+        // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
+        // must always visit at least k documents
         return exactSearch(ctx, filterIterator);
       }
 
