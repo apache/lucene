@@ -89,6 +89,9 @@ import org.apache.lucene.analysis.shingle.ShingleFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.stempel.StempelStemmer;
 import org.apache.lucene.analysis.synonym.SynonymMap;
+import org.apache.lucene.analysis.synonym.SynonymProvider;
+import org.apache.lucene.analysis.synonym.Word2VecSynonymProvider;
+import org.apache.lucene.analysis.synonym.Word2VecSynonymTerm;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
@@ -413,6 +416,27 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                           return s;
                         }
                       }
+                    }
+                  });
+              put(
+                  SynonymProvider.class,
+                  random -> {
+                    ArrayList<Word2VecSynonymTerm> terms = new ArrayList<>();
+                    final int numEntries = atLeast(10);
+                    final int vectorDimension = random.nextInt(99) + 1;
+                    for (int j = 0; j < numEntries; j++) {
+                      String s = TestUtil.randomSimpleString(random, 10, 20);
+                      float[] vec = new float[vectorDimension];
+                      for (int i = 0; i < vectorDimension; i++) {
+                        vec[i] = random.nextFloat();
+                      }
+                      terms.add(new Word2VecSynonymTerm(s, vec));
+                    }
+                    try {
+                      return new Word2VecSynonymProvider(terms, 10, 0.7f);
+                    } catch (IOException e) {
+                      Rethrow.rethrow(e);
+                      return null; // unreachable code
                     }
                   });
               put(
