@@ -18,9 +18,9 @@
 /** Analyzer for indexing phonetic signatures */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.analysis.phonetic {
-  requires org.apache.commons.codec;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
+  requires transitive org.apache.commons.codec;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.analysis.common;
 
   exports org.apache.lucene.analysis.phonetic;
 

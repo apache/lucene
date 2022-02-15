@@ -32,14 +32,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>This code tries to hopefully flush any CPU caches using a store-store barrier. It also yields
  * the current thread to give other threads a chance to finish in-flight requests...
  */
-final class ByteBufferGuard {
+public final class ByteBufferGuard {
 
   /**
    * Pass in an implementation of this interface to cleanup ByteBuffers. MMapDirectory implements
    * this to allow unmapping of bytebuffers with private Java APIs.
    */
   @FunctionalInterface
-  static interface BufferCleaner {
+  public static interface BufferCleaner {
     void freeBuffer(String resourceDescription, ByteBuffer b) throws IOException;
   }
 

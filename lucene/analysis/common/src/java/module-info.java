@@ -17,8 +17,8 @@
 
 /** Lucene Analysis Common. */
 module org.apache.lucene.analysis.common {
-  requires java.xml;
-  requires org.apache.lucene.core;
+  requires transitive java.xml;
+  requires transitive org.apache.lucene.core;
 
   exports org.apache.lucene.analysis.ar;
   exports org.apache.lucene.analysis.bg;

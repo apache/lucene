@@ -17,8 +17,8 @@
 
 /** Classification module for Lucene */
 module org.apache.lucene.classification {
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.queries;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.queries;
   requires org.apache.lucene.grouping;
 
   exports org.apache.lucene.classification;

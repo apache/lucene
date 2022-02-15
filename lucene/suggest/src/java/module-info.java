@@ -17,7 +17,7 @@
 
 /** Auto-suggest and Spellchecking support */
 module org.apache.lucene.suggest {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
 
   exports org.apache.lucene.search.spell;

@@ -17,8 +17,8 @@
 
 /** Analyzer for indexing Chinese */
 module org.apache.lucene.analysis.smartcn {
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.analysis.common;
 
   exports org.apache.lucene.analysis.cn.smart;
   exports org.apache.lucene.analysis.cn.smart.hhmm;

@@ -118,7 +118,7 @@ public class ExternalRefSorter implements BytesRefSorter, Closeable {
   /**
    * Iterates over {@link BytesRef}s in a file, closes the reader when the iterator is exhausted.
    */
-  static class ByteSequenceIterator implements BytesRefIterator, Closeable {
+  public static class ByteSequenceIterator implements BytesRefIterator, Closeable {
     private final OfflineSorter.ByteSequencesReader reader;
     private BytesRef scratch;
 

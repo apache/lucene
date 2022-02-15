@@ -75,7 +75,7 @@ public class LiveIndexWriterConfig {
   protected volatile boolean readerPooling;
 
   /** {@link FlushPolicy} to control when segments are flushed. */
-  protected volatile FlushPolicy flushPolicy;
+  volatile FlushPolicy flushPolicy;
 
   /**
    * Sets the hard upper bound on RAM usage for a single segment, after which the segment is forced

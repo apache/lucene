@@ -55,7 +55,7 @@
 package org.egothor.stemmer;
 
 /** A Cell is a portion of a trie. */
-class Cell {
+public class Cell {
   /** next row id in this way */
   int ref = -1;
   /** command of the cell */

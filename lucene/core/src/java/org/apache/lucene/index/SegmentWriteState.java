@@ -51,7 +51,7 @@ public class SegmentWriteState {
    * it was deleted/updated at one point, and it's mapped to the docIDUpto, meaning any docID &lt;
    * docIDUpto containing this term should be deleted/updated.
    */
-  public final BufferedUpdates segUpdates;
+  final BufferedUpdates segUpdates;
 
   /**
    * {@link FixedBitSet} recording live documents; this is only set if there is one or more deleted

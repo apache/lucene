@@ -18,8 +18,8 @@
 /** Lucene test framework. */
 @SuppressWarnings({"module", "requires-automatic", "requires-transitive-automatic"})
 module org.apache.lucene.test_framework {
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.codecs;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.codecs;
   requires transitive junit;
   requires transitive randomizedtesting.runner;
 

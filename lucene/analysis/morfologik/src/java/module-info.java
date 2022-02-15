@@ -18,9 +18,9 @@
 /** Analyzer for dictionary stemming, built-in Polish dictionary */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.analysis.morfologik {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
-  requires org.carrot2.morfologik.stemming;
+  requires transitive org.carrot2.morfologik.stemming;
   requires org.carrot2.morfologik.polish;
   requires morfologik.ukrainian.search;
 

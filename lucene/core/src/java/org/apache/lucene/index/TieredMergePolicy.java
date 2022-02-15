@@ -235,7 +235,7 @@ public class TieredMergePolicy extends MergePolicy {
     return segsPerTier;
   }
 
-  private static class SegmentSizeAndDocs {
+  public static class SegmentSizeAndDocs {
     private final SegmentCommitInfo segInfo;
     private final long sizeInBytes;
     private final int delCount;

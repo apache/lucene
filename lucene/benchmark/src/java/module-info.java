@@ -17,14 +17,14 @@
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.benchmark {
   requires java.xml;
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
-  requires org.apache.lucene.facet;
+  requires transitive org.apache.lucene.facet;
   requires org.apache.lucene.highlighter;
   requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.spatial_extras;
-  requires spatial4j;
+  requires transitive org.apache.lucene.queryparser;
+  requires transitive org.apache.lucene.spatial_extras;
+  requires transitive spatial4j;
   requires org.apache.commons.compress;
   requires nekohtml;
   requires com.ibm.icu;

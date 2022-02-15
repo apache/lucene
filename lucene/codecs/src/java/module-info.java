@@ -17,7 +17,7 @@
 
 /** Lucene codecs and postings formats */
 module org.apache.lucene.codecs {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
 
   exports org.apache.lucene.codecs.blockterms;
   exports org.apache.lucene.codecs.blocktreeords;

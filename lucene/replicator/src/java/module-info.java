@@ -18,11 +18,11 @@
 /** Lucene index files replication utility */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.replicator {
-  requires javax.servlet.api;
-  requires org.apache.httpcomponents.httpclient;
-  requires org.apache.httpcomponents.httpcore;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.facet;
+  requires transitive javax.servlet.api;
+  requires transitive org.apache.httpcomponents.httpclient;
+  requires transitive org.apache.httpcomponents.httpcore;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.facet;
 
   exports org.apache.lucene.replicator;
   exports org.apache.lucene.replicator.http;

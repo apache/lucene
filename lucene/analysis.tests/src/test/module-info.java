@@ -32,7 +32,7 @@ module org.apache.lucene.analysis.tests {
   requires org.apache.lucene.analysis.phonetic;
   requires org.apache.lucene.analysis.smartcn;
   requires org.apache.lucene.analysis.stempel;
-  requires org.apache.lucene.test_framework;
+  requires transitive org.apache.lucene.test_framework;
 
   exports org.apache.lucene.analysis.tests;
 }

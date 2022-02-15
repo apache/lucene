@@ -17,7 +17,7 @@
 
 /** Single-document in-memory index implementation */
 module org.apache.lucene.memory {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
 
   exports org.apache.lucene.index.memory;
 }

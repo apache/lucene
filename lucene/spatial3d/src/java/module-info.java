@@ -17,7 +17,7 @@
 
 /** 3D spatial planar geometry APIs */
 module org.apache.lucene.spatial3d {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
 
   exports org.apache.lucene.spatial3d;
   exports org.apache.lucene.spatial3d.geom;

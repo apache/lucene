@@ -17,8 +17,8 @@
 
 /** Highlights search keywords in results */
 module org.apache.lucene.highlighter {
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.queries;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.queries;
   requires org.apache.lucene.memory;
 
   exports org.apache.lucene.search.highlight;

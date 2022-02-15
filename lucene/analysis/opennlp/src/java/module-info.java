@@ -18,9 +18,9 @@
 /** OpenNLP Library Integration */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.analysis.opennlp {
-  requires org.apache.opennlp.tools;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
+  requires transitive org.apache.opennlp.tools;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.analysis.common;
 
   exports org.apache.lucene.analysis.opennlp;
   exports org.apache.lucene.analysis.opennlp.tools;

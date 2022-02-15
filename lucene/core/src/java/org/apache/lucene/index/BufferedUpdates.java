@@ -37,7 +37,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 // instance on DocumentWriterPerThread, or via sync'd code by
 // DocumentsWriterDeleteQueue
 
-class BufferedUpdates implements Accountable {
+public class BufferedUpdates implements Accountable {
 
   /* Rough logic: HashMap has an array[Entry] w/ varying
   load factor (say 2 * POINTER).  Entry is object w/ Term

@@ -56,7 +56,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
   private int numSubs;
   private BytesRef current;
 
-  static class TermsEnumIndex {
+  public static class TermsEnumIndex {
     public static final TermsEnumIndex[] EMPTY_ARRAY = new TermsEnumIndex[0];
     final int subIndex;
     final TermsEnum termsEnum;
@@ -379,7 +379,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     return new SlowImpactsEnum(postings(null, flags));
   }
 
-  static final class TermsEnumWithSlice {
+  public static final class TermsEnumWithSlice {
     private final ReaderSlice subSlice;
     TermsEnum terms;
     public BytesRef current;
