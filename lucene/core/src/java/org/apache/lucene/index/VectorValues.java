@@ -36,7 +36,7 @@ public abstract class VectorValues extends DocIdSetIterator {
   protected VectorValues() {}
 
   /** Return the dimension of the vectors */
-  public abstract int dimension();
+  public abstract int getNumDimensions();
 
   /**
    * TODO: should we use cost() for this? We rely on its always being exactly the number of
@@ -81,7 +81,7 @@ public abstract class VectorValues extends DocIdSetIterator {
         }
 
         @Override
-        public int dimension() {
+        public int getNumDimensions() {
           return 0;
         }
 

@@ -200,8 +200,8 @@ public abstract class KnnVectorsWriter implements Closeable {
     }
 
     @Override
-    public int dimension() {
-      return subs.get(0).values.dimension();
+    public int getNumDimensions() {
+      return subs.get(0).values.getNumDimensions();
     }
   }
 }

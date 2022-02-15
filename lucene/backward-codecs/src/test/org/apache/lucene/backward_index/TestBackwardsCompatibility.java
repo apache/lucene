@@ -1304,7 +1304,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       for (LeafReaderContext ctx : reader.leaves()) {
         VectorValues values = ctx.reader().getVectorValues(KNN_VECTOR_FIELD);
         if (values != null) {
-          assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
+          assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.getNumDimensions());
           for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
             float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};
             assertArrayEquals(

@@ -31,7 +31,7 @@ public interface RandomAccessVectorValues {
   int size();
 
   /** Return the dimension of the returned vector values */
-  int dimension();
+  int getNumDimensions();
 
   /**
    * Return the vector value indexed at the given ordinal. The provided floating point array may be

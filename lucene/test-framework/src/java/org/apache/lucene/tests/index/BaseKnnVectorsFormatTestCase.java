@@ -682,7 +682,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         LeafReader leaf = getOnlyLeafReader(reader);
 
         VectorValues vectorValues = leaf.getVectorValues(fieldName);
-        assertEquals(2, vectorValues.dimension());
+        assertEquals(2, vectorValues.getNumDimensions());
         assertEquals(3, vectorValues.size());
         assertEquals("1", leaf.document(vectorValues.nextDoc()).get("id"));
         assertEquals(-1f, vectorValues.vectorValue()[0], 0);
@@ -716,7 +716,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         LeafReader leaf = reader.leaves().get(0).reader();
 
         VectorValues vectorValues = leaf.getVectorValues("field1");
-        assertEquals(1, vectorValues.dimension());
+        assertEquals(1, vectorValues.getNumDimensions());
         assertEquals(2, vectorValues.size());
         vectorValues.nextDoc();
         assertEquals(1f, vectorValues.vectorValue()[0], 0);
@@ -725,7 +725,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
 
         VectorValues vectorValues2 = leaf.getVectorValues("field2");
-        assertEquals(3, vectorValues2.dimension());
+        assertEquals(3, vectorValues2.getNumDimensions());
         assertEquals(2, vectorValues2.size());
         vectorValues2.nextDoc();
         assertEquals(2f, vectorValues2.vectorValue()[1], 0);
@@ -734,7 +734,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(NO_MORE_DOCS, vectorValues2.nextDoc());
 
         VectorValues vectorValues3 = leaf.getVectorValues("field3");
-        assertEquals(3, vectorValues3.dimension());
+        assertEquals(3, vectorValues3.getNumDimensions());
         assertEquals(1, vectorValues3.size());
         vectorValues3.nextDoc();
         assertEquals(1f, vectorValues3.vectorValue()[0], 0);

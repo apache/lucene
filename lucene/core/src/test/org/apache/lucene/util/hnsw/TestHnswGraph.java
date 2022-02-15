@@ -104,7 +104,7 @@ public class TestHnswGraph extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
           VectorValues values = ctx.reader().getVectorValues("field");
-          assertEquals(dim, values.dimension());
+          assertEquals(dim, values.getNumDimensions());
           assertEquals(nVec, values.size());
           assertEquals(indexedDoc, ctx.reader().maxDoc());
           assertEquals(indexedDoc, ctx.reader().numDocs());
@@ -439,7 +439,7 @@ public class TestHnswGraph extends LuceneTestCase {
     }
 
     @Override
-    public int dimension() {
+    public int getNumDimensions() {
       return 2;
     }
 
