@@ -25,7 +25,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.IOSupplier;
 
 /** Encapsulates various configuration settings for a Monitor's query index */
 public class MonitorConfiguration {
@@ -36,7 +38,7 @@ public class MonitorConfiguration {
   private QueryDecomposer queryDecomposer = new QueryDecomposer();
   private MonitorQuerySerializer serializer;
   private Boolean readOnly = false;
-  private DirectoryProviderFunctionalInterface directoryProvider;
+  private IOSupplier<Directory> directoryProvider = () -> new ByteBuffersDirectory();
 
   private static IndexWriterConfig defaultIndexWriterConfig() {
     IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
@@ -56,12 +58,11 @@ public class MonitorConfiguration {
     return readOnly;
   }
 
-  public DirectoryProviderFunctionalInterface getDirectoryProvider() {
+  public IOSupplier<Directory> getDirectoryProvider() {
     return directoryProvider;
   }
 
-  public MonitorConfiguration setDirectoryProvider(
-      DirectoryProviderFunctionalInterface directoryProvider) {
+  public MonitorConfiguration setDirectoryProvider(IOSupplier<Directory> directoryProvider) {
     this.directoryProvider = directoryProvider;
     return this;
   }
@@ -73,11 +74,7 @@ public class MonitorConfiguration {
   }
 
   public IndexWriter buildIndexWriter() throws IOException {
-    if (directoryProvider != null) {
-      return new IndexWriter(directoryProvider.apply(), getIndexWriterConfig());
-    } else {
-      return new IndexWriter(new ByteBuffersDirectory(), getIndexWriterConfig());
-    }
+    return new IndexWriter(directoryProvider.get(), getIndexWriterConfig());
   }
 
   protected IndexWriterConfig getIndexWriterConfig() {
