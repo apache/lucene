@@ -17,12 +17,8 @@
 
 package org.apache.lucene.analysis.opennlp.tools;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import opennlp.tools.chunker.ChunkerModel;
@@ -158,8 +154,8 @@ public class OpenNLPOpsFactory {
       String dictionaryFile, ResourceLoader loader) throws IOException {
     DictionaryLemmatizer dictionaryLemmatizer = lemmaDictionaries.get(dictionaryFile);
     if (dictionaryLemmatizer == null) {
-      // TODO: Note that OpenNLP's DictionaryLemmatizer gets the target platform's system encoding by default,
-      //  with no way to specify a custom encoding on the resource file, so make sure they both match
+      // TODO: OpenNLP's DictionaryLemmatizer hardcodes the target platform's system encoding,
+      // so it needs to match the encoding of the dictionary file.
       dictionaryLemmatizer = new DictionaryLemmatizer(loader.openResource(dictionaryFile));
       lemmaDictionaries.put(dictionaryFile, dictionaryLemmatizer);
     }
