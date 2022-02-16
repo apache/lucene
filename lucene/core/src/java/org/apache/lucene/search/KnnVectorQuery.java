@@ -160,7 +160,8 @@ public class KnnVectorQuery extends Query {
     return results != null ? results : NO_RESULTS;
   }
 
-  private TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
+  // We allow this to be overridden so that tests can check what search strategy is used
+  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
       throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {

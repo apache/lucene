@@ -38,6 +38,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
@@ -498,34 +499,51 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         doc.add(new IntPoint("tag", i));
         w.addDocument(doc);
       }
+      w.forceMerge(1);
       w.close();
 
-      try (IndexReader reader = DirectoryReader.open(d)) {
+      try (DirectoryReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = newSearcher(reader);
         for (int i = 0; i < numIters; i++) {
           int lower = random().nextInt(50);
 
-          // Check that when filter is restrictive, we use exact search
-          Query filter = IntPoint.newRangeQuery("tag", lower, lower + 6);
-          KnnVectorQuery query = new KnnVectorQuery("field", randomVector(dimension), 5, filter);
-          TopDocs results = searcher.search(query, numDocs);
-          assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
-          assertEquals(results.totalHits.value, 5);
+          // Test a filter with cost less than k and check we use exact search
+          Query filter1 = IntPoint.newRangeQuery("tag", lower, lower + 8);
+          TopDocs results =
+              searcher.search(
+                  new KnnVectorQuery("field", randomVector(dimension), 10, filter1), numDocs);
+          assertEquals(9, results.totalHits.value);
+          assertEquals(results.totalHits.value, results.scoreDocs.length);
+          expectThrows(
+              UnsupportedOperationException.class,
+              () ->
+                  searcher.search(
+                      new ThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1),
+                      numDocs));
 
-          // Check that when filter cost is less than k, we use exact search
-          filter = IntPoint.newRangeQuery("tag", lower, lower + 2);
-          query = new KnnVectorQuery("field", randomVector(dimension), 10, filter);
-          results = searcher.search(query, numDocs);
-          assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
-          assertEquals(results.totalHits.value, 3);
-
-          // Check results when k is small and filter is not restrictive
-          filter = IntPoint.newRangeQuery("tag", lower, lower + 150);
-          query = new KnnVectorQuery("field", randomVector(dimension), 5, filter);
+          // Test a restrictive filter and check we use exact search
+          Query filter2 = IntPoint.newRangeQuery("tag", lower, lower + 6);
           results =
-              searcher.search(query, numDocs, new Sort(new SortField("tag", SortField.Type.INT)));
-          assertTrue(results.totalHits.value >= results.scoreDocs.length);
-          assertEquals(5, results.scoreDocs.length);
+              searcher.search(
+                  new KnnVectorQuery("field", randomVector(dimension), 5, filter2), numDocs);
+          assertEquals(5, results.totalHits.value);
+          assertEquals(results.totalHits.value, results.scoreDocs.length);
+          expectThrows(
+              UnsupportedOperationException.class,
+              () ->
+                  searcher.search(
+                      new ThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter2),
+                      numDocs));
+
+          // Test an unrestrictive filter and check we use approximate search
+          Query filter3 = IntPoint.newRangeQuery("tag", lower, lower + 150);
+          results =
+              searcher.search(
+                  new ThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
+                  numDocs,
+                  new Sort(new SortField("tag", SortField.Type.INT)));
+          assertEquals(5, results.totalHits.value);
+          assertEquals(results.totalHits.value, results.scoreDocs.length);
 
           for (ScoreDoc scoreDoc : results.scoreDocs) {
             FieldDoc fieldDoc = (FieldDoc) scoreDoc;
@@ -659,6 +677,23 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       throws IOException {
     ScoreDoc[] result = searcher.search(q, 1000).scoreDocs;
     assertEquals(expectedMatches, result.length);
+  }
+
+  /**
+   * A version of {@link KnnVectorQuery} that throws an error when an exact search is run. This
+   * allows us to check what search strategy is being used.
+   */
+  private static class ThrowingKnnVectorQuery extends KnnVectorQuery {
+
+    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
+      super(field, target, k, filter);
+    }
+
+    @Override
+    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
+        throws IOException {
+      throw new UnsupportedOperationException("exact search is not supported");
+    }
   }
 
   private static class NoLiveDocsDirectoryReader extends FilterDirectoryReader {
