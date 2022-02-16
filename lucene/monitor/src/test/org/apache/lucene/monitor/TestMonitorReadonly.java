@@ -24,6 +24,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.FSDirectory;
@@ -31,6 +32,69 @@ import org.junit.Test;
 
 public class TestMonitorReadonly extends MonitorTestBase {
   private static final Analyzer ANALYZER = new WhitespaceAnalyzer();
+
+  @Test
+  public void testReadonlyMonitorThrowsOnInexistentIndex() {
+    Path indexDirectory = createTempDir();
+    MonitorConfiguration config =
+        new MonitorConfiguration()
+            .setDirectoryProvider(
+                () -> FSDirectory.open(indexDirectory),
+                MonitorQuerySerializer.fromParser(MonitorTestBase::parse),
+                true);
+    assertThrows(
+        IndexNotFoundException.class,
+        () -> {
+          new Monitor(ANALYZER, config);
+        });
+  }
+
+  @Test
+  public void testReadonlyMonitorThrowsWhenCallingWriteRequests() throws IOException {
+    Path indexDirectory = createTempDir();
+    MonitorConfiguration writeConfig =
+        new MonitorConfiguration()
+            .setIndexPath(
+                indexDirectory, MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
+
+    // this will create the index
+    Monitor writeMonitor = new Monitor(ANALYZER, writeConfig);
+    writeMonitor.close();
+
+    MonitorConfiguration config =
+        new MonitorConfiguration()
+            .setDirectoryProvider(
+                () -> FSDirectory.open(indexDirectory),
+                MonitorQuerySerializer.fromParser(MonitorTestBase::parse),
+                true);
+    try (Monitor monitor = new Monitor(ANALYZER, config)) {
+      assertThrows(
+          IllegalStateException.class,
+          () -> {
+            TermQuery query = new TermQuery(new Term(FIELD, "test"));
+            monitor.register(
+                new MonitorQuery("query1", query, query.toString(), Collections.emptyMap()));
+          });
+
+      assertThrows(
+          IllegalStateException.class,
+          () -> {
+            monitor.purgeCache();
+          });
+
+      assertThrows(
+          IllegalStateException.class,
+          () -> {
+            monitor.deleteById("query1");
+          });
+
+      assertThrows(
+          IllegalStateException.class,
+          () -> {
+            monitor.clear();
+          });
+    }
+  }
 
   @Test
   public void testSettingCustomDirectory() throws IOException {
@@ -67,8 +131,7 @@ public class TestMonitorReadonly extends MonitorTestBase {
         new MonitorConfiguration()
             .setDirectoryProvider(
                 () -> FSDirectory.open(indexDirectory),
-                MonitorQuerySerializer.fromParser(MonitorTestBase::parse),
-                false);
+                MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
 
     try (Monitor writeMonitor = new Monitor(ANALYZER, writeConfig)) {
       TermQuery query = new TermQuery(new Term(FIELD, "test"));

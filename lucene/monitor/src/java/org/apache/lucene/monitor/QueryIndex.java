@@ -49,9 +49,11 @@ interface QueryIndex extends Closeable {
 
   int cacheSize();
 
-  void deleteQueries(Iterable<String> ids) throws IOException;
+  void deleteQueries(List<String> ids) throws IOException;
 
   void clear() throws IOException;
+
+  long getLastPurged();
 
   public interface QueryCollector {
 

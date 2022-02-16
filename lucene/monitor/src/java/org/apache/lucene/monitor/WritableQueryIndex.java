@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.lucene.document.*;
@@ -31,6 +33,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NamedThreadFactory;
 
 class WritableQueryIndex implements QueryIndex {
 
@@ -60,14 +63,38 @@ class WritableQueryIndex implements QueryIndex {
   // package-private for testing
   final Map<IndexReader.CacheKey, QueryTermFilter> termFilters = new HashMap<>();
 
-  WritableQueryIndex(MonitorConfiguration config, Presearcher presearcher) throws IOException {
+  private final ScheduledExecutorService purgeExecutor;
+  private final List<MonitorUpdateListener> listeners = new ArrayList<>();
+  private long lastPurged = -1;
 
-    this.writer = config.buildIndexWriter();
+  WritableQueryIndex(MonitorConfiguration configuration, Presearcher presearcher)
+      throws IOException {
+
+    this.writer = configuration.buildIndexWriter();
     this.manager = new SearcherManager(writer, true, true, new TermsHashBuilder(termFilters));
-    this.decomposer = config.getQueryDecomposer();
-    this.serializer = config.getQuerySerializer();
+    this.decomposer = configuration.getQueryDecomposer();
+    this.serializer = configuration.getQuerySerializer();
     this.presearcher = presearcher;
     populateQueryCache(serializer, decomposer);
+
+    long purgeFrequency = configuration.getPurgeFrequency();
+    this.purgeExecutor =
+        Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("cache-purge"));
+    this.purgeExecutor.scheduleAtFixedRate(
+        () -> {
+          try {
+            purgeCache();
+          } catch (Throwable e) {
+            listeners.forEach(l -> l.onPurgeError(e));
+          }
+        },
+        purgeFrequency,
+        purgeFrequency,
+        configuration.getPurgeFrequencyUnits());
+  }
+
+  public void addListener(MonitorUpdateListener listener) {
+    listeners.add(listener);
   }
 
   private void populateQueryCache(MonitorQuerySerializer serializer, QueryDecomposer decomposer)
@@ -118,6 +145,11 @@ class WritableQueryIndex implements QueryIndex {
 
   @Override
   public void commit(List<MonitorQuery> updates) throws IOException {
+    commitWithoutNotify(updates);
+    listeners.forEach(l -> l.afterUpdate(updates));
+  }
+
+  private void commitWithoutNotify(List<MonitorQuery> updates) throws IOException {
     List<Indexable> indexables = buildIndexables(updates);
     synchronized (commitLock) {
       purgeLock.readLock().lock();
@@ -241,6 +273,8 @@ class WritableQueryIndex implements QueryIndex {
                 (id, query, dataValues) -> {
                   if (query != null) newCache.put(query.cacheId, query);
                 }));
+    lastPurged = System.nanoTime();
+    listeners.forEach(MonitorUpdateListener::onPurge);
   }
 
   /**
@@ -295,6 +329,7 @@ class WritableQueryIndex implements QueryIndex {
   @Override
   public void close() throws IOException {
     IOUtils.close(manager, writer, writer.getDirectory());
+    purgeExecutor.shutdown();
   }
 
   @Override
@@ -308,17 +343,24 @@ class WritableQueryIndex implements QueryIndex {
   }
 
   @Override
-  public void deleteQueries(Iterable<String> ids) throws IOException {
+  public void deleteQueries(List<String> ids) throws IOException {
     for (String id : ids) {
       writer.deleteDocuments(new Term(FIELDS.query_id, id));
     }
-    commit(Collections.emptyList());
+    commitWithoutNotify(Collections.emptyList());
+    listeners.forEach(l -> l.afterDelete(ids));
   }
 
   @Override
   public void clear() throws IOException {
     writer.deleteAll();
-    commit(Collections.emptyList());
+    commitWithoutNotify(Collections.emptyList());
+    listeners.forEach(MonitorUpdateListener::afterClear);
+  }
+
+  @Override
+  public long getLastPurged() {
+    return lastPurged;
   }
 
   // ---------------------------------------------

@@ -36,15 +36,15 @@ class ReadonlyQueryIndex implements QueryIndex {
 
   final Map<IndexReader.CacheKey, WritableQueryIndex.QueryTermFilter> termFilters = new HashMap<>();
 
-  public ReadonlyQueryIndex(MonitorConfiguration config) throws IOException {
-    if (config.getDirectoryProvider() == null) {
+  public ReadonlyQueryIndex(MonitorConfiguration configuration) throws IOException {
+    if (configuration.getDirectoryProvider() == null) {
       throw new IllegalStateException(
           "You must specify a Directory when configuring a Monitor as read-only.");
     }
-    Directory directory = config.getDirectoryProvider().get();
+    Directory directory = configuration.getDirectoryProvider().get();
     this.manager = new SearcherManager(directory, new TermsHashBuilder(termFilters));
-    this.decomposer = config.getQueryDecomposer();
-    this.serializer = config.getQuerySerializer();
+    this.decomposer = configuration.getQueryDecomposer();
+    this.serializer = configuration.getQuerySerializer();
   }
 
   @Override
@@ -168,12 +168,17 @@ class ReadonlyQueryIndex implements QueryIndex {
   }
 
   @Override
-  public void deleteQueries(Iterable<String> ids) throws IOException {
+  public void deleteQueries(List<String> ids) throws IOException {
     throw new IllegalStateException("Monitor is readOnly cannot delete queries");
   }
 
   @Override
   public void clear() throws IOException {
     throw new IllegalStateException("Monitor is readOnly cannot clear");
+  }
+
+  @Override
+  public long getLastPurged() {
+    return 0;
   }
 }
