@@ -50,13 +50,9 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     }
     iw.commit();
     final IndexReader reader = iw.getReader();
-    final IndexSearcher searcher = newSearcher(reader);
     iw.close();
 
-    Query query = new DocValuesFieldExistsQuery("f");
-    Query rewrittenQuery = query.rewrite(reader);
-    assertTrue(rewrittenQuery instanceof MatchAllDocsQuery);
-    assertSameMatches(searcher, query, rewrittenQuery, false);
+    assertTrue((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -72,13 +68,10 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     }
     iw.commit();
     final IndexReader reader = iw.getReader();
-    final IndexSearcher searcher = newSearcher(reader);
     iw.close();
 
-    Query query = new DocValuesFieldExistsQuery("dim");
-    Query rewrittenQuery = query.rewrite(reader);
-    assertTrue(rewrittenQuery instanceof MatchAllDocsQuery);
-    assertSameMatches(searcher, query, rewrittenQuery, false);
+    assertTrue(
+        (new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
