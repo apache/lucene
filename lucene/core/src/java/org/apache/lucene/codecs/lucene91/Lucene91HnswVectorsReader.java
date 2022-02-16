@@ -262,6 +262,9 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   private Bits getAcceptOrds(Bits acceptDocs, FieldEntry fieldEntry) {
+    if (fieldEntry.ordToDoc == null) {
+      return acceptDocs;
+    }
     if (acceptDocs == null) {
       return null;
     }
@@ -474,7 +477,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         doc = NO_MORE_DOCS;
       } else {
         doc = ordToDocOperator.applyAsInt(ord);
-        ;
       }
       return doc;
     }

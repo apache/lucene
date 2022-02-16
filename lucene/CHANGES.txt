@@ -204,6 +204,8 @@ Optimizations
 * LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
   matching clauses is a constant. (LuYunCheng via Adrien Grand)
 
+* LUCENE-10408 Better encoding of doc Ids in vectors (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 

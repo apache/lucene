@@ -208,8 +208,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     int count = docsWithField.cardinality();
     meta.writeInt(count);
     if (count == maxDoc) {
-      meta.writeByte((byte) -1);
-      ; // dense marker, each document has a vector value
+      meta.writeByte((byte) -1); // dense marker, each document has a vector value
     } else {
       meta.writeByte((byte) 0); // sparse marker, some documents don't have vector values
       DocIdSetIterator iter = docsWithField.iterator();
