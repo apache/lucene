@@ -25,18 +25,28 @@ import org.apache.lucene.util.BytesRef;
 /** Node that represents {@link Intervals#wildcard(BytesRef)}. */
 public class Wildcard extends IntervalFunction {
   private final String wildcard;
+  private final int maxExpansions;
 
-  public Wildcard(String wildcard) {
+  public Wildcard(String wildcard, int maxExpansions) {
     this.wildcard = wildcard;
+    this.maxExpansions = maxExpansions;
   }
 
   @Override
   public IntervalsSource toIntervalSource(String field, Analyzer analyzer) {
-    return Intervals.wildcard(new BytesRef(wildcard));
+    if (maxExpansions == 0) {
+      return Intervals.wildcard(new BytesRef(wildcard));
+    } else {
+      return Intervals.wildcard(new BytesRef(wildcard), maxExpansions);
+    }
   }
 
   @Override
   public String toString() {
-    return String.format(Locale.ROOT, "fn:wildcard(%s)", wildcard);
+    return String.format(
+        Locale.ROOT,
+        "fn:wildcard(%s%s)",
+        wildcard,
+        maxExpansions == 0 ? "" : " maxExpansions:" + maxExpansions);
   }
 }

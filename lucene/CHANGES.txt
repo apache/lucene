@@ -15,6 +15,8 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been make pkg-private and serves only as an internal
   implementation detail of taxonomy-faceting. (Greg Miller)
 
+* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji (Tomoko Uchida)
+
 New Features
 ---------------------
 
@@ -84,6 +86,9 @@ API Changes
   DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
   IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
 
+* LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
+  (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
+
 New Features
 ---------------------
 
@@ -140,6 +145,15 @@ New Features
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
   to speed up computing the number of hits when possible. (Luca Cavanna, Adrien Grand)
 
+* LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
+
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
+  Alan Woodward)
+  
+* LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
+  the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
+  (Gautam Worah, Ignacio Vera, Adrien Grand)
+
 * LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
   nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
 
@@ -167,6 +181,9 @@ Improvements
 
 * LUCENE-10054 Make HnswGraph hierarchical (Mayya Sharipova, Julie Tibshirani, Mike Sokolov,
   Adrien Grand)
+
+* LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
+  (Patrick Zhai)
 
 Optimizations
 ---------------------
@@ -199,6 +216,12 @@ Optimizations
 * LUCENE-10388: Remove MultiLevelSkipListReader#SkipBuffer to make JVM less confused. (Guo Feng)
 
 * LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
+* LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
+  matching clauses is a constant. (LuYunCheng via Adrien Grand)
+
+* LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
+  (Adrien Grand)
 
 Changes in runtime behavior
 ---------------------
@@ -262,6 +285,8 @@ Other
 * LUCENE-10352: Convert TestAllAnalyzersHaveFactories and TestRandomChains to a global integration test
   and discover classes to check from module system. The test now checks all analyzer modules,
   so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
+
+* LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
 
 ======================= Lucene 9.0.0 =======================
 

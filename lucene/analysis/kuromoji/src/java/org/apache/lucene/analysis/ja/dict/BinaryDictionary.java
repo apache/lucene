@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.util.IOUtils.IOSupplier;
-
 import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -25,23 +23,14 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
-import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IntsRef;
 
 /** Base class for a binary-encoded in-memory dictionary. */
 public abstract class BinaryDictionary implements Dictionary {
-
-  /** Used to specify where (dictionary) resources get loaded from. */
-  @Deprecated(forRemoval = true, since = "9.1")
-  public enum ResourceScheme {
-    CLASSPATH,
-    FILE
-  }
 
   public static final String DICT_FILENAME_SUFFIX = "$buffer.dat";
   public static final String TARGETMAP_FILENAME_SUFFIX = "$targetMap.dat";
@@ -134,24 +123,6 @@ public abstract class BinaryDictionary implements Dictionary {
         inflFormDict[j] = null;
       }
     }
-  }
-
-  @Deprecated(forRemoval = true, since = "9.1")
-  public static final InputStream getResource(ResourceScheme scheme, String path)
-      throws IOException {
-    switch (scheme) {
-      case CLASSPATH:
-        return getClassResource(path);
-      case FILE:
-        return Files.newInputStream(Paths.get(path));
-      default:
-        throw new IllegalStateException("unknown resource scheme " + scheme);
-    }
-  }
-
-  @Deprecated(forRemoval = true, since = "9.1")
-  private static InputStream getClassResource(String path) throws IOException {
-    return IOUtils.requireResourceNonNull(BinaryDictionary.class.getResourceAsStream(path), path);
   }
 
   public void lookupWordIds(int sourceId, IntsRef ref) {

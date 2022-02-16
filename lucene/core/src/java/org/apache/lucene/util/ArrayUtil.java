@@ -223,6 +223,11 @@ public final class ArrayUtil {
     return copy;
   }
 
+  /** Returns a larger array, generally over-allocating exponentially */
+  public static <T> T[] grow(T[] array) {
+    return grow(array, 1 + array.length);
+  }
+
   /**
    * Returns an array whose size is at least {@code minSize}, generally over-allocating
    * exponentially
