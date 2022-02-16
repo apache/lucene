@@ -57,14 +57,18 @@ public class MonitorConfiguration {
     return directoryProvider;
   }
 
-  public MonitorConfiguration setDirectoryProvider(IOSupplier<Directory> directoryProvider, MonitorQuerySerializer serializer, Boolean readOnly) {
+  public MonitorConfiguration setDirectoryProvider(
+      IOSupplier<Directory> directoryProvider,
+      MonitorQuerySerializer serializer,
+      Boolean readOnly) {
     this.directoryProvider = directoryProvider;
     this.serializer = serializer;
     this.readOnly = readOnly;
     return this;
   }
 
-  public MonitorConfiguration setDirectoryProvider(IOSupplier<Directory> directoryProvider, MonitorQuerySerializer serializer) {
+  public MonitorConfiguration setDirectoryProvider(
+      IOSupplier<Directory> directoryProvider, MonitorQuerySerializer serializer) {
     this.directoryProvider = directoryProvider;
     this.serializer = serializer;
     return this;

@@ -100,7 +100,11 @@ public class Monitor implements Closeable {
 
     this.analyzer = analyzer;
     this.presearcher = presearcher;
-    this.queryIndex = new QueryIndex(configuration, presearcher);
+    if (configuration.isReadOnly()) {
+      this.queryIndex = new ReadonlyQueryIndex(configuration);
+    } else {
+      this.queryIndex = new WritableQueryIndex(configuration, presearcher);
+    }
 
     long purgeFrequency = configuration.getPurgeFrequency();
     this.purgeExecutor =

@@ -36,20 +36,25 @@ public class TestMonitorReadonly extends MonitorTestBase {
   public void testSettingCustomDirectory() throws IOException {
     Path indexDirectory = createTempDir();
     Document doc = new Document();
-    doc.add(newTextField(FIELD, "This is a test document", Field.Store.NO));
+    doc.add(newTextField(FIELD, "This is a Foobar test document", Field.Store.NO));
 
     MonitorConfiguration writeConfig =
-        new MonitorConfiguration().setDirectoryProvider(() -> FSDirectory.open(indexDirectory), MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
+        new MonitorConfiguration()
+            .setDirectoryProvider(
+                () -> FSDirectory.open(indexDirectory),
+                MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
 
     try (Monitor writeMonitor = new Monitor(ANALYZER, writeConfig)) {
       TermQuery query = new TermQuery(new Term(FIELD, "test"));
       writeMonitor.register(
           new MonitorQuery("query1", query, query.toString(), Collections.emptyMap()));
-
+      TermQuery query2 = new TermQuery(new Term(FIELD, "Foobar"));
+      writeMonitor.register(
+          new MonitorQuery("query2", query2, query.toString(), Collections.emptyMap()));
       MatchingQueries<QueryMatch> matches = writeMonitor.match(doc, QueryMatch.SIMPLE_MATCHER);
       assertNotNull(matches.getMatches());
-      assertEquals(1, matches.getMatchCount());
-      assertNotNull(matches.matches("query1"));
+      assertEquals(2, matches.getMatchCount());
+      assertNotNull(matches.matches("query2"));
     }
   }
 
@@ -60,8 +65,10 @@ public class TestMonitorReadonly extends MonitorTestBase {
 
     MonitorConfiguration writeConfig =
         new MonitorConfiguration()
-            .setIndexPath(
-                indexDirectory, MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
+            .setDirectoryProvider(
+                () -> FSDirectory.open(indexDirectory),
+                MonitorQuerySerializer.fromParser(MonitorTestBase::parse),
+                false);
 
     try (Monitor writeMonitor = new Monitor(ANALYZER, writeConfig)) {
       TermQuery query = new TermQuery(new Term(FIELD, "test"));
@@ -71,7 +78,10 @@ public class TestMonitorReadonly extends MonitorTestBase {
 
     MonitorConfiguration readConfig =
         new MonitorConfiguration()
-            .setDirectoryProvider(() -> FSDirectory.open(indexDirectory), MonitorQuerySerializer.fromParser(MonitorTestBase::parse), true);
+            .setDirectoryProvider(
+                () -> FSDirectory.open(indexDirectory),
+                MonitorQuerySerializer.fromParser(MonitorTestBase::parse),
+                true);
 
     try (Monitor readMonitor1 = new Monitor(ANALYZER, readConfig)) {
       MatchingQueries<QueryMatch> matches = readMonitor1.match(doc, QueryMatch.SIMPLE_MATCHER);
