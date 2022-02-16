@@ -33,6 +33,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
@@ -180,8 +181,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     return false;
   }
 
-  void purgeFlushTickets(
-      boolean forced, IOUtils.IOConsumer<DocumentsWriterFlushQueue.FlushTicket> consumer)
+  void purgeFlushTickets(boolean forced, IOConsumer<DocumentsWriterFlushQueue.FlushTicket> consumer)
       throws IOException {
     if (forced) {
       ticketQueue.forcePurge(consumer);
@@ -608,7 +608,7 @@ final class DocumentsWriter implements Closeable, Accountable {
      * is called. The caller must ensure that the purge happens without an index writer lock being
      * held.
      *
-     * @see DocumentsWriter#purgeFlushTickets(boolean, IOUtils.IOConsumer)
+     * @see DocumentsWriter#purgeFlushTickets(boolean, IOConsumer)
      */
     void onTicketBacklog();
   }

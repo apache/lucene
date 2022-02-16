@@ -2194,6 +2194,60 @@ public class TestPointQueries extends LuceneTestCase {
     dir.close();
   }
 
+  public void testPointRangeWeightCount() throws IOException {
+    // the optimization for Weight#count kicks in only when the number of dimensions is 1
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numPoints = random().nextInt(1, 10);
+    int[] points = new int[numPoints];
+
+    int numQueries = random().nextInt(1, 10);
+    int[] lowerBound = new int[numQueries];
+    int[] upperBound = new int[numQueries];
+    int[] expectedCount = new int[numQueries];
+
+    for (int i = 0; i < numQueries; i++) {
+      // generate random queries
+      lowerBound[i] = random().nextInt(1, 10);
+      // allow malformed ranges where upperBound could be less than lowerBound
+      upperBound[i] = random().nextInt(1, 10);
+    }
+
+    for (int i = 0; i < numPoints; i++) {
+      // generate random 1D points
+      points[i] = random().nextInt(1, 10);
+      if (random().nextBoolean()) {
+        // the doc may have at-most 1 point
+        Document doc = new Document();
+        doc.add(new IntPoint("point", points[i]));
+        w.addDocument(doc);
+        for (int j = 0; j < numQueries; j++) {
+          // calculate the number of points that lie within the query range
+          if (lowerBound[j] <= points[i] && points[i] <= upperBound[j]) {
+            expectedCount[j]++;
+          }
+        }
+      }
+    }
+    w.commit();
+    w.forceMerge(1);
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    if (searcher.leafContexts.isEmpty() == false) { // we need at least 1 leaf in the segment
+      for (int i = 0; i < numQueries; i++) {
+        Query query = IntPoint.newRangeQuery("point", lowerBound[i], upperBound[i]);
+        Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
+        assertEquals(expectedCount[i], weight.count(searcher.leafContexts.get(0)));
+      }
+    }
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
   public void testPointRangeEquals() {
     Query q1, q2;
 

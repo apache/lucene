@@ -86,6 +86,9 @@ API Changes
   DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
   IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
 
+* LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
+  (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
+
 New Features
 ---------------------
 
@@ -146,6 +149,10 @@ New Features
 
 * LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
   Alan Woodward)
+  
+* LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
+  the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
+  (Gautam Worah, Ignacio Vera, Adrien Grand)
 
 Improvements
 ---------------------
@@ -171,6 +178,9 @@ Improvements
 
 * LUCENE-10054 Make HnswGraph hierarchical (Mayya Sharipova, Julie Tibshirani, Mike Sokolov,
   Adrien Grand)
+
+* LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
+  (Patrick Zhai)
 
 Optimizations
 ---------------------
