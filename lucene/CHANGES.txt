@@ -149,6 +149,10 @@ New Features
 
 * LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
   Alan Woodward)
+  
+* LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
+  the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
+  (Gautam Worah, Ignacio Vera, Adrien Grand)
 
 Improvements
 ---------------------
