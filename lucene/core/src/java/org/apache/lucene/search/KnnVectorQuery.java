@@ -43,7 +43,7 @@ import org.apache.lucene.util.FixedBitSet;
  * <ul>
  *   <li>If the filter cost is less than k, just execute an exact search
  *   <li>Otherwise run a kNN search subject to the filter
- *   <li>the kNN search visits too many vectors without completing, stop and run an exact search
+ *   <li>If the kNN search visits too many vectors without completing, stop and run an exact search
  * </ul>
  */
 public class KnnVectorQuery extends Query {
