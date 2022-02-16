@@ -187,12 +187,12 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
   // Weight#count is delegated to the inner weight
   public void testQueryMatchesCount() throws Exception {
     Directory dir = newDirectory();
-    IndexWriter w = 
-            new IndexWriter(
-                    dir,
-                    newIndexWriterConfig()
-                            // relies on costs and PointValues.estimateCost so we need the default codec
-                            .setCodec(TestUtil.getDefaultCodec()));
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                // relies on costs and PointValues.estimateCost so we need the default codec
+                .setCodec(TestUtil.getDefaultCodec()));
     final int numDocs = random().nextInt(5000);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
@@ -203,11 +203,11 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
     w.forceMerge(1);
     IndexReader reader = DirectoryReader.open(w);
     IndexSearcher searcher = newSearcher(reader);
-    
+
     final IndexOrDocValuesQuery query =
-            new IndexOrDocValuesQuery(
-                    LongPoint.newExactQuery("f2", 42),
-                    SortedNumericDocValuesField.newSlowRangeQuery("f2", 42, 42L));
+        new IndexOrDocValuesQuery(
+            LongPoint.newExactQuery("f2", 42),
+            SortedNumericDocValuesField.newSlowRangeQuery("f2", 42, 42L));
 
     final int searchCount = searcher.count(query);
     final Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1);
