@@ -486,6 +486,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
   }
 
   /** Tests with random vectors and a random filter. Uses RandomIndexWriter. */
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-10408")
   public void testRandomWithFilter() throws IOException {
     int numDocs = 200;
     int dimension = atLeast(5);
