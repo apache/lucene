@@ -26,7 +26,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.0 vector format, which encodes numeric vector values and an optional associated graph
+ * Lucene 9.1 vector format, which encodes numeric vector values and an optional associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
  * consists of three files:
  *
@@ -67,7 +67,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[vlong]</b> length of this field's index data, in bytes
  *   <li><b>[int]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>array[vint]</b> the docids of documents having vectors, in order
+ *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
+ *       0, sparse – some documents missing values.
+ *   <li><b>array[vint]</b> for sparse case, the docids of documents having vectors, in order
  *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
  *   <li><b>[int]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level

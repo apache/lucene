@@ -89,6 +89,8 @@ API Changes
 * LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
   (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
 
+* LUCENE-10398: Add static method for getting Terms from LeafReader. (Spike Liu)
+
 New Features
 ---------------------
 
@@ -149,6 +151,12 @@ New Features
 
 * LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
   Alan Woodward)
+  
+* LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
+  the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
+  (Gautam Worah, Ignacio Vera, Adrien Grand)
+
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
 
 Improvements
 ---------------------
@@ -177,7 +185,7 @@ Improvements
 
 * LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
   (Patrick Zhai)
-
+  
 Optimizations
 ---------------------
 
@@ -215,6 +223,8 @@ Optimizations
 
 * LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
   (Adrien Grand)
+
+* LUCENE-10408 Better encoding of doc Ids in vectors. (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
 
 * LUCENE-10084: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever terms
   or points have a docCount that is equal to maxDoc. (Vigya Sharma)
@@ -613,7 +623,7 @@ Improvements
   (David Smiley)
 
 * LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. (Greg Miller)
+  with its own custom encoding. (Greg Miller) 
 
 Bug fixes
 ---------------------
