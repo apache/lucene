@@ -22,8 +22,11 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.Terms;
 
 /**
  * A {@link Query} that matches documents that have a value for a given field as reported by doc
@@ -62,6 +65,24 @@ public final class DocValuesFieldExistsQuery extends Query {
     if (visitor.acceptField(field)) {
       visitor.visitLeaf(this);
     }
+  }
+
+  @Override
+  public Query rewrite(IndexReader reader) throws IOException {
+    int rewritableReaders = 0;
+    for (LeafReaderContext context : reader.leaves()) {
+      LeafReader leaf = context.reader();
+      Terms terms = leaf.terms(field);
+      PointValues pointValues = leaf.getPointValues(field);
+      if ((terms != null && terms.getDocCount() == leaf.maxDoc())
+          || (pointValues != null && pointValues.getDocCount() == leaf.maxDoc())) {
+        rewritableReaders++;
+      }
+    }
+    if (rewritableReaders == reader.leaves().size()) {
+      return new MatchAllDocsQuery();
+    }
+    return super.rewrite(reader);
   }
 
   @Override
