@@ -222,6 +222,9 @@ Optimizations
 * LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
   (Adrien Grand)
 
+* LUCENE-10408 Better encoding of doc Ids in vectors. (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
+
+
 Changes in runtime behavior
 ---------------------
 
