@@ -86,6 +86,9 @@ API Changes
   DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
   IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
 
+* LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
+  (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
+
 New Features
 ---------------------
 
@@ -144,6 +147,15 @@ New Features
 
 * LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
 
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
+  Alan Woodward)
+  
+* LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
+  the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
+  (Gautam Worah, Ignacio Vera, Adrien Grand)
+
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
+
 Improvements
 ---------------------
 
@@ -169,6 +181,9 @@ Improvements
 * LUCENE-10054 Make HnswGraph hierarchical (Mayya Sharipova, Julie Tibshirani, Mike Sokolov,
   Adrien Grand)
 
+* LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
+  (Patrick Zhai)
+  
 Optimizations
 ---------------------
 
@@ -204,7 +219,11 @@ Optimizations
 * LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
   matching clauses is a constant. (LuYunCheng via Adrien Grand)
 
-* LUCENE-10408 Better encoding of doc Ids in vectors (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
+* LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
+  (Adrien Grand)
+
+* LUCENE-10408 Better encoding of doc Ids in vectors. (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
+
 
 Changes in runtime behavior
 ---------------------
@@ -268,6 +287,8 @@ Other
 * LUCENE-10352: Convert TestAllAnalyzersHaveFactories and TestRandomChains to a global integration test
   and discover classes to check from module system. The test now checks all analyzer modules,
   so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
+
+* LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
 
 ======================= Lucene 9.0.0 =======================
 
@@ -598,7 +619,7 @@ Improvements
   (David Smiley)
 
 * LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. (Greg Miller)
+  with its own custom encoding. (Greg Miller) 
 
 Bug fixes
 ---------------------

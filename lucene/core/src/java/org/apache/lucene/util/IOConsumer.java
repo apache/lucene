@@ -14,19 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
 
-// Declare script dependency versions outside of palantir's
-// version unification control. These are not our main dependencies
-// but are reused in buildSrc and across applied scripts.
+import java.io.IOException;
 
-ext {
-  scriptDepVersions = [
-      "apache-rat": "0.13",
-      "commons-codec": "1.13",
-      "ecj": "3.28.0",
-      "flexmark": "0.61.24",
-      "javacc": "7.0.4",
-      "jflex": "1.8.2",
-      "jgit": "5.9.0.202009080501-r",
-  ]
+/**
+ * An IO operation with a single input that may throw an IOException.
+ *
+ * @see java.util.function.Consumer
+ * @param <T> the consumer's input type.
+ */
+@FunctionalInterface
+public interface IOConsumer<T> {
+  /**
+   * Performs this operation on the given argument.
+   *
+   * @param input the input argument
+   * @throws IOException if producing the result throws an {@link IOException}
+   */
+  void accept(T input) throws IOException;
 }

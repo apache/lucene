@@ -40,6 +40,7 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.search.Query;
@@ -1003,8 +1004,48 @@ public class TestIntervals extends LuceneTestCase {
     checkVisits(Intervals.wildcard(new BytesRef("p??")), 1);
   }
 
-  public void testWrappedFilters() throws IOException {
+  public void testFuzzyTerm() throws IOException {
+    IntervalsSource source = Intervals.fuzzyTerm("kot", 1); // matches 'pot'
+    checkIntervals(
+        source,
+        "field1",
+        4,
+        new int[][] {
+          {},
+          {2, 2, 10, 10, 17, 17, 27, 27},
+          {5, 5, 10, 10, 21, 21},
+          {3, 3},
+          {2, 2, 10, 10, 17, 17},
+          {}
+        });
+    MatchesIterator mi = getMatches(source, 4, "field1");
+    assertNotNull(mi);
+    assertMatch(mi, 2, 2, 15, 18);
+    assertMatch(mi, 10, 10, 63, 66);
+    assertMatch(mi, 17, 17, 97, 100);
 
+    // Check limits.
+    IllegalStateException e =
+        expectThrows(
+            IllegalStateException.class,
+            () -> {
+              IntervalsSource s =
+                  Intervals.fuzzyTerm(
+                      "kot",
+                      1,
+                      FuzzyQuery.defaultPrefixLength,
+                      FuzzyQuery.defaultTranspositions,
+                      1);
+              for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+                s.intervals("field1", ctx);
+              }
+            });
+    assertEquals("Automaton [kot~1] expanded to too many terms (limit 1)", e.getMessage());
+
+    checkVisits(Intervals.fuzzyTerm("kot", FuzzyQuery.defaultMaxEdits), 1);
+  }
+
+  public void testWrappedFilters() throws IOException {
     IntervalsSource source =
         Intervals.or(
             Intervals.term("nine"),

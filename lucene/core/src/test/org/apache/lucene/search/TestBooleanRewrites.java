@@ -663,4 +663,54 @@ public class TestBooleanRewrites extends LuceneTestCase {
     w.close();
     dir.close();
   }
+
+  public void testShouldMatchNoDocsQuery() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    BooleanQuery query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new MatchNoDocsQuery(), Occur.SHOULD)
+            .build();
+    assertEquals(new TermQuery(new Term("foo", "bar")), searcher.rewrite(query));
+  }
+
+  public void testMustNotMatchNoDocsQuery() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    BooleanQuery query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new MatchNoDocsQuery(), Occur.MUST_NOT)
+            .build();
+    assertEquals(new TermQuery(new Term("foo", "bar")), searcher.rewrite(query));
+  }
+
+  public void testMustMatchNoDocsQuery() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    BooleanQuery query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
+            .add(new MatchNoDocsQuery(), Occur.MUST)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+  }
+
+  public void testFilterMatchNoDocsQuery() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    BooleanQuery query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
+            .add(new MatchNoDocsQuery(), Occur.FILTER)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+  }
+
+  public void testEmptyBoolean() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+    BooleanQuery query = new BooleanQuery.Builder().build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+  }
 }

@@ -14,19 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
 
-// Declare script dependency versions outside of palantir's
-// version unification control. These are not our main dependencies
-// but are reused in buildSrc and across applied scripts.
+import java.io.IOException;
 
-ext {
-  scriptDepVersions = [
-      "apache-rat": "0.13",
-      "commons-codec": "1.13",
-      "ecj": "3.28.0",
-      "flexmark": "0.61.24",
-      "javacc": "7.0.4",
-      "jflex": "1.8.2",
-      "jgit": "5.9.0.202009080501-r",
-  ]
+/**
+ * A Function that may throw an IOException
+ *
+ * @see java.util.function.Function
+ * @param <T> the type of the input to the function
+ * @param <R> the type of the result of the function
+ */
+@FunctionalInterface
+public interface IOFunction<T, R> {
+  /**
+   * Applies this function to the given argument.
+   *
+   * @param t the function argument
+   * @return the function result
+   * @throws IOException if producing the result throws an {@link IOException}
+   */
+  R apply(T t) throws IOException;
 }

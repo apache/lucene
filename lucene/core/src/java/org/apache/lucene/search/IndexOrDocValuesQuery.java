@@ -143,6 +143,15 @@ public final class IndexOrDocValuesQuery extends Query {
       }
 
       @Override
+      public int count(LeafReaderContext context) throws IOException {
+        final int count = indexWeight.count(context);
+        if (count != -1) {
+          return count;
+        }
+        return dvWeight.count(context);
+      }
+
+      @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final ScorerSupplier indexScorerSupplier = indexWeight.scorerSupplier(context);
         final ScorerSupplier dvScorerSupplier = dvWeight.scorerSupplier(context);

@@ -38,6 +38,8 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOConsumer;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -247,7 +249,7 @@ public abstract class MergePolicy {
 
     /** Closes this merge and releases all merge readers */
     final void close(
-        boolean success, boolean segmentDropped, IOUtils.IOConsumer<MergeReader> readerConsumer)
+        boolean success, boolean segmentDropped, IOConsumer<MergeReader> readerConsumer)
         throws IOException {
       // this method is final to ensure we never miss a super call to cleanup and finish the merge
       if (mergeCompleted.complete(success) == false) {
@@ -406,7 +408,7 @@ public abstract class MergePolicy {
     void onMergeComplete() throws IOException {}
 
     /** Sets the merge readers for this merge. */
-    void initMergeReaders(IOUtils.IOFunction<SegmentCommitInfo, MergeReader> readerFactory)
+    void initMergeReaders(IOFunction<SegmentCommitInfo, MergeReader> readerFactory)
         throws IOException {
       assert mergeReaders.isEmpty() : "merge readers must be empty";
       assert mergeCompleted.isDone() == false : "merge is already done";
