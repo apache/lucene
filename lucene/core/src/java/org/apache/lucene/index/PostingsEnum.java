@@ -97,4 +97,12 @@ public abstract class PostingsEnum extends DocIdSetIterator {
    * anything (neither members of the returned BytesRef nor bytes in the byte[]).
    */
   public abstract BytesRef getPayload() throws IOException;
+
+  /**
+   *  Returns current index of the postings list at anytime when {@link #nextDoc} or {@link #advance} is called
+   *  returns -1 means not support
+   */
+  public int getCurrentIndexOfPostings(){
+    return -1;
+  }
 }

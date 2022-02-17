@@ -440,6 +440,19 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       return doc;
     }
 
+    @Override
+    public int getCurrentIndexOfPostings() {
+      return alignBlockUpto() + docBufferUpto;
+    }
+
+    private int alignBlockUpto(){
+      if (blockUpto % BLOCK_SIZE == 0) {
+        return blockUpto - BLOCK_SIZE;
+      } else {
+        return blockUpto / BLOCK_SIZE * BLOCK_SIZE;
+      }
+    }
+
     private void refillDocs() throws IOException {
       // Check if we skipped reading the previous block of freqBuffer, and if yes, position docIn
       // after it
@@ -842,6 +855,19 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     }
 
     @Override
+    public int getCurrentIndexOfPostings() {
+      return alignBlockUpto() + docBufferUpto;
+    }
+
+    private int alignBlockUpto(){
+      if (blockUpto % BLOCK_SIZE == 0) {
+        return blockUpto - BLOCK_SIZE;
+      } else {
+        return blockUpto / BLOCK_SIZE * BLOCK_SIZE;
+      }
+    }
+
+    @Override
     public int nextDoc() throws IOException {
       if (docBufferUpto == BLOCK_SIZE) {
         refillDocs();
@@ -1236,6 +1262,19 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     public long cost() {
       return docFreq;
     }
+
+    @Override
+    public int getCurrentIndexOfPostings() {
+      return alignBlockUpto() + docBufferUpto;
+    }
+
+    private int alignBlockUpto(){
+      if (blockUpto % BLOCK_SIZE == 0) {
+        return blockUpto - BLOCK_SIZE;
+      } else {
+        return blockUpto / BLOCK_SIZE * BLOCK_SIZE;
+      }
+    }
   }
 
   final class BlockImpactsPostingsEnum extends ImpactsEnum {
@@ -1508,6 +1547,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       posPendingCount--;
       return position;
     }
+
 
     @Override
     public int startOffset() {
