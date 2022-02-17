@@ -48,9 +48,6 @@ Other
 API Changes
 ---------------------
 
-* LUCENE-10084: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever terms
-  or points have a docCount that is equal to maxDoc. (Vigya Sharma)
-
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
 
@@ -218,6 +215,9 @@ Optimizations
 
 * LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
   (Adrien Grand)
+
+* LUCENE-10084: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever terms
+  or points have a docCount that is equal to maxDoc. (Vigya Sharma)
 
 Changes in runtime behavior
 ---------------------
