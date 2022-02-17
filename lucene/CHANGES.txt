@@ -154,6 +154,8 @@ New Features
   the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
   (Gautam Worah, Ignacio Vera, Adrien Grand)
 
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
+
 Improvements
 ---------------------
 
@@ -181,7 +183,7 @@ Improvements
 
 * LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
   (Patrick Zhai)
-
+  
 Optimizations
 ---------------------
 
@@ -614,7 +616,7 @@ Improvements
   (David Smiley)
 
 * LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. (Greg Miller)
+  with its own custom encoding. (Greg Miller) 
 
 Bug fixes
 ---------------------
