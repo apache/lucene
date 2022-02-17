@@ -23,6 +23,7 @@ import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -94,6 +95,40 @@ public class TestKnnVectorFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = newSearcher(reader);
         assertEquals(1, searcher.count(new KnnVectorFieldExistsQuery("vector")));
+      }
+    }
+  }
+
+  public void testConjunction() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      int numDocs = atLeast(100);
+      int numVectors = 0;
+
+      boolean allDocsHaveVector = random().nextBoolean();
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        if (allDocsHaveVector || random().nextBoolean()) {
+          doc.add(new KnnVectorField("vector", randomVector(5)));
+          numVectors++;
+        }
+        doc.add(new StringField("field", "value" + (i % 2), Store.NO));
+        iw.addDocument(doc);
+      }
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        Occur occur = random().nextBoolean() ? Occur.MUST : Occur.FILTER;
+        BooleanQuery booleanQuery =
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "value1")), occur)
+                .add(new KnnVectorFieldExistsQuery("vector"), Occur.FILTER)
+                .build();
+
+        int count = searcher.count(booleanQuery);
+        assertTrue(count <= numVectors);
+        if (allDocsHaveVector) {
+          assertEquals(numDocs / 2, count);
+        }
       }
     }
   }
