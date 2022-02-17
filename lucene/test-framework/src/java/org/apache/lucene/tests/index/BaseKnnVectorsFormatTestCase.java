@@ -563,7 +563,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
-            leafReader.searchNearestVectors("v", randomVector(3), 1, leafReader.getLiveDocs());
+            leafReader.searchNearestVectors(
+                "v", randomVector(3), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -887,7 +888,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             k = numLiveDocsWithVectors;
           }
           TopDocs results =
-              ctx.reader().searchNearestVectors(fieldName, randomVector(dimension), k, liveDocs);
+              ctx.reader()
+                  .searchNearestVectors(
+                      fieldName, randomVector(dimension), k, liveDocs, Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);

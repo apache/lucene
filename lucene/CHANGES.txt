@@ -158,6 +158,9 @@ New Features
 
 * LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
 
+* LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
+  nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
+
 Improvements
 ---------------------
 
