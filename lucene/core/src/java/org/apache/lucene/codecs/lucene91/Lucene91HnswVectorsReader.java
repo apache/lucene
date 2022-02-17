@@ -219,7 +219,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0) {
@@ -228,8 +229,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
-
     OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+
     NeighborQueue results =
         HnswGraphSearcher.search(
             target,
@@ -237,7 +238,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             vectorValues,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
-            getAcceptOrds(acceptDocs, fieldEntry));
+            getAcceptOrds(acceptDocs, fieldEntry),
+            visitedLimit);
 
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
@@ -247,11 +249,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       results.pop();
       scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc(node), score);
     }
-    // always return >= the case where we can assert == is only when there are fewer than topK
-    // vectors in the index
-    return new TopDocs(
-        new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
-        scoreDocs);
+
+    TotalHits.Relation relation =
+        results.incomplete()
+            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+            : TotalHits.Relation.EQUAL_TO;
+    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
