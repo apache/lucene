@@ -89,6 +89,8 @@ API Changes
 * LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
   (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
 
+* LUCENE-10398: Add static method for getting Terms from LeafReader. (Spike Liu)
+
 New Features
 ---------------------
 
