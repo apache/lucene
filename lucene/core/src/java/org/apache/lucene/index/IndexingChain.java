@@ -59,6 +59,8 @@ import org.apache.lucene.util.RamUsageEstimator;
 /** Default general purpose indexing chain, which handles indexing all types of fields. */
 final class IndexingChain implements Accountable {
 
+  private final Directory directory;
+  private final SegmentInfo segmentInfo;
   final Counter bytesUsed = Counter.newCounter();
   final FieldInfos.Builder fieldInfos;
 
@@ -97,6 +99,8 @@ final class IndexingChain implements Accountable {
       LiveIndexWriterConfig indexWriterConfig,
       Consumer<Throwable> abortingExceptionConsumer) {
     this.indexCreatedVersionMajor = indexCreatedVersionMajor;
+    this.directory = directory;
+    this.segmentInfo = segmentInfo;
     byteBlockAllocator = new ByteBlockPool.DirectTrackingAllocator(bytesUsed);
     IntBlockPool.Allocator intBlockAllocator = new IntBlockAllocator(bytesUsed);
     this.indexWriterConfig = indexWriterConfig;
@@ -522,6 +526,18 @@ final class IndexingChain implements Accountable {
     // finalizer will e.g. close any open files in the term vectors writer:
     try (Closeable finalizer = termsHash::abort) {
       storedFieldsConsumer.abort();
+
+      // close and delete temp buffered vector files
+      for (int i = 0; i < fieldHash.length; i++) {
+        PerField perField = fieldHash[i];
+        while (perField != null) {
+          if (perField.vectorValuesWriter != null) {
+            perField.vectorValuesWriter.abort();
+            perField.vectorValuesWriter = null;
+          }
+          perField = perField.next;
+        }
+      }
     } finally {
       Arrays.fill(fieldHash, null);
     }
@@ -714,7 +730,12 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
     if (fi.getVectorDimension() != 0) {
-      pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed);
+      try {
+        pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed, directory, segmentInfo.name);
+      } catch (Throwable th) {
+        onAbortingException(th);
+        throw th;
+      }
     }
   }
 
@@ -761,7 +782,14 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      pf.vectorValuesWriter.addValue(docID, ((KnnVectorField) field).vectorValue());
+      try {
+        pf.vectorValuesWriter.addValue(docID, ((KnnVectorField) field).vectorValue());
+      } catch (IOException ex) {
+        // only IOException aborts the whole segment,
+        // other exceptions only lead to the deletion of the current doc
+        onAbortingException(ex);
+        throw ex;
+      }
     }
     return indexedField;
   }

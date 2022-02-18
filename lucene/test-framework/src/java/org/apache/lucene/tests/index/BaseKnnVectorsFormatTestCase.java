@@ -40,6 +40,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -49,6 +50,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
@@ -1137,6 +1139,33 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(fieldValuesCheckSum, checksum, 1e-3);
         assertEquals(fieldDocCount, docCount);
         assertEquals(fieldSumDocIDs, sumDocIds);
+      }
+    }
+  }
+
+  public void testVectorsBufferedOnDiskInsteadOfRam() throws IOException {
+    IndexWriterConfig writerConf = newIndexWriterConfig(new MockAnalyzer(random()));
+    writerConf.setMergePolicy(NoMergePolicy.INSTANCE);
+    final int numDocs = 1000;
+    final int dim = 200;
+    // 1000 vectors with 200 dims would need 1000 * 200 * 4 = 800000b = 800Kb
+    // set ram buffer size to 100Kb
+    writerConf.setRAMBufferSizeMB(0.1);
+    writerConf.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, writerConf)) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(new KnnVectorField("v1", randomVector(dim), VectorSimilarityFunction.EUCLIDEAN));
+        w.addDocument(doc);
+      }
+      w.flush();
+      try (IndexReader r = DirectoryReader.open(w)) {
+        // as vectors are buffered on disk, flush is not triggered by vectors' RAM usage
+        // we expect only 1 segment that was manually triggered
+        assertEquals(1, r.leaves().size());
+        assertEquals(numDocs, r.numDocs());
       }
     }
   }
