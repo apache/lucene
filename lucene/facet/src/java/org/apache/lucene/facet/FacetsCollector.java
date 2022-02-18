@@ -115,7 +115,7 @@ public class FacetsCollector extends SimpleCollector {
 
   @Override
   public final void collect(int doc) throws IOException {
-    docsBuilder.grow(1).add(doc);
+    docsBuilder.add(doc);
     if (keepScores) {
       if (totalHits >= scores.length) {
         float[] newScores = new float[ArrayUtil.oversize(totalHits + 1, 4)];

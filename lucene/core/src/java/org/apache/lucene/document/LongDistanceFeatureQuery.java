@@ -35,7 +35,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 final class LongDistanceFeatureQuery extends Query {
 
@@ -384,12 +384,12 @@ final class LongDistanceFeatureQuery extends Query {
       final byte[] maxValueAsBytes = new byte[Long.BYTES];
       LongPoint.encodeDimension(maxValue, maxValueAsBytes, 0);
 
-      DocIdSetBuilder result = new DocIdSetBuilder(maxDoc);
+      PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(maxDoc, pointValues);
       final int doc = docID();
       IntersectVisitor visitor =
           new IntersectVisitor() {
 
-            DocIdSetBuilder.BulkAdder adder;
+            PointsDocIdSetBuilder.BulkAdder adder;
 
             @Override
             public void grow(int count) {

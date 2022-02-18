@@ -30,8 +30,8 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 /**
  * Abstract class for range queries against single or multidimensional points such as {@link
@@ -165,10 +165,10 @@ public abstract class PointRangeQuery extends Query {
         }
       }
 
-      private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result) {
+      private IntersectVisitor getIntersectVisitor(PointsDocIdSetBuilder result) {
         return new IntersectVisitor() {
 
-          DocIdSetBuilder.BulkAdder adder;
+          PointsDocIdSetBuilder.BulkAdder adder;
 
           @Override
           public void grow(int count) {
@@ -331,7 +331,7 @@ public abstract class PointRangeQuery extends Query {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(reader.maxDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 

@@ -41,8 +41,8 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 /**
  * Base query class for all spatial geometries: {@link LatLonShape}, {@link LatLonPoint} and {@link
@@ -187,7 +187,7 @@ abstract class SpatialQuery extends Query {
             return null;
           }
           // walk the tree to get matching documents
-          return new RelationScorerSupplier(values, spatialVisitor, queryRelation, field) {
+          return new RelationScorerSupplier(values, spatialVisitor, queryRelation) {
             @Override
             public Scorer get(long leadCost) throws IOException {
               return getScorer(reader, weight, score(), scoreMode);
@@ -252,18 +252,15 @@ abstract class SpatialQuery extends Query {
     private final PointValues values;
     private final SpatialVisitor spatialVisitor;
     private final QueryRelation queryRelation;
-    private final String field;
     private long cost = -1;
 
     RelationScorerSupplier(
         final PointValues values,
         SpatialVisitor spatialVisitor,
-        final QueryRelation queryRelation,
-        final String field) {
+        final QueryRelation queryRelation) {
       this.values = values;
       this.spatialVisitor = spatialVisitor;
       this.queryRelation = queryRelation;
-      this.field = field;
     }
 
     protected Scorer getScorer(
@@ -311,7 +308,8 @@ abstract class SpatialQuery extends Query {
             cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
         return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
       } else {
-        final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        final PointsDocIdSetBuilder docIdSetBuilder =
+            new PointsDocIdSetBuilder(reader.maxDoc(), values);
         values.intersect(getSparseVisitor(spatialVisitor, queryRelation, docIdSetBuilder));
         final DocIdSetIterator iterator = docIdSetBuilder.build().iterator();
         return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
@@ -405,12 +403,12 @@ abstract class SpatialQuery extends Query {
   private static IntersectVisitor getSparseVisitor(
       final SpatialVisitor spatialVisitor,
       QueryRelation queryRelation,
-      final DocIdSetBuilder result) {
+      final PointsDocIdSetBuilder result) {
     final BiFunction<byte[], byte[], Relation> innerFunction =
         spatialVisitor.getInnerFunction(queryRelation);
     final Predicate<byte[]> leafPredicate = spatialVisitor.getLeafPredicate(queryRelation);
     return new IntersectVisitor() {
-      DocIdSetBuilder.BulkAdder adder;
+      PointsDocIdSetBuilder.BulkAdder adder;
 
       @Override
       public void grow(int count) {

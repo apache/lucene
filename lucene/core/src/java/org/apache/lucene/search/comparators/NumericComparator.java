@@ -30,7 +30,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
-import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
@@ -204,10 +204,10 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         }
       }
 
-      DocIdSetBuilder result = new DocIdSetBuilder(maxDoc);
+      PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(maxDoc, pointValues);
       PointValues.IntersectVisitor visitor =
           new PointValues.IntersectVisitor() {
-            DocIdSetBuilder.BulkAdder adder;
+            PointsDocIdSetBuilder.BulkAdder adder;
 
             @Override
             public void grow(int count) {

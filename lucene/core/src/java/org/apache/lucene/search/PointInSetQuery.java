@@ -36,7 +36,7 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefIterator;
-import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -173,7 +173,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                   + bytesPerDim);
         }
 
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(reader.maxDoc(), values);
 
         if (numDims == 1) {
 
@@ -211,14 +211,14 @@ public abstract class PointInSetQuery extends Query implements Accountable {
    */
   private class MergePointVisitor implements IntersectVisitor {
 
-    private final DocIdSetBuilder result;
+    private final PointsDocIdSetBuilder result;
     private TermIterator iterator;
     private BytesRef nextQueryPoint;
     private final BytesRef scratch = new BytesRef();
     private final PrefixCodedTerms sortedPackedPoints;
-    private DocIdSetBuilder.BulkAdder adder;
+    private PointsDocIdSetBuilder.BulkAdder adder;
 
-    public MergePointVisitor(PrefixCodedTerms sortedPackedPoints, DocIdSetBuilder result)
+    public MergePointVisitor(PrefixCodedTerms sortedPackedPoints, PointsDocIdSetBuilder result)
         throws IOException {
       this.result = result;
       this.sortedPackedPoints = sortedPackedPoints;
@@ -315,11 +315,11 @@ public abstract class PointInSetQuery extends Query implements Accountable {
   private class SinglePointVisitor implements IntersectVisitor {
 
     private final ByteArrayComparator comparator;
-    private final DocIdSetBuilder result;
+    private final PointsDocIdSetBuilder result;
     private final byte[] pointBytes;
-    private DocIdSetBuilder.BulkAdder adder;
+    private PointsDocIdSetBuilder.BulkAdder adder;
 
-    public SinglePointVisitor(DocIdSetBuilder result) {
+    public SinglePointVisitor(PointsDocIdSetBuilder result) {
       this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       this.result = result;
       this.pointBytes = new byte[bytesPerDim * numDims];

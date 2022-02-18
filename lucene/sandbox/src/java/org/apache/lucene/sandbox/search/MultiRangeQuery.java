@@ -37,7 +37,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 /**
  * Abstract class for range queries involving multiple ranges against physical points such as {@code
@@ -178,10 +178,10 @@ public abstract class MultiRangeQuery extends Query {
     return new ConstantScoreWeight(this, boost) {
 
       private PointValues.IntersectVisitor getIntersectVisitor(
-          DocIdSetBuilder result, Relatable range) {
+          PointsDocIdSetBuilder result, Relatable range) {
         return new PointValues.IntersectVisitor() {
 
-          DocIdSetBuilder.BulkAdder adder;
+          PointsDocIdSetBuilder.BulkAdder adder;
 
           @Override
           public void grow(int count) {
@@ -277,7 +277,7 @@ public abstract class MultiRangeQuery extends Query {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(reader.maxDoc(), values);
             final PointValues.IntersectVisitor visitor = getIntersectVisitor(result, range);
             long cost = -1;
 

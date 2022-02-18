@@ -17,49 +17,88 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
-import java.util.function.IntConsumer;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * A builder of {@link DocIdSet}s for Terms. At first it uses a sparse structure to gather
- * documents, and then upgrades to a non-sparse bit set once enough hits match.
+ * A builder of {@link DocIdSet}s for {@link PointValues}. At first it uses a sparse structure to
+ * gather documents, and then upgrades to a non-sparse bit set once enough hits match.
  *
- * <p>Documents are added via {@link #add(DocIdSetIterator)} as a bulk or via {@link #add(int)} for
- * individual documents.
+ * <p>To add documents, you first need to call {@link #grow} with the number of points that are to
+ * be visited in order to reserve space, and then call {@link BulkAdder#add(int)} on the returned
+ * {@link BulkAdder}.
  *
- * <p>See {@link PointsDocIdSetBuilder} if you are not working with {@link PointValues}
+ * <p>See {@link DocIdSetBuilder} if you are not working with {@link PointValues}
  *
  * @lucene.internal
  */
-public final class DocIdSetBuilder {
+public final class PointsDocIdSetBuilder {
+
+  /**
+   * Utility class to efficiently add many docs in one go.
+   *
+   * @see PointsDocIdSetBuilder#grow
+   */
+  public abstract static class BulkAdder {
+    public abstract void add(int doc);
+
+    public void add(DocIdSetIterator iterator) throws IOException {
+      int docID;
+      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        add(docID);
+      }
+    }
+  }
+
+  private static class FixedBitSetAdder extends BulkAdder {
+    final FixedBitSet bitSet;
+
+    FixedBitSetAdder(FixedBitSet bitSet) {
+      this.bitSet = bitSet;
+    }
+
+    @Override
+    public void add(int doc) {
+      bitSet.set(doc);
+    }
+
+    @Override
+    public void add(DocIdSetIterator iterator) throws IOException {
+      bitSet.or(iterator);
+    }
+  }
+
+  private static class BufferAdder extends BulkAdder {
+    final Buffers buffer;
+
+    BufferAdder(Buffers buffer) {
+      this.buffer = buffer;
+    }
+
+    @Override
+    public void add(int doc) {
+      buffer.addDoc(doc);
+    }
+  }
 
   private final int maxDoc;
   // pkg-private for testing
   final double numValuesPerDoc;
   Buffers buffers;
   private FixedBitSet bitSet;
-  private IntConsumer adder;
   private long counter = -1;
-
-  /** Create a builder that can contain doc IDs between {@code 0} and {@code maxDoc}. */
-  public DocIdSetBuilder(int maxDoc) {
-    this(maxDoc, -1, -1);
-  }
+  private BulkAdder adder;
 
   /**
-   * Create a {@link DocIdSetBuilder} instance that is optimized for accumulating docs that match
-   * the given {@link Terms}.
+   * Create a {@link PointsDocIdSetBuilder} instance that is optimized for accumulating docs that
+   * match the given {@link PointValues}.
    */
-  public DocIdSetBuilder(int maxDoc, Terms terms) throws IOException {
-    this(maxDoc, terms.getDocCount(), terms.getSumDocFreq());
-  }
-
-  private DocIdSetBuilder(int maxDoc, int docCount, long valueCount) {
+  public PointsDocIdSetBuilder(int maxDoc, PointValues values) {
     this.maxDoc = maxDoc;
-    final boolean multivalued = docCount < 0 || docCount != valueCount;
+    final long valueCount = values.size();
+    final int docCount = values.getDocCount();
+    final boolean multivalued = docCount != valueCount;
     if (docCount <= 0 || valueCount < 0) {
       // assume one value per doc, this means the cost will be overestimated
       // if the docs are actually multi-valued
@@ -68,52 +107,27 @@ public final class DocIdSetBuilder {
       // otherwise compute from index stats
       this.numValuesPerDoc = (double) valueCount / docCount;
     }
-    assert numValuesPerDoc >= 1 : "valueCount=" + docCount + " docCount=" + valueCount;
+    assert numValuesPerDoc >= 1 : "valueCount=" + valueCount + " docCount=" + docCount;
     this.buffers = new Buffers(maxDoc, multivalued);
+    this.adder = new BufferAdder(buffers);
     this.bitSet = null;
-    this.adder = doc -> buffers.addDoc(doc);
   }
 
   /**
-   * Add the content of the provided {@link DocIdSetIterator} to this builder. NOTE: if you need to
-   * build a {@link DocIdSet} out of a single {@link DocIdSetIterator}, you should rather use {@link
-   * RoaringDocIdSet.Builder}.
+   * Reserve space and return a {@link BulkAdder} object that can be used to visit up to {@code
+   * numPoints} points.
    */
-  public void add(DocIdSetIterator iter) throws IOException {
-    if (bitSet != null) {
-      bitSet.or(iter);
-      return;
-    }
-    int cost = (int) Math.min(Integer.MAX_VALUE, iter.cost());
-    grow(cost);
-    for (int i = 0; i < cost; ++i) {
-      int doc = iter.nextDoc();
-      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-        return;
-      }
-      adder.accept(doc);
-    }
-    for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-      add(doc);
-    }
-  }
-
-  /** Add a single document to this builder. */
-  public void add(int doc) {
-    grow(1);
-    adder.accept(doc);
-  }
-
-  /** Reserve space and up to {@code numDocs} documents. */
-  private void grow(int numDocs) {
+  public BulkAdder grow(long numPoints) {
     if (bitSet == null) {
+      final int numDocs = (int) Math.min(Integer.MAX_VALUE, numPoints);
       if (buffers.ensureBufferCapacity(numDocs) == false) {
         upgradeToBitSet();
-        counter += numDocs;
+        counter += numPoints;
       }
     } else {
-      counter += numDocs;
+      counter += numPoints;
     }
+    return adder;
   }
 
   private void upgradeToBitSet() {
@@ -121,8 +135,8 @@ public final class DocIdSetBuilder {
     FixedBitSet bitSet = new FixedBitSet(maxDoc);
     this.counter = buffers.toBitSet(bitSet);
     this.bitSet = bitSet;
-    adder = doc -> bitSet.set(doc);
     this.buffers = null;
+    this.adder = new FixedBitSetAdder(bitSet);
   }
 
   /** Build a {@link DocIdSet} from the accumulated doc IDs. */

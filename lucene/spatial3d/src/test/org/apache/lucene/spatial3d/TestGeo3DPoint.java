@@ -47,6 +47,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.ReaderUtil;
@@ -77,10 +78,10 @@ import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 public class TestGeo3DPoint extends LuceneTestCase {
 
@@ -1954,11 +1955,12 @@ public class TestGeo3DPoint extends LuceneTestCase {
     // First find the leaf reader that owns this doc:
     int subIndex = ReaderUtil.subIndex(docID, reader.leaves());
     LeafReader leafReader = reader.leaves().get(subIndex).reader();
+    PointValues pointValues = leafReader.getPointValues(fieldName);
 
     StringBuilder b = new StringBuilder();
     b.append("target is in leaf " + leafReader + " of full reader " + reader + "\n");
 
-    DocIdSetBuilder hits = new DocIdSetBuilder(leafReader.maxDoc());
+    PointsDocIdSetBuilder hits = new PointsDocIdSetBuilder(leafReader.maxDoc(), pointValues);
     ExplainingVisitor visitor =
         new ExplainingVisitor(
             shape,
@@ -1975,7 +1977,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
 
     // Do second phase, where we we see how the wrapped visitor responded along that path:
     visitor.startSecondPhase();
-    leafReader.getPointValues(fieldName).intersect(visitor);
+    pointValues.intersect(visitor);
 
     return b.toString();
   }

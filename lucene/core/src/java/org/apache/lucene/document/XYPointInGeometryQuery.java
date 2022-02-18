@@ -37,7 +37,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 /**
  * Finds all previously indexed points that fall within the specified XY geometries.
@@ -71,9 +71,9 @@ final class XYPointInGeometryQuery extends Query {
     }
   }
 
-  private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result, Component2D tree) {
+  private IntersectVisitor getIntersectVisitor(PointsDocIdSetBuilder result, Component2D tree) {
     return new IntersectVisitor() {
-      DocIdSetBuilder.BulkAdder adder;
+      PointsDocIdSetBuilder.BulkAdder adder;
 
       @Override
       public void grow(int count) {
@@ -149,7 +149,7 @@ final class XYPointInGeometryQuery extends Query {
         return new ScorerSupplier() {
 
           long cost = -1;
-          DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+          PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(reader.maxDoc(), values);
           final IntersectVisitor visitor = getIntersectVisitor(result, tree);
 
           @Override

@@ -26,11 +26,11 @@ import org.apache.lucene.spatial3d.geom.GeoAreaFactory;
 import org.apache.lucene.spatial3d.geom.GeoShape;
 import org.apache.lucene.spatial3d.geom.PlanetModel.DocValueEncoder;
 import org.apache.lucene.spatial3d.geom.XYZBounds;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 class PointInShapeIntersectVisitor implements IntersectVisitor {
-  private final DocIdSetBuilder hits;
+  private final PointsDocIdSetBuilder hits;
   private final GeoShape shape;
   private final double minimumX;
   private final double maximumX;
@@ -38,9 +38,10 @@ class PointInShapeIntersectVisitor implements IntersectVisitor {
   private final double maximumY;
   private final double minimumZ;
   private final double maximumZ;
-  private DocIdSetBuilder.BulkAdder adder;
+  private PointsDocIdSetBuilder.BulkAdder adder;
 
-  public PointInShapeIntersectVisitor(DocIdSetBuilder hits, GeoShape shape, XYZBounds bounds) {
+  public PointInShapeIntersectVisitor(
+      PointsDocIdSetBuilder hits, GeoShape shape, XYZBounds bounds) {
     this.hits = hits;
     this.shape = shape;
     DocValueEncoder docValueEncoder = shape.getPlanetModel().getDocValueEncoder();

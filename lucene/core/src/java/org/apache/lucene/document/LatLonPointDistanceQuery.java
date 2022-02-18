@@ -44,9 +44,9 @@ import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 /** Distance query for {@link LatLonPoint}. */
 final class LatLonPointDistanceQuery extends Query {
@@ -148,7 +148,7 @@ final class LatLonPointDistanceQuery extends Query {
         LatLonPoint.checkCompatible(fieldInfo);
 
         // matching docids
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(reader.maxDoc(), values);
         final IntersectVisitor visitor = getIntersectVisitor(result);
 
         final Weight weight = this;
@@ -241,10 +241,10 @@ final class LatLonPointDistanceQuery extends Query {
       }
 
       /** Create a visitor that collects documents matching the range. */
-      private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result) {
+      private IntersectVisitor getIntersectVisitor(PointsDocIdSetBuilder result) {
         return new IntersectVisitor() {
 
-          DocIdSetBuilder.BulkAdder adder;
+          PointsDocIdSetBuilder.BulkAdder adder;
 
           @Override
           public void grow(int count) {

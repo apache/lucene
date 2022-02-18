@@ -31,7 +31,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial3d.geom.GeoShape;
 import org.apache.lucene.spatial3d.geom.XYZBounds;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -103,7 +103,7 @@ final class PointInGeo3DShapeQuery extends Query implements Accountable {
         assert xyzSolid.getRelationship(shape) == GeoArea.WITHIN || xyzSolid.getRelationship(shape) == GeoArea.OVERLAPS: "expected WITHIN (1) or OVERLAPS (2) but got " + xyzSolid.getRelationship(shape) + "; shape="+shape+"; XYZSolid="+xyzSolid;
         */
 
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(reader.maxDoc(), values);
 
         values.intersect(new PointInShapeIntersectVisitor(result, shape, shapeBounds));
 

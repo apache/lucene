@@ -35,7 +35,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 
 /**
  * Query class for searching {@code RangeField} types by a defined {@link Relation}.
@@ -452,9 +452,9 @@ public abstract class RangeFieldQuery extends Query {
       throws IOException {
     return new ConstantScoreWeight(this, boost) {
 
-      private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result) {
+      private IntersectVisitor getIntersectVisitor(PointsDocIdSetBuilder result) {
         return new IntersectVisitor() {
-          DocIdSetBuilder.BulkAdder adder;
+          PointsDocIdSetBuilder.BulkAdder adder;
 
           @Override
           public void grow(int count) {
@@ -538,7 +538,7 @@ public abstract class RangeFieldQuery extends Query {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(reader.maxDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 

@@ -38,8 +38,8 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.PointsDocIdSetBuilder;
 import org.apache.lucene.util.SloppyMath;
 
 final class LatLonPointDistanceFeatureQuery extends Query {
@@ -398,12 +398,12 @@ final class LatLonPointDistanceFeatureQuery extends Query {
       NumericUtils.intToSortableBytes(GeoEncodingUtils.encodeLongitude(box.minLon), minLon, 0);
       NumericUtils.intToSortableBytes(GeoEncodingUtils.encodeLongitude(box.maxLon), maxLon, 0);
 
-      DocIdSetBuilder result = new DocIdSetBuilder(maxDoc);
+      PointsDocIdSetBuilder result = new PointsDocIdSetBuilder(maxDoc, pointValues);
       final int doc = docID();
       IntersectVisitor visitor =
           new IntersectVisitor() {
 
-            DocIdSetBuilder.BulkAdder adder;
+            PointsDocIdSetBuilder.BulkAdder adder;
 
             @Override
             public void grow(int count) {

@@ -17,18 +17,18 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
-import java.util.Arrays;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestDocIdSetBuilder extends LuceneTestCase {
+public class TestPointsDocIdSetBuilder extends LuceneTestCase {
 
   public void testEmpty() throws IOException {
-    assertEquals(null, new DocIdSetBuilder(1 + random().nextInt(1000)).build());
+    assertEquals(
+        null,
+        new PointsDocIdSetBuilder(1 + random().nextInt(1000), new DummyPointValues(0, 0)).build());
   }
 
   private void assertEquals(DocIdSet d1, DocIdSet d2) throws IOException {
@@ -50,7 +50,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
 
   public void testSparse() throws IOException {
     final int maxDoc = 1000000 + random().nextInt(1000000);
-    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);
+    PointsDocIdSetBuilder builder = new PointsDocIdSetBuilder(maxDoc, new DummyPointValues(0, 0));
     final int numIterators = 1 + random().nextInt(10);
     final FixedBitSet ref = new FixedBitSet(maxDoc);
     for (int i = 0; i < numIterators; ++i) {
@@ -62,7 +62,8 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
         b.add(doc);
         ref.set(doc);
       }
-      builder.add(b.build().iterator());
+      DocIdSetIterator iterator = b.build().iterator();
+      builder.grow(iterator.cost()).add(iterator);
     }
     DocIdSet result = builder.build();
     assertTrue(result instanceof IntArrayDocIdSet);
@@ -71,7 +72,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
 
   public void testDense() throws IOException {
     final int maxDoc = 1000000 + random().nextInt(1000000);
-    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);
+    PointsDocIdSetBuilder builder = new PointsDocIdSetBuilder(maxDoc, new DummyPointValues(0, 0));
     final int numIterators = 1 + random().nextInt(10);
     final FixedBitSet ref = new FixedBitSet(maxDoc);
     for (int i = 0; i < numIterators; ++i) {
@@ -80,7 +81,8 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
         b.add(doc);
         ref.set(doc);
       }
-      builder.add(b.build().iterator());
+      DocIdSetIterator iterator = b.build().iterator();
+      builder.grow(iterator.cost()).add(iterator);
     }
     DocIdSet result = builder.build();
     assertTrue(result instanceof BitDocIdSet);
@@ -125,22 +127,19 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
         array[k] = tmp;
       }
 
-      DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);
+      // add docs out of order
+      PointsDocIdSetBuilder builder =
+          new PointsDocIdSetBuilder(maxDoc, new DummyPointValues(maxDoc, maxDoc + 1));
       for (j = 0; j < array.length; ) {
         final int l = TestUtil.nextInt(random(), 1, array.length - j);
-        if (random().nextBoolean()) {
-          // add docs one by one
-          for (int k = 0; k < l; ++k) {
-            builder.add(array[j++]);
+        PointsDocIdSetBuilder.BulkAdder adder = null;
+        for (int k = 0, budget = 0; k < l; ++k) {
+          if (budget == 0 || rarely()) {
+            budget = TestUtil.nextInt(random(), 1, l - k + 5);
+            adder = builder.grow(budget);
           }
-        } else {
-          // add docs as an iterator
-          int[] set = new int[l + 1];
-          System.arraycopy(array, j, set, 0, l);
-          set[l] = DocIdSetIterator.NO_MORE_DOCS;
-          Arrays.sort(set);
-          builder.add(new IntArrayDocIdSet(set, l).iterator());
-          j += l;
+          adder.add(array[j++]);
+          budget--;
         }
       }
 
@@ -150,120 +149,97 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
   }
 
-  public void testMisleadingDISICost() throws IOException {
-    final int maxDoc = TestUtil.nextInt(random(), 1000, 10000);
-    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, new DummyTerms(0, 0));
-    FixedBitSet expected = new FixedBitSet(maxDoc);
-
-    for (int i = 0; i < 10; ++i) {
-      final FixedBitSet docs = new FixedBitSet(maxDoc);
-      final int numDocs = random().nextInt(maxDoc / 1000);
-      for (int j = 0; j < numDocs; ++j) {
-        docs.set(random().nextInt(maxDoc));
-      }
-      expected.or(docs);
-      // We provide a cost of 0 here to make sure the builder can deal with wrong costs
-      builder.add(new BitSetIterator(docs, 0L));
-    }
-
-    assertEquals(new BitDocIdSet(expected), builder.build());
-  }
-
-  public void testEmptyTerms() throws IOException {
-    DummyTerms terms = new DummyTerms(0, 0);
-    DocIdSetBuilder builder = new DocIdSetBuilder(1, terms);
+  public void testEmptyPoints() throws IOException {
+    PointValues values = new DummyPointValues(0, 0);
+    PointsDocIdSetBuilder builder = new PointsDocIdSetBuilder(1, values);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
   }
 
   public void testLeverageStats() throws IOException {
-    // single-valued terms
-    Terms terms = new DummyTerms(42, 42);
-    DocIdSetBuilder builder = new DocIdSetBuilder(100, terms);
+    // single-valued points
+    PointValues values = new DummyPointValues(42, 42);
+    PointsDocIdSetBuilder builder = new PointsDocIdSetBuilder(100, values);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertFalse(builder.buffers.multiValued);
-    FixedBitSet bitSet = new FixedBitSet(8);
-    bitSet.set(5);
-    bitSet.set(7);
-    builder.add(new BitSetIterator(bitSet, 2));
+    PointsDocIdSetBuilder.BulkAdder adder = builder.grow(2);
+    adder.add(5);
+    adder.add(7);
     DocIdSet set = builder.build();
     assertTrue(set instanceof BitDocIdSet);
     assertEquals(2, set.iterator().cost());
 
-    // multi-valued terms
-    terms = new DummyTerms(42, 63);
-    builder = new DocIdSetBuilder(100, terms);
+    // multi-valued points
+    values = new DummyPointValues(42, 63);
+    builder = new PointsDocIdSetBuilder(100, values);
     assertEquals(1.5, builder.numValuesPerDoc, 0d);
     assertTrue(builder.buffers.multiValued);
-    builder.add(new BitSetIterator(bitSet, 2));
+    adder = builder.grow(2);
+    adder.add(5);
+    adder.add(7);
     set = builder.build();
     assertTrue(set instanceof BitDocIdSet);
     assertEquals(1, set.iterator().cost()); // it thinks the same doc was added twice
 
     // incomplete stats
-    terms = new DummyTerms(42, -1);
-    builder = new DocIdSetBuilder(100, terms);
+    values = new DummyPointValues(42, -1);
+    builder = new PointsDocIdSetBuilder(100, values);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.buffers.multiValued);
 
-    terms = new DummyTerms(-1, 84);
-    builder = new DocIdSetBuilder(100, terms);
+    values = new DummyPointValues(-1, 84);
+    builder = new PointsDocIdSetBuilder(100, values);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.buffers.multiValued);
   }
 
-  private static class DummyTerms extends Terms {
+  private static class DummyPointValues extends PointValues {
 
     private final int docCount;
-    private final long numValues;
+    private final long numPoints;
 
-    DummyTerms(int docCount, long numValues) {
+    DummyPointValues(int docCount, long numPoints) {
       this.docCount = docCount;
-      this.numValues = numValues;
+      this.numPoints = numPoints;
     }
 
     @Override
-    public TermsEnum iterator() throws IOException {
+    public PointTree getPointTree() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long size() throws IOException {
+    public byte[] getMinPackedValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public byte[] getMaxPackedValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
-      return numValues;
+    public int getNumDimensions() throws IOException {
+      throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getNumIndexDimensions() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int getBytesPerDimension() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long size() {
+      return numPoints;
+    }
+
+    @Override
+    public int getDocCount() {
       return docCount;
-    }
-
-    @Override
-    public boolean hasFreqs() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean hasOffsets() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean hasPositions() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean hasPayloads() {
-      throw new UnsupportedOperationException();
     }
   }
 }
