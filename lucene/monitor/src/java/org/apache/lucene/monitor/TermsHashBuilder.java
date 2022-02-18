@@ -24,9 +24,9 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.SearcherFactory;
 
 class TermsHashBuilder extends SearcherFactory {
-  private final Map<IndexReader.CacheKey, WritableQueryIndex.QueryTermFilter> termFilters;
+  private final Map<IndexReader.CacheKey, QueryIndex.QueryTermFilter> termFilters;
 
-  TermsHashBuilder(Map<IndexReader.CacheKey, WritableQueryIndex.QueryTermFilter> termFilters) {
+  TermsHashBuilder(Map<IndexReader.CacheKey, QueryIndex.QueryTermFilter> termFilters) {
     this.termFilters = termFilters;
   }
 
@@ -35,8 +35,7 @@ class TermsHashBuilder extends SearcherFactory {
       throws IOException {
     IndexSearcher searcher = super.newSearcher(reader, previousReader);
     searcher.setQueryCache(null);
-    termFilters.put(
-        reader.getReaderCacheHelper().getKey(), new WritableQueryIndex.QueryTermFilter(reader));
+    termFilters.put(reader.getReaderCacheHelper().getKey(), new QueryIndex.QueryTermFilter(reader));
     reader.getReaderCacheHelper().addClosedListener(termFilters::remove);
     return searcher;
   }

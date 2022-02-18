@@ -79,12 +79,6 @@ public class TestMonitorReadonly extends MonitorTestBase {
       assertThrows(
           IllegalStateException.class,
           () -> {
-            monitor.purgeCache();
-          });
-
-      assertThrows(
-          IllegalStateException.class,
-          () -> {
             monitor.deleteById("query1");
           });
 

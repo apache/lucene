@@ -19,41 +19,148 @@ package org.apache.lucene.monitor;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiPredicate;
 import org.apache.lucene.index.*;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Scorable;
-import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
-interface QueryIndex extends Closeable {
-  void commit(List<MonitorQuery> updates) throws IOException;
+abstract class QueryIndex implements Closeable {
+  static final class FIELDS {
+    static final String query_id = "_query_id";
+    static final String cache_id = "_cache_id";
+    static final String mq = "_mq";
+  }
 
-  MonitorQuery getQuery(String queryId) throws IOException;
+  protected SearcherManager manager;
+  protected QueryDecomposer decomposer;
+  protected MonitorQuerySerializer serializer;
+  protected long lastPurged = -1;
 
-  void scan(QueryCollector matcher) throws IOException;
+  /* The current query cache */
+  protected volatile ConcurrentMap<String, QueryCacheEntry> queries = new ConcurrentHashMap<>();
+  // NB this is not final because it can be replaced by purgeCache()
 
-  long search(WritableQueryIndex.QueryBuilder queryBuilder, QueryCollector matcher)
-      throws IOException;
+  // package-private for testing
+  final Map<IndexReader.CacheKey, QueryTermFilter> termFilters = new HashMap<>();
 
-  void purgeCache() throws IOException;
+  abstract void commit(List<MonitorQuery> updates) throws IOException;
 
-  @Override
-  void close() throws IOException;
+  public MonitorQuery getQuery(String queryId) throws IOException {
+    if (serializer == null) {
+      throw new IllegalStateException(
+          "Cannot get queries from an index with no MonitorQuerySerializer");
+    }
+    BytesRef[] bytesHolder = new BytesRef[1];
+    search(
+        new TermQuery(new Term(FIELDS.query_id, queryId)),
+        (id, query, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
+    return serializer.deserialize(bytesHolder[0]);
+  }
 
-  int numDocs() throws IOException;
+  protected void populateQueryCache(MonitorQuerySerializer serializer, QueryDecomposer decomposer)
+      throws IOException {
+    if (serializer == null) {
+      // No query serialization happening here - check that the cache is empty
+      IndexSearcher searcher = manager.acquire();
+      try {
+        if (searcher.count(new MatchAllDocsQuery()) != 0) {
+          throw new IllegalStateException(
+              "Attempting to open a non-empty monitor query index with no MonitorQuerySerializer");
+        }
+      } finally {
+        manager.release(searcher);
+      }
+      return;
+    }
+    Set<String> ids = new HashSet<>();
+    List<Exception> errors = new ArrayList<>();
+    purgeCache(
+        newCache ->
+            scan(
+                (id, cacheEntry, dataValues) -> {
+                  if (ids.contains(id)) {
+                    // this is a branch of a query that has already been reconstructed, but
+                    // then split by decomposition - we don't need to parse it again
+                    return;
+                  }
+                  ids.add(id);
+                  try {
+                    MonitorQuery mq = serializer.deserialize(dataValues.mq.binaryValue());
+                    for (QueryCacheEntry entry : QueryCacheEntry.decompose(mq, decomposer)) {
+                      newCache.put(entry.cacheId, entry);
+                    }
+                  } catch (Exception e) {
+                    errors.add(e);
+                  }
+                }));
+    if (errors.size() > 0) {
+      IllegalStateException e =
+          new IllegalStateException("Couldn't parse some queries from the index");
+      for (Exception parseError : errors) {
+        e.addSuppressed(parseError);
+      }
+      throw e;
+    }
+  }
 
-  int cacheSize();
+  public void scan(QueryCollector matcher) throws IOException {
+    search(new MatchAllDocsQuery(), matcher);
+  }
 
-  void deleteQueries(List<String> ids) throws IOException;
+  long search(final Query query, QueryCollector matcher) throws IOException {
+    QueryBuilder builder = termFilter -> query;
+    return search(builder, matcher);
+  }
 
-  void clear() throws IOException;
+  protected long searchInMemory(
+      QueryBuilder queryBuilder,
+      QueryCollector matcher,
+      IndexSearcher searcher,
+      Map<String, QueryCacheEntry> queries)
+      throws IOException {
+    MonitorQueryCollector collector = new MonitorQueryCollector(queries, matcher);
+    long buildTime = System.nanoTime();
+    Query query =
+        queryBuilder.buildQuery(
+            termFilters.get(searcher.getIndexReader().getReaderCacheHelper().getKey()));
+    buildTime = System.nanoTime() - buildTime;
+    searcher.search(query, collector);
+    return buildTime;
+  }
 
-  long getLastPurged();
+  abstract long search(QueryBuilder queryBuilder, QueryCollector matcher) throws IOException;
+
+  public void purgeCache() throws IOException {
+    purgeCache(
+        newCache ->
+            scan(
+                (id, query, dataValues) -> {
+                  if (query != null) newCache.put(query.cacheId, query);
+                }));
+    lastPurged = System.nanoTime();
+  }
+
+  abstract void purgeCache(CachePopulator populator) throws IOException;
+
+  abstract int numDocs() throws IOException;
+
+  public int cacheSize() {
+    return queries.size();
+  }
+
+  abstract void deleteQueries(List<String> ids) throws IOException;
+
+  abstract void clear() throws IOException;
+
+  public long getLastPurged() {
+    return lastPurged;
+  }
+
+  abstract void addListener(MonitorUpdateListener listener);
 
   public interface QueryCollector {
 
@@ -66,6 +173,10 @@ interface QueryIndex extends Closeable {
 
   interface QueryBuilder {
     Query buildQuery(BiPredicate<String, BytesRef> termAcceptor) throws IOException;
+  }
+
+  interface CachePopulator {
+    void populateCacheWithIndex(Map<String, QueryCacheEntry> newCache) throws IOException;
   }
 
   public static final class DataValues {
@@ -85,7 +196,7 @@ interface QueryIndex extends Closeable {
     }
   }
 
-  class QueryTermFilter implements BiPredicate<String, BytesRef> {
+  static class QueryTermFilter implements BiPredicate<String, BytesRef> {
 
     private final Map<String, BytesRefHash> termsHash = new HashMap<>();
 
@@ -112,6 +223,50 @@ interface QueryIndex extends Closeable {
         return false;
       }
       return bytes.find(term) != -1;
+    }
+  }
+
+  // ---------------------------------------------
+  //  Helper classes...
+  // ---------------------------------------------
+
+  /** A Collector that decodes the stored query for each document hit. */
+  static final class MonitorQueryCollector extends SimpleCollector {
+
+    private final Map<String, QueryCacheEntry> queries;
+    private final QueryCollector matcher;
+    private final DataValues dataValues = new DataValues();
+
+    MonitorQueryCollector(Map<String, QueryCacheEntry> queries, QueryCollector matcher) {
+      this.queries = queries;
+      this.matcher = matcher;
+    }
+
+    @Override
+    public void setScorer(Scorable scorer) {
+      this.dataValues.scorer = scorer;
+    }
+
+    @Override
+    public void collect(int doc) throws IOException {
+      dataValues.advanceTo(doc);
+      BytesRef cache_id = dataValues.cacheId.lookupOrd(dataValues.cacheId.ordValue());
+      BytesRef query_id = dataValues.queryId.lookupOrd(dataValues.queryId.ordValue());
+      QueryCacheEntry query = queries.get(cache_id.utf8ToString());
+      matcher.matchQuery(query_id.utf8ToString(), query, dataValues);
+    }
+
+    @Override
+    public void doSetNextReader(LeafReaderContext context) throws IOException {
+      this.dataValues.cacheId = context.reader().getSortedDocValues(FIELDS.cache_id);
+      this.dataValues.queryId = context.reader().getSortedDocValues(FIELDS.query_id);
+      this.dataValues.mq = context.reader().getBinaryDocValues(FIELDS.mq);
+      this.dataValues.ctx = context;
+    }
+
+    @Override
+    public ScoreMode scoreMode() {
+      return matcher.scoreMode();
     }
   }
 }

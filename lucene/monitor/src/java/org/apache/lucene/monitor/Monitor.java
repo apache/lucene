@@ -50,8 +50,6 @@ public class Monitor implements Closeable {
 
   private final long commitBatchSize;
 
-  private final Boolean readonly;
-
   /**
    * Create a non-persistent Monitor instance with the default term-filtering Presearcher
    *
@@ -93,7 +91,6 @@ public class Monitor implements Closeable {
 
     this.analyzer = analyzer;
     this.presearcher = presearcher;
-    this.readonly = configuration.isReadOnly();
     if (configuration.isReadOnly()) {
       this.queryIndex = new ReadonlyQueryIndex(configuration);
     } else {
@@ -111,12 +108,7 @@ public class Monitor implements Closeable {
    * @throws IllegalStateException when Monitor is readonly
    */
   public void addQueryIndexUpdateListener(MonitorUpdateListener listener) {
-    if (isReadonly()) {
-      throw new IllegalStateException("Monitor is readony, cannot add a MonitorUpdateListener");
-    }
-    assert queryIndex instanceof WritableQueryIndex;
-    WritableQueryIndex writableQueryIndex = (WritableQueryIndex) queryIndex;
-    writableQueryIndex.addListener(listener);
+    queryIndex.addListener(listener);
   }
 
   /** @return Statistics for the internal query index and cache */
@@ -291,11 +283,6 @@ public class Monitor implements Closeable {
     final Set<String> ids = new HashSet<>();
     queryIndex.scan((id, query, dataValues) -> ids.add(id));
     return ids;
-  }
-
-  /** @return Boolean if Monitor is readonly */
-  public Boolean isReadonly() {
-    return readonly;
   }
 
   // For each query selected by the presearcher, pass on to a CandidateMatcher

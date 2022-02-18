@@ -18,23 +18,16 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
-class ReadonlyQueryIndex implements QueryIndex {
-  private final SearcherManager manager;
-  private final QueryDecomposer decomposer;
-  private final MonitorQuerySerializer serializer;
-
-  final Map<IndexReader.CacheKey, WritableQueryIndex.QueryTermFilter> termFilters = new HashMap<>();
+class ReadonlyQueryIndex extends QueryIndex {
 
   public ReadonlyQueryIndex(MonitorConfiguration configuration) throws IOException {
     if (configuration.getDirectoryProvider() == null) {
@@ -45,6 +38,7 @@ class ReadonlyQueryIndex implements QueryIndex {
     this.manager = new SearcherManager(directory, new TermsHashBuilder(termFilters));
     this.decomposer = configuration.getQueryDecomposer();
     this.serializer = configuration.getQuerySerializer();
+    this.populateQueryCache(serializer, decomposer);
   }
 
   @Override
@@ -53,92 +47,17 @@ class ReadonlyQueryIndex implements QueryIndex {
   }
 
   @Override
-  public MonitorQuery getQuery(String queryId) throws IOException {
-    if (serializer == null) {
-      throw new IllegalStateException(
-          "Cannot get queries from an index with no MonitorQuerySerializer");
-    }
-    BytesRef[] bytesHolder = new BytesRef[1];
-    search(
-        new TermQuery(new Term(WritableQueryIndex.FIELDS.query_id, queryId)),
-        (id, query, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
-    return serializer.deserialize(bytesHolder[0]);
-  }
-
-  @Override
-  public void scan(QueryCollector matcher) throws IOException {
-    search(new MatchAllDocsQuery(), matcher);
-  }
-
   long search(final Query query, QueryCollector matcher) throws IOException {
-    WritableQueryIndex.QueryBuilder builder = termFilter -> query;
+    QueryBuilder builder = termFilter -> query;
     return search(builder, matcher);
   }
 
-  static final class ReadonlyMonitorQueryCollector extends SimpleCollector {
-    private final QueryCollector matcher;
-    private final DataValues dataValues = new DataValues();
-    private final MonitorQuerySerializer serializer;
-    private final QueryDecomposer decomposer;
-
-    ReadonlyMonitorQueryCollector(
-        QueryCollector matcher, MonitorQuerySerializer serializer, QueryDecomposer decomposer) {
-      this.matcher = matcher;
-      this.serializer = serializer;
-      this.decomposer = decomposer;
-    }
-
-    @Override
-    public void setScorer(Scorable scorer) {
-      this.dataValues.scorer = scorer;
-    }
-
-    @Override
-    public void collect(int doc) throws IOException {
-      dataValues.advanceTo(doc);
-      BytesRef cache_id = dataValues.cacheId.lookupOrd(dataValues.cacheId.ordValue());
-      BytesRef query_id = dataValues.queryId.lookupOrd(dataValues.queryId.ordValue());
-      MonitorQuery mq = serializer.deserialize(dataValues.mq.binaryValue());
-      QueryCacheEntry query =
-          QueryCacheEntry.decompose(mq, decomposer).stream()
-              .filter(queryCacheEntry -> queryCacheEntry.cacheId.equals(cache_id.utf8ToString()))
-              .findFirst()
-              .orElse(null);
-      matcher.matchQuery(query_id.utf8ToString(), query, dataValues);
-    }
-
-    @Override
-    public void doSetNextReader(LeafReaderContext context) throws IOException {
-      this.dataValues.cacheId =
-          context.reader().getSortedDocValues(WritableQueryIndex.FIELDS.cache_id);
-      this.dataValues.queryId =
-          context.reader().getSortedDocValues(WritableQueryIndex.FIELDS.query_id);
-      this.dataValues.mq = context.reader().getBinaryDocValues(WritableQueryIndex.FIELDS.mq);
-      this.dataValues.ctx = context;
-    }
-
-    @Override
-    public ScoreMode scoreMode() {
-      return matcher.scoreMode();
-    }
-  }
-
   @Override
-  public long search(QueryIndex.QueryBuilder queryBuilder, QueryCollector matcher)
-      throws IOException {
+  public long search(QueryBuilder queryBuilder, QueryCollector matcher) throws IOException {
     IndexSearcher searcher = null;
     try {
       searcher = manager.acquire();
-
-      ReadonlyMonitorQueryCollector collector =
-          new ReadonlyMonitorQueryCollector(matcher, serializer, decomposer);
-      long buildTime = System.nanoTime();
-      Query query =
-          queryBuilder.buildQuery(
-              termFilters.get(searcher.getIndexReader().getReaderCacheHelper().getKey()));
-      buildTime = System.nanoTime() - buildTime;
-      searcher.search(query, collector);
-      return buildTime;
+      return searchInMemory(queryBuilder, matcher, searcher, this.queries);
     } finally {
       if (searcher != null) {
         manager.release(searcher);
@@ -147,8 +66,10 @@ class ReadonlyQueryIndex implements QueryIndex {
   }
 
   @Override
-  public void purgeCache() throws IOException {
-    throw new IllegalStateException("Monitor is readOnly cannot purge cache");
+  void purgeCache(CachePopulator populator) throws IOException {
+    final ConcurrentMap<String, QueryCacheEntry> newCache = new ConcurrentHashMap<>();
+    populator.populateCacheWithIndex(newCache);
+    queries = newCache;
   }
 
   @Override
@@ -163,11 +84,6 @@ class ReadonlyQueryIndex implements QueryIndex {
   }
 
   @Override
-  public int cacheSize() {
-    return 0;
-  }
-
-  @Override
   public void deleteQueries(List<String> ids) throws IOException {
     throw new IllegalStateException("Monitor is readOnly cannot delete queries");
   }
@@ -178,7 +94,7 @@ class ReadonlyQueryIndex implements QueryIndex {
   }
 
   @Override
-  public long getLastPurged() {
-    return 0;
+  public void addListener(MonitorUpdateListener listener) {
+    throw new IllegalStateException("Monitor is readOnly cannot register listeners");
   }
 }

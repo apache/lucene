@@ -37,7 +37,7 @@ public class MonitorConfiguration {
   private TimeUnit purgeFrequencyUnits = TimeUnit.MINUTES;
   private QueryDecomposer queryDecomposer = new QueryDecomposer();
   private MonitorQuerySerializer serializer;
-  private Boolean readOnly = false;
+  private boolean readOnly = false;
   private IOSupplier<Directory> directoryProvider = () -> new ByteBuffersDirectory();
 
   private static IndexWriterConfig defaultIndexWriterConfig() {
@@ -49,7 +49,7 @@ public class MonitorConfiguration {
     return iwc;
   }
 
-  public Boolean isReadOnly() {
+  public boolean isReadOnly() {
     return readOnly;
   }
 

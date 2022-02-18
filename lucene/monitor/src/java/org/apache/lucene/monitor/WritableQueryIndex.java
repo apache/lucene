@@ -26,27 +26,17 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.lucene.document.*;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 
-class WritableQueryIndex implements QueryIndex {
-
-  static final class FIELDS {
-    static final String query_id = "_query_id";
-    static final String cache_id = "_cache_id";
-    static final String mq = "_mq";
-  }
+class WritableQueryIndex extends QueryIndex {
 
   private final IndexWriter writer;
-  private final SearcherManager manager;
-  private final QueryDecomposer decomposer;
-  private final MonitorQuerySerializer serializer;
   private final Presearcher presearcher;
 
   /* Used to cache updates while a purge is ongoing */
@@ -56,16 +46,8 @@ class WritableQueryIndex implements QueryIndex {
   private final ReadWriteLock purgeLock = new ReentrantReadWriteLock();
   private final Object commitLock = new Object();
 
-  /* The current query cache */
-  private volatile ConcurrentMap<String, QueryCacheEntry> queries = new ConcurrentHashMap<>();
-  // NB this is not final because it can be replaced by purgeCache()
-
-  // package-private for testing
-  final Map<IndexReader.CacheKey, QueryTermFilter> termFilters = new HashMap<>();
-
   private final ScheduledExecutorService purgeExecutor;
   private final List<MonitorUpdateListener> listeners = new ArrayList<>();
-  private long lastPurged = -1;
 
   WritableQueryIndex(MonitorConfiguration configuration, Presearcher presearcher)
       throws IOException {
@@ -93,54 +75,9 @@ class WritableQueryIndex implements QueryIndex {
         configuration.getPurgeFrequencyUnits());
   }
 
+  @Override
   public void addListener(MonitorUpdateListener listener) {
     listeners.add(listener);
-  }
-
-  private void populateQueryCache(MonitorQuerySerializer serializer, QueryDecomposer decomposer)
-      throws IOException {
-    if (serializer == null) {
-      // No query serialization happening here - check that the cache is empty
-      IndexSearcher searcher = manager.acquire();
-      try {
-        if (searcher.count(new MatchAllDocsQuery()) != 0) {
-          throw new IllegalStateException(
-              "Attempting to open a non-empty monitor query index with no MonitorQuerySerializer");
-        }
-      } finally {
-        manager.release(searcher);
-      }
-      return;
-    }
-    Set<String> ids = new HashSet<>();
-    List<Exception> errors = new ArrayList<>();
-    purgeCache(
-        newCache ->
-            scan(
-                (id, cacheEntry, dataValues) -> {
-                  if (ids.contains(id)) {
-                    // this is a branch of a query that has already been reconstructed, but
-                    // then split by decomposition - we don't need to parse it again
-                    return;
-                  }
-                  ids.add(id);
-                  try {
-                    MonitorQuery mq = serializer.deserialize(dataValues.mq.binaryValue());
-                    for (QueryCacheEntry entry : QueryCacheEntry.decompose(mq, decomposer)) {
-                      newCache.put(entry.cacheId, entry);
-                    }
-                  } catch (Exception e) {
-                    errors.add(e);
-                  }
-                }));
-    if (errors.size() > 0) {
-      IllegalStateException e =
-          new IllegalStateException("Couldn't parse some queries from the index");
-      for (Exception parseError : errors) {
-        e.addSuppressed(parseError);
-      }
-      throw e;
-    }
   }
 
   @Override
@@ -210,29 +147,6 @@ class WritableQueryIndex implements QueryIndex {
   }
 
   @Override
-  public MonitorQuery getQuery(String queryId) throws IOException {
-    if (serializer == null) {
-      throw new IllegalStateException(
-          "Cannot get queries from an index with no MonitorQuerySerializer");
-    }
-    BytesRef[] bytesHolder = new BytesRef[1];
-    search(
-        new TermQuery(new Term(FIELDS.query_id, queryId)),
-        (id, query, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
-    return serializer.deserialize(bytesHolder[0]);
-  }
-
-  @Override
-  public void scan(QueryCollector matcher) throws IOException {
-    search(new MatchAllDocsQuery(), matcher);
-  }
-
-  long search(final Query query, QueryCollector matcher) throws IOException {
-    QueryBuilder builder = termFilter -> query;
-    return search(builder, matcher);
-  }
-
-  @Override
   public long search(QueryBuilder queryBuilder, QueryCollector matcher) throws IOException {
     IndexSearcher searcher = null;
     try {
@@ -246,14 +160,7 @@ class WritableQueryIndex implements QueryIndex {
         purgeLock.readLock().unlock();
       }
 
-      MonitorQueryCollector collector = new MonitorQueryCollector(queries, matcher);
-      long buildTime = System.nanoTime();
-      Query query =
-          queryBuilder.buildQuery(
-              termFilters.get(searcher.getIndexReader().getReaderCacheHelper().getKey()));
-      buildTime = System.nanoTime() - buildTime;
-      searcher.search(query, collector);
-      return buildTime;
+      return searchInMemory(queryBuilder, matcher, searcher, queries);
     } finally {
       if (searcher != null) {
         manager.release(searcher);
@@ -261,22 +168,13 @@ class WritableQueryIndex implements QueryIndex {
     }
   }
 
-  interface CachePopulator {
-    void populateCacheWithIndex(Map<String, QueryCacheEntry> newCache) throws IOException;
-  }
-
   @Override
   public void purgeCache() throws IOException {
-    purgeCache(
-        newCache ->
-            scan(
-                (id, query, dataValues) -> {
-                  if (query != null) newCache.put(query.cacheId, query);
-                }));
-    lastPurged = System.nanoTime();
+    super.purgeCache();
     listeners.forEach(MonitorUpdateListener::onPurge);
   }
 
+  @Override
   /**
    * Remove unused queries from the query cache.
    *
@@ -284,7 +182,7 @@ class WritableQueryIndex implements QueryIndex {
    *
    * @throws IOException on IO errors
    */
-  private synchronized void purgeCache(CachePopulator populator) throws IOException {
+  synchronized void purgeCache(CachePopulator populator) throws IOException {
 
     // Note on implementation
 
@@ -338,11 +236,6 @@ class WritableQueryIndex implements QueryIndex {
   }
 
   @Override
-  public int cacheSize() {
-    return queries.size();
-  }
-
-  @Override
   public void deleteQueries(List<String> ids) throws IOException {
     for (String id : ids) {
       writer.deleteDocuments(new Term(FIELDS.query_id, id));
@@ -356,54 +249,5 @@ class WritableQueryIndex implements QueryIndex {
     writer.deleteAll();
     commitWithoutNotify(Collections.emptyList());
     listeners.forEach(MonitorUpdateListener::afterClear);
-  }
-
-  @Override
-  public long getLastPurged() {
-    return lastPurged;
-  }
-
-  // ---------------------------------------------
-  //  Helper classes...
-  // ---------------------------------------------
-
-  /** A Collector that decodes the stored query for each document hit. */
-  static final class MonitorQueryCollector extends SimpleCollector {
-
-    private final Map<String, QueryCacheEntry> queries;
-    private final QueryCollector matcher;
-    private final DataValues dataValues = new DataValues();
-
-    MonitorQueryCollector(Map<String, QueryCacheEntry> queries, QueryCollector matcher) {
-      this.queries = queries;
-      this.matcher = matcher;
-    }
-
-    @Override
-    public void setScorer(Scorable scorer) {
-      this.dataValues.scorer = scorer;
-    }
-
-    @Override
-    public void collect(int doc) throws IOException {
-      dataValues.advanceTo(doc);
-      BytesRef cache_id = dataValues.cacheId.lookupOrd(dataValues.cacheId.ordValue());
-      BytesRef query_id = dataValues.queryId.lookupOrd(dataValues.queryId.ordValue());
-      QueryCacheEntry query = queries.get(cache_id.utf8ToString());
-      matcher.matchQuery(query_id.utf8ToString(), query, dataValues);
-    }
-
-    @Override
-    public void doSetNextReader(LeafReaderContext context) throws IOException {
-      this.dataValues.cacheId = context.reader().getSortedDocValues(FIELDS.cache_id);
-      this.dataValues.queryId = context.reader().getSortedDocValues(FIELDS.query_id);
-      this.dataValues.mq = context.reader().getBinaryDocValues(FIELDS.mq);
-      this.dataValues.ctx = context;
-    }
-
-    @Override
-    public ScoreMode scoreMode() {
-      return matcher.scoreMode();
-    }
   }
 }
