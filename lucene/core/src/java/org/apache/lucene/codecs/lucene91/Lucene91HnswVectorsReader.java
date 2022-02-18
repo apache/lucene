@@ -475,11 +475,10 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         }
       }
 
-      assert ord <= size;
-      if (ord == size) {
-        doc = NO_MORE_DOCS;
-      } else {
+      if (ord < size) {
         doc = ordToDocOperator.applyAsInt(ord);
+      } else {
+        doc = NO_MORE_DOCS;
       }
       return doc;
     }
