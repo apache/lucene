@@ -4,11 +4,19 @@ on:
   pull_request:
     branches:
     - '*'
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - '**.adoc'
 
   push:
     branches:
     - main
     - branch_9x
+    paths-ignore:
+      - '**.md'
+      - '**.txt'
+      - '**.adoc'
 
 jobs:
   # This runs all validation checks without tests.
