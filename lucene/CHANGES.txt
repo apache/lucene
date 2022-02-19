@@ -77,7 +77,7 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been deprecated and is no longer a supported extension point
   for user-created faceting implementations. (Greg Miller)
 
-* LUCENE-10400: Add constructors that take external resource Paths to dictionary classes in Kuromoji:
+* LUCENE-10400: Add constructors that take external resource Paths to dictionary classes in Kuromoji and Nori:
   ConnectionCosts, TokenInfoDictionary, and UnknownDictionary. Old constructors that take resource scheme and
   resource path in those classes are deprecated; These are replaced with the new constructors and planned to be
   removed in a future release. (Tomoko Uchida, Uwe Schindler, Mike Sokolov)
