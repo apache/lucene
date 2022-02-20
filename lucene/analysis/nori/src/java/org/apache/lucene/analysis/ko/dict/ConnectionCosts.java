@@ -22,7 +22,6 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -38,20 +37,6 @@ public final class ConnectionCosts {
 
   private final ByteBuffer buffer;
   private final int forwardSize;
-
-  /**
-   * @param scheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param resourcePath - where to load resources from, without the ".dat" suffix
-   */
-  @Deprecated(forRemoval = true, since = "9.1")
-  @SuppressWarnings("removal")
-  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String resourcePath)
-      throws IOException {
-    this(
-        scheme == BinaryDictionary.ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + FILENAME_SUFFIX))
-            : ConnectionCosts::getClassResource);
-  }
 
   /**
    * Create a {@link ConnectionCosts} from an external resource path.

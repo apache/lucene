@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
@@ -45,30 +44,6 @@ public final class TokenInfoDictionary extends BinaryDictionary {
         () -> getClassResource(POSDICT_FILENAME_SUFFIX),
         () -> getClassResource(DICT_FILENAME_SUFFIX),
         () -> getClassResource(FST_FILENAME_SUFFIX));
-  }
-
-  /**
-   * @param resourceScheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
-   *     scheme only, use this class's name as the path.
-   */
-  @Deprecated(forRemoval = true, since = "9.1")
-  @SuppressWarnings("removal")
-  public TokenInfoDictionary(ResourceScheme resourceScheme, String resourcePath)
-      throws IOException {
-    this(
-        resourceScheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX))
-            : () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
-        resourceScheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX))
-            : () -> getClassResource(POSDICT_FILENAME_SUFFIX),
-        resourceScheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX))
-            : () -> getClassResource(DICT_FILENAME_SUFFIX),
-        resourceScheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + FST_FILENAME_SUFFIX))
-            : () -> getClassResource(FST_FILENAME_SUFFIX));
   }
 
   /**
