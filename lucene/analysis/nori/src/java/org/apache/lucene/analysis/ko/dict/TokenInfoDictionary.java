@@ -19,8 +19,13 @@ package org.apache.lucene.analysis.ko.dict;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
 
@@ -35,7 +40,11 @@ public final class TokenInfoDictionary extends BinaryDictionary {
   private final TokenInfoFST fst;
 
   private TokenInfoDictionary() throws IOException {
-    this(ResourceScheme.CLASSPATH, null);
+    this(
+        () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
+        () -> getClassResource(POSDICT_FILENAME_SUFFIX),
+        () -> getClassResource(DICT_FILENAME_SUFFIX),
+        () -> getClassResource(FST_FILENAME_SUFFIX));
   }
 
   /**
@@ -43,15 +52,62 @@ public final class TokenInfoDictionary extends BinaryDictionary {
    * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
    *     scheme only, use this class's name as the path.
    */
+  @Deprecated(forRemoval = true, since = "9.1")
+  @SuppressWarnings("removal")
   public TokenInfoDictionary(ResourceScheme resourceScheme, String resourcePath)
       throws IOException {
-    super(resourceScheme, resourcePath);
+    this(
+        resourceScheme == ResourceScheme.FILE
+            ? () -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX))
+            : () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
+        resourceScheme == ResourceScheme.FILE
+            ? () -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX))
+            : () -> getClassResource(POSDICT_FILENAME_SUFFIX),
+        resourceScheme == ResourceScheme.FILE
+            ? () -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX))
+            : () -> getClassResource(DICT_FILENAME_SUFFIX),
+        resourceScheme == ResourceScheme.FILE
+            ? () -> Files.newInputStream(Paths.get(resourcePath + FST_FILENAME_SUFFIX))
+            : () -> getClassResource(FST_FILENAME_SUFFIX));
+  }
+
+  /**
+   * Create a {@link TokenInfoDictionary} from an external resource path.
+   *
+   * @param targetMapFile where to load target map resource
+   * @param posDictFile where to load POS dictionary resource
+   * @param dictFile where to load dictionary entries resource
+   * @param fstFile where to load encoded FST data resource
+   * @throws IOException if resource was not found or broken
+   */
+  public TokenInfoDictionary(Path targetMapFile, Path posDictFile, Path dictFile, Path fstFile)
+      throws IOException {
+    this(
+        () -> Files.newInputStream(targetMapFile),
+        () -> Files.newInputStream(posDictFile),
+        () -> Files.newInputStream(dictFile),
+        () -> Files.newInputStream(fstFile));
+  }
+
+  private TokenInfoDictionary(
+      IOSupplier<InputStream> targetMapResource,
+      IOSupplier<InputStream> posResource,
+      IOSupplier<InputStream> dictResource,
+      IOSupplier<InputStream> fstResource)
+      throws IOException {
+    super(targetMapResource, posResource, dictResource);
     FST<Long> fst;
-    try (InputStream is = new BufferedInputStream(getResource(FST_FILENAME_SUFFIX))) {
+    try (InputStream is = new BufferedInputStream(fstResource.get())) {
       DataInput in = new InputStreamDataInput(is);
       fst = new FST<>(in, in, PositiveIntOutputs.getSingleton());
     }
     this.fst = new TokenInfoFST(fst);
+  }
+
+  private static InputStream getClassResource(String suffix) throws IOException {
+    final String resourcePath = TokenInfoDictionary.class.getSimpleName() + suffix;
+    return IOUtils.requireResourceNonNull(
+        TokenInfoDictionary.class.getResourceAsStream(resourcePath), resourcePath);
   }
 
   public TokenInfoFST getFST() {
