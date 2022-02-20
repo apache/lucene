@@ -188,6 +188,9 @@ Improvements
 
 * LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
   (Patrick Zhai)
+
+* LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
+  (Uihyun Kim)
   
 Optimizations
 ---------------------
