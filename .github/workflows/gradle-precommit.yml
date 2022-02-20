@@ -16,6 +16,7 @@ jobs:
     outputs:
       matrix: ${{ steps.output-matrix.outputs.build-matrix }}
     steps:
+    - uses: actions/checkout@v2
     - id: output-matrix
       uses: ./.github/actions/setup-matrix
 
