@@ -14,10 +14,10 @@ jobs:
   set-matrix:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.output-matrix.outputs.matrix }}
+      matrix: ${{ steps.output-matrix.outputs.build-matrix }}
     steps:
     - id: output-matrix
-      run: echo "::set-output name=matrix::{\"os\":[\"ubuntu-latest\"],\"java\":[\"17\"],\"distribution\":[\"temurin\"]}"
+      uses: ./.github/actions/setup-matrix
 
   # This runs all validation checks without tests.
   checks:

@@ -1,0 +1,13 @@
+name: 'Setup build matrix'
+
+outputs:
+  build-matrix:
+    description: 'Build matrix'
+    value: ${{ steps.output-matrix.outputs.matrix }}
+
+runs:
+  using: "composite"
+  steps:
+  - id: output-matrix
+    run: echo "::set-output name=matrix::{\"os\":[\"ubuntu-latest\"],\"java\":[\"17\"],\"distribution\":[\"temurin\"]}"
+    shell: bash
