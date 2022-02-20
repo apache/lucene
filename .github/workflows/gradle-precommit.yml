@@ -12,6 +12,7 @@ on:
 
 jobs:
   set-matrix:
+    name: Set build matrix for all jobs
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.output-matrix.outputs.build-matrix }}
@@ -28,11 +29,6 @@ jobs:
 
     strategy:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
-      #matrix:
-      #  # Operating systems to run on.
-      #  os: [ubuntu-latest]
-      #  # Test JVMs.
-      #  java: [ '17' ]
 
     steps:
     - uses: actions/checkout@v2
@@ -72,13 +68,6 @@ jobs:
 
     strategy:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
-      #matrix:
-        # Operating systems to run on.
-        # windows-latest: fairly slow to build and results in odd errors (see LUCENE-10167)
-        # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
-        #os: [ubuntu-latest]
-        # Test JVMs.
-        #java: [ '17' ]
 
     steps:
     - uses: actions/checkout@v2
