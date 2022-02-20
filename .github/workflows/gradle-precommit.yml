@@ -17,7 +17,7 @@ jobs:
       matrix: ${{ steps.output-matrix.outputs.matrix }}
     steps:
     - id: output-matrix
-      run: echo "::set-output name=matrix::{\"os\":[\"ubuntu-latest\"],\"java\":[\"17\"]}"
+      run: echo "::set-output name=matrix::{\"os\":[\"ubuntu-latest\"],\"java\":[\"17\"],\"distribution\":[\"temurin\"]}"
 
   # This runs all validation checks without tests.
   checks:
@@ -39,7 +39,7 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v2
       with:
-        distribution: 'temurin'
+        distribution: ${{ matrix.distribution }}
         java-version: ${{ matrix.java }}
         java-package: jdk
 
@@ -85,7 +85,7 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt-hotspot'
+        distribution: ${{ matrix.distribution }}
         java-version: ${{ matrix.java }}
         java-package: jdk
 
