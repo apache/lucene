@@ -73,11 +73,7 @@ public final class CharacterDefinition {
   public static final byte HANJANUMERIC = (byte) CharacterClass.HANJANUMERIC.ordinal();
 
   private CharacterDefinition() throws IOException {
-    InputStream is = null;
-    boolean success = false;
-    try {
-      is = BinaryDictionary.getClassResource(getClass(), FILENAME_SUFFIX);
-      is = new BufferedInputStream(is);
+    try (InputStream is = new BufferedInputStream(getClassResource())) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       in.readBytes(characterCategoryMap, 0, characterCategoryMap.length);
@@ -86,14 +82,13 @@ public final class CharacterDefinition {
         invokeMap[i] = (b & 0x01) != 0;
         groupMap[i] = (b & 0x02) != 0;
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(is);
-      } else {
-        IOUtils.closeWhileHandlingException(is);
-      }
     }
+  }
+
+  private static InputStream getClassResource() throws IOException {
+    final String resourcePath = CharacterDefinition.class.getSimpleName() + FILENAME_SUFFIX;
+    return IOUtils.requireResourceNonNull(
+        CharacterDefinition.class.getResourceAsStream(resourcePath), resourcePath);
   }
 
   public byte getCharacterClass(char c) {

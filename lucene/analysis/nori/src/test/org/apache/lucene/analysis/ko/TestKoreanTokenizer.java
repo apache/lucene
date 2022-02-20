@@ -473,6 +473,7 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
   }
 
   // Make sure loading custom dictionaries from classpath works:
+  @SuppressWarnings("removal")
   public void testCustomDictionary() throws Exception {
     Tokenizer tokenizer =
         new KoreanTokenizer(
