@@ -8,6 +8,8 @@ outputs:
 runs:
   using: "composite"
   steps:
+  - id: output-os
+    run: echo "::set-output name=os::[\"ubuntu-latest\"]"
   - id: output-matrix
-    run: echo "::set-output name=matrix::{\"os\":[\"ubuntu-latest\"],\"java\":[\"17\"],\"distribution\":[\"temurin\"]}"
+    run: echo "::set-output name=matrix::{\"os\":${{ steps.ouput-os.outputs.os }},\"java\":[\"17\"],\"distribution\":[\"temurin\"]}"
     shell: bash
