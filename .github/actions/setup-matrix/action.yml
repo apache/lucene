@@ -12,5 +12,5 @@ runs:
     run: echo "::set-output name=os::[\"ubuntu-latest\"]"
     shell: bash
   - id: output-matrix
-    run: echo "::set-output name=matrix::{\"os\":${{ steps.ouput-os.outputs.os }},\"java\":[\"17\"],\"distribution\":[\"temurin\"]}"
+    run: echo "::set-output name=matrix::{\"os\":${{steps.ouput-os.outputs.os}},\"java\":[\"17\"],\"distribution\":[\"temurin\"]}"
     shell: bash
