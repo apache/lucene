@@ -168,14 +168,14 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
   public void testEmptyPoints() throws IOException {
     PointValues values = new DummyPointValues(0, 0);
     DocIdSetBuilder builder = new DocIdSetBuilder(1, values, "foo");
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    assertEquals(0, builder.docCount);
   }
 
   public void testLeverageStats() throws IOException {
     // single-valued points
     PointValues values = new DummyPointValues(42, 42);
     DocIdSetBuilder builder = new DocIdSetBuilder(100, values, "foo");
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    assertEquals(42, builder.docCount);
     assertFalse(builder.multivalued);
     DocIdSetBuilder.BulkAdder adder = builder.grow(2);
     adder.add(5);
@@ -187,30 +187,30 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     // multi-valued points
     values = new DummyPointValues(42, 63);
     builder = new DocIdSetBuilder(100, values, "foo");
-    assertEquals(1.5, builder.numValuesPerDoc, 0d);
+    assertEquals(42, builder.docCount);
     assertTrue(builder.multivalued);
-    adder = builder.grow(2);
+    adder = builder.grow(100);
     adder.add(5);
     adder.add(7);
     set = builder.build();
     assertTrue(set instanceof BitDocIdSet);
-    assertEquals(1, set.iterator().cost()); // it thinks the same doc was added twice
+    assertEquals(42, set.iterator().cost()); // it thinks all docs have been added
 
     // incomplete stats
     values = new DummyPointValues(42, -1);
     builder = new DocIdSetBuilder(100, values, "foo");
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    assertEquals(1d, builder.docCount, 42);
     assertTrue(builder.multivalued);
 
     values = new DummyPointValues(-1, 84);
     builder = new DocIdSetBuilder(100, values, "foo");
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    assertEquals(Integer.MAX_VALUE, builder.docCount);
     assertTrue(builder.multivalued);
 
     // single-valued terms
     Terms terms = new DummyTerms(42, 42);
     builder = new DocIdSetBuilder(100, terms);
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    assertEquals(42, builder.docCount);
     assertFalse(builder.multivalued);
     adder = builder.grow(2);
     adder.add(5);
@@ -222,24 +222,24 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     // multi-valued terms
     terms = new DummyTerms(42, 63);
     builder = new DocIdSetBuilder(100, terms);
-    assertEquals(1.5, builder.numValuesPerDoc, 0d);
+    assertEquals(42, builder.docCount);
     assertTrue(builder.multivalued);
-    adder = builder.grow(2);
+    adder = builder.grow(100);
     adder.add(5);
     adder.add(7);
     set = builder.build();
     assertTrue(set instanceof BitDocIdSet);
-    assertEquals(1, set.iterator().cost()); // it thinks the same doc was added twice
+    assertEquals(42, set.iterator().cost()); // it thinks all docs have been added
 
     // incomplete stats
     terms = new DummyTerms(42, -1);
     builder = new DocIdSetBuilder(100, terms);
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    assertEquals(42, builder.docCount, 0d);
     assertTrue(builder.multivalued);
 
     terms = new DummyTerms(-1, 84);
     builder = new DocIdSetBuilder(100, terms);
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    assertEquals(Integer.MAX_VALUE, builder.docCount);
     assertTrue(builder.multivalued);
   }
 

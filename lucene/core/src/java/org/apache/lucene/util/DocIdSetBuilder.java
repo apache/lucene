@@ -102,7 +102,7 @@ public final class DocIdSetBuilder {
   private final int threshold;
   // pkg-private for testing
   final boolean multivalued;
-  final double numValuesPerDoc;
+  final int docCount;
 
   private List<Buffer> buffers = new ArrayList<>();
   private int totalAllocated; // accumulated size of the allocated buffers
@@ -136,16 +136,17 @@ public final class DocIdSetBuilder {
   DocIdSetBuilder(int maxDoc, int docCount, long valueCount) {
     this.maxDoc = maxDoc;
     this.multivalued = docCount < 0 || docCount != valueCount;
-    if (docCount <= 0 || valueCount < 0) {
-      // assume one value per doc, this means the cost will be overestimated
+
+    if (docCount < 0) {
+      // this means the cost will be overestimated
       // if the docs are actually multi-valued
-      this.numValuesPerDoc = 1;
+      this.docCount = Integer.MAX_VALUE;
     } else {
       // otherwise compute from index stats
-      this.numValuesPerDoc = (double) valueCount / docCount;
+      this.docCount = docCount;
     }
 
-    assert numValuesPerDoc >= 1 : "valueCount=" + valueCount + " docCount=" + docCount;
+    assert this.docCount >= 0 : "valueCount=" + valueCount + " docCount=" + docCount;
 
     // For ridiculously small sets, we'll just use a sorted int[]
     // maxDoc >>> 7 is a good value if you want to save memory, lower values
@@ -267,8 +268,7 @@ public final class DocIdSetBuilder {
     try {
       if (bitSet != null) {
         assert counter >= 0;
-        final long cost = Math.round(counter / numValuesPerDoc);
-        return new BitDocIdSet(bitSet, cost);
+        return new BitDocIdSet(bitSet, Math.min(counter, docCount));
       } else {
         Buffer concatenated = concat(buffers);
         LSBRadixSorter sorter = new LSBRadixSorter();

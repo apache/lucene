@@ -47,6 +47,7 @@ import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.VirtualMethod;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -1096,10 +1097,12 @@ public class AssertingLeafReader extends FilterLeafReader {
   public static class AssertingPointValues extends PointValues {
     private final Thread creationThread = Thread.currentThread();
     private final PointValues in;
+    private final int maxDoc;
 
     /** Sole constructor. */
     public AssertingPointValues(PointValues in, int maxDoc) {
       this.in = in;
+      this.maxDoc = maxDoc;
       assertStats(maxDoc);
     }
 
@@ -1118,6 +1121,17 @@ public class AssertingLeafReader extends FilterLeafReader {
     public PointTree getPointTree() throws IOException {
       assertThread("Points", creationThread);
       return new AssertingPointTree(in, in.getPointTree());
+    }
+
+    @Override
+    public void intersect(IntersectVisitor visitor) throws IOException {
+      in.intersect(
+          new AssertingIntersectVisitor(
+              maxDoc,
+              getNumDimensions(),
+              getNumIndexDimensions(),
+              getBytesPerDimension(),
+              visitor));
     }
 
     @Override
@@ -1212,22 +1226,12 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public void visitDocIDs(IntersectVisitor visitor) throws IOException {
-      in.visitDocIDs(
-          new AssertingIntersectVisitor(
-              pointValues.getNumDimensions(),
-              pointValues.getNumIndexDimensions(),
-              pointValues.getBytesPerDimension(),
-              visitor));
+      in.visitDocIDs(visitor);
     }
 
     @Override
     public void visitDocValues(IntersectVisitor visitor) throws IOException {
-      in.visitDocValues(
-          new AssertingIntersectVisitor(
-              pointValues.getNumDimensions(),
-              pointValues.getNumIndexDimensions(),
-              pointValues.getBytesPerDimension(),
-              visitor));
+      in.visitDocValues(visitor);
     }
   }
 
@@ -1244,12 +1248,16 @@ public class AssertingLeafReader extends FilterLeafReader {
     final byte[] lastMinPackedValue;
     final byte[] lastMaxPackedValue;
     private Relation lastCompareResult;
+    private final FixedBitSet docCounter;
+    private final int maxDoc;
     private int lastDocID = -1;
     private int docBudget;
 
     AssertingIntersectVisitor(
-        int numDataDims, int numIndexDims, int bytesPerDim, IntersectVisitor in) {
+        int maxDoc, int numDataDims, int numIndexDims, int bytesPerDim, IntersectVisitor in) {
       this.in = in;
+      this.docCounter = new FixedBitSet(maxDoc);
+      this.maxDoc = maxDoc;
       this.numDataDims = numDataDims;
       this.numIndexDims = numIndexDims;
       this.bytesPerDim = bytesPerDim;
@@ -1264,8 +1272,9 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public void visit(int docID) throws IOException {
-      assert --docBudget >= 0 : "called add() more times than the last call to grow() reserved";
-
+      if (docCounter.getAndSet(docID) == false) {
+        assert --docBudget >= 0 : "called add() more times than the last call to grow() reserved";
+      }
       // This method, not filtering each hit, should only be invoked when the cell is inside the
       // query shape:
       assert lastCompareResult == null || lastCompareResult == Relation.CELL_INSIDE_QUERY;
@@ -1274,7 +1283,9 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public void visit(int docID, byte[] packedValue) throws IOException {
-      assert --docBudget >= 0 : "called add() more times than the last call to grow() reserved";
+      if (docCounter.getAndSet(docID) == false) {
+        assert --docBudget >= 0 : "called add() more times than the last call to grow() reserved";
+      }
 
       // This method, to filter each doc's value, should only be invoked when the cell crosses the
       // query shape:
@@ -1329,6 +1340,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     public void grow(int count) {
       in.grow(count);
       docBudget = count;
+      docCounter.clear(0, maxDoc);
     }
 
     @Override
