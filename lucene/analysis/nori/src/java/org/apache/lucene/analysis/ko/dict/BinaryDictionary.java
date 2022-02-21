@@ -33,13 +33,6 @@ import org.apache.lucene.util.IntsRef;
 /** Base class for a binary-encoded in-memory dictionary. */
 public abstract class BinaryDictionary implements Dictionary {
 
-  /** Used to specify where (dictionary) resources get loaded from. */
-  @Deprecated(forRemoval = true, since = "9.1")
-  public enum ResourceScheme {
-    CLASSPATH,
-    FILE
-  }
-
   public static final String TARGETMAP_FILENAME_SUFFIX = "$targetMap.dat";
   public static final String DICT_FILENAME_SUFFIX = "$buffer.dat";
   public static final String POSDICT_FILENAME_SUFFIX = "$posDict.dat";

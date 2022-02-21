@@ -15,7 +15,7 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been make pkg-private and serves only as an internal
   implementation detail of taxonomy-faceting. (Greg Miller)
 
-* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji (Tomoko Uchida)
+* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji and Nori (Tomoko Uchida)
 
 New Features
 ---------------------
@@ -188,6 +188,9 @@ Improvements
 
 * LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
   (Patrick Zhai)
+
+* LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
+  (Uihyun Kim)
   
 Optimizations
 ---------------------
@@ -228,6 +231,8 @@ Optimizations
   (Adrien Grand)
 
 * LUCENE-10408 Better encoding of doc Ids in vectors. (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
+
+* LUCENE-10424 Optimize the "everything matches" case for count query in PointRangeQuery. (Ignacio Vera, Lu Xugang)
 
 * LUCENE-10084: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever terms
   or points have a docCount that is equal to maxDoc. (Vigya Sharma)

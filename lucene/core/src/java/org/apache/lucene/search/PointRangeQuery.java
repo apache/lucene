@@ -391,6 +391,10 @@ public abstract class PointRangeQuery extends Query {
             && numDims == 1
             && values.getDocCount() == values.size()) {
           // if all documents have at-most one point
+          if (relate(values.getMinPackedValue(), values.getMaxPackedValue())
+              == Relation.CELL_INSIDE_QUERY) {
+            return values.getDocCount();
+          }
           return (int) pointCount(values.getPointTree(), this::relate, this::matches);
         }
         return super.count(context);
