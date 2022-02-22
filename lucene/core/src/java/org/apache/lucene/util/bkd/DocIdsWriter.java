@@ -17,6 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
@@ -26,8 +27,10 @@ import org.apache.lucene.util.FixedBitSet;
 
 final class DocIdsWriter {
 
-  private static final byte CONTINUOUS_IDS = (byte) -2;
-  private static final byte BITSET_IDS = (byte) -1;
+  private static final byte CONTINUOUS_IDS_DESC = (byte) -4;
+  private static final byte BITSET_IDS_DESC = (byte) -3;
+  private static final byte CONTINUOUS_IDS_ASC = (byte) -2;
+  private static final byte BITSET_IDS_ASC = (byte) -1;
   private static final byte DELTA_FOR_UTIL = (byte) 32 + 16;
   private static final byte BPV_24 = (byte) 32 + 24;
   private static final byte BPV_32 = (byte) 32;
@@ -43,27 +46,46 @@ final class DocIdsWriter {
     forUtil = new BKDForUtil(maxPointsInLeaf);
   }
 
+  private boolean isStrictlySorted(boolean asc, int[] docIds, int start, int count) {
+    if (asc) {
+      for (int i = start + 1; i < count; i++) {
+        if (docIds[i] <= docIds[i - 1]) {
+          return false;
+        }
+      }
+    } else {
+      for (int i = start + 1; i < count; i++) {
+        if (docIds[i] >= docIds[i - 1]) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   void writeDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
     // docs can be sorted either when all docs in a block have the same value
     // or when a segment is sorted
     boolean strictlySorted = true;
+    boolean asc = count > 1 && docIds[1] > docIds[0];
     int min = docIds[0];
     int max = docIds[0];
     for (int i = 1; i < count; ++i) {
       int last = docIds[start + i - 1];
       int current = docIds[start + i];
-      if (last >= current) {
+      if (last == current || (asc ^ (current > last))) {
         strictlySorted = false;
       }
       min = Math.min(min, current);
       max = Math.max(max, current);
     }
+    assert !strictlySorted || isStrictlySorted(asc, docIds, start, count) : Arrays.toString(docIds);
 
     int min2max = max - min + 1;
     if (strictlySorted) {
       if (min2max == count) {
         // continuous ids, typically happens when segment is sorted
-        out.writeByte(CONTINUOUS_IDS);
+        out.writeByte(asc ? CONTINUOUS_IDS_ASC : CONTINUOUS_IDS_DESC);
         out.writeVInt(docIds[start]);
         return;
       } else if (min2max <= (count << 4)) {
@@ -71,8 +93,16 @@ final class DocIdsWriter {
         // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid
         // expanding too much storage.
         // A field with lower cardinality will have higher probability to trigger this optimization.
-        out.writeByte(BITSET_IDS);
-        writeIdsAsBitSet(docIds, start, count, out);
+        if (asc) {
+          out.writeByte(BITSET_IDS_ASC);
+          writeIdsAsBitSet(docIds, start, count, out);
+        } else {
+          out.writeByte(BITSET_IDS_DESC);
+          for (int i = start; i < count; i++) { // reverse
+            scratch[count - 1 - i] = docIds[i];
+          }
+          writeIdsAsBitSet(scratch, start, count, out);
+        }
         return;
       }
     }
@@ -132,11 +162,17 @@ final class DocIdsWriter {
   void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
-      case CONTINUOUS_IDS:
-        readContinuousIds(in, count, docIDs);
+      case CONTINUOUS_IDS_ASC:
+        readContinuousIds(in, count, docIDs, true);
         break;
-      case BITSET_IDS:
-        readBitSet(in, count, docIDs);
+      case CONTINUOUS_IDS_DESC:
+        readContinuousIds(in, count, docIDs, false);
+        break;
+      case BITSET_IDS_ASC:
+        readBitSet(in, count, docIDs, true);
+        break;
+      case BITSET_IDS_DESC:
+        readBitSet(in, count, docIDs, false);
         break;
       case DELTA_FOR_UTIL:
         readDelta16(in, count, docIDs);
@@ -180,20 +216,36 @@ final class DocIdsWriter {
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, int[] docIDs) throws IOException {
+  private static void readContinuousIds(IndexInput in, int count, int[] docIDs, boolean asc)
+      throws IOException {
     int start = in.readVInt();
-    for (int i = 0; i < count; i++) {
-      docIDs[i] = start + i;
+    if (asc) {
+      for (int i = 0; i < count; i++) {
+        docIDs[i] = start + i;
+      }
+    } else {
+      for (int i = 0; i < count; i++) {
+        docIDs[i] = start - i;
+      }
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
+  private static void readBitSet(IndexInput in, int count, int[] docIDs, boolean asc)
+      throws IOException {
     DocIdSetIterator iterator = readBitSetIterator(in, count);
-    int docId, pos = 0;
-    while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      docIDs[pos++] = docId;
+    if (asc) {
+      int docId, pos = 0;
+      while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        docIDs[pos++] = docId;
+      }
+      assert pos == count : "pos: " + pos + "count: " + count;
+    } else {
+      int docId, pos = count - 1;
+      while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        docIDs[pos--] = docId;
+      }
+      assert pos == -1 : "pos: " + pos + "count: " + count;
     }
-    assert pos == count : "pos: " + pos + "count: " + count;
   }
 
   private static void readLegacyDeltaVInts(IndexInput in, int count, int[] docIDs)
@@ -228,14 +280,21 @@ final class DocIdsWriter {
   /**
    * Read {@code count} integers and feed the result directly to {@link
    * IntersectVisitor#visit(int)}.
+   *
+   * <p><b>NOTE</b>: The doc ids could probably be visited in the different order from the write
+   * side.
    */
   void readInts(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
-      case CONTINUOUS_IDS:
-        readContinuousIds(in, count, visitor);
+      case CONTINUOUS_IDS_ASC:
+        readContinuousIds(in, count, visitor, true);
         break;
-      case BITSET_IDS:
+      case CONTINUOUS_IDS_DESC:
+        readContinuousIds(in, count, visitor, false);
+        break;
+      case BITSET_IDS_ASC:
+      case BITSET_IDS_DESC:
         readBitSet(in, count, visitor);
         break;
       case DELTA_FOR_UTIL:
@@ -294,9 +353,10 @@ final class DocIdsWriter {
     visitor.visit(bitSetIterator);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
-    int start = in.readVInt();
+  private static void readContinuousIds(
+      IndexInput in, int count, IntersectVisitor visitor, boolean asc) throws IOException {
+    int first = in.readVInt();
+    int start = asc ? first : first - count + 1;
     int extra = start & 63;
     int offset = start - extra;
     int numBits = count + extra;

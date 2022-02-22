@@ -72,6 +72,9 @@ public class TestDocIdsWriter extends LuceneTestCase {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
         }
         Arrays.sort(docIDs);
+        if (random().nextBoolean()) {
+          reverse(docIDs);
+        }
         test(dir, docIDs, legacy);
       }
     }
@@ -103,8 +106,20 @@ public class TestDocIdsWriter extends LuceneTestCase {
           set.add(small + random().nextInt(size * 16));
         }
         int[] docIDs = set.stream().mapToInt(t -> t).sorted().toArray();
+        if (random().nextBoolean()) {
+          reverse(docIDs);
+        }
         test(dir, docIDs, false);
       }
+    }
+  }
+
+  private void reverse(int[] docIDs) {
+    int temp;
+    for (int i = 0; i < docIDs.length / 2; ++i) {
+      temp = docIDs[i];
+      docIDs[i] = docIDs[docIDs.length - i - 1];
+      docIDs[docIDs.length - i - 1] = temp;
     }
   }
 
@@ -114,9 +129,12 @@ public class TestDocIdsWriter extends LuceneTestCase {
       for (int iter = 0; iter < numIters; ++iter) {
         int size = 1 + random().nextInt(5000);
         int[] docIDs = new int[size];
-        int start = random().nextInt(1000000);
+        int start = random().nextInt(size, 1000000);
         for (int i = 0; i < docIDs.length; i++) {
           docIDs[i] = start + i;
+        }
+        if (random().nextBoolean()) {
+          reverse(docIDs);
         }
         test(dir, docIDs, false);
       }
@@ -166,6 +184,9 @@ public class TestDocIdsWriter extends LuceneTestCase {
               throw new UnsupportedOperationException();
             }
           });
+      // ignore order
+      Arrays.sort(ints);
+      Arrays.sort(read);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }
