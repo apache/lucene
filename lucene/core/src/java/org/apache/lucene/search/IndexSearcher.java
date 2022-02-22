@@ -963,10 +963,7 @@ public class IndexSearcher {
     long sumTotalTermFreq = 0;
     long sumDocFreq = 0;
     for (LeafReaderContext leaf : reader.leaves()) {
-      final Terms terms = leaf.reader().terms(field);
-      if (terms == null) {
-        continue;
-      }
+      final Terms terms = Terms.getTerms(leaf.reader(), field);
       docCount += terms.getDocCount();
       sumTotalTermFreq += terms.getSumTotalTermFreq();
       sumDocFreq += terms.getSumDocFreq();
