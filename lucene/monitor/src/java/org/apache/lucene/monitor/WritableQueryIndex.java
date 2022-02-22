@@ -53,6 +53,7 @@ class WritableQueryIndex extends QueryIndex {
       throws IOException {
 
     this.writer = configuration.buildIndexWriter();
+    this.queries = new ConcurrentHashMap<>();
     this.manager = new SearcherManager(writer, true, true, new TermsHashBuilder(termFilters));
     this.decomposer = configuration.getQueryDecomposer();
     this.serializer = configuration.getQuerySerializer();
@@ -170,7 +171,13 @@ class WritableQueryIndex extends QueryIndex {
 
   @Override
   public void purgeCache() throws IOException {
-    super.purgeCache();
+    purgeCache(
+        newCache ->
+            scan(
+                (id, query, dataValues) -> {
+                  if (query != null) newCache.put(query.cacheId, query);
+                }));
+    lastPurged = System.nanoTime();
     listeners.forEach(MonitorUpdateListener::onPurge);
   }
 
@@ -226,8 +233,8 @@ class WritableQueryIndex extends QueryIndex {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(manager, writer, writer.getDirectory());
     purgeExecutor.shutdown();
+    IOUtils.close(manager, writer, writer.getDirectory());
   }
 
   @Override

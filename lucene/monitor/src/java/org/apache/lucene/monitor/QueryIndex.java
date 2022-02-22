@@ -20,8 +20,6 @@ package org.apache.lucene.monitor;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiPredicate;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
@@ -41,7 +39,7 @@ abstract class QueryIndex implements Closeable {
   protected long lastPurged = -1;
 
   /* The current query cache */
-  protected volatile ConcurrentMap<String, QueryCacheEntry> queries = new ConcurrentHashMap<>();
+  protected volatile Map<String, QueryCacheEntry> queries;
   // NB this is not final because it can be replaced by purgeCache()
 
   // package-private for testing
@@ -134,15 +132,7 @@ abstract class QueryIndex implements Closeable {
 
   abstract long search(QueryBuilder queryBuilder, QueryCollector matcher) throws IOException;
 
-  public void purgeCache() throws IOException {
-    purgeCache(
-        newCache ->
-            scan(
-                (id, query, dataValues) -> {
-                  if (query != null) newCache.put(query.cacheId, query);
-                }));
-    lastPurged = System.nanoTime();
-  }
+  public abstract void purgeCache() throws IOException;
 
   abstract void purgeCache(CachePopulator populator) throws IOException;
 

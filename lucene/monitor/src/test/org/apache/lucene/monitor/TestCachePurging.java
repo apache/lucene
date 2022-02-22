@@ -159,7 +159,7 @@ public class TestCachePurging extends MonitorTestBase {
                 if (monitor.getQueryCacheStats().cachedQueries == 99) latch.countDown();
               } catch (IOException e) {
                 // Ignore
-                System.out.println(e);
+                throw new RuntimeException(e);
               }
             }
           });

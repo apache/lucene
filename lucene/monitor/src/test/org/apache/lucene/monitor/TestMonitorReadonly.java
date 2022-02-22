@@ -116,6 +116,7 @@ public class TestMonitorReadonly extends MonitorTestBase {
     }
   }
 
+  @Test
   public void testMonitorReadOnlyCouldReadOnTheSameIndex() throws IOException {
     Path indexDirectory = createTempDir();
     Document doc = new Document();
@@ -160,6 +161,53 @@ public class TestMonitorReadonly extends MonitorTestBase {
             readMonitor2.register(
                 new MonitorQuery("query1", query, query.toString(), Collections.emptyMap()));
           });
+    }
+  }
+
+  @Test
+  public void testReadonlyMonitorGetsRefreshedOnlyWhenPurgeIsCalled() throws IOException {
+    Path indexDirectory = createTempDir();
+    Document doc = new Document();
+    doc.add(newTextField(FIELD, "This is a test document", Field.Store.NO));
+
+    MonitorConfiguration writeConfig =
+        new MonitorConfiguration()
+            .setDirectoryProvider(
+                () -> FSDirectory.open(indexDirectory),
+                MonitorQuerySerializer.fromParser(MonitorTestBase::parse));
+
+    try (Monitor writeMonitor = new Monitor(ANALYZER, writeConfig)) {
+      TermQuery query = new TermQuery(new Term(FIELD, "test"));
+      writeMonitor.register(
+          new MonitorQuery("query1", query, query.toString(), Collections.emptyMap()));
+
+      MonitorConfiguration readConfig =
+          new MonitorConfiguration()
+              .setDirectoryProvider(
+                  () -> FSDirectory.open(indexDirectory),
+                  MonitorQuerySerializer.fromParser(MonitorTestBase::parse),
+                  true);
+
+      try (Monitor readMonitor = new Monitor(ANALYZER, readConfig)) {
+        MatchingQueries<QueryMatch> matches = readMonitor.match(doc, QueryMatch.SIMPLE_MATCHER);
+        assertNotNull(matches.getMatches());
+        assertEquals(1, matches.getMatchCount());
+        assertNotNull(matches.matches("query1"));
+
+        TermQuery query2 = new TermQuery(new Term(FIELD, "test"));
+        writeMonitor.register(
+            new MonitorQuery("query2", query2, query2.toString(), Collections.emptyMap()));
+
+        MatchingQueries<QueryMatch> matches2 = readMonitor.match(doc, QueryMatch.SIMPLE_MATCHER);
+        assertNotNull(matches2.getMatches());
+        assertEquals(1, matches2.getMatchCount());
+
+        readMonitor.purgeCache();
+
+        MatchingQueries<QueryMatch> matches3 = readMonitor.match(doc, QueryMatch.SIMPLE_MATCHER);
+        assertNotNull(matches3.getMatches());
+        assertEquals(2, matches3.getMatchCount());
+      }
     }
   }
 }

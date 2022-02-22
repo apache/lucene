@@ -141,6 +141,9 @@ public class Monitor implements Closeable {
    *
    * <p>This is normally called from a background thread at a rate set by configurePurgeFrequency().
    *
+   * <p>When Monitor is in read-only mode, cache is NEVER purged automatically you MUST call it when
+   * you want new changes.
+   *
    * @throws IOException on IO errors
    */
   public void purgeCache() throws IOException {

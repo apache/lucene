@@ -18,9 +18,9 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SearcherManager;
@@ -35,6 +35,7 @@ class ReadonlyQueryIndex extends QueryIndex {
           "You must specify a Directory when configuring a Monitor as read-only.");
     }
     Directory directory = configuration.getDirectoryProvider().get();
+    this.queries = new HashMap<>();
     this.manager = new SearcherManager(directory, new TermsHashBuilder(termFilters));
     this.decomposer = configuration.getQueryDecomposer();
     this.serializer = configuration.getQuerySerializer();
@@ -66,8 +67,15 @@ class ReadonlyQueryIndex extends QueryIndex {
   }
 
   @Override
+  public void purgeCache() throws IOException {
+    this.populateQueryCache(serializer, decomposer);
+    lastPurged = System.nanoTime();
+  }
+
+  @Override
   void purgeCache(CachePopulator populator) throws IOException {
-    final ConcurrentMap<String, QueryCacheEntry> newCache = new ConcurrentHashMap<>();
+    manager.maybeRefresh();
+    final Map<String, QueryCacheEntry> newCache = new HashMap<>();
     populator.populateCacheWithIndex(newCache);
     queries = newCache;
   }
@@ -79,8 +87,17 @@ class ReadonlyQueryIndex extends QueryIndex {
 
   @Override
   public int numDocs() throws IOException {
-    IndexSearcher searcher = manager.acquire();
-    return searcher.getIndexReader().numDocs();
+    IndexSearcher searcher = null;
+    int numDocs;
+    try {
+      searcher = manager.acquire();
+      numDocs = searcher.getIndexReader().numDocs();
+    } finally {
+      if (searcher != null) {
+        manager.release(searcher);
+      }
+    }
+    return numDocs;
   }
 
   @Override

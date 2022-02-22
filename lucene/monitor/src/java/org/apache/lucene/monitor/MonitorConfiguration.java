@@ -57,6 +57,19 @@ public class MonitorConfiguration {
     return directoryProvider;
   }
 
+  /**
+   * Sets a custom directory, with a custom serializer.
+   *
+   * <p>You have also the chance to configure the Monitor as read-only.
+   *
+   * <p>When the monitor is in read-only mode it loads indexed queries in memory and matches against
+   * the without refreshing the index, to force the refresh you MUST call purgeCache()
+   *
+   * @param directoryProvider lambda to provide the index Directory implementation
+   * @param serializer the serializer used to store the queries
+   * @param readOnly set the monitor as read-only
+   * @return
+   */
   public MonitorConfiguration setDirectoryProvider(
       IOSupplier<Directory> directoryProvider,
       MonitorQuerySerializer serializer,
