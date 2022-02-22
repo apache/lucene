@@ -45,6 +45,7 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
@@ -817,6 +818,64 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         }
         assertEquals(numValues, valueCount);
         assertEquals(numValues, totalSize - numDeletes);
+      }
+    }
+  }
+
+  public void testSearchWithVisitedLimit() throws Exception {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    String fieldName = "field";
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, iwc)) {
+      int numDoc = atLeast(300);
+      int dimension = atLeast(10);
+      for (int i = 0; i < numDoc; i++) {
+        int id = random().nextInt(numDoc);
+        float[] value;
+        if (random().nextInt(7) != 3) {
+          // usually index a vector value for a doc
+          value = randomVector(dimension);
+        } else {
+          value = null;
+        }
+        add(iw, fieldName, id, value, VectorSimilarityFunction.EUCLIDEAN);
+      }
+      iw.forceMerge(1);
+
+      // randomly delete some documents
+      for (int i = 0; i < 30; i++) {
+        int idToDelete = random().nextInt(numDoc);
+        iw.deleteDocuments(new Term("id", Integer.toString(idToDelete)));
+      }
+
+      try (IndexReader reader = DirectoryReader.open(iw)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          Bits liveDocs = ctx.reader().getLiveDocs();
+          VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
+          if (vectorValues == null) {
+            continue;
+          }
+
+          // check the limit is hit when it's very small
+          int k = 5 + random().nextInt(45);
+          int visitedLimit = k + random().nextInt(5);
+          TopDocs results =
+              ctx.reader()
+                  .searchNearestVectors(
+                      fieldName, randomVector(dimension), k, liveDocs, visitedLimit);
+          assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation);
+          assertEquals(visitedLimit, results.totalHits.value);
+
+          // check the limit is not hit when it clearly exceeds the number of vectors
+          k = vectorValues.size();
+          visitedLimit = k + 30;
+          results =
+              ctx.reader()
+                  .searchNearestVectors(
+                      fieldName, randomVector(dimension), k, liveDocs, visitedLimit);
+          assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
+          assertTrue(results.totalHits.value <= visitedLimit);
+        }
       }
     }
   }
