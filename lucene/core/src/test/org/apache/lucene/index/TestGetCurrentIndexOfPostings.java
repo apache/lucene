@@ -36,20 +36,13 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 // not all codecs store prx separate...
 // TODO: fix sep codec to index offsets so we can greatly reduce this list!
 public class TestGetCurrentIndexOfPostings extends LuceneTestCase {
-    IndexWriterConfig iwc;
-
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        iwc = newIndexWriterConfig(new MockAnalyzer(random()));
-        iwc.codec = new Lucene91Codec();
-    }
 
     public void testGetIndexOfPostings() throws Exception {
         String sortField = "sort_field";
         String textField = "text_field";
         Directory dir = newDirectory();
         IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+        iwc.codec = new Lucene91Codec();
         // use index sort to keep docId stable
         Sort indexSort = new Sort(new SortedNumericSortField(sortField, SortField.Type.LONG, false));
         iwc.setIndexSort(indexSort);
