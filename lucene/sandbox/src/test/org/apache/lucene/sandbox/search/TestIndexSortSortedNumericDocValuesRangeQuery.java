@@ -534,12 +534,12 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   }
 
   private void addDocWithBkd(RandomIndexWriter indexWriter, String field, long value, int repeat) throws IOException {
-    for(int i=0;i<repeat;i++){
-      Document doc = new Document();
-      doc.add(new SortedNumericDocValuesField(field, value));
-      doc.add(new LongPoint(field, value));
-      indexWriter.addDocument(doc);
-    }
+      for (int i = 0; i < repeat; i++) {
+          Document doc = new Document();
+          doc.add(new SortedNumericDocValuesField(field, value));
+          doc.add(new LongPoint(field, value));
+          indexWriter.addDocument(doc);
+      }
   }
 
   public void testFallbackCount() throws IOException {
