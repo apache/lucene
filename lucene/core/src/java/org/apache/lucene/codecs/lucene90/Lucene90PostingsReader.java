@@ -442,7 +442,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
     @Override
     public int getCurrentIndexOfPostings() {
-      return alignBlockUpto() + docBufferUpto;
+      return alignBlockUpto() + docBufferUpto -1;
     }
 
     private int alignBlockUpto(){
@@ -856,7 +856,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
     @Override
     public int getCurrentIndexOfPostings() {
-      return alignBlockUpto() + docBufferUpto;
+      return alignBlockUpto() + docBufferUpto -1;
     }
 
     private int alignBlockUpto(){
@@ -1265,7 +1265,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
     @Override
     public int getCurrentIndexOfPostings() {
-      return alignBlockUpto() + docBufferUpto;
+      return alignBlockUpto() + docBufferUpto -1;
     }
 
     private int alignBlockUpto(){

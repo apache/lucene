@@ -100,7 +100,7 @@ public abstract class PostingsEnum extends DocIdSetIterator {
 
   /**
    *  Returns current index of the postings list at anytime when {@link #nextDoc} or {@link #advance} is called
-   *  returns -1 means not support
+   *  returns -1 means not support, start from 0
    */
   public int getCurrentIndexOfPostings(){
     return -1;
