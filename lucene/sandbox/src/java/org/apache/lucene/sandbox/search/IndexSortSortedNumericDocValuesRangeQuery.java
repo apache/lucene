@@ -18,10 +18,16 @@ package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import java.util.Objects;
+
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValues.IntersectVisitor;
+import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.index.PointValues.SearchControl;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -37,6 +43,10 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -172,6 +182,10 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
+        int count = countFromBkd(context);
+        if (count != -1) {
+           return count;
+        }
         BoundedDocSetIdIterator disi = getDocIdSetIteratorOrNull(context);
         if (disi != null) {
           return disi.lastDoc - disi.firstDoc;
@@ -179,6 +193,169 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         return fallbackWeight.count(context);
       }
     };
+  }
+
+
+  private static class MinDocIdVisitor implements IntersectVisitor, SearchControl {
+
+      private boolean hasDoc = false;
+      private byte[] lowerPoint;
+      private byte[] upperPoint;
+      private int numDims;
+      private int bytesPerDim;
+      private boolean includeLower;
+      public int min = Integer.MAX_VALUE;
+      private final ByteArrayComparator comparator;
+
+      public MinDocIdVisitor(byte[] lowerPoint, byte[] upperPoint, int numDims, int bytesPerDim, boolean includeLower) {
+          this.lowerPoint = lowerPoint;
+          this.upperPoint = upperPoint;
+          this.numDims = numDims;
+          this.bytesPerDim = bytesPerDim;
+          this.includeLower = includeLower;
+          this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+      }
+
+      @Override
+      public void grow(int count) {
+
+      }
+
+      @Override
+      public void visit(int docID) {
+        hasDoc = true;
+        min = Integer.min(min, docID);
+      }
+
+      @Override
+      public void visit(int docID, byte[] packedValue) {
+          if (matches(packedValue)) { 
+            visit(docID);
+          }
+      }
+
+      @Override
+      public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+          if (matches(packedValue)) { 
+              int docID;
+              while ((docID = iterator.nextDoc()) != NO_MORE_DOCS) {
+                visit(docID);
+              }
+          }
+      }
+
+      @Override
+      public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+          return relate(minPackedValue, maxPackedValue);
+      }
+
+      private boolean matches(byte[] packedValue) {
+          for (int dim = 0; dim < numDims; dim++) {
+              int offset = dim * bytesPerDim;
+              int result = comparator.compare(packedValue, offset, lowerPoint, offset);
+              if (result < 0) {
+                  // Doc's value is too low, in this dimension
+                  return false;
+              }
+              if (!includeLower) {
+                  if (result == 0) {
+                      return false;
+                  }
+              }
+              if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
+                  // Doc's value is too high, in this dimension
+                  return false;
+              }
+          }
+          return true;
+      }
+
+      private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
+
+          boolean crosses = false;
+
+          for (int dim = 0; dim < numDims; dim++) {
+              int offset = dim * bytesPerDim;
+
+              if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0) {
+                  return Relation.CELL_OUTSIDE_QUERY;
+              }
+
+              int result = comparator.compare(maxPackedValue, offset, lowerPoint, offset);
+              if (result < 0) {
+                  return Relation.CELL_OUTSIDE_QUERY;
+              }
+              if (!includeLower) {
+                  if (result == 0) {
+                      return Relation.CELL_OUTSIDE_QUERY;
+                  }
+              }
+
+              result = comparator.compare(minPackedValue, offset, lowerPoint, offset);
+
+              crosses |= result < 0 || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
+              if (!includeLower) {
+                  crosses |= result == 0;
+              }
+          }
+
+          if (crosses) {
+              return Relation.CELL_CROSSES_QUERY;
+          } else {
+              return Relation.CELL_INSIDE_QUERY;
+          }
+      }
+
+      @Override
+      public boolean needSearchRight() {
+          return !hasDoc;
+      }
+  }
+
+  private int countFromBkd(LeafReaderContext context) throws IOException {
+      Sort indexSort = context.reader().getMetaData().getSort();
+      if (indexSort != null
+          && indexSort.getSort().length == 1
+          && indexSort.getSort()[0].getField().equals(field)
+          && !indexSort.getSort()[0].getReverse()) {
+          PointValues points = context.reader().getPointValues(field);
+          if (points == null) {
+              return -1;
+          }
+
+          // Each doc that has points has exactly one point.
+          if (points.size() == points.getDocCount()) {
+              MinDocIdVisitor minVisitor = new MinDocIdVisitor(
+                  LongPoint.pack(lowerValue).bytes,
+                  LongPoint.pack(upperValue).bytes,
+                  points.getNumDimensions(),
+                  points.getBytesPerDimension(),
+                  true
+              );
+              points.binarySearch(minVisitor, minVisitor);
+              if (!minVisitor.hasDoc) {
+                  return 0;
+              }
+              MinDocIdVisitor maxVisitor = new MinDocIdVisitor(
+                  LongPoint.pack(upperValue).bytes,
+                  points.getMaxPackedValue(),
+                  points.getNumDimensions(),
+                  points.getBytesPerDimension(),
+                  false
+              );
+              points.binarySearch(maxVisitor, maxVisitor);
+              if (!maxVisitor.hasDoc) {
+                  int maxDocId = context.reader().numDocs() - 1;
+                  int minDocId = minVisitor.min;
+                  return maxDocId - minDocId + 1;
+              } else {
+                  int maxDocId = maxVisitor.min - 1;
+                  int minDocId = minVisitor.min;
+                  return maxDocId - minDocId + 1;
+              }
+          }
+      }
+      return -1;
   }
 
   private BoundedDocSetIdIterator getDocIdSetIteratorOrNull(LeafReaderContext context)

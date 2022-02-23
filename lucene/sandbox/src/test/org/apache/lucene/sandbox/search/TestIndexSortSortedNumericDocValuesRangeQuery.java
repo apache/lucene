@@ -483,6 +483,65 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
+  public void testCountWithBkd() throws IOException {
+      String filedName = "field";
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      Sort indexSort = new Sort(new SortedNumericSortField(filedName, SortField.Type.LONG, false));
+      iwc.setIndexSort(indexSort);
+      RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+      addDocWithBkd(writer, filedName, 6, 500);
+      addDocWithBkd(writer, filedName, 5, 500);
+      addDocWithBkd(writer, filedName, 8, 500);
+      addDocWithBkd(writer, filedName, 9, 500);
+      addDocWithBkd(writer, filedName, 7, 500);
+      writer.flush();
+      writer.forceMerge(1);
+      IndexReader reader = writer.getReader();
+      IndexSearcher searcher = newSearcher(reader);
+
+      Query fallbackQuery = LongPoint.newRangeQuery(filedName, 6, 8);
+      Query query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 6, 8, fallbackQuery);
+      Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+      for (LeafReaderContext context : searcher.getLeafContexts()) {
+          assertEquals(1500, weight.count(context));
+      }
+
+      fallbackQuery = LongPoint.newRangeQuery(filedName, 6, 10);
+      query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 6, 10, fallbackQuery);
+      weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+      for (LeafReaderContext context : searcher.getLeafContexts()) {
+          assertEquals(2000, weight.count(context));
+      }
+
+      fallbackQuery = LongPoint.newRangeQuery(filedName, 4, 6);
+      query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 4, 6, fallbackQuery);
+      weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+      for (LeafReaderContext context : searcher.getLeafContexts()) {
+          assertEquals(1000, weight.count(context));
+      }
+
+      fallbackQuery = LongPoint.newRangeQuery(filedName, 2, 10);
+      query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 2, 10, fallbackQuery);
+      weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+      for (LeafReaderContext context : searcher.getLeafContexts()) {
+          assertEquals(2500, weight.count(context));
+      }
+
+      writer.close();
+      reader.close();
+      dir.close();
+  }
+
+  private void addDocWithBkd(RandomIndexWriter indexWriter, String field, long value, int repeat) throws IOException {
+    for(int i=0;i<repeat;i++){
+      Document doc = new Document();
+      doc.add(new SortedNumericDocValuesField(field, value));
+      doc.add(new LongPoint(field, value));
+      indexWriter.addDocument(doc);
+    }
+  }
+
   public void testFallbackCount() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
