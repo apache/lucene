@@ -144,7 +144,15 @@ public final class Lucene90HnswGraphBuilder {
     // We pass 'null' for acceptOrds because there are no deletions while building the graph
     NeighborQueue candidates =
         Lucene90OnHeapHnswGraph.search(
-            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, null, random);
+            value,
+            beamWidth,
+            beamWidth,
+            vectorValues,
+            similarityFunction,
+            hnsw,
+            null,
+            Integer.MAX_VALUE,
+            random);
 
     int node = hnsw.addNode();
 
