@@ -233,8 +233,8 @@ Optimizations
 
 * LUCENE-10424 Optimize the "everything matches" case for count query in PointRangeQuery. (Ignacio Vera, Lu Xugang)
 
-* LUCENE-10084: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever terms
-  or points have a docCount that is equal to maxDoc. (Vigya Sharma)
+* LUCENE-10084, LUCENE-10435: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever
+  terms or points have a docCount that is equal to maxDoc. (Vigya Sharma, Lu Xugang)
 
 Changes in runtime behavior
 ---------------------
