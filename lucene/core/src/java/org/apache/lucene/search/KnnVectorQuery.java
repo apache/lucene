@@ -457,13 +457,15 @@ public class KnnVectorQuery extends Query {
       if (sameClassAs(obj) == false) {
         return false;
       }
-      return Arrays.equals(docs, ((DocAndScoreQuery) obj).docs)
+      return contextIdentity == ((DocAndScoreQuery) obj).contextIdentity
+          && Arrays.equals(docs, ((DocAndScoreQuery) obj).docs)
           && Arrays.equals(scores, ((DocAndScoreQuery) obj).scores);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(classHash(), Arrays.hashCode(docs), Arrays.hashCode(scores));
+      return Objects.hash(
+          classHash(), contextIdentity, Arrays.hashCode(docs), Arrays.hashCode(scores));
     }
   }
 }
