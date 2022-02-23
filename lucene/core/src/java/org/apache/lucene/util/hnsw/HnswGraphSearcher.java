@@ -145,11 +145,11 @@ public final class HnswGraphSearcher {
           break;
         }
         float score = similarityFunction.compare(query, vectors.vectorValue(ep));
+        numVisited++;
         candidates.add(ep, score);
         if (acceptOrds == null || acceptOrds.get(ep)) {
           results.add(ep, score);
         }
-        numVisited++;
       }
     }
 
@@ -180,6 +180,7 @@ public final class HnswGraphSearcher {
           break;
         }
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        numVisited++;
         if (bound.check(score) == false) {
           candidates.add(friendOrd, score);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
@@ -188,7 +189,6 @@ public final class HnswGraphSearcher {
             }
           }
         }
-        numVisited++;
       }
     }
     while (results.size() > topK) {

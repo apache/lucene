@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -822,6 +823,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  /**
+   * Tests whether {@link KnnVectorsReader#search} implementations obey the limit on the number of
+   * visited vectors. This test is a best-effort attempt to capture the right behavior, and isn't
+   * meant to define a strict requirement on behavior.
+   */
   public void testSearchWithVisitedLimit() throws Exception {
     IndexWriterConfig iwc = newIndexWriterConfig();
     String fieldName = "field";
@@ -830,7 +836,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       int numDoc = atLeast(300);
       int dimension = atLeast(10);
       for (int i = 0; i < numDoc; i++) {
-        int id = random().nextInt(numDoc);
         float[] value;
         if (random().nextInt(7) != 3) {
           // usually index a vector value for a doc
@@ -838,7 +843,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         } else {
           value = null;
         }
-        add(iw, fieldName, id, value, VectorSimilarityFunction.EUCLIDEAN);
+        add(iw, fieldName, i, value, VectorSimilarityFunction.EUCLIDEAN);
       }
       iw.forceMerge(1);
 
