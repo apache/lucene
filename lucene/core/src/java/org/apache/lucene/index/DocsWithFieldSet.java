@@ -26,7 +26,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  * Accumulator for documents that have a value for a field. This is optimized for the case that all
  * documents have a value.
  */
-final class DocsWithFieldSet extends DocIdSet {
+public final class DocsWithFieldSet extends DocIdSet {
 
   private static long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(DocsWithFieldSet.class);
@@ -35,7 +35,15 @@ final class DocsWithFieldSet extends DocIdSet {
   private int cardinality = 0;
   private int lastDocId = -1;
 
-  void add(int docID) {
+  /** Creates an empty DocsWithFieldSet. */
+  public DocsWithFieldSet() {}
+
+  /**
+   * Add a document to the set
+   *
+   * @param docID – document ID to be added
+   */
+  public void add(int docID) {
     if (docID <= lastDocId) {
       throw new IllegalArgumentException(
           "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
@@ -64,7 +72,7 @@ final class DocsWithFieldSet extends DocIdSet {
   }
 
   /** Return the number of documents of this set. */
-  int cardinality() {
+  public int cardinality() {
     return cardinality;
   }
 }

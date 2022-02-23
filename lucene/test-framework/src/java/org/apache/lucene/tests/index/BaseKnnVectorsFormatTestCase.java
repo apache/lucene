@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
@@ -28,6 +29,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CodecReader;
@@ -561,7 +563,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
-            leafReader.searchNearestVectors("v", randomVector(3), 1, leafReader.getLiveDocs());
+            leafReader.searchNearestVectors(
+                "v", randomVector(3), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -885,7 +888,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             k = numLiveDocsWithVectors;
           }
           TopDocs results =
-              ctx.reader().searchNearestVectors(fieldName, randomVector(dimension), k, liveDocs);
+              ctx.reader()
+                  .searchNearestVectors(
+                      fieldName, randomVector(dimension), k, liveDocs, Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
@@ -1015,6 +1020,59 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             }
           }
         }
+      }
+    }
+  }
+
+  public void testVectorValuesReportCorrectDocs() throws Exception {
+    final int numDocs = atLeast(1000);
+    final int dim = random().nextInt(20) + 1;
+    final VectorSimilarityFunction similarityFunction =
+        VectorSimilarityFunction.values()[
+            random().nextInt(VectorSimilarityFunction.values().length)];
+
+    float fieldValuesCheckSum = 0f;
+    int fieldDocCount = 0;
+    long fieldSumDocIDs = 0;
+
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        int docID = random().nextInt(numDocs);
+        doc.add(new StoredField("id", docID));
+        if (random().nextInt(4) == 3) {
+          float[] vector = randomVector(dim);
+          doc.add(new KnnVectorField("knn_vector", vector, similarityFunction));
+          fieldValuesCheckSum += vector[0];
+          fieldDocCount++;
+          fieldSumDocIDs += docID;
+        }
+        w.addDocument(doc);
+      }
+
+      if (random().nextBoolean()) {
+        w.forceMerge(1);
+      }
+
+      try (IndexReader r = w.getReader()) {
+        float checksum = 0;
+        int docCount = 0;
+        long sumDocIds = 0;
+        for (LeafReaderContext ctx : r.leaves()) {
+          VectorValues vectors = ctx.reader().getVectorValues("knn_vector");
+          if (vectors != null) {
+            docCount += vectors.size();
+            while (vectors.nextDoc() != NO_MORE_DOCS) {
+              checksum += vectors.vectorValue()[0];
+              Document doc = ctx.reader().document(vectors.docID(), Set.of("id"));
+              sumDocIds += Integer.parseInt(doc.get("id"));
+            }
+          }
+        }
+        assertEquals(fieldValuesCheckSum, checksum, 1e-3);
+        assertEquals(fieldDocCount, docCount);
+        assertEquals(fieldSumDocIDs, sumDocIds);
       }
     }
   }

@@ -24,15 +24,16 @@ import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
@@ -49,6 +50,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
+  private final int maxDoc;
 
   private final int maxConn;
   private final int beamWidth;
@@ -102,6 +104,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
           Lucene91HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
+      maxDoc = state.segmentInfo.maxDoc();
       success = true;
     } finally {
       if (success == false) {
@@ -123,8 +126,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
-      int[] docIds = writeVectorData(tempVectorData, vectors);
+      DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, vectors);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -138,9 +140,11 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
+      // we pass null for ordToDoc mapping, for the graph construction doesn't need to know docIds
+      // TODO: separate random access vector values from DocIdSetIterator?
       Lucene91HnswVectorsReader.OffHeapVectorValues offHeapVectors =
           new Lucene91HnswVectorsReader.OffHeapVectorValues(
-              vectors.dimension(), docIds, vectorDataInput);
+              vectors.dimension(), docsWithField.cardinality(), null, vectorDataInput);
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
@@ -152,7 +156,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
           vectorDataLength,
           vectorIndexOffset,
           vectorIndexLength,
-          docIds,
+          docsWithField,
           graph);
       success = true;
     } finally {
@@ -168,26 +172,19 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   /**
-   * Writes the vector values to the output and returns a mapping from dense ordinals to document
-   * IDs. The length of the returned array matches the total number of documents with a vector
-   * (which excludes deleted documents), so it may be less than {@link VectorValues#size()}.
+   * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
-  private static int[] writeVectorData(IndexOutput output, VectorValues vectors)
+  private static DocsWithFieldSet writeVectorData(IndexOutput output, VectorValues vectors)
       throws IOException {
-    int[] docIds = new int[vectors.size()];
-    int count = 0;
-    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
       // write vector
       BytesRef binaryValue = vectors.binaryValue();
       assert binaryValue.length == vectors.dimension() * Float.BYTES;
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-      docIds[count] = docV;
+      docsWithField.add(docV);
     }
-
-    if (docIds.length > count) {
-      return ArrayUtil.copyOfSubArray(docIds, 0, count);
-    }
-    return docIds;
+    return docsWithField;
   }
 
   private void writeMeta(
@@ -196,7 +193,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       long vectorDataLength,
       long vectorIndexOffset,
       long vectorIndexLength,
-      int[] docIds,
+      DocsWithFieldSet docsWithField,
       OnHeapHnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
@@ -206,14 +203,21 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(vectorIndexOffset);
     meta.writeVLong(vectorIndexLength);
     meta.writeInt(field.getVectorDimension());
-    meta.writeInt(docIds.length);
-    for (int docId : docIds) {
-      // TODO: delta-encode, or write as bitset
-      meta.writeVInt(docId);
+
+    // write docIDs
+    int count = docsWithField.cardinality();
+    meta.writeInt(count);
+    if (count == maxDoc) {
+      meta.writeByte((byte) -1); // dense marker, each document has a vector value
+    } else {
+      meta.writeByte((byte) 0); // sparse marker, some documents don't have vector values
+      DocIdSetIterator iter = docsWithField.iterator();
+      for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
+        meta.writeVInt(doc);
+      }
     }
 
     meta.writeInt(maxConn);
-
     // write graph nodes on each level
     if (graph == null) {
       meta.writeInt(0);
