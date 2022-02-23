@@ -315,7 +315,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   private int countFromBkd(LeafReaderContext context) throws IOException {
       Sort indexSort = context.reader().getMetaData().getSort();
       if (indexSort != null
-          && indexSort.getSort().length == 1
+          && indexSort.getSort().length > 0
           && indexSort.getSort()[0].getField().equals(field)
           && !indexSort.getSort()[0].getReverse()) {
           PointValues points = context.reader().getPointValues(field);
