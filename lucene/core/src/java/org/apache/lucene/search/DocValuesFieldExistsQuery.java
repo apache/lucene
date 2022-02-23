@@ -77,7 +77,7 @@ public final class DocValuesFieldExistsQuery extends Query {
       if ((terms != null && terms.getDocCount() == leaf.maxDoc())
           || (pointValues != null && pointValues.getDocCount() == leaf.maxDoc())) {
         rewritableReaders++;
-      }
+      } else break;
     }
     if (rewritableReaders == reader.leaves().size()) {
       return new MatchAllDocsQuery();
