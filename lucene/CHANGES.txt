@@ -301,6 +301,9 @@ Other
 
 * LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
 
+* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon 
+  does not contain enough no-collinear points. (Ignacio Vera)
+
 ======================= Lucene 9.0.0 =======================
 
 New Features
