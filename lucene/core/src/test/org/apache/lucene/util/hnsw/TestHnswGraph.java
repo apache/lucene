@@ -309,8 +309,8 @@ public class TestHnswGraph extends LuceneTestCase {
             createRandomAcceptOrds(0, vectors.size),
             visitedLimit);
     assertTrue(nn.incomplete());
-    // The visited count shouldn't be much over the limit
-    assertTrue(nn.visitedCount() < visitedLimit + 3);
+    // The visited count shouldn't exceed the limit
+    assertTrue(nn.visitedCount() <= visitedLimit);
   }
 
   public void testBoundsCheckerMax() {

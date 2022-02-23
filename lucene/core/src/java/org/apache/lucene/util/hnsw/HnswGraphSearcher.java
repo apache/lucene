@@ -140,12 +140,16 @@ public final class HnswGraphSearcher {
     int numVisited = 0;
     for (int ep : eps) {
       if (visited.getAndSet(ep) == false) {
+        if (numVisited >= visitedLimit) {
+          results.markIncomplete();
+          break;
+        }
         float score = similarityFunction.compare(query, vectors.vectorValue(ep));
+        numVisited++;
         candidates.add(ep, score);
         if (acceptOrds == null || acceptOrds.get(ep)) {
           results.add(ep, score);
         }
-        numVisited++;
       }
     }
 
@@ -155,15 +159,10 @@ public final class HnswGraphSearcher {
     if (results.size() >= topK) {
       bound.set(results.topScore());
     }
-    while (candidates.size() > 0) {
+    while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateScore = candidates.topScore();
       if (bound.check(topCandidateScore)) {
-        break;
-      }
-
-      if (numVisited >= visitedLimit) {
-        results.markIncomplete();
         break;
       }
 
@@ -176,6 +175,10 @@ public final class HnswGraphSearcher {
           continue;
         }
 
+        if (numVisited >= visitedLimit) {
+          results.markIncomplete();
+          break;
+        }
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         numVisited++;
         if (bound.check(score) == false) {
