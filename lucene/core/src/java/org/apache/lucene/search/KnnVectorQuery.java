@@ -253,7 +253,7 @@ public class KnnVectorQuery extends Query {
       scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader, docs);
-    return new DocAndScoreQuery(k, docs, scores, segmentStarts, reader.hashCode());
+    return new DocAndScoreQuery(k, docs, scores, segmentStarts, reader.getContext().id());
   }
 
   private int[] findSegmentStarts(IndexReader reader, int[] docs) {
@@ -306,7 +306,7 @@ public class KnnVectorQuery extends Query {
     private final int[] docs;
     private final float[] scores;
     private final int[] segmentStarts;
-    private final int readerHash;
+    private final Object contextIdentity;
 
     /**
      * Constructor
@@ -318,20 +318,22 @@ public class KnnVectorQuery extends Query {
      *     document in each segment. If a segment has no matching documents, it should be assigned
      *     the index of the next segment that does. There should be a final entry that is always
      *     docs.length-1.
-     * @param readerHash a hash code identifying the IndexReader used to create this query
+     * @param contextIdentity an object identifying the reader context that was used to build this
+     *     query
      */
-    DocAndScoreQuery(int k, int[] docs, float[] scores, int[] segmentStarts, int readerHash) {
+    DocAndScoreQuery(
+        int k, int[] docs, float[] scores, int[] segmentStarts, Object contextIdentity) {
       this.k = k;
       this.docs = docs;
       this.scores = scores;
       this.segmentStarts = segmentStarts;
-      this.readerHash = readerHash;
+      this.contextIdentity = contextIdentity;
     }
 
     @Override
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
-      if (searcher.getIndexReader().hashCode() != readerHash) {
+      if (searcher.getIndexReader().getContext().id() != contextIdentity) {
         throw new IllegalStateException("This DocAndScore query was created by a different reader");
       }
       return new Weight(this) {
@@ -455,13 +457,15 @@ public class KnnVectorQuery extends Query {
       if (sameClassAs(obj) == false) {
         return false;
       }
-      return Arrays.equals(docs, ((DocAndScoreQuery) obj).docs)
+      return contextIdentity == ((DocAndScoreQuery) obj).contextIdentity
+          && Arrays.equals(docs, ((DocAndScoreQuery) obj).docs)
           && Arrays.equals(scores, ((DocAndScoreQuery) obj).scores);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(classHash(), Arrays.hashCode(docs), Arrays.hashCode(scores));
+      return Objects.hash(
+          classHash(), contextIdentity, Arrays.hashCode(docs), Arrays.hashCode(scores));
     }
   }
 }
