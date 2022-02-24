@@ -69,13 +69,13 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int]</b> the number of documents having values for this field
  *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
  *       0, sparse – some documents missing values.
- *   <li><b>array[vint]</b> for sparse case, the docids of documents having vectors, in order
+ *   <li><b>array[int]</b> for sparse case, the docids of documents having vectors, in order
  *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
  *   <li><b>[int]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level
  *       <ul>
  *         <li><b>[int]</b> the number of nodes on this level
- *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
+ *         <li><b>array[int]</b> for levels greater than 0 list of nodes on this level, stored as
  *             the the level 0th nodes ordinals.
  *       </ul>
  * </ul>
