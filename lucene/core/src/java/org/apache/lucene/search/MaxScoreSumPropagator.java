@@ -131,22 +131,28 @@ final class MaxScoreSumPropagator {
   /** Return the minimum score that a Scorer must produce in order for a hit to be competitive. */
   private float getMinCompetitiveScore(float minScoreSum, double sumOfOtherMaxScores) {
     assert numClauses > 0;
-    if (minScoreSum <= sumOfOtherMaxScores) {
-      return 0f;
-    }
 
     // We need to find a value 'minScore' so that 'minScore + sumOfOtherMaxScores <= minScoreSum'
     // TODO: is there an efficient way to find the greatest value that meets this requirement?
     float minScore = (float) (minScoreSum - sumOfOtherMaxScores);
-    int iters = 0;
-    while (scoreSumUpperBound(minScore + sumOfOtherMaxScores) > minScoreSum) {
+    for (int iter = 0;
+        minScore > 0 && scoreSumUpperBound(minScore + sumOfOtherMaxScores) > minScoreSum;
+        ++iter) {
       // Important: use ulp of minScoreSum and not minScore to make sure that we
       // converge quickly.
       minScore -= Math.ulp(minScoreSum);
       // this should converge in at most two iterations:
       //  - one because of the subtraction rounding error
       //  - one because of the error introduced by sumUpperBound
-      assert ++iters <= 2 : iters;
+      if (iter > 2) {
+        throw new IllegalStateException(
+            "Could not compute a minimum score for minScoreSum="
+                + minScoreSum
+                + ", sumOfOtherMaxScores="
+                + sumOfOtherMaxScores
+                + ", numClauses="
+                + numClauses);
+      }
     }
     return Math.max(minScore, 0f);
   }
