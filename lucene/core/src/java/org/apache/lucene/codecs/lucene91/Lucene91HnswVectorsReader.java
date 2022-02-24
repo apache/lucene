@@ -366,7 +366,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         } else {
           nodesByLevel[level] = new int[numNodesOnLevel];
           for (int i = 0; i < numNodesOnLevel; i++) {
-            nodesByLevel[level][i] = input.readVInt();
+            nodesByLevel[level][i] = input.readInt();
           }
         }
       }
