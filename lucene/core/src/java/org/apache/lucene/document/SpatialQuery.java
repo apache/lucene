@@ -187,7 +187,7 @@ abstract class SpatialQuery extends Query {
             return null;
           }
           // walk the tree to get matching documents
-          return new RelationScorerSupplier(values, spatialVisitor, queryRelation, field) {
+          return new RelationScorerSupplier(values, spatialVisitor, queryRelation) {
             @Override
             public Scorer get(long leadCost) throws IOException {
               return getScorer(reader, weight, score(), scoreMode);
@@ -252,18 +252,15 @@ abstract class SpatialQuery extends Query {
     private final PointValues values;
     private final SpatialVisitor spatialVisitor;
     private final QueryRelation queryRelation;
-    private final String field;
     private long cost = -1;
 
     RelationScorerSupplier(
         final PointValues values,
         SpatialVisitor spatialVisitor,
-        final QueryRelation queryRelation,
-        final String field) {
+        final QueryRelation queryRelation) {
       this.values = values;
       this.spatialVisitor = spatialVisitor;
       this.queryRelation = queryRelation;
-      this.field = field;
     }
 
     protected Scorer getScorer(
@@ -311,7 +308,7 @@ abstract class SpatialQuery extends Query {
             cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
         return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
       } else {
-        final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc());
         values.intersect(getSparseVisitor(spatialVisitor, queryRelation, docIdSetBuilder));
         final DocIdSetIterator iterator = docIdSetBuilder.build().iterator();
         return new ConstantScoreScorer(weight, boost, scoreMode, iterator);

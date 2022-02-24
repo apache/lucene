@@ -288,7 +288,7 @@ public class TermInSetQuery extends Query implements Accountable {
               matchingTerms.add(new TermAndState(field, termsEnum));
             } else {
               assert matchingTerms.size() == threshold;
-              builder = new DocIdSetBuilder(reader.maxDoc(), terms);
+              builder = new DocIdSetBuilder(reader.maxDoc());
               docs = termsEnum.postings(docs, PostingsEnum.NONE);
               builder.add(docs);
               for (TermAndState t : matchingTerms) {

@@ -173,7 +173,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                   + bytesPerDim);
         }
 
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc());
 
         if (numDims == 1) {
 
