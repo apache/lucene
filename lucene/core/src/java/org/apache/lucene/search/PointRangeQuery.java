@@ -392,7 +392,13 @@ public abstract class PointRangeQuery extends Query {
               == Relation.CELL_INSIDE_QUERY) {
             return values.getDocCount();
           }
-          return (int) pointCount(values.getPointTree(), this::relate, this::matches);
+          // only 1D: we have the guarantee that it will actually run fast since there are at most 2
+          // crossing leaves.
+          // docCount == size : counting according number of points in leaf node, so must be
+          // single-valued.
+          if (numDims == 1 && values.getDocCount() == values.size()) {
+            return (int) pointCount(values.getPointTree(), this::relate, this::matches);
+          }
         }
         return super.count(context);
       }
