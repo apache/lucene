@@ -833,8 +833,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     String fieldName = "field";
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, iwc)) {
-      int numDoc = atLeast(300);
-      int dimension = atLeast(10);
+      int numDoc = 300;
+      int dimension = 10;
       for (int i = 0; i < numDoc; i++) {
         float[] value;
         if (random().nextInt(7) != 3) {
