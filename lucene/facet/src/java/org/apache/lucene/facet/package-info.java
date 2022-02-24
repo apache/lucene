@@ -24,9 +24,8 @@
  *   <li>Taxonomy-based methods rely on a separate taxonomy index to map hierarchical facet paths to
  *       global int ordinals for fast counting at search time; these methods can compute counts
  *       (({@link org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts}) aggregate long or
- *       double values {@link org.apache.lucene.facet.taxonomy.TaxonomyFacetSumIntAssociations},
- *       {@link org.apache.lucene.facet.taxonomy.TaxonomyFacetSumFloatAssociations}, {@link
- *       org.apache.lucene.facet.taxonomy.TaxonomyFacetSumValueSource}. Add {@link
+ *       double values {@link org.apache.lucene.facet.taxonomy.TaxonomyFacetIntAssociations}, {@link
+ *       org.apache.lucene.facet.taxonomy.TaxonomyFacetFloatAssociations}. Add {@link
  *       org.apache.lucene.facet.FacetField} or {@link
  *       org.apache.lucene.facet.taxonomy.AssociationFacetField} to your documents at index time to
  *       use taxonomy-based methods.

@@ -23,7 +23,7 @@ import org.apache.lucene.util.BytesRef;
 
 /**
  * Add an instance of this to your {@link Document} to add a facet label associated with an int. Use
- * {@link TaxonomyFacetSumIntAssociations} to aggregate int values per facet label at search time.
+ * {@link TaxonomyFacetIntAssociations} to aggregate int values per facet label at search time.
  *
  * @lucene.experimental
  */
