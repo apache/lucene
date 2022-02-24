@@ -347,7 +347,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         // as not all docs have vector values, fill a mapping from dense vector ordinals to docIds
         ordToDoc = new int[size];
         for (int i = 0; i < size; i++) {
-          int doc = input.readVInt();
+          int doc = input.readInt();
           ordToDoc[i] = doc;
         }
       }
