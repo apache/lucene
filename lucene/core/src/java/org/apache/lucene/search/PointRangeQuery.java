@@ -387,10 +387,7 @@ public abstract class PointRangeQuery extends Query {
           return 0;
         }
 
-        if (reader.hasDeletions() == false
-            && numDims == 1
-            && values.getDocCount() == values.size()) {
-          // if all documents have at-most one point
+        if (reader.hasDeletions() == false) {
           if (relate(values.getMinPackedValue(), values.getMaxPackedValue())
               == Relation.CELL_INSIDE_QUERY) {
             return values.getDocCount();
