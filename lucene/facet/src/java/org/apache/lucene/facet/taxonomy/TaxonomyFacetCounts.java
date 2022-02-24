@@ -47,7 +47,12 @@ public class TaxonomyFacetCounts extends IntTaxonomyFacets {
       FacetsConfig config,
       FacetsCollector fc)
       throws IOException {
-    super(ordinalsReader.getIndexFieldName(), taxoReader, config, fc);
+    super(
+        ordinalsReader.getIndexFieldName(),
+        taxoReader,
+        config,
+        AssociationAggregationFunction.SUM,
+        fc);
     this.ordinalsReader = ordinalsReader;
     count(fc.getMatchingDocs());
   }

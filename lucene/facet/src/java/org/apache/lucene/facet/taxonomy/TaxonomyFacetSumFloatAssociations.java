@@ -17,22 +17,19 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.lucene.facet.FacetsCollector;
-import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Aggregates sum of int values previously indexed with {@link FloatAssociationFacetField}, assuming
  * the default encoding.
  *
  * @lucene.experimental
+ * @deprecated This class is being deprecated in favor of {@link TaxonomyFacetFloatAssociations},
+ *     which provides more flexible aggregation functionality beyond just "sum"
  */
-public class TaxonomyFacetSumFloatAssociations extends FloatTaxonomyFacets {
+@Deprecated
+public class TaxonomyFacetSumFloatAssociations extends TaxonomyFacetFloatAssociations {
 
   /** Create {@code TaxonomyFacetSumFloatAssociations} against the default index field. */
   public TaxonomyFacetSumFloatAssociations(
@@ -44,42 +41,6 @@ public class TaxonomyFacetSumFloatAssociations extends FloatTaxonomyFacets {
   public TaxonomyFacetSumFloatAssociations(
       String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
       throws IOException {
-    super(indexFieldName, taxoReader, config);
-    sumValues(fc.getMatchingDocs());
-  }
-
-  private final void sumValues(List<MatchingDocs> matchingDocs) throws IOException {
-    // System.out.println("count matchingDocs=" + matchingDocs + " facetsField=" + facetsFieldName);
-    for (MatchingDocs hits : matchingDocs) {
-      BinaryDocValues dv = hits.context.reader().getBinaryDocValues(indexFieldName);
-      if (dv == null) { // this reader does not have DocValues for the requested category list
-        continue;
-      }
-
-      DocIdSetIterator docs = hits.bits.iterator();
-
-      int doc;
-      while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        // System.out.println("  doc=" + doc);
-        // TODO: use OrdinalsReader?  we'd need to add a
-        // BytesRef getAssociation()?
-        if (dv.docID() < doc) {
-          dv.advance(doc);
-        }
-        if (dv.docID() == doc) {
-          final BytesRef bytesRef = dv.binaryValue();
-          byte[] bytes = bytesRef.bytes;
-          int end = bytesRef.offset + bytesRef.length;
-          int offset = bytesRef.offset;
-          while (offset < end) {
-            int ord = (int) BitUtil.VH_BE_INT.get(bytes, offset);
-            offset += 4;
-            float value = (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
-            offset += 4;
-            values[ord] += value;
-          }
-        }
-      }
-    }
+    super(indexFieldName, taxoReader, config, fc, AssociationAggregationFunction.SUM);
   }
 }
