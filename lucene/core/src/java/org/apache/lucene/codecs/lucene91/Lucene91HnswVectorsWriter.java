@@ -213,7 +213,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeByte((byte) 0); // sparse marker, some documents don't have vector values
       DocIdSetIterator iter = docsWithField.iterator();
       for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-        meta.writeVInt(doc);
+        meta.writeInt(doc);
       }
     }
 
@@ -229,7 +229,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
         if (level > 0) {
           while (nodesOnLevel.hasNext()) {
             int node = nodesOnLevel.nextInt();
-            meta.writeVInt(node); // list of nodes on a level
+            meta.writeInt(node); // list of nodes on a level
           }
         }
       }
