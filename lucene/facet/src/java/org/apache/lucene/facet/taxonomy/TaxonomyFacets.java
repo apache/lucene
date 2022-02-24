@@ -28,7 +28,16 @@ import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 
-/** Base class for all taxonomy-based facets impls. */
+/**
+ * Base class for all taxonomy-based facets impls.
+ *
+ * @deprecated Visibility of this class will be reduced to pkg-private in a future version. This
+ *     class is meant to host common code as an internal implementation detail to taxonomy
+ *     faceting,and is not intended as an extension point for user-created {@code Facets}
+ *     implementations. If your code is relying on this, please migrate necessary functionality down
+ *     into your own class.
+ */
+@Deprecated
 public abstract class TaxonomyFacets extends Facets {
 
   private static final Comparator<FacetResult> BY_VALUE_THEN_DIM =
