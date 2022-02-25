@@ -772,7 +772,8 @@ public class TestPhraseQuery extends LuceneTestCase {
             new PhraseQuery("f", "d", "d") // repeated term
             )) {
       for (int topN = 1; topN <= 2; ++topN) {
-        CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(topN, null, Integer.MAX_VALUE);
+        CollectorManager<TopScoreDocCollector, TopDocs> manager =
+            TopScoreDocCollector.createSharedManager(topN, null, Integer.MAX_VALUE);
         TopDocs topDocs = searcher.search(query, manager);
         ScoreDoc[] hits1 = topDocs.scoreDocs;
         manager = TopScoreDocCollector.createSharedManager(topN, null, 1);
@@ -1028,8 +1029,10 @@ public class TestPhraseQuery extends LuceneTestCase {
       for (String secondTerm : new String[] {"a", "b", "c"}) {
         Query query = new PhraseQuery("foo", newBytesRef(firstTerm), newBytesRef(secondTerm));
 
-        CollectorManager<TopScoreDocCollector, TopDocs> completeManager = TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);// COMPLETE
-        CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 10);// TOP_SCORES
+        CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
+            TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE); // COMPLETE
+        CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager =
+            TopScoreDocCollector.createSharedManager(10, null, 10); // TOP_SCORES
 
         TopDocs complete = searcher.search(query, completeManager);
         TopDocs topScores = searcher.search(query, topScoresManager);
@@ -1041,7 +1044,8 @@ public class TestPhraseQuery extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "b")), Occur.FILTER)
                 .build();
 
-        completeManager = TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE); // COMPLETE
+        completeManager =
+            TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE); // COMPLETE
         topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 10); // TOP_SCORES
         complete = searcher.search(filteredQuery, completeManager);
         topScores = searcher.search(filteredQuery, topScoresManager);

@@ -242,8 +242,10 @@ public class TestTermScorer extends LuceneTestCase {
     for (int iter = 0; iter < 15; ++iter) {
       Query query = new TermQuery(new Term("foo", Integer.toString(iter)));
 
-      CollectorManager<TopScoreDocCollector, TopDocs> completeManager = TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 1);
+      CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
+          TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
+      CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager =
+          TopScoreDocCollector.createSharedManager(10, null, 1);
 
       TopDocs complete = searcher.search(query, completeManager);
       TopDocs topScores = searcher.search(query, topScoresManager);

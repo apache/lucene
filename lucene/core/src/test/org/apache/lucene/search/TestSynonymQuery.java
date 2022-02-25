@@ -167,7 +167,8 @@ public class TestSynonymQuery extends LuceneTestCase {
             .addTerm(new Term("f", "b"), boost == 0 ? 1f : boost)
             .build();
 
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(
             Math.min(reader.numDocs(), totalHitsThreshold), null, totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, manager);
     if (topDocs.totalHits.value < totalHitsThreshold) {
@@ -225,7 +226,8 @@ public class TestSynonymQuery extends LuceneTestCase {
             .addTerm(new Term("f", "c"))
             .build();
 
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(
             Math.min(reader.numDocs(), totalHitsThreshold), null, totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, manager);
     if (topDocs.totalHits.value < totalHitsThreshold) {
@@ -441,8 +443,10 @@ public class TestSynonymQuery extends LuceneTestCase {
               .addTerm(new Term("foo", Integer.toString(term2)), boost2)
               .build();
 
-      CollectorManager<TopScoreDocCollector, TopDocs> completeManager = TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 1);
+      CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
+          TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
+      CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager =
+          TopScoreDocCollector.createSharedManager(10, null, 1);
 
       TopDocs complete = searcher.search(query, completeManager);
       TopDocs topScores = searcher.search(query, topScoresManager);

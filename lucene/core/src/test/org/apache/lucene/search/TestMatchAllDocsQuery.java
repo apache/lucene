@@ -118,7 +118,8 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
     IndexSearcher is = newSearcher(ir);
 
     final int totalHitsThreshold = 200;
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(10, null, totalHitsThreshold);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(10, null, totalHitsThreshold);
     TopDocs topDocs = is.search(new MatchAllDocsQuery(), manager);
     assertEquals(totalHitsThreshold + 1, topDocs.totalHits.value);
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);

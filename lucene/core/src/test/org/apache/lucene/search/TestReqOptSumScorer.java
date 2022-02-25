@@ -265,7 +265,8 @@ public class TestReqOptSumScorer extends LuceneTestCase {
     Query query =
         new BooleanQuery.Builder().add(mustTerm, Occur.MUST).add(shouldTerm, Occur.SHOULD).build();
 
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
     TopDocs topDocs = searcher.search(query, manager);
     ScoreDoc[] expected = topDocs.scoreDocs;
 

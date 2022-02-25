@@ -153,7 +153,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addField("g", 1f)
             .addTerm(new BytesRef("a"))
             .build();
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(
             Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
     TopDocs topDocs = searcher.search(query, manager);
     assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
@@ -232,7 +233,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addTerm(new BytesRef("zoo"))
             .build();
 
-    CollectorManager<TopScoreDocCollector, TopDocs> completeManager = TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+    CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
+        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
     searcher.search(query, completeManager);
 
     reader.close();
@@ -265,7 +267,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     Similarity searchSimilarity = randomCompatibleSimilarity();
     searcher.setSimilarity(searchSimilarity);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(10, null, 10);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(10, null, 10);
 
     CombinedFieldQuery query =
         new CombinedFieldQuery.Builder()
@@ -283,8 +286,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addTerm(new BytesRef("value"))
             .build();
     IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class, () -> searcher.search(invalidQuery, manager));
+        expectThrows(IllegalArgumentException.class, () -> searcher.search(invalidQuery, manager));
     assertTrue(e.getMessage().contains("requires norms to be consistent across fields"));
 
     reader.close();
@@ -496,11 +498,13 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
   private void checkExpectedHits(
       IndexSearcher searcher, int numHits, Query firstQuery, Query secondQuery) throws IOException {
-    CollectorManager<TopScoreDocCollector, TopDocs> firstManager = TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+    CollectorManager<TopScoreDocCollector, TopDocs> firstManager =
+        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
     TopDocs firstTopDocs = searcher.search(firstQuery, firstManager);
     assertEquals(numHits, firstTopDocs.totalHits.value);
 
-    CollectorManager<TopScoreDocCollector, TopDocs> secondManager = TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+    CollectorManager<TopScoreDocCollector, TopDocs> secondManager =
+        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
     TopDocs secondTopDocs = searcher.search(secondQuery, secondManager);
     CheckHits.checkEqual(firstQuery, secondTopDocs.scoreDocs, firstTopDocs.scoreDocs);
   }

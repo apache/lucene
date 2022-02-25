@@ -90,7 +90,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(2, null, 1);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(2, null, 1);
     TopDocs topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -158,7 +159,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LongPoint.newDistanceFeatureQuery("foo", 3, Long.MAX_VALUE - 1, 100);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(2, null, 1);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(2, null, 1);
     TopDocs topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -240,7 +242,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(3, null, 1);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(3, null, 1);
     TopDocs topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
 
@@ -306,7 +309,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(2, null, 1);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(2, null, 1);
     TopDocs topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
 

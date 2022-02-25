@@ -236,7 +236,8 @@ public class TestBoolean2 extends LuceneTestCase {
     // The asserting searcher will sometimes return the bulk scorer and
     // sometimes return a default impl around the scorer so that we can
     // compare BS1 and BS2
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
     ScoreDoc[] hits1 = searcher.search(query, manager).scoreDocs;
     manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
     ScoreDoc[] hits2 = searcher.search(query, manager).scoreDocs;

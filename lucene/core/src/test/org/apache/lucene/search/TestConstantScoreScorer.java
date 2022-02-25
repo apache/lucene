@@ -240,8 +240,10 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
     IndexSearcher is = newSearcher(ir);
 
-    CollectorManager<TopScoreDocCollector, TopDocs> manager = TopScoreDocCollector.createSharedManager(10, null, 10);
-    TopDocs topDocs = is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), manager);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(10, null, 10);
+    TopDocs topDocs =
+        is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), manager);
     assertEquals(11, topDocs.totalHits.value);
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 

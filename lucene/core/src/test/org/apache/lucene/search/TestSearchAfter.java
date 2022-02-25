@@ -266,17 +266,20 @@ public class TestSearchAfter extends LuceneTestCase {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
-        pagedManager = TopScoreDocCollector.createSharedManager(pageSize, lastBottom, Integer.MAX_VALUE);
+        pagedManager =
+            TopScoreDocCollector.createSharedManager(pageSize, lastBottom, Integer.MAX_VALUE);
       } else {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
         if (sort == Sort.RELEVANCE) {
           pagedManager =
-              TopFieldCollector.createSharedManager(sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
+              TopFieldCollector.createSharedManager(
+                  sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
         } else {
           pagedManager =
-              TopFieldCollector.createSharedManager(sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
+              TopFieldCollector.createSharedManager(
+                  sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
         }
       }
       paged = searcher.search(query, pagedManager);
