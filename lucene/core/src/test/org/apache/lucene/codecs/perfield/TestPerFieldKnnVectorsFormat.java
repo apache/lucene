@@ -23,30 +23,30 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnVectorField;
-import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomCodec;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.index.RandomCodec;
+import org.apache.lucene.tests.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
@@ -104,11 +104,13 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       try (IndexReader ireader = DirectoryReader.open(directory)) {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
-            reader.searchNearestVectors("field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs());
+            reader.searchNearestVectors(
+                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
-            reader.searchNearestVectors("field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs());
+            reader.searchNearestVectors(
+                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }
@@ -172,9 +174,18 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       KnnVectorsWriter writer = delegate.fieldsWriter(state);
       return new KnnVectorsWriter() {
         @Override
-        public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+        public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+            throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.writeField(fieldInfo, values);
+          writer.writeField(fieldInfo, knnVectorsReader);
+        }
+
+        @Override
+        public void merge(MergeState mergeState) throws IOException {
+          for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
+            fieldsWritten.add(fieldInfo.name);
+          }
+          writer.merge(mergeState);
         }
 
         @Override

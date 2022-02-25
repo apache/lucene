@@ -20,21 +20,14 @@ apply plugin: 'java-library'
 description = 'Dynamically computed values to sort/facet/search on based on a pluggable grammar'
 
 dependencies {
-  api project(':lucene:core')
+  moduleApi project(':lucene:core')
 
-  implementation project(':lucene:codecs')
+  moduleImplementation project(':lucene:codecs')
 
-  implementation 'org.antlr:antlr4-runtime'
+  moduleImplementation 'org.antlr:antlr4-runtime'
 
-  // It is awkward that we force-omit the intermediate dependency here...
-  // The dependency chain is:
-  //   asm-commons -> asm-tree -> asm
-  // Should we really go through these hoops?
-  implementation 'org.ow2.asm:asm'
-  implementation('org.ow2.asm:asm-commons', {
-    exclude group: "org.ow2.asm", module: "asm-tree"
-    exclude group: "org.ow2.asm", module: "asm-analysis"
-  })
+  moduleImplementation 'org.ow2.asm:asm'
+  moduleImplementation 'org.ow2.asm:asm-commons'
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }

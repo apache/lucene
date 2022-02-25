@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
-import org.apache.lucene.geo.ShapeTestUtil;
 import org.apache.lucene.geo.Tessellator;
 import org.apache.lucene.geo.XYCircle;
 import org.apache.lucene.geo.XYGeometry;
@@ -33,7 +32,8 @@ import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.geo.XYPolygon;
 import org.apache.lucene.geo.XYRectangle;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.geo.ShapeTestUtil;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Base test case for testing indexing and search functionality of cartesian geometry * */
 public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {

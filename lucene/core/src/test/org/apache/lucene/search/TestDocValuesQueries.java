@@ -25,11 +25,12 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestDocValuesQueries extends LuceneTestCase {
 

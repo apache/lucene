@@ -25,10 +25,12 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.LevenshteinAutomata;
 import org.apache.lucene.util.automaton.Operations;
 
 /**
@@ -48,6 +50,14 @@ import org.apache.lucene.util.automaton.Operations;
  * {@link #or(boolean, IntervalsSource...)} factory method to prevent rewriting.
  */
 public final class Intervals {
+  /**
+   * The default number of expansions in:
+   *
+   * <ul>
+   *   <li>{@link #multiterm(CompiledAutomaton, String)}
+   * </ul>
+   */
+  public static final int DEFAULT_MAX_EXPANSIONS = 128;
 
   private Intervals() {}
 
@@ -140,44 +150,46 @@ public final class Intervals {
   /**
    * Return an {@link IntervalsSource} over the disjunction of all terms that begin with a prefix
    *
-   * @throws IllegalStateException if the prefix expands to more than 128 terms
+   * @throws IllegalStateException if the prefix expands to more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
    */
   public static IntervalsSource prefix(BytesRef prefix) {
-    return prefix(prefix, 128);
+    return prefix(prefix, DEFAULT_MAX_EXPANSIONS);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that begin with a
    * prefix
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param prefix the prefix to expand
    * @param maxExpansions the maximum number of terms to expand to
    * @throws IllegalStateException if the prefix expands to more than {@code maxExpansions} terms
    */
   public static IntervalsSource prefix(BytesRef prefix, int maxExpansions) {
-    CompiledAutomaton ca = new CompiledAutomaton(PrefixQuery.toAutomaton(prefix));
+    CompiledAutomaton ca = new CompiledAutomaton(PrefixQuery.toAutomaton(prefix), null, true, true);
     return new MultiTermIntervalsSource(ca, maxExpansions, prefix.utf8ToString() + "*");
   }
 
   /**
    * Return an {@link IntervalsSource} over the disjunction of all terms that match a wildcard glob
    *
-   * @throws IllegalStateException if the wildcard glob expands to more than 128 terms
+   * @throws IllegalStateException if the wildcard glob expands to more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
    * @see WildcardQuery for glob format
    */
   public static IntervalsSource wildcard(BytesRef wildcard) {
-    return wildcard(wildcard, 128);
+    return wildcard(wildcard, DEFAULT_MAX_EXPANSIONS);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that match a
    * wildcard glob
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param wildcard the glob to expand
    * @param maxExpansions the maximum number of terms to expand to
@@ -194,23 +206,69 @@ public final class Intervals {
   }
 
   /**
-   * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that are accepted
-   * by the given automaton
+   * A fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
+   * within the specified {@code maxEdits} from the provided term.
    *
-   * @param ca an automaton accepting matching terms
-   * @param pattern string representation of the given automaton, mostly used in exception messages
-   * @throws IllegalStateException if the automaton accepts more than 128 terms
+   * @see #fuzzyTerm(String, int, int, boolean, int)
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}, use {@link FuzzyQuery#defaultMaxEdits} for
+   *     the default, if needed.
    */
-  public static IntervalsSource multiterm(CompiledAutomaton ca, String pattern) {
-    return multiterm(ca, 128, pattern);
+  public static IntervalsSource fuzzyTerm(String term, int maxEdits) {
+    return fuzzyTerm(
+        term,
+        maxEdits,
+        FuzzyQuery.defaultPrefixLength,
+        FuzzyQuery.defaultTranspositions,
+        DEFAULT_MAX_EXPANSIONS);
+  }
+
+  /**
+   * A fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
+   * within the specified {@code maxEdits} from the provided term.
+   *
+   * <p>The implementation is delegated to a {@link #multiterm(CompiledAutomaton, int, String)}
+   * interval source, with an automaton sourced from {@link org.apache.lucene.search.FuzzyQuery}.
+   *
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}, use {@link FuzzyQuery#defaultMaxEdits} for
+   *     the default, if needed.
+   * @param prefixLength length of common (non-fuzzy) prefix
+   * @param maxExpansions the maximum number of terms to match. Setting {@code maxExpansions} to
+   *     higher than the default value of {@link #DEFAULT_MAX_EXPANSIONS} can be both slow and
+   *     memory-intensive
+   * @param transpositions true if transpositions should be treated as a primitive edit operation.
+   *     If this is false, comparisons will implement the classic Levenshtein algorithm.
+   */
+  public static IntervalsSource fuzzyTerm(
+      String term, int maxEdits, int prefixLength, boolean transpositions, int maxExpansions) {
+    return Intervals.multiterm(
+        FuzzyQuery.getFuzzyAutomaton(term, maxEdits, prefixLength, transpositions),
+        maxExpansions,
+        term + "~" + maxEdits);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that are accepted
    * by the given automaton
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * @param ca an automaton accepting matching terms
+   * @param pattern string representation of the given automaton, mostly used in exception messages
+   * @throws IllegalStateException if the automaton accepts more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
+   */
+  public static IntervalsSource multiterm(CompiledAutomaton ca, String pattern) {
+    return multiterm(ca, DEFAULT_MAX_EXPANSIONS, pattern);
+  }
+
+  /**
+   * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that are accepted
+   * by the given automaton
+   *
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param ca an automaton accepting matching terms
    * @param maxExpansions the maximum number of terms to expand to
@@ -275,7 +333,10 @@ public final class Intervals {
   }
 
   /**
-   * Create an unordered {@link IntervalsSource}
+   * Create an unordered {@link IntervalsSource}. Note that if there are multiple intervals ends at
+   * the same position are eligible, only the narrowest one will be returned. For example if asking
+   * for <code>unordered(term("apple"), term("banana"))</code> on field of "apple wolf apple orange
+   * banana", only the "apple orange banana" will be returned.
    *
    * <p>Returns intervals in which all the subsources appear. The subsources may overlap
    *

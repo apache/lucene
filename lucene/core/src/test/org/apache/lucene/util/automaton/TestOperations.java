@@ -20,6 +20,9 @@ import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WO
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.*;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.*;
 
 public class TestOperations extends LuceneTestCase {

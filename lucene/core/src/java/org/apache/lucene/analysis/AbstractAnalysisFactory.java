@@ -17,7 +17,6 @@
 package org.apache.lucene.analysis;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.CharsetDecoder;
@@ -35,7 +34,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ResourceLoader;
 import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.Version;
@@ -315,19 +313,13 @@ public abstract class AbstractAnalysisFactory {
       // big to start
       words = new CharArraySet(files.size() * 10, ignoreCase);
       for (String file : files) {
-        InputStream stream = null;
-        Reader reader = null;
-        try {
-          stream = loader.openResource(file.trim());
-          CharsetDecoder decoder =
-              StandardCharsets.UTF_8
-                  .newDecoder()
-                  .onMalformedInput(CodingErrorAction.REPORT)
-                  .onUnmappableCharacter(CodingErrorAction.REPORT);
-          reader = new InputStreamReader(stream, decoder);
+        CharsetDecoder decoder =
+            StandardCharsets.UTF_8
+                .newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        try (Reader reader = new InputStreamReader(loader.openResource(file.trim()), decoder); ) {
           WordlistLoader.getSnowballWordSet(reader, words);
-        } finally {
-          IOUtils.closeWhileHandlingException(reader, stream);
         }
       }
     }

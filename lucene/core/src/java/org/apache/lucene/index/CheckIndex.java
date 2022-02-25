@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -505,6 +506,12 @@ public final class CheckIndex implements Closeable {
     setInfoStream(out, false);
   }
 
+  private static void msg(PrintStream out, ByteArrayOutputStream msg) {
+    if (out != null) {
+      out.println(msg.toString(StandardCharsets.UTF_8));
+    }
+  }
+
   private static void msg(PrintStream out, String msg) {
     if (out != null) {
       out.println(msg);
@@ -777,21 +784,21 @@ public final class CheckIndex implements Closeable {
         } catch (InterruptedException e) {
           // the segment test output should come before interrupted exception message that follows,
           // hence it's not emitted from finally clause
-          infoStream.println(output.toString(StandardCharsets.UTF_8));
+          msg(infoStream, output);
           msg(
               infoStream,
               "ERROR: Interrupted exception occurred when getting segment check result for segment "
                   + info.info.name);
           if (infoStream != null) e.printStackTrace(infoStream);
         } catch (ExecutionException e) {
-          infoStream.println(output.toString(StandardCharsets.UTF_8));
+          msg(infoStream, output.toString(StandardCharsets.UTF_8));
 
           assert failFast;
           throw new CheckIndexException(
               "Segment " + info.info.name + " check failed.", e.getCause());
         }
 
-        infoStream.print(output.toString(StandardCharsets.UTF_8));
+        msg(infoStream, output);
 
         processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
@@ -1106,7 +1113,7 @@ public final class CheckIndex implements Closeable {
 
       for (int i = 0; i < fields.length; i++) {
         reverseMul[i] = fields[i].getReverse() ? -1 : 1;
-        comparators[i] = fields[i].getComparator(1, i).getLeafComparator(readerContext);
+        comparators[i] = fields[i].getComparator(1, false).getLeafComparator(readerContext);
       }
 
       int maxDoc = reader.maxDoc();
@@ -2285,6 +2292,11 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  /**
+   * For use in tests only.
+   *
+   * @lucene.internal
+   */
   static void checkImpacts(Impacts impacts, int lastTarget) {
     final int numLevels = impacts.numLevels();
     if (numLevels < 1) {
@@ -2402,7 +2414,12 @@ public final class CheckIndex implements Closeable {
         infoStream.print("    test: terms, freq, prox...");
       }
 
-      final Fields fields = reader.getPostingsReader().getMergeInstance();
+      FieldsProducer fields = reader.getPostingsReader();
+      if (fields != null) {
+        fields = fields.getMergeInstance();
+      } else {
+        return new Status.TermIndexStatus();
+      }
       final FieldInfos fieldInfos = reader.getFieldInfos();
       NormsProducer normsProducer = reader.getNormsReader();
       if (normsProducer != null) {
@@ -3535,10 +3552,13 @@ public final class CheckIndex implements Closeable {
 
       final Bits liveDocs = reader.getLiveDocs();
 
-      final Fields postingsFields;
+      FieldsProducer postingsFields;
       // TODO: testTermsIndex
       if (doSlowChecks) {
-        postingsFields = reader.getPostingsReader().getMergeInstance();
+        postingsFields = reader.getPostingsReader();
+        if (postingsFields != null) {
+          postingsFields = postingsFields.getMergeInstance();
+        }
       } else {
         postingsFields = null;
       }
@@ -3592,6 +3612,10 @@ public final class CheckIndex implements Closeable {
                 final boolean postingsHasPayload = fieldInfo.hasPayloads();
                 final boolean vectorsHasPayload = terms.hasPayloads();
 
+                if (postingsFields == null) {
+                  throw new CheckIndexException(
+                      "vector field=" + field + " does not exist in postings; doc=" + j);
+                }
                 Terms postingsTerms = postingsFields.terms(field);
                 if (postingsTerms == null) {
                   throw new CheckIndexException(

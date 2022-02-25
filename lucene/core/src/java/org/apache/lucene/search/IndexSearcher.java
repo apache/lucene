@@ -138,6 +138,16 @@ public class IndexSearcher {
   }
 
   /**
+   * Expert: returns leaf contexts associated with this searcher. This is an internal method exposed
+   * for tests only.
+   *
+   * @lucene.internal
+   */
+  public List<LeafReaderContext> getLeafContexts() {
+    return leafContexts;
+  }
+
+  /**
    * Expert: Get the default {@link QueryCache} or {@code null} if the cache is disabled.
    *
    * @lucene.internal
@@ -430,7 +440,11 @@ public class IndexSearcher {
     }
   }
 
-  /** Count how many documents match the given query. */
+  /**
+   * Count how many documents match the given query. May be faster than counting number of hits by
+   * collecting all matches, as the number of hits is retrieved from the index statistics when
+   * possible.
+   */
   public int count(Query query) throws IOException {
     query = rewrite(query);
     final Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
@@ -949,10 +963,7 @@ public class IndexSearcher {
     long sumTotalTermFreq = 0;
     long sumDocFreq = 0;
     for (LeafReaderContext leaf : reader.leaves()) {
-      final Terms terms = leaf.reader().terms(field);
-      if (terms == null) {
-        continue;
-      }
+      final Terms terms = Terms.getTerms(leaf.reader(), field);
       docCount += terms.getDocCount();
       sumTotalTermFreq += terms.getSumTotalTermFreq();
       sumDocFreq += terms.getSumDocFreq();

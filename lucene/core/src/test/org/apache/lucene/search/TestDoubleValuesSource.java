@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
@@ -27,13 +28,14 @@ import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.English;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.English;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -256,35 +258,49 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     DoubleValuesSource rewritten = vs.rewrite(searcher);
     searcher.search(
         q,
-        new SimpleCollector() {
-
-          DoubleValues v;
-          LeafReaderContext ctx;
-
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            this.ctx = context;
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+
+              DoubleValues v;
+              LeafReaderContext ctx;
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) {
+                this.ctx = context;
+              }
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.v = rewritten.getValues(this.ctx, DoubleValuesSource.fromScorer(scorer));
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                Explanation scoreExpl = searcher.explain(q, ctx.docBase + doc);
+                if (this.v.advanceExact(doc)) {
+                  CheckHits.verifyExplanation(
+                      "",
+                      doc,
+                      (float) v.doubleValue(),
+                      true,
+                      rewritten.explain(ctx, doc, scoreExpl));
+                } else {
+                  assertFalse(rewritten.explain(ctx, doc, scoreExpl).isMatch());
+                }
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return vs.needsScores() ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+              }
+            };
           }
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {
-            this.v = rewritten.getValues(this.ctx, DoubleValuesSource.fromScorer(scorer));
-          }
-
-          @Override
-          public void collect(int doc) throws IOException {
-            Explanation scoreExpl = searcher.explain(q, ctx.docBase + doc);
-            if (this.v.advanceExact(doc)) {
-              CheckHits.verifyExplanation(
-                  "", doc, (float) v.doubleValue(), true, rewritten.explain(ctx, doc, scoreExpl));
-            } else {
-              assertFalse(rewritten.explain(ctx, doc, scoreExpl).isMatch());
-            }
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return vs.needsScores() ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
           }
         });
   }
@@ -310,32 +326,42 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     DoubleValuesSource vs = DoubleValuesSource.fromQuery(q).rewrite(searcher);
     searcher.search(
         q,
-        new SimpleCollector() {
-
-          DoubleValues v;
-          Scorable scorer;
-          LeafReaderContext ctx;
-
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            this.ctx = context;
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+
+              DoubleValues v;
+              Scorable scorer;
+              LeafReaderContext ctx;
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) {
+                this.ctx = context;
+              }
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+                this.v = vs.getValues(this.ctx, DoubleValuesSource.fromScorer(scorer));
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                assertTrue(v.advanceExact(doc));
+                assertEquals(scorer.score(), v.doubleValue(), 0.00001);
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
           }
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {
-            this.scorer = scorer;
-            this.v = vs.getValues(this.ctx, DoubleValuesSource.fromScorer(scorer));
-          }
-
-          @Override
-          public void collect(int doc) throws IOException {
-            assertTrue(v.advanceExact(doc));
-            assertEquals(scorer.score(), v.doubleValue(), 0.00001);
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
           }
         });
   }

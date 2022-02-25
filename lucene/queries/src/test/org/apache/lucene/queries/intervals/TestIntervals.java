@@ -37,19 +37,20 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
@@ -621,17 +622,13 @@ public class TestIntervals extends LuceneTestCase {
     checkIntervals(
         source, "field1", 3, new int[][] {{}, {4, 4, 7, 7}, {1, 1, 7, 7}, {}, {4, 4}, {}});
     MatchesIterator mi = getMatches(source, 1, "field1");
-    assertMatch(mi, 4, 4, 20, 39);
+    assertMatch(mi, 4, 4, 26, 34);
     MatchesIterator subs = mi.getSubMatches();
-    assertMatch(subs, 3, 3, 20, 25);
     assertMatch(subs, 4, 4, 26, 34);
-    assertMatch(subs, 5, 5, 35, 39);
     assertFalse(subs.next());
-    assertMatch(mi, 7, 7, 41, 118);
+    assertMatch(mi, 7, 7, 47, 55);
     subs = mi.getSubMatches();
-    assertMatch(subs, 6, 6, 41, 46);
     assertMatch(subs, 7, 7, 47, 55);
-    assertMatch(subs, 21, 21, 114, 118);
     assertFalse(subs.next());
     assertFalse(mi.next());
     assertEquals(1, source.minExtent());
@@ -788,6 +785,30 @@ public class TestIntervals extends LuceneTestCase {
     assertEquals(3, source.minExtent());
   }
 
+  public void testMinShouldMatch2() throws IOException {
+    IntervalsSource source =
+        Intervals.atLeast(
+            2,
+            Intervals.unordered(Intervals.term("alph"), Intervals.term("ran")),
+            Intervals.term("where"),
+            Intervals.term("river"));
+    MatchesIterator mi = getMatches(source, 1, "field2");
+    assertMatch(mi, 0, 4, 0, 27); // contains "where" and "river"
+    MatchesIterator subs = mi.getSubMatches();
+    assertNotNull(subs);
+    assertMatch(subs, 0, 0, 0, 5);
+    assertMatch(subs, 4, 4, 22, 27);
+    assertFalse(subs.next());
+    assertMatch(mi, 1, 5, 6, 31); // contains "river" and unordered("alph", "run")
+    subs = mi.getSubMatches();
+    assertNotNull(subs);
+    assertMatch(subs, 1, 1, 6, 10);
+    assertMatch(subs, 4, 4, 22, 27);
+    assertMatch(subs, 5, 5, 28, 31);
+    assertFalse(subs.next());
+    assertFalse(mi.next());
+  }
+
   public void testDegenerateMinShouldMatch() throws IOException {
     IntervalsSource source =
         Intervals.ordered(
@@ -851,11 +872,9 @@ public class TestIntervals extends LuceneTestCase {
     checkIntervals(source, "field1", 3, new int[][] {{}, {7, 7}, {4, 4, 7, 7}, {}, {7, 7}, {}});
 
     MatchesIterator mi = getMatches(source, 1, "field1");
-    assertMatch(mi, 7, 7, 20, 55);
+    assertMatch(mi, 7, 7, 47, 55);
     MatchesIterator sub = mi.getSubMatches();
     assertNotNull(sub);
-    assertMatch(sub, 3, 3, 20, 25);
-    assertMatch(sub, 5, 5, 35, 39);
     assertMatch(sub, 7, 7, 47, 55);
     assertFalse(sub.next());
 
@@ -890,15 +909,13 @@ public class TestIntervals extends LuceneTestCase {
 
     MatchesIterator mi = getMatches(source, 1, "field1");
     assertNotNull(mi);
-    assertMatch(mi, 2, 4, 15, 39);
+    assertMatch(mi, 2, 4, 15, 34);
     MatchesIterator sub = mi.getSubMatches();
     assertNotNull(sub);
     assertMatch(sub, 2, 2, 15, 18);
-    assertMatch(sub, 3, 3, 20, 25);
     assertMatch(sub, 4, 4, 26, 34);
-    assertMatch(sub, 5, 5, 35, 39);
     assertFalse(sub.next());
-    assertMatch(mi, 7, 17, 41, 118);
+    assertMatch(mi, 7, 17, 47, 99);
 
     assertEquals(2, source.minExtent());
   }
@@ -987,8 +1004,48 @@ public class TestIntervals extends LuceneTestCase {
     checkVisits(Intervals.wildcard(new BytesRef("p??")), 1);
   }
 
-  public void testWrappedFilters() throws IOException {
+  public void testFuzzyTerm() throws IOException {
+    IntervalsSource source = Intervals.fuzzyTerm("kot", 1); // matches 'pot'
+    checkIntervals(
+        source,
+        "field1",
+        4,
+        new int[][] {
+          {},
+          {2, 2, 10, 10, 17, 17, 27, 27},
+          {5, 5, 10, 10, 21, 21},
+          {3, 3},
+          {2, 2, 10, 10, 17, 17},
+          {}
+        });
+    MatchesIterator mi = getMatches(source, 4, "field1");
+    assertNotNull(mi);
+    assertMatch(mi, 2, 2, 15, 18);
+    assertMatch(mi, 10, 10, 63, 66);
+    assertMatch(mi, 17, 17, 97, 100);
 
+    // Check limits.
+    IllegalStateException e =
+        expectThrows(
+            IllegalStateException.class,
+            () -> {
+              IntervalsSource s =
+                  Intervals.fuzzyTerm(
+                      "kot",
+                      1,
+                      FuzzyQuery.defaultPrefixLength,
+                      FuzzyQuery.defaultTranspositions,
+                      1);
+              for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+                s.intervals("field1", ctx);
+              }
+            });
+    assertEquals("Automaton [kot~1] expanded to too many terms (limit 1)", e.getMessage());
+
+    checkVisits(Intervals.fuzzyTerm("kot", FuzzyQuery.defaultMaxEdits), 1);
+  }
+
+  public void testWrappedFilters() throws IOException {
     IntervalsSource source =
         Intervals.or(
             Intervals.term("nine"),

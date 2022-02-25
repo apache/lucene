@@ -73,6 +73,7 @@ public class TaxonomyFacetSumIntAssociations extends IntTaxonomyFacets {
             offset += 4;
             int value = (int) BitUtil.VH_BE_INT.get(bytes, offset);
             offset += 4;
+            // TODO: Can we optimize the null check in increment? See LUCENE-10373.
             increment(ord, value);
           }
         }

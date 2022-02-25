@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.index.MergePolicy.OneMerge;
+import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
@@ -896,5 +898,15 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   private static String getSegmentName(MergePolicy.OneMerge merge) {
     return merge.info != null ? merge.info.info.name : "_na_";
+  }
+
+  static {
+    TestSecrets.setConcurrentMergeSchedulerAccess(
+        new ConcurrentMergeSchedulerAccess() {
+          @Override
+          public void setSuppressExceptions(ConcurrentMergeScheduler cms) {
+            cms.setSuppressExceptions();
+          }
+        });
   }
 }

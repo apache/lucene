@@ -102,6 +102,9 @@ public final class Tessellator {
     if (outerNode == null) {
       throw new IllegalArgumentException("Malformed shape detected in Tessellator!");
     }
+    if (outerNode == outerNode.next || outerNode == outerNode.next.next) {
+      throw new IllegalArgumentException("at least three non-collinear points required");
+    }
 
     // Determine if the specified list of points contains holes
     if (polygon.numHoles() > 0) {
@@ -153,6 +156,9 @@ public final class Tessellator {
     // specification)
     if (outerNode == null) {
       throw new IllegalArgumentException("Malformed shape detected in Tessellator!");
+    }
+    if (outerNode == outerNode.next || outerNode == outerNode.next.next) {
+      throw new IllegalArgumentException("at least three non-collinear points required");
     }
 
     // Determine if the specified list of points contains holes

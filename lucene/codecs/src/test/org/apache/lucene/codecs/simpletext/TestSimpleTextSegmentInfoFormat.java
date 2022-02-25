@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
+import org.apache.lucene.tests.index.BaseSegmentInfoFormatTestCase;
 import org.apache.lucene.util.Version;
 
 /** Tests SimpleTextSegmentInfoFormat */

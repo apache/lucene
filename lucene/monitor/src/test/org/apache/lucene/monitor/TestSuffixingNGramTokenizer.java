@@ -19,10 +19,10 @@ package org.apache.lucene.monitor;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestSuffixingNGramTokenizer extends BaseTokenStreamTestCase {
 

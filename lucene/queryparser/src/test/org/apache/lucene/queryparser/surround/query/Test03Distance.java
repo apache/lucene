@@ -18,7 +18,7 @@ package org.apache.lucene.queryparser.surround.query;
 
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class Test03Distance extends LuceneTestCase {
   public static void main(String[] args) {
@@ -41,7 +41,7 @@ public class Test03Distance extends LuceneTestCase {
   };
 
   public void test00Exceptions() throws Exception {
-    String m = TestExceptionQuery.getFailQueries(exceptionQueries, verbose);
+    String m = ExceptionQueryTestFacade.getFailQueries(exceptionQueries, verbose);
     if (m.length() > 0) {
       fail("No ParseException for:\n" + m);
     }
@@ -68,8 +68,8 @@ public class Test03Distance extends LuceneTestCase {
   }
 
   private void distanceTst(String query, int[] expdnrs, SingleFieldTestDb db) throws Exception {
-    TestBooleanQuery tbq =
-        new TestBooleanQuery(
+    BooleanQueryTestFacade tbq =
+        new BooleanQueryTestFacade(
             query, expdnrs, db, fieldName, this, new BasicQueryFactory(maxBasicQueries));
     tbq.setVerbose(verbose);
     tbq.doTest();

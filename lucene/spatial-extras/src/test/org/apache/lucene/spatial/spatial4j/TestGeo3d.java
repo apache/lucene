@@ -17,7 +17,7 @@
 
 package org.apache.lucene.spatial.spatial4j;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.exception.InvalidShapeException;

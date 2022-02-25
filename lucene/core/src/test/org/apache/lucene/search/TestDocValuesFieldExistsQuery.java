@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
@@ -27,16 +28,102 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
+
+  public void testRewriteWithTermsPresent() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertTrue((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
+
+  public void testRewriteWithPointValuesPresent() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertTrue((new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
+
+  public void testNoRewrite() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
+      iw.addDocument(doc);
+    }
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
+
+  public void testNoRewriteWithDocValues() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("dv1", 1));
+      doc.add(new SortedNumericDocValuesField("dv2", 1));
+      doc.add(new SortedNumericDocValuesField("dv2", 2));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv1")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv2")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv3")).rewrite(reader) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
 
   public void testRandom() throws IOException {
     final int iters = atLeast(10);
@@ -222,7 +309,8 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
     for (int i = 0; i < randomNumDocs; i++) {
       Document doc = new Document();
-      if (random().nextBoolean()) {
+      // ensure we index at least a document with long between 0 and 10
+      if (i == 0 || random().nextBoolean()) {
         doc.add(new LongPoint("long", i));
         doc.add(new NumericDocValuesField("long", i));
         doc.add(new StringField("string", "value", Store.NO));

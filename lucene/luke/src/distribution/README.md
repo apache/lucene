@@ -27,7 +27,7 @@ java -jar ${luke.cmd}
 or, using Java modules:
 
 ```
-java --module-path . --add-modules jdk.unsupported,org.apache.logging.log4j --module org.apache.lucene.luke
+java --module-path . --add-modules jdk.unsupported --module org.apache.lucene.luke
 ```
 
 Happy index hacking!

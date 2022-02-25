@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
@@ -56,18 +57,20 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingIndexSearcher;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.RamUsageTester;
-import org.apache.lucene.util.TestUtil;
 
 public class TestLRUQueryCache extends LuceneTestCase {
 
@@ -165,19 +168,36 @@ public class TestLRUQueryCache extends LuceneTestCase {
                         RandomPicks.randomFrom(
                             random(), new String[] {"blue", "red", "yellow", "green"});
                     final Query q = new TermQuery(new Term("color", value));
-                    TotalHitCountCollector collector = new TotalHitCountCollector();
-                    searcher.search(q, collector); // will use the cache
-                    final int totalHits1 = collector.getTotalHits();
-                    TotalHitCountCollector collector2 = new TotalHitCountCollector();
-                    searcher.search(
-                        q,
-                        new FilterCollector(collector2) {
-                          @Override
-                          public ScoreMode scoreMode() {
-                            return ScoreMode.COMPLETE; // will not use the cache because of scores
-                          }
-                        });
-                    final long totalHits2 = collector2.getTotalHits();
+                    TotalHitCountCollectorManager collectorManager =
+                        new TotalHitCountCollectorManager();
+                    // will use the cache
+                    final int totalHits1 = searcher.search(q, collectorManager);
+                    final long totalHits2 =
+                        searcher.search(
+                            q,
+                            new CollectorManager<FilterCollector, Integer>() {
+                              @Override
+                              public FilterCollector newCollector() {
+                                return new FilterCollector(new TotalHitCountCollector()) {
+                                  @Override
+                                  public ScoreMode scoreMode() {
+                                    // will not use the cache because of scores
+                                    return ScoreMode.COMPLETE;
+                                  }
+                                };
+                              }
+
+                              @Override
+                              public Integer reduce(Collection<FilterCollector> collectors)
+                                  throws IOException {
+                                return collectorManager.reduce(
+                                    collectors.stream()
+                                        .map(
+                                            filterCollector ->
+                                                (TotalHitCountCollector) filterCollector.in)
+                                        .collect(Collectors.toList()));
+                              }
+                            });
                     assertEquals(totalHits2, totalHits1);
                   } finally {
                     mgr.release(searcher);
@@ -527,7 +547,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final long actualRamBytesUsed = RamUsageTester.ramUsed(queryCache, acc);
     final long expectedRamBytesUsed = queryCache.ramBytesUsed();
     // error < 30%
-    assertEquals(actualRamBytesUsed, expectedRamBytesUsed, 30 * actualRamBytesUsed / 100);
+    assertEquals(actualRamBytesUsed, expectedRamBytesUsed, 30.d * actualRamBytesUsed / 100.d);
 
     reader.close();
     w.close();
@@ -564,10 +584,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
       final Query query = new AccountableDummyQuery();
       searcher.count(query);
     }
-    long queryRamBytesUsed =
-        numQueries * (10 * QUERY_DEFAULT_RAM_BYTES_USED + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY);
-    // allow 10% error for other ram bytes used estimation inside query cache
-    assertEquals(queryRamBytesUsed, queryCache.ramBytesUsed(), 10 * queryRamBytesUsed / 100);
+    long queryRamBytesUsed = numQueries * (10 * QUERY_DEFAULT_RAM_BYTES_USED);
+    // make sure the query cache reflects the big queries
+    assertTrue(queryCache.ramBytesUsed() > queryRamBytesUsed);
 
     reader.close();
     w.close();
@@ -944,7 +963,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(policy);
-    searcher.search(query.build(), new TotalHitCountCollector());
+    searcher.search(query.build(), new TotalHitCountCollectorManager());
 
     reader.close();
     dir.close();
@@ -1168,12 +1187,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
     BadQuery query = new BadQuery();
-    searcher.count(query);
+    searcher.search(query, new TotalHitCountCollectorManager());
     query.i[0] += 1; // change the hashCode!
 
     try {
       // trigger an eviction
-      searcher.search(new MatchAllDocsQuery(), new TotalHitCountCollector());
+      searcher.search(new MatchAllDocsQuery(), new TotalHitCountCollectorManager());
       fail();
     } catch (
         @SuppressWarnings("unused")

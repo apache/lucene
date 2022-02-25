@@ -29,17 +29,36 @@ import org.apache.lucene.util.NumericUtils;
  */
 public class NeighborQueue {
 
+  private static enum Order {
+    NATURAL {
+      @Override
+      long apply(long v) {
+        return v;
+      }
+    },
+    REVERSED {
+      @Override
+      long apply(long v) {
+        // This cannot be just `-v` since Long.MIN_VALUE doesn't have a positive counterpart. It
+        // needs a function that returns MAX_VALUE for MIN_VALUE and vice-versa.
+        return -1 - v;
+      }
+    };
+
+    abstract long apply(long v);
+  }
+
   private final LongHeap heap;
+  private final Order order;
 
   // Used to track the number of neighbors visited during a single graph traversal
   private int visitedCount;
+  // Whether the search stopped early because it reached the visited nodes limit
+  private boolean incomplete;
 
-  NeighborQueue(int initialSize, boolean reversed) {
-    if (reversed) {
-      heap = LongHeap.create(LongHeap.Order.MAX, initialSize);
-    } else {
-      heap = LongHeap.create(LongHeap.Order.MIN, initialSize);
-    }
+  public NeighborQueue(int initialSize, boolean reversed) {
+    this.heap = new LongHeap(initialSize);
+    this.order = reversed ? Order.REVERSED : Order.NATURAL;
   }
 
   /** @return the number of elements in the heap */
@@ -71,39 +90,52 @@ public class NeighborQueue {
   }
 
   private long encode(int node, float score) {
-    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | node;
+    return order.apply((((long) NumericUtils.floatToSortableInt(score)) << 32) | node);
   }
 
   /** Removes the top element and returns its node id. */
   public int pop() {
-    return (int) heap.pop();
+    return (int) order.apply(heap.pop());
   }
 
   int[] nodes() {
     int size = size();
     int[] nodes = new int[size];
     for (int i = 0; i < size; i++) {
-      nodes[i] = (int) heap.get(i + 1);
+      nodes[i] = (int) order.apply(heap.get(i + 1));
     }
     return nodes;
   }
 
   /** Returns the top element's node id. */
   public int topNode() {
-    return (int) heap.top();
+    return (int) order.apply(heap.top());
   }
 
   /** Returns the top element's node score. */
   public float topScore() {
-    return NumericUtils.sortableIntToFloat((int) (heap.top() >> 32));
+    return NumericUtils.sortableIntToFloat((int) (order.apply(heap.top()) >> 32));
+  }
+
+  public void clear() {
+    heap.clear();
+    visitedCount = 0;
   }
 
   public int visitedCount() {
     return visitedCount;
   }
 
-  void setVisitedCount(int visitedCount) {
+  public void setVisitedCount(int visitedCount) {
     this.visitedCount = visitedCount;
+  }
+
+  public boolean incomplete() {
+    return incomplete;
+  }
+
+  public void markIncomplete() {
+    this.incomplete = true;
   }
 
   @Override

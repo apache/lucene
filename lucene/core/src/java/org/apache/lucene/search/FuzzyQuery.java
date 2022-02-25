@@ -141,8 +141,27 @@ public class FuzzyQuery extends MultiTermQuery {
 
   /** Returns the compiled automata used to match terms */
   public CompiledAutomaton getAutomata() {
+    return getFuzzyAutomaton(term.text(), maxEdits, prefixLength, transpositions);
+  }
+
+  /**
+   * Returns the {@link CompiledAutomaton} internally used by {@link FuzzyQuery} to match terms.
+   * This is a very low-level method and may no longer exist in case the implementation of
+   * fuzzy-matching changes in the future.
+   *
+   * @lucene.internal
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}.
+   * @param prefixLength length of common (non-fuzzy) prefix
+   * @param transpositions true if transpositions should be treated as a primitive edit operation.
+   *     If this is false, comparisons will implement the classic Levenshtein algorithm.
+   * @return A {@link CompiledAutomaton} that matches terms that satisfy input parameters.
+   */
+  public static CompiledAutomaton getFuzzyAutomaton(
+      String term, int maxEdits, int prefixLength, boolean transpositions) {
     FuzzyAutomatonBuilder builder =
-        new FuzzyAutomatonBuilder(term.text(), maxEdits, prefixLength, transpositions);
+        new FuzzyAutomatonBuilder(term, maxEdits, prefixLength, transpositions);
     return builder.buildMaxEditAutomaton();
   }
 
@@ -197,10 +216,10 @@ public class FuzzyQuery extends MultiTermQuery {
     if (!super.equals(obj)) return false;
     if (getClass() != obj.getClass()) return false;
     FuzzyQuery other = (FuzzyQuery) obj;
-    return Objects.equals(maxEdits, other.maxEdits)
-        && Objects.equals(prefixLength, other.prefixLength)
-        && Objects.equals(maxExpansions, other.maxExpansions)
-        && Objects.equals(transpositions, other.transpositions)
+    return maxEdits == other.maxEdits
+        && prefixLength == other.prefixLength
+        && maxExpansions == other.maxExpansions
+        && transpositions == other.transpositions
         && Objects.equals(term, other.term);
   }
 

@@ -21,6 +21,8 @@ import java.util.List;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
+import org.apache.lucene.facet.MultiLongValues;
+import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -45,7 +47,7 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
    */
   public LongRangeFacetCounts(String field, FacetsCollector hits, LongRange... ranges)
       throws IOException {
-    this(field, null, hits, ranges);
+    this(field, (LongValuesSource) null, hits, ranges);
   }
 
   /**
@@ -56,6 +58,17 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
       String field, LongValuesSource valueSource, FacetsCollector hits, LongRange... ranges)
       throws IOException {
     this(field, valueSource, hits, null, ranges);
+  }
+
+  /**
+   * Create {@code LongRangeFacetCounts}, using the provided {@link MultiLongValuesSource} if
+   * non-null. If {@code valuesSource} is null, doc values from the provided {@code field} will be
+   * used.
+   */
+  public LongRangeFacetCounts(
+      String field, MultiLongValuesSource valuesSource, FacetsCollector hits, LongRange... ranges)
+      throws IOException {
+    this(field, valuesSource, hits, null, ranges);
   }
 
   /**
@@ -83,12 +96,35 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
   }
 
   /**
-   * Counts from the provided valueSource.
-   *
-   * <p>TODO: Seems like we could extract this into RangeFacetCounts and make the logic common
-   * between this class and DoubleRangeFacetCounts somehow. The blocker right now is that this
-   * implementation expects LongValueSource and DoubleRangeFacetCounts expects DoubleValueSource.
+   * Create {@code LongRangeFacetCounts}, using the provided {@link MultiLongValuesSource} if
+   * non-null. If {@code valuesSource} is null, doc values from the provided {@code field} will be
+   * used. Use the provided {@code Query} as a fastmatch: only documents passing the filter are
+   * checked for the matching ranges, which is helpful when the provided {@link LongValuesSource} is
+   * costly per-document, such as a geo distance.
    */
+  public LongRangeFacetCounts(
+      String field,
+      MultiLongValuesSource valuesSource,
+      FacetsCollector hits,
+      Query fastMatchQuery,
+      LongRange... ranges)
+      throws IOException {
+    super(field, ranges, fastMatchQuery);
+    // use the provided valueSource if non-null, otherwise use the doc values associated with the
+    // field
+    if (valuesSource != null) {
+      LongValuesSource singleValues = MultiLongValuesSource.unwrapSingleton(valuesSource);
+      if (singleValues != null) {
+        count(singleValues, hits.getMatchingDocs());
+      } else {
+        count(valuesSource, hits.getMatchingDocs());
+      }
+    } else {
+      count(field, hits.getMatchingDocs());
+    }
+  }
+
+  /** Counts from the provided valueSource. */
   private void count(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
@@ -120,6 +156,54 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
     }
 
     missingCount += counter.finish();
+    totCount -= missingCount;
+  }
+
+  /** Counts from the provided valueSource. */
+  private void count(MultiLongValuesSource valueSource, List<MatchingDocs> matchingDocs)
+      throws IOException {
+
+    LongRange[] ranges = getLongRanges();
+
+    LongRangeCounter counter = LongRangeCounter.create(ranges, counts);
+
+    for (MatchingDocs hits : matchingDocs) {
+      MultiLongValues multiValues = valueSource.getValues(hits.context);
+
+      final DocIdSetIterator it = createIterator(hits);
+      if (it == null) {
+        continue;
+      }
+
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+        // Skip missing docs:
+        if (multiValues.advanceExact(doc)) {
+          long limit = multiValues.getValueCount();
+          // optimize single-valued case:
+          if (limit == 1) {
+            counter.addSingleValued(multiValues.nextValue());
+            totCount++;
+          } else {
+            counter.startMultiValuedDoc();
+            long previous = 0;
+            for (int i = 0; i < limit; i++) {
+              long val = multiValues.nextValue();
+              if (i == 0 || val != previous) {
+                counter.addMultiValued(val);
+                previous = val;
+              }
+            }
+            if (counter.endMultiValuedDoc()) {
+              totCount++;
+            }
+          }
+        }
+
+        doc = it.nextDoc();
+      }
+    }
+
+    int missingCount = counter.finish();
     totCount -= missingCount;
   }
 

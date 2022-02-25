@@ -23,18 +23,14 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockGraphTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ko.KoreanTokenizer.DecompoundMode;
-import org.apache.lucene.analysis.ko.dict.BinaryDictionary.ResourceScheme;
-import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
-import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ko.dict.UserDictionary;
 import org.apache.lucene.analysis.ko.tokenattributes.PartOfSpeechAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.ReadingAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
 
 public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
   private Analyzer analyzer,
@@ -470,37 +466,6 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new int[] {0},
         new int[] {8},
         new int[] {1});
-  }
-
-  // Make sure loading custom dictionaries from classpath works:
-  public void testCustomDictionary() throws Exception {
-    Tokenizer tokenizer =
-        new KoreanTokenizer(
-            newAttributeFactory(),
-            new TokenInfoDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/TokenInfoDictionary"),
-            new UnknownDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/UnknownDictionary"),
-            new ConnectionCosts(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/ConnectionCosts"),
-            readDict(),
-            DecompoundMode.NONE,
-            false,
-            false);
-    try (Analyzer a =
-        new Analyzer() {
-          @Override
-          protected Analyzer.TokenStreamComponents createComponents(String fieldName) {
-            return new Analyzer.TokenStreamComponents(tokenizer, tokenizer);
-          }
-        }) {
-      assertTokenStreamContents(
-          a.tokenStream("foo", "커스텀사전검사"),
-          new String[] {"커스텀", "사전", "검사"},
-          new int[] {0, 3, 5},
-          new int[] {3, 5, 7},
-          7);
-    }
   }
 
   public void testInterpunct() throws IOException {

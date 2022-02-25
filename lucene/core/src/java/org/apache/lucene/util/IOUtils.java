@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -157,32 +158,20 @@ public final class IOUtils {
   }
 
   /**
-   * Opens a Reader for the given resource using a {@link CharsetDecoder}. Unlike Java's defaults
-   * this reader will throw an exception if your it detects the read charset doesn't match the
-   * expected {@link Charset}.
+   * Wrap all calls to {@link Class#getResource(String)} or {@link
+   * Class#getResourceAsStream(String)} using this method to enforce existence of the resource. This
+   * code works around those methods returning {@code null} to signal non-existence.
    *
-   * <p>Decoding readers are useful to load configuration files, stopword lists or synonym files to
-   * detect character set problems. However, it's not recommended to use as a common purpose reader.
-   *
-   * @param clazz the class used to locate the resource
-   * @param resource the resource name to load
-   * @param charSet the expected charset
-   * @return a reader to read the given file
+   * @param resource return value of above methods
+   * @param name of resource
+   * @return the resource passed in if existent
+   * @throws FileNotFoundException if resource was not found
    */
-  public static Reader getDecodingReader(Class<?> clazz, String resource, Charset charSet)
-      throws IOException {
-    InputStream stream = null;
-    boolean success = false;
-    try {
-      stream = clazz.getResourceAsStream(resource);
-      final Reader reader = getDecodingReader(stream, charSet);
-      success = true;
-      return reader;
-    } finally {
-      if (!success) {
-        IOUtils.close(stream);
-      }
+  public static <T> T requireResourceNonNull(T resource, String name) throws IOException {
+    if (resource == null) {
+      throw new FileNotFoundException("The resource '" + name + "' was not found.");
     }
+    return resource;
   }
 
   /**
@@ -472,31 +461,11 @@ public final class IOUtils {
    * The first exception thrown by the consumer is re-thrown and subsequent exceptions are
    * suppressed.
    */
+  @SuppressWarnings("StreamToIterable")
   public static <T> void applyToAll(Collection<T> collection, IOConsumer<T> consumer)
       throws IOException {
     IOUtils.close(
         collection.stream().filter(Objects::nonNull).map(t -> (Closeable) () -> consumer.accept(t))
             ::iterator);
-  }
-
-  /**
-   * An IO operation with a single input.
-   *
-   * @see java.util.function.Consumer
-   */
-  @FunctionalInterface
-  public interface IOConsumer<T> {
-    /** Performs this operation on the given argument. */
-    void accept(T input) throws IOException;
-  }
-
-  /**
-   * A Function that may throw an IOException
-   *
-   * @see java.util.function.Function
-   */
-  @FunctionalInterface
-  public interface IOFunction<T, R> {
-    R apply(T t) throws IOException;
   }
 }

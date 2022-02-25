@@ -19,8 +19,9 @@ package org.apache.lucene.analysis.ko;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashMap;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 
 /** Simple tests for {@link KoreanReadingFormFilterFactory} */
 public class TestKoreanReadingFormFilterFactory extends BaseTokenStreamTestCase {

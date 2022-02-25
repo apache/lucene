@@ -225,13 +225,11 @@ class QueryIndex implements Closeable {
       for (LeafReaderContext ctx : reader.leaves()) {
         for (FieldInfo fi : ctx.reader().getFieldInfos()) {
           BytesRefHash terms = termsHash.computeIfAbsent(fi.name, f -> new BytesRefHash());
-          Terms t = ctx.reader().terms(fi.name);
-          if (t != null) {
-            TermsEnum te = t.iterator();
-            BytesRef term;
-            while ((term = te.next()) != null) {
-              terms.add(term);
-            }
+          Terms t = Terms.getTerms(ctx.reader(), fi.name);
+          TermsEnum te = t.iterator();
+          BytesRef term;
+          while ((term = te.next()) != null) {
+            terms.add(term);
           }
         }
       }

@@ -63,7 +63,7 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Before;
@@ -379,7 +379,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                           Intervals.containedBy(
                               Intervals.term("foo"),
                               Intervals.unordered(Intervals.term("foo"), Intervals.term("bar"))))),
-                  containsInAnyOrder(fmt("2: (field_text_offs: '>bar baz foo< xyz')", field)));
+                  containsInAnyOrder(fmt("2: (field_text_offs: 'bar baz >foo< xyz')", field)));
 
               MatcherAssert.assertThat(
                   highlights(
@@ -387,9 +387,9 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                       new IntervalQuery(
                           field,
                           Intervals.overlapping(
-                              Intervals.unordered(Intervals.term("foo"), Intervals.term("bar")),
-                              Intervals.term("foo")))),
-                  containsInAnyOrder(fmt("2: (field_text_offs: '>bar baz foo< xyz')", field)));
+                              Intervals.term("foo"),
+                              Intervals.unordered(Intervals.term("foo"), Intervals.term("bar"))))),
+                  containsInAnyOrder(fmt("2: (field_text_offs: 'bar baz >foo< xyz')", field)));
             });
   }
 

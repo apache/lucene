@@ -26,14 +26,15 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil.RandomAcceptedStrings;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.UnicodeUtil;
-import org.apache.lucene.util.automaton.AutomatonTestUtil.RandomAcceptedStrings;
 import org.apache.lucene.util.fst.Util;
 
 public class TestAutomaton extends LuceneTestCase {
@@ -1026,7 +1027,7 @@ public class TestAutomaton extends LuceneTestCase {
               System.out.println("  prefixes=" + prefixes);
             }
 
-            for (int prefix : prefixes) {
+            for (int prefix : prefixes.stream().mapToInt(Integer::intValue).toArray()) {
               // prefix is a leading ascii byte; we retain <prefix>* in a
               Automaton a2 = new Automaton();
               int init = a2.createState();

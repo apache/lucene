@@ -30,8 +30,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -42,11 +40,15 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.MockRandomMergePolicy;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Ignore;
 
 @SuppressCodecs("SimpleText") // too slow here
@@ -449,7 +451,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     }
     modifier.commit();
 
-    IndexReader reader = modifier.getReader();
+    IndexReader reader = DirectoryReader.open(modifier);
     assertEquals(7, reader.numDocs());
     reader.close();
 
@@ -459,7 +461,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     // Delete all
     modifier.deleteAll();
 
-    reader = modifier.getReader();
+    reader = DirectoryReader.open(modifier);
     assertEquals(0, reader.numDocs());
     reader.close();
 

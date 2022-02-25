@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
-import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.ResourceScheme;
+import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.DICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.ko.dict.TokenInfoDictionary.FST_FILENAME_SUFFIX;
 
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -26,9 +29,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.analysis.ko.util.DictionaryBuilder;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.IntsRefFSTEnum;
@@ -76,7 +79,11 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
     DictionaryBuilder.build(dir, dir, "utf-8", true);
     String dictionaryPath = TokenInfoDictionary.class.getName().replace('.', '/');
     // We must also load the other files (in BinaryDictionary) from the correct path
-    return new TokenInfoDictionary(ResourceScheme.FILE, dir.resolve(dictionaryPath).toString());
+    return new TokenInfoDictionary(
+        dir.resolve(dictionaryPath + TARGETMAP_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + POSDICT_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + DICT_FILENAME_SUFFIX),
+        dir.resolve(dictionaryPath + FST_FILENAME_SUFFIX));
   }
 
   public void testPutException() {

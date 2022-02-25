@@ -16,11 +16,12 @@
  */
 package org.apache.lucene.geo;
 
-import static org.apache.lucene.geo.GeoTestUtil.nextBoxNotCrossingDateline;
+import static org.apache.lucene.tests.geo.GeoTestUtil.nextBoxNotCrossingDateline;
 
 import java.text.ParseException;
 import java.util.List;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Test case for the Polygon {@link Tessellator} class */
 public class TestTessellator extends LuceneTestCase {
@@ -166,6 +167,15 @@ public class TestTessellator extends LuceneTestCase {
             + "-111.5025 68.32375,-111.50275 68.3235,-111.504 68.32375,-111.50425 68.3235,-111.50525 68.32325,-111.5055 68.3235,-111.506 68.3235,-111.50625 68.32325,-111.5065 68.3225,-111.5075 68.3225,-111.50775 68.32275,-111.50825 68.32275,"
             + "-111.5085 68.3225,-111.50875 68.3225,-111.509 68.32275,-111.5125 68.32275,-111.51325 68.32225,-111.4765 68.321))";
     checkPolygon(wkt);
+  }
+
+  public void testInvalidPolygonCollinear() throws Exception {
+    String wkt =
+        "POLYGON ((18.9401790919516 -33.9681188869036, 18.9401790919516 -33.9681188869036, 18.9401790919517 -33.9681188869036, 18.9401790919517 -33.9681188869036, 18.9401790919516 -33.9681188869036))";
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    IllegalArgumentException ex =
+        expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+    assertEquals("at least three non-collinear points required", ex.getMessage());
   }
 
   public void testComplexPolygon01() throws Exception {
