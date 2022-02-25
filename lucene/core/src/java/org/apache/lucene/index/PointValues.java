@@ -395,7 +395,8 @@ public abstract class PointValues {
       case CELL_INSIDE_QUERY:
         // This cell is fully inside the query shape: recursively add all points in this cell
         // without filtering
-        visitDocIds(visitor, pointTree);
+        visitor.grow((int) Math.min(getDocCount(), size()));
+        pointTree.visitDocIDs(visitor);
         break;
       case CELL_CROSSES_QUERY:
         // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
@@ -408,30 +409,12 @@ public abstract class PointValues {
         } else {
           // Leaf node; scan and filter all points in this block:
           // We cannot have more than Integer.MAX_VALUE points in a leaf
-          visitor.grow(Math.toIntExact(pointTree.size()));
+          visitor.grow((int) Math.min(getDocCount(), size()));
           pointTree.visitDocValues(visitor, visitor, visitor);
         }
         break;
       default:
         throw new IllegalArgumentException("Unreachable code");
-    }
-  }
-
-  private void visitDocIds(IntersectVisitor visitor, PointTree pointTree) throws IOException {
-    final long size = pointTree.size();
-    if (size <= Integer.MAX_VALUE) {
-      visitor.grow((int) size);
-      pointTree.visitDocIDs(visitor);
-    } else {
-      if (pointTree.moveToChild()) {
-        do {
-          visitDocIds(visitor, pointTree);
-        } while (pointTree.moveToSibling());
-        pointTree.moveToParent();
-      } else {
-        // We cannot have more than Integer.MAX_VALUE points in a leaf
-        throw new ArithmeticException("integer overflow");
-      }
     }
   }
 
