@@ -353,7 +353,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
               } else {
                   maxDocId = maxVisitor.min - 1;
               }
-              new BoundedDocSetIdIterator(minDocId, maxDocId + 1, delegate, allDocExist);
+              return new BoundedDocSetIdIterator(minDocId, maxDocId + 1, delegate, allDocExist);
           }
       }
       return null;
