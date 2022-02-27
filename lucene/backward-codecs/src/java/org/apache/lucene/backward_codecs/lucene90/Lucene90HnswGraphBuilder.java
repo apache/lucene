@@ -38,7 +38,7 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
 public final class Lucene90HnswGraphBuilder {
 
   /** Default random seed for level generation * */
-  private static final long DEFAULT_RAND_SEED = System.currentTimeMillis();
+  private static final long DEFAULT_RAND_SEED = 42;
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 
@@ -144,7 +144,15 @@ public final class Lucene90HnswGraphBuilder {
     // We pass 'null' for acceptOrds because there are no deletions while building the graph
     NeighborQueue candidates =
         Lucene90OnHeapHnswGraph.search(
-            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, null, random);
+            value,
+            beamWidth,
+            beamWidth,
+            vectorValues,
+            similarityFunction,
+            hnsw,
+            null,
+            Integer.MAX_VALUE,
+            random);
 
     int node = hnsw.addNode();
 

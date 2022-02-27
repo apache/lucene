@@ -22,7 +22,6 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 
 /**
@@ -37,7 +36,6 @@ import java.nio.LongBuffer;
 public abstract class ByteBufferIndexInput extends IndexInput implements RandomAccessInput {
   private static final FloatBuffer EMPTY_FLOATBUFFER = FloatBuffer.allocate(0);
   private static final LongBuffer EMPTY_LONGBUFFER = LongBuffer.allocate(0);
-  private static final IntBuffer EMPTY_INTBUFFER = IntBuffer.allocate(0);
 
   protected final long length;
   protected final long chunkSizeMask;
@@ -48,7 +46,6 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   protected int curBufIndex = -1;
   protected ByteBuffer curBuf; // redundant for speed: buffers[curBufIndex]
   private LongBuffer[] curLongBufferViews;
-  private IntBuffer[] curIntBufferViews;
   private FloatBuffer[] curFloatBufferViews;
 
   protected boolean isClone = false;
@@ -86,7 +83,6 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     this.curBuf = curBuf;
     curLongBufferViews = null;
     curFloatBufferViews = null;
-    curIntBufferViews = null;
   }
 
   @Override
@@ -173,37 +169,6 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
         @SuppressWarnings("unused")
         BufferUnderflowException e) {
       super.readLongs(dst, offset, length);
-    } catch (
-        @SuppressWarnings("unused")
-        NullPointerException npe) {
-      throw new AlreadyClosedException("Already closed: " + this);
-    }
-  }
-
-  @Override
-  public void readInts(int[] dst, int offset, int length) throws IOException {
-    // See notes about readLongs above
-    if (curIntBufferViews == null) {
-      curIntBufferViews = new IntBuffer[Integer.BYTES];
-      for (int i = 0; i < Integer.BYTES; ++i) {
-        if (i < curBuf.limit()) {
-          curIntBufferViews[i] =
-              curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
-        } else {
-          curIntBufferViews[i] = EMPTY_INTBUFFER;
-        }
-      }
-    }
-    try {
-      final int position = curBuf.position();
-      guard.getInts(
-          curIntBufferViews[position & 0x03].position(position >>> 2), dst, offset, length);
-      // if the above call succeeded, then we know the below sum cannot overflow
-      curBuf.position(position + (length << 2));
-    } catch (
-        @SuppressWarnings("unused")
-        BufferUnderflowException e) {
-      super.readInts(dst, offset, length);
     } catch (
         @SuppressWarnings("unused")
         NullPointerException npe) {
@@ -538,7 +503,6 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     curBuf = null;
     curBufIndex = 0;
     curLongBufferViews = null;
-    curIntBufferViews = null;
   }
 
   /** Optimization of ByteBufferIndexInput for when there is only one buffer */

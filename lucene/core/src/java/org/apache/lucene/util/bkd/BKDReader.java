@@ -217,7 +217,6 @@ public class BKDReader extends PointValues {
         scratchMaxIndexPackedValue;
     private final int[] commonPrefixLengths;
     private final BKDReaderDocIDSetIterator scratchIterator;
-    private final DocIdsWriter docIdsWriter;
     // if true the tree is balanced, otherwise unbalanced
     private final boolean isTreeBalanced;
 
@@ -304,7 +303,6 @@ public class BKDReader extends PointValues {
       this.scratchDataPackedValue = scratchDataPackedValue;
       this.scratchMinIndexPackedValue = scratchMinIndexPackedValue;
       this.scratchMaxIndexPackedValue = scratchMaxIndexPackedValue;
-      this.docIdsWriter = scratchIterator.docIdsWriter;
     }
 
     @Override
@@ -572,7 +570,7 @@ public class BKDReader extends PointValues {
         // How many points are stored in this leaf cell:
         int count = leafNodes.readVInt();
         // No need to call grow(), it has been called up-front
-        docIdsWriter.readInts(leafNodes, count, visitor);
+        DocIdsWriter.readInts(leafNodes, count, visitor);
       } else {
         pushLeft();
         addAll(visitor, grown);
@@ -635,7 +633,7 @@ public class BKDReader extends PointValues {
       // How many points are stored in this leaf cell:
       int count = in.readVInt();
 
-      docIdsWriter.readInts(in, count, iterator.docIDs);
+      DocIdsWriter.readInts(in, count, iterator.docIDs);
 
       return count;
     }
@@ -1004,11 +1002,9 @@ public class BKDReader extends PointValues {
     private int offset;
     private int docID;
     final int[] docIDs;
-    private final DocIdsWriter docIdsWriter;
 
     public BKDReaderDocIDSetIterator(int maxPointsInLeafNode) {
       this.docIDs = new int[maxPointsInLeafNode];
-      this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode);
     }
 
     @Override

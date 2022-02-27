@@ -24,7 +24,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
+  (Uihyun Kim)
 
 Optimizations
 ---------------------
@@ -189,9 +191,6 @@ Improvements
 * LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
   (Patrick Zhai)
 
-* LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
-  (Uihyun Kim)
-  
 Optimizations
 ---------------------
 
@@ -222,8 +221,6 @@ Optimizations
 
 * LUCENE-10388: Remove MultiLevelSkipListReader#SkipBuffer to make JVM less confused. (Guo Feng)
 
-* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
-
 * LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
   matching clauses is a constant. (LuYunCheng via Adrien Grand)
 
@@ -234,8 +231,8 @@ Optimizations
 
 * LUCENE-10424 Optimize the "everything matches" case for count query in PointRangeQuery. (Ignacio Vera, Lu Xugang)
 
-* LUCENE-10084: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever terms
-  or points have a docCount that is equal to maxDoc. (Vigya Sharma)
+* LUCENE-10084, LUCENE-10435: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever
+  terms or points have a docCount that is equal to maxDoc. (Vigya Sharma, Lu Xugang)
 
 Changes in runtime behavior
 ---------------------
@@ -301,6 +298,9 @@ Other
   so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
 
 * LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
+
+* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon 
+  does not contain enough no-collinear points. (Ignacio Vera)
 
 ======================= Lucene 9.0.0 =======================
 

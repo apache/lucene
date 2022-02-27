@@ -44,6 +44,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
@@ -491,7 +492,11 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     int dimension = atLeast(5);
     int numIters = atLeast(10);
     try (Directory d = newDirectory()) {
-      RandomIndexWriter w = new RandomIndexWriter(random(), d);
+      // Always use the default kNN format to have predictable behavior around when it hits
+      // visitedLimit. This is fine since the test targets KnnVectorQuery logic, not the kNN format
+      // implementation.
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+      RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
         doc.add(new KnnVectorField("field", randomVector(dimension)));
@@ -690,8 +695,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
 
     @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
-        throws IOException {
+    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
   }
