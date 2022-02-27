@@ -333,6 +333,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
                   points.getBytesPerDimension(),
                   true
               );
+              if (minVisitor.compare(points.getMinPackedValue(), points.getMaxPackedValue()) == Relation.CELL_INSIDE_QUERY) {
+                  return new BoundedDocSetIdIterator(0, points.getDocCount(), delegate, allDocExist);
+              }
               points.binarySearch(minVisitor, minVisitor);
               if (!minVisitor.hasDoc) {
                   return new BoundedDocSetIdIterator(-1, -1, delegate, allDocExist);
