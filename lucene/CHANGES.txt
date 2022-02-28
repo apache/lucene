@@ -234,6 +234,9 @@ Optimizations
 * LUCENE-10084, LUCENE-10435: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever
   terms or points have a docCount that is equal to maxDoc. (Vigya Sharma, Lu Xugang)
 
+* LUCENE-10442: When indexQuery or/and dvQuery be a MatchAllDocsQuery
+  then IndexOrDocValuesQuery should be rewrite to MatchAllDocsQuery. (Lu Xugang)
+
 Changes in runtime behavior
 ---------------------
 
