@@ -212,33 +212,17 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
           }
           return true;
       };
-      final Predicate<byte[]> matchNoneCompare = maxPackedValue -> {
-          for (int dim = 0; dim < numIndexDimensions; dim++) {
-              final int offset = dim * bytesPerDim;
-              if(allowEqual) {
-                if (comparator.compare(packedValue, offset, maxPackedValue, offset) <= 0) {
-                  return false;
-                }
-              }else {
-                if (comparator.compare(packedValue, offset, maxPackedValue, offset) < 0) {
-                  return false;
-                }
-              }
-          }
-          return true;
-      };
-      return nextDoc(values.getPointTree(), biggerThan, matchNoneCompare);
+      return nextDoc(values.getPointTree(), biggerThan);
   }
 
-  private int nextDoc(PointValues.PointTree pointTree, Predicate<byte[]> biggerThan, final Predicate<byte[]> matchNoneCompare)
-      throws IOException {
-      if (matchNoneCompare.test(pointTree.getMaxPackedValue())) {
+  private int nextDoc(PointValues.PointTree pointTree, Predicate<byte[]> biggerThan) throws IOException {
+      if (biggerThan.test(pointTree.getMaxPackedValue()) == false) {
           // doc is before us
           return -1;
       } else if (pointTree.moveToChild()) {
           // navigate down
           do {
-              final int doc = nextDoc(pointTree, biggerThan, matchNoneCompare);
+              final int doc = nextDoc(pointTree, biggerThan);
               if (doc != -1) {
                   return doc;
               }
@@ -287,7 +271,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       }
       return true;
   }
-  
+
   private BoundedDocSetIdIterator getDocIdSetIteratorOrNullFromBkd(LeafReaderContext context, DocIdSetIterator delegate)
       throws IOException {
       Sort indexSort = context.reader().getMetaData().getSort();
@@ -322,7 +306,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
               if (maxDocId == -1) {
                   maxDocId = context.reader().numDocs() - 1;
               } else {
-                // return maxDocId the smallest doc id whose value >queryUpperPoint, so maxDocId-1 is biggest doc id whose value <=queryUpperPoint
+                  // return maxDocId the smallest doc id whose value >queryUpperPoint, so maxDocId-1 is biggest doc id whose value
+                  // <=queryUpperPoint
                   maxDocId = maxDocId - 1;
               }
               return new BoundedDocSetIdIterator(minDocId, maxDocId + 1, delegate, allDocExist);
