@@ -51,31 +51,6 @@ public class MergeOnFlushMergePolicy extends FilterMergePolicy {
   }
 
   @Override
-  public MergeSpecification findMerges(
-      MergeTrigger mergeTrigger, SegmentInfos infos, MergeContext mergeContext) throws IOException {
-    return super.findMerges(mergeTrigger, excludeSmallSegments(infos), mergeContext);
-  }
-
-  /**
-   * Returns a SegmentInfos with all segments smaller than smallSegmentThresholdBytes removed.
-   *
-   * @param realSegmentInfos the "real", unfiltered {@link SegmentInfos}
-   * @return a new {@link SegmentInfos} instance containing all {@link SegmentCommitInfo} from
-   *     realSegmentInfos that are at least as large as smallSegmentThresholdBytes.
-   * @throws IOException if unable to load the size of a {@link SegmentCommitInfo}
-   */
-  private SegmentInfos excludeSmallSegments(SegmentInfos realSegmentInfos) throws IOException {
-    SegmentInfos largeSegmentInfos =
-        new SegmentInfos(realSegmentInfos.getIndexCreatedVersionMajor());
-    for (SegmentCommitInfo sci : realSegmentInfos.asList()) {
-      if (sci.sizeInBytes() >= smallSegmentThresholdBytes) {
-        largeSegmentInfos.add(sci);
-      }
-    }
-    return largeSegmentInfos;
-  }
-
-  @Override
   public MergeSpecification findFullFlushMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {
