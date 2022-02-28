@@ -369,41 +369,6 @@ public abstract class PointValues {
     }
   }
 
-  public interface SearchControl {
-    // continue to search right node or not
-    boolean needSearchRight();
-  }
-
-  public void binarySearch(IntersectVisitor visitor, SearchControl searchControl) throws IOException {
-    final PointTree pointTree = getPointTree();
-    binarySearch(visitor, pointTree, searchControl);
-  }
-
-  private void binarySearch(IntersectVisitor visitor, PointTree pointTree, SearchControl searchControl)
-      throws IOException {
-    Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
-    switch (r) {
-      case CELL_OUTSIDE_QUERY:
-        // This cell is fully outside the query shape: stop recursing
-        break;
-      case CELL_CROSSES_QUERY:
-      case CELL_INSIDE_QUERY:
-        if (pointTree.moveToChild()) {
-          binarySearch(visitor, pointTree, searchControl);
-          while (searchControl.needSearchRight() && pointTree.moveToSibling()) {
-            binarySearch(visitor, pointTree, searchControl);
-          }
-          pointTree.moveToParent();
-        } else {
-          // Leaf node; scan and filter all points in this block:
-          pointTree.visitDocValues(visitor);
-        }
-        break;
-      default:
-        throw new IllegalArgumentException("Unreachable code");
-    }
-  }
-
   /**
    * Estimate the number of points that would be visited by {@link #intersect} with the given {@link
    * IntersectVisitor}. This should run many times faster than {@link #intersect(IntersectVisitor)}.

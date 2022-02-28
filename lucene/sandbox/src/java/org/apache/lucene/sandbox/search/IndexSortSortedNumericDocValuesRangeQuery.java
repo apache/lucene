@@ -18,6 +18,7 @@ package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
@@ -27,7 +28,6 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.index.PointValues.SearchControl;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -45,8 +45,6 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
-
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -191,123 +189,105 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     };
   }
 
-
-  private static class MinDocIdVisitor implements IntersectVisitor, SearchControl {
-
-      private boolean hasDoc = false;
-      private byte[] lowerPoint;
-      private byte[] upperPoint;
-      private int numDims;
-      private int bytesPerDim;
-      private boolean includeLower;
-      public int min = Integer.MAX_VALUE;
-      private final ByteArrayComparator comparator;
-
-      public MinDocIdVisitor(byte[] lowerPoint, byte[] upperPoint, int numDims, int bytesPerDim, boolean includeLower) {
-          this.lowerPoint = lowerPoint;
-          this.upperPoint = upperPoint;
-          this.numDims = numDims;
-          this.bytesPerDim = bytesPerDim;
-          this.includeLower = includeLower;
-          this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
-      }
-
-      @Override
-      public void grow(int count) {
-
-      }
-
-      @Override
-      public void visit(int docID) {
-        hasDoc = true;
-        min = Integer.min(min, docID);
-      }
-
-      @Override
-      public void visit(int docID, byte[] packedValue) {
-          if (matches(packedValue)) { 
-            visit(docID);
-          }
-      }
-
-      @Override
-      public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
-          if (matches(packedValue)) { 
-              int docID;
-              while ((docID = iterator.nextDoc()) != NO_MORE_DOCS) {
-                visit(docID);
-              }
-          }
-      }
-
-      @Override
-      public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-          return relate(minPackedValue, maxPackedValue);
-      }
-
-      private boolean matches(byte[] packedValue) {
-          for (int dim = 0; dim < numDims; dim++) {
-              int offset = dim * bytesPerDim;
-              int result = comparator.compare(packedValue, offset, lowerPoint, offset);
-              if (result < 0) {
-                  // Doc's value is too low, in this dimension
-                  return false;
-              }
-              if (!includeLower) {
-                  if (result == 0) {
+  /**
+   * Returns the first document whose packed value is greater than or equal (if allowEqual is true) to the provided packed value
+   * or -1 if all packed values are smaller than the provided one,
+   */
+  public final int nextDoc(PointValues values, byte[] packedValue, boolean allowEqual) throws IOException {
+      final int numIndexDimensions = values.getNumIndexDimensions();
+      final int bytesPerDim = values.getBytesPerDimension();
+      final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+      final Predicate<byte[]> biggerThan = testPackedValue -> {
+          for (int dim = 0; dim < numIndexDimensions; dim++) {
+              final int offset = dim * bytesPerDim;
+              if (allowEqual) {
+                  if (comparator.compare(testPackedValue, offset, packedValue, offset) < 0) {
+                      return false;
+                  }
+              } else {
+                  if (comparator.compare(testPackedValue, offset, packedValue, offset) <= 0) {
                       return false;
                   }
               }
-              if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
-                  // Doc's value is too high, in this dimension
+          }
+          return true;
+      };
+      final Predicate<byte[]> matchNoneCompare = maxPackedValue -> {
+          for (int dim = 0; dim < numIndexDimensions; dim++) {
+              final int offset = dim * bytesPerDim;
+              if(allowEqual) {
+                if (comparator.compare(packedValue, offset, maxPackedValue, offset) <= 0) {
                   return false;
+                }
+              }else {
+                if (comparator.compare(packedValue, offset, maxPackedValue, offset) < 0) {
+                  return false;
+                }
               }
           }
           return true;
-      }
+      };
+      return nextDoc(values.getPointTree(), biggerThan, matchNoneCompare);
+  }
 
-      private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
-
-          boolean crosses = false;
-
-          for (int dim = 0; dim < numDims; dim++) {
-              int offset = dim * bytesPerDim;
-
-              if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0) {
-                  return Relation.CELL_OUTSIDE_QUERY;
+  private int nextDoc(PointValues.PointTree pointTree, Predicate<byte[]> biggerThan, final Predicate<byte[]> matchNoneCompare)
+      throws IOException {
+      if (matchNoneCompare.test(pointTree.getMaxPackedValue())) {
+          // doc is before us
+          return -1;
+      } else if (pointTree.moveToChild()) {
+          // navigate down
+          do {
+              final int doc = nextDoc(pointTree, biggerThan, matchNoneCompare);
+              if (doc != -1) {
+                  return doc;
+              }
+          } while (pointTree.moveToSibling());
+          pointTree.moveToParent();
+          return -1;
+      } else {
+          // doc is in this leaf
+          final int[] doc = { -1 };
+          pointTree.visitDocValues(new IntersectVisitor() {
+              @Override
+              public void visit(int docID) {
+                  throw new AssertionError("Invalid call to visit(docID)");
               }
 
-              int result = comparator.compare(maxPackedValue, offset, lowerPoint, offset);
-              if (result < 0) {
-                  return Relation.CELL_OUTSIDE_QUERY;
-              }
-              if (!includeLower) {
-                  if (result == 0) {
-                      return Relation.CELL_OUTSIDE_QUERY;
+              @Override
+              public void visit(int docID, byte[] packedValue) {
+                  if (doc[0] == -1 && biggerThan.test(packedValue)) {
+                      doc[0] = docID;
                   }
               }
 
-              result = comparator.compare(minPackedValue, offset, lowerPoint, offset);
-
-              crosses |= result < 0 || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
-              if (!includeLower) {
-                  crosses |= result == 0;
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                  return Relation.CELL_CROSSES_QUERY;
               }
-          }
-
-          if (crosses) {
-              return Relation.CELL_CROSSES_QUERY;
-          } else {
-              return Relation.CELL_INSIDE_QUERY;
-          }
-      }
-
-      @Override
-      public boolean needSearchRight() {
-          return !hasDoc;
+          });
+          return doc[0];
       }
   }
 
+  private boolean matchAll(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint) throws IOException {
+      final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
+      for (int dim = 0; dim < points.getNumDimensions(); dim++) {
+          int offset = dim * points.getBytesPerDimension();
+          if (comparator.compare(points.getMinPackedValue(), offset, queryUpperPoint, offset) > 0) {
+              return false;
+          }
+          if (comparator.compare(points.getMaxPackedValue(), offset, queryLowerPoint, offset) < 0) {
+              return false;
+          }
+          if (comparator.compare(points.getMinPackedValue(), offset, queryLowerPoint, offset) < 0
+              || comparator.compare(points.getMaxPackedValue(), offset, queryUpperPoint, offset) > 0) {
+              return false;
+          }
+      }
+      return true;
+  }
+  
   private BoundedDocSetIdIterator getDocIdSetIteratorOrNullFromBkd(LeafReaderContext context, DocIdSetIterator delegate)
       throws IOException {
       Sort indexSort = context.reader().getMetaData().getSort();
@@ -326,35 +306,24 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
               if (points.getDocCount() == context.reader().maxDoc()) {
                   allDocExist = true;
               }
-              MinDocIdVisitor minVisitor = new MinDocIdVisitor(
-                  LongPoint.pack(lowerValue).bytes,
-                  LongPoint.pack(upperValue).bytes,
-                  points.getNumDimensions(),
-                  points.getBytesPerDimension(),
-                  true
-              );
-              if (minVisitor.compare(points.getMinPackedValue(), points.getMaxPackedValue()) == Relation.CELL_INSIDE_QUERY) {
+
+              byte[] queryLowerPoint = LongPoint.pack(lowerValue).bytes;
+              byte[] queryUpperPoint = LongPoint.pack(upperValue).bytes;
+              if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
                   return new BoundedDocSetIdIterator(0, points.getDocCount(), delegate, allDocExist);
               }
-              points.binarySearch(minVisitor, minVisitor);
-              if (!minVisitor.hasDoc) {
+              // >=queryLowerPoint
+              int minDocId = nextDoc(points, queryLowerPoint, true);
+              if (minDocId == -1) {
                   return new BoundedDocSetIdIterator(-1, -1, delegate, allDocExist);
               }
-              MinDocIdVisitor maxVisitor = new MinDocIdVisitor(
-                  LongPoint.pack(upperValue).bytes,
-                  points.getMaxPackedValue(),
-                  points.getNumDimensions(),
-                  points.getBytesPerDimension(),
-                  false
-              );
-              points.binarySearch(maxVisitor, maxVisitor);
-
-              int minDocId = minVisitor.min;
-              int maxDocId;
-              if (!maxVisitor.hasDoc) {
+              // >queryUpperPoint,
+              int maxDocId = nextDoc(points, queryUpperPoint, false);
+              if (maxDocId == -1) {
                   maxDocId = context.reader().numDocs() - 1;
               } else {
-                  maxDocId = maxVisitor.min - 1;
+                // return maxDocId the smallest doc id whose value >queryUpperPoint, so maxDocId-1 is biggest doc id whose value <=queryUpperPoint
+                  maxDocId = maxDocId - 1;
               }
               return new BoundedDocSetIdIterator(minDocId, maxDocId + 1, delegate, allDocExist);
           }
