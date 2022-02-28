@@ -104,6 +104,10 @@ public final class IndexOrDocValuesQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     Query indexRewrite = indexQuery.rewrite(reader);
     Query dvRewrite = dvQuery.rewrite(reader);
+    if (indexRewrite.getClass() == MatchAllDocsQuery.class
+        || dvRewrite.getClass() == MatchAllDocsQuery.class) {
+      return new MatchAllDocsQuery();
+    }
     if (indexQuery != indexRewrite || dvQuery != dvRewrite) {
       return new IndexOrDocValuesQuery(indexRewrite, dvRewrite);
     }
