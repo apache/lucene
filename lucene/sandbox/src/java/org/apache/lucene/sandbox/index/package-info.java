@@ -15,5 +15,5 @@
  * limitations under the License.
  */
 
-/** Experimental classes for merge policy */
+/** Experimental index-related classes */
 package org.apache.lucene.sandbox.index;
