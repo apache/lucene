@@ -18,9 +18,9 @@
 MODULES=`dirname "$0"`/..
 MODULES=`cd "$MODULES" && pwd`
 
-if [ -n "$LAUNCH_CMD" ]; then
-  # launch command overridden (for tests).
-else
+# check for overridden launch command (for use in integration tests), otherwise
+# use the default.
+if [ -z "$LAUNCH_CMD" ]; then
   LAUNCH_CMD=java
 fi
 
