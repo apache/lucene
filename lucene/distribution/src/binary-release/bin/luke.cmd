@@ -18,11 +18,10 @@
 SETLOCAL
 SET MODULES=%~dp0..
 
-REM For distribution testing we want plain 'java' command, otherwise we can't block
-REM on luke invocation and can't intercept the return status.
+REM For distribution testing we want to pass an explicit launch ('java') command and options,
+REM otherwise we can't block on luke invocation and can't intercept the return status.
+IF DEFINED LAUNCH_CMD GOTO launch
 SET LAUNCH_CMD=start javaw
-IF NOT "%DISTRIBUTION_TESTING%"=="true" GOTO launch
-SET LAUNCH_CMD=java
 
 :launch
 %LAUNCH_CMD% --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --module org.apache.lucene.luke %*

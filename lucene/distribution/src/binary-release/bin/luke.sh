@@ -17,5 +17,12 @@
 
 MODULES=`dirname "$0"`/..
 MODULES=`cd "$MODULES" && pwd`
-java --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
+
+if [ -n "$LAUNCH_CMD" ]; then
+  # launch command overridden (for tests).
+else
+  LAUNCH_CMD=java
+fi
+
+$LAUNCH_CMD --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
 exit $?
