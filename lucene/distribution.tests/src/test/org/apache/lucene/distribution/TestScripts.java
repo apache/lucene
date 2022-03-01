@@ -58,7 +58,8 @@ public class TestScripts extends AbstractLuceneDistributionTest {
     Launcher launcher =
         new ProcessBuilderLauncher()
             .executable(lukeScript)
-            // pass the same JVM which the tests are currently using; this also forces UTF-8 as console
+            // pass the same JVM which the tests are currently using; this also forces UTF-8 as
+            // console
             // encoding so that we know we can safely read it.
             .envvar("LAUNCH_CMD", currentJava.toAbsolutePath().toString())
             .viaShellLauncher()
