@@ -20,6 +20,7 @@ package org.apache.lucene.monitor;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
@@ -165,7 +166,7 @@ public class TestMonitorReadonly extends MonitorTestBase {
   }
 
   @Test
-  public void testReadonlyMonitorGetsRefreshedOnlyWhenPurgeIsCalled() throws IOException {
+  public void testReadonlyMonitorGetsRefreshed() throws IOException, InterruptedException {
     Path indexDirectory = createTempDir();
     Document doc = new Document();
     doc.add(newTextField(FIELD, "This is a test document", Field.Store.NO));
@@ -183,6 +184,7 @@ public class TestMonitorReadonly extends MonitorTestBase {
 
       MonitorConfiguration readConfig =
           new MonitorConfiguration()
+              .setPurgeFrequency(2, TimeUnit.SECONDS)
               .setDirectoryProvider(
                   () -> FSDirectory.open(indexDirectory),
                   MonitorQuerySerializer.fromParser(MonitorTestBase::parse),
@@ -198,12 +200,14 @@ public class TestMonitorReadonly extends MonitorTestBase {
         writeMonitor.register(
             new MonitorQuery("query2", query2, query2.toString(), Collections.emptyMap()));
 
+        // Index returns stale result until background refresh thread calls maybeRefresh
         MatchingQueries<QueryMatch> matches2 = readMonitor.match(doc, QueryMatch.SIMPLE_MATCHER);
         assertNotNull(matches2.getMatches());
         assertEquals(1, matches2.getMatchCount());
 
-        readMonitor.purgeCache();
+        TimeUnit.SECONDS.sleep(readConfig.getPurgeFrequency() + 1);
 
+        // after frequency results are refreshed
         MatchingQueries<QueryMatch> matches3 = readMonitor.match(doc, QueryMatch.SIMPLE_MATCHER);
         assertNotNull(matches3.getMatches());
         assertEquals(2, matches3.getMatchCount());
