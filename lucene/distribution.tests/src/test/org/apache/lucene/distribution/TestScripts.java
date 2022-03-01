@@ -21,10 +21,6 @@ import com.carrotsearch.procfork.Launcher;
 import com.carrotsearch.procfork.ProcessBuilderLauncher;
 import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
-import org.assertj.core.api.Assertions;
-import org.assertj.core.api.ThrowingConsumer;
-import org.junit.Test;
-
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -35,6 +31,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import org.assertj.core.api.Assertions;
+import org.assertj.core.api.ThrowingConsumer;
+import org.junit.Test;
 
 /** Verify that scripts included in the distribution work. */
 public class TestScripts extends AbstractLuceneDistributionTest {
