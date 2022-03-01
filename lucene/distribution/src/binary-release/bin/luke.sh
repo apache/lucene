@@ -22,7 +22,11 @@ MODULES=`cd "$MODULES" && pwd`
 # use the default.
 if [ -z "$LAUNCH_CMD" ]; then
   LAUNCH_CMD=java
+  LAUNCH_OPTS=
+else
+  # We are integration-testing. Force UTF-8 as the encoding.
+  LAUNCH_OPTS=-Dfile.encoding=UTF-8
 fi
 
-$LAUNCH_CMD --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
+"$LAUNCH_CMD" $LAUNCH_OPTS --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
 exit $?
