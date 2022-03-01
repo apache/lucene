@@ -26,12 +26,12 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
 import org.apache.lucene.tests.util.NullInfoStream;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
-import org.junit.Ignore;
 
 /** Test for {@link MergeOnFlushMergePolicy}. */
 public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
@@ -44,6 +44,10 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
     mergeOnFlushPolicy.setMaxCFSSegmentSizeMB(mergePolicy.getMaxCFSSegmentSizeMB());
     mergeOnFlushPolicy.setNoCFSRatio(mergePolicy.getNoCFSRatio());
     mergeOnFlushPolicy.setSmallSegmentThresholdMB(TestUtil.nextInt(r, 1, 100));
+    if (mergePolicy instanceof TieredMergePolicy) {
+      ((TieredMergePolicy) mergePolicy)
+          .setMaxMergedSegmentMB(TestUtil.nextInt(random(), 1024, 10 * 1024));
+    }
     return mergeOnFlushPolicy;
   }
 
@@ -51,14 +55,9 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
   protected void assertSegmentInfos(MergePolicy policy, SegmentInfos infos) {}
 
   @Override
-  public void testForceMergeNotNeeded() throws IOException {
-    super.testForceMergeNotNeeded();
-  }
-
-  @Override
   protected void assertMerge(MergePolicy policy, MergePolicy.MergeSpecification merge) {}
 
-  public void testFindCommitMerges() throws IOException {
+  public void testFindFullFlushMerges() throws IOException {
     MergeOnFlushMergePolicy mergePolicy = (MergeOnFlushMergePolicy) mergePolicy();
     double smallSegmentThresholdMB = mergePolicy.getSmallSegmentThresholdMB();
     Random r = random();
@@ -116,13 +115,11 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
   }
 
   @Override
-  @Ignore // This test takes > 2 minutes on a 2015 Macbook Pro
   public void testSimulateUpdates() throws IOException {
     super.testSimulateUpdates();
   }
 
   @Override
-  @Ignore // This test takes > 2 minutes on a 2015 Macbook Pro
   public void testSimulateAppendOnly() throws IOException {
     super.testSimulateAppendOnly();
   }
