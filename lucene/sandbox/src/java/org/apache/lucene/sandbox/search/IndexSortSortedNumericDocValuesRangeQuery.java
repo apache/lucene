@@ -194,20 +194,17 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * or -1 if all packed values are smaller than the provided one,
    */
   public final int nextDoc(PointValues values, byte[] packedValue, boolean allowEqual) throws IOException {
-      final int numIndexDimensions = values.getNumIndexDimensions();
+      assert values.getNumDimensions() == 1;
       final int bytesPerDim = values.getBytesPerDimension();
       final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       final Predicate<byte[]> biggerThan = testPackedValue -> {
-          for (int dim = 0; dim < numIndexDimensions; dim++) {
-              final int offset = dim * bytesPerDim;
-              if (allowEqual) {
-                  if (comparator.compare(testPackedValue, offset, packedValue, offset) < 0) {
-                      return false;
-                  }
-              } else {
-                  if (comparator.compare(testPackedValue, offset, packedValue, offset) <= 0) {
-                      return false;
-                  }
+          if (allowEqual) {
+              if (comparator.compare(testPackedValue, 0, packedValue, 0) < 0) {
+                  return false;
+              }
+          } else {
+              if (comparator.compare(testPackedValue, 0, packedValue, 0) <= 0) {
+                  return false;
               }
           }
           return true;
@@ -255,16 +252,15 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   private boolean matchNone(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint) throws IOException {
-    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
-
-    for (int dim = 0; dim < points.getNumDimensions(); dim++) {
-      int offset = dim * points.getBytesPerDimension();
-      if (comparator.compare(points.getMinPackedValue(), offset, queryUpperPoint, offset) > 0
-        || comparator.compare(points.getMaxPackedValue(), offset, queryLowerPoint, offset) < 0) {
-        return true;
+      final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
+      for (int dim = 0; dim < points.getNumDimensions(); dim++) {
+          int offset = dim * points.getBytesPerDimension();
+          if (comparator.compare(points.getMinPackedValue(), offset, queryUpperPoint, offset) > 0
+              || comparator.compare(points.getMaxPackedValue(), offset, queryLowerPoint, offset) < 0) {
+              return true;
+          }
       }
-    }
-    return false;
+      return false;
   }
 
   private boolean matchAll(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint) throws IOException {
@@ -311,6 +307,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
               }
               if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
                   return new BoundedDocSetIdIterator(0, points.getDocCount(), delegate, allDocExist);
+              }
+              if (points.getNumDimensions() != 1) {
+                  return null;
               }
               // >=queryLowerPoint
               int minDocId = nextDoc(points, queryLowerPoint, true);
