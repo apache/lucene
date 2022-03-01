@@ -19,6 +19,8 @@ package org.apache.lucene.sandbox.search;
 import static org.hamcrest.CoreMatchers.instanceOf;
 
 import java.io.IOException;
+import java.util.Random;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -526,6 +528,56 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
       for (LeafReaderContext context : searcher.getLeafContexts()) {
           assertEquals(2500, weight.count(context));
+      }
+
+    fallbackQuery = LongPoint.newRangeQuery(filedName, 2, 3);
+    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 2, 3, fallbackQuery);
+    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(0, weight.count(context));
+    }
+
+    fallbackQuery = LongPoint.newRangeQuery(filedName, 10, 11);
+    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 10, 11, fallbackQuery);
+    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(0, weight.count(context));
+    }
+
+      writer.close();
+      reader.close();
+      dir.close();
+  }
+
+
+  public void testRandomCountWithBkd() throws IOException {
+      String filedName = "field";
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      Sort indexSort = new Sort(new SortedNumericSortField(filedName, SortField.Type.LONG, false));
+      iwc.setIndexSort(indexSort);
+      RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+      Random random = new Random();
+      for (int i = 0; i < 100; i++) {
+          addDocWithBkd(writer, filedName, random.nextInt(1000), random.nextInt(1000));
+      }
+      writer.flush();
+      writer.forceMerge(1);
+      IndexReader reader = writer.getReader();
+      IndexSearcher searcher = newSearcher(reader);
+
+      for (int i = 0; i < 100; i++) {
+          int random1 = random.nextInt(1100);
+          int random2 = random.nextInt(1100);
+          int low = Math.min(random1,random2);
+          int upper = Math.max(random1,random2);
+          Query rangeQuery = LongPoint.newRangeQuery(filedName, low, upper);
+          Query indexSortRangeQuery = new IndexSortSortedNumericDocValuesRangeQuery(filedName, low, upper, rangeQuery);
+          Weight indexSortRangeQueryWeight = indexSortRangeQuery.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+          Weight rangeQueryWeight = rangeQuery.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+          for (LeafReaderContext context : searcher.getLeafContexts()) {
+              assertEquals(rangeQueryWeight.count(context), indexSortRangeQueryWeight.count(context));
+          }
       }
 
       writer.close();

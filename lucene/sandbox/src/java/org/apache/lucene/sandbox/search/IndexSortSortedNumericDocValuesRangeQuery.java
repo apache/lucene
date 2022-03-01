@@ -254,6 +254,19 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       }
   }
 
+  private boolean matchNone(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint) throws IOException {
+    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
+
+    for (int dim = 0; dim < points.getNumDimensions(); dim++) {
+      int offset = dim * points.getBytesPerDimension();
+      if (comparator.compare(points.getMinPackedValue(), offset, queryUpperPoint, offset) > 0
+        || comparator.compare(points.getMaxPackedValue(), offset, queryLowerPoint, offset) < 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private boolean matchAll(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint) throws IOException {
       final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
       for (int dim = 0; dim < points.getNumDimensions(); dim++) {
@@ -278,7 +291,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       if (indexSort != null
           && indexSort.getSort().length > 0
           && indexSort.getSort()[0].getField().equals(field)
-          && !indexSort.getSort()[0].getReverse()) {
+          && indexSort.getSort()[0].getReverse() == false) {
           PointValues points = context.reader().getPointValues(field);
           if (points == null) {
               return null;
@@ -293,6 +306,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
               byte[] queryLowerPoint = LongPoint.pack(lowerValue).bytes;
               byte[] queryUpperPoint = LongPoint.pack(upperValue).bytes;
+              if (matchNone(points, queryLowerPoint, queryUpperPoint)) {
+                  return new BoundedDocSetIdIterator(-1, -1, delegate, allDocExist);
+              }
               if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
                   return new BoundedDocSetIdIterator(0, points.getDocCount(), delegate, allDocExist);
               }
@@ -450,7 +466,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         target = firstDoc;
       }
       int result = target;
-      if(!allDocExist) {
+      if(allDocExist == false) {
           result = delegate.advance(target);
       }
       if (result < lastDoc) {
