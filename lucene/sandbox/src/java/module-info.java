@@ -25,6 +25,7 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.document;
   exports org.apache.lucene.sandbox.queries;
   exports org.apache.lucene.sandbox.search;
+  exports org.apache.lucene.sandbox.index;
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
