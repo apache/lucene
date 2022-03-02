@@ -30,6 +30,7 @@ import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -140,6 +141,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     Query rewrittenFallback = fallbackQuery.rewrite(reader);
+    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
+      return new MatchAllDocsQuery();
+    }
     if (rewrittenFallback == fallbackQuery) {
       return this;
     } else {

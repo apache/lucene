@@ -245,6 +245,8 @@ Optimizations
 * LUCENE-10442: When indexQuery or/and dvQuery be a MatchAllDocsQuery
   then IndexOrDocValuesQuery should be rewrite to MatchAllDocsQuery. (Lu Xugang)
 
+* LUCENE-10450: IndexSortSortedNumericDocValuesRangeQuery could be rewrite to MatchAllDocsQuery. (Lu Xugang)
+
 Changes in runtime behavior
 ---------------------
 
