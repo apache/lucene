@@ -112,14 +112,4 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
       }
     }
   }
-
-  @Override
-  public void testSimulateUpdates() throws IOException {
-    super.testSimulateUpdates();
-  }
-
-  @Override
-  public void testSimulateAppendOnly() throws IOException {
-    super.testSimulateAppendOnly();
-  }
 }
