@@ -52,7 +52,7 @@ class GeneratingSuggester {
     this.speller = speller;
   }
 
-  List<String> suggest(String word, WordCase originalCase, Set<String> prevSuggestions) {
+  List<String> suggest(String word, WordCase originalCase, Set<Suggestion> prevSuggestions) {
     List<Weighted<Root<String>>> roots = findSimilarDictionaryEntries(word, originalCase);
     List<Weighted<String>> expanded = expandRoots(word, roots);
     TreeSet<Weighted<String>> bySimilarity = rankBySimilarity(word, expanded);
@@ -331,7 +331,7 @@ class GeneratingSuggester {
   }
 
   private List<String> getMostRelevantSuggestions(
-      TreeSet<Weighted<String>> bySimilarity, Set<String> prevSuggestions) {
+      TreeSet<Weighted<String>> bySimilarity, Set<Suggestion> prevSuggestions) {
     List<String> result = new ArrayList<>();
     boolean hasExcellent = false;
     for (Weighted<String> weighted : bySimilarity) {
@@ -347,7 +347,7 @@ class GeneratingSuggester {
         break;
       }
 
-      if (prevSuggestions.stream().noneMatch(weighted.word::contains)
+      if (prevSuggestions.stream().noneMatch(s -> weighted.word.contains(s.raw))
           && result.stream().noneMatch(weighted.word::contains)
           && speller.checkWord(weighted.word)) {
         result.add(weighted.word);
