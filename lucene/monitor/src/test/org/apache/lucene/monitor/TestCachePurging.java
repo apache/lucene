@@ -23,13 +23,18 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestCachePurging extends MonitorTestBase {
+
+  private static final long TIMEOUT = 5000;
 
   public void testQueryCacheCanBePurged() throws IOException {
 
@@ -70,6 +75,55 @@ public class TestCachePurging extends MonitorTestBase {
       MatchingQueries<QueryMatch> result = monitor.match(doc, QueryMatch.SIMPLE_MATCHER);
       assertThat(result.getMatchCount(), is(2));
       assertTrue(purgeCount.get() > 0);
+    }
+  }
+
+  public void testPurgeScheduler() throws IOException, InterruptedException {
+
+    final AtomicInteger purgeCount = new AtomicInteger();
+    final AtomicInteger cancelCount = new AtomicInteger();
+    MonitorUpdateListener listener =
+        new MonitorUpdateListener() {
+          @Override
+          public void onPurge() {
+            purgeCount.incrementAndGet();
+          }
+        };
+
+    ScheduledExecutorService executor =
+        Executors.newScheduledThreadPool(1, new NamedThreadFactory("updaters"));
+    try {
+      PurgeScheduler purgeScheduler =
+          (task, purgeFrequency, purgeFrequencyUnits) -> {
+            final ScheduledFuture<?> schedule =
+                executor.schedule(task, purgeFrequency, purgeFrequencyUnits);
+            return () -> {
+              cancelCount.incrementAndGet();
+              schedule.cancel(false);
+            };
+          };
+
+      try (Monitor monitor =
+          new Monitor(
+              ANALYZER,
+              new MonitorConfiguration()
+                  .setPurgeScheduler(purgeScheduler)
+                  .setPurgeFrequency(100, TimeUnit.MILLISECONDS))) {
+        monitor.addQueryIndexUpdateListener(listener);
+        waitUntil(() -> purgeCount.get() > 0);
+        assertEquals(0, cancelCount.get());
+      }
+      assertEquals(1, cancelCount.get());
+    } finally {
+      executor.shutdown();
+    }
+  }
+
+  private void waitUntil(Supplier<Boolean> condition) throws InterruptedException {
+    long start = System.currentTimeMillis();
+    while (!condition.get()) {
+      assertTrue(System.currentTimeMillis() < start + TIMEOUT);
+      Thread.sleep(100);
     }
   }
 
