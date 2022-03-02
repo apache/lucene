@@ -127,7 +127,7 @@ final class MaxScoreSumPropagator {
       scorers[i].setMinCompetitiveScore(minCompetitiveScore);
     }
   }
-
+  
   /** Return the minimum score that a Scorer must produce in order for a hit to be competitive. */
   private float getMinCompetitiveScore(float minScoreSum, double sumOfOtherMaxScores) {
     assert numClauses > 0;
@@ -146,7 +146,9 @@ final class MaxScoreSumPropagator {
       //  - one because of the error introduced by sumUpperBound
       if (iter > 2) {
         throw new IllegalStateException(
-            "Could not compute a minimum score for minScoreSum="
+            "Could not compute a minimum score for minScore=" + 
+                + minScore
+                + ", minScoreSum="
                 + minScoreSum
                 + ", sumOfOtherMaxScores="
                 + sumOfOtherMaxScores
