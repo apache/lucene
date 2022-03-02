@@ -81,7 +81,7 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
         }
         segmentInfos.add(sci);
       }
-      MockMergeContext context = new MockMergeContext(s -> 0);
+      MockMergeContext context = new MockMergeContext(SegmentCommitInfo::getDelCount);
       context.setMergingSegments(mergingSegments);
       MergePolicy.MergeSpecification mergeSpecification;
 
