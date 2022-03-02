@@ -66,16 +66,22 @@ public class TestWildcard extends LuceneTestCase {
     MultiTermQuery wq = new WildcardQuery(new Term("field", "nowildcard"));
     assertMatches(searcher, wq, 1);
 
-    wq.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    Query q = searcher.rewrite(wq);
+    Query q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"), MultiTermQuery.SCORING_BOOLEAN_REWRITE));
     assertTrue(q instanceof TermQuery);
 
-    wq.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
-    q = searcher.rewrite(wq);
+    q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_REWRITE));
     assertTrue(q instanceof MultiTermQueryConstantScoreWrapper);
 
-    wq.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE);
-    q = searcher.rewrite(wq);
+    q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE));
     assertTrue(q instanceof ConstantScoreQuery);
     reader.close();
     indexStore.close();
@@ -87,8 +93,8 @@ public class TestWildcard extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(indexStore);
     IndexSearcher searcher = newSearcher(reader);
 
-    MultiTermQuery wq = new WildcardQuery(new Term("field", ""));
-    wq.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    MultiTermQuery wq =
+        new WildcardQuery(new Term("field", ""), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertMatches(searcher, wq, 0);
     Query q = searcher.rewrite(wq);
     assertTrue(q instanceof MatchNoDocsQuery);

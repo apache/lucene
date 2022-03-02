@@ -28,11 +28,12 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
   /** Test fieldcache rewrite against filter rewrite */
   @Override
   protected void assertSame(String regexp) throws IOException {
-    RegexpQuery fieldCache = new RegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
-    fieldCache.setRewriteMethod(new DocValuesRewriteMethod());
+    RegexpQuery fieldCache =
+        new RegexpQuery(new Term(fieldName, regexp), RegExp.NONE, new DocValuesRewriteMethod());
 
-    RegexpQuery filter = new RegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
-    filter.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
+    RegexpQuery filter =
+        new RegexpQuery(
+            new Term(fieldName, regexp), RegExp.NONE, MultiTermQuery.CONSTANT_SCORE_REWRITE);
 
     TopDocs fieldCacheDocs = searcher1.search(fieldCache, 25);
     TopDocs filterDocs = searcher2.search(filter, 25);
@@ -41,17 +42,25 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
   }
 
   public void testEquals() throws Exception {
-    RegexpQuery a1 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
-    RegexpQuery a2 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
-    RegexpQuery b = new RegexpQuery(new Term(fieldName, "[bB]"), RegExp.NONE);
-    assertEquals(a1, a2);
-    assertFalse(a1.equals(b));
+    {
+      RegexpQuery a1 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
+      RegexpQuery a2 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
+      RegexpQuery b = new RegexpQuery(new Term(fieldName, "[bB]"), RegExp.NONE);
+      assertEquals(a1, a2);
+      assertFalse(a1.equals(b));
+      QueryUtils.check(a1);
+    }
 
-    a1.setRewriteMethod(new DocValuesRewriteMethod());
-    a2.setRewriteMethod(new DocValuesRewriteMethod());
-    b.setRewriteMethod(new DocValuesRewriteMethod());
-    assertEquals(a1, a2);
-    assertFalse(a1.equals(b));
-    QueryUtils.check(a1);
+    {
+      RegexpQuery a1 =
+          new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE, new DocValuesRewriteMethod());
+      RegexpQuery a2 =
+          new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE, new DocValuesRewriteMethod());
+      RegexpQuery b =
+          new RegexpQuery(new Term(fieldName, "[bB]"), RegExp.NONE, new DocValuesRewriteMethod());
+      assertEquals(a1, a2);
+      assertFalse(a1.equals(b));
+      QueryUtils.check(a1);
+    }
   }
 }

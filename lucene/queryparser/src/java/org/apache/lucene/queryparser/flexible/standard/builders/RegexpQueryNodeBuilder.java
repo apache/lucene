@@ -35,16 +35,14 @@ public class RegexpQueryNodeBuilder implements StandardQueryBuilder {
   public RegexpQuery build(QueryNode queryNode) throws QueryNodeException {
     RegexpQueryNode regexpNode = (RegexpQueryNode) queryNode;
 
-    // TODO: make the maxStates configurable w/ a reasonable default (QueryParserBase uses 10000)
-    RegexpQuery q =
-        new RegexpQuery(new Term(regexpNode.getFieldAsString(), regexpNode.textToBytesRef()));
-
     MultiTermQuery.RewriteMethod method =
         (MultiTermQuery.RewriteMethod) queryNode.getTag(MultiTermRewriteMethodProcessor.TAG_ID);
-    if (method != null) {
-      q.setRewriteMethod(method);
+    if (method == null) {
+      method = MultiTermQuery.CONSTANT_SCORE_REWRITE;
     }
 
-    return q;
+    // TODO: make the maxStates configurable w/ a reasonable default (QueryParserBase uses 10000)
+    return new RegexpQuery(
+        new Term(regexpNode.getFieldAsString(), regexpNode.textToBytesRef()), method);
   }
 }

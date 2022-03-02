@@ -65,11 +65,40 @@ public class RegexpQuery extends AutomatonQuery {
   /**
    * Constructs a query for terms matching <code>term</code>.
    *
+   * <p>By default, all regular expression features are enabled.
+   *
+   * @param term regular expression.
+   * @param rewriteMethod the rewrite method used to build the final query
+   */
+  public RegexpQuery(Term term, RewriteMethod rewriteMethod) {
+    this(
+        term,
+        RegExp.ALL,
+        0,
+        defaultProvider,
+        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+        rewriteMethod);
+  }
+
+  /**
+   * Constructs a query for terms matching <code>term</code>.
+   *
    * @param term regular expression.
    * @param flags optional RegExp features from {@link RegExp}
    */
   public RegexpQuery(Term term, int flags) {
     this(term, flags, defaultProvider, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+  }
+
+  /**
+   * Constructs a query for terms matching <code>term</code>.
+   *
+   * @param term regular expression.
+   * @param flags optional RegExp features from {@link RegExp}
+   * @param rewriteMethod the rewrite method to use to build the final query
+   */
+  public RegexpQuery(Term term, int flags, RewriteMethod rewriteMethod) {
+    this(term, flags, 0, defaultProvider, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, rewriteMethod);
   }
 
   /**
@@ -90,6 +119,21 @@ public class RegexpQuery extends AutomatonQuery {
    * Constructs a query for terms matching <code>term</code>.
    *
    * @param term regular expression.
+   * @param flags optional RegExp syntax features from {@link RegExp}
+   * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
+   *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
+   *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
+   *     otherwise know what to specify.
+   * @param rewriteMethod the rewrite method to use to build the final query
+   */
+  public RegexpQuery(Term term, int flags, int determinizeWorkLimit, RewriteMethod rewriteMethod) {
+    this(term, flags, 0, defaultProvider, determinizeWorkLimit, rewriteMethod);
+  }
+
+  /**
+   * Constructs a query for terms matching <code>term</code>.
+   *
+   * @param term regular expression.
    * @param syntax_flags optional RegExp syntax features from {@link RegExp} automaton for the
    *     regexp can result in. Set higher to allow more complex queries and lower to prevent memory
    *     exhaustion.
@@ -100,7 +144,13 @@ public class RegexpQuery extends AutomatonQuery {
    *     otherwise know what to specify.
    */
   public RegexpQuery(Term term, int syntax_flags, int match_flags, int determinizeWorkLimit) {
-    this(term, syntax_flags, match_flags, defaultProvider, determinizeWorkLimit);
+    this(
+        term,
+        syntax_flags,
+        match_flags,
+        defaultProvider,
+        determinizeWorkLimit,
+        CONSTANT_SCORE_REWRITE);
   }
 
   /**
@@ -116,7 +166,7 @@ public class RegexpQuery extends AutomatonQuery {
    */
   public RegexpQuery(
       Term term, int syntax_flags, AutomatonProvider provider, int determinizeWorkLimit) {
-    this(term, syntax_flags, 0, provider, determinizeWorkLimit);
+    this(term, syntax_flags, 0, provider, determinizeWorkLimit, CONSTANT_SCORE_REWRITE);
   }
 
   /**
@@ -130,18 +180,22 @@ public class RegexpQuery extends AutomatonQuery {
    *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
    *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
    *     otherwise know what to specify.
+   * @param rewriteMethod the rewrite method to use to build the final query
    */
   public RegexpQuery(
       Term term,
       int syntax_flags,
       int match_flags,
       AutomatonProvider provider,
-      int determinizeWorkLimit) {
+      int determinizeWorkLimit,
+      RewriteMethod rewriteMethod) {
     super(
         term,
         Operations.determinize(
             new RegExp(term.text(), syntax_flags, match_flags).toAutomaton(provider),
-            determinizeWorkLimit));
+            determinizeWorkLimit),
+        false,
+        rewriteMethod);
   }
 
   /** Returns the regexp of this query wrapped in a Term. */

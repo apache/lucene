@@ -985,8 +985,9 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            FuzzyQuery fuzzyQuery = new FuzzyQuery(new Term(FIELD_NAME, "kinnedy"), 2);
-            fuzzyQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+            FuzzyQuery fuzzyQuery =
+                new FuzzyQuery(
+                    new Term(FIELD_NAME, "kinnedy"), 2, MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(fuzzyQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this, true);
             assertTrue(
@@ -1005,8 +1006,9 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            WildcardQuery wildcardQuery = new WildcardQuery(new Term(FIELD_NAME, "k?nnedy"));
-            wildcardQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+            WildcardQuery wildcardQuery =
+                new WildcardQuery(
+                    new Term(FIELD_NAME, "k?nnedy"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(wildcardQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
             assertTrue(
@@ -1025,8 +1027,9 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            WildcardQuery wildcardQuery = new WildcardQuery(new Term(FIELD_NAME, "k*dy"));
-            wildcardQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+            WildcardQuery wildcardQuery =
+                new WildcardQuery(
+                    new Term(FIELD_NAME, "k*dy"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(wildcardQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
             assertTrue(
@@ -1050,12 +1053,14 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
             // rather
             // than RangeFilters
 
-            TermRangeQuery rangeQuery =
+            query =
                 new TermRangeQuery(
-                    FIELD_NAME, new BytesRef("kannedy"), new BytesRef("kznnedy"), true, true);
-            rangeQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-
-            query = rangeQuery;
+                    FIELD_NAME,
+                    new BytesRef("kannedy"),
+                    new BytesRef("kznnedy"),
+                    true,
+                    true,
+                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(query);
 
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
@@ -1072,8 +1077,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
 
     numHighlights = 0;
 
-    query = new WildcardQuery(new Term(FIELD_NAME, "ken*"));
-    ((WildcardQuery) query).setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
+    query = new WildcardQuery(new Term(FIELD_NAME, "ken*"), MultiTermQuery.CONSTANT_SCORE_REWRITE);
     searcher = newSearcher(reader);
     // can't rewrite ConstantScore if you want to highlight it -
     // it rewrites to ConstantScoreQuery which cannot be highlighted
@@ -1288,8 +1292,9 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
             numHighlights = 0;
             BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
             booleanQuery.add(new TermQuery(new Term(FIELD_NAME, "john")), Occur.SHOULD);
-            PrefixQuery prefixQuery = new PrefixQuery(new Term(FIELD_NAME, "kenn"));
-            prefixQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+            PrefixQuery prefixQuery =
+                new PrefixQuery(
+                    new Term(FIELD_NAME, "kenn"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             booleanQuery.add(prefixQuery, Occur.SHOULD);
 
             doSearching(booleanQuery.build());

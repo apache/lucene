@@ -1151,14 +1151,6 @@ public class TestQPHelper extends LuceneTestCase {
     assertEquals(q, qp.parse("/[a-z][123]/", df));
     assertEquals(q, qp.parse("/[A-Z][123]/", df));
     assertEquals(new BoostQuery(q, 0.5f), qp.parse("/[A-Z][123]/^0.5", df));
-    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    q.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    assertEquals(new BoostQuery(q, 0.5f), qp.parse("/[A-Z][123]/^0.5", df));
-    assertEquals(
-        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
-        ((RegexpQuery) (((BoostQuery) qp.parse("/[A-Z][123]/^0.5", df)).getQuery()))
-            .getRewriteMethod());
-    qp.setMultiTermRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
 
     Query escaped = new RegexpQuery(new Term("field", "[a-z]\\/[123]"));
     assertEquals(escaped, qp.parse("/[a-z]\\/[123]/", df));
@@ -1197,6 +1189,15 @@ public class TestQPHelper extends LuceneTestCase {
     two.add(new RegexpQuery(new Term("field", "bar")), Occur.SHOULD);
     assertEquals(two.build(), qp.parse("field:/foo/ field:/bar/", df));
     assertEquals(two.build(), qp.parse("/foo/ /bar/", df));
+
+    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    q = new RegexpQuery(new Term("field", "[a-z][123]"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    assertEquals(new BoostQuery(q, 0.5f), qp.parse("/[A-Z][123]/^0.5", df));
+    assertEquals(
+        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
+        ((RegexpQuery) (((BoostQuery) qp.parse("/[A-Z][123]/^0.5", df)).getQuery()))
+            .getRewriteMethod());
+    qp.setMultiTermRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
   public void testStopwords() throws Exception {
