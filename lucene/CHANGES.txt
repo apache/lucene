@@ -41,6 +41,8 @@ Bug Fixes
 
 Other
 ---------------------
+* LUCENE-10237: Add MergeOnFlushMergePolicy to sandbox.
+  (Michael Froh, Anand Kotriwal)
 
 * LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
   (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
