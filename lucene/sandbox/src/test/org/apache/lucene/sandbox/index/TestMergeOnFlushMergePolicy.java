@@ -28,9 +28,7 @@ import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
-import org.apache.lucene.tests.util.NullInfoStream;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.Version;
 
 /** Test for {@link MergeOnFlushMergePolicy}. */
@@ -83,7 +81,8 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
         }
         segmentInfos.add(sci);
       }
-      MergePolicy.MergeContext context = new MergingMockMergeContext(mergingSegments);
+      MockMergeContext context = new MockMergeContext(s -> 0);
+      context.setMergingSegments(mergingSegments);
       MergePolicy.MergeSpecification mergeSpecification;
 
       mergeSpecification =
@@ -122,42 +121,5 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
   @Override
   public void testSimulateAppendOnly() throws IOException {
     super.testSimulateAppendOnly();
-  }
-
-  /** Mock merge context that can have merging segments. */
-  private static final class MergingMockMergeContext implements MergePolicy.MergeContext {
-    private final Set<SegmentCommitInfo> mergingSegments;
-    private final InfoStream infoStream =
-        new NullInfoStream() {
-          @Override
-          public boolean isEnabled(String component) {
-            // otherwise tests that simulate merging may bottleneck on generating messages
-            return false;
-          }
-        };
-
-    private MergingMockMergeContext(Set<SegmentCommitInfo> mergingSegments) {
-      this.mergingSegments = mergingSegments;
-    }
-
-    @Override
-    public int numDeletesToMerge(SegmentCommitInfo info) {
-      return 0;
-    }
-
-    @Override
-    public int numDeletedDocs(SegmentCommitInfo info) {
-      return 0;
-    }
-
-    @Override
-    public InfoStream getInfoStream() {
-      return infoStream;
-    }
-
-    @Override
-    public Set<SegmentCommitInfo> getMergingSegments() {
-      return mergingSegments;
-    }
   }
 }
