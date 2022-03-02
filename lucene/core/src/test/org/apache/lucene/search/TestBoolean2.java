@@ -236,32 +236,29 @@ public class TestBoolean2 extends LuceneTestCase {
     // The asserting searcher will sometimes return the bulk scorer and
     // sometimes return a default impl around the scorer so that we can
     // compare BS1 and BS2
-    TopScoreDocCollector collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    ScoreDoc[] hits1 = collector.topDocs().scoreDocs;
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    ScoreDoc[] hits2 = collector.topDocs().scoreDocs;
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    ScoreDoc[] hits1 = searcher.search(query, manager).scoreDocs;
+    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    ScoreDoc[] hits2 = searcher.search(query, manager).scoreDocs;
 
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // Since we have no deleted docs, we should also be able to verify identical matches &
     // scores against an single segment copy of our index
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    singleSegmentSearcher.search(query, collector);
-    hits2 = collector.topDocs().scoreDocs;
+    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    TopDocs topDocs = singleSegmentSearcher.search(query, manager);
+    hits2 = topDocs.scoreDocs;
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // sanity check expected num matches in bigSearcher
-    assertEquals(mulFactor * collector.totalHits, bigSearcher.count(query));
+    assertEquals(mulFactor * topDocs.totalHits.value, bigSearcher.count(query));
 
     // now check 2 diff scorers from the bigSearcher as well
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    bigSearcher.search(query, collector);
-    hits1 = collector.topDocs().scoreDocs;
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    bigSearcher.search(query, collector);
-    hits2 = collector.topDocs().scoreDocs;
+    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    hits1 = bigSearcher.search(query, manager).scoreDocs;
+    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    hits2 = bigSearcher.search(query, manager).scoreDocs;
 
     // NOTE: just comparing results, not vetting against expDocNrs
     // since we have dups in bigSearcher
