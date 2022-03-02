@@ -41,9 +41,6 @@ Bug Fixes
 
 Other
 ---------------------
-* LUCENE-10237: Add MergeOnFlushMergePolicy to sandbox.
-  (Michael Froh, Anand Kotriwal)
-
 * LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
   (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
 
@@ -170,6 +167,9 @@ New Features
 
 * LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
   nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
+
+* LUCENE-10237: Add MergeOnFlushMergePolicy to sandbox.
+  (Michael Froh, Anand Kotriwal)
 
 Improvements
 ---------------------
