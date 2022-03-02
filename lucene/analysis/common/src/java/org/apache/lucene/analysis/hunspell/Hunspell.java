@@ -399,9 +399,10 @@ public class Hunspell {
       char[] wordChars, int offset, int length, List<IntsRef> words) {
     if (words.size() >= 100) return false;
 
+    checkCanceled.run();
+
     int limit = length - dictionary.compoundMin + 1;
     for (int breakPos = dictionary.compoundMin; breakPos < limit; breakPos++) {
-      checkCanceled.run();
       IntsRef forms = dictionary.lookupWord(wordChars, offset, breakPos);
       if (forms != null) {
         words.add(forms);
