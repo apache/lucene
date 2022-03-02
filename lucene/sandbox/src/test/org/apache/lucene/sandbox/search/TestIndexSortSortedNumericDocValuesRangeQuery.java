@@ -557,7 +557,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       Sort indexSort = new Sort(new SortedNumericSortField(filedName, SortField.Type.LONG, false));
       iwc.setIndexSort(indexSort);
       RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
-      Random random = new Random();
+      Random random = random();
       for (int i = 0; i < 100; i++) {
           addDocWithBkd(writer, filedName, random.nextInt(1000), random.nextInt(1000));
       }
