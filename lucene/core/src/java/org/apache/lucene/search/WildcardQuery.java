@@ -62,11 +62,6 @@ public class WildcardQuery extends AutomatonQuery {
     this(term, determinizeWorkLimit, CONSTANT_SCORE_REWRITE);
   }
 
-  /** Constructs a query for terms matching <code>term</code> using a defined rewrite method */
-  public WildcardQuery(Term term, RewriteMethod rewriteMethod) {
-    this(term, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, rewriteMethod);
-  }
-
   /**
    * Constructs a query for terms matching <code>term</code>.
    *

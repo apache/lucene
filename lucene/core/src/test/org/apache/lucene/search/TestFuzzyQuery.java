@@ -439,6 +439,10 @@ public class TestFuzzyQuery extends LuceneTestCase {
     FuzzyQuery query =
         new FuzzyQuery(
             new Term("field", "lucene"),
+            FuzzyQuery.defaultMaxEdits,
+            FuzzyQuery.defaultPrefixLength,
+            FuzzyQuery.defaultMaxExpansions,
+            FuzzyQuery.defaultTranspositions,
             new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(50));
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(3, hits.length);

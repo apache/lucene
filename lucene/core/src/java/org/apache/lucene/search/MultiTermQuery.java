@@ -52,7 +52,7 @@ import org.apache.lucene.util.AttributeSource;
  */
 public abstract class MultiTermQuery extends Query {
   protected final String field;
-  protected RewriteMethod rewriteMethod;
+  protected RewriteMethod rewriteMethod; // TODO make this final
 
   /** Abstract class that defines how the query is rewritten. */
   public abstract static class RewriteMethod {

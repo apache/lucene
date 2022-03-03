@@ -56,6 +56,7 @@ public class FuzzyQuery extends MultiTermQuery {
   public static final int defaultMaxExpansions = 50;
   public static final boolean defaultTranspositions = true;
 
+  /** Creates a default top-terms blended frequency scoring rewrite with the given max expansions */
   public static RewriteMethod defaultRewriteMethod(int maxExpansions) {
     return new MultiTermQuery.TopTermsBlendedFreqScoringRewrite(maxExpansions);
   }
@@ -138,38 +139,9 @@ public class FuzzyQuery extends MultiTermQuery {
     this(term, maxEdits, defaultPrefixLength);
   }
 
-  /**
-   * Calls {@link #FuzzyQuery(Term, int, int, int, boolean,
-   * org.apache.lucene.search.MultiTermQuery.RewriteMethod) FuzzyQuery(term, maxEdits,
-   * defaultPrefixLength, defaultMaxExpansions, defaultTransitions, defaultRewriteMethod)}.
-   */
-  public FuzzyQuery(Term term, int maxEdits, RewriteMethod rewriteMethod) {
-    this(
-        term,
-        maxEdits,
-        defaultPrefixLength,
-        defaultMaxExpansions,
-        defaultTranspositions,
-        rewriteMethod);
-  }
-
   /** Calls {@link #FuzzyQuery(Term, int) FuzzyQuery(term, defaultMaxEdits)}. */
   public FuzzyQuery(Term term) {
     this(term, defaultMaxEdits);
-  }
-
-  /**
-   * Creates a new FuzzyQuery with default max edits, prefix length, max expansions and
-   * transpositions
-   */
-  public FuzzyQuery(Term term, RewriteMethod rewriteMethod) {
-    this(
-        term,
-        defaultMaxEdits,
-        defaultPrefixLength,
-        defaultMaxExpansions,
-        defaultTranspositions,
-        rewriteMethod);
   }
 
   /** @return the maximum number of edit distances allowed for this query to match. */

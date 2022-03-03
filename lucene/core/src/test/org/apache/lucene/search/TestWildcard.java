@@ -28,6 +28,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.automaton.Operations;
 
 /** TestWildcard tests the '*' and '?' wildcard characters. */
 public class TestWildcard extends LuceneTestCase {
@@ -69,19 +70,25 @@ public class TestWildcard extends LuceneTestCase {
     Query q =
         searcher.rewrite(
             new WildcardQuery(
-                new Term("field", "nowildcard"), MultiTermQuery.SCORING_BOOLEAN_REWRITE));
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.SCORING_BOOLEAN_REWRITE));
     assertTrue(q instanceof TermQuery);
 
     q =
         searcher.rewrite(
             new WildcardQuery(
-                new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_REWRITE));
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.CONSTANT_SCORE_REWRITE));
     assertTrue(q instanceof MultiTermQueryConstantScoreWrapper);
 
     q =
         searcher.rewrite(
             new WildcardQuery(
-                new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE));
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE));
     assertTrue(q instanceof ConstantScoreQuery);
     reader.close();
     indexStore.close();
@@ -94,7 +101,10 @@ public class TestWildcard extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     MultiTermQuery wq =
-        new WildcardQuery(new Term("field", ""), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+        new WildcardQuery(
+            new Term("field", ""),
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertMatches(searcher, wq, 0);
     Query q = searcher.rewrite(wq);
     assertTrue(q instanceof MatchNoDocsQuery);

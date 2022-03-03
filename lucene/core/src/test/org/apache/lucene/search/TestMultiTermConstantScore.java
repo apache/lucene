@@ -28,6 +28,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.util.automaton.Operations;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -118,7 +119,8 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
   /** macro for readability */
   public static Query cswcq(Term wild) {
-    return new WildcardQuery(wild, MultiTermQuery.CONSTANT_SCORE_REWRITE);
+    return new WildcardQuery(
+        wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
   @Test
