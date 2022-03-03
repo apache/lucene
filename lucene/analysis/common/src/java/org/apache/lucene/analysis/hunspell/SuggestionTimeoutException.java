@@ -26,14 +26,14 @@ import java.util.List;
 public class SuggestionTimeoutException extends RuntimeException {
   private final List<String> partialResult;
 
-  SuggestionTimeoutException(String message, List<String> partialResult) {
+  public SuggestionTimeoutException(String message, List<String> partialResult) {
     super(message);
     this.partialResult = partialResult == null ? null : Collections.unmodifiableList(partialResult);
   }
 
   /**
    * @return partial result calculated by {@link Hunspell#suggest} before the time limit was
-   *     exceeded
+   *     exceeded, or {@code null} if there's none available
    */
   public List<String> getPartialResult() {
     return partialResult;
