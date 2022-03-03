@@ -297,6 +297,10 @@ Bug Fixes
 * LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
    as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
 
+* LUCENE-10428: Queries with a misbehaving score function may no longer cause
+  infinite loops in their parent BooleanQuery.
+  (Ankit Jain, Daniel Doubrovkine, Adrien Grand)
+
 Other
 ---------------------
 
