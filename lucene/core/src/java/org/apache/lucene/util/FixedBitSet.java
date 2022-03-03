@@ -211,7 +211,9 @@ public final class FixedBitSet extends BitSet {
     long popCount = 0;
     int maxWord;
     for (maxWord = 0; maxWord + interval < numWords; maxWord += interval) {
-      popCount += BitUtil.pop_array(bits, maxWord, rangeLength);
+      for (int i = 0; i < rangeLength; ++i) {
+        popCount += Long.bitCount(bits[maxWord + i]);
+      }
     }
 
     popCount *= (interval / rangeLength) * numWords / maxWord;
