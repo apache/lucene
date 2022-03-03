@@ -14,28 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.hunspell;
 
-import java.util.Collections;
-import java.util.List;
-
-/**
- * An exception thrown when {@link Hunspell#suggest} call takes too long, if {@link
- * TimeoutPolicy#THROW_EXCEPTION} is used.
- */
-public class SuggestionTimeoutException extends RuntimeException {
-  private final List<String> partialResult;
-
-  public SuggestionTimeoutException(String message, List<String> partialResult) {
-    super(message);
-    this.partialResult = partialResult == null ? null : Collections.unmodifiableList(partialResult);
-  }
-
-  /**
-   * @return partial result calculated by {@link Hunspell#suggest} before the time limit was
-   *     exceeded, or {@code null} if there's none available
-   */
-  public List<String> getPartialResult() {
-    return partialResult;
-  }
-}
+/** Experimental index-related classes */
+package org.apache.lucene.sandbox.index;

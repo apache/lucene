@@ -25,22 +25,22 @@ import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to a per-ords float[]. */
-public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
+abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   // TODO: also use native hash map for sparse collection, like IntTaxonomyFacets
 
   /** Per-ordinal value. */
-  protected final float[] values;
+  final float[] values;
 
   /** Sole constructor. */
-  protected FloatTaxonomyFacets(
-      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config) throws IOException {
+  FloatTaxonomyFacets(String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config)
+      throws IOException {
     super(indexFieldName, taxoReader, config);
     values = new float[taxoReader.getSize()];
   }
 
   /** Rolls up any single-valued hierarchical dimensions. */
-  protected void rollup() throws IOException {
+  void rollup() throws IOException {
     // Rollup any necessary dims:
     int[] children = getChildren();
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
