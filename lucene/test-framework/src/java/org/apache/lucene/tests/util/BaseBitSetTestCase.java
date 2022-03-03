@@ -292,6 +292,11 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     }
 
     @Override
+    public int approximateCardinality() {
+      return bitSet.cardinality();
+    }
+
+    @Override
     public int prevSetBit(int index) {
       return bitSet.previousSetBit(index);
     }
