@@ -52,7 +52,7 @@ import org.apache.lucene.util.AttributeSource;
  */
 public abstract class MultiTermQuery extends Query {
   protected final String field;
-  protected RewriteMethod rewriteMethod; // TODO make this final
+  protected final RewriteMethod rewriteMethod;
 
   /** Abstract class that defines how the query is rewritten. */
   public abstract static class RewriteMethod {
@@ -283,19 +283,9 @@ public abstract class MultiTermQuery extends Query {
     return rewriteMethod.rewrite(reader, this);
   }
 
+  /** @return the rewrite method used to build the final query */
   public RewriteMethod getRewriteMethod() {
     return rewriteMethod;
-  }
-
-  /**
-   * Sets the rewrite method to be used when executing the query. You can use one of the four core
-   * methods, or implement your own subclass of {@link RewriteMethod}.
-   *
-   * @deprecated set this using a constructor instead
-   */
-  @Deprecated
-  public void setRewriteMethod(RewriteMethod method) {
-    rewriteMethod = method;
   }
 
   @Override

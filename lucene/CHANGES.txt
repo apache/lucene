@@ -20,6 +20,8 @@ API Changes
 * LUCENE-10440: TaxonomyFacets and FloatTaxonomyFacets have been made pkg-private and only serve
   as internal implementation details of taxonomy-faceting. (Greg Miller)
 
+* LUCENE-10431: MultiTermQuery.setRewriteMethod() has been removed. (Alan Woodward)
+
 New Features
 ---------------------
 
