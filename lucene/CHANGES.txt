@@ -253,6 +253,10 @@ Changes in runtime behavior
 * LUCENE-10291: Lucene now only writes files for terms and postings if at least
   one field is indexed with postings. (Yannick Welsch)
 
+* LUCENE-10311: FixedBitSet#approximateCardinality now trades accuracy for
+  speed instead of delegating to FixedBitSet#cardinality.
+  (Robert Muir, Adrien Grand)
+
 Bug Fixes
 ---------------------
 
