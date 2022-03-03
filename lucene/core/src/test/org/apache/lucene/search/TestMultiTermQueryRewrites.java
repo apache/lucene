@@ -269,4 +269,12 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
     checkNoMaxClauseLimitation(new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(1024));
     checkNoMaxClauseLimitation(new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(1024));
   }
+
+  public void testHashCodeStability() {
+    PrefixQuery pq = new PrefixQuery(new Term("field", "test"));
+    pq.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
+    int hash = pq.hashCode();
+    pq.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    assertEquals(hash, pq.hashCode());
+  }
 }
