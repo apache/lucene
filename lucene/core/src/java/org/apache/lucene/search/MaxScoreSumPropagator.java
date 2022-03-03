@@ -127,14 +127,14 @@ final class MaxScoreSumPropagator {
       scorers[i].setMinCompetitiveScore(minCompetitiveScore);
     }
   }
-  
+
   /**
    * Return the minimum score that a Scorer must produce in order for a hit to be competitive.
-   * 
-   * The way that boolean queries combine scores of their sub clauses together is by summing up the
-   * float scores into a double and finally casting back that double back to a float. This method undoes
-   * this operation by taking the float score sum and subtracting the sum of other scores as a double as
-   * a first approximation of the minimum score that this clause must have.
+   *
+   * <p>The way that boolean queries combine scores of their sub clauses together is by summing up
+   * the float scores into a double and finally casting back that double back to a float. This
+   * method undoes this operation by taking the float score sum and subtracting the sum of other
+   * scores as a double as a first approximation of the minimum score that this clause must have.
    */
   private float getMinCompetitiveScore(float minScoreSum, double sumOfOtherMaxScores) {
     assert numClauses > 0;
@@ -153,8 +153,8 @@ final class MaxScoreSumPropagator {
       //  - one because of the error introduced by sumUpperBound
       if (iter > 2) {
         throw new IllegalStateException(
-            "Could not compute a minimum score for minScore=" + 
-                + minScore
+            "Could not compute a minimum score for minScore="
+                + +minScore
                 + ", minScoreSum="
                 + minScoreSum
                 + ", sumOfOtherMaxScores="
