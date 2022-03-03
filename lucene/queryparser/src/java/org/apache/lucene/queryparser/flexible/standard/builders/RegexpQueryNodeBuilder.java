@@ -23,6 +23,8 @@ import org.apache.lucene.queryparser.flexible.standard.nodes.RegexpQueryNode;
 import org.apache.lucene.queryparser.flexible.standard.processors.MultiTermRewriteMethodProcessor;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.automaton.RegExp;
 
 /** Builds a {@link RegexpQuery} object from a {@link RegexpQueryNode} object. */
 public class RegexpQueryNodeBuilder implements StandardQueryBuilder {
@@ -35,16 +37,19 @@ public class RegexpQueryNodeBuilder implements StandardQueryBuilder {
   public RegexpQuery build(QueryNode queryNode) throws QueryNodeException {
     RegexpQueryNode regexpNode = (RegexpQueryNode) queryNode;
 
-    // TODO: make the maxStates configurable w/ a reasonable default (QueryParserBase uses 10000)
-    RegexpQuery q =
-        new RegexpQuery(new Term(regexpNode.getFieldAsString(), regexpNode.textToBytesRef()));
-
     MultiTermQuery.RewriteMethod method =
         (MultiTermQuery.RewriteMethod) queryNode.getTag(MultiTermRewriteMethodProcessor.TAG_ID);
-    if (method != null) {
-      q.setRewriteMethod(method);
+    if (method == null) {
+      method = MultiTermQuery.CONSTANT_SCORE_REWRITE;
     }
 
-    return q;
+    // TODO: make the maxStates configurable w/ a reasonable default (QueryParserBase uses 10000)
+    return new RegexpQuery(
+        new Term(regexpNode.getFieldAsString(), regexpNode.textToBytesRef()),
+        RegExp.ALL,
+        0,
+        name -> null,
+        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+        method);
   }
 }
