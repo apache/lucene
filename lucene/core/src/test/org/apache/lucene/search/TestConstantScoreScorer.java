@@ -238,7 +238,8 @@ public class TestConstantScoreScorer extends LuceneTestCase {
     }
     IndexReader ir = DirectoryReader.open(iw);
 
-    IndexSearcher is = newSearcher(ir);
+    // Don't use threads so that we can assert on the number of visited hits
+    IndexSearcher is = newSearcher(ir, true, true, false);
 
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
         TopScoreDocCollector.createSharedManager(10, null, 10);
