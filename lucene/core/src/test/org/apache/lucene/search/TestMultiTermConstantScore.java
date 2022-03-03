@@ -28,6 +28,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.util.automaton.Operations;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -94,8 +95,8 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
   /** macro for readability */
   public static Query csrq(String f, String l, String h, boolean il, boolean ih) {
-    TermRangeQuery query = TermRangeQuery.newStringRange(f, l, h, il, ih);
-    query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
+    TermRangeQuery query =
+        TermRangeQuery.newStringRange(f, l, h, il, ih, MultiTermQuery.CONSTANT_SCORE_REWRITE);
     if (VERBOSE) {
       System.out.println("TEST: query=" + query);
     }
@@ -104,8 +105,7 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
   public static Query csrq(
       String f, String l, String h, boolean il, boolean ih, MultiTermQuery.RewriteMethod method) {
-    TermRangeQuery query = TermRangeQuery.newStringRange(f, l, h, il, ih);
-    query.setRewriteMethod(method);
+    TermRangeQuery query = TermRangeQuery.newStringRange(f, l, h, il, ih, method);
     if (VERBOSE) {
       System.out.println("TEST: query=" + query + " method=" + method);
     }
@@ -114,16 +114,13 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
   /** macro for readability */
   public static Query cspq(Term prefix) {
-    PrefixQuery query = new PrefixQuery(prefix);
-    query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
-    return query;
+    return new PrefixQuery(prefix, MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
   /** macro for readability */
   public static Query cswcq(Term wild) {
-    WildcardQuery query = new WildcardQuery(wild);
-    query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
-    return query;
+    return new WildcardQuery(
+        wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
   @Test

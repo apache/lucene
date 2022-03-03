@@ -59,7 +59,20 @@ public class WildcardQuery extends AutomatonQuery {
    *     otherwise know what to specify.
    */
   public WildcardQuery(Term term, int determinizeWorkLimit) {
-    super(term, toAutomaton(term, determinizeWorkLimit));
+    this(term, determinizeWorkLimit, CONSTANT_SCORE_REWRITE);
+  }
+
+  /**
+   * Constructs a query for terms matching <code>term</code>.
+   *
+   * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
+   *     wildcard. Set higher to allow more complex queries and lower to prevent memory exhaustion.
+   *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
+   *     otherwise know what to specify.
+   * @param rewriteMethod the rewrite method to use when building the final query
+   */
+  public WildcardQuery(Term term, int determinizeWorkLimit, RewriteMethod rewriteMethod) {
+    super(term, toAutomaton(term, determinizeWorkLimit), false, rewriteMethod);
   }
 
   /**
