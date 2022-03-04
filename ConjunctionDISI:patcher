@@ -1,0 +1,10 @@
+  @Override
+  public int advance(int target) throws IOException {
+      // fix the bug for performance when leaf1 no more doc to matching
+      if (target >= 2147483647) {
+          return 2147483647; 
+      }
+      
+      
+    return doNext(lead1.advance(target));
+  }
