@@ -144,23 +144,13 @@ public final class DocIdSetBuilder {
   }
 
   /**
-   * Reserve space and return a {@link BulkAdder} object that supports up to {@code numAdds}
-   * invocations of {@link BulkAdder#add(int)}.
+   * Reserve space and return a {@link BulkAdder} object that can be used to add up to {@code
+   * numDocs} documents.
    */
-  public BulkAdder grow(long numAdds) {
-    // as an impl detail, we don't need to care about numbers bigger than int32,
-    // we switch over to FixedBitSet storage well before that threshold.
-    return grow((int) Math.min(Integer.MAX_VALUE, numAdds));
-  }
-
-  /**
-   * Reserve space and return a {@link BulkAdder} object that supports up to {@code numAdds}
-   * invocations of {@link BulkAdder#add(int)}.
-   */
-  public BulkAdder grow(int numAdds) {
+  public BulkAdder grow(int numDocs) {
     if (bitSet == null) {
-      if ((long) totalAllocated + numAdds <= threshold) {
-        ensureBufferCapacity(numAdds);
+      if ((long) totalAllocated + numDocs <= threshold) {
+        ensureBufferCapacity(numDocs);
       } else {
         upgradeToBitSet();
       }
