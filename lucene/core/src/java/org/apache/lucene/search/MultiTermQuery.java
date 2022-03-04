@@ -302,7 +302,11 @@ public abstract class MultiTermQuery extends Query {
   public int hashCode() {
     final int prime = 31;
     int result = classHash();
-    result = prime * result + rewriteMethod.hashCode();
+    // rewriteMethod is mutable in 9x so we exclude it from hashcode
+    // calculates to ensure that the hash is stable; otherwise we
+    // can get assertion errors from wrapper queries like BQ that
+    // store their subqueries in Sets
+    // result = prime * result + rewriteMethod.hashCode();
     result = prime * result + field.hashCode();
     return result;
   }

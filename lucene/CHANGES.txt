@@ -260,6 +260,10 @@ Bug Fixes
   infinite loops in their parent BooleanQuery.
   (Ankit Jain, Daniel Doubrovkine, Adrien Grand)
 
+* LUCENE-10431: MultiTermQuery no longer includes its rewrite method in its hashcode
+  calculation, as this could cause problems with wrapper queries like BooleanQuery which
+  expect their child queries hashcodes to be stable. (Alan Woodward)
+
 Other
 ---------------------
 
