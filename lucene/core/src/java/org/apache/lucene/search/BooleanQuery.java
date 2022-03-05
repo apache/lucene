@@ -274,13 +274,15 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       for (BooleanClause clause : this) {
         Query query = clause.getQuery();
         BooleanClause.Occur occur = clause.getOccur();
-        Query rewritten = query.rewrite(reader);
+        Query rewritten;
         if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
           // Clauses that are not involved in scoring can get some extra simplifications
-          rewritten = new ConstantScoreQuery(rewritten).rewrite(reader);
+          rewritten = new ConstantScoreQuery(query).rewrite(reader);
           if (rewritten instanceof ConstantScoreQuery) {
             rewritten = ((ConstantScoreQuery) rewritten).getQuery();
           }
+        } else {
+          rewritten = query.rewrite(reader);
         }
         if (rewritten != query || query.getClass() == MatchNoDocsQuery.class) {
           // rewrite clause
