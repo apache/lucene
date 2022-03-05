@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
@@ -30,6 +31,7 @@ import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -160,6 +162,60 @@ public abstract class MultiRangeQuery extends Query {
   public void visit(QueryVisitor visitor) {
     if (visitor.acceptField(field)) {
       visitor.visitLeaf(this);
+    }
+  }
+
+  @Override
+  public Query rewrite(IndexReader reader) throws IOException {
+    List<RangeClause> mergedRanges = mergeOverlappingRanges();
+    if (mergedRanges != rangeClauses) {
+      return new MultiRangeQuery(field, numDims, bytesPerDim, mergedRanges) {
+        @Override
+        protected String toString(int dimension, byte[] value) {
+          return MultiRangeQuery.this.toString(dimension, value);
+        }
+      };
+    } else {
+      return this;
+    }
+  }
+
+  private List<RangeClause> mergeOverlappingRanges() {
+    if (numDims != 1 || rangeClauses.size() == 1) {
+      return rangeClauses;
+    }
+    List<RangeClause> originRangeClause = new ArrayList<>(rangeClauses);
+    final ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+    originRangeClause.sort(
+        new Comparator<RangeClause>() {
+          @Override
+          public int compare(RangeClause o1, RangeClause o2) {
+            int result = comparator.compare(o1.lowerValue, 0, o2.lowerValue, 0);
+            if (result == 0) {
+              return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
+            } else {
+              return result;
+            }
+          }
+        });
+    List<RangeClause> finalRangeClause = new ArrayList<>();
+    RangeClause current = originRangeClause.get(0);
+    for (int i = 1; i < originRangeClause.size(); i++) {
+      RangeClause nextClause = originRangeClause.get(i);
+      if (comparator.compare(nextClause.lowerValue, 0, current.upperValue, 0) > 0) {
+        finalRangeClause.add(current);
+        current = nextClause;
+      } else {
+        if (comparator.compare(nextClause.upperValue, 0, current.upperValue, 0) > 0) {
+          current = new RangeClause(current.lowerValue, nextClause.upperValue);
+        }
+      }
+    }
+    finalRangeClause.add(current);
+    if (finalRangeClause.size() != rangeClauses.size()) {
+      return finalRangeClause;
+    } else {
+      return rangeClauses;
     }
   }
 
@@ -313,6 +369,32 @@ public abstract class MultiRangeQuery extends Query {
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        if (numDims != 1) {
+          return super.count(context);
+        }
+        List<RangeClause> mergeRanceClause = mergeOverlappingRanges();
+        int total = 0;
+        for (RangeClause rangeClause : mergeRanceClause) {
+          PointRangeQuery pointRangeQuery =
+              new PointRangeQuery(field, rangeClause.lowerValue, rangeClause.upperValue, numDims) {
+                @Override
+                protected String toString(int dimension, byte[] value) {
+                  return MultiRangeQuery.this.toString(dimension, value);
+                }
+              };
+          int count = pointRangeQuery.createWeight(searcher, scoreMode, boost).count(context);
+
+          if (count != -1) {
+            total += count;
+          } else {
+            return super.count(context);
+          }
+        }
+        return total;
       }
     };
   }
