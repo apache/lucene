@@ -553,11 +553,17 @@ public class BKDReader extends PointValues {
     @Override
     public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
       resetNodeDataPosition();
-      visitor.grow((int) Math.min(Integer.MAX_VALUE, size()));
-      addAll(visitor);
+      addAll(visitor, false);
     }
 
-    public void addAll(PointValues.IntersectVisitor visitor) throws IOException {
+    public void addAll(PointValues.IntersectVisitor visitor, boolean grown) throws IOException {
+      if (grown == false) {
+        final long size = size();
+        if (size <= Integer.MAX_VALUE) {
+          visitor.grow((int) size);
+          grown = true;
+        }
+      }
       if (isLeafNode()) {
         // Leaf node
         leafNodes.seek(getLeafBlockFP());
@@ -567,10 +573,10 @@ public class BKDReader extends PointValues {
         DocIdsWriter.readInts(leafNodes, count, visitor);
       } else {
         pushLeft();
-        addAll(visitor);
+        addAll(visitor, grown);
         pop();
         pushRight();
-        addAll(visitor);
+        addAll(visitor, grown);
         pop();
       }
     }
