@@ -252,6 +252,9 @@ Optimizations
 
 * LUCENE-10450: IndexSortSortedNumericDocValuesRangeQuery could be rewrite to MatchAllDocsQuery. (Lu Xugang)
 
+* LUCENE-10453: Indexing and search speedup with KNN vectors when using
+  euclidean distance. (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
