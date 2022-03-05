@@ -19,9 +19,14 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.Terms;
 
 /**
  * A {@link Query} that matches documents that have a value for a given field as reported by doc
@@ -63,6 +68,25 @@ public final class DocValuesFieldExistsQuery extends Query {
   }
 
   @Override
+  public Query rewrite(IndexReader reader) throws IOException {
+    boolean allReadersRewritable = true;
+    for (LeafReaderContext context : reader.leaves()) {
+      LeafReader leaf = context.reader();
+      Terms terms = leaf.terms(field);
+      PointValues pointValues = leaf.getPointValues(field);
+      if ((terms == null || terms.getDocCount() != leaf.maxDoc())
+          && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())) {
+        allReadersRewritable = false;
+        break;
+      }
+    }
+    if (allReadersRewritable) {
+      return new MatchAllDocsQuery();
+    }
+    return super.rewrite(reader);
+  }
+
+  @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
     return new ConstantScoreWeight(this, boost) {
       @Override
@@ -72,6 +96,22 @@ public final class DocValuesFieldExistsQuery extends Query {
           return null;
         }
         return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        final LeafReader reader = context.reader();
+        final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+        if (fieldInfo == null || fieldInfo.getDocValuesType() == DocValuesType.NONE) {
+          return 0; // the field doesn't index doc values
+        } else if (reader.hasDeletions() == false) {
+          if (fieldInfo.getPointDimensionCount() > 0) {
+            return reader.getPointValues(field).getDocCount();
+          } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
+            return reader.terms(field).getDocCount();
+          }
+        }
+        return super.count(context);
       }
 
       @Override

@@ -36,16 +36,15 @@ public class PrefixWildcardQueryNodeBuilder implements StandardQueryBuilder {
 
     PrefixWildcardQueryNode wildcardNode = (PrefixWildcardQueryNode) queryNode;
 
-    String text =
-        wildcardNode.getText().subSequence(0, wildcardNode.getText().length() - 1).toString();
-    PrefixQuery q = new PrefixQuery(new Term(wildcardNode.getFieldAsString(), text));
-
     MultiTermQuery.RewriteMethod method =
         (MultiTermQuery.RewriteMethod) queryNode.getTag(MultiTermRewriteMethodProcessor.TAG_ID);
-    if (method != null) {
-      q.setRewriteMethod(method);
+    if (method == null) {
+      method = MultiTermQuery.CONSTANT_SCORE_REWRITE;
     }
 
-    return q;
+    String text =
+        wildcardNode.getText().subSequence(0, wildcardNode.getText().length() - 1).toString();
+
+    return new PrefixQuery(new Term(wildcardNode.getFieldAsString(), text), method);
   }
 }

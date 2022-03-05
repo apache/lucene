@@ -19,15 +19,15 @@ package org.apache.lucene.codecs.uniformsplit;
 
 import java.io.IOException;
 import java.util.Collections;
-import org.apache.lucene.codecs.lucene90.MockTermStateFactory;
+import org.apache.lucene.codecs.lucene90.tests.MockTermStateFactory;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexOutput;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 /** Tests {@link BlockWriter}. */
 public class TestBlockWriter extends LuceneTestCase {

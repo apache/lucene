@@ -18,7 +18,6 @@ package org.apache.lucene.spatial.util;
 
 import java.io.IOException;
 import java.util.WeakHashMap;
-import java.util.logging.Logger;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
@@ -34,10 +33,8 @@ import org.locationtech.spatial4j.shape.Shape;
  * @lucene.internal
  */
 public abstract class ShapeFieldCacheProvider<T extends Shape> {
-  private Logger log = Logger.getLogger(getClass().getName());
-
   // it may be a List<T> or T
-  WeakHashMap<IndexReader, ShapeFieldCache<T>> sidx = new WeakHashMap<>();
+  final WeakHashMap<IndexReader, ShapeFieldCache<T>> sidx = new WeakHashMap<>();
 
   protected final int defaultSize;
   protected final String shapeField;
@@ -54,33 +51,25 @@ public abstract class ShapeFieldCacheProvider<T extends Shape> {
     if (idx != null) {
       return idx;
     }
-    long startTime = System.currentTimeMillis();
 
-    log.fine("Building Cache [" + reader.maxDoc() + "]");
     idx = new ShapeFieldCache<>(reader.maxDoc(), defaultSize);
-    int count = 0;
     PostingsEnum docs = null;
-    Terms terms = reader.terms(shapeField);
-    if (terms != null) {
-      TermsEnum te = terms.iterator();
-      BytesRef term = te.next();
-      while (term != null) {
-        T shape = readShape(term);
-        if (shape != null) {
-          docs = te.postings(docs, PostingsEnum.NONE);
-          Integer docid = docs.nextDoc();
-          while (docid != DocIdSetIterator.NO_MORE_DOCS) {
-            idx.add(docid, shape);
-            docid = docs.nextDoc();
-            count++;
-          }
+    Terms terms = Terms.getTerms(reader, shapeField);
+    TermsEnum te = terms.iterator();
+    BytesRef term = te.next();
+    while (term != null) {
+      T shape = readShape(term);
+      if (shape != null) {
+        docs = te.postings(docs, PostingsEnum.NONE);
+        Integer docid = docs.nextDoc();
+        while (docid != DocIdSetIterator.NO_MORE_DOCS) {
+          idx.add(docid, shape);
+          docid = docs.nextDoc();
         }
-        term = te.next();
       }
+      term = te.next();
     }
     sidx.put(reader, idx);
-    long elapsed = System.currentTimeMillis() - startTime;
-    log.fine("Cached: [" + count + " in " + elapsed + "ms] " + idx);
     return idx;
   }
 }

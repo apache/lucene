@@ -8,6 +8,7 @@ on:
   push:
     branches:
     - main
+    - branch_9x
 
 jobs:
   # This runs all validation checks without tests.
@@ -20,7 +21,7 @@ jobs:
         # Operating systems to run on.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '11' ]
+        java: [ '17' ]
 
     steps:
     - uses: actions/checkout@v2
@@ -28,7 +29,7 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt-hotspot'
+        distribution: 'temurin'
         java-version: ${{ matrix.java }}
         java-package: jdk
 
@@ -50,7 +51,7 @@ jobs:
     - name: Run gradle check (without tests)
       run: ./gradlew check -x test -Ptask.times=true --max-workers 2
 
-    - uses: gradle/wrapper-validation-action@v1
+    # - uses: gradle/wrapper-validation-action@v1
 
   # This runs all tests without any other validation checks.
   tests:
@@ -64,7 +65,7 @@ jobs:
         # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '11' ]
+        java: [ '17' ]
 
     steps:
     - uses: actions/checkout@v2
@@ -72,7 +73,7 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt-hotspot'
+        distribution: 'temurin'
         java-version: ${{ matrix.java }}
         java-package: jdk
 
@@ -94,4 +95,4 @@ jobs:
     - name: Run gradle tests
       run: ./gradlew test "-Ptask.times=true" "-Ptests.slow=false" --max-workers 2
 
-    - uses: gradle/wrapper-validation-action@v1
+    # - uses: gradle/wrapper-validation-action@v1

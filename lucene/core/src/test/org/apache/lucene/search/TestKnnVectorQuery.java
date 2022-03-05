@@ -27,17 +27,25 @@ import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FilterDirectoryReader;
+import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
 /** TestKnnVectorQuery tests KnnVectorQuery. */
@@ -87,11 +95,38 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10);
-      assertMatches(searcher, kvq, reader.numDocs());
+      assertMatches(searcher, kvq, 3);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(2, topDocs.scoreDocs[0].doc);
       assertEquals(0, topDocs.scoreDocs[1].doc);
       assertEquals(1, topDocs.scoreDocs[2].doc);
+    }
+  }
+
+  /** Tests that a KnnVectorQuery applies the filter query */
+  public void testSimpleFilter() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      Query filter = new TermQuery(new Term("id", "id2"));
+      Query kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, filter);
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(1, topDocs.totalHits.value);
+      assertEquals(2, topDocs.scoreDocs[0].doc);
+    }
+  }
+
+  public void testFilterWithNoVectorMatches() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      Query filter = new TermQuery(new Term("other", "value"));
+      Query kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, filter);
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(0, topDocs.totalHits.value);
     }
   }
 
@@ -451,6 +486,82 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /** Tests with random vectors and a random filter. Uses RandomIndexWriter. */
+  public void testRandomWithFilter() throws IOException {
+    int numDocs = 200;
+    int dimension = atLeast(5);
+    int numIters = atLeast(10);
+    try (Directory d = newDirectory()) {
+      // Always use the default kNN format to have predictable behavior around when it hits
+      // visitedLimit. This is fine since the test targets KnnVectorQuery logic, not the kNN format
+      // implementation.
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+      RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(new KnnVectorField("field", randomVector(dimension)));
+        doc.add(new NumericDocValuesField("tag", i));
+        doc.add(new IntPoint("tag", i));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      w.close();
+
+      try (DirectoryReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader);
+        for (int i = 0; i < numIters; i++) {
+          int lower = random().nextInt(50);
+
+          // Test a filter with cost less than k and check we use exact search
+          Query filter1 = IntPoint.newRangeQuery("tag", lower, lower + 8);
+          TopDocs results =
+              searcher.search(
+                  new KnnVectorQuery("field", randomVector(dimension), 10, filter1), numDocs);
+          assertEquals(9, results.totalHits.value);
+          assertEquals(results.totalHits.value, results.scoreDocs.length);
+          expectThrows(
+              UnsupportedOperationException.class,
+              () ->
+                  searcher.search(
+                      new ThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1),
+                      numDocs));
+
+          // Test a restrictive filter and check we use exact search
+          Query filter2 = IntPoint.newRangeQuery("tag", lower, lower + 6);
+          results =
+              searcher.search(
+                  new KnnVectorQuery("field", randomVector(dimension), 5, filter2), numDocs);
+          assertEquals(5, results.totalHits.value);
+          assertEquals(results.totalHits.value, results.scoreDocs.length);
+          expectThrows(
+              UnsupportedOperationException.class,
+              () ->
+                  searcher.search(
+                      new ThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter2),
+                      numDocs));
+
+          // Test an unrestrictive filter and check we use approximate search
+          Query filter3 = IntPoint.newRangeQuery("tag", lower, lower + 150);
+          results =
+              searcher.search(
+                  new ThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
+                  numDocs,
+                  new Sort(new SortField("tag", SortField.Type.INT)));
+          assertEquals(5, results.totalHits.value);
+          assertEquals(results.totalHits.value, results.scoreDocs.length);
+
+          for (ScoreDoc scoreDoc : results.scoreDocs) {
+            FieldDoc fieldDoc = (FieldDoc) scoreDoc;
+            assertEquals(1, fieldDoc.fields.length);
+
+            int tag = (int) fieldDoc.fields[0];
+            assertTrue(lower <= tag && tag <= lower + 150);
+          }
+        }
+      }
+    }
+  }
+
   public void testDeletes() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -518,6 +629,35 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /**
+   * Check that the query behaves reasonably when using a custom filter reader where there are no
+   * live docs.
+   */
+  public void testNoLiveDocsReader() throws IOException {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, iwc)) {
+      final int numDocs = 10;
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new StringField("index", String.valueOf(i), Field.Store.NO));
+        d.add(new KnnVectorField("vector", randomVector(dim)));
+        w.addDocument(d);
+      }
+      w.commit();
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        DirectoryReader wrappedReader = new NoLiveDocsDirectoryReader(reader);
+        IndexSearcher searcher = new IndexSearcher(wrappedReader);
+        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs);
+        TopDocs topDocs = searcher.search(query, numDocs);
+        assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
+  /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   private Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
@@ -527,6 +667,13 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       doc.add(new StringField("id", "id" + i, Field.Store.NO));
       writer.addDocument(doc);
     }
+    // Add some documents without a vector
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("other", "value", Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
     writer.close();
     return indexStore;
   }
@@ -535,5 +682,71 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       throws IOException {
     ScoreDoc[] result = searcher.search(q, 1000).scoreDocs;
     assertEquals(expectedMatches, result.length);
+  }
+
+  /**
+   * A version of {@link KnnVectorQuery} that throws an error when an exact search is run. This
+   * allows us to check what search strategy is being used.
+   */
+  private static class ThrowingKnnVectorQuery extends KnnVectorQuery {
+
+    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
+      super(field, target, k, filter);
+    }
+
+    @Override
+    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+      throw new UnsupportedOperationException("exact search is not supported");
+    }
+  }
+
+  private static class NoLiveDocsDirectoryReader extends FilterDirectoryReader {
+
+    private NoLiveDocsDirectoryReader(DirectoryReader in) throws IOException {
+      super(
+          in,
+          new SubReaderWrapper() {
+            @Override
+            public LeafReader wrap(LeafReader reader) {
+              return new NoLiveDocsLeafReader(reader);
+            }
+          });
+    }
+
+    @Override
+    protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
+      return new NoLiveDocsDirectoryReader(in);
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return in.getReaderCacheHelper();
+    }
+  }
+
+  private static class NoLiveDocsLeafReader extends FilterLeafReader {
+    private NoLiveDocsLeafReader(LeafReader in) {
+      super(in);
+    }
+
+    @Override
+    public int numDocs() {
+      return 0;
+    }
+
+    @Override
+    public Bits getLiveDocs() {
+      return new Bits.MatchNoBits(in.maxDoc());
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return in.getReaderCacheHelper();
+    }
+
+    @Override
+    public CacheHelper getCoreCacheHelper() {
+      return in.getCoreCacheHelper();
+    }
   }
 }

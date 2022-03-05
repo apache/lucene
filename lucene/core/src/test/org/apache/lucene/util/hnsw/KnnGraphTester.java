@@ -36,9 +36,11 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90Codec;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90HnswVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene91.Lucene91Codec;
+import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnVectorField;
@@ -48,7 +50,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.KnnGraphValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
@@ -74,8 +75,6 @@ public class KnnGraphTester {
 
   private static final String KNN_FIELD = "knn";
   private static final String ID_FIELD = "id";
-  private static final VectorSimilarityFunction SIMILARITY_FUNCTION =
-      VectorSimilarityFunction.DOT_PRODUCT;
 
   private int numDocs;
   private int dim;
@@ -90,6 +89,7 @@ public class KnnGraphTester {
   private int reindexTimeMsec;
   private int beamWidth;
   private int maxConn;
+  private VectorSimilarityFunction similarityFunction;
 
   @SuppressForbidden(reason = "uses Random()")
   private KnnGraphTester() {
@@ -100,6 +100,7 @@ public class KnnGraphTester {
     topK = 100;
     warmCount = 1000;
     fanout = topK;
+    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
   }
 
   public static void main(String... args) throws Exception {
@@ -183,6 +184,14 @@ public class KnnGraphTester {
         case "-docs":
           docVectorsPath = Paths.get(args[++iarg]);
           break;
+        case "-metric":
+          String metric = args[++iarg];
+          if (metric.equals("euclidean")) {
+            similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+          } else if (metric.equals("angular") == false) {
+            throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
+          }
+          break;
         case "-forceMerge":
           forceMerge = true;
           break;
@@ -237,12 +246,12 @@ public class KnnGraphTester {
   private void printFanoutHist(Path indexPath) throws IOException {
     try (Directory dir = FSDirectory.open(indexPath);
         DirectoryReader reader = DirectoryReader.open(dir)) {
-      // int[] globalHist = new int[reader.maxDoc()];
       for (LeafReaderContext context : reader.leaves()) {
         LeafReader leafReader = context.reader();
-        KnnGraphValues knnValues =
-            ((Lucene90HnswVectorsReader) ((CodecReader) leafReader).getVectorReader())
-                .getGraphValues(KNN_FIELD);
+        KnnVectorsReader vectorsReader =
+            ((PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) leafReader).getVectorReader())
+                .getFieldReader(KNN_FIELD);
+        HnswGraph knnValues = ((Lucene91HnswVectorsReader) vectorsReader).getGraph(KNN_FIELD);
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());
       }
@@ -253,19 +262,19 @@ public class KnnGraphTester {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
       HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, SIMILARITY_FUNCTION, maxConn, beamWidth, 0);
+          new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
-        builder.addGraphNode(values.vectorValue(i));
+        builder.addGraphNode(i, values.vectorValue(i));
         System.out.println("\nITERATION " + i);
         dumpGraph(builder.hnsw);
       }
     }
   }
 
-  private void dumpGraph(HnswGraph hnsw) {
+  private void dumpGraph(OnHeapHnswGraph hnsw) {
     for (int i = 0; i < hnsw.size(); i++) {
-      NeighborArray neighbors = hnsw.getNeighbors(i);
+      NeighborArray neighbors = hnsw.getNeighbors(0, i);
       System.out.printf(Locale.ROOT, "%5d", i);
       NeighborArray sorted = new NeighborArray(neighbors.size());
       for (int j = 0; j < neighbors.size(); j++) {
@@ -292,12 +301,12 @@ public class KnnGraphTester {
   }
 
   @SuppressForbidden(reason = "Prints stuff")
-  private void printGraphFanout(KnnGraphValues knnValues, int numDocs) throws IOException {
+  private void printGraphFanout(HnswGraph knnValues, int numDocs) throws IOException {
     int min = Integer.MAX_VALUE, max = 0, total = 0;
     int count = 0;
     int[] leafHist = new int[numDocs];
     for (int node = 0; node < numDocs; node++) {
-      knnValues.seek(node);
+      knnValues.seek(0, node);
       int n = 0;
       while (knnValues.nextNeighbor() != NO_MORE_DOCS) {
         ++n;
@@ -426,7 +435,8 @@ public class KnnGraphTester {
     TopDocs[] results = new TopDocs[reader.leaves().size()];
     for (LeafReaderContext ctx : reader.leaves()) {
       Bits liveDocs = ctx.reader().getLiveDocs();
-      results[ctx.ord] = ctx.reader().searchNearestVectors(field, vector, k + fanout, liveDocs);
+      results[ctx.ord] =
+          ctx.reader().searchNearestVectors(field, vector, k + fanout, liveDocs, Integer.MAX_VALUE);
       int docBase = ctx.docBase;
       for (ScoreDoc scoreDoc : results[ctx.ord].scoreDocs) {
         scoreDoc.doc += docBase;
@@ -533,25 +543,21 @@ public class KnnGraphTester {
       for (int i = 0; i < numIters; i++) {
         queries.get(query);
         long totalBytes = (long) numDocs * dim * Float.BYTES;
-        int
-            blockSize =
-                (int)
-                    Math.min(
-                        totalBytes,
-                        (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES)),
-            offset = 0;
+        final int maxBlockSize = (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES);
+        int offset = 0;
         int j = 0;
         // System.out.println("totalBytes=" + totalBytes);
         while (j < numDocs) {
+          int blockSize = (int) Math.min(totalBytes - offset, maxBlockSize);
           FloatBuffer vectors =
               in.map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
                   .order(ByteOrder.LITTLE_ENDIAN)
                   .asFloatBuffer();
           offset += blockSize;
-          NeighborQueue queue = new NeighborQueue(topK, SIMILARITY_FUNCTION.reversed);
+          NeighborQueue queue = new NeighborQueue(topK, similarityFunction.reversed);
           for (; j < numDocs && vectors.hasRemaining(); j++) {
             vectors.get(vector);
-            float d = SIMILARITY_FUNCTION.compare(query, vector);
+            float d = similarityFunction.compare(query, vector);
             queue.insertWithOverflow(j, d);
           }
           result[i] = new int[topK];
@@ -573,32 +579,32 @@ public class KnnGraphTester {
   private int createIndex(Path docsPath, Path indexPath) throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
     iwc.setCodec(
-        new Lucene90Codec() {
+        new Lucene91Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene90HnswVectorsFormat(maxConn, beamWidth);
+            return new Lucene91HnswVectorsFormat(maxConn, beamWidth);
           }
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setRAMBufferSizeMB(1994d);
     // iwc.setMaxBufferedDocs(10000);
 
-    FieldType fieldType = KnnVectorField.createFieldType(dim, VectorSimilarityFunction.DOT_PRODUCT);
+    FieldType fieldType = KnnVectorField.createFieldType(dim, similarityFunction);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
     }
     long start = System.nanoTime();
     long totalBytes = (long) numDocs * dim * Float.BYTES, offset = 0;
+    final int maxBlockSize = (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES);
+
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter iw = new IndexWriter(dir, iwc)) {
-      int blockSize =
-          (int)
-              Math.min(totalBytes, (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES));
       float[] vector = new float[dim];
       try (FileChannel in = FileChannel.open(docsPath)) {
         int i = 0;
         while (i < numDocs) {
+          int blockSize = (int) Math.min(totalBytes - offset, maxBlockSize);
           FloatBuffer vectors =
               in.map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
                   .order(ByteOrder.LITTLE_ENDIAN)

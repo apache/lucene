@@ -36,10 +36,12 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryUtils;
+import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCoveringQuery extends LuceneTestCase {
 
@@ -147,6 +149,7 @@ public class TestCoveringQuery extends LuceneTestCase {
         }
         Query q1 = builder.build();
         Query q2 = new CoveringQuery(queries, LongValuesSource.constant(i));
+        assertSameMatches(searcher, q1, q2, true);
         assertEquals(searcher.count(q1), searcher.count(q2));
       }
 
@@ -160,5 +163,90 @@ public class TestCoveringQuery extends LuceneTestCase {
 
     r.close();
     dir.close();
+  }
+
+  public void testRandomWand() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    int numDocs = atLeast(50);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      if (random().nextBoolean()) {
+        doc.add(new StringField("field", "A", Store.NO));
+      }
+      if (random().nextBoolean()) {
+        doc.add(new StringField("field", "B", Store.NO));
+      }
+      if (random().nextDouble() > 0.9) {
+        doc.add(new StringField("field", "C", Store.NO));
+      }
+      if (random().nextDouble() > 0.1) {
+        doc.add(new StringField("field", "D", Store.NO));
+      }
+      doc.add(new NumericDocValuesField("min_match", 1));
+      w.addDocument(doc);
+    }
+
+    IndexReader r = DirectoryReader.open(w);
+    IndexSearcher searcher = new IndexSearcher(r);
+    w.close();
+
+    int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      List<Query> queries = new ArrayList<>();
+      if (random().nextBoolean()) {
+        queries.add(new TermQuery(new Term("field", "A")));
+      }
+      if (random().nextBoolean()) {
+        queries.add(new TermQuery(new Term("field", "B")));
+      }
+      if (random().nextBoolean()) {
+        queries.add(new TermQuery(new Term("field", "C")));
+      }
+      if (random().nextBoolean()) {
+        queries.add(new TermQuery(new Term("field", "D")));
+      }
+      if (random().nextBoolean()) {
+        queries.add(new TermQuery(new Term("field", "E")));
+      }
+
+      Query q = new CoveringQuery(queries, LongValuesSource.fromLongField("min_match"));
+      QueryUtils.check(random(), q, searcher);
+
+      for (int i = 1; i < 4; ++i) {
+        BooleanQuery.Builder builder = new BooleanQuery.Builder().setMinimumNumberShouldMatch(i);
+        for (Query query : queries) {
+          builder.add(query, Occur.SHOULD);
+        }
+        Query q1 = builder.build();
+        Query q2 = new CoveringQuery(queries, LongValuesSource.constant(i));
+        assertSameMatches(searcher, q1, q2, true);
+        assertEquals(searcher.count(q1), searcher.count(q2));
+      }
+
+      Query filtered =
+          new BooleanQuery.Builder()
+              .add(q, Occur.MUST)
+              .add(new TermQuery(new Term("field", "A")), Occur.MUST)
+              .build();
+      QueryUtils.check(random(), filtered, searcher);
+    }
+
+    r.close();
+    dir.close();
+  }
+
+  private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
+      throws IOException {
+    final int maxDoc = searcher.getIndexReader().maxDoc();
+    final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
+    final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
+    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    for (int i = 0; i < td1.scoreDocs.length; ++i) {
+      assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
+      if (scores) {
+        assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-7);
+      }
+    }
   }
 }

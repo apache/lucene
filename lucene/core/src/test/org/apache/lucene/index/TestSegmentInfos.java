@@ -23,16 +23,16 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.mockfile.ExtrasFS;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.mockfile.ExtrasFS;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestSegmentInfos extends LuceneTestCase {
@@ -71,8 +71,8 @@ public class TestSegmentInfos extends LuceneTestCase {
     SegmentInfo info =
         new SegmentInfo(
             dir,
-            Version.LUCENE_9_0_0,
-            Version.LUCENE_9_0_0,
+            Version.LUCENE_10_0_0,
+            Version.LUCENE_10_0_0,
             "_0",
             1,
             false,
@@ -89,7 +89,7 @@ public class TestSegmentInfos extends LuceneTestCase {
     sis.add(commitInfo);
     sis.commit(dir);
     sis = SegmentInfos.readLatestCommit(dir);
-    assertEquals(Version.LUCENE_9_0_0, sis.getMinSegmentLuceneVersion());
+    assertEquals(Version.LUCENE_10_0_0, sis.getMinSegmentLuceneVersion());
     assertEquals(Version.LATEST, sis.getCommitLuceneVersion());
     dir.close();
   }
@@ -105,8 +105,8 @@ public class TestSegmentInfos extends LuceneTestCase {
     SegmentInfo info =
         new SegmentInfo(
             dir,
-            Version.LUCENE_9_0_0,
-            Version.LUCENE_9_0_0,
+            Version.LUCENE_10_0_0,
+            Version.LUCENE_10_0_0,
             "_0",
             1,
             false,
@@ -124,8 +124,8 @@ public class TestSegmentInfos extends LuceneTestCase {
     info =
         new SegmentInfo(
             dir,
-            Version.LUCENE_9_0_0,
-            Version.LUCENE_9_0_0,
+            Version.LUCENE_10_0_0,
+            Version.LUCENE_10_0_0,
             "_1",
             1,
             false,
@@ -143,7 +143,7 @@ public class TestSegmentInfos extends LuceneTestCase {
     byte[] commitInfoId0 = sis.info(0).getId();
     byte[] commitInfoId1 = sis.info(1).getId();
     sis = SegmentInfos.readLatestCommit(dir);
-    assertEquals(Version.LUCENE_9_0_0, sis.getMinSegmentLuceneVersion());
+    assertEquals(Version.LUCENE_10_0_0, sis.getMinSegmentLuceneVersion());
     assertEquals(Version.LATEST, sis.getCommitLuceneVersion());
     assertEquals(
         StringHelper.idToString(commitInfoId0), StringHelper.idToString(sis.info(0).getId()));

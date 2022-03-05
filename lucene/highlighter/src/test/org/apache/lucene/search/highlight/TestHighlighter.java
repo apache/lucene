@@ -30,14 +30,7 @@ import java.util.StringTokenizer;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CachingTokenFilter;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockPayloadAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ngram.NGramTokenizer;
@@ -88,10 +81,18 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.highlight.SynonymTokenizer.TestHighlightRunner;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -985,8 +986,14 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            FuzzyQuery fuzzyQuery = new FuzzyQuery(new Term(FIELD_NAME, "kinnedy"), 2);
-            fuzzyQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+            FuzzyQuery fuzzyQuery =
+                new FuzzyQuery(
+                    new Term(FIELD_NAME, "kinnedy"),
+                    2,
+                    FuzzyQuery.defaultPrefixLength,
+                    FuzzyQuery.defaultMaxExpansions,
+                    FuzzyQuery.defaultTranspositions,
+                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(fuzzyQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this, true);
             assertTrue(
@@ -1005,8 +1012,11 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            WildcardQuery wildcardQuery = new WildcardQuery(new Term(FIELD_NAME, "k?nnedy"));
-            wildcardQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+            WildcardQuery wildcardQuery =
+                new WildcardQuery(
+                    new Term(FIELD_NAME, "k?nnedy"),
+                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(wildcardQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
             assertTrue(
@@ -1025,8 +1035,11 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
           @Override
           public void run() throws Exception {
             numHighlights = 0;
-            WildcardQuery wildcardQuery = new WildcardQuery(new Term(FIELD_NAME, "k*dy"));
-            wildcardQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+            WildcardQuery wildcardQuery =
+                new WildcardQuery(
+                    new Term(FIELD_NAME, "k*dy"),
+                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(wildcardQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
             assertTrue(
@@ -1050,12 +1063,14 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
             // rather
             // than RangeFilters
 
-            TermRangeQuery rangeQuery =
+            query =
                 new TermRangeQuery(
-                    FIELD_NAME, new BytesRef("kannedy"), new BytesRef("kznnedy"), true, true);
-            rangeQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-
-            query = rangeQuery;
+                    FIELD_NAME,
+                    new BytesRef("kannedy"),
+                    new BytesRef("kznnedy"),
+                    true,
+                    true,
+                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(query);
 
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
@@ -1072,8 +1087,11 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
 
     numHighlights = 0;
 
-    query = new WildcardQuery(new Term(FIELD_NAME, "ken*"));
-    ((WildcardQuery) query).setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
+    query =
+        new WildcardQuery(
+            new Term(FIELD_NAME, "ken*"),
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.CONSTANT_SCORE_REWRITE);
     searcher = newSearcher(reader);
     // can't rewrite ConstantScore if you want to highlight it -
     // it rewrites to ConstantScoreQuery which cannot be highlighted
@@ -1288,8 +1306,9 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
             numHighlights = 0;
             BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
             booleanQuery.add(new TermQuery(new Term(FIELD_NAME, "john")), Occur.SHOULD);
-            PrefixQuery prefixQuery = new PrefixQuery(new Term(FIELD_NAME, "kenn"));
-            prefixQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+            PrefixQuery prefixQuery =
+                new PrefixQuery(
+                    new Term(FIELD_NAME, "kenn"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             booleanQuery.add(prefixQuery, Occur.SHOULD);
 
             doSearching(booleanQuery.build());

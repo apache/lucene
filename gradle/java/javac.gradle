@@ -28,33 +28,41 @@ allprojects {
     }
 
     // Configure warnings.
+    // Use 'javac --help-lint' to get the supported list
     tasks.withType(JavaCompile) {
       options.encoding = "UTF-8"
       options.compilerArgs += [
-        "-Xlint:-deprecation",
-        "-Xlint:-serial",
         "-Xlint:auxiliaryclass",
         "-Xlint:cast",
         "-Xlint:classfile",
+        "-Xlint:-deprecation",
         "-Xlint:dep-ann",
         "-Xlint:divzero",
         "-Xlint:empty",
-        "-Xlint:exports",
+        // TODO: uh-oh we have broken APIs.
+        "-Xlint:-exports",
         "-Xlint:fallthrough",
         "-Xlint:finally",
+        // TODO: untested
+        "-Xlint:-missing-explicit-ctor",
+        "-Xlint:module",
         "-Xlint:opens",
         "-Xlint:options",
         "-Xlint:overloads",
         "-Xlint:overrides",
         // TODO: some tests seem to have bad classpaths?
         // this check seems to be a good sanity check for gradle?
-        // "-Xlint:path",
+        "-Xlint:-path",
         "-Xlint:processing",
         "-Xlint:rawtypes",
         "-Xlint:removal",
-        "-Xlint:static",
         "-Xlint:requires-automatic",
         "-Xlint:requires-transitive-automatic",
+        "-Xlint:-serial",
+        "-Xlint:static",
+        "-Xlint:strictfp",
+        "-Xlint:synchronization",
+        "-Xlint:text-blocks",
         "-Xlint:try",
         "-Xlint:unchecked",
         "-Xlint:varargs",
@@ -64,19 +72,6 @@ allprojects {
         "-Xdoclint:-accessibility",
         "-proc:none",  // proc:none was added because of LOG4J2-1925 / JDK-8186647
       ]
-
-      // enable some warnings only relevant to newer language features
-      if (rootProject.runtimeJavaVersion >= JavaVersion.VERSION_15) {
-        options.compilerArgs += [
-          "-Xlint:text-blocks",
-        ]
-      }
-
-      if (rootProject.runtimeJavaVersion >= JavaVersion.VERSION_16) {
-        options.compilerArgs += [
-          "-Xlint:synchronization",
-        ]
-      }
 
       if (propertyOrDefault("javac.failOnWarnings", true).toBoolean()) {
         options.compilerArgs += "-Werror"

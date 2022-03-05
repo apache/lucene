@@ -28,8 +28,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.LongStream;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockPayloadAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
@@ -71,9 +69,11 @@ import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -428,6 +428,30 @@ public class TestMemoryIndex extends LuceneTestCase {
     BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("text");
     assertEquals(0, binaryDocValues.nextDoc());
     assertEquals("quick brown fox", binaryDocValues.binaryValue().utf8ToString());
+  }
+
+  public void testBigBinaryDocValues() throws Exception {
+    Document doc = new Document();
+    byte[] bytes = new byte[33 * 1024];
+    random().nextBytes(bytes);
+    doc.add(new BinaryDocValuesField("binary", new BytesRef(bytes)));
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer, true, true);
+    LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
+    BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("binary");
+    assertEquals(0, binaryDocValues.nextDoc());
+    assertArrayEquals(bytes, binaryDocValues.binaryValue().bytes);
+  }
+
+  public void testBigSortedDocValues() throws Exception {
+    Document doc = new Document();
+    byte[] bytes = new byte[33 * 1024];
+    random().nextBytes(bytes);
+    doc.add(new SortedDocValuesField("binary", new BytesRef(bytes)));
+    MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer, true, true);
+    LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
+    SortedDocValues sortedDocValues = leafReader.getSortedDocValues("binary");
+    assertEquals(0, sortedDocValues.nextDoc());
+    assertArrayEquals(bytes, sortedDocValues.lookupOrd(0).bytes);
   }
 
   public void testPointValues() throws Exception {

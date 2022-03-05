@@ -380,9 +380,7 @@ public abstract class ReplicaNode extends Node {
       // Notify current infos (which may have changed while we were doing dir.sync above) what
       // generation we are up to; this way future
       // commits are guaranteed to go to the next (unwritten) generations:
-      if (mgr != null) {
-        ((SegmentInfosSearcherManager) mgr).getCurrentInfos().updateGeneration(infos);
-      }
+      ((SegmentInfosSearcherManager) mgr).getCurrentInfos().updateGeneration(infos);
       String segmentsFileName = infos.getSegmentsFileName();
       message(
           "top: commit wrote segments file "
@@ -444,9 +442,7 @@ public abstract class ReplicaNode extends Node {
       message("  version=" + infos.getVersion() + " segments=" + infos.toString());
 
       // Cutover to new searcher:
-      if (mgr != null) {
-        ((SegmentInfosSearcherManager) mgr).setCurrentInfos(infos);
-      }
+      ((SegmentInfosSearcherManager) mgr).setCurrentInfos(infos);
 
       // Must first incRef new NRT files, then decRef old ones, to make sure we don't remove an NRT
       // file that's in common to both:

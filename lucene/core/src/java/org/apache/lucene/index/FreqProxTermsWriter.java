@@ -33,7 +33,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.TimSorter;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -99,6 +98,11 @@ final class FreqProxTermsWriter extends TermsHash {
       }
     }
 
+    if (!state.fieldInfos.hasPostings()) {
+      assert allFields.isEmpty();
+      return;
+    }
+
     // Sort by field name
     CollectionUtil.introSort(allFields);
 
@@ -122,17 +126,9 @@ final class FreqProxTermsWriter extends TermsHash {
           };
     }
 
-    FieldsConsumer consumer = state.segmentInfo.getCodec().postingsFormat().fieldsConsumer(state);
-    boolean success = false;
-    try {
+    try (FieldsConsumer consumer =
+        state.segmentInfo.getCodec().postingsFormat().fieldsConsumer(state)) {
       consumer.write(fields, norms);
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(consumer);
-      } else {
-        IOUtils.closeWhileHandlingException(consumer);
-      }
     }
   }
 

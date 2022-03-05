@@ -104,6 +104,10 @@ public final class IndexOrDocValuesQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     Query indexRewrite = indexQuery.rewrite(reader);
     Query dvRewrite = dvQuery.rewrite(reader);
+    if (indexRewrite.getClass() == MatchAllDocsQuery.class
+        || dvRewrite.getClass() == MatchAllDocsQuery.class) {
+      return new MatchAllDocsQuery();
+    }
     if (indexQuery != indexRewrite || dvQuery != dvRewrite) {
       return new IndexOrDocValuesQuery(indexRewrite, dvRewrite);
     }
@@ -140,6 +144,15 @@ public final class IndexOrDocValuesQuery extends Query {
         // Bulk scorers need to consume the entire set of docs, so using an
         // index structure should perform better
         return indexWeight.bulkScorer(context);
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        final int count = indexWeight.count(context);
+        if (count != -1) {
+          return count;
+        }
+        return dvWeight.count(context);
       }
 
       @Override

@@ -35,6 +35,11 @@ import org.apache.lucene.util.DocIdSetBuilder;
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
  * functionality – an iterator that can skip over non-competitive documents.
+ *
+ * <p>Parameter {@code field} provided in the constructor is used as a field name in the default
+ * implementations of the methods {@code getNumericDocValues} and {@code getPointValues} to retrieve
+ * doc values and points. You can pass a dummy value for a field name (e.g. when sorting by script),
+ * but in this case you must override both of these methods.
  */
 public abstract class NumericComparator<T extends Number> extends FieldComparator<T> {
   protected final T missingValue;
@@ -50,12 +55,12 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   private boolean canSkipDocuments;
 
   protected NumericComparator(
-      String field, T missingValue, boolean reverse, int sortPos, int bytesCount) {
+      String field, T missingValue, boolean reverse, boolean enableSkipping, int bytesCount) {
     this.field = field;
     this.missingValue = missingValue;
     this.reverse = reverse;
     // skipping functionality is only relevant for primary sort
-    this.canSkipDocuments = (sortPos == 0);
+    this.canSkipDocuments = enableSkipping;
     this.bytesCount = bytesCount;
     this.bytesComparator = ArrayUtil.getUnsignedComparator(bytesCount);
   }
@@ -130,7 +135,18 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
     }
 
-    /** Retrieves the NumericDocValues for the field in this segment */
+    /**
+     * Retrieves the NumericDocValues for the field in this segment
+     *
+     * <p>If you override this method, you should probably always disable skipping as the comparator
+     * uses values from the points index to build its competitive iterators, and assumes that the
+     * values in doc values and points are the same.
+     *
+     * @param context – reader context
+     * @param field - field name
+     * @return numeric doc values for the field in this segment.
+     * @throws IOException If there is a low-level I/O error
+     */
     protected NumericDocValues getNumericDocValues(LeafReaderContext context, String field)
         throws IOException {
       return DocValues.getNumeric(context.reader(), field);

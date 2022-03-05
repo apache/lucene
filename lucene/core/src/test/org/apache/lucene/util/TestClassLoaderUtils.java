@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.net.URL;
 import java.net.URLClassLoader;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestClassLoaderUtils extends LuceneTestCase {
 

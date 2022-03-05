@@ -18,22 +18,13 @@ package org.apache.lucene.util.automaton;
 
 /** Automaton representation for matching char[]. */
 public class CharacterRunAutomaton extends RunAutomaton {
-  /** Construct with a default number of determinizeWorkLimit. */
-  public CharacterRunAutomaton(Automaton a) {
-    this(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-  }
-
   /**
-   * Constructor specifying determinizeWorkLimit.
+   * Construct from a DFA
    *
-   * @param a Automaton to match
-   * @param determinizeWorkLimit maximum effort to spend determinizing the automataon. If more
-   *     effort is required then a TooComplexToDeterminizeException is thrown. Use {@link
-   *     Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't otherwise know
-   *     what to specify.
+   * @throws IllegalArgumentException if the automaton is not deterministic
    */
-  public CharacterRunAutomaton(Automaton a, int determinizeWorkLimit) {
-    super(a, Character.MAX_CODE_POINT + 1, determinizeWorkLimit);
+  public CharacterRunAutomaton(Automaton a) {
+    super(a, Character.MAX_CODE_POINT + 1);
   }
 
   /** Returns true if the given string is accepted by this automaton. */

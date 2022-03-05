@@ -109,7 +109,7 @@ class RepeatingIntervalsSource extends IntervalsSource {
   public boolean equals(Object other) {
     if (other instanceof RepeatingIntervalsSource == false) return false;
     RepeatingIntervalsSource o = (RepeatingIntervalsSource) other;
-    return Objects.equals(this.in, o.in) && Objects.equals(this.childCount, o.childCount);
+    return Objects.equals(this.in, o.in) && this.childCount == o.childCount;
   }
 
   @Override

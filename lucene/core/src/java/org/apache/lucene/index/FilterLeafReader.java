@@ -22,6 +22,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * A <code>FilterLeafReader</code> contains another LeafReader, which it uses as its basic source of
@@ -242,7 +243,8 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   /** Base class for filtering {@link PostingsEnum} implementations. */
-  public abstract static class FilterPostingsEnum extends PostingsEnum {
+  public abstract static class FilterPostingsEnum extends PostingsEnum
+      implements Unwrappable<PostingsEnum> {
     /** The underlying PostingsEnum instance. */
     protected final PostingsEnum in;
 
@@ -302,6 +304,11 @@ public abstract class FilterLeafReader extends LeafReader {
     public long cost() {
       return in.cost();
     }
+
+    @Override
+    public PostingsEnum unwrap() {
+      return in;
+    }
   }
 
   /** The underlying LeafReader. */
@@ -345,9 +352,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
-      throws IOException {
-    return in.searchNearestVectors(field, target, k, acceptDocs);
+  public TopDocs searchNearestVectors(
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+    return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
   }
 
   @Override

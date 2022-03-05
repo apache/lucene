@@ -898,7 +898,11 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         }
 
         assert uncompressedBlockLength <= uncompressedBlock.length;
-        LZ4.decompress(compressedData, uncompressedBlockLength, uncompressedBlock, 0);
+        LZ4.decompress(
+            EndiannessReverserUtil.wrapDataInput(compressedData),
+            uncompressedBlockLength,
+            uncompressedBlock,
+            0);
       }
 
       uncompressedBytesRef.offset = uncompressedDocStarts[docInBlockId];
@@ -1355,7 +1359,8 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         if (currentCompressedBlockStart != offset) {
           int decompressLength = bytes.readVInt();
           // Decompress the remaining of current block
-          LZ4.decompress(bytes, decompressLength, blockBuffer.bytes, 0);
+          LZ4.decompress(
+              EndiannessReverserUtil.wrapDataInput(bytes), decompressLength, blockBuffer.bytes, 0);
           currentCompressedBlockStart = offset;
           currentCompressedBlockEnd = bytes.getFilePointer();
         } else {

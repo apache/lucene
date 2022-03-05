@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
+
 /**
  * Estimates how {@link RamUsageEstimator} estimates physical memory consumption of Java objects.
  */

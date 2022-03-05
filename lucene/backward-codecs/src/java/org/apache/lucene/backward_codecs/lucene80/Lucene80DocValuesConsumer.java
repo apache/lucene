@@ -476,7 +476,8 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
           }
         }
         maxUncompressedBlockLength = Math.max(maxUncompressedBlockLength, uncompressedBlockLength);
-        LZ4.compress(block, 0, uncompressedBlockLength, data, ht);
+        LZ4.compress(
+            block, 0, uncompressedBlockLength, EndiannessReverserUtil.wrapDataOutput(data), ht);
         numDocsInCurrentBlock = 0;
         // Ensure initialized with zeroes because full array is always written
         Arrays.fill(docLengths, 0);
@@ -847,7 +848,8 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     int uncompressedLength = bufferedOutput.getPosition();
     data.writeVInt(uncompressedLength);
     long before = data.getFilePointer();
-    LZ4.compress(termsDictBuffer, 0, uncompressedLength, data, ht);
+    LZ4.compress(
+        termsDictBuffer, 0, uncompressedLength, EndiannessReverserUtil.wrapDataOutput(data), ht);
     int compressedLength = (int) (data.getFilePointer() - before);
     // Block length will be used for creating buffer for decompression, one corner case is that
     // compressed length might be bigger than un-compressed length, so just return the bigger one.

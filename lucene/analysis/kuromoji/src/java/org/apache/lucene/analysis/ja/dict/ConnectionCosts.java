@@ -20,9 +20,12 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 
 /** n-gram connection cost data */
@@ -36,15 +39,21 @@ public final class ConnectionCosts {
   private final int forwardSize;
 
   /**
-   * @param scheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param path - where to load resources from, without the ".dat" suffix
+   * Create a {@link ConnectionCosts} from an external resource path.
+   *
+   * @param connectionCostsFile where to load connection costs resource
+   * @throws IOException if resource was not found or broken
    */
-  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
-    InputStream is = null;
-    boolean success = false;
-    try {
-      is = BinaryDictionary.getResource(scheme, path.replace('.', '/') + FILENAME_SUFFIX);
-      is = new BufferedInputStream(is);
+  public ConnectionCosts(Path connectionCostsFile) throws IOException {
+    this(() -> Files.newInputStream(connectionCostsFile));
+  }
+
+  private ConnectionCosts() throws IOException {
+    this(ConnectionCosts::getClassResource);
+  }
+
+  private ConnectionCosts(IOSupplier<InputStream> connectionCostResource) throws IOException {
+    try (InputStream is = new BufferedInputStream(connectionCostResource.get())) {
       final DataInput in = new InputStreamDataInput(is);
       CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
       forwardSize = in.readVInt();
@@ -61,18 +70,13 @@ public final class ConnectionCosts {
         }
       }
       buffer = tmpBuffer.asReadOnlyBuffer();
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(is);
-      } else {
-        IOUtils.closeWhileHandlingException(is);
-      }
     }
   }
 
-  private ConnectionCosts() throws IOException {
-    this(BinaryDictionary.ResourceScheme.CLASSPATH, ConnectionCosts.class.getName());
+  private static InputStream getClassResource() throws IOException {
+    final String resourcePath = ConnectionCosts.class.getSimpleName() + FILENAME_SUFFIX;
+    return IOUtils.requireResourceNonNull(
+        ConnectionCosts.class.getResourceAsStream(resourcePath), resourcePath);
   }
 
   public int get(int forwardId, int backwardId) {

@@ -30,6 +30,7 @@ import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -140,6 +141,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     Query rewrittenFallback = fallbackQuery.rewrite(reader);
+    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
+      return new MatchAllDocsQuery();
+    }
     if (rewrittenFallback == fallbackQuery) {
       return this;
     } else {
@@ -156,20 +160,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     return new ConstantScoreWeight(this, boost) {
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        SortedNumericDocValues sortedNumericValues =
-            DocValues.getSortedNumeric(context.reader(), field);
-        NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
-
-        if (numericValues != null) {
-          Sort indexSort = context.reader().getMetaData().getSort();
-          if (indexSort != null
-              && indexSort.getSort().length > 0
-              && indexSort.getSort()[0].getField().equals(field)) {
-
-            SortField sortField = indexSort.getSort()[0];
-            DocIdSetIterator disi = getDocIdSetIterator(sortField, context, numericValues);
-            return new ConstantScoreScorer(this, score(), scoreMode, disi);
-          }
+        DocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+        if (disi != null) {
+          return new ConstantScoreScorer(this, score(), scoreMode, disi);
         }
         return fallbackWeight.scorer(context);
       }
@@ -180,7 +173,34 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         // if the fallback query is cacheable.
         return fallbackWeight.isCacheable(ctx);
       }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        BoundedDocSetIdIterator disi = getDocIdSetIteratorOrNull(context);
+        if (disi != null) {
+          return disi.lastDoc - disi.firstDoc;
+        }
+        return fallbackWeight.count(context);
+      }
     };
+  }
+
+  private BoundedDocSetIdIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
+      throws IOException {
+    SortedNumericDocValues sortedNumericValues =
+        DocValues.getSortedNumeric(context.reader(), field);
+    NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
+    if (numericValues != null) {
+      Sort indexSort = context.reader().getMetaData().getSort();
+      if (indexSort != null
+          && indexSort.getSort().length > 0
+          && indexSort.getSort()[0].getField().equals(field)) {
+
+        SortField sortField = indexSort.getSort()[0];
+        return getDocIdSetIterator(sortField, context, numericValues);
+      }
+    }
+    return null;
   }
 
   /**
@@ -195,7 +215,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * {@link DocIdSetIterator} makes sure to wrap the original docvalues to skip over documents with
    * no value.
    */
-  private DocIdSetIterator getDocIdSetIterator(
+  private BoundedDocSetIdIterator getDocIdSetIterator(
       SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
@@ -247,7 +267,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   private static ValueComparator loadComparator(
       SortField sortField, long topValue, LeafReaderContext context) throws IOException {
     @SuppressWarnings("unchecked")
-    FieldComparator<Long> fieldComparator = (FieldComparator<Long>) sortField.getComparator(1, 0);
+    FieldComparator<Long> fieldComparator =
+        (FieldComparator<Long>) sortField.getComparator(1, false);
     fieldComparator.setTopValue(topValue);
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);

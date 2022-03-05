@@ -19,8 +19,6 @@ package org.apache.lucene.facet;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -32,10 +30,12 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
@@ -190,7 +190,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
   private void assertOrdinalsExist(String field, IndexReader ir) throws IOException {
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
-      if (r.getBinaryDocValues(field) != null) {
+      if (r.getSortedNumericDocValues(field) != null) {
         return; // not all segments must have this DocValues
       }
     }

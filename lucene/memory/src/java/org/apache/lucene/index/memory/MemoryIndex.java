@@ -578,17 +578,6 @@ public class MemoryIndex {
         info.numericProducer.dvLongValues[info.numericProducer.count++] = (long) docValuesValue;
         break;
       case BINARY:
-        if (info.binaryProducer.dvBytesValuesSet != null) {
-          throw new IllegalArgumentException(
-              "Only one value per field allowed for ["
-                  + docValuesType
-                  + "] doc values field ["
-                  + fieldName
-                  + "]");
-        }
-        info.binaryProducer.dvBytesValuesSet = new BytesRefHash(byteBlockPool);
-        info.binaryProducer.dvBytesValuesSet.add((BytesRef) docValuesValue);
-        break;
       case SORTED:
         if (info.binaryProducer.dvBytesValuesSet != null) {
           throw new IllegalArgumentException(
@@ -598,14 +587,13 @@ public class MemoryIndex {
                   + fieldName
                   + "]");
         }
-        info.binaryProducer.dvBytesValuesSet = new BytesRefHash(byteBlockPool);
-        info.binaryProducer.dvBytesValuesSet.add((BytesRef) docValuesValue);
+        info.binaryProducer.dvBytesValuesSet = ((BytesRef) docValuesValue).clone();
         break;
       case SORTED_SET:
-        if (info.binaryProducer.dvBytesValuesSet == null) {
-          info.binaryProducer.dvBytesValuesSet = new BytesRefHash(byteBlockPool);
+        if (info.bytesRefHashProducer.dvBytesRefHashValuesSet == null) {
+          info.bytesRefHashProducer.dvBytesRefHashValuesSet = new BytesRefHash(byteBlockPool);
         }
-        info.binaryProducer.dvBytesValuesSet.add((BytesRef) docValuesValue);
+        info.bytesRefHashProducer.dvBytesRefHashValuesSet.add((BytesRef) docValuesValue);
         break;
       case NONE:
       default:
@@ -866,6 +854,8 @@ public class MemoryIndex {
     /** the last offset encountered in this field for multi field support */
     private int lastOffset;
 
+    private BytesRefHashDocValuesProducer bytesRefHashProducer;
+
     private BinaryDocValuesProducer binaryProducer;
 
     private NumericDocValuesProducer numericProducer;
@@ -884,7 +874,8 @@ public class MemoryIndex {
       this.fieldInfo = fieldInfo;
       this.sliceArray = new SliceByteStartArray(BytesRefHash.DEFAULT_CAPACITY);
       this.terms = new BytesRefHash(byteBlockPool, BytesRefHash.DEFAULT_CAPACITY, sliceArray);
-      ;
+
+      this.bytesRefHashProducer = new BytesRefHashDocValuesProducer();
       this.binaryProducer = new BinaryDocValuesProducer();
       this.numericProducer = new NumericDocValuesProducer();
     }
@@ -914,10 +905,8 @@ public class MemoryIndex {
         if (dvType == DocValuesType.NUMERIC || dvType == DocValuesType.SORTED_NUMERIC) {
           numericProducer.prepareForUsage();
         }
-        if (dvType == DocValuesType.BINARY
-            || dvType == DocValuesType.SORTED
-            || dvType == DocValuesType.SORTED_SET) {
-          binaryProducer.prepareForUsage();
+        if (dvType == DocValuesType.SORTED_SET) {
+          bytesRefHashProducer.prepareForUsage();
         }
         if (pointValues != null) {
           assert pointValues[0].bytes.length == pointValues[0].length
@@ -1193,12 +1182,16 @@ public class MemoryIndex {
   }
 
   private static final class BinaryDocValuesProducer {
+    BytesRef dvBytesValuesSet;
+  }
 
-    BytesRefHash dvBytesValuesSet;
+  private static final class BytesRefHashDocValuesProducer {
+
+    BytesRefHash dvBytesRefHashValuesSet;
     int[] bytesIds;
 
     private void prepareForUsage() {
-      bytesIds = dvBytesValuesSet.sort();
+      bytesIds = dvBytesRefHashValuesSet.sort();
     }
   }
 
@@ -1316,8 +1309,7 @@ public class MemoryIndex {
     private SortedDocValues getSortedDocValues(String field, DocValuesType docValuesType) {
       Info info = getInfoForExpectedDocValuesType(field, docValuesType);
       if (info != null) {
-        BytesRef value = info.binaryProducer.dvBytesValuesSet.get(0, new BytesRef());
-        return sortedDocValues(value);
+        return sortedDocValues(info.binaryProducer.dvBytesValuesSet);
       } else {
         return null;
       }
@@ -1338,7 +1330,7 @@ public class MemoryIndex {
       Info info = getInfoForExpectedDocValuesType(field, DocValuesType.SORTED_SET);
       if (info != null) {
         return sortedSetDocValues(
-            info.binaryProducer.dvBytesValuesSet, info.binaryProducer.bytesIds);
+            info.bytesRefHashProducer.dvBytesRefHashValuesSet, info.bytesRefHashProducer.bytesIds);
       } else {
         return null;
       }
@@ -1359,7 +1351,8 @@ public class MemoryIndex {
     }
 
     @Override
-    public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs) {
+    public TopDocs searchNearestVectors(
+        String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
       return null;
     }
 
@@ -1672,18 +1665,61 @@ public class MemoryIndex {
       }
 
       @Override
-      public void intersect(IntersectVisitor visitor) throws IOException {
-        BytesRef[] values = info.pointValues;
+      public PointTree getPointTree() {
+        return new PointTree() {
+          @Override
+          public PointTree clone() {
+            return this;
+          }
 
-        visitor.grow(info.pointValuesCount);
-        for (int i = 0; i < info.pointValuesCount; i++) {
-          visitor.visit(0, values[i].bytes);
-        }
-      }
+          @Override
+          public boolean moveToChild() {
+            return false;
+          }
 
-      @Override
-      public long estimatePointCount(IntersectVisitor visitor) {
-        return 1L;
+          @Override
+          public boolean moveToSibling() {
+            return false;
+          }
+
+          @Override
+          public boolean moveToParent() {
+            return false;
+          }
+
+          @Override
+          public byte[] getMinPackedValue() {
+            return info.minPackedValue;
+          }
+
+          @Override
+          public byte[] getMaxPackedValue() {
+            return info.maxPackedValue;
+          }
+
+          @Override
+          public long size() {
+            return info.pointValuesCount;
+          }
+
+          @Override
+          public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+            visitor.grow(info.pointValuesCount);
+            for (int i = 0; i < info.pointValuesCount; i++) {
+              visitor.visit(0);
+            }
+          }
+
+          @Override
+          public void visitDocValues(IntersectVisitor visitor) throws IOException {
+            BytesRef[] values = info.pointValues;
+
+            visitor.grow(info.pointValuesCount);
+            for (int i = 0; i < info.pointValuesCount; i++) {
+              visitor.visit(0, values[i].bytes);
+            }
+          }
+        };
       }
 
       @Override

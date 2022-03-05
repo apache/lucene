@@ -31,6 +31,7 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.WildcardQuery;
+import org.apache.lucene.util.automaton.Operations;
 
 /**
  * A QueryMaker that uses common and uncommon actual Wikipedia queries for searching the English
@@ -130,8 +131,11 @@ public class EnwikiQueryMaker extends AbstractQueryMaker {
   };
 
   private static Query[] getPrebuiltQueries(String field) {
-    WildcardQuery wcq = new WildcardQuery(new Term(field, "fo*"));
-    wcq.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
+    WildcardQuery wcq =
+        new WildcardQuery(
+            new Term(field, "fo*"),
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.CONSTANT_SCORE_REWRITE);
     // be wary of unanalyzed text
     return new Query[] {
       new SpanFirstQuery(new SpanTermQuery(new Term(field, "ford")), 5),

@@ -17,13 +17,13 @@
 
 package org.apache.lucene.spatial3d.geom;
 
-import static org.apache.lucene.spatial3d.geom.RandomGeo3dShapeGenerator.*;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.*;
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Test to check Serialization */

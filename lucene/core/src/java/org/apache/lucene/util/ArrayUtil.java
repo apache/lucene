@@ -223,6 +223,11 @@ public final class ArrayUtil {
     return copy;
   }
 
+  /** Returns a larger array, generally over-allocating exponentially */
+  public static <T> T[] grow(T[] array) {
+    return grow(array, 1 + array.length);
+  }
+
   /**
    * Returns an array whose size is at least {@code minSize}, generally over-allocating
    * exponentially
@@ -432,6 +437,7 @@ public final class ArrayUtil {
    * Sorts the given array slice using the {@link Comparator}. This method uses the intro sort
    * algorithm, but falls back to insertion sort for small arrays.
    *
+   * @see IntroSorter
    * @param fromIndex start index (inclusive)
    * @param toIndex end index (exclusive)
    */
@@ -443,6 +449,8 @@ public final class ArrayUtil {
   /**
    * Sorts the given array using the {@link Comparator}. This method uses the intro sort algorithm,
    * but falls back to insertion sort for small arrays.
+   *
+   * @see IntroSorter
    */
   public static <T> void introSort(T[] a, Comparator<? super T> comp) {
     introSort(a, 0, a.length, comp);
@@ -452,6 +460,7 @@ public final class ArrayUtil {
    * Sorts the given array slice in natural order. This method uses the intro sort algorithm, but
    * falls back to insertion sort for small arrays.
    *
+   * @see IntroSorter
    * @param fromIndex start index (inclusive)
    * @param toIndex end index (exclusive)
    */
@@ -464,6 +473,8 @@ public final class ArrayUtil {
   /**
    * Sorts the given array in natural order. This method uses the intro sort algorithm, but falls
    * back to insertion sort for small arrays.
+   *
+   * @see IntroSorter
    */
   public static <T extends Comparable<? super T>> void introSort(T[] a) {
     introSort(a, 0, a.length);
@@ -475,6 +486,7 @@ public final class ArrayUtil {
    * Sorts the given array slice using the {@link Comparator}. This method uses the Tim sort
    * algorithm, but falls back to binary sort for small arrays.
    *
+   * @see TimSorter
    * @param fromIndex start index (inclusive)
    * @param toIndex end index (exclusive)
    */
@@ -486,6 +498,8 @@ public final class ArrayUtil {
   /**
    * Sorts the given array using the {@link Comparator}. This method uses the Tim sort algorithm,
    * but falls back to binary sort for small arrays.
+   *
+   * @see TimSorter
    */
   public static <T> void timSort(T[] a, Comparator<? super T> comp) {
     timSort(a, 0, a.length, comp);
@@ -495,6 +509,7 @@ public final class ArrayUtil {
    * Sorts the given array slice in natural order. This method uses the Tim sort algorithm, but
    * falls back to binary sort for small arrays.
    *
+   * @see TimSorter
    * @param fromIndex start index (inclusive)
    * @param toIndex end index (exclusive)
    */
@@ -506,6 +521,8 @@ public final class ArrayUtil {
   /**
    * Sorts the given array in natural order. This method uses the Tim sort algorithm, but falls back
    * to binary sort for small arrays.
+   *
+   * @see TimSorter
    */
   public static <T extends Comparable<? super T>> void timSort(T[] a) {
     timSort(a, 0, a.length);

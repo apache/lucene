@@ -60,9 +60,6 @@ public class TaxonomyFacetSumIntAssociations extends IntTaxonomyFacets {
 
       int doc;
       while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        // System.out.println("  doc=" + doc);
-        // TODO: use OrdinalsReader?  we'd need to add a
-        // BytesRef getAssociation()?
         if (dv.docID() < doc) {
           dv.advance(doc);
         }
@@ -76,6 +73,7 @@ public class TaxonomyFacetSumIntAssociations extends IntTaxonomyFacets {
             offset += 4;
             int value = (int) BitUtil.VH_BE_INT.get(bytes, offset);
             offset += 4;
+            // TODO: Can we optimize the null check in increment? See LUCENE-10373.
             increment(ord, value);
           }
         }

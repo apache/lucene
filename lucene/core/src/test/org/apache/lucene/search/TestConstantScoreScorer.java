@@ -23,17 +23,17 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestConstantScoreScorer extends LuceneTestCase {
   private static final String FIELD = "f";
@@ -238,22 +238,25 @@ public class TestConstantScoreScorer extends LuceneTestCase {
     }
     IndexReader ir = DirectoryReader.open(iw);
 
-    IndexSearcher is = newSearcher(ir);
+    // Don't use threads so that we can assert on the number of visited hits
+    IndexSearcher is = newSearcher(ir, true, true, false);
 
-    TopScoreDocCollector c = TopScoreDocCollector.create(10, null, 10);
-    is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), c);
-    assertEquals(11, c.totalHits);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, c.totalHitsRelation);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(10, null, 10);
+    TopDocs topDocs =
+        is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), manager);
+    assertEquals(11, topDocs.totalHits.value);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
-    c = TopScoreDocCollector.create(10, null, 10);
+    manager = TopScoreDocCollector.createSharedManager(10, null, 10);
     Query query =
         new BooleanQuery.Builder()
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), Occur.SHOULD)
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "bar"))), Occur.FILTER)
             .build();
-    is.search(query, c);
-    assertEquals(11, c.totalHits);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, c.totalHitsRelation);
+    topDocs = is.search(query, manager);
+    assertEquals(11, topDocs.totalHits.value);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
     iw.close();
     ir.close();

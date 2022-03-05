@@ -90,7 +90,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
       // use topNGroups + 1 so we have a spare slot to use for comparing (tracked by
       // this.spareSlot):
-      comparators[i] = sortField.getComparator(topNGroups + 1, i);
+      comparators[i] = sortField.getComparator(topNGroups + 1, false);
       reversed[i] = sortField.getReverse() ? -1 : 1;
     }
 

@@ -21,8 +21,8 @@ apply plugin: 'java-library'
 description = 'Single-document in-memory index implementation'
 
 dependencies {
-  api project(':lucene:core')
+  moduleApi project(':lucene:core')
 
-  testImplementation project(':lucene:test-framework')
-  testImplementation project(':lucene:queryparser')
+  moduleTestImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:queryparser')
 }

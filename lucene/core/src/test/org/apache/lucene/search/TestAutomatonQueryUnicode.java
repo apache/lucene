@@ -20,10 +20,10 @@ import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.RegExp;
 
@@ -97,16 +97,24 @@ public class TestAutomatonQueryUnicode extends LuceneTestCase {
   }
 
   private void assertAutomatonHits(int expected, Automaton automaton) throws IOException {
-    AutomatonQuery query = new AutomatonQuery(newTerm("bogus"), automaton);
-
-    query.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    assertEquals(expected, automatonQueryNrHits(query));
-
-    query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
-    assertEquals(expected, automatonQueryNrHits(query));
-
-    query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE);
-    assertEquals(expected, automatonQueryNrHits(query));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"), automaton, false, MultiTermQuery.SCORING_BOOLEAN_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"), automaton, false, MultiTermQuery.CONSTANT_SCORE_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"),
+                automaton,
+                false,
+                MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)));
   }
 
   /**

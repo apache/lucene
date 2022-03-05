@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -28,14 +27,17 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -234,32 +236,29 @@ public class TestBoolean2 extends LuceneTestCase {
     // The asserting searcher will sometimes return the bulk scorer and
     // sometimes return a default impl around the scorer so that we can
     // compare BS1 and BS2
-    TopScoreDocCollector collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    ScoreDoc[] hits1 = collector.topDocs().scoreDocs;
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    ScoreDoc[] hits2 = collector.topDocs().scoreDocs;
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    ScoreDoc[] hits1 = searcher.search(query, manager).scoreDocs;
+    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    ScoreDoc[] hits2 = searcher.search(query, manager).scoreDocs;
 
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // Since we have no deleted docs, we should also be able to verify identical matches &
     // scores against an single segment copy of our index
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    singleSegmentSearcher.search(query, collector);
-    hits2 = collector.topDocs().scoreDocs;
+    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    TopDocs topDocs = singleSegmentSearcher.search(query, manager);
+    hits2 = topDocs.scoreDocs;
     CheckHits.checkHitsQuery(query, hits1, hits2, expDocNrs);
 
     // sanity check expected num matches in bigSearcher
-    assertEquals(mulFactor * collector.totalHits, bigSearcher.count(query));
+    assertEquals(mulFactor * topDocs.totalHits.value, bigSearcher.count(query));
 
     // now check 2 diff scorers from the bigSearcher as well
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    bigSearcher.search(query, collector);
-    hits1 = collector.topDocs().scoreDocs;
-    collector = TopScoreDocCollector.create(topDocsToCheck, Integer.MAX_VALUE);
-    bigSearcher.search(query, collector);
-    hits2 = collector.topDocs().scoreDocs;
+    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    hits1 = bigSearcher.search(query, manager).scoreDocs;
+    manager = TopScoreDocCollector.createSharedManager(topDocsToCheck, null, Integer.MAX_VALUE);
+    hits2 = bigSearcher.search(query, manager).scoreDocs;
 
     // NOTE: just comparing results, not vetting against expDocNrs
     // since we have dups in bigSearcher

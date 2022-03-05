@@ -22,8 +22,8 @@ import java.util.Collections;
 import java.util.function.BiPredicate;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestQueryTermFilter extends LuceneTestCase {
 

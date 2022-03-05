@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -31,12 +32,12 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
-import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.store.NoLockFactory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
-import org.apache.lucene.util.TimeUnits;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.TimeUnits;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 @TimeoutSuite(millis = 8 * TimeUnits.HOUR)
@@ -66,9 +67,9 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       assertEquals(IndexWriter.MAX_DOCS, ir.maxDoc());
       assertEquals(IndexWriter.MAX_DOCS, ir.numDocs());
       IndexSearcher searcher = new IndexSearcher(ir);
-      TopScoreDocCollector collector = TopScoreDocCollector.create(10, Integer.MAX_VALUE);
-      searcher.search(new TermQuery(new Term("field", "text")), collector);
-      TopDocs hits = collector.topDocs();
+      CollectorManager<TopScoreDocCollector, TopDocs> manager =
+          TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
+      TopDocs hits = searcher.search(new TermQuery(new Term("field", "text")), manager);
       assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value);
 
       // Sort by docID reversed:
@@ -528,7 +529,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
       w.addDocument(new Document());
-      w.getReader().close();
+      DirectoryReader.open(w).close();
       w.addDocument(new Document());
       expectThrows(
           IllegalArgumentException.class,

@@ -26,11 +26,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.TokenStreamToAutomaton;
@@ -40,12 +35,17 @@ import org.apache.lucene.search.suggest.Input;
 import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.FiniteStringsIterator;
 import org.apache.lucene.util.fst.Util;
@@ -84,7 +84,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
           suggester.lookup(TestUtil.stringToCharSequence(addRandomEdit, random()), false, 2);
       assertEquals(addRandomEdit, 1, results.size());
       assertEquals("foo bar boo far", results.get(0).key.toString());
-      assertEquals(12, results.get(0).value, 0.01F);
+      assertEquals(12, results.get(0).value);
     }
     IOUtils.close(analyzer, tempDir);
   }
@@ -121,7 +121,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
           suggester.lookup(TestUtil.stringToCharSequence(addRandomEdit, random()), false, 2);
       assertEquals(addRandomEdit, 1, results.size());
       assertEquals("фуу бар буу фар", results.get(0).key.toString());
-      assertEquals(12, results.get(0).value, 0.01F);
+      assertEquals(12, results.get(0).value);
     }
     IOUtils.close(analyzer, tempDir);
   }
@@ -145,62 +145,62 @@ public class TestFuzzySuggester extends LuceneTestCase {
         suggester.lookup(TestUtil.stringToCharSequence("bariar", random()), false, 2);
     assertEquals(2, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
 
     results = suggester.lookup(TestUtil.stringToCharSequence("barbr", random()), false, 2);
     assertEquals(2, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
 
     results = suggester.lookup(TestUtil.stringToCharSequence("barbara", random()), false, 2);
     assertEquals(2, results.size());
     assertEquals("barbara", results.get(0).key.toString());
-    assertEquals(6, results.get(0).value, 0.01F);
+    assertEquals(6, results.get(0).value);
 
     results = suggester.lookup(TestUtil.stringToCharSequence("barbar", random()), false, 2);
     assertEquals(2, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
     assertEquals("barbara", results.get(1).key.toString());
-    assertEquals(6, results.get(1).value, 0.01F);
+    assertEquals(6, results.get(1).value);
 
     results = suggester.lookup(TestUtil.stringToCharSequence("barbaa", random()), false, 2);
     assertEquals(2, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
     assertEquals("barbara", results.get(1).key.toString());
-    assertEquals(6, results.get(1).value, 0.01F);
+    assertEquals(6, results.get(1).value);
 
     // top N of 2, but only foo is available
     results = suggester.lookup(TestUtil.stringToCharSequence("f", random()), false, 2);
     assertEquals(1, results.size());
     assertEquals("foo", results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // top N of 1 for 'bar': we return this even though
     // barbar is higher because exactFirst is enabled:
     results = suggester.lookup(TestUtil.stringToCharSequence("bar", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals("bar", results.get(0).key.toString());
-    assertEquals(10, results.get(0).value, 0.01F);
+    assertEquals(10, results.get(0).value);
 
     // top N Of 2 for 'b'
     results = suggester.lookup(TestUtil.stringToCharSequence("b", random()), false, 2);
     assertEquals(2, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
     assertEquals("bar", results.get(1).key.toString());
-    assertEquals(10, results.get(1).value, 0.01F);
+    assertEquals(10, results.get(1).value);
 
     // top N of 3 for 'ba'
     results = suggester.lookup(TestUtil.stringToCharSequence("ba", random()), false, 3);
     assertEquals(3, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
     assertEquals("bar", results.get(1).key.toString());
-    assertEquals(10, results.get(1).value, 0.01F);
+    assertEquals(10, results.get(1).value);
     assertEquals("barbara", results.get(2).key.toString());
-    assertEquals(6, results.get(2).value, 0.01F);
+    assertEquals(6, results.get(2).value);
 
     IOUtils.close(analyzer, tempDir);
   }
@@ -236,19 +236,19 @@ public class TestFuzzySuggester extends LuceneTestCase {
         suggester.lookup(TestUtil.stringToCharSequence("the ghost of chris", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals("the ghost of christmas past", results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // omit the 'the' since it's a stopword, it's suggested anyway
     results = suggester.lookup(TestUtil.stringToCharSequence("ghost of chris", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals("the ghost of christmas past", results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // omit the 'the' and 'of' since they are stopwords, it's suggested anyway
     results = suggester.lookup(TestUtil.stringToCharSequence("ghost chris", random()), false, 1);
     assertEquals(1, results.size());
     assertEquals("the ghost of christmas past", results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     IOUtils.close(standard, tempDir);
   }
@@ -845,7 +845,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
             new Comparator<LookupResult>() {
               @Override
               public int compare(LookupResult left, LookupResult right) {
-                int cmp = Float.compare(right.value, left.value);
+                int cmp = Long.compare(right.value, left.value);
                 if (cmp == 0) {
                   return left.compareTo(right);
                 } else {
@@ -876,7 +876,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
         // System.out.println("  check hit " + hit);
         assertEquals(
             prefix + "  " + topN, matches.get(hit).key.toString(), r.get(hit).key.toString());
-        assertEquals(matches.get(hit).value, r.get(hit).value, 0f);
+        assertEquals(matches.get(hit).value, r.get(hit).value);
       }
     }
     IOUtils.close(a, tempDir);

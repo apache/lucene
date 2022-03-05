@@ -45,12 +45,10 @@ import org.apache.lucene.misc.search.DocValuesStats.SortedLongDocValuesStats;
 import org.apache.lucene.misc.search.DocValuesStats.SortedSetDocValuesStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.MultiCollector;
-import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** Unit tests for {@link DocValuesStatsCollector}. */
 public class TestDocValuesStatsCollector extends LuceneTestCase {
@@ -396,10 +394,8 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         SortedSetDocValuesStats stats = new SortedSetDocValuesStats(field);
-        TotalHitCountCollector totalHitCount = new TotalHitCountCollector();
-        searcher.search(
-            new MatchAllDocsQuery(),
-            MultiCollector.wrap(totalHitCount, new DocValuesStatsCollector(stats)));
+
+        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
 
         int expCount = (int) nonNull(docValues).count();
         assertEquals(expCount, stats.count());

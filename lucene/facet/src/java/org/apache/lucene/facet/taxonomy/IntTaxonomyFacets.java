@@ -29,15 +29,16 @@ import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 
 /** Base class for all taxonomy-based facets that aggregate to a per-ords int[]. */
-public abstract class IntTaxonomyFacets extends TaxonomyFacets {
+abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
-  /** Per-ordinal value. */
-  private final int[] values;
+  /** Dense ordinal values. */
+  final int[] values;
 
-  private final IntIntHashMap sparseValues;
+  /** Sparse ordinal values. */
+  final IntIntHashMap sparseValues;
 
   /** Sole constructor. */
-  protected IntTaxonomyFacets(
+  IntTaxonomyFacets(
       String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
       throws IOException {
     super(indexFieldName, taxoReader, config);
@@ -51,36 +52,8 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
   }
 
-  /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
-  protected boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
-    if (taxoReader.getSize() < 1024) {
-      // small number of unique values: use an array
-      return false;
-    }
-
-    if (fc == null) {
-      // counting all docs: use an array
-      return false;
-    }
-
-    int maxDoc = 0;
-    int sumTotalHits = 0;
-    for (MatchingDocs docs : fc.getMatchingDocs()) {
-      sumTotalHits += docs.totalHits;
-      maxDoc += docs.context.reader().maxDoc();
-    }
-
-    // if our result set is < 10% of the index, we collect sparsely (use hash map):
-    return sumTotalHits < maxDoc / 10;
-  }
-
-  /** Increment the count for this ordinal by 1. */
-  protected void increment(int ordinal) {
-    increment(ordinal, 1);
-  }
-
   /** Increment the count for this ordinal by {@code amount}.. */
-  protected void increment(int ordinal, int amount) {
+  void increment(int ordinal, int amount) {
     if (sparseValues != null) {
       sparseValues.addTo(ordinal, amount);
     } else {
@@ -89,7 +62,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
   }
 
   /** Get the count for this ordinal. */
-  protected int getValue(int ordinal) {
+  int getValue(int ordinal) {
     if (sparseValues != null) {
       return sparseValues.get(ordinal);
     } else {
@@ -98,7 +71,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
   }
 
   /** Rolls up any single-valued hierarchical dimensions. */
-  protected void rollup() throws IOException {
+  void rollup() throws IOException {
     // Rollup any necessary dims:
     int[] children = null;
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
@@ -129,6 +102,29 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
     return sum;
+  }
+
+  /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
+  private boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
+    if (taxoReader.getSize() < 1024) {
+      // small number of unique values: use an array
+      return false;
+    }
+
+    if (fc == null) {
+      // counting all docs: use an array
+      return false;
+    }
+
+    int maxDoc = 0;
+    int sumTotalHits = 0;
+    for (MatchingDocs docs : fc.getMatchingDocs()) {
+      sumTotalHits += docs.totalHits;
+      maxDoc += docs.context.reader().maxDoc();
+    }
+
+    // if our result set is < 10% of the index, we collect sparsely (use hash map):
+    return sumTotalHits < maxDoc / 10;
   }
 
   @Override

@@ -177,6 +177,30 @@ public final class FixedBitSet extends BitSet {
   }
 
   @Override
+  public int approximateCardinality() {
+    // Naive sampling: compute the number of bits that are set on the first 16 longs every 1024
+    // longs and scale the result by 1024/16.
+    // This computes the pop count on ranges instead of single longs in order to take advantage of
+    // vectorization.
+
+    final int rangeLength = 16;
+    final int interval = 1024;
+
+    if (numWords < interval) {
+      return cardinality();
+    }
+
+    long popCount = 0;
+    int maxWord;
+    for (maxWord = 0; maxWord + interval < numWords; maxWord += interval) {
+      popCount += BitUtil.pop_array(bits, maxWord, rangeLength);
+    }
+
+    popCount *= (interval / rangeLength) * numWords / maxWord;
+    return (int) popCount;
+  }
+
+  @Override
   public boolean get(int index) {
     assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
     int i = index >> 6; // div 64
@@ -269,6 +293,10 @@ public final class FixedBitSet extends BitSet {
       checkUnpositioned(iter);
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
       or(bits);
+    } else if (iter instanceof DocBaseBitSetIterator) {
+      checkUnpositioned(iter);
+      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
+      or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
       super.or(iter);
     }
@@ -276,15 +304,20 @@ public final class FixedBitSet extends BitSet {
 
   /** this = this OR other */
   public void or(FixedBitSet other) {
-    or(other.bits, other.numWords);
+    or(0, other.bits, other.numWords);
   }
 
-  private void or(final long[] otherArr, final int otherNumWords) {
-    assert otherNumWords <= numWords : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
+  private void or(final int otherOffsetWords, FixedBitSet other) {
+    or(otherOffsetWords, other.bits, other.numWords);
+  }
+
+  private void or(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
+    assert otherNumWords + otherOffsetWords <= numWords
+        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
-    int pos = Math.min(numWords, otherNumWords);
     while (--pos >= 0) {
-      thisArr[pos] |= otherArr[pos];
+      thisArr[pos + otherOffsetWords] |= otherArr[pos];
     }
   }
 
@@ -342,16 +375,38 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
-  /** this = this AND NOT other */
-  public void andNot(FixedBitSet other) {
-    andNot(other.bits, other.numWords);
+  public void andNot(DocIdSetIterator iter) throws IOException {
+    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
+      checkUnpositioned(iter);
+      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
+      assert bits != null;
+      andNot(bits);
+    } else if (iter instanceof DocBaseBitSetIterator) {
+      checkUnpositioned(iter);
+      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
+      andNot(baseIter.getDocBase() >> 6, baseIter.getBitSet());
+    } else {
+      checkUnpositioned(iter);
+      for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
+        clear(doc);
+      }
+    }
   }
 
-  private void andNot(final long[] otherArr, final int otherNumWords) {
+  /** this = this AND NOT other */
+  public void andNot(FixedBitSet other) {
+    andNot(0, other.bits, other.numWords);
+  }
+
+  private void andNot(final int otherOffsetWords, FixedBitSet other) {
+    andNot(otherOffsetWords, other.bits, other.numWords);
+  }
+
+  private void andNot(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
-    int pos = Math.min(this.numWords, otherNumWords);
     while (--pos >= 0) {
-      thisArr[pos] &= ~otherArr[pos];
+      thisArr[pos + otherOffsetWords] &= ~otherArr[pos];
     }
   }
 

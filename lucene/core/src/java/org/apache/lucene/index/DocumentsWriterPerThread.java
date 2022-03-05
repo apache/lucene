@@ -209,7 +209,8 @@ final class DocumentsWriterPerThread implements Accountable {
   long updateDocuments(
       Iterable<? extends Iterable<? extends IndexableField>> docs,
       DocumentsWriterDeleteQueue.Node<?> deleteNode,
-      DocumentsWriter.FlushNotifications flushNotifications)
+      DocumentsWriter.FlushNotifications flushNotifications,
+      Runnable onNewDocOnRAM)
       throws IOException {
     try {
       testPoint("DocumentsWriterPerThread addDocuments start");
@@ -236,7 +237,11 @@ final class DocumentsWriterPerThread implements Accountable {
           // it's very hard to fix (we can't easily distinguish aborting
           // vs non-aborting exceptions):
           reserveOneDoc();
-          indexingChain.processDocument(numDocsInRAM++, doc);
+          try {
+            indexingChain.processDocument(numDocsInRAM++, doc);
+          } finally {
+            onNewDocOnRAM.run();
+          }
         }
         allDocsIndexed = true;
         return finishDocuments(deleteNode, docsInRamBefore);

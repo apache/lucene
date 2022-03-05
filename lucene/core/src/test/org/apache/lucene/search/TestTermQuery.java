@@ -27,17 +27,18 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestTermQuery extends LuceneTestCase {
 
@@ -90,16 +91,15 @@ public class TestTermQuery extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(reader);
     // use a collector rather than searcher.count() which would just read the
     // doc freq instead of creating a scorer
-    TotalHitCountCollector collector = new TotalHitCountCollector();
-    searcher.search(query, collector);
-    assertEquals(1, collector.getTotalHits());
+    TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager();
+    int totalHits = searcher.search(query, collectorManager);
+    assertEquals(1, totalHits);
     TermQuery queryWithContext =
         new TermQuery(
             new Term("foo", "bar"),
             TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
-    collector = new TotalHitCountCollector();
-    searcher.search(queryWithContext, collector);
-    assertEquals(1, collector.getTotalHits());
+    totalHits = searcher.search(queryWithContext, collectorManager);
+    assertEquals(1, totalHits);
 
     IOUtils.close(reader, w, dir);
   }

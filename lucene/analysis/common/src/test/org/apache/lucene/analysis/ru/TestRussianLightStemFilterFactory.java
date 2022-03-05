@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.ru;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure the Russian light stem factory is working. */
 public class TestRussianLightStemFilterFactory extends BaseTokenStreamFactoryTestCase {

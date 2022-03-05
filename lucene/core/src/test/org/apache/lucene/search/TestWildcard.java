@@ -17,17 +17,18 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.automaton.Operations;
 
 /** TestWildcard tests the '*' and '?' wildcard characters. */
 public class TestWildcard extends LuceneTestCase {
@@ -66,16 +67,28 @@ public class TestWildcard extends LuceneTestCase {
     MultiTermQuery wq = new WildcardQuery(new Term("field", "nowildcard"));
     assertMatches(searcher, wq, 1);
 
-    wq.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    Query q = searcher.rewrite(wq);
+    Query q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.SCORING_BOOLEAN_REWRITE));
     assertTrue(q instanceof TermQuery);
 
-    wq.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
-    q = searcher.rewrite(wq);
+    q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.CONSTANT_SCORE_REWRITE));
     assertTrue(q instanceof MultiTermQueryConstantScoreWrapper);
 
-    wq.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE);
-    q = searcher.rewrite(wq);
+    q =
+        searcher.rewrite(
+            new WildcardQuery(
+                new Term("field", "nowildcard"),
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE));
     assertTrue(q instanceof ConstantScoreQuery);
     reader.close();
     indexStore.close();
@@ -87,8 +100,11 @@ public class TestWildcard extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(indexStore);
     IndexSearcher searcher = newSearcher(reader);
 
-    MultiTermQuery wq = new WildcardQuery(new Term("field", ""));
-    wq.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    MultiTermQuery wq =
+        new WildcardQuery(
+            new Term("field", ""),
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertMatches(searcher, wq, 0);
     Query q = searcher.rewrite(wq);
     assertTrue(q instanceof MatchNoDocsQuery);

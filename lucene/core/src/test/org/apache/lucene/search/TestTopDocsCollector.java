@@ -18,10 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -33,23 +29,23 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestTopDocsCollector extends LuceneTestCase {
 
-  private static final class MyTopsDocCollector extends TopDocsCollector<ScoreDoc> {
+  private static final class MyTopDocsCollector extends TopDocsCollector<ScoreDoc> {
 
     private int idx = 0;
 
-    public MyTopsDocCollector(int size) {
+    public MyTopDocsCollector(int size) {
       super(new HitQueue(size, false));
     }
 
@@ -134,39 +130,25 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
   private TopDocsCollector<ScoreDoc> doSearch(int numResults, Query q) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    TopDocsCollector<ScoreDoc> tdc = new MyTopsDocCollector(numResults);
+    TopDocsCollector<ScoreDoc> tdc = new MyTopDocsCollector(numResults);
     searcher.search(q, tdc);
     return tdc;
   }
 
-  private TopDocsCollector<ScoreDoc> doSearchWithThreshold(
+  private static TopDocs doSearchWithThreshold(
       int numResults, int thresHold, Query q, IndexReader indexReader) throws IOException {
-    IndexSearcher searcher = new IndexSearcher(indexReader);
-    TopDocsCollector<ScoreDoc> tdc = TopScoreDocCollector.create(numResults, thresHold);
-    searcher.search(q, tdc);
-    return tdc;
+    IndexSearcher searcher = newSearcher(indexReader, true, true, false);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(numResults, null, thresHold);
+    return searcher.search(q, manager);
   }
 
-  private TopDocs doConcurrentSearchWithThreshold(
+  private static TopDocs doConcurrentSearchWithThreshold(
       int numResults, int threshold, Query q, IndexReader indexReader) throws IOException {
-    ExecutorService service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestTopDocsCollector"));
-    try {
-      IndexSearcher searcher = new IndexSearcher(indexReader, service);
-
-      CollectorManager<TopScoreDocCollector, TopDocs> collectorManager =
-          TopScoreDocCollector.createSharedManager(numResults, null, threshold);
-
-      return searcher.search(q, collectorManager);
-    } finally {
-      service.shutdown();
-    }
+    IndexSearcher searcher = newSearcher(indexReader, true, true, true);
+    CollectorManager<TopScoreDocCollector, TopDocs> collectorManager =
+        TopScoreDocCollector.createSharedManager(numResults, null, threshold);
+    return searcher.search(q, collectorManager);
   }
 
   @Override
@@ -223,7 +205,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
   }
 
   public void testZeroResults() throws Exception {
-    TopDocsCollector<ScoreDoc> tdc = new MyTopsDocCollector(5);
+    TopDocsCollector<ScoreDoc> tdc = new MyTopDocsCollector(5);
     assertEquals(0, tdc.topDocs(0, 1).scoreDocs.length);
   }
 
@@ -303,8 +285,9 @@ public class TestTopDocsCollector extends LuceneTestCase {
     Float minCompetitiveScore = null;
 
     @Override
-    public void setMinCompetitiveScore(float minCompetitiveScore) {
-      this.minCompetitiveScore = minCompetitiveScore;
+    public void setMinCompetitiveScore(float score) {
+      assert minCompetitiveScore == null || score >= minCompetitiveScore;
+      this.minCompetitiveScore = score;
     }
 
     @Override
@@ -356,9 +339,9 @@ public class TestTopDocsCollector extends LuceneTestCase {
     scorer.doc = 3;
     scorer.score = 0.5f;
     // Make sure we do not call setMinCompetitiveScore for non-competitive hits
-    scorer.minCompetitiveScore = Float.NaN;
+    scorer.minCompetitiveScore = null;
     leafCollector.collect(3);
-    assertTrue(Float.isNaN(scorer.minCompetitiveScore));
+    assertNull(scorer.minCompetitiveScore);
 
     scorer.doc = 4;
     scorer.score = 4;
@@ -399,9 +382,8 @@ public class TestTopDocsCollector extends LuceneTestCase {
     assertEquals(2, reader.leaves().size());
     w.close();
 
-    TopDocsCollector<ScoreDoc> collector = doSearchWithThreshold(5, 10, q, reader);
+    TopDocs tdc2 = doSearchWithThreshold(5, 10, q, reader);
     TopDocs tdc = doConcurrentSearchWithThreshold(5, 10, q, reader);
-    TopDocs tdc2 = collector.topDocs();
 
     CheckHits.checkEqual(q, tdc.scoreDocs, tdc2.scoreDocs);
 
@@ -477,20 +459,21 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
       try (IndexReader reader = DirectoryReader.open(w)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        TopScoreDocCollector collector = TopScoreDocCollector.create(2, null, 10);
-        searcher.search(new TermQuery(new Term("f", "foo")), collector);
-        assertEquals(10, collector.totalHits);
-        assertEquals(TotalHits.Relation.EQUAL_TO, collector.totalHitsRelation);
+        CollectorManager<TopScoreDocCollector, TopDocs> manager =
+            TopScoreDocCollector.createSharedManager(2, null, 10);
+        TopDocs topDocs = searcher.search(new TermQuery(new Term("f", "foo")), manager);
+        assertEquals(10, topDocs.totalHits.value);
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
 
-        collector = TopScoreDocCollector.create(2, null, 2);
-        searcher.search(new TermQuery(new Term("f", "foo")), collector);
-        assertTrue(10 >= collector.totalHits);
-        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, collector.totalHitsRelation);
+        manager = TopScoreDocCollector.createSharedManager(2, null, 2);
+        topDocs = searcher.search(new TermQuery(new Term("f", "foo")), manager);
+        assertTrue(10 >= topDocs.totalHits.value);
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
-        collector = TopScoreDocCollector.create(10, null, 2);
-        searcher.search(new TermQuery(new Term("f", "foo")), collector);
-        assertEquals(10, collector.totalHits);
-        assertEquals(TotalHits.Relation.EQUAL_TO, collector.totalHitsRelation);
+        manager = TopScoreDocCollector.createSharedManager(10, null, 2);
+        topDocs = searcher.search(new TermQuery(new Term("f", "foo")), manager);
+        assertEquals(10, topDocs.totalHits.value);
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
       }
     }
   }
@@ -613,6 +596,10 @@ public class TestTopDocsCollector extends LuceneTestCase {
     assertEquals(11, topDocs.totalHits.value);
     assertEquals(new TotalHits(11, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), topDocs.totalHits);
 
+    leafCollector.setScorer(scorer);
+    leafCollector2.setScorer(scorer2);
+    leafCollector3.setScorer(scorer3);
+
     reader.close();
     dir.close();
   }
@@ -650,9 +637,8 @@ public class TestTopDocsCollector extends LuceneTestCase {
               .build()
         };
     for (Query query : queries) {
-      TopDocsCollector<ScoreDoc> collector = doSearchWithThreshold(5, 0, query, indexReader);
+      TopDocs tdc2 = doSearchWithThreshold(5, 0, query, indexReader);
       TopDocs tdc = doConcurrentSearchWithThreshold(5, 0, query, indexReader);
-      TopDocs tdc2 = collector.topDocs();
 
       assertTrue(tdc.totalHits.value > 0);
       assertTrue(tdc2.totalHits.value > 0);
@@ -692,9 +678,8 @@ public class TestTopDocsCollector extends LuceneTestCase {
         BytesRef term = BytesRef.deepCopyOf(termsEnum.term());
         Query query = new TermQuery(new Term("body", term));
 
-        TopDocsCollector<ScoreDoc> collector = doSearchWithThreshold(5, 0, query, reader);
+        TopDocs tdc2 = doSearchWithThreshold(5, 0, query, reader);
         TopDocs tdc = doConcurrentSearchWithThreshold(5, 0, query, reader);
-        TopDocs tdc2 = collector.topDocs();
 
         CheckHits.checkEqual(query, tdc.scoreDocs, tdc2.scoreDocs);
       }

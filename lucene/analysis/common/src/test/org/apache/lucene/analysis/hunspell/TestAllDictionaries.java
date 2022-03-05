@@ -41,12 +41,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.lucene.store.BaseDirectoryWrapper;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.RamUsageTester;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Ignore;
@@ -159,8 +159,8 @@ public class TestAllDictionaries extends LuceneTestCase {
         (Path aff) -> {
           try {
             Dictionary dic = loadDictionary(aff);
-            totalMemory.addAndGet(RamUsageTester.sizeOf(dic));
-            totalWords.addAndGet(RamUsageTester.sizeOf(dic.words));
+            totalMemory.addAndGet(RamUsageTester.ramUsed(dic));
+            totalWords.addAndGet(RamUsageTester.ramUsed(dic.words));
             System.out.println(aff + "\t" + memoryUsageSummary(dic));
           } catch (Throwable e) {
             failures.add(aff);

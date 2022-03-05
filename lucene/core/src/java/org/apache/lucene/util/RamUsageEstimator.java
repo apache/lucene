@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.logging.Logger;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Query;
@@ -153,6 +154,19 @@ public final class RamUsageEstimator {
         }
       } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
         isHotspot = false;
+        final Logger log = Logger.getLogger(RamUsageEstimator.class.getName());
+        final Module module = RamUsageEstimator.class.getModule();
+        final ModuleLayer layer = module.getLayer();
+        // classpath / unnamed module has no layer, so we need to check:
+        if (layer != null
+            && layer.findModule("jdk.management").map(module::canRead).orElse(false) == false) {
+          log.warning(
+              "Lucene cannot correctly calculate object sizes on 64bit JVMs, unless the 'jdk.management' Java module "
+                  + "is readable [please add 'jdk.management' to modular application either by command line or its module descriptor]");
+        } else {
+          log.warning(
+              "Lucene cannot correctly calculate object sizes on 64bit JVMs that are not based on Hotspot or a compatible implementation.");
+        }
       }
       JVM_IS_HOTSPOT_64BIT = isHotspot;
       COMPRESSED_REFS_ENABLED = compressedOops;
@@ -486,6 +500,46 @@ public final class RamUsageEstimator {
     return alignObjectSize(size);
   }
 
+  /** Returns the size in bytes of the byte[] object. */
+  public static long shallowSizeOf(byte[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the boolean[] object. */
+  public static long shallowSizeOf(boolean[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the char[] object. */
+  public static long shallowSizeOf(char[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the short[] object. */
+  public static long shallowSizeOf(short[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the int[] object. */
+  public static long shallowSizeOf(int[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the float[] object. */
+  public static long shallowSizeOf(float[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the long[] object. */
+  public static long shallowSizeOf(long[] arr) {
+    return sizeOf(arr);
+  }
+
+  /** Returns the size in bytes of the double[] object. */
+  public static long shallowSizeOf(double[] arr) {
+    return sizeOf(arr);
+  }
+
   /** Returns the shallow size in bytes of the Object[] object. */
   // Use this method instead of #shallowSizeOf(Object) to avoid costly reflection
   public static long shallowSizeOf(Object[] arr) {
@@ -530,9 +584,10 @@ public final class RamUsageEstimator {
       final Class<?> target = clazz;
       final Field[] fields;
       try {
-        fields =
-            AccessController.doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
-      } catch (AccessControlException e) {
+        fields = doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
+      } catch (
+          @SuppressWarnings("removal")
+          AccessControlException e) {
         throw new RuntimeException("Can't access fields of class: " + target, e);
       }
 
@@ -543,6 +598,13 @@ public final class RamUsageEstimator {
       }
     }
     return alignObjectSize(size);
+  }
+
+  // Extracted to a method to give the SuppressForbidden annotation the smallest possible scope
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 
   /** Return shallow size of any <code>array</code>. */
@@ -567,7 +629,7 @@ public final class RamUsageEstimator {
    * <p>The returned offset will be the maximum of whatever was measured so far and <code>f</code>
    * field's offset and representation size (unaligned).
    */
-  static long adjustForField(long sizeSoFar, final Field f) {
+  public static long adjustForField(long sizeSoFar, final Field f) {
     final Class<?> type = f.getType();
     final int fsize = type.isPrimitive() ? primitiveSizes.get(type) : NUM_BYTES_OBJECT_REF;
     // TODO: No alignments based on field type/ subclass fields alignments?

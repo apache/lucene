@@ -21,9 +21,9 @@ import org.apache.lucene.search.suggest.Input;
 import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestWFSTCompletion extends LuceneTestCase {
 
@@ -46,37 +46,37 @@ public class TestWFSTCompletion extends LuceneTestCase {
         suggester.lookup(TestUtil.stringToCharSequence("f", random), false, 2);
     assertEquals(1, results.size());
     assertEquals("foo", results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // make sure we don't get a dup exact suggestion:
     results = suggester.lookup(TestUtil.stringToCharSequence("foo", random), false, 2);
     assertEquals(1, results.size());
     assertEquals("foo", results.get(0).key.toString());
-    assertEquals(50, results.get(0).value, 0.01F);
+    assertEquals(50, results.get(0).value);
 
     // top N of 1 for 'bar': we return this even though barbar is higher
     results = suggester.lookup(TestUtil.stringToCharSequence("bar", random), false, 1);
     assertEquals(1, results.size());
     assertEquals("bar", results.get(0).key.toString());
-    assertEquals(10, results.get(0).value, 0.01F);
+    assertEquals(10, results.get(0).value);
 
     // top N Of 2 for 'b'
     results = suggester.lookup(TestUtil.stringToCharSequence("b", random), false, 2);
     assertEquals(2, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
     assertEquals("bar", results.get(1).key.toString());
-    assertEquals(10, results.get(1).value, 0.01F);
+    assertEquals(10, results.get(1).value);
 
     // top N of 3 for 'ba'
     results = suggester.lookup(TestUtil.stringToCharSequence("ba", random), false, 3);
     assertEquals(3, results.size());
     assertEquals("barbar", results.get(0).key.toString());
-    assertEquals(12, results.get(0).value, 0.01F);
+    assertEquals(12, results.get(0).value);
     assertEquals("bar", results.get(1).key.toString());
-    assertEquals(10, results.get(1).value, 0.01F);
+    assertEquals(10, results.get(1).value);
     assertEquals("barbara", results.get(2).key.toString());
-    assertEquals(6, results.get(2).value, 0.01F);
+    assertEquals(6, results.get(2).value);
     tempDir.close();
   }
 
@@ -189,7 +189,7 @@ public class TestWFSTCompletion extends LuceneTestCase {
           new Comparator<LookupResult>() {
             @Override
             public int compare(LookupResult left, LookupResult right) {
-              int cmp = Float.compare(right.value, left.value);
+              int cmp = Long.compare(right.value, left.value);
               if (cmp == 0) {
                 return left.compareTo(right);
               } else {
@@ -206,7 +206,7 @@ public class TestWFSTCompletion extends LuceneTestCase {
       for (int hit = 0; hit < r.size(); hit++) {
         // System.out.println("  check hit " + hit);
         assertEquals(matches.get(hit).key.toString(), r.get(hit).key.toString());
-        assertEquals(matches.get(hit).value, r.get(hit).value, 0f);
+        assertEquals(matches.get(hit).value, r.get(hit).value);
       }
     }
     tempDir.close();

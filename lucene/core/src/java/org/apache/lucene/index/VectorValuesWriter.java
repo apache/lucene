@@ -22,9 +22,12 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -107,13 +110,39 @@ class VectorValuesWriter {
    * @throws IOException if there is an error writing the field and its values
    */
   public void flush(Sorter.DocMap sortMap, KnnVectorsWriter knnVectorsWriter) throws IOException {
-    VectorValues vectorValues =
-        new BufferedVectorValues(docsWithField, vectors, fieldInfo.getVectorDimension());
-    if (sortMap != null) {
-      knnVectorsWriter.writeField(fieldInfo, new SortingVectorValues(vectorValues, sortMap));
-    } else {
-      knnVectorsWriter.writeField(fieldInfo, vectorValues);
-    }
+    KnnVectorsReader knnVectorsReader =
+        new KnnVectorsReader() {
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
+
+          @Override
+          public void close() throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public void checkIntegrity() throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public VectorValues getVectorValues(String field) throws IOException {
+            VectorValues vectorValues =
+                new BufferedVectorValues(docsWithField, vectors, fieldInfo.getVectorDimension());
+            return sortMap != null ? new SortingVectorValues(vectorValues, sortMap) : vectorValues;
+          }
+
+          @Override
+          public TopDocs search(
+              String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+              throws IOException {
+            throw new UnsupportedOperationException();
+          }
+        };
+
+    knnVectorsWriter.writeField(fieldInfo, knnVectorsReader);
   }
 
   static class SortingVectorValues extends VectorValues
