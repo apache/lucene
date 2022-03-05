@@ -206,6 +206,8 @@ Optimizations
 
 * LUCENE-10450: IndexSortSortedNumericDocValuesRangeQuery could be rewrite to MatchAllDocsQuery. (Lu Xugang)
 
+* LUCENE-10455: IndexSortSortedNumericDocValuesRangeQuery now implements the scorerSupplier API. (Lu Xugang)
+
 Changes in runtime behavior
 ---------------------
 
