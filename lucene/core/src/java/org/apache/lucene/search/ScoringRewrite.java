@@ -46,8 +46,6 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
    *
    * <p><b>NOTE</b>: This rewrite method will hit {@link IndexSearcher.TooManyClauses} if the number
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.
-   *
-   * @see MultiTermQuery#setRewriteMethod
    */
   public static final ScoringRewrite<BooleanQuery.Builder> SCORING_BOOLEAN_REWRITE =
       new ScoringRewrite<BooleanQuery.Builder>() {
@@ -84,8 +82,6 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
    *
    * <p><b>NOTE</b>: This rewrite method will hit {@link IndexSearcher.TooManyClauses} if the number
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.
-   *
-   * @see MultiTermQuery#setRewriteMethod
    */
   public static final RewriteMethod CONSTANT_SCORE_BOOLEAN_REWRITE =
       new RewriteMethod() {

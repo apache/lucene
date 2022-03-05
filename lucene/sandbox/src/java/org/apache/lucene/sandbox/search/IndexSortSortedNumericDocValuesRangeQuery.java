@@ -30,10 +30,12 @@ import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.Weight;
@@ -140,6 +142,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     Query rewrittenFallback = fallbackQuery.rewrite(reader);
+    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
+      return new MatchAllDocsQuery();
+    }
     if (rewrittenFallback == fallbackQuery) {
       return this;
     } else {
@@ -154,13 +159,34 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     Weight fallbackWeight = fallbackQuery.createWeight(searcher, scoreMode, boost);
 
     return new ConstantScoreWeight(this, boost) {
+
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final Weight weight = this;
         DocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
         if (disi != null) {
-          return new ConstantScoreScorer(this, score(), scoreMode, disi);
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return new ConstantScoreScorer(weight, score(), scoreMode, disi);
+            }
+
+            @Override
+            public long cost() {
+              return disi.cost();
+            }
+          };
         }
-        return fallbackWeight.scorer(context);
+        return fallbackWeight.scorerSupplier(context);
+      }
+
+      @Override
+      public Scorer scorer(LeafReaderContext context) throws IOException {
+        ScorerSupplier scorerSupplier = scorerSupplier(context);
+        if (scorerSupplier == null) {
+          return null;
+        }
+        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override

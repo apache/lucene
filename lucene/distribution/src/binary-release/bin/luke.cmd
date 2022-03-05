@@ -18,14 +18,19 @@
 SETLOCAL
 SET MODULES=%~dp0..
 
-REM For distribution testing we want plain 'java' command, otherwise we can't block
-REM on luke invocation and can't intercept the return status.
+IF DEFINED LAUNCH_CMD GOTO testing
 SET LAUNCH_CMD=start javaw
-IF NOT "%DISTRIBUTION_TESTING%"=="true" GOTO launch
-SET LAUNCH_CMD=java
+SET LAUNCH_OPTS=
+goto launch
+
+:testing
+REM For distribution testing we don't use start and pass an explicit launch ('java') command,
+REM otherwise we can't block on luke invocation and can't intercept the return status.
+REM We also force UTF-8 encoding.
+SET LAUNCH_OPTS=-Dfile.encoding=UTF-8
 
 :launch
-%LAUNCH_CMD% --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --module org.apache.lucene.luke %*
+"%LAUNCH_CMD%" %LAUNCH_OPTS% --module-path "%MODULES%\modules;%MODULES%\modules-thirdparty" --module org.apache.lucene.luke %*
 SET EXITVAL=%errorlevel%
 EXIT /b %EXITVAL%
 ENDLOCAL

@@ -177,6 +177,30 @@ public final class FixedBitSet extends BitSet {
   }
 
   @Override
+  public int approximateCardinality() {
+    // Naive sampling: compute the number of bits that are set on the first 16 longs every 1024
+    // longs and scale the result by 1024/16.
+    // This computes the pop count on ranges instead of single longs in order to take advantage of
+    // vectorization.
+
+    final int rangeLength = 16;
+    final int interval = 1024;
+
+    if (numWords < interval) {
+      return cardinality();
+    }
+
+    long popCount = 0;
+    int maxWord;
+    for (maxWord = 0; maxWord + interval < numWords; maxWord += interval) {
+      popCount += BitUtil.pop_array(bits, maxWord, rangeLength);
+    }
+
+    popCount *= (interval / rangeLength) * numWords / maxWord;
+    return (int) popCount;
+  }
+
+  @Override
   public boolean get(int index) {
     assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
     int i = index >> 6; // div 64

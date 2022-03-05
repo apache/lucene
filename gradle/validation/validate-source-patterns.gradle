@@ -117,6 +117,7 @@ configure(project(':lucene:benchmark')) {
 
 @CacheableTask
 class ValidateSourcePatternsTask extends DefaultTask {
+  private static final Object ratBug = new Object()
   private ProgressLoggerFactory progressLoggerFactory
 
   @InputFiles
@@ -165,7 +166,6 @@ class ValidateSourcePatternsTask extends DefaultTask {
     def javaCommentPattern = ~$/(?sm)^\Q/*\E(.*?)\Q*/\E/$;
     def xmlCommentPattern = ~$/(?sm)\Q<!--\E(.*?)\Q-->\E/$;
     def lineSplitter = ~$/[\r\n]+/$;
-    def licenseMatcher = Defaults.createDefaultMatcher();
     def validLoggerPattern = ~$/(?s)\b(private\s|static\s|final\s){3}+\s*Logger\s+\p{javaJavaIdentifierStart}+\s+=\s+\QLoggerFactory.getLogger(MethodHandles.lookup().lookupClass());\E/$;
     def validLoggerNamePattern = ~$/(?s)\b(private\s|static\s|final\s){3}+\s*Logger\s+log+\s+=\s+\QLoggerFactory.getLogger(MethodHandles.lookup().lookupClass());\E/$;
     def packagePattern = ~$/(?m)^\s*package\s+org\.apache.*;/$;
@@ -173,8 +173,12 @@ class ValidateSourcePatternsTask extends DefaultTask {
     def validSPINameJavadocTag = ~$/(?s)\s*\*\s*@lucene\.spi\s+\{@value #NAME\}/$;
 
     def isLicense = { matcher, ratDocument ->
-      licenseMatcher.reset()
-      return lineSplitter.split(matcher.group(1)).any { licenseMatcher.match(ratDocument, it) }
+      // See LUCENE-10419 - rat is not thread safe.
+      synchronized (ratBug) {
+        def licenseMatcher = Defaults.createDefaultMatcher();
+        licenseMatcher.reset()
+        return lineSplitter.split(matcher.group(1)).any { licenseMatcher.match(ratDocument, it) }
+      }
     }
 
     def checkLicenseHeaderPrecedes = { f, description, contentPattern, commentPattern, text, ratDocument ->

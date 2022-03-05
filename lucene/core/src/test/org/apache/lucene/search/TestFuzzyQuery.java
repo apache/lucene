@@ -436,8 +436,14 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     writer.close();
 
-    FuzzyQuery query = new FuzzyQuery(new Term("field", "lucene"));
-    query.setRewriteMethod(new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(50));
+    FuzzyQuery query =
+        new FuzzyQuery(
+            new Term("field", "lucene"),
+            FuzzyQuery.defaultMaxEdits,
+            FuzzyQuery.defaultPrefixLength,
+            FuzzyQuery.defaultMaxExpansions,
+            FuzzyQuery.defaultTranspositions,
+            new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(50));
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(3, hits.length);
     // normally, 'Lucenne' would be the first result as IDF will skew the score.

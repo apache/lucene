@@ -50,20 +50,18 @@ public class TermRangeQueryNodeBuilder implements StandardQueryBuilder {
       upperText = null;
     }
 
-    TermRangeQuery rangeQuery =
-        TermRangeQuery.newStringRange(
-            field,
-            lowerText,
-            upperText,
-            rangeNode.isLowerInclusive(),
-            rangeNode.isUpperInclusive());
-
     MultiTermQuery.RewriteMethod method =
         (MultiTermQuery.RewriteMethod) queryNode.getTag(MultiTermRewriteMethodProcessor.TAG_ID);
-    if (method != null) {
-      rangeQuery.setRewriteMethod(method);
+    if (method == null) {
+      method = MultiTermQuery.CONSTANT_SCORE_REWRITE;
     }
 
-    return rangeQuery;
+    return TermRangeQuery.newStringRange(
+        field,
+        lowerText,
+        upperText,
+        rangeNode.isLowerInclusive(),
+        rangeNode.isUpperInclusive(),
+        method);
   }
 }

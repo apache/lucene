@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
@@ -37,6 +38,92 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
+
+  public void testRewriteWithTermsPresent() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertTrue((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
+
+  public void testRewriteWithPointValuesPresent() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertTrue((new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
+
+  public void testNoRewrite() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
+      iw.addDocument(doc);
+    }
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
+
+  public void testNoRewriteWithDocValues() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("dv1", 1));
+      doc.add(new SortedNumericDocValuesField("dv2", 1));
+      doc.add(new SortedNumericDocValuesField("dv2", 2));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv1")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv2")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse(
+        (new DocValuesFieldExistsQuery("dv3")).rewrite(reader) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
 
   public void testRandom() throws IOException {
     final int iters = atLeast(10);
