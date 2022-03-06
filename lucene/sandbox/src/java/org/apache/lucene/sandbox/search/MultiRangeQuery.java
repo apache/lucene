@@ -181,7 +181,7 @@ public abstract class MultiRangeQuery extends Query {
   }
 
   private List<RangeClause> mergeOverlappingRanges() {
-    if (numDims != 1 || rangeClauses.size() == 1) {
+    if (numDims != 1 || rangeClauses.size() <= 1) {
       return rangeClauses;
     }
     List<RangeClause> originRangeClause = new ArrayList<>(rangeClauses);
