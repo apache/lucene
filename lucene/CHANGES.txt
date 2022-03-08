@@ -103,6 +103,10 @@ API Changes
 * LUCENE-10431: MultiTermQuery.setRewriteMethod() has been deprecated, and constructor
   parameters for the various implementations added. (Alan Woodward)
 
+* LUCENE-10171: OpenNLPOpsFactory.getLemmatizerDictionary(String, ResourceLoader) now returns a
+  DictionaryLemmatizer object instead of a raw String serialization of the dictionary.
+  (Spyros Kapnissis via Michael Gibney, Alessandro Benedetti)
+
 New Features
 ---------------------
 
