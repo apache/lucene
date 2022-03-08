@@ -3127,8 +3127,10 @@ public class IndexWriter
    */
   public long addIndexes(CodecReader... readers) throws IOException {
     ensureOpen();
-    long seqNo;
+
+    // long so we can detect int overflow:
     long numDocs = 0;
+    long seqNo;
     final int mergeTimeoutInSeconds = 600;
 
     try {
@@ -3145,7 +3147,7 @@ public class IndexWriter
       synchronized (this) {
         ensureOpen();
         if (merges.areEnabled() == false) {
-          throw new UnsupportedOperationException("Merges are disabled on current writer. " +
+          throw new AlreadyClosedException("Merges are disabled on current writer. " +
             "Cannot execute addIndexes(CodecReaders...) API");
         }
       }
@@ -3159,7 +3161,7 @@ public class IndexWriter
           mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
           mergesComplete = spec.await();
         } finally {
-          if (!mergesComplete) {
+          if (mergesComplete == false) {
             // nocommit -- ensure all intermediate files are deleted
             for (MergePolicy.OneMerge merge: spec.merges) {
               deleteNewFiles(merge.getMergeInfo().files());
@@ -3188,7 +3190,7 @@ public class IndexWriter
               reserveDocs(totalMaxDoc);
               success = true;
             } finally {
-              if (!success) {
+              if (success == false) {
                 for (SegmentCommitInfo sipc : infos) {
                   // Safe: these files must exist
                   deleteNewFiles(sipc.files());
