@@ -73,17 +73,27 @@ public final class FixedBitSet extends BitSet {
    */
   public static long intersectionCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    return BitUtil.pop_intersect(a.bits, b.bits, 0, Math.min(a.numWords, b.numWords));
+    long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] & b.bits[i]);
+    }
+    return tot;
   }
 
   /** Returns the popcount or cardinality of the union of the two sets. Neither set is modified. */
   public static long unionCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    long tot = BitUtil.pop_union(a.bits, b.bits, 0, Math.min(a.numWords, b.numWords));
-    if (a.numWords < b.numWords) {
-      tot += BitUtil.pop_array(b.bits, a.numWords, b.numWords - a.numWords);
-    } else if (a.numWords > b.numWords) {
-      tot += BitUtil.pop_array(a.bits, b.numWords, a.numWords - b.numWords);
+    long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] | b.bits[i]);
+    }
+    for (int i = numCommonWords; i < a.numWords; ++i) {
+      tot += Long.bitCount(a.bits[i]);
+    }
+    for (int i = numCommonWords; i < b.numWords; ++i) {
+      tot += Long.bitCount(b.bits[i]);
     }
     return tot;
   }
@@ -94,9 +104,13 @@ public final class FixedBitSet extends BitSet {
    */
   public static long andNotCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    long tot = BitUtil.pop_andnot(a.bits, b.bits, 0, Math.min(a.numWords, b.numWords));
-    if (a.numWords > b.numWords) {
-      tot += BitUtil.pop_array(a.bits, b.numWords, a.numWords - b.numWords);
+    long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] & ~b.bits[i]);
+    }
+    for (int i = numCommonWords; i < a.numWords; ++i) {
+      tot += Long.bitCount(a.bits[i]);
     }
     return tot;
   }
@@ -173,7 +187,11 @@ public final class FixedBitSet extends BitSet {
   @Override
   public int cardinality() {
     // Depends on the ghost bits being clear!
-    return (int) BitUtil.pop_array(bits, 0, numWords);
+    long tot = 0;
+    for (int i = 0; i < numWords; ++i) {
+      tot += Long.bitCount(bits[i]);
+    }
+    return Math.toIntExact(tot);
   }
 
   @Override
@@ -193,7 +211,9 @@ public final class FixedBitSet extends BitSet {
     long popCount = 0;
     int maxWord;
     for (maxWord = 0; maxWord + interval < numWords; maxWord += interval) {
-      popCount += BitUtil.pop_array(bits, maxWord, rangeLength);
+      for (int i = 0; i < rangeLength; ++i) {
+        popCount += Long.bitCount(bits[maxWord + i]);
+      }
     }
 
     popCount *= (interval / rangeLength) * numWords / maxWord;
