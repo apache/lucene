@@ -198,9 +198,15 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        BoundedDocSetIdIterator disi = getDocIdSetIteratorOrNull(context);
-        if (disi != null) {
-          return disi.lastDoc - disi.firstDoc;
+        Sort indexSort = context.reader().getMetaData().getSort();
+        if (indexSort != null
+            && indexSort.getSort().length > 0
+            && indexSort.getSort()[0].getField().equals(field)
+            && indexSort.getSort()[0].getMissingValue() == null) {
+          BoundedDocSetIdIterator disi = getDocIdSetIteratorOrNull(context);
+          if (disi != null) {
+            return disi.lastDoc - disi.firstDoc;
+          }
         }
         return fallbackWeight.count(context);
       }
