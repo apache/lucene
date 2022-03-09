@@ -32,7 +32,7 @@ public final class RateLimitedIndexOutput extends IndexOutput {
   private long bytesSinceLastPause;
 
   /**
-   * Cached here not not always have to call RateLimiter#getMinPauseCheckBytes() which does volatile
+   * Cached here to not always have to call RateLimiter#getMinPauseCheckBytes() which does volatile
    * read.
    */
   private long currentMinPauseCheckBytes;
@@ -68,9 +68,14 @@ public final class RateLimitedIndexOutput extends IndexOutput {
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) throws IOException {
-    bytesSinceLastPause += length;
-    checkRate();
-    delegate.writeBytes(b, offset, length);
+    while (length > 0) {
+      int chunk = (int) Math.min(currentMinPauseCheckBytes + 1, length);
+      bytesSinceLastPause += chunk;
+      checkRate();
+      delegate.writeBytes(b, offset, chunk);
+      length -= chunk;
+      offset += chunk;
+    }
   }
 
   @Override
