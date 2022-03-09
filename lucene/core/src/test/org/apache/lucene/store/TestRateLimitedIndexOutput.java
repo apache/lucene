@@ -16,38 +16,34 @@
  */
 package org.apache.lucene.store;
 
-import org.apache.lucene.tests.util.LuceneTestCase;
-
 import java.io.IOException;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestRateLimitedIndexOutput extends LuceneTestCase {
 
   public void testWriteBytesChunking() throws Exception {
 
-    IndexOutput delegate = new IndexOutput("mock delegate for tests", "test-index-output") {
-      @Override
-      public void close() throws IOException {
-      }
+    IndexOutput delegate =
+        new IndexOutput("mock delegate for tests", "test-index-output") {
+          @Override
+          public void close() throws IOException {}
 
-      @Override
-      public long getFilePointer() {
-        return 0;
-      }
+          @Override
+          public long getFilePointer() {
+            return 0;
+          }
 
-      @Override
-      public long getChecksum() throws IOException {
-        return 0;
-      }
+          @Override
+          public long getChecksum() throws IOException {
+            return 0;
+          }
 
-      @Override
-      public void writeByte(byte b) throws IOException {
-      }
+          @Override
+          public void writeByte(byte b) throws IOException {}
 
-      @Override
-      public void writeBytes(byte[] b, int offset, int length) throws IOException {
-
-      }
-    };
+          @Override
+          public void writeBytes(byte[] b, int offset, int length) throws IOException {}
+        };
 
     final int minPauseCheckBytes = 10;
     final int chunk = minPauseCheckBytes + 1;
