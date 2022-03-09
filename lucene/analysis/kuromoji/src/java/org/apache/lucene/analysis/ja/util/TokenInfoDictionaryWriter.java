@@ -17,17 +17,23 @@
 package org.apache.lucene.analysis.ja.util;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Objects;
+
+import org.apache.lucene.analysis.ja.dict.Constants;
 import org.apache.lucene.analysis.ja.dict.TokenInfoDictionary;
+import org.apache.lucene.analysis.ja.dict.TokenInfoMorphAttributes;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.fst.FST;
 
-class TokenInfoDictionaryWriter extends BinaryDictionaryWriter {
+class TokenInfoDictionaryWriter extends org.apache.lucene.analysis.morph.BinaryDictionaryWriter<TokenInfoDictionary> {
   private FST<Long> fst;
 
   TokenInfoDictionaryWriter(int size) {
-    super(TokenInfoDictionary.class, size);
+    super(TokenInfoDictionary.class, new TokenInfoDictionaryEntryWriter(size));
   }
 
   public void setFST(FST<Long> fst) {
@@ -35,9 +41,13 @@ class TokenInfoDictionaryWriter extends BinaryDictionaryWriter {
     this.fst = fst;
   }
 
-  @Override
+  protected void addMapping(int sourceId, int wordId) {
+    super.addMapping(sourceId, wordId);
+  }
+
+  //@Override
   public void write(Path baseDir) throws IOException {
-    super.write(baseDir);
+    super.write(baseDir, Constants.TARGETMAP_HEADER, Constants.POSDICT_HEADER, Constants.DICT_HEADER, Constants.VERSION);
     writeFST(baseDir.resolve(getBaseFileName() + TokenInfoDictionary.FST_FILENAME_SUFFIX));
   }
 
