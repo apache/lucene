@@ -20,9 +20,11 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 
 import java.io.IOException;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -476,6 +478,50 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
       assertEquals(1, weight.count(context));
+    }
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  public void testCountWithMissingValue() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
+    boolean enableMissingValue = random().nextBoolean();
+    // if enableMissingValue equals true, use PointRangeQuery#count, otherwise use
+    // BoundedDocSetIdIterator#lastDoc、firstDoc
+    if (enableMissingValue) {
+      sortField.setMissingValue(3L);
+    }
+    Sort indexSort = new Sort(sortField);
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+
+    Document doc = new Document();
+    doc.add(new SortedNumericDocValuesField("field", 10));
+    doc.add(new LongPoint("field", 10));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new SortedNumericDocValuesField("field", 3));
+    doc.add(new LongPoint("field", 3));
+    writer.addDocument(doc);
+
+    // missingValue
+    doc = new Document();
+    doc.add(new StringField("foo", "bar", Field.Store.YES));
+    writer.addDocument(doc);
+
+    IndexReader reader = writer.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query fallbackQuery = LongPoint.newRangeQuery("field", 1, 42);
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(2, weight.count(context));
     }
 
     writer.close();
