@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.store;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeRateLimiter;
@@ -25,51 +29,46 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
+public class TestRateLimitedIndexOutput extends LuceneTestCase {
 
-public class TestRateLimitedIndexOutput  extends LuceneTestCase {
+  public void testCheckInstanthighRate() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexOutput in = dir.createOutput("RateLimitedIndexOutputTest", IOContext.DEFAULT)) {
+        final List<SegmentCommitInfo> segments = new LinkedList<SegmentCommitInfo>();
+        SegmentInfo si =
+            new SegmentInfo(
+                dir,
+                Version.LATEST,
+                Version.LATEST,
+                "test",
+                10,
+                false,
+                Codec.getDefault(),
+                Collections.emptyMap(),
+                StringHelper.randomId(),
+                new HashMap<>(),
+                null);
+        segments.add(new SegmentCommitInfo(si, 0, 0, 0, 0, 0, StringHelper.randomId()));
 
-    public void testCheckInstanthighRate ()  throws Exception {
-        try (Directory dir = newDirectory()) {
-            try (IndexOutput in = dir.createOutput("RateLimitedIndexOutputTest", IOContext.DEFAULT)) {
-                final List<SegmentCommitInfo> segments = new LinkedList<SegmentCommitInfo>();
-                SegmentInfo si =
-                        new SegmentInfo(
-                                dir,
-                                Version.LATEST,
-                                Version.LATEST,
-                                "test",
-                                10,
-                                false,
-                                Codec.getDefault(),
-                                Collections.emptyMap(),
-                                StringHelper.randomId(),
-                                new HashMap<>(),
-                                null);
-                segments.add(new SegmentCommitInfo(si, 0, 0, 0, 0, 0, StringHelper.randomId()));
+        MergePolicy.OneMerge oneMerge = new MergePolicy.OneMerge(segments);
+        oneMerge.mergeInit();
 
-                MergePolicy.OneMerge oneMerge = new MergePolicy.OneMerge(segments);
-                oneMerge.mergeInit();
+        MergeRateLimiter rateLimiter = new MergeRateLimiter(oneMerge.getMergeProgress());
+        rateLimiter.setMBPerSec(0.0001);
+        RateLimitedIndexOutput rateLimitedIndexOutput = new RateLimitedIndexOutput(rateLimiter, in);
+        byte[] bytes = new byte[] {1, 2, 3};
+        assertTrue(bytes.length > rateLimiter.getMinPauseCheckBytes());
+        rateLimitedIndexOutput.writeBytes(bytes, 0, bytes.length);
+        Thread.sleep(100);
 
-                MergeRateLimiter rateLimiter = new MergeRateLimiter(oneMerge.getMergeProgress());
-                rateLimiter.setMBPerSec(0.0001);
-                RateLimitedIndexOutput rateLimitedIndexOutput = new RateLimitedIndexOutput(rateLimiter, in);
-                byte[] bytes = new byte[]{1,2,3};
-                assertTrue(bytes.length > rateLimiter.getMinPauseCheckBytes());
-                rateLimitedIndexOutput.writeBytes(bytes, 0, bytes.length);
-                Thread.sleep(100);
-
-                bytes = new byte[]{1,2,3,4};
-                assertTrue(bytes.length > rateLimiter.getMinPauseCheckBytes());
-                long start = System.nanoTime();
-                rateLimitedIndexOutput.writeBytes(bytes, 0, bytes.length);
-                long end = System.nanoTime() - start;
-                double pauseTimes = bytes.length/1024./1024./rateLimiter.getMBPerSec()*1000000000;
-                assertTrue(end > pauseTimes);
-            }
-        }
+        bytes = new byte[] {1, 2, 3, 4};
+        assertTrue(bytes.length > rateLimiter.getMinPauseCheckBytes());
+        long start = System.nanoTime();
+        rateLimitedIndexOutput.writeBytes(bytes, 0, bytes.length);
+        long end = System.nanoTime() - start;
+        double pauseTimes = bytes.length / 1024. / 1024. / rateLimiter.getMBPerSec() * 1000000000;
+        assertTrue(end > pauseTimes);
+      }
     }
+  }
 }

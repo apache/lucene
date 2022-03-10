@@ -91,7 +91,7 @@ public class MergeRateLimiter extends RateLimiter {
     while ((delta = maybePause(bytes, System.nanoTime(), itera, lastedTime)) >= 0) {
       // Keep waiting.
       paused += delta;
-      itera ++;
+      itera++;
     }
 
     return paused;
@@ -112,7 +112,8 @@ public class MergeRateLimiter extends RateLimiter {
    * applied. If the thread needs pausing, this method delegates to the linked {@link
    * OneMergeProgress}.
    */
-  private long maybePause(long bytes, long curNS, int itera, long lastedTime) throws MergePolicy.MergeAbortedException {
+  private long maybePause(long bytes, long curNS, int itera, long lastedTime)
+      throws MergePolicy.MergeAbortedException {
     // Now is a good time to abort the merge:
     if (mergeProgress.isAborted()) {
       throw new MergePolicy.MergeAbortedException("Merge aborted.");
