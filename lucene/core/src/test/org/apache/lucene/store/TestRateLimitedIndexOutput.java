@@ -22,38 +22,61 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestRateLimitedIndexOutput extends LuceneTestCase {
 
   public void testWriteBytesChunking() throws Exception {
-
-    IndexOutput delegate =
-        new IndexOutput("mock delegate for tests", "test-index-output") {
-          @Override
-          public void close() throws IOException {}
-
-          @Override
-          public long getFilePointer() {
-            return 0;
-          }
-
-          @Override
-          public long getChecksum() throws IOException {
-            return 0;
-          }
-
-          @Override
-          public void writeByte(byte b) throws IOException {}
-
-          @Override
-          public void writeBytes(byte[] b, int offset, int length) throws IOException {}
-        };
-
+    MockIndexOutputDelegate delegate = new MockIndexOutputDelegate();
     final int minPauseCheckBytes = 10;
     final int chunk = minPauseCheckBytes + 1;
     MockRateLimiter rateLimiter = new MockRateLimiter(minPauseCheckBytes);
     RateLimitedIndexOutput output = new RateLimitedIndexOutput(rateLimiter, delegate);
 
+    final int startOffset = 4;
     final int length = 90;
     byte[] buf = new byte[length];
-    output.writeBytes(buf, 0, length);
+    output.writeBytes(buf, startOffset, length);
     assertEquals(length / chunk, rateLimiter.pauseCallCount);
+    assertEquals(length, delegate.bytesWritten);
+    assertEquals(startOffset + length, delegate.endOffset);
+  }
+
+  public void testNegativeChunkSize() {
+    IndexOutput delegate = new MockIndexOutputDelegate();
+    final int minPauseCheckBytes = -1;
+    MockRateLimiter rateLimiter = new MockRateLimiter(minPauseCheckBytes);
+    RateLimitedIndexOutput output = new RateLimitedIndexOutput(rateLimiter, delegate);
+    final int length = 90;
+    byte[] buf = new byte[length];
+    assertThrows(AssertionError.class, () -> output.writeBytes(buf, 0, length));
+  }
+
+  public static class MockIndexOutputDelegate extends IndexOutput {
+
+    public int bytesWritten = 0;
+    public int endOffset = 0;
+
+    public MockIndexOutputDelegate() {
+      super("mock delegate for tests", "test-index-output");
+    }
+
+    @Override
+    public void close() throws IOException {}
+
+    @Override
+    public long getFilePointer() {
+      return 0;
+    }
+
+    @Override
+    public long getChecksum() throws IOException {
+      return 0;
+    }
+
+    @Override
+    public void writeByte(byte b) throws IOException {}
+
+    @Override
+    public void writeBytes(byte[] b, int offset, int length) throws IOException {
+      bytesWritten += length;
+      endOffset = offset + length;
+    }
   }
 
   public static class MockRateLimiter extends RateLimiter {
