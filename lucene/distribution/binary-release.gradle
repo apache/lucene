@@ -56,7 +56,9 @@ configure(project(":lucene:distribution")) {
     // The third-party JARs consist of all the transitive dependencies from these modules.
     // Not sure whether we have to include all the thirdparty JARs from across all the modules.
     for (Project module : [
-        project(":lucene:luke")
+        project(":lucene:expressions"),
+        project(":lucene:facet"),
+        project(":lucene:luke"),
     ]) {
       jarsThirdParty(module, {
         transitive = true
