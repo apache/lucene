@@ -3172,9 +3172,9 @@ public class IndexWriter
 
       if (mergesComplete) {
         List<SegmentCommitInfo> infos = new ArrayList<>();
-        long totalMaxDoc = 0;
+        long totalDocs = 0;
         for (MergePolicy.OneMerge merge: spec.merges) {
-          totalMaxDoc += merge.totalMaxDoc;
+          totalDocs += merge.totalMaxDoc;
           if (merge.getMergeInfo() != null) {
             infos.add(merge.getMergeInfo());
           }
@@ -3187,7 +3187,7 @@ public class IndexWriter
             try {
               ensureOpen();
               // Reserve the docs, just before we update SIS:
-              reserveDocs(totalMaxDoc);
+              reserveDocs(totalDocs);
               success = true;
             } finally {
               if (success == false) {

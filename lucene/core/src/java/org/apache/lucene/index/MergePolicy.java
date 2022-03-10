@@ -248,7 +248,7 @@ public abstract class MergePolicy {
       codecReaders.forEach(r -> readers.add(readerFactory.apply(r)));
       mergeReaders = List.copyOf(readers);
       segments = List.of();
-      totalMaxDoc = codecReaders.stream().mapToInt(IndexReader::maxDoc).sum();
+      totalMaxDoc = codecReaders.stream().mapToInt(IndexReader::numDocs).sum();
       mergeProgress = new OneMergeProgress();
       usesPooledReaders = false;
     }
