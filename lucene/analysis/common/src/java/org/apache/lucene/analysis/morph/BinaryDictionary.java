@@ -1,11 +1,5 @@
 package org.apache.lucene.analysis.morph;
 
-import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.InputStreamDataInput;
-import org.apache.lucene.util.IOSupplier;
-import org.apache.lucene.util.IntsRef;
-
 import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -13,6 +7,11 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.IntsRef;
 
 public abstract class BinaryDictionary<T extends MorphAttributes> implements Dictionary<T> {
   public static final String DICT_FILENAME_SUFFIX = "$buffer.dat";
@@ -23,12 +22,12 @@ public abstract class BinaryDictionary<T extends MorphAttributes> implements Dic
   protected final ByteBuffer buffer;
 
   protected BinaryDictionary(
-    IOSupplier<InputStream> targetMapResource,
-    IOSupplier<InputStream> dictResource,
-    String targetMapCodecHeader,
-    String dictCodecHeader,
-    int dictCodecVersion
-  ) throws IOException {
+      IOSupplier<InputStream> targetMapResource,
+      IOSupplier<InputStream> dictResource,
+      String targetMapCodecHeader,
+      String dictCodecHeader,
+      int dictCodecVersion)
+      throws IOException {
     try (InputStream mapIS = new BufferedInputStream(targetMapResource.get())) {
       final DataInput in = new InputStreamDataInput(mapIS);
       CodecUtil.checkHeader(in, targetMapCodecHeader, dictCodecVersion, dictCodecVersion);
@@ -50,11 +49,10 @@ public abstract class BinaryDictionary<T extends MorphAttributes> implements Dic
       }
       this.buffer = tmpBuffer.asReadOnlyBuffer();
     }
-
   }
 
   private static void populateTargetMap(DataInput in, int[] targetMap, int[] targetMapOffsets)
-    throws IOException {
+      throws IOException {
     int accum = 0, sourceId = 0;
     for (int ofs = 0; ofs < targetMap.length; ofs++) {
       final int val = in.readVInt();
@@ -67,12 +65,12 @@ public abstract class BinaryDictionary<T extends MorphAttributes> implements Dic
     }
     if (sourceId + 1 != targetMapOffsets.length)
       throw new IOException(
-        "targetMap file format broken; targetMap.length="
-          + targetMap.length
-          + ", targetMapOffsets.length="
-          + targetMapOffsets.length
-          + ", sourceId="
-          + sourceId);
+          "targetMap file format broken; targetMap.length="
+              + targetMap.length
+              + ", targetMapOffsets.length="
+              + targetMapOffsets.length
+              + ", sourceId="
+              + sourceId);
     targetMapOffsets[sourceId] = targetMap.length;
   }
 

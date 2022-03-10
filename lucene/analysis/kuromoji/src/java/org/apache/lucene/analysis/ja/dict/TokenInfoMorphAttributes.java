@@ -16,15 +16,14 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.InputStreamDataInput;
-import org.apache.lucene.util.IOSupplier;
-
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.util.IOSupplier;
 
 public class TokenInfoMorphAttributes implements JaMorphAttributes {
 
@@ -33,7 +32,8 @@ public class TokenInfoMorphAttributes implements JaMorphAttributes {
   private final String[] inflTypeDict;
   private final String[] inflFormDict;
 
-  TokenInfoMorphAttributes(ByteBuffer buffer, IOSupplier<InputStream> posResource) throws IOException {
+  TokenInfoMorphAttributes(ByteBuffer buffer, IOSupplier<InputStream> posResource)
+      throws IOException {
     this.buffer = buffer;
     try (InputStream posIS = new BufferedInputStream(posResource.get())) {
       final DataInput in = new InputStreamDataInput(posIS);
@@ -47,8 +47,8 @@ public class TokenInfoMorphAttributes implements JaMorphAttributes {
   }
 
   private static void populatePosDict(
-    DataInput in, int posSize, String[] posDict, String[] inflTypeDict, String[] inflFormDict)
-    throws IOException {
+      DataInput in, int posSize, String[] posDict, String[] inflTypeDict, String[] inflFormDict)
+      throws IOException {
     for (int j = 0; j < posSize; j++) {
       posDict[j] = in.readString();
       inflTypeDict[j] = in.readString();
@@ -79,9 +79,9 @@ public class TokenInfoMorphAttributes implements JaMorphAttributes {
   }
 
   @Override
-  public String getBaseForm(int wordId, char[] surfaceForm, int off, int len) {
-    if (hasBaseFormData(wordId)) {
-      int offset = baseFormOffset(wordId);
+  public String getBaseForm(int morphId, char[] surfaceForm, int off, int len) {
+    if (hasBaseFormData(morphId)) {
+      int offset = baseFormOffset(morphId);
       int data = buffer.get(offset++) & 0xff;
       int prefix = data >>> 4;
       int suffix = data & 0xF;
@@ -97,9 +97,9 @@ public class TokenInfoMorphAttributes implements JaMorphAttributes {
   }
 
   @Override
-  public String getReading(int wordId, char[] surface, int off, int len) {
-    if (hasReadingData(wordId)) {
-      int offset = readingOffset(wordId);
+  public String getReading(int morphId, char[] surface, int off, int len) {
+    if (hasReadingData(morphId)) {
+      int offset = readingOffset(morphId);
       int readingData = buffer.get(offset++) & 0xff;
       return readString(offset, readingData >>> 1, (readingData & 1) == 1);
     } else {
@@ -118,24 +118,24 @@ public class TokenInfoMorphAttributes implements JaMorphAttributes {
   }
 
   @Override
-  public String getPartOfSpeech(int wordId) {
-    return posDict[getLeftId(wordId)];
+  public String getPartOfSpeech(int morphId) {
+    return posDict[getLeftId(morphId)];
   }
 
   @Override
-  public String getPronunciation(int wordId, char[] surface, int off, int len) {
-    if (hasPronunciationData(wordId)) {
-      int offset = pronunciationOffset(wordId);
+  public String getPronunciation(int morphId, char[] surface, int off, int len) {
+    if (hasPronunciationData(morphId)) {
+      int offset = pronunciationOffset(morphId);
       int pronunciationData = buffer.get(offset++) & 0xff;
       return readString(offset, pronunciationData >>> 1, (pronunciationData & 1) == 1);
     } else {
-      return getReading(wordId, surface, off, len); // same as the reading
+      return getReading(morphId, surface, off, len); // same as the reading
     }
   }
 
   @Override
-  public String getInflectionType(int wordId) {
-    return inflTypeDict[getLeftId(wordId)];
+  public String getInflectionType(int morphId) {
+    return inflTypeDict[getLeftId(morphId)];
   }
 
   @Override
@@ -207,5 +207,4 @@ public class TokenInfoMorphAttributes implements JaMorphAttributes {
   public static final int HAS_READING = 2;
   /** flag that the entry has pronunciation data. otherwise pronunciation is the reading */
   public static final int HAS_PRONUNCIATION = 4;
-
 }

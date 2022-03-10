@@ -147,11 +147,12 @@ public final class UserDictionary implements Dictionary<UserMorphAttributes> {
       ord++;
     }
     this.fst = new TokenInfoFST(fstCompiler.compile(), false);
-    //this.data = data.toArray(new String[data.size()]);
+    // this.data = data.toArray(new String[data.size()]);
     this.morphAtts = new UserMorphAttributes(data.toArray(new String[0]));
     this.segmentations = segmentations.toArray(new int[segmentations.size()][]);
   }
 
+  @Override
   public UserMorphAttributes getMorphAttributes() {
     return morphAtts;
   }

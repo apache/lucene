@@ -22,42 +22,42 @@ public interface JaMorphAttributes extends MorphAttributes {
   /**
    * Get Part-Of-Speech of tokens
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return Part-Of-Speech of the token
    */
-  String getPartOfSpeech(int wordId);
+  String getPartOfSpeech(int morphId);
 
   /**
    * Get reading of tokens
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return Reading of the token
    */
-  String getReading(int wordId, char[] surface, int off, int len);
+  String getReading(int morphId, char[] surface, int off, int len);
 
   /**
    * Get base form of word
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return Base form (only different for inflected words, otherwise null)
    */
-  String getBaseForm(int wordId, char[] surface, int off, int len);
+  String getBaseForm(int morphId, char[] surface, int off, int len);
 
   /**
    * Get pronunciation of tokens
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return Pronunciation of the token
    */
-  String getPronunciation(int wordId, char[] surface, int off, int len);
+  String getPronunciation(int morphId, char[] surface, int off, int len);
 
   /**
    * Get inflection type of tokens
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return inflection type, or null
    */
-  String getInflectionType(int wordId);
+  String getInflectionType(int morphId);
 
   /**
    * Get inflection form of tokens

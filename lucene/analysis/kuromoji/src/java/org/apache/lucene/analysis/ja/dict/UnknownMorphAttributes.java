@@ -16,24 +16,24 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import org.apache.lucene.util.IOSupplier;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import org.apache.lucene.util.IOSupplier;
 
 public class UnknownMorphAttributes extends TokenInfoMorphAttributes {
-  UnknownMorphAttributes(ByteBuffer buffer, IOSupplier<InputStream> posResource) throws IOException {
+  UnknownMorphAttributes(ByteBuffer buffer, IOSupplier<InputStream> posResource)
+      throws IOException {
     super(buffer, posResource);
   }
 
   @Override
-  public String getReading(int wordId, char[] surface, int off, int len) {
+  public String getReading(int morphId, char[] surface, int off, int len) {
     return null;
   }
 
   @Override
-  public String getInflectionType(int wordId) {
+  public String getInflectionType(int morphId) {
     return null;
   }
 

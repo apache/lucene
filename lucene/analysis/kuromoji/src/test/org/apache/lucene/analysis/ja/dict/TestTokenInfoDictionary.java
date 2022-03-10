@@ -167,7 +167,8 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
         // check that it's actually an ipadic pos tag
         assertNotNull(ToStringUtil.getPOSTranslation(pos));
 
-        String pronunciation = tid.getMorphAttributes().getPronunciation(wordId, chars, 0, chars.length);
+        String pronunciation =
+            tid.getMorphAttributes().getPronunciation(wordId, chars, 0, chars.length);
         assertNotNull(pronunciation);
         assertTrue(UnicodeUtil.validUTF16String(pronunciation));
 

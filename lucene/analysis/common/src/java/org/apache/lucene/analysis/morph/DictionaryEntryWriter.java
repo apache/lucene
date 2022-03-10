@@ -1,7 +1,5 @@
 package org.apache.lucene.analysis.morph;
 
-import org.apache.lucene.store.DataOutput;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -9,6 +7,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.store.DataOutput;
 
 public abstract class DictionaryEntryWriter {
 
@@ -36,5 +35,4 @@ public abstract class DictionaryEntryWriter {
   public int currentPosition() {
     return buffer.position();
   }
-
 }

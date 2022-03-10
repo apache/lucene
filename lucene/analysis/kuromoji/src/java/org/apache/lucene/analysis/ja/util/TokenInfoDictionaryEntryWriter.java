@@ -1,13 +1,12 @@
 package org.apache.lucene.analysis.ja.util;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.lucene.analysis.ja.dict.TokenInfoMorphAttributes;
 import org.apache.lucene.analysis.morph.DictionaryEntryWriter;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
   private static final int ID_LIMIT = 8192;
@@ -62,7 +61,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     int worstCase = 4 + 3 + 2 * (baseForm.length() + reading.length() + pronunciation.length());
     if (worstCase > left) {
       ByteBuffer newBuffer =
-        ByteBuffer.allocateDirect(ArrayUtil.oversize(buffer.limit() + worstCase - left, 1));
+          ByteBuffer.allocateDirect(ArrayUtil.oversize(buffer.limit() + worstCase - left, 1));
       buffer.flip();
       newBuffer.put(buffer);
       buffer = newBuffer;
@@ -182,6 +181,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     return len;
   }
 
+  @Override
   protected void writePosDict(OutputStream bos, DataOutput out) throws IOException {
     out.writeVInt(posDict.size());
     for (String s : posDict) {
@@ -193,7 +193,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
         String[] data = CSVUtil.parse(s);
         if (data.length != 3) {
           throw new IllegalArgumentException(
-            "Malformed pos/inflection: " + s + "; expected 3 characters");
+              "Malformed pos/inflection: " + s + "; expected 3 characters");
         }
         out.writeString(data[0]);
         out.writeString(data[1]);
@@ -201,5 +201,4 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       }
     }
   }
-
 }

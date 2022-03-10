@@ -54,12 +54,15 @@ public class TestUserDictionary extends LuceneTestCase {
     int[][] result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
     assertEquals(3, result.length);
     int wordIdNihon = result[0][0]; // wordId of 日本 in 日本経済新聞
-    assertEquals("ニホン", dictionary.getMorphAttributes().getReading(wordIdNihon, "日本".toCharArray(), 0, 2));
+    assertEquals(
+        "ニホン", dictionary.getMorphAttributes().getReading(wordIdNihon, "日本".toCharArray(), 0, 2));
 
     result = dictionary.lookup("朝青龍".toCharArray(), 0, 3);
     assertEquals(1, result.length);
     int wordIdAsashoryu = result[0][0]; // wordId for 朝青龍
-    assertEquals("アサショウリュウ", dictionary.getMorphAttributes().getReading(wordIdAsashoryu, "朝青龍".toCharArray(), 0, 3));
+    assertEquals(
+        "アサショウリュウ",
+        dictionary.getMorphAttributes().getReading(wordIdAsashoryu, "朝青龍".toCharArray(), 0, 3));
   }
 
   @Test

@@ -16,12 +16,12 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import org.apache.lucene.analysis.ja.util.CSVUtil;
-
 import static org.apache.lucene.analysis.ja.dict.UserDictionary.CUSTOM_DICTIONARY_WORD_ID_OFFSET;
 import static org.apache.lucene.analysis.ja.dict.UserDictionary.INTERNAL_SEPARATOR;
 
-public class UserMorphAttributes implements JaMorphAttributes  {
+import org.apache.lucene.analysis.ja.util.CSVUtil;
+
+public class UserMorphAttributes implements JaMorphAttributes {
   public static final int WORD_COST = -100000;
   public static final int LEFT_ID = 5;
   public static final int RIGHT_ID = 5;
@@ -48,26 +48,32 @@ public class UserMorphAttributes implements JaMorphAttributes  {
     return WORD_COST;
   }
 
-  public String getReading(int wordId, char[] surface, int off, int len) {
-    return getFeature(wordId, 0);
+  @Override
+  public String getReading(int morphId, char[] surface, int off, int len) {
+    return getFeature(morphId, 0);
   }
 
-  public String getPartOfSpeech(int wordId) {
-    return getFeature(wordId, 1);
+  @Override
+  public String getPartOfSpeech(int morphId) {
+    return getFeature(morphId, 1);
   }
 
-  public String getBaseForm(int wordId, char[] surface, int off, int len) {
+  @Override
+  public String getBaseForm(int morphId, char[] surface, int off, int len) {
     return null; // TODO: add support?
   }
 
-  public String getPronunciation(int wordId, char[] surface, int off, int len) {
+  @Override
+  public String getPronunciation(int morphId, char[] surface, int off, int len) {
     return null; // TODO: add support?
   }
 
-  public String getInflectionType(int wordId) {
+  @Override
+  public String getInflectionType(int morphId) {
     return null; // TODO: add support?
   }
 
+  @Override
   public String getInflectionForm(int wordId) {
     return null; // TODO: add support?
   }
@@ -100,5 +106,4 @@ public class UserMorphAttributes implements JaMorphAttributes  {
     }
     return sb.deleteCharAt(sb.length() - 1).toString();
   }
-
 }

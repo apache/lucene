@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 import org.apache.lucene.analysis.morph.BinaryDictionary;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
@@ -54,10 +53,16 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphAttrib
   }
 
   private UnknownDictionary(
-    IOSupplier<InputStream> targetMapResource,
-    IOSupplier<InputStream> posResource,
-    IOSupplier<InputStream> dictResource) throws IOException {
-    super(targetMapResource, dictResource, Constants.TARGETMAP_HEADER, Constants.DICT_HEADER, Constants.VERSION);
+      IOSupplier<InputStream> targetMapResource,
+      IOSupplier<InputStream> posResource,
+      IOSupplier<InputStream> dictResource)
+      throws IOException {
+    super(
+        targetMapResource,
+        dictResource,
+        Constants.TARGETMAP_HEADER,
+        Constants.DICT_HEADER,
+        Constants.VERSION);
     this.morphAtts = new UnknownMorphAttributes(buffer, posResource);
   }
 

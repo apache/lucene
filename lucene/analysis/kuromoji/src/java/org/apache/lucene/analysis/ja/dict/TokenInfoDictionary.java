@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 import org.apache.lucene.analysis.morph.BinaryDictionary;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -73,7 +72,12 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphAt
       IOSupplier<InputStream> dictResource,
       IOSupplier<InputStream> fstResource)
       throws IOException {
-    super(targetMapResource, dictResource, Constants.TARGETMAP_HEADER, Constants.DICT_HEADER, Constants.VERSION);
+    super(
+        targetMapResource,
+        dictResource,
+        Constants.TARGETMAP_HEADER,
+        Constants.DICT_HEADER,
+        Constants.VERSION);
     this.morphAtts = new TokenInfoMorphAttributes(buffer, posResource);
 
     FST<Long> fst;

@@ -117,7 +117,8 @@ public final class JapaneseTokenizer extends Tokenizer {
   private static final int MAX_UNKNOWN_WORD_LENGTH = 1024;
   private static final int MAX_BACKTRACE_GAP = 1024;
 
-  private final EnumMap<Type, Dictionary<? extends JaMorphAttributes>> dictionaryMap = new EnumMap<>(Type.class);
+  private final EnumMap<Type, Dictionary<? extends JaMorphAttributes>> dictionaryMap =
+      new EnumMap<>(Type.class);
 
   private final TokenInfoFST fst;
   private final TokenInfoDictionary dictionary;
@@ -495,7 +496,12 @@ public final class JapaneseTokenizer extends Tokenizer {
   }
 
   private void add(
-      JaMorphAttributes morphAtts, Position fromPosData, int endPos, int wordID, Type type, boolean addPenalty)
+      JaMorphAttributes morphAtts,
+      Position fromPosData,
+      int endPos,
+      int wordID,
+      Type type,
+      boolean addPenalty)
       throws IOException {
     final int wordCost = morphAtts.getWordCost(wordID);
     final int leftID = morphAtts.getLeftId(wordID);
@@ -2045,7 +2051,9 @@ public final class JapaneseTokenizer extends Tokenizer {
           backCount += unigramTokenCount;
 
         } else if (!discardPunctuation || length == 0 || !isPunctuation(fragment[offset])) {
-          pending.add(new Token(backID, fragment, offset, length, backType, backPos, dict.getMorphAttributes()));
+          pending.add(
+              new Token(
+                  backID, fragment, offset, length, backType, backPos, dict.getMorphAttributes()));
           if (VERBOSE) {
             System.out.println("    add token=" + pending.get(pending.size() - 1));
           }
