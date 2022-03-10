@@ -20,14 +20,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.apache.lucene.analysis.ko.dict.Constants;
 import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
+import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
 import org.apache.lucene.util.fst.FST;
 
-class TokenInfoDictionaryWriter extends BinaryDictionaryWriter {
+class TokenInfoDictionaryWriter extends BinaryDictionaryWriter<TokenInfoDictionary> {
   private FST<Long> fst;
 
   TokenInfoDictionaryWriter(int size) {
-    super(TokenInfoDictionary.class, size);
+    super(TokenInfoDictionary.class, new TokenInfoDictionaryEntryWriter(size));
   }
 
   public void setFST(FST<Long> fst) {
@@ -36,8 +38,17 @@ class TokenInfoDictionaryWriter extends BinaryDictionaryWriter {
   }
 
   @Override
+  protected void addMapping(int sourceId, int wordId) {
+    super.addMapping(sourceId, wordId);
+  }
+
   public void write(Path baseDir) throws IOException {
-    super.write(baseDir);
+    super.write(
+        baseDir,
+        Constants.TARGETMAP_HEADER,
+        Constants.POSDICT_HEADER,
+        Constants.DICT_HEADER,
+        Constants.VERSION);
     writeFST(baseDir.resolve(getBaseFileName() + TokenInfoDictionary.FST_FILENAME_SUFFIX));
   }
 

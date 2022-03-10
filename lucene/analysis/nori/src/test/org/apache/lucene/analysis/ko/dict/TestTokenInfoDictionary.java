@@ -16,10 +16,10 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
-import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.DICT_FILENAME_SUFFIX;
-import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
-import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
 import static org.apache.lucene.analysis.ko.dict.TokenInfoDictionary.FST_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.DICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
 
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -141,13 +141,13 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
 
         tid.getWordCost(wordId);
 
-        POS.Type type = tid.getPOSType(wordId);
-        POS.Tag leftPOS = tid.getLeftPOS(wordId);
-        POS.Tag rightPOS = tid.getRightPOS(wordId);
+        POS.Type type = tid.getMorphAttributes().getPOSType(wordId);
+        POS.Tag leftPOS = tid.getMorphAttributes().getLeftPOS(wordId);
+        POS.Tag rightPOS = tid.getMorphAttributes().getRightPOS(wordId);
 
         if (type == POS.Type.MORPHEME) {
           assertSame(leftPOS, rightPOS);
-          String reading = tid.getReading(wordId);
+          String reading = tid.getMorphAttributes().getReading(wordId);
           boolean isHanja = charDef.isHanja(surfaceForm.charAt(0));
           if (isHanja) {
             assertNotNull(reading);
@@ -163,10 +163,11 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
             assertSame(leftPOS, rightPOS);
             assertTrue(leftPOS == POS.Tag.NNG || rightPOS == POS.Tag.NNP);
           }
-          Dictionary.Morpheme[] decompound = tid.getMorphemes(wordId, chars, 0, chars.length);
+          KoMorphAttributes.Morpheme[] decompound =
+              tid.getMorphAttributes().getMorphemes(wordId, chars, 0, chars.length);
           if (decompound != null) {
             int offset = 0;
-            for (Dictionary.Morpheme morph : decompound) {
+            for (KoMorphAttributes.Morpheme morph : decompound) {
               assertTrue(UnicodeUtil.validUTF16String(morph.surfaceForm));
               assertFalse(morph.surfaceForm.isEmpty());
               assertEquals(morph.surfaceForm.trim(), morph.surfaceForm);

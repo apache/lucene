@@ -16,51 +16,46 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
-import org.apache.lucene.analysis.ko.POS.Tag;
-import org.apache.lucene.analysis.ko.POS.Type;
+import org.apache.lucene.analysis.ko.POS;
+import org.apache.lucene.analysis.morph.MorphAttributes;
 
-/** Dictionary interface for retrieving morphological data by id. */
-public interface Dictionary {
+public interface KoMorphAttributes extends MorphAttributes {
   /** A morpheme extracted from a compound token. */
   class Morpheme {
-    public final Tag posTag;
+    public final POS.Tag posTag;
     public final String surfaceForm;
 
-    public Morpheme(Tag posTag, String surfaceForm) {
+    public Morpheme(POS.Tag posTag, String surfaceForm) {
       this.posTag = posTag;
       this.surfaceForm = surfaceForm;
     }
   }
 
-  /** Get left id of specified word */
-  int getLeftId(int wordId);
-
-  /** Get right id of specified word */
-  int getRightId(int wordId);
-
-  /** Get word cost of specified word */
-  int getWordCost(int wordId);
-
-  /** Get the {@link Type} of specified word (morpheme, compound, inflect or pre-analysis) */
-  Type getPOSType(int wordId);
+  /**
+   * Get the {@link org.apache.lucene.analysis.ko.POS.Type} of specified word (morpheme, compound,
+   * inflect or pre-analysis)
+   */
+  POS.Type getPOSType(int morphId);
 
   /**
-   * Get the left {@link Tag} of specfied word.
+   * Get the left {@link org.apache.lucene.analysis.ko.POS.Tag} of specfied word.
    *
-   * <p>For {@link Type#MORPHEME} and {@link Type#COMPOUND} the left and right POS are the same.
+   * <p>For {@link org.apache.lucene.analysis.ko.POS.Type#MORPHEME} and {@link
+   * org.apache.lucene.analysis.ko.POS.Type#COMPOUND} the left and right POS are the same.
    */
-  Tag getLeftPOS(int wordId);
+  POS.Tag getLeftPOS(int morphId);
 
   /**
-   * Get the right {@link Tag} of specfied word.
+   * Get the right {@link org.apache.lucene.analysis.ko.POS.Tag} of specfied word.
    *
-   * <p>For {@link Type#MORPHEME} and {@link Type#COMPOUND} the left and right POS are the same.
+   * <p>For {@link org.apache.lucene.analysis.ko.POS.Type#MORPHEME} and {@link
+   * org.apache.lucene.analysis.ko.POS.Type#COMPOUND} the left and right POS are the same.
    */
-  Tag getRightPOS(int wordId);
+  POS.Tag getRightPOS(int morphId);
 
   /** Get the reading of specified word (mainly used for Hanja to Hangul conversion). */
-  String getReading(int wordId);
+  String getReading(int morphId);
 
   /** Get the morphemes of specified word (e.g. 가깝으나: 가깝 + 으나). */
-  Morpheme[] getMorphemes(int wordId, char[] surfaceForm, int off, int len);
+  Morpheme[] getMorphemes(int morphId, char[] surfaceForm, int off, int len);
 }
