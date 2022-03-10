@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import org.apache.lucene.util.IOSupplier;
 
+/** Morphological information for unk dictionary. */
 public class UnknownMorphAttributes extends TokenInfoMorphAttributes {
   UnknownMorphAttributes(ByteBuffer buffer, IOSupplier<InputStream> posResource)
       throws IOException {

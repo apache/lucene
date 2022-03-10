@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.ko.dict;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.analysis.morph.MorphAttributes;
 
+/** Represents Korean morphological information. */
 public interface KoMorphAttributes extends MorphAttributes {
   /** A morpheme extracted from a compound token. */
   class Morpheme {

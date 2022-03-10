@@ -16,9 +16,14 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+/** Dictionary constants */
 public final class Constants {
+  /** Codec header of the dictionary file. */
   public static final String DICT_HEADER = "kuromoji_dict";
+  /** Codec header of the dictionary mapping file. */
   public static final String TARGETMAP_HEADER = "kuromoji_dict_map";
+  /** Codec header of the POS dictionary file. */
   public static final String POSDICT_HEADER = "kuromoji_dict_pos";
+  /** Codec version of the binary dictionary */
   public static final int VERSION = 1;
 }

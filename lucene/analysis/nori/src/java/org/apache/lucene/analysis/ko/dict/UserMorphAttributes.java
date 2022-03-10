@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.ko.dict;
 
 import org.apache.lucene.analysis.ko.POS;
 
+/** Morphological information for user dictionary. */
 public class UserMorphAttributes implements KoMorphAttributes {
   private static final int WORD_COST = -100000;
 

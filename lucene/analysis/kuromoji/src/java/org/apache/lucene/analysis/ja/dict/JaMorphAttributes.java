@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.ja.dict;
 
 import org.apache.lucene.analysis.morph.MorphAttributes;
 
+/** Represents Japanese morphological information. */
 public interface JaMorphAttributes extends MorphAttributes {
   /**
    * Get Part-Of-Speech of tokens

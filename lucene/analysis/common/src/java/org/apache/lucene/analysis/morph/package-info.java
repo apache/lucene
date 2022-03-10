@@ -14,16 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.dict;
 
-/** Dictionary constants */
-public final class Constants {
-  /** Codec header of the dictionary file. */
-  public static final String DICT_HEADER = "ko_dict";
-  /** Codec header of the dictionary mapping file. */
-  public static final String TARGETMAP_HEADER = "ko_dict_map";
-  /** Codec header of the POS dictionary file. */
-  public static final String POSDICT_HEADER = "ko_dict_pos";
-  /** Codec version of the binary dictionary */
-  public static final int VERSION = 1;
-}
+/** Abstract classes for morphological analyzers. */
+package org.apache.lucene.analysis.morph;

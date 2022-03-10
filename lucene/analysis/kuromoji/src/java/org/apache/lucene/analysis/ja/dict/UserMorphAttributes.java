@@ -21,6 +21,7 @@ import static org.apache.lucene.analysis.ja.dict.UserDictionary.INTERNAL_SEPARAT
 
 import org.apache.lucene.analysis.ja.util.CSVUtil;
 
+/** Morphological information for user dictionary. */
 public class UserMorphAttributes implements JaMorphAttributes {
   public static final int WORD_COST = -100000;
   public static final int LEFT_ID = 5;

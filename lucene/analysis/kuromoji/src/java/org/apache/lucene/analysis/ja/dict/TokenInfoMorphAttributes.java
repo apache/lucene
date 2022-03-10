@@ -25,6 +25,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
 
+/** Morphological information for system dictionary. */
 public class TokenInfoMorphAttributes implements JaMorphAttributes {
 
   private final ByteBuffer buffer;
