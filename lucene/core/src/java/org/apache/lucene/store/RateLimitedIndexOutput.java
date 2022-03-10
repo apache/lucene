@@ -70,7 +70,8 @@ public final class RateLimitedIndexOutput extends IndexOutput {
   public void writeBytes(byte[] b, int offset, int length) throws IOException {
     while (length > 0) {
       int chunk = (int) Math.min(currentMinPauseCheckBytes + 1, length);
-      assert chunk > 0 && chunk <= length : "currentMinPauseCheckBytes " + currentMinPauseCheckBytes + " < 0";
+      assert chunk > 0 && chunk <= length
+          : "currentMinPauseCheckBytes " + currentMinPauseCheckBytes + " < 0";
       bytesSinceLastPause += chunk;
       checkRate();
       delegate.writeBytes(b, offset, chunk);
