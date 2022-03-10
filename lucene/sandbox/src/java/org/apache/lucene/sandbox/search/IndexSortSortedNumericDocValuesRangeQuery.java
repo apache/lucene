@@ -203,7 +203,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
             && indexSort.getSort().length > 0
             && indexSort.getSort()[0].getField().equals(field)
             && indexSort.getSort()[0].getMissingValue() == null) {
-          BoundedDocSetIdIterator disi = getDocIdSetIteratorOrNull(context);
+          BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
           if (disi != null) {
             return disi.lastDoc - disi.firstDoc;
           }
@@ -213,7 +213,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     };
   }
 
-  private BoundedDocSetIdIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
+  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
       throws IOException {
     SortedNumericDocValues sortedNumericValues =
         DocValues.getSortedNumeric(context.reader(), field);
@@ -243,7 +243,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * {@link DocIdSetIterator} makes sure to wrap the original docvalues to skip over documents with
    * no value.
    */
-  private BoundedDocSetIdIterator getDocIdSetIterator(
+  private BoundedDocIdSetIterator getDocIdSetIterator(
       SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
@@ -284,7 +284,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     int lastDocIdExclusive = high + 1;
-    return new BoundedDocSetIdIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
+    return new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
   }
 
   /** Compares the given document's value with a stored reference value. */
@@ -312,14 +312,14 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * A doc ID set iterator that wraps a delegate iterator and only returns doc IDs in the range
    * [firstDocInclusive, lastDoc).
    */
-  private static class BoundedDocSetIdIterator extends DocIdSetIterator {
+  private static class BoundedDocIdSetIterator extends DocIdSetIterator {
     private final int firstDoc;
     private final int lastDoc;
     private final DocIdSetIterator delegate;
 
     private int docID = -1;
 
-    BoundedDocSetIdIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
+    BoundedDocIdSetIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
       this.firstDoc = firstDoc;
       this.lastDoc = lastDoc;
       this.delegate = delegate;

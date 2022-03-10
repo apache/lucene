@@ -491,7 +491,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
     boolean enableMissingValue = random().nextBoolean();
     // if enableMissingValue equals true, use PointRangeQuery#count, otherwise use
-    // BoundedDocSetIdIterator#lastDoc、firstDoc
+    // BoundedDocIdSetIterator#lastDoc、firstDoc
     if (enableMissingValue) {
       sortField.setMissingValue(3L);
     }
