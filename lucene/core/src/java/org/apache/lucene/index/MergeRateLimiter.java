@@ -39,8 +39,6 @@ public class MergeRateLimiter extends RateLimiter {
   private volatile double mbPerSec;
   private volatile long minPauseCheckBytes;
 
-  private long lastNS;
-
   private AtomicLong totalBytesWritten = new AtomicLong();
 
   private final OneMergeProgress mergeProgress;
@@ -82,16 +80,18 @@ public class MergeRateLimiter extends RateLimiter {
   }
 
   @Override
-  public long pause(long bytes) throws MergePolicy.MergeAbortedException {
+  public long pause(long bytes, long lastedTime) throws MergePolicy.MergeAbortedException {
     totalBytesWritten.addAndGet(bytes);
 
     // While loop because we may wake up and check again when our rate limit
     // is changed while we were pausing:
     long paused = 0;
+    int itera = 0;
     long delta;
-    while ((delta = maybePause(bytes, System.nanoTime())) >= 0) {
+    while ((delta = maybePause(bytes, System.nanoTime(), itera, lastedTime)) >= 0) {
       // Keep waiting.
       paused += delta;
+      itera ++;
     }
 
     return paused;
@@ -112,7 +112,7 @@ public class MergeRateLimiter extends RateLimiter {
    * applied. If the thread needs pausing, this method delegates to the linked {@link
    * OneMergeProgress}.
    */
-  private long maybePause(long bytes, long curNS) throws MergePolicy.MergeAbortedException {
+  private long maybePause(long bytes, long curNS, int itera, long lastedTime) throws MergePolicy.MergeAbortedException {
     // Now is a good time to abort the merge:
     if (mergeProgress.isAborted()) {
       throw new MergePolicy.MergeAbortedException("Merge aborted.");
@@ -124,16 +124,21 @@ public class MergeRateLimiter extends RateLimiter {
     // Time we should sleep until; this is purely instantaneous
     // rate (just adds seconds onto the last time we had paused to);
     // maybe we should also offer decayed recent history one?
-    long targetNS = lastNS + (long) (1000000000 * secondsToPause);
-
+    long targetNS = lastedTime + (long) (1000000000 * secondsToPause);
     long curPauseNS = targetNS - curNS;
 
     // We don't bother with thread pausing if the pause is smaller than 2 msec.
     if (curPauseNS <= MIN_PAUSE_NS) {
-      // Set to curNS, not targetNS, to enforce the instant rate, not
-      // the "averaged over all history" rate:
-      lastNS = curNS;
-      return -1;
+      if (itera == 0) {
+        curPauseNS = (long) (1000000000 * secondsToPause) - lastedTime;
+        if (curPauseNS <= MIN_PAUSE_NS) {
+          return -1;
+        }
+      } else {
+        // Set to curNS, not targetNS, to enforce the instant rate, not
+        // the "averaged over all history" rate:
+        return -1;
+      }
     }
 
     // Defensive: don't sleep for too long; the loop above will call us again if

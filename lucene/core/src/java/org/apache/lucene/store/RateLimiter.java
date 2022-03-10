@@ -43,7 +43,7 @@ public abstract class RateLimiter {
    *
    * @return the pause time in nano seconds
    */
-  public abstract long pause(long bytes) throws IOException;
+  public abstract long pause(long bytes, long lastedTime) throws IOException;
 
   /**
    * How many bytes caller should add up itself before invoking {@link #pause}. NOTE: The value
@@ -94,7 +94,7 @@ public abstract class RateLimiter {
      * @return the pause time in nano seconds
      */
     @Override
-    public long pause(long bytes) {
+    public long pause(long bytes, long lastedTime) {
 
       long startNS = System.nanoTime();
 

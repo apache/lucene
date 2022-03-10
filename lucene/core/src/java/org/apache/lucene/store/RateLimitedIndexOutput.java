@@ -32,10 +32,13 @@ public final class RateLimitedIndexOutput extends IndexOutput {
   private long bytesSinceLastPause;
 
   /**
-   * Cached here not not always have to call RateLimiter#getMinPauseCheckBytes() which does volatile
+   * Cached here do not always have to call RateLimiter#getMinPauseCheckBytes() which does volatile
    * read.
    */
   private long currentMinPauseCheckBytes;
+
+  /** when to start write since we last called rateLimiter.pause. */
+  private long writeStartingTime;
 
   public RateLimitedIndexOutput(final RateLimiter rateLimiter, final IndexOutput delegate) {
     super("RateLimitedIndexOutput(" + delegate + ")", delegate.getName());
@@ -61,42 +64,57 @@ public final class RateLimitedIndexOutput extends IndexOutput {
 
   @Override
   public void writeByte(byte b) throws IOException {
+    if (bytesSinceLastPause == 0) {
+      writeStartingTime = System.nanoTime();
+    }
     bytesSinceLastPause++;
-    checkRate();
     delegate.writeByte(b);
+    checkRate();
   }
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) throws IOException {
+    if (bytesSinceLastPause == 0) {
+      writeStartingTime = System.nanoTime();
+    }
     bytesSinceLastPause += length;
-    checkRate();
     delegate.writeBytes(b, offset, length);
+    checkRate();
   }
 
   @Override
   public void writeInt(int i) throws IOException {
+    if (bytesSinceLastPause == 0) {
+      writeStartingTime = System.nanoTime();
+    }
     bytesSinceLastPause += Integer.BYTES;
-    checkRate();
     delegate.writeInt(i);
+    checkRate();
   }
 
   @Override
   public void writeShort(short i) throws IOException {
+    if (bytesSinceLastPause == 0) {
+      writeStartingTime = System.nanoTime();
+    }
     bytesSinceLastPause += Short.BYTES;
-    checkRate();
     delegate.writeShort(i);
+    checkRate();
   }
 
   @Override
   public void writeLong(long i) throws IOException {
+    if (bytesSinceLastPause == 0) {
+      writeStartingTime = System.nanoTime();
+    }
     bytesSinceLastPause += Long.BYTES;
-    checkRate();
     delegate.writeLong(i);
+    checkRate();
   }
 
   private void checkRate() throws IOException {
     if (bytesSinceLastPause > currentMinPauseCheckBytes) {
-      rateLimiter.pause(bytesSinceLastPause);
+      rateLimiter.pause(bytesSinceLastPause, System.nanoTime() - writeStartingTime);
       bytesSinceLastPause = 0;
       currentMinPauseCheckBytes = rateLimiter.getMinPauseCheckBytes();
     }

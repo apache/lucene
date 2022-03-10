@@ -36,7 +36,7 @@ public final class TestRateLimiter extends LuceneTestCase {
                 ThreadInterruptedException.class,
                 () -> {
                   new SimpleRateLimiter(1)
-                      .pause((long) (1.5 * Integer.MAX_VALUE * 1024 * 1024 / 1000));
+                      .pause((long) (1.5 * Integer.MAX_VALUE * 1024 * 1024 / 1000), 0);
                 });
           }
         };
@@ -70,7 +70,7 @@ public final class TestRateLimiter extends LuceneTestCase {
                 totBytes.addAndGet(numBytes);
                 bytesSinceLastPause += numBytes;
                 if (bytesSinceLastPause > limiter.getMinPauseCheckBytes()) {
-                  limiter.pause(bytesSinceLastPause);
+                  limiter.pause(bytesSinceLastPause, 0);
                   bytesSinceLastPause = 0;
                 }
               }
