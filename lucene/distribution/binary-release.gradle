@@ -53,10 +53,12 @@ configure(project(":lucene:distribution")) {
       transitive = false
     })
 
-    // The third-party JARs consist of all the transitive dependencies from these modules.
-    // Not sure whether we have to include all the thirdparty JARs from across all the modules.
+    // The third-party JARs consist of all the transitive dependencies from a subset of
+    // all Lucene modules. We only include the demos and Luke. Everything else has to be downloaded
+    // manually or via maven POMs.
     for (Project module : [
-        project(":lucene:luke")
+        project(":lucene:luke"),
+        project(":lucene:demo")
     ]) {
       jarsThirdParty(module, {
         transitive = true
