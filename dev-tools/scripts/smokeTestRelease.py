@@ -574,10 +574,10 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
   #       raise RuntimeError('lucene: file "%s" is missing from artifact %s' % (fileName, artifact))
   #     in_root_folder.remove(fileName)
 
-  expected_folders = ['analysis', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core',
-                      'demo', 'expressions', 'facet', 'grouping', 'highlighter', 'join',
+  expected_folders = ['analysis', 'analysis.tests', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core', 'core.tests'
+                      'distribution.tests', 'demo', 'expressions', 'facet', 'grouping', 'highlighter', 'join',
                       'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
-                      'sandbox', 'spatial-extras', 'spatial3d', 'suggest', 'test-framework', 'licenses']
+                      'sandbox', 'spatial-extras', 'spatial-test-fixtures', 'spatial3d', 'suggest', 'test-framework', 'licenses']
   if isSrc:
     expected_src_root_files = ['build.gradle', 'buildSrc', 'dev-docs', 'dev-tools', 'gradle', 'gradlew',
                                'gradlew.bat', 'help', 'lucene', 'settings.gradle', 'versions.lock', 'versions.props']
@@ -588,7 +588,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     if len(in_lucene_folder) > 0:
       raise RuntimeError('lucene: unexpected files/dirs in artifact %s lucene/ folder: %s' % (artifact, in_lucene_folder))
   else:
-    is_in_list(in_root_folder, ['bin', 'docs', 'licenses', 'modules', 'modules-thirdparty'])
+    is_in_list(in_root_folder, ['bin', 'docs', 'licenses', 'modules', 'modules-thirdparty', 'modules-test-framework'])
 
   if len(in_root_folder) > 0:
     raise RuntimeError('lucene: unexpected files/dirs in artifact %s: %s' % (artifact, in_root_folder))
