@@ -657,8 +657,8 @@ def testDemo(run_java, isSrc, version, jdk):
     indexFilesCmd = 'java -cp "%s" -Dsmoketester=true org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
     searchFilesCmd = 'java -cp "%s" org.apache.lucene.demo.SearchFiles -index index -query lucene' % cp
   else:
-    # For binary release, set up classpath as modules.
-    cp = "--module-path modules"
+    # For binary release, set up module path.
+    cp = "--module-path %s" % (sep.join("modules", "modules-thirdparty"))
     docsDir = 'docs'
     checkIndexCmd = 'java -ea %s --module org.apache.lucene.core/org.apache.lucene.index.CheckIndex index' % cp
     indexFilesCmd = 'java -Dsmoketester=true %s --module org.apache.lucene.demo/org.apache.lucene.demo.IndexFiles -index index -docs %s' % (cp, docsDir)
