@@ -128,7 +128,7 @@ public class MergeRateLimiter extends RateLimiter {
 
     // We don't bother with thread pausing if the pause is smaller than 2 msec.
     if (curPauseNS <= MIN_PAUSE_NS) {
-        return -1;
+      return -1;
     }
 
     // Defensive: don't sleep for too long; the loop above will call us again if
