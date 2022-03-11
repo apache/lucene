@@ -86,12 +86,10 @@ public class MergeRateLimiter extends RateLimiter {
     // While loop because we may wake up and check again when our rate limit
     // is changed while we were pausing:
     long paused = 0;
-    int itera = 0;
     long delta;
-    while ((delta = maybePause(bytes, System.nanoTime(), itera, lastedTime)) >= 0) {
+    while ((delta = maybePause(bytes, System.nanoTime(), lastedTime)) >= 0) {
       // Keep waiting.
       paused += delta;
-      itera++;
     }
 
     return paused;
@@ -112,7 +110,7 @@ public class MergeRateLimiter extends RateLimiter {
    * applied. If the thread needs pausing, this method delegates to the linked {@link
    * OneMergeProgress}.
    */
-  private long maybePause(long bytes, long curNS, int itera, long lastedTime)
+  private long maybePause(long bytes, long curNS, long lastedTime)
       throws MergePolicy.MergeAbortedException {
     // Now is a good time to abort the merge:
     if (mergeProgress.isAborted()) {
@@ -130,16 +128,7 @@ public class MergeRateLimiter extends RateLimiter {
 
     // We don't bother with thread pausing if the pause is smaller than 2 msec.
     if (curPauseNS <= MIN_PAUSE_NS) {
-      if (itera == 0) {
-        curPauseNS = (long) (1000000000 * secondsToPause) - lastedTime;
-        if (curPauseNS <= MIN_PAUSE_NS) {
-          return -1;
-        }
-      } else {
-        // Set to curNS, not targetNS, to enforce the instant rate, not
-        // the "averaged over all history" rate:
         return -1;
-      }
     }
 
     // Defensive: don't sleep for too long; the loop above will call us again if
