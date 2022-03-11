@@ -278,6 +278,10 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     int lastDocIdExclusive = high + 1;
+    if (sortField.getMissingValue() == null && firstDocIdInclusive < lastDocIdExclusive) {
+      DocIdSetIterator disi = DocIdSetIterator.range(firstDocIdInclusive, lastDocIdExclusive);
+      return new BoundedDocSetIdIterator(firstDocIdInclusive, lastDocIdExclusive, disi);
+    }
     return new BoundedDocSetIdIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
   }
 
