@@ -91,14 +91,8 @@ public abstract class BinaryDictionaryWriter<
       int dictCodecVersion)
       throws IOException {
     final String baseName = getBaseFileName();
-    writeDictionary(
-        baseDir.resolve(baseName + BinaryDictionary.DICT_FILENAME_SUFFIX),
-        dictCodecHeader,
-        dictCodecVersion);
-    writePosDict(
-        baseDir.resolve(baseName + BinaryDictionary.POSDICT_FILENAME_SUFFIX),
-        posDictCodecHeader,
-        dictCodecVersion);
+    entryWriter.writeDictionary(baseDir.resolve(baseName + BinaryDictionary.DICT_FILENAME_SUFFIX), dictCodecHeader, dictCodecVersion);
+    entryWriter.writePosDict(baseDir.resolve(baseName + BinaryDictionary.POSDICT_FILENAME_SUFFIX), posDictCodecHeader, dictCodecVersion);
     writeTargetMap(
         baseDir.resolve(baseName + BinaryDictionary.TARGETMAP_FILENAME_SUFFIX),
         targetMapCodecHeader,
@@ -137,28 +131,6 @@ public abstract class BinaryDictionaryWriter<
         throw new IllegalStateException(
             "sourceId:" + sourceId + " != numSourceIds:" + numSourceIds);
       }
-    }
-  }
-
-  private void writePosDict(Path path, String posDictCodecHeader, int dictCodecVersion)
-      throws IOException {
-    Files.createDirectories(path.getParent());
-    try (OutputStream os = Files.newOutputStream(path);
-        OutputStream bos = new BufferedOutputStream(os)) {
-      final DataOutput out = new OutputStreamDataOutput(bos);
-      CodecUtil.writeHeader(out, posDictCodecHeader, dictCodecVersion);
-      entryWriter.writePosDict(bos, out);
-    }
-  }
-
-  private void writeDictionary(Path path, String dictCodecHeader, int dictCodecVersion)
-      throws IOException {
-    Files.createDirectories(path.getParent());
-    try (OutputStream os = Files.newOutputStream(path);
-        OutputStream bos = new BufferedOutputStream(os)) {
-      final DataOutput out = new OutputStreamDataOutput(bos);
-      CodecUtil.writeHeader(out, dictCodecHeader, dictCodecVersion);
-      entryWriter.writeDictionary(bos, out);
     }
   }
 }
