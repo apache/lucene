@@ -608,10 +608,15 @@ public abstract class MergePolicy {
       throws IOException;
 
   /**
-   * Define {@link OneMerge} operations for a list of codec readers. This call is used to
-   * define merges for input readers in {@link IndexWriter#addIndexes(CodecReader...)}.
-   * Default implementation adds all readers to a single merge. This can be overridden in custom
-   * merge policies.
+   * Define the set of merge operations to perform on provided codec readers
+   * in {@link IndexWriter#addIndexes(CodecReader...)}.
+   *
+   * The merge operation is required to convert provided readers into segments that can be added
+   * to the writer. This API can be overridden in custom merge policies to control the
+   * concurrency for addIndexes. Default implementation creates a single merge operation for
+   * all provided readers (lowest concurrency).
+   * Creating a merge for each reader, would provide the highest level of concurrency possible
+   * with the configured merge scheduler.
    *
    * @param readers set of readers to merge into the main index
    */

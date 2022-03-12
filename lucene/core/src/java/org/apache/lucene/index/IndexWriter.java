@@ -3159,12 +3159,15 @@ public class IndexWriter
         try {
           spec.merges.forEach(addIndexesMergeSource::registerMerge);
           mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
-          mergesComplete = spec.await();
+          spec.await();
+          mergesComplete = spec.merges.stream().allMatch(m -> m.hasCompletedSuccessfully().orElse(false));
         } finally {
           if (mergesComplete == false) {
             // nocommit -- ensure all intermediate files are deleted
             for (MergePolicy.OneMerge merge: spec.merges) {
-              deleteNewFiles(merge.getMergeInfo().files());
+              if (merge.getMergeInfo() != null) {
+                deleteNewFiles(merge.getMergeInfo().files());
+              }
             }
           }
         }
@@ -3204,7 +3207,7 @@ public class IndexWriter
         }
       } else {
         // We should normally not reach here, as an earlier call should throw an exception.
-        throw new MergePolicy.MergeException("Could not complete merges within configured timeout of [" + mergeTimeoutInSeconds + "] seconds");
+        throw new MergePolicy.MergeException("Merges did not complete successfully. addIndexes() failed to add provided readers");
       }
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "addIndexes(CodecReader...)");
@@ -3386,8 +3389,6 @@ public class IndexWriter
     // Return without registering the segment files with IndexWriter.
     // We do this together for all merges triggered by an addIndexes API,
     // to retain transactionality.
-
-    // nocommit -- tests failing
   }
 
   /** Copies the segment files as-is into the IndexWriter's directory. */

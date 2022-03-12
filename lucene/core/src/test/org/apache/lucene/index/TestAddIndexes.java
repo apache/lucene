@@ -683,6 +683,89 @@ public class TestAddIndexes extends LuceneTestCase {
     writer.addDocument(doc);
   }
 
+  private class ConcurrentAddIndexesMergePolicy extends TieredMergePolicy {
+    @Override
+    public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+      // create a oneMerge for each reader to let them get concurrently processed by addIndexes()
+      MergeSpecification mergeSpec = new MergeSpecification();
+      for (CodecReader reader: readers) {
+        mergeSpec.add(new OneMerge(List.of(reader), leaf -> new MergeReader(leaf, leaf.getLiveDocs())));
+      }
+      if (VERBOSE) {
+        System.out.printf("[%s] merges found in mergeSpec\n", mergeSpec.merges.size());
+      }
+      return mergeSpec;
+    }
+  }
+
+  private class PartialMergeScheduler extends MergeScheduler {
+
+    int mergesToDo;
+    int mergesTriggered = 0;
+
+    public PartialMergeScheduler(int mergesToDo) {
+      this.mergesToDo = mergesToDo;
+      if (VERBOSE) {
+        System.out.printf("PartialMergeScheduler configured to mark all merges as failed, after triggering [%s] merges.\n", mergesToDo);
+      }
+    }
+
+    @Override
+    public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
+      while (true) {
+        MergePolicy.OneMerge merge = mergeSource.getNextMerge();
+        if (merge == null) {
+          break;
+        }
+        if (mergesTriggered >= mergesToDo) {
+          merge.close(false, false, mr -> {});
+          mergeSource.onMergeFinished(merge);
+        } else {
+          mergeSource.merge(merge);
+          mergesTriggered++;
+        }
+      }
+    }
+
+    @Override
+    public void close() throws IOException {}
+  }
+
+  public void testAddIndexesWithPartialMergeFailures() throws Exception {
+    Directory dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
+    IndexWriter writer =
+      new IndexWriter(
+        dir, new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(2));
+    final int ADDED_DOCS_PER_READER = 15;
+    for (int i = 0; i < ADDED_DOCS_PER_READER; i++) addDoc(writer);
+    writer.close();
+
+    Directory destDir = newDirectory();
+    MergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+    MergeScheduler ms = new PartialMergeScheduler(2);
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setMergePolicy(mp);
+    iwc.setMergeScheduler(ms);
+    IndexWriter destWriter = new IndexWriter(destDir, iwc);
+    final int INIT_DOCS = 25;
+    for (int i = 0; i < INIT_DOCS; i++) addDoc(destWriter);
+    destWriter.commit();
+
+    final int NUM_READERS = 10;
+    final DirectoryReader[] readers = new DirectoryReader[NUM_READERS];
+    for (int i = 0; i < NUM_READERS; i++) readers[i] = DirectoryReader.open(dir);
+
+    assertThrows(MergePolicy.MergeException.class, () -> TestUtil.addIndexesSlowly(destWriter, readers));
+    try (IndexReader reader = DirectoryReader.open(destDir)){
+      assertEquals(INIT_DOCS, reader.numDocs());
+    }
+
+    destWriter.close();
+    for (int i = 0; i < NUM_READERS; i++) readers[i].close();
+    destDir.close();
+    dir.close();
+  }
+
   private abstract class RunAddIndexesThreads {
 
     Directory dir, dir2;
@@ -704,7 +787,10 @@ public class TestAddIndexes extends LuceneTestCase {
       writer.close();
 
       dir2 = newDirectory();
-      writer2 = new IndexWriter(dir2, new IndexWriterConfig(new MockAnalyzer(random())));
+      MergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setMergePolicy(mp);
+      writer2 = new IndexWriter(dir2, iwc);
       writer2.commit();
 
       readers = new DirectoryReader[NUM_COPY];
