@@ -16,17 +16,17 @@
  */
 package org.apache.lucene.analysis.ko;
 
-import org.apache.lucene.analysis.ko.dict.KoMorphAttributes;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
 
-/** A token stored in a {@link KoMorphAttributes}. */
+/** A token stored in a {@link KoMorphData}. */
 public class DictionaryToken extends Token {
   private final int wordId;
   private final KoreanTokenizer.Type type;
-  private final KoMorphAttributes morphAtts;
+  private final KoMorphData morphAtts;
 
   public DictionaryToken(
       KoreanTokenizer.Type type,
-      KoMorphAttributes morphAtts,
+      KoMorphData morphAtts,
       int wordId,
       char[] surfaceForm,
       int offset,
@@ -115,7 +115,7 @@ public class DictionaryToken extends Token {
   }
 
   @Override
-  public KoMorphAttributes.Morpheme[] getMorphemes() {
+  public KoMorphData.Morpheme[] getMorphemes() {
     return morphAtts.getMorphemes(wordId, getSurfaceForm(), getOffset(), getLength());
   }
 }

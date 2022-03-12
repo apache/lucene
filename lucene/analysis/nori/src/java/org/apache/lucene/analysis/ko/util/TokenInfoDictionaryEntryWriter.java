@@ -23,8 +23,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.analysis.ko.POS;
-import org.apache.lucene.analysis.ko.dict.KoMorphAttributes;
-import org.apache.lucene.analysis.ko.dict.TokenInfoMorphAttributes;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
+import org.apache.lucene.analysis.ko.dict.TokenInfoMorphData;
 import org.apache.lucene.analysis.morph.DictionaryEntryWriter;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -101,7 +101,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     assert existing == null || existing.equals(fullPOSData);
     posDict.set(leftId, fullPOSData);
 
-    final List<KoMorphAttributes.Morpheme> morphemes = new ArrayList<>();
+    final List<KoMorphData.Morpheme> morphemes = new ArrayList<>();
     // true if the POS and decompounds of the token are all the same.
     boolean hasSinglePOS = (leftPOS == rightPOS);
     if (posType != POS.Type.MORPHEME && expression.length() > 0) {
@@ -112,7 +112,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
         String surfaceForm = tokenSplit[0].trim();
         if (surfaceForm.isEmpty() == false) {
           POS.Tag exprTag = POS.resolveTag(tokenSplit[1]);
-          morphemes.add(new KoMorphAttributes.Morpheme(exprTag, tokenSplit[0]));
+          morphemes.add(new KoMorphData.Morpheme(exprTag, tokenSplit[0]));
           if (leftPOS != exprTag) {
             hasSinglePOS = false;
           }
@@ -122,10 +122,10 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
 
     int flags = 0;
     if (hasSinglePOS) {
-      flags |= TokenInfoMorphAttributes.HAS_SINGLE_POS;
+      flags |= TokenInfoMorphData.HAS_SINGLE_POS;
     }
     if (posType == POS.Type.MORPHEME && reading.length() > 0) {
-      flags |= TokenInfoMorphAttributes.HAS_READING;
+      flags |= TokenInfoMorphData.HAS_READING;
     }
 
     if (leftId >= ID_LIMIT) {
@@ -149,7 +149,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       }
       buffer.put((byte) morphemes.size());
       int compoundOffset = 0;
-      for (KoMorphAttributes.Morpheme morpheme : morphemes) {
+      for (KoMorphData.Morpheme morpheme : morphemes) {
         if (hasSinglePOS == false) {
           buffer.put((byte) morpheme.posTag.ordinal());
         }

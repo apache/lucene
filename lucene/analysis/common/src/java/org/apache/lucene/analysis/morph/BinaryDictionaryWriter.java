@@ -28,7 +28,7 @@ import org.apache.lucene.util.ArrayUtil;
 
 /** Abstract base dictionary writer class. */
 public abstract class BinaryDictionaryWriter<
-    T extends BinaryDictionary<? extends MorphAttributes>> {
+    T extends BinaryDictionary<? extends MorphData>> {
   private final Class<T> implClazz;
   private int targetMapEndOffset = 0, lastWordId = -1, lastSourceId = -1;
   private int[] targetMap = new int[8192];

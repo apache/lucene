@@ -27,13 +27,12 @@ import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
 
 /** Morphological information for system dictionary. */
-public class TokenInfoMorphAttributes implements KoMorphAttributes {
+public class TokenInfoMorphData implements KoMorphData {
 
   private final ByteBuffer buffer;
   private final POS.Tag[] posDict;
 
-  TokenInfoMorphAttributes(ByteBuffer buffer, IOSupplier<InputStream> posResource)
-      throws IOException {
+  TokenInfoMorphData(ByteBuffer buffer, IOSupplier<InputStream> posResource) throws IOException {
     this.buffer = buffer;
     try (InputStream posIS = new BufferedInputStream(posResource.get())) {
       DataInput in = new InputStreamDataInput(posIS);

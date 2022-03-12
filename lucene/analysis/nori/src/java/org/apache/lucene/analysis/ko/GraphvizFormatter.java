@@ -21,7 +21,7 @@ import java.util.Map;
 import org.apache.lucene.analysis.ko.KoreanTokenizer.Position;
 import org.apache.lucene.analysis.ko.KoreanTokenizer.WrappedPositionArray;
 import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ko.dict.KoMorphAttributes;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.analysis.morph.Dictionary;
 
 // TODO: would be nice to show 2nd best path in a diff't
@@ -141,7 +141,7 @@ public class GraphvizFormatter {
           attrs = "";
         }
 
-        final Dictionary<? extends KoMorphAttributes> dict = tok.getDict(posData.backType[idx]);
+        final Dictionary<? extends KoMorphData> dict = tok.getDict(posData.backType[idx]);
         final int wordCost = dict.getWordCost(posData.backID[idx]);
         final int bgCost =
             costs.get(

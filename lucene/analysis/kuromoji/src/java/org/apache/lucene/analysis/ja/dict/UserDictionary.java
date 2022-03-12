@@ -33,7 +33,7 @@ import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
 
 /** Class for building a User Dictionary. This class allows for custom segmentation of phrases. */
-public final class UserDictionary implements Dictionary<UserMorphAttributes> {
+public final class UserDictionary implements Dictionary<UserMorphData> {
 
   public static final String INTERNAL_SEPARATOR = "\u0000";
 
@@ -44,7 +44,7 @@ public final class UserDictionary implements Dictionary<UserMorphAttributes> {
   private final int[][] segmentations;
 
   // holds readings and POS, indexed by wordid
-  private final UserMorphAttributes morphAtts;
+  private final UserMorphData morphAtts;
 
   static final int CUSTOM_DICTIONARY_WORD_ID_OFFSET = 100000000;
 
@@ -147,12 +147,12 @@ public final class UserDictionary implements Dictionary<UserMorphAttributes> {
       ord++;
     }
     this.fst = new TokenInfoFST(fstCompiler.compile(), false);
-    this.morphAtts = new UserMorphAttributes(data.toArray(new String[0]));
+    this.morphAtts = new UserMorphData(data.toArray(new String[0]));
     this.segmentations = segmentations.toArray(new int[segmentations.size()][]);
   }
 
   @Override
-  public UserMorphAttributes getMorphAttributes() {
+  public UserMorphData getMorphAttributes() {
     return morphAtts;
   }
 

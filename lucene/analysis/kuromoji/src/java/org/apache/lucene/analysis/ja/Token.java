@@ -17,11 +17,11 @@
 package org.apache.lucene.analysis.ja;
 
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Type;
-import org.apache.lucene.analysis.ja.dict.JaMorphAttributes;
+import org.apache.lucene.analysis.ja.dict.JaMorphData;
 
 /** Analyzed token with morphological data from its dictionary. */
 public class Token {
-  private final JaMorphAttributes morphAtts;
+  private final JaMorphData morphAtts;
 
   private final int wordId;
 
@@ -41,7 +41,7 @@ public class Token {
       int length,
       Type type,
       int position,
-      JaMorphAttributes morphAtts) {
+      JaMorphData morphAtts) {
     this.wordId = wordId;
     this.surfaceForm = surfaceForm;
     this.offset = offset;

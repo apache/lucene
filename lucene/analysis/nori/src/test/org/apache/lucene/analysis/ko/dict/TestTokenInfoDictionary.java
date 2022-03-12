@@ -163,11 +163,11 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
             assertSame(leftPOS, rightPOS);
             assertTrue(leftPOS == POS.Tag.NNG || rightPOS == POS.Tag.NNP);
           }
-          KoMorphAttributes.Morpheme[] decompound =
+          KoMorphData.Morpheme[] decompound =
               tid.getMorphAttributes().getMorphemes(wordId, chars, 0, chars.length);
           if (decompound != null) {
             int offset = 0;
-            for (KoMorphAttributes.Morpheme morph : decompound) {
+            for (KoMorphData.Morpheme morph : decompound) {
               assertTrue(UnicodeUtil.validUTF16String(morph.surfaceForm));
               assertFalse(morph.surfaceForm.isEmpty());
               assertEquals(morph.surfaceForm.trim(), morph.surfaceForm);

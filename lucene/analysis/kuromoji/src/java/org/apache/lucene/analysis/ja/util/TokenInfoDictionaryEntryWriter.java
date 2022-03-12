@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ja.util;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.lucene.analysis.ja.dict.TokenInfoMorphAttributes;
+import org.apache.lucene.analysis.ja.dict.TokenInfoMorphData;
 import org.apache.lucene.analysis.morph.DictionaryEntryWriter;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -89,13 +89,13 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       throw new IllegalArgumentException("base form is empty");
     }
     if (!("*".equals(baseForm) || baseForm.equals(entry[0]))) {
-      flags |= TokenInfoMorphAttributes.HAS_BASEFORM;
+      flags |= TokenInfoMorphData.HAS_BASEFORM;
     }
     if (!reading.equals(toKatakana(entry[0]))) {
-      flags |= TokenInfoMorphAttributes.HAS_READING;
+      flags |= TokenInfoMorphData.HAS_READING;
     }
     if (!pronunciation.equals(reading)) {
-      flags |= TokenInfoMorphAttributes.HAS_PRONUNCIATION;
+      flags |= TokenInfoMorphData.HAS_PRONUNCIATION;
     }
 
     if (leftId != rightId) {
@@ -120,7 +120,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     buffer.putShort((short) (leftId << 3 | flags));
     buffer.putShort(wordCost);
 
-    if ((flags & TokenInfoMorphAttributes.HAS_BASEFORM) != 0) {
+    if ((flags & TokenInfoMorphData.HAS_BASEFORM) != 0) {
       if (baseForm.length() >= 16) {
         throw new IllegalArgumentException("Length of base form " + baseForm + " is >= 16");
       }
@@ -132,7 +132,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       }
     }
 
-    if ((flags & TokenInfoMorphAttributes.HAS_READING) != 0) {
+    if ((flags & TokenInfoMorphData.HAS_READING) != 0) {
       if (isKatakana(reading)) {
         buffer.put((byte) (reading.length() << 1 | 1));
         writeKatakana(reading, buffer);
@@ -144,7 +144,7 @@ public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       }
     }
 
-    if ((flags & TokenInfoMorphAttributes.HAS_PRONUNCIATION) != 0) {
+    if ((flags & TokenInfoMorphData.HAS_PRONUNCIATION) != 0) {
       // we can save 150KB here, but it makes the reader a little complicated.
       // int shared = sharedPrefix(reading, pronunciation);
       // buffer.put((byte) shared);

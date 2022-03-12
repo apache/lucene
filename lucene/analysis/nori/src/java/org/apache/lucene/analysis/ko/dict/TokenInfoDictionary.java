@@ -33,12 +33,12 @@ import org.apache.lucene.util.fst.PositiveIntOutputs;
  * Binary dictionary implementation for a known-word dictionary model: Words are encoded into an FST
  * mapping to a list of wordIDs.
  */
-public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphAttributes> {
+public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphData> {
 
   public static final String FST_FILENAME_SUFFIX = "$fst.dat";
 
   private final TokenInfoFST fst;
-  private final TokenInfoMorphAttributes morphAtts;
+  private final TokenInfoMorphData morphAtts;
 
   private TokenInfoDictionary() throws IOException {
     this(
@@ -78,7 +78,7 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphAt
         Constants.TARGETMAP_HEADER,
         Constants.DICT_HEADER,
         Constants.VERSION);
-    this.morphAtts = new TokenInfoMorphAttributes(buffer, posResource);
+    this.morphAtts = new TokenInfoMorphData(buffer, posResource);
     FST<Long> fst;
     try (InputStream is = new BufferedInputStream(fstResource.get())) {
       DataInput in = new InputStreamDataInput(is);
@@ -102,7 +102,7 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphAt
   }
 
   @Override
-  public TokenInfoMorphAttributes getMorphAttributes() {
+  public TokenInfoMorphData getMorphAttributes() {
     return morphAtts;
   }
 

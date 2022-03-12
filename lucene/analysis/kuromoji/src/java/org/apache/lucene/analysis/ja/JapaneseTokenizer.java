@@ -28,7 +28,7 @@ import java.util.List;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ja.dict.JaMorphAttributes;
+import org.apache.lucene.analysis.ja.dict.JaMorphData;
 import org.apache.lucene.analysis.ja.dict.TokenInfoDictionary;
 import org.apache.lucene.analysis.ja.dict.TokenInfoFST;
 import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
@@ -117,7 +117,7 @@ public final class JapaneseTokenizer extends Tokenizer {
   private static final int MAX_UNKNOWN_WORD_LENGTH = 1024;
   private static final int MAX_BACKTRACE_GAP = 1024;
 
-  private final EnumMap<Type, Dictionary<? extends JaMorphAttributes>> dictionaryMap =
+  private final EnumMap<Type, Dictionary<? extends JaMorphData>> dictionaryMap =
       new EnumMap<>(Type.class);
 
   private final TokenInfoFST fst;
@@ -496,7 +496,7 @@ public final class JapaneseTokenizer extends Tokenizer {
   }
 
   private void add(
-      JaMorphAttributes morphAtts,
+      JaMorphData morphAtts,
       Position fromPosData,
       int endPos,
       int wordID,
@@ -1133,7 +1133,7 @@ public final class JapaneseTokenizer extends Tokenizer {
         final int pathCost = posData.costs[bestStartIDX];
         for (int forwardArcIDX = 0; forwardArcIDX < posData.forwardCount; forwardArcIDX++) {
           final Type forwardType = posData.forwardType[forwardArcIDX];
-          final Dictionary<? extends JaMorphAttributes> dict2 = getDict(forwardType);
+          final Dictionary<? extends JaMorphData> dict2 = getDict(forwardType);
           final int wordID = posData.forwardID[forwardArcIDX];
           final int toPos = posData.forwardPos[forwardArcIDX];
           final int newCost =
@@ -1191,7 +1191,7 @@ public final class JapaneseTokenizer extends Tokenizer {
   // yet another lattice data structure
   private static final class Lattice {
     char[] fragment;
-    EnumMap<Type, Dictionary<? extends JaMorphAttributes>> dictionaryMap;
+    EnumMap<Type, Dictionary<? extends JaMorphData>> dictionaryMap;
     boolean useEOS;
 
     int rootCapacity = 0;
@@ -1303,7 +1303,7 @@ public final class JapaneseTokenizer extends Tokenizer {
         nodeLeftID[node] = 0;
         nodeRightID[node] = 0;
       } else {
-        Dictionary<? extends JaMorphAttributes> dic = dictionaryMap.get(dicType);
+        Dictionary<? extends JaMorphData> dic = dictionaryMap.get(dicType);
         nodeWordCost[node] = dic.getWordCost(wordID);
         nodeLeftID[node] = dic.getLeftId(wordID);
         nodeRightID[node] = dic.getRightId(wordID);
@@ -1345,7 +1345,7 @@ public final class JapaneseTokenizer extends Tokenizer {
 
     void setup(
         char[] fragment,
-        EnumMap<Type, Dictionary<? extends JaMorphAttributes>> dictionaryMap,
+        EnumMap<Type, Dictionary<? extends JaMorphData>> dictionaryMap,
         WrappedPositionArray positions,
         int prevOffset,
         int endOffset,
@@ -1987,7 +1987,7 @@ public final class JapaneseTokenizer extends Tokenizer {
         altToken = null;
       }
 
-      final Dictionary<? extends JaMorphAttributes> dict = getDict(backType);
+      final Dictionary<? extends JaMorphData> dict = getDict(backType);
 
       if (backType == Type.USER) {
 
@@ -2082,7 +2082,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     positions.freeBefore(endPos);
   }
 
-  Dictionary<? extends JaMorphAttributes> getDict(Type type) {
+  Dictionary<? extends JaMorphData> getDict(Type type) {
     return dictionaryMap.get(type);
   }
 

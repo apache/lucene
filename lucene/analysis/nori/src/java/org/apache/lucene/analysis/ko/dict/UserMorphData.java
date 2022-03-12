@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ko.dict;
 import org.apache.lucene.analysis.ko.POS;
 
 /** Morphological information for user dictionary. */
-public class UserMorphAttributes implements KoMorphAttributes {
+public class UserMorphData implements KoMorphData {
   private static final int WORD_COST = -100000;
 
   // NNG left
@@ -29,7 +29,7 @@ public class UserMorphAttributes implements KoMorphAttributes {
   private final int[][] segmentations;
   private final short[] rightIds;
 
-  UserMorphAttributes(int[][] segmentations, short[] rightIds) {
+  UserMorphData(int[][] segmentations, short[] rightIds) {
     this.segmentations = segmentations;
     this.rightIds = rightIds;
   }

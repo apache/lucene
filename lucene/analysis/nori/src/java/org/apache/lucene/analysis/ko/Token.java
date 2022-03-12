@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ko;
 
-import org.apache.lucene.analysis.ko.dict.KoMorphAttributes;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
 
 /** Analyzed token with morphological data. */
 public abstract class Token {
@@ -70,11 +70,8 @@ public abstract class Token {
   /** Get the reading of the token. */
   public abstract String getReading();
 
-  /**
-   * Get the {@link org.apache.lucene.analysis.ko.dict.KoMorphAttributes.Morpheme} decomposition of
-   * the token.
-   */
-  public abstract KoMorphAttributes.Morpheme[] getMorphemes();
+  /** Get the {@link KoMorphData.Morpheme} decomposition of the token. */
+  public abstract KoMorphData.Morpheme[] getMorphemes();
 
   /** Get the start offset of the term in the analyzed text. */
   public int getStartOffset() {

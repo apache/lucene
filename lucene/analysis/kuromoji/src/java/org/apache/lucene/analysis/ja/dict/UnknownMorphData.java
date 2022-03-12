@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.dict;
+package org.apache.lucene.analysis.ja.dict;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,19 +22,23 @@ import java.nio.ByteBuffer;
 import org.apache.lucene.util.IOSupplier;
 
 /** Morphological information for unk dictionary. */
-public class UnknownMorphAttributes extends TokenInfoMorphAttributes {
-  UnknownMorphAttributes(ByteBuffer buffer, IOSupplier<InputStream> posResource)
-      throws IOException {
+public class UnknownMorphData extends TokenInfoMorphData {
+  UnknownMorphData(ByteBuffer buffer, IOSupplier<InputStream> posResource) throws IOException {
     super(buffer, posResource);
   }
 
   @Override
-  public String getReading(int wordId) {
+  public String getReading(int morphId, char[] surface, int off, int len) {
     return null;
   }
 
   @Override
-  public Morpheme[] getMorphemes(int wordId, char[] surfaceForm, int off, int len) {
+  public String getInflectionType(int morphId) {
+    return null;
+  }
+
+  @Override
+  public String getInflectionForm(int wordId) {
     return null;
   }
 }

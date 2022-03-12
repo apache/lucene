@@ -22,7 +22,7 @@ import static org.apache.lucene.analysis.ja.dict.UserDictionary.INTERNAL_SEPARAT
 import org.apache.lucene.analysis.ja.util.CSVUtil;
 
 /** Morphological information for user dictionary. */
-public class UserMorphAttributes implements JaMorphAttributes {
+public class UserMorphData implements JaMorphData {
   public static final int WORD_COST = -100000;
   public static final int LEFT_ID = 5;
   public static final int RIGHT_ID = 5;
@@ -30,7 +30,7 @@ public class UserMorphAttributes implements JaMorphAttributes {
   // holds readings and POS, indexed by wordid
   private final String[] data;
 
-  UserMorphAttributes(String[] data) {
+  UserMorphData(String[] data) {
     this.data = data;
   }
 

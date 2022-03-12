@@ -39,7 +39,7 @@ public class TestUserDictionary extends LuceneTestCase {
     assertEquals(2, wordIds.size());
     assertNull(dictionary.getMorphAttributes().getMorphemes(wordIds.get(0), sArray, 0, s.length()));
 
-    KoMorphAttributes.Morpheme[] decompound =
+    KoMorphData.Morpheme[] decompound =
         dictionary.getMorphAttributes().getMorphemes(wordIds.get(1), sArray, 0, s.length());
     assertNotNull(decompound);
     assertEquals(2, decompound.length);

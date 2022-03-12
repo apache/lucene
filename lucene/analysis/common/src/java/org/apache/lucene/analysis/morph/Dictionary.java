@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis.morph;
 
 /** High-level dictionary interface for morphological analyzers. */
-public interface Dictionary<T extends MorphAttributes> {
+public interface Dictionary<T extends MorphData> {
   /**
    * Get left id of specified word
    *

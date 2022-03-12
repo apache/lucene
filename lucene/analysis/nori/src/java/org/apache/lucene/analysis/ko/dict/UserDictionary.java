@@ -32,7 +32,7 @@ import org.apache.lucene.util.fst.PositiveIntOutputs;
  * Class for building a User Dictionary. This class allows for adding custom nouns (세종) or compounds
  * (세종시 세종 시).
  */
-public final class UserDictionary implements Dictionary<UserMorphAttributes> {
+public final class UserDictionary implements Dictionary<UserMorphData> {
   // text -> wordID
   private final TokenInfoFST fst;
 
@@ -43,7 +43,7 @@ public final class UserDictionary implements Dictionary<UserMorphAttributes> {
   // NNG right with hangul and no coda on the last char
   private static final short RIGHT_ID_F = 3534;
 
-  private UserMorphAttributes morphAtts;
+  private UserMorphData morphAtts;
 
   public static UserDictionary open(Reader reader) throws IOException {
 
@@ -135,7 +135,7 @@ public final class UserDictionary implements Dictionary<UserMorphAttributes> {
     for (int i = 0; i < _rightIds.size(); i++) {
       rightIds[i] = _rightIds.get(i);
     }
-    this.morphAtts = new UserMorphAttributes(segmentations, rightIds);
+    this.morphAtts = new UserMorphData(segmentations, rightIds);
   }
 
   public TokenInfoFST getFST() {
@@ -143,7 +143,7 @@ public final class UserDictionary implements Dictionary<UserMorphAttributes> {
   }
 
   @Override
-  public UserMorphAttributes getMorphAttributes() {
+  public UserMorphData getMorphAttributes() {
     return morphAtts;
   }
 

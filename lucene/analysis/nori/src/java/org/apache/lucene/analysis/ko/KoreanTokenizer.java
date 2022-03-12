@@ -26,7 +26,7 @@ import java.util.List;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ko.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ko.dict.KoMorphAttributes;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
 import org.apache.lucene.analysis.ko.dict.TokenInfoFST;
 import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
@@ -98,7 +98,7 @@ public final class KoreanTokenizer extends Tokenizer {
   private static final int MAX_UNKNOWN_WORD_LENGTH = 1024;
   private static final int MAX_BACKTRACE_GAP = 1024;
 
-  private final EnumMap<Type, Dictionary<? extends KoMorphAttributes>> dictionaryMap =
+  private final EnumMap<Type, Dictionary<? extends KoMorphData>> dictionaryMap =
       new EnumMap<>(Type.class);
 
   private final TokenInfoFST fst;
@@ -408,12 +408,7 @@ public final class KoreanTokenizer extends Tokenizer {
   }
 
   private void add(
-      KoMorphAttributes morphAtts,
-      Position fromPosData,
-      int wordPos,
-      int endPos,
-      int wordID,
-      Type type) {
+      KoMorphData morphAtts, Position fromPosData, int wordPos, int endPos, int wordID, Type type) {
     final POS.Tag leftPOS = morphAtts.getLeftPOS(wordID);
     final int wordCost = morphAtts.getWordCost(wordID);
     final int leftID = morphAtts.getLeftId(wordID);
@@ -1030,7 +1025,7 @@ public final class KoreanTokenizer extends Tokenizer {
       final int fragmentOffset = backWordPos - lastBackTracePos;
       assert fragmentOffset >= 0;
 
-      final Dictionary<? extends KoMorphAttributes> dict = getDict(backType);
+      final Dictionary<? extends KoMorphData> dict = getDict(backType);
 
       if (outputUnknownUnigrams && backType == Type.UNKNOWN) {
         // outputUnknownUnigrams converts unknown word into unigrams:
@@ -1074,7 +1069,7 @@ public final class KoreanTokenizer extends Tokenizer {
             }
           }
         } else {
-          KoMorphAttributes.Morpheme[] morphemes = token.getMorphemes();
+          KoMorphData.Morpheme[] morphemes = token.getMorphemes();
           if (morphemes == null) {
             pending.add(token);
             if (VERBOSE) {
@@ -1085,7 +1080,7 @@ public final class KoreanTokenizer extends Tokenizer {
             int posLen = 0;
             // decompose the compound
             for (int i = morphemes.length - 1; i >= 0; i--) {
-              final KoMorphAttributes.Morpheme morpheme = morphemes[i];
+              final KoMorphData.Morpheme morpheme = morphemes[i];
               final Token compoundToken;
               if (token.getPOSType() == POS.Type.COMPOUND) {
                 assert endOffset - morpheme.surfaceForm.length() >= 0;
@@ -1158,7 +1153,7 @@ public final class KoreanTokenizer extends Tokenizer {
     positions.freeBefore(endPos);
   }
 
-  Dictionary<? extends KoMorphAttributes> getDict(Type type) {
+  Dictionary<? extends KoMorphData> getDict(Type type) {
     return dictionaryMap.get(type);
   }
 

@@ -26,15 +26,14 @@ import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
 
 /** Morphological information for system dictionary. */
-public class TokenInfoMorphAttributes implements JaMorphAttributes {
+public class TokenInfoMorphData implements JaMorphData {
 
   private final ByteBuffer buffer;
   private final String[] posDict;
   private final String[] inflTypeDict;
   private final String[] inflFormDict;
 
-  TokenInfoMorphAttributes(ByteBuffer buffer, IOSupplier<InputStream> posResource)
-      throws IOException {
+  TokenInfoMorphData(ByteBuffer buffer, IOSupplier<InputStream> posResource) throws IOException {
     this.buffer = buffer;
     try (InputStream posIS = new BufferedInputStream(posResource.get())) {
       final DataInput in = new InputStreamDataInput(posIS);

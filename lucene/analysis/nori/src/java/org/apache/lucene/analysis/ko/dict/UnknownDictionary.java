@@ -25,9 +25,9 @@ import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
-public final class UnknownDictionary extends BinaryDictionary<UnknownMorphAttributes> {
+public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> {
   private final CharacterDefinition characterDefinition = CharacterDefinition.getInstance();
-  private final UnknownMorphAttributes morphAtts;
+  private final UnknownMorphData morphAtts;
 
   /**
    * Create a {@link UnknownDictionary} from an external resource path.
@@ -62,7 +62,7 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphAttrib
         Constants.TARGETMAP_HEADER,
         Constants.DICT_HEADER,
         Constants.VERSION);
-    this.morphAtts = new UnknownMorphAttributes(buffer, posResource);
+    this.morphAtts = new UnknownMorphData(buffer, posResource);
   }
 
   private static InputStream getClassResource(String suffix) throws IOException {
@@ -80,7 +80,7 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphAttrib
   }
 
   @Override
-  public UnknownMorphAttributes getMorphAttributes() {
+  public UnknownMorphData getMorphAttributes() {
     return morphAtts;
   }
 

@@ -17,10 +17,10 @@
 package org.apache.lucene.analysis.ko.dict;
 
 import org.apache.lucene.analysis.ko.POS;
-import org.apache.lucene.analysis.morph.MorphAttributes;
+import org.apache.lucene.analysis.morph.MorphData;
 
 /** Represents Korean morphological information. */
-public interface KoMorphAttributes extends MorphAttributes {
+public interface KoMorphData extends MorphData {
   /** A morpheme extracted from a compound token. */
   class Morpheme {
     public final POS.Tag posTag;

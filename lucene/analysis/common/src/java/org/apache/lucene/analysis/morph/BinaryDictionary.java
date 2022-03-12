@@ -30,7 +30,7 @@ import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IntsRef;
 
 /** Abstract dictionary base class. */
-public abstract class BinaryDictionary<T extends MorphAttributes> implements Dictionary<T> {
+public abstract class BinaryDictionary<T extends MorphData> implements Dictionary<T> {
   public static final String DICT_FILENAME_SUFFIX = "$buffer.dat";
   public static final String TARGETMAP_FILENAME_SUFFIX = "$targetMap.dat";
   public static final String POSDICT_FILENAME_SUFFIX = "$posDict.dat";
