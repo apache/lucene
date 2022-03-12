@@ -3131,7 +3131,6 @@ public class IndexWriter
     // long so we can detect int overflow:
     long numDocs = 0;
     long seqNo;
-    final int mergeTimeoutInSeconds = 600;
 
     try {
       // Best effort up front validations
@@ -3154,15 +3153,15 @@ public class IndexWriter
 
       MergePolicy mergePolicy = config.getMergePolicy();
       MergePolicy.MergeSpecification spec = mergePolicy.findMerges(Arrays.asList(readers));
-      boolean mergesComplete = false;
+      boolean mergeSuccess = false;
       if (spec != null && spec.merges.size() > 0) {
         try {
           spec.merges.forEach(addIndexesMergeSource::registerMerge);
           mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
           spec.await();
-          mergesComplete = spec.merges.stream().allMatch(m -> m.hasCompletedSuccessfully().orElse(false));
+          mergeSuccess = spec.merges.stream().allMatch(m -> m.hasCompletedSuccessfully().orElse(false));
         } finally {
-          if (mergesComplete == false) {
+          if (mergeSuccess == false) {
             // nocommit -- ensure all intermediate files are deleted
             for (MergePolicy.OneMerge merge: spec.merges) {
               if (merge.getMergeInfo() != null) {
@@ -3173,27 +3172,25 @@ public class IndexWriter
         }
       }
 
-      if (mergesComplete) {
+      if (mergeSuccess) {
         List<SegmentCommitInfo> infos = new ArrayList<>();
         long totalDocs = 0;
         for (MergePolicy.OneMerge merge: spec.merges) {
           totalDocs += merge.totalMaxDoc;
-          if (merge.getMergeInfo() != null) {
-            infos.add(merge.getMergeInfo());
-          }
+          infos.add(merge.getMergeInfo());
         }
 
         // nocommit -- add tests for this transactional behavior
         synchronized (this) {
           if (infos.isEmpty() == false) {
-            boolean success = false;
+            boolean registerSegmentSuccess = false;
             try {
               ensureOpen();
               // Reserve the docs, just before we update SIS:
               reserveDocs(totalDocs);
-              success = true;
+              registerSegmentSuccess = true;
             } finally {
-              if (success == false) {
+              if (registerSegmentSuccess == false) {
                 for (SegmentCommitInfo sipc : infos) {
                   // Safe: these files must exist
                   deleteNewFiles(sipc.files());
@@ -3270,10 +3267,11 @@ public class IndexWriter
   }
 
   /**
-   * Runs merge on a OneMerge created from CodecReaders. This is used by to merge
-   * incoming readers in {@link IndexWriter#addIndexes(CodecReader...)}
-   * @param merge OneMerge object initialized from readers. This merge object has an empty
-   *              segments list
+   * Runs a single merge operation for {@link IndexWriter#addIndexes(CodecReader...)}.
+   *
+   * Merges and creates a SegmentInfo, for the readers grouped together in
+   * provided OneMerge.
+   * @param merge OneMerge object initialized from readers.
    * @throws IOException if there is a low-level IO error
    */
   public void addIndexesReaderMerge(MergePolicy.OneMerge merge) throws IOException {
@@ -3384,11 +3382,10 @@ public class IndexWriter
     // and 2) .si reflects useCompoundFile=true change
     // above:
     codec.segmentInfoFormat().write(trackingDir, merge.getMergeInfo().info, context);
-
     merge.getMergeInfo().info.addFiles(trackingDir.getCreatedFiles());
     // Return without registering the segment files with IndexWriter.
     // We do this together for all merges triggered by an addIndexes API,
-    // to retain transactionality.
+    // to keep the API transactional.
   }
 
   /** Copies the segment files as-is into the IndexWriter's directory. */
