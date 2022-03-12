@@ -70,7 +70,10 @@ public abstract class Token {
   /** Get the reading of the token. */
   public abstract String getReading();
 
-  /** Get the {@link KoMorphData.Morpheme} decomposition of the token. */
+  /**
+   * Get the {@link org.apache.lucene.analysis.ko.dict.KoMorphData.Morpheme} decomposition of the
+   * token.
+   */
   public abstract KoMorphData.Morpheme[] getMorphemes();
 
   /** Get the start offset of the term in the analyzed text. */

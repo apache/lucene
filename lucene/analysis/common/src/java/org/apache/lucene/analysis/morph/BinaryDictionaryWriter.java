@@ -27,8 +27,7 @@ import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.util.ArrayUtil;
 
 /** Abstract base dictionary writer class. */
-public abstract class BinaryDictionaryWriter<
-    T extends BinaryDictionary<? extends MorphData>> {
+public abstract class BinaryDictionaryWriter<T extends BinaryDictionary<? extends MorphData>> {
   private final Class<T> implClazz;
   private int targetMapEndOffset = 0, lastWordId = -1, lastSourceId = -1;
   private int[] targetMap = new int[8192];
@@ -91,8 +90,14 @@ public abstract class BinaryDictionaryWriter<
       int dictCodecVersion)
       throws IOException {
     final String baseName = getBaseFileName();
-    entryWriter.writeDictionary(baseDir.resolve(baseName + BinaryDictionary.DICT_FILENAME_SUFFIX), dictCodecHeader, dictCodecVersion);
-    entryWriter.writePosDict(baseDir.resolve(baseName + BinaryDictionary.POSDICT_FILENAME_SUFFIX), posDictCodecHeader, dictCodecVersion);
+    entryWriter.writeDictionary(
+        baseDir.resolve(baseName + BinaryDictionary.DICT_FILENAME_SUFFIX),
+        dictCodecHeader,
+        dictCodecVersion);
+    entryWriter.writePosDict(
+        baseDir.resolve(baseName + BinaryDictionary.POSDICT_FILENAME_SUFFIX),
+        posDictCodecHeader,
+        dictCodecVersion);
     writeTargetMap(
         baseDir.resolve(baseName + BinaryDictionary.TARGETMAP_FILENAME_SUFFIX),
         targetMapCodecHeader,

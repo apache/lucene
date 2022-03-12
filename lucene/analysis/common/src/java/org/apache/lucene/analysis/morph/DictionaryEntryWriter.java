@@ -26,7 +26,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.OutputStreamDataOutput;
@@ -48,22 +47,20 @@ public abstract class DictionaryEntryWriter {
   /** Flush POS dictionary data. */
   protected abstract void writePosDict(OutputStream bos, DataOutput out) throws IOException;
 
-  void writePosDict(Path path, String posDictCodecHeader, int dictCodecVersion)
-    throws IOException {
+  void writePosDict(Path path, String posDictCodecHeader, int dictCodecVersion) throws IOException {
     Files.createDirectories(path.getParent());
     try (OutputStream os = Files.newOutputStream(path);
-         OutputStream bos = new BufferedOutputStream(os)) {
+        OutputStream bos = new BufferedOutputStream(os)) {
       final DataOutput out = new OutputStreamDataOutput(bos);
       CodecUtil.writeHeader(out, posDictCodecHeader, dictCodecVersion);
       writePosDict(bos, out);
     }
   }
 
-  void writeDictionary(Path path, String dictCodecHeader, int dictCodecVersion)
-    throws IOException {
+  void writeDictionary(Path path, String dictCodecHeader, int dictCodecVersion) throws IOException {
     Files.createDirectories(path.getParent());
     try (OutputStream os = Files.newOutputStream(path);
-         OutputStream bos = new BufferedOutputStream(os)) {
+        OutputStream bos = new BufferedOutputStream(os)) {
       final DataOutput out = new OutputStreamDataOutput(bos);
       CodecUtil.writeHeader(out, dictCodecHeader, dictCodecVersion);
       out.writeVInt(buffer.position());
@@ -74,7 +71,6 @@ public abstract class DictionaryEntryWriter {
       assert buffer.remaining() == 0L;
     }
   }
-
 
   /** Returns current word id. */
   public int currentPosition() {

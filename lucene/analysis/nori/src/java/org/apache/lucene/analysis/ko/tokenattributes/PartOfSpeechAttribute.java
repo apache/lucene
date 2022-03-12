@@ -37,7 +37,10 @@ public interface PartOfSpeechAttribute extends Attribute {
   /** Get the right part of speech of the token. */
   Tag getRightPOS();
 
-  /** Get the {@link KoMorphData.Morpheme} decomposition of the token. */
+  /**
+   * Get the {@link org.apache.lucene.analysis.ko.dict.KoMorphData.Morpheme} decomposition of the
+   * token.
+   */
   KoMorphData.Morpheme[] getMorphemes();
 
   /** Set the current token. */
