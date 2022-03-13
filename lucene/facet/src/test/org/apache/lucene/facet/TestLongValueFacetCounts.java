@@ -155,6 +155,18 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
         "dim=field path=[] value=101 childCount=6\n  0 (20)\n  1 (20)\n  2 (20)\n  "
             + "3 (20)\n  4 (20)\n  9223372036854775807 (1)\n",
         result.get(0).toString());
+
+    // test default implementation of getTopDims
+    List<FacetResult> getTopDimResult = facets.getTopDims(1, 1);
+    assertEquals(1, getTopDimResult.size());
+    assertEquals(
+            "dim=field path=[] value=101 childCount=6\n  0 (20)\n",
+            getTopDimResult.get(0).toString());
+
+    // test getTopDims(0, 1)
+    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
+    assertEquals(0, topDimsResults2.size());
+
     r.close();
     d.close();
   }

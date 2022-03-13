@@ -48,4 +48,13 @@ public abstract class Facets {
    * indexed, for example depending on the type of document.
    */
   public abstract List<FacetResult> getAllDims(int topN) throws IOException;
+
+  /**
+   * Returns labels for topN dimensions and their topNChildren sorted by the number of hits that
+   * dimension matched
+   */
+  public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
+    List<FacetResult> allResults = getAllDims(topNChildren);
+    return allResults.subList(0, Math.min(topNDims, allResults.size()));
+  }
 }
