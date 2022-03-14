@@ -163,19 +163,29 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final Weight weight = this;
-        DocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
-        if (disi != null) {
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return new ConstantScoreScorer(weight, score(), scoreMode, disi);
-            }
+        SortedNumericDocValues sortedNumericValues =
+                DocValues.getSortedNumeric(context.reader(), field);
+        NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
 
-            @Override
-            public long cost() {
-              return disi.cost();
-            }
-          };
+        if (numericValues != null) {
+          Sort indexSort = context.reader().getMetaData().getSort();
+          if (indexSort != null
+                  && indexSort.getSort().length > 0
+                  && indexSort.getSort()[0].getField().equals(field)) {
+            SortField sortField = indexSort.getSort()[0];
+            DocIdSetIterator disi = getDocIdSetIterator(sortField, context, numericValues);
+            return new ScorerSupplier() {
+              @Override
+              public Scorer get(long leadCost) throws IOException {
+                return new ConstantScoreScorer(weight, score(), scoreMode, disi);
+              }
+
+              @Override
+              public long cost() {
+                return disi.cost();
+              }
+            };
+          }
         }
         return fallbackWeight.scorerSupplier(context);
       }
@@ -195,34 +205,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         // if the fallback query is cacheable.
         return fallbackWeight.isCacheable(ctx);
       }
-
-      @Override
-      public int count(LeafReaderContext context) throws IOException {
-        BoundedDocSetIdIterator disi = getDocIdSetIteratorOrNull(context);
-        if (disi != null) {
-          return disi.lastDoc - disi.firstDoc;
-        }
-        return fallbackWeight.count(context);
-      }
     };
-  }
-
-  private BoundedDocSetIdIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
-      throws IOException {
-    SortedNumericDocValues sortedNumericValues =
-        DocValues.getSortedNumeric(context.reader(), field);
-    NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
-    if (numericValues != null) {
-      Sort indexSort = context.reader().getMetaData().getSort();
-      if (indexSort != null
-          && indexSort.getSort().length > 0
-          && indexSort.getSort()[0].getField().equals(field)) {
-
-        SortField sortField = indexSort.getSort()[0];
-        return getDocIdSetIterator(sortField, context, numericValues);
-      }
-    }
-    return null;
   }
 
   /**
@@ -237,7 +220,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * {@link DocIdSetIterator} makes sure to wrap the original docvalues to skip over documents with
    * no value.
    */
-  private BoundedDocSetIdIterator getDocIdSetIterator(
+  private DocIdSetIterator getDocIdSetIterator(
       SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
