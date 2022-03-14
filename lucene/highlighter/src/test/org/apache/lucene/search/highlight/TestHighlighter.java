@@ -23,10 +23,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.lucene.analysis.Analyzer;
@@ -1420,6 +1423,37 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
         3,
         new CannedTokenStream(new Token("aa", 0, 2), new Token("bb", 2, 4)),
         "foo"); // field "foo"
+  }
+
+  public void testGetWeightedSpanTerms() throws IOException {
+    final String fieldName = "foobar";
+    for (String defaultField : new String[] { null, fieldName, fieldName+"_alternative" }) {
+
+      final Set<Query> querySet = new HashSet<>();
+      final Query query =
+          new SpanNearQuery(
+              new SpanQuery[] {
+                  new SpanMultiTermQueryWrapper<>(new PrefixQuery(new Term(fieldName, "a"))),
+                  new SpanTermQuery(new Term(fieldName, "z"))
+              },
+              3,
+              false) {
+        @Override
+        public Query rewrite(IndexReader reader) throws IOException {
+          assertTrue(querySet.add(this)); // each query should only need rewriting once
+          return super.rewrite(reader);
+        }
+      };
+
+      WeightedSpanTermExtractor extractor =
+          new WeightedSpanTermExtractor(defaultField);
+      extractor.setExpandMultiTermQuery(true);
+      extractor.getWeightedSpanTerms(
+          query,
+          3,
+          new CannedTokenStream(new Token("aa", 0, 2), new Token("zz", 2, 4)),
+          fieldName);
+    }
   }
 
   public void testGetBestSingleFragmentWithWeights() throws Exception {
