@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
+import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
 
 /**
  * Tool to build dictionaries. Usage:
@@ -68,7 +69,8 @@ public class DictionaryBuilder {
 
     new UnknownDictionaryBuilder(encoding).build(inputDir).write(outputDir);
 
-    ConnectionCostsBuilder.build(inputDir.resolve("matrix.def")).write(outputDir);
+    ConnectionCostsBuilder.build(inputDir.resolve("matrix.def"))
+        .write(outputDir, ConnectionCosts.HEADER, ConnectionCosts.VERSION);
   }
 
   public static void main(String[] args) throws IOException {
