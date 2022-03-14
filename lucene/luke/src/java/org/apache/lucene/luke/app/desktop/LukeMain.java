@@ -77,6 +77,7 @@ public class LukeMain {
     if (sanityCheck) {
       int idx = Arrays.binarySearch(args, "--sanity-check") + 1;
       if (idx < args.length) {
+        // add file handler for launch testing.
         String logFile = args[idx];
         FileHandler fh = new FileHandler(logFile);
         fh.setFormatter(new SimpleFormatter());

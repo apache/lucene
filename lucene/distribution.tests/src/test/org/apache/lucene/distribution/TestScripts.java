@@ -51,8 +51,9 @@ public class TestScripts extends AbstractLuceneDistributionTest {
       distributionPath = getDistributionPath();
     }
 
+    // Use "javaw" on Windows, "java" otherwise.
     Path currentJava =
-        Paths.get(System.getProperty("java.home"), "bin", WINDOWS ? "java.exe" : "java");
+        Paths.get(System.getProperty("java.home"), "bin", WINDOWS ? "javaw.exe" : "java");
     Assertions.assertThat(currentJava).exists();
 
     Path lukeScript = resolveScript(distributionPath.resolve("bin").resolve("luke"));
@@ -133,6 +134,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
           throw new AssertionError("Forked process did not terminate in the expected time");
         }
 
+        // Wait until the log file is created by Luke.
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.submit(() -> {
           while (Files.notExists(logFile)) {
@@ -143,9 +145,9 @@ public class TestScripts extends AbstractLuceneDistributionTest {
         if (!executor.awaitTermination(timeoutInSeconds, TimeUnit.SECONDS)) {
           throw new AssertionError("Forked process did not terminate in the expected time");
         }
-
+        // Wait three more seconds if the log file is still empty.
         if (Files.size(logFile) == 0) {
-          sleep(5000);
+          sleep(3000);
         }
 
         int exitStatus = p.exitValue();
@@ -154,7 +156,6 @@ public class TestScripts extends AbstractLuceneDistributionTest {
             .as("forked process exit status")
             .isEqualTo(expectedExitCode);
 
-        //processOutputConsumer.accept(forkedProcess.getProcessOutputFile());
         processOutputConsumer.accept(logFile);
       } catch (Throwable t) {
         logSubprocessOutput(
