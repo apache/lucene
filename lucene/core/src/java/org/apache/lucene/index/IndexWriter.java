@@ -3173,6 +3173,17 @@ public class IndexWriter
             }
           }
         }
+      } else {
+        if (infoStream.isEnabled("IW")) {
+          if (spec == null) {
+            infoStream.message("addIndexes(CodecReaders...)",
+              "received null mergeSpecification from MergePolicy. No indexes to add, returning..");
+          } else {
+            infoStream.message("addIndexes(CodecReaders...)",
+              "received empty mergeSpecification from MergePolicy. No indexes to add, returning..");
+          }
+        }
+        return docWriter.getNextSequenceNumber();
       }
 
       if (mergeSuccess) {
