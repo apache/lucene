@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.lucene.analysis.Analyzer;
@@ -1427,26 +1426,25 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
 
   public void testGetWeightedSpanTerms() throws IOException {
     final String fieldName = "foobar";
-    for (String defaultField : new String[] { null, fieldName, fieldName+"_alternative" }) {
+    for (String defaultField : new String[] {null, fieldName, fieldName + "_alternative"}) {
 
       final Set<Query> querySet = new HashSet<>();
       final Query query =
           new SpanNearQuery(
               new SpanQuery[] {
-                  new SpanMultiTermQueryWrapper<>(new PrefixQuery(new Term(fieldName, "a"))),
-                  new SpanTermQuery(new Term(fieldName, "z"))
+                new SpanMultiTermQueryWrapper<>(new PrefixQuery(new Term(fieldName, "a"))),
+                new SpanTermQuery(new Term(fieldName, "z"))
               },
               3,
               false) {
-        @Override
-        public Query rewrite(IndexReader reader) throws IOException {
-          assertTrue(querySet.add(this)); // each query should only need rewriting once
-          return super.rewrite(reader);
-        }
-      };
+            @Override
+            public Query rewrite(IndexReader reader) throws IOException {
+              assertTrue(querySet.add(this)); // each query should only need rewriting once
+              return super.rewrite(reader);
+            }
+          };
 
-      WeightedSpanTermExtractor extractor =
-          new WeightedSpanTermExtractor(defaultField);
+      WeightedSpanTermExtractor extractor = new WeightedSpanTermExtractor(defaultField);
       extractor.setExpandMultiTermQuery(true);
       extractor.getWeightedSpanTerms(
           query,
