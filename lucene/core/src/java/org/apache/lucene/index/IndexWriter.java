@@ -2667,6 +2667,9 @@ public class IndexWriter
         });
     pendingMerges.clear();
 
+    // abort any merges pending from addIndexes(CodecReader...)
+    addIndexesMergeSource.abortPendingMerges();
+
     for (final MergePolicy.OneMerge merge : runningMerges) {
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "now abort running merge " + segString(merge.segments));
@@ -3205,8 +3208,7 @@ public class IndexWriter
           seqNo = docWriter.getNextSequenceNumber();
         }
       } else {
-        // We should normally not reach here, as an earlier call should throw an exception.
-        throw new MergePolicy.MergeException("Merges did not complete successfully. addIndexes() failed to add provided readers");
+        throw new MergePolicy.MergeException("failed to successfully merge all provided readers in addIndexes(CodecReader...)");
       }
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "addIndexes(CodecReader...)");
@@ -3250,15 +3252,30 @@ public class IndexWriter
       return pendingAddIndexesMerges.size() > 0;
     }
 
+    public synchronized void abortPendingMerges() throws IOException {
+      IOUtils.applyToAll(
+        pendingAddIndexesMerges,
+        merge -> {
+          if (infoStream.isEnabled("IW")) {
+            infoStream.message("IW", "now abort pending addIndexes merge");
+          }
+          merge.setAborted();
+          merge.close(false, false, mr -> {});
+          onMergeFinished(merge);
+        });
+      pendingAddIndexesMerges.clear();
+    }
+
     @Override
     public void merge(MergePolicy.OneMerge merge) throws IOException {
       boolean success = false;
       try {
         writer.addIndexesReaderMerge(merge);
         success = true;
-      } catch (VirtualMachineError tragedy) {
-        tragicEvent(tragedy, "addIndexes(CodecReader...)");
-        throw tragedy;
+      } catch (Throwable t) {
+        // handle as aborted merge failure is merge was aborted
+        merge.checkAborted();
+        handleMergeException(t, merge);
       } finally {
         synchronized (this) {
           merge.close(success, false, mr -> {});
@@ -3335,8 +3352,8 @@ public class IndexWriter
       return;
     }
 
+    merge.checkAborted();
     synchronized (this) {
-      ensureOpen();
       runningAddIndexesMerges.add(merger);
     }
     merge.mergeStartNS = System.nanoTime();
@@ -3359,7 +3376,7 @@ public class IndexWriter
     final MergePolicy mergePolicy = config.getMergePolicy();
     boolean useCompoundFile;
     synchronized (this) {
-      ensureOpen();
+      merge.checkAborted();
       useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, merge.getMergeInfo(), this);
     }
 
