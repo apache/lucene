@@ -11,7 +11,8 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* LUCENE-10444: Support alternate aggregation functions in association facets. (Greg Miller)
 
 Improvements
 ---------------------
@@ -159,8 +160,6 @@ New Features
 
 * LUCENE-10237: Add MergeOnFlushMergePolicy to sandbox.
   (Michael Froh, Anand Kotriwal)
-
-* LUCENE-10444: Support alternate aggregation functions in association facets. (Greg Miller)
 
 Improvements
 ---------------------
