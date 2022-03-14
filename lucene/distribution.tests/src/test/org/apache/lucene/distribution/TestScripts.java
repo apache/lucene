@@ -134,7 +134,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
           throw new AssertionError("Forked process did not terminate in the expected time");
         }
 
-        // Wait until the log file is created by Luke.
+        // Wait until the log file is created by the descendant process.
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.submit(() -> {
           while (Files.notExists(logFile)) {
