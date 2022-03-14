@@ -23,8 +23,10 @@ import java.awt.*;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.concurrent.SynchronousQueue;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import javax.swing.*;
 import org.apache.lucene.luke.app.desktop.components.LukeWindowProvider;
 import org.apache.lucene.luke.app.desktop.components.dialog.menubar.OpenIndexDialogFactory;
@@ -71,6 +73,16 @@ public class LukeMain {
 
   public static void main(String[] args) throws Exception {
     boolean sanityCheck = Arrays.asList(args).contains("--sanity-check");
+
+    if (sanityCheck) {
+      int idx = Arrays.binarySearch(args, "--sanity-check") + 1;
+      if (idx < args.length) {
+        String logFile = args[idx];
+        FileHandler fh = new FileHandler(logFile);
+        fh.setFormatter(new SimpleFormatter());
+        Logger.getGlobal().addHandler(fh);
+      }
+    }
 
     if (sanityCheck && GraphicsEnvironment.isHeadless()) {
       Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke. Can't do much in headless mode.");

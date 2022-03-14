@@ -32,7 +32,7 @@ REM For distribution testing we don't use start and pass an explicit java comman
 REM This is required because otherwise we can't block on luke invocation and can't intercept
 REM the return status. We also force UTF-8 encoding so that we don't have to interpret the output in
 REM an unknown local platform encoding.
-SET LAUNCH_START=
+SET LAUNCH_START=start "Lucene Luke"
 SET LAUNCH_OPTS=-Dfile.encoding=UTF-8
 
 :launch

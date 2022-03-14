@@ -29,6 +29,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.assertj.core.api.Assertions;
@@ -55,6 +57,10 @@ public class TestScripts extends AbstractLuceneDistributionTest {
 
     Path lukeScript = resolveScript(distributionPath.resolve("bin").resolve("luke"));
 
+    Path logDir = RandomizedTest.newTempDir(LifecycleScope.TEST).resolve("log");
+    Files.createDirectory(logDir);
+    Path logFile = logDir.resolve("luke-sanity-check.log");
+
     Launcher launcher =
         new ProcessBuilderLauncher()
             .executable(lukeScript)
@@ -64,12 +70,13 @@ public class TestScripts extends AbstractLuceneDistributionTest {
             .envvar("LAUNCH_CMD", currentJava.toAbsolutePath().toString())
             .viaShellLauncher()
             .cwd(distributionPath)
-            .args("--sanity-check");
+            .args("--sanity-check", logFile.toString());
 
     execute(
         launcher,
         0,
         60,
+        logFile,
         (outputBytes) -> {
           // We know it's UTF-8 because we set file.encoding explicitly.
           var output = Files.readString(outputBytes, StandardCharsets.UTF_8);
@@ -112,6 +119,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
       Launcher launcher,
       int expectedExitCode,
       long timeoutInSeconds,
+      Path logFile,
       ThrowingConsumer<Path> processOutputConsumer)
       throws Exception {
 
@@ -125,13 +133,25 @@ public class TestScripts extends AbstractLuceneDistributionTest {
           throw new AssertionError("Forked process did not terminate in the expected time");
         }
 
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.submit(() -> {
+          while (Files.notExists(logFile)) {
+            sleep(1000);
+          }
+        });
+        executor.shutdown();
+        if (!executor.awaitTermination(timeoutInSeconds, TimeUnit.SECONDS)) {
+          throw new AssertionError("Forked process did not terminate in the expected time");
+        }
+
         int exitStatus = p.exitValue();
 
         Assertions.assertThat(exitStatus)
             .as("forked process exit status")
             .isEqualTo(expectedExitCode);
 
-        processOutputConsumer.accept(forkedProcess.getProcessOutputFile());
+        //processOutputConsumer.accept(forkedProcess.getProcessOutputFile());
+        processOutputConsumer.accept(logFile);
       } catch (Throwable t) {
         logSubprocessOutput(
             command, Files.readString(forkedProcess.getProcessOutputFile(), charset));
