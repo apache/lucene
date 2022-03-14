@@ -164,14 +164,14 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final Weight weight = this;
         SortedNumericDocValues sortedNumericValues =
-                DocValues.getSortedNumeric(context.reader(), field);
+            DocValues.getSortedNumeric(context.reader(), field);
         NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
 
         if (numericValues != null) {
           Sort indexSort = context.reader().getMetaData().getSort();
           if (indexSort != null
-                  && indexSort.getSort().length > 0
-                  && indexSort.getSort()[0].getField().equals(field)) {
+              && indexSort.getSort().length > 0
+              && indexSort.getSort()[0].getField().equals(field)) {
             SortField sortField = indexSort.getSort()[0];
             DocIdSetIterator disi = getDocIdSetIterator(sortField, context, numericValues);
             return new ScorerSupplier() {
