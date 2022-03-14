@@ -1447,10 +1447,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
       WeightedSpanTermExtractor extractor = new WeightedSpanTermExtractor(defaultField);
       extractor.setExpandMultiTermQuery(true);
       extractor.getWeightedSpanTerms(
-          query,
-          3,
-          new CannedTokenStream(new Token("aa", 0, 2), new Token("zz", 2, 4)),
-          fieldName);
+          query, 3, new CannedTokenStream(new Token("aa", 0, 2), new Token("zz", 2, 4)), fieldName);
     }
   }
 
