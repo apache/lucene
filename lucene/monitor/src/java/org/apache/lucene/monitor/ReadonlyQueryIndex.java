@@ -84,13 +84,13 @@ class ReadonlyQueryIndex extends QueryIndex {
   }
 
   @Override
-  public void purgeCache() {
-    throw new IllegalStateException("Monitor is readOnly, it has no cache");
+  public void purgeCache() throws IOException {
+    manager.maybeRefresh();
   }
 
   @Override
   void purgeCache(CachePopulator populator) {
-    throw new IllegalStateException("Monitor is readOnly, it has no cache");
+    throw new UnsupportedOperationException("Monitor is readOnly, it has no cache");
   }
 
   @Override
@@ -121,12 +121,12 @@ class ReadonlyQueryIndex extends QueryIndex {
 
   @Override
   public void deleteQueries(List<String> ids) throws IOException {
-    throw new IllegalStateException("Monitor is readOnly cannot delete queries");
+    throw new UnsupportedOperationException("Monitor is readOnly cannot delete queries");
   }
 
   @Override
   public void clear() throws IOException {
-    throw new IllegalStateException("Monitor is readOnly cannot clear");
+    throw new UnsupportedOperationException("Monitor is readOnly cannot clear");
   }
 
   @Override
@@ -136,7 +136,7 @@ class ReadonlyQueryIndex extends QueryIndex {
 
   @Override
   public void addListener(MonitorUpdateListener listener) {
-    throw new IllegalStateException("Monitor is readOnly cannot register listeners");
+    throw new UnsupportedOperationException("Monitor is readOnly cannot register listeners");
   }
 
   // ---------------------------------------------
@@ -174,7 +174,7 @@ class ReadonlyQueryIndex extends QueryIndex {
           QueryCacheEntry.decompose(mq, decomposer).stream()
               .filter(queryCacheEntry -> queryCacheEntry.cacheId.equals(cache_id.utf8ToString()))
               .findFirst()
-              .orElse(null);
+              .orElseThrow(() -> new IllegalStateException("Cached queries not found"));
       matcher.matchQuery(query_id.utf8ToString(), query, dataValues);
     }
 
