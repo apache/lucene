@@ -3177,7 +3177,9 @@ public class IndexWriter
         long totalDocs = 0;
         for (MergePolicy.OneMerge merge: spec.merges) {
           totalDocs += merge.totalMaxDoc;
-          infos.add(merge.getMergeInfo());
+          if (merge.getMergeInfo() != null) {
+            infos.add(merge.getMergeInfo());
+          }
         }
 
         // nocommit -- add tests for this transactional behavior

@@ -731,39 +731,51 @@ public class TestAddIndexes extends LuceneTestCase {
     public void close() throws IOException {}
   }
 
-  public void testAddIndexesWithPartialMergeFailures() throws Exception {
-    Directory dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
-    IndexWriter writer =
-      new IndexWriter(
-        dir, new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(2));
+  private class AddIndexesWithReadersSetup {
+    Directory dir, destDir;
+    IndexWriter destWriter;
+    final DirectoryReader[] readers;
     final int ADDED_DOCS_PER_READER = 15;
-    for (int i = 0; i < ADDED_DOCS_PER_READER; i++) addDoc(writer);
-    writer.close();
-
-    Directory destDir = newDirectory();
-    MergePolicy mp = new ConcurrentAddIndexesMergePolicy();
-    MergeScheduler ms = new PartialMergeScheduler(2);
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    iwc.setMergePolicy(mp);
-    iwc.setMergeScheduler(ms);
-    IndexWriter destWriter = new IndexWriter(destDir, iwc);
     final int INIT_DOCS = 25;
-    for (int i = 0; i < INIT_DOCS; i++) addDoc(destWriter);
-    destWriter.commit();
-
     final int NUM_READERS = 10;
-    final DirectoryReader[] readers = new DirectoryReader[NUM_READERS];
-    for (int i = 0; i < NUM_READERS; i++) readers[i] = DirectoryReader.open(dir);
 
-    assertThrows(MergePolicy.MergeException.class, () -> TestUtil.addIndexesSlowly(destWriter, readers));
-    try (IndexReader reader = DirectoryReader.open(destDir)){
-      assertEquals(INIT_DOCS, reader.numDocs());
+    public AddIndexesWithReadersSetup(MergeScheduler ms) throws IOException {
+      dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
+      IndexWriter writer =
+        new IndexWriter(
+          dir, new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(2));
+      for (int i = 0; i < ADDED_DOCS_PER_READER; i++) addDoc(writer);
+      writer.close();
+
+      destDir = newDirectory();
+      MergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setMergePolicy(mp);
+      iwc.setMergeScheduler(ms);
+      destWriter = new IndexWriter(destDir, iwc);
+      for (int i = 0; i < INIT_DOCS; i++) addDoc(destWriter);
+      destWriter.commit();
+
+      readers = new DirectoryReader[NUM_READERS];
+      for (int i = 0; i < NUM_READERS; i++) readers[i] = DirectoryReader.open(dir);
     }
 
-    destWriter.close();
-    for (int i = 0; i < NUM_READERS; i++) readers[i].close();
-    destDir.close();
-    dir.close();
+    public void closeAll() throws IOException {
+      destWriter.close();
+      for (int i = 0; i < NUM_READERS; i++) readers[i].close();
+      destDir.close();
+      dir.close();
+    }
+  }
+
+  public void testAddIndexesWithPartialMergeFailures() throws Exception {
+    MergeScheduler ms = new PartialMergeScheduler(2);
+    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(ms);
+    assertThrows(MergePolicy.MergeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
+    try (IndexReader reader = DirectoryReader.open(c.destDir)){
+      assertEquals(c.INIT_DOCS, reader.numDocs());
+    }
+    c.closeAll();
   }
 
   private abstract class RunAddIndexesThreads {
@@ -1100,8 +1112,6 @@ public class TestAddIndexes extends LuceneTestCase {
     }
 
     c.closeDir();
-
-    assertTrue(c.failures.size() == 0);
   }
 
   // LUCENE-2996: tests that addIndexes(IndexReader) applies existing deletes correctly.
