@@ -78,13 +78,13 @@ public class TestMonitorReadonly extends MonitorTestBase {
           });
 
       assertThrows(
-          IllegalStateException.class,
+          UnsupportedOperationException.class,
           () -> {
             monitor.deleteById("query1");
           });
 
       assertThrows(
-          IllegalStateException.class,
+          UnsupportedOperationException.class,
           () -> {
             monitor.clear();
           });
