@@ -144,6 +144,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
           throw new AssertionError("Forked process did not terminate in the expected time");
         }
 
+        sleep(50000);
         int exitStatus = p.exitValue();
 
         Assertions.assertThat(exitStatus)
