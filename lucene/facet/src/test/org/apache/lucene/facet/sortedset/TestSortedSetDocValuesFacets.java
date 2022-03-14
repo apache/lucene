@@ -108,60 +108,56 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           List<FacetResult> results = facets.getAllDims(10);
           assertEquals(2, results.size());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=2\n  buzz (2)\n  baz (1)\n",
-                  results.get(0).toString());
+              "dim=b path=[] value=2 childCount=2\n  buzz (2)\n  baz (1)\n",
+              results.get(0).toString());
           assertEquals(
-                  "dim=a path=[] value=-1 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
-                  results.get(1).toString());
+              "dim=a path=[] value=-1 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
+              results.get(1).toString());
 
           // test getAllDims(1, 0) with topN = 0
           expectThrows(
-                  NullPointerException.class,
-                  () -> {
-                    facets.getAllDims(0);
-                  });
+              NullPointerException.class,
+              () -> {
+                facets.getAllDims(0);
+              });
 
           // test getTopDims(10, 10) and expect same results from getAllDims(10)
           List<FacetResult> allDimsResults = facets.getTopDims(10, 10);
           assertEquals(2, results.size());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=2\n  buzz (2)\n  baz (1)\n",
-                  allDimsResults.get(0).toString());
+              "dim=b path=[] value=2 childCount=2\n  buzz (2)\n  baz (1)\n",
+              allDimsResults.get(0).toString());
           assertEquals(
-                  "dim=a path=[] value=-1 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
-                  allDimsResults.get(1).toString());
-
+              "dim=a path=[] value=-1 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
+              allDimsResults.get(1).toString());
 
           // test getTopDims(2, 1)
           List<FacetResult> topDimsResults = facets.getTopDims(2, 1);
           assertEquals(2, topDimsResults.size());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=2\n  buzz (2)\n",
-                  topDimsResults.get(0).toString());
+              "dim=b path=[] value=2 childCount=2\n  buzz (2)\n", topDimsResults.get(0).toString());
           assertEquals(
-                  "dim=a path=[] value=-1 childCount=3\n  foo (2)\n",
-                  topDimsResults.get(1).toString());
+              "dim=a path=[] value=-1 childCount=3\n  foo (2)\n", topDimsResults.get(1).toString());
 
           // test getAllDims
           List<FacetResult> results2 = facets.getAllDims(1);
           assertEquals(2, results2.size());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=2\n  buzz (2)\n",
-                  results2.get(0).toString());
+              "dim=b path=[] value=2 childCount=2\n  buzz (2)\n", results2.get(0).toString());
 
           // test getTopDims(1, 1)
           List<FacetResult> topDimsResults1 = facets.getTopDims(1, 1);
           assertEquals(1, topDimsResults1.size());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=2\n  buzz (2)\n",
-                  topDimsResults1.get(0).toString());
+              "dim=b path=[] value=2 childCount=2\n  buzz (2)\n",
+              topDimsResults1.get(0).toString());
 
           // test getTopDims(1, 0) with topNChildren = 0
           expectThrows(
-                  NullPointerException.class,
-                  () -> {
-                    facets.getTopDims(1, 0);
-                  });
+              NullPointerException.class,
+              () -> {
+                facets.getTopDims(1, 0);
+              });
 
           // test getTopDims(0, 1)
           List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
@@ -795,8 +791,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n  bar2 (1)\n",
               results.get(1).toString());
           assertEquals(
-                  "dim=d path=[] value=2 childCount=2\n  biz1 (1)\n  biz2 (1)\n",
-                  results.get(2).toString());
+              "dim=d path=[] value=2 childCount=2\n  biz1 (1)\n  biz2 (1)\n",
+              results.get(2).toString());
           assertEquals(
               "dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", results.get(3).toString());
 
@@ -804,38 +800,33 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           List<FacetResult> top1results = facets.getAllDims(1);
           assertEquals(4, results.size());
           assertEquals(
-                  "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n",
-                  top1results.get(0).toString());
+              "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n", top1results.get(0).toString());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n",
-                  top1results.get(1).toString());
+              "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n", top1results.get(1).toString());
           assertEquals(
-                  "dim=d path=[] value=2 childCount=2\n  biz1 (1)\n",
-                  top1results.get(2).toString());
+              "dim=d path=[] value=2 childCount=2\n  biz1 (1)\n", top1results.get(2).toString());
           assertEquals(
-                  "dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", top1results.get(3).toString());
-
+              "dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", top1results.get(3).toString());
 
           // test getTopDims(1, 1)
           List<FacetResult> topDimsResults1 = facets.getTopDims(1, 1);
           assertEquals(1, topDimsResults1.size());
           assertEquals(
-                  "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n",
-                  topDimsResults1.get(0).toString());
+              "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n",
+              topDimsResults1.get(0).toString());
 
           // test top 2 dims that have the same counts, expect to sort by dim names
           List<FacetResult> topDimsResults2 = facets.getTopDims(3, 2);
           assertEquals(3, topDimsResults2.size());
           assertEquals(
-                  "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n  foo2 (1)\n",
-                  topDimsResults2.get(0).toString());
+              "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n  foo2 (1)\n",
+              topDimsResults2.get(0).toString());
           assertEquals(
-                  "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n  bar2 (1)\n",
-                  topDimsResults2.get(1).toString());
+              "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n  bar2 (1)\n",
+              topDimsResults2.get(1).toString());
           assertEquals(
-                  "dim=d path=[] value=2 childCount=2\n  biz1 (1)\n  biz2 (1)\n",
-                  topDimsResults2.get(2).toString());
-
+              "dim=d path=[] value=2 childCount=2\n  biz1 (1)\n  biz2 (1)\n",
+              topDimsResults2.get(2).toString());
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -907,7 +898,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           List<FacetResult> topDimsResults1 = facets.getTopDims(1, 1);
           assertEquals(1, topDimsResults1.size());
           assertEquals(
-                  "dim=d path=[] value=2 childCount=1\n  foo (2)\n", results.get(0).toString());
+              "dim=d path=[] value=2 childCount=1\n  foo (2)\n", results.get(0).toString());
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -1132,7 +1123,6 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                 List<FacetResult> topDimsResults1 = facets.getTopDims(1, 10);
                 assertEquals(actual.get(0), topDimsResults1.get(0));
               }
-
             }
           } finally {
             if (exec != null) exec.shutdownNow();

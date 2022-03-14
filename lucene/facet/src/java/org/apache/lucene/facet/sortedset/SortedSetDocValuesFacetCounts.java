@@ -152,7 +152,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
     SortedSetDocValuesChildOrdsResult childOrdsResult = null;
 
-    // if getTopDims is called, get results from cacheChildOrdsResult, otherwise call getChildOrdsResult to get
+    // if getTopDims is called, get results from cacheChildOrdsResult, otherwise call
+    // getChildOrdsResult to get
     // dimCount, childCount and TopOrdAndIntQueue q
     if (cacheChildOrdsResult != null && cacheChildOrdsResult.containsKey(dim)) {
       childOrdsResult = cacheChildOrdsResult.get(dim);
@@ -182,9 +183,12 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     }
   }
 
-  /** Returns SortedSetDocValuesChildOrdsResult that contains results of dimCount, childCount, and TopOrdAndIntQueue q
-   * to populate FacetResult in getPathResult. */
-  private SortedSetDocValuesChildOrdsResult getChildOrdsResult(PrimitiveIterator.OfInt childOrds, int topN) {
+  /**
+   * Returns SortedSetDocValuesChildOrdsResult that contains results of dimCount, childCount, and
+   * TopOrdAndIntQueue q to populate FacetResult in getPathResult.
+   */
+  private SortedSetDocValuesChildOrdsResult getChildOrdsResult(
+      PrimitiveIterator.OfInt childOrds, int topN) {
 
     TopOrdAndIntQueue q = null;
 
@@ -221,7 +225,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   }
 
   /** Returns label values for dims. */
-  private LabelAndValue[] getLabelValuesFromTopOrdAndIntQueue(TopOrdAndIntQueue q) throws IOException {
+  private LabelAndValue[] getLabelValuesFromTopOrdAndIntQueue(TopOrdAndIntQueue q)
+      throws IOException {
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     for (int i = labelValues.length - 1; i >= 0; i--) {
       TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
@@ -235,12 +240,12 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   /** Returns value/count of a dimension. */
   private Number getDimValue(
-          FacetsConfig.DimConfig dimConfig,
-          String dim,
-          int pathOrd,
-          PrimitiveIterator.OfInt childOrds,
-          int topN)
-          throws IOException {
+      FacetsConfig.DimConfig dimConfig,
+      String dim,
+      int pathOrd,
+      PrimitiveIterator.OfInt childOrds,
+      int topN)
+      throws IOException {
 
     // if dimConfig.hierarchical == true, return dimCount directly
     if (dimConfig.hierarchical == true && pathOrd >= 0) {
@@ -437,7 +442,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     if (dimConfig.hierarchical) {
       DimTree dimTree = state.getDimTree(dim);
       int dimOrd = dimTree.dimStartOrd;
-      FacetResult fr = getPathResult(dimConfig, dim, emptyPath, dimOrd, dimTree.iterator(), topNChildren);
+      FacetResult fr =
+          getPathResult(dimConfig, dim, emptyPath, dimOrd, dimTree.iterator(), topNChildren);
       if (fr != null) {
         return fr;
       }
@@ -458,7 +464,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     }
     return null;
   }
-
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
@@ -492,7 +497,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   @Override
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
     // get topNDims by their values
-    SortedSetDocValueDimValuePriorityQueue pq = new SortedSetDocValueDimValuePriorityQueue(topNDims);
+    SortedSetDocValueDimValuePriorityQueue pq =
+        new SortedSetDocValueDimValuePriorityQueue(topNDims);
     cacheChildOrdsResult = new HashMap<>();
     for (String dim : state.getDims()) {
       FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
@@ -538,7 +544,10 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     return results;
   }
 
-  /** Creates SortedSetDocValuesChildOrdsResult to store dimCount, childCount, and TopOrdAndIntQueue q for getPathResult. */
+  /**
+   * Creates SortedSetDocValuesChildOrdsResult to store dimCount, childCount, and TopOrdAndIntQueue
+   * q for getPathResult.
+   */
   private class SortedSetDocValuesChildOrdsResult {
     final int dimCount;
     final int childCount;
@@ -551,7 +560,10 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     }
   }
 
-  /** Creates SortedSetDocValuesDimValueResult to store the label and count of dim in order to sort by these two fields. */
+  /**
+   * Creates SortedSetDocValuesDimValueResult to store the label and count of dim in order to sort
+   * by these two fields.
+   */
   private class SortedSetDocValuesDimValueResult {
     final String dim;
     final Number value;
@@ -562,14 +574,19 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     }
   }
 
-  /** Creates priority queue to store top dimensions and sort by their aggregated values/hits and string values. */
-  private class SortedSetDocValueDimValuePriorityQueue extends PriorityQueue<SortedSetDocValuesDimValueResult> {
+  /**
+   * Creates priority queue to store top dimensions and sort by their aggregated values/hits and
+   * string values.
+   */
+  private class SortedSetDocValueDimValuePriorityQueue
+      extends PriorityQueue<SortedSetDocValuesDimValueResult> {
     public SortedSetDocValueDimValuePriorityQueue(int maxSize) {
       super(maxSize);
     }
 
     @Override
-    protected boolean lessThan(SortedSetDocValuesDimValueResult a, SortedSetDocValuesDimValueResult b) {
+    protected boolean lessThan(
+        SortedSetDocValuesDimValueResult a, SortedSetDocValuesDimValueResult b) {
       if (a.value.intValue() > b.value.intValue()) {
         return false;
       } else if (a.value.intValue() < b.value.intValue()) {

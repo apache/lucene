@@ -202,28 +202,25 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n  foo2 (1)\n  foo3 (1)\n",
         results.get(0).toString());
     assertEquals(
-        "dim=b path=[] value=3 childCount=3\n  aar1 (1)\n  bar1 (1)\n  bar2 (1)\n", results.get(1).toString());
+        "dim=b path=[] value=3 childCount=3\n  aar1 (1)\n  bar1 (1)\n  bar2 (1)\n",
+        results.get(1).toString());
     assertEquals("dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", results.get(2).toString());
 
     // test getAllDims with topN = 1, sort by dim names when values are equal
     List<FacetResult> top1results = facets.getAllDims(1);
 
     assertEquals(3, results.size());
-    assertEquals(
-            "dim=a path=[] value=3 childCount=3\n  foo3 (1)\n",
-            top1results.get(0).toString());
-    assertEquals(
-            "dim=b path=[] value=3 childCount=3\n  bar2 (1)\n", top1results.get(1).toString());
+    assertEquals("dim=a path=[] value=3 childCount=3\n  foo3 (1)\n", top1results.get(0).toString());
+    assertEquals("dim=b path=[] value=3 childCount=3\n  bar2 (1)\n", top1results.get(1).toString());
     assertEquals("dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", top1results.get(2).toString());
 
     // test default implementation of getTopDims
     List<FacetResult> topNDimsResult = facets.getTopDims(2, 1);
     assertEquals(2, topNDimsResult.size());
     assertEquals(
-            "dim=a path=[] value=3 childCount=3\n  foo3 (1)\n",
-            topNDimsResult.get(0).toString());
+        "dim=a path=[] value=3 childCount=3\n  foo3 (1)\n", topNDimsResult.get(0).toString());
     assertEquals(
-            "dim=b path=[] value=3 childCount=3\n  bar2 (1)\n", topNDimsResult.get(1).toString());
+        "dim=b path=[] value=3 childCount=3\n  bar2 (1)\n", topNDimsResult.get(1).toString());
 
     // test getTopDims(0, 1)
     List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
@@ -231,11 +228,10 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getTopDims(1, 0);
-            });
-
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(1, 0);
+        });
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
@@ -640,11 +636,10 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getTopDims(1, 0);
-            });
-
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(1, 0);
+        });
 
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
