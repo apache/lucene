@@ -91,16 +91,24 @@ public class TestAutomatonQuery extends LuceneTestCase {
   }
 
   private void assertAutomatonHits(int expected, Automaton automaton) throws IOException {
-    AutomatonQuery query = new AutomatonQuery(newTerm("bogus"), automaton);
-
-    query.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    assertEquals(expected, automatonQueryNrHits(query));
-
-    query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
-    assertEquals(expected, automatonQueryNrHits(query));
-
-    query.setRewriteMethod(MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE);
-    assertEquals(expected, automatonQueryNrHits(query));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"), automaton, false, MultiTermQuery.SCORING_BOOLEAN_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"), automaton, false, MultiTermQuery.CONSTANT_SCORE_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"),
+                automaton,
+                false,
+                MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)));
   }
 
   /** Test some very simple automata. */

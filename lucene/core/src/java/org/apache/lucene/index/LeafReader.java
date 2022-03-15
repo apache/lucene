@@ -17,7 +17,9 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -71,10 +73,7 @@ public abstract class LeafReader extends IndexReader {
 
   @Override
   public final int docFreq(Term term) throws IOException {
-    final Terms terms = terms(term.field());
-    if (terms == null) {
-      return 0;
-    }
+    final Terms terms = Terms.getTerms(this, term.field());
     final TermsEnum termsEnum = terms.iterator();
     if (termsEnum.seekExact(term.bytes())) {
       return termsEnum.docFreq();
@@ -90,10 +89,7 @@ public abstract class LeafReader extends IndexReader {
    */
   @Override
   public final long totalTermFreq(Term term) throws IOException {
-    final Terms terms = terms(term.field());
-    if (terms == null) {
-      return 0;
-    }
+    final Terms terms = Terms.getTerms(this, term.field());
     final TermsEnum termsEnum = terms.iterator();
     if (termsEnum.seekExact(term.bytes())) {
       return termsEnum.totalTermFreq();
@@ -143,12 +139,10 @@ public abstract class LeafReader extends IndexReader {
   public final PostingsEnum postings(Term term, int flags) throws IOException {
     assert term.field() != null;
     assert term.bytes() != null;
-    final Terms terms = terms(term.field());
-    if (terms != null) {
-      final TermsEnum termsEnum = terms.iterator();
-      if (termsEnum.seekExact(term.bytes())) {
-        return termsEnum.postings(null, flags);
-      }
+    final Terms terms = Terms.getTerms(this, term.field());
+    final TermsEnum termsEnum = terms.iterator();
+    if (termsEnum.seekExact(term.bytes())) {
+      return termsEnum.postings(null, flags);
     }
     return null;
   }
@@ -215,20 +209,31 @@ public abstract class LeafReader extends IndexReader {
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
-   * this field, to the given vector, by the field's search strategy. If the search strategy is
-   * reversed, lower values indicate nearer vectors, otherwise higher scores indicate nearer
-   * vectors. Unlike relevance scores, vector scores may be negative.
+   * this field, to the given vector, by the field's similarity function. The score of each document
+   * is derived from the vector similarity in a way that ensures scores are positive and that a
+   * larger score corresponds to a higher ranking.
+   *
+   * <p>The search is allowed to be approximate, meaning the results are not guaranteed to be the
+   * true k closest neighbors. For large values of k (for example when k is close to the total
+   * number of documents), the search may also retrieve fewer than k documents.
+   *
+   * <p>The returned {@link TopDocs} will contain a {@link ScoreDoc} for each nearest neighbor,
+   * sorted in order of their similarity to the query vector (decreasing scores). The {@link
+   * TotalHits} contains the number of documents visited during the search. If the search stopped
+   * early because it hit {@code visitedLimit}, it is indicated through the relation {@code
+   * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query
    * @param k the number of docs to return
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    * @lucene.experimental
    */
-  public abstract TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
-      throws IOException;
+  public abstract TopDocs searchNearestVectors(
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

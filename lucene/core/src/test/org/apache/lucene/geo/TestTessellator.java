@@ -169,6 +169,15 @@ public class TestTessellator extends LuceneTestCase {
     checkPolygon(wkt);
   }
 
+  public void testInvalidPolygonCollinear() throws Exception {
+    String wkt =
+        "POLYGON ((18.9401790919516 -33.9681188869036, 18.9401790919516 -33.9681188869036, 18.9401790919517 -33.9681188869036, 18.9401790919517 -33.9681188869036, 18.9401790919516 -33.9681188869036))";
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    IllegalArgumentException ex =
+        expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+    assertEquals("at least three non-collinear points required", ex.getMessage());
+  }
+
   public void testComplexPolygon01() throws Exception {
     String wkt =
         "POLYGON((58.8792517 54.9160937, 58.8762477 54.9154524, 58.8735011 54.9140217, 58.8726428 54.9127389, 58.8731146 54.9122507, 58.8741877 54.9120482, 58.8771918 54.9117028, 58.88011 54.913331, 58.8801175 54.9137036, 58.8805885 54.9143186, 58.8807109 54.9148604, 58.88011 54.915551, 58.8792517 54.9160937), "

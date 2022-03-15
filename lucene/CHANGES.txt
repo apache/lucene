@@ -15,7 +15,12 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been make pkg-private and serves only as an internal
   implementation detail of taxonomy-faceting. (Greg Miller)
 
-* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji (Tomoko Uchida)
+* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji and Nori (Tomoko Uchida)
+
+* LUCENE-10440: TaxonomyFacets and FloatTaxonomyFacets have been made pkg-private and only serve
+  as internal implementation details of taxonomy-faceting. (Greg Miller)
+
+* LUCENE-10431: MultiTermQuery.setRewriteMethod() has been removed. (Alan Woodward)
 
 New Features
 ---------------------
@@ -24,7 +29,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
+  (Uihyun Kim)
 
 Optimizations
 ---------------------
@@ -36,7 +43,6 @@ Bug Fixes
 
 Other
 ---------------------
-
 * LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
   (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
 
@@ -77,7 +83,7 @@ API Changes
 * LUCENE-10368: IntTaxonomyFacets has been deprecated and is no longer a supported extension point
   for user-created faceting implementations. (Greg Miller)
 
-* LUCENE-10400: Add constructors that take external resource Paths to dictionary classes in Kuromoji:
+* LUCENE-10400: Add constructors that take external resource Paths to dictionary classes in Kuromoji and Nori:
   ConnectionCosts, TokenInfoDictionary, and UnknownDictionary. Old constructors that take resource scheme and
   resource path in those classes are deprecated; These are replaced with the new constructors and planned to be
   removed in a future release. (Tomoko Uchida, Uwe Schindler, Mike Sokolov)
@@ -88,6 +94,18 @@ API Changes
 
 * LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
   (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
+
+* LUCENE-10398: Add static method for getting Terms from LeafReader. (Spike Liu)
+
+* LUCENE-10440: TaxonomyFacets and FloatTaxonomyFacets have been deprecated and are no longer
+  supported extension points for user-created faceting implementations. (Greg Miller)
+
+* LUCENE-10431: MultiTermQuery.setRewriteMethod() has been deprecated, and constructor
+  parameters for the various implementations added. (Alan Woodward)
+
+* LUCENE-10171: OpenNLPOpsFactory.getLemmatizerDictionary(String, ResourceLoader) now returns a
+  DictionaryLemmatizer object instead of a raw String serialization of the dictionary.
+  (Spyros Kapnissis via Michael Gibney, Alessandro Benedetti)
 
 New Features
 ---------------------
@@ -154,6 +172,14 @@ New Features
   the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
   (Gautam Worah, Ignacio Vera, Adrien Grand)
 
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
+
+* LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
+  nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
+
+* LUCENE-10237: Add MergeOnFlushMergePolicy to sandbox.
+  (Michael Froh, Anand Kotriwal)
+
 Improvements
 ---------------------
 
@@ -212,19 +238,38 @@ Optimizations
 
 * LUCENE-10388: Remove MultiLevelSkipListReader#SkipBuffer to make JVM less confused. (Guo Feng)
 
-* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
-
 * LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
   matching clauses is a constant. (LuYunCheng via Adrien Grand)
 
 * LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
   (Adrien Grand)
 
+* LUCENE-10408 Better encoding of doc Ids in vectors. (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
+
+* LUCENE-10424, LUCENE-10439: Optimize the "everything matches" case for count query in PointRangeQuery. (Ignacio Vera, Lu Xugang)
+
+* LUCENE-10084, LUCENE-10435: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever
+  terms or points have a docCount that is equal to maxDoc. (Vigya Sharma, Lu Xugang)
+
+* LUCENE-10442: When indexQuery or/and dvQuery be a MatchAllDocsQuery
+  then IndexOrDocValuesQuery should be rewrite to MatchAllDocsQuery. (Lu Xugang)
+
+* LUCENE-10450: IndexSortSortedNumericDocValuesRangeQuery could be rewrite to MatchAllDocsQuery. (Lu Xugang)
+
+* LUCENE-10453: Indexing and search speedup with KNN vectors when using
+  euclidean distance. (Adrien Grand)
+
+* LUCENE-10455: IndexSortSortedNumericDocValuesRangeQuery now implements the scorerSupplier API. (Lu Xugang)
+
 Changes in runtime behavior
 ---------------------
 
 * LUCENE-10291: Lucene now only writes files for terms and postings if at least
   one field is indexed with postings. (Yannick Welsch)
+
+* LUCENE-10311: FixedBitSet#approximateCardinality now trades accuracy for
+  speed instead of delegating to FixedBitSet#cardinality.
+  (Robert Muir, Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -266,6 +311,10 @@ Bug Fixes
 * LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
    as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
 
+* LUCENE-10428: Queries with a misbehaving score function may no longer cause
+  infinite loops in their parent BooleanQuery.
+  (Ankit Jain, Daniel Doubrovkine, Adrien Grand)
+
 Other
 ---------------------
 
@@ -284,6 +333,9 @@ Other
   so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
 
 * LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
+
+* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon 
+  does not contain enough no-collinear points. (Ignacio Vera)
 
 ======================= Lucene 9.0.0 =======================
 
@@ -614,7 +666,7 @@ Improvements
   (David Smiley)
 
 * LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. (Greg Miller)
+  with its own custom encoding. (Greg Miller) 
 
 Bug fixes
 ---------------------

@@ -83,8 +83,7 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
       LeafReaderContext context, int doc, Query query, String field, BytesRefIterator terms)
       throws IOException {
     Objects.requireNonNull(field);
-    Terms t = context.reader().terms(field);
-    if (t == null) return null;
+    Terms t = Terms.getTerms(context.reader(), field);
     TermsEnum te = t.iterator();
     PostingsEnum reuse = null;
     for (BytesRef term = terms.next(); term != null; term = terms.next()) {

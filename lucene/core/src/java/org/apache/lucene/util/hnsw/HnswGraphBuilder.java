@@ -36,7 +36,7 @@ import org.apache.lucene.util.InfoStream;
 public final class HnswGraphBuilder {
 
   /** Default random seed for level generation * */
-  private static final long DEFAULT_RAND_SEED = System.currentTimeMillis();
+  private static final long DEFAULT_RAND_SEED = 42;
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 
@@ -151,13 +151,12 @@ public final class HnswGraphBuilder {
 
     // for levels > nodeLevel search with topk = 1
     for (int level = curMaxLevel; level > nodeLevel; level--) {
-      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectorValues, hnsw, null);
+      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectorValues, hnsw);
       eps = new int[] {candidates.pop()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
-      candidates =
-          graphSearcher.searchLevel(value, beamWidth, level, eps, vectorValues, hnsw, null);
+      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectorValues, hnsw);
       eps = candidates.nodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);

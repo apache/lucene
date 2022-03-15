@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.CorruptIndexException;
@@ -218,7 +219,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0) {
@@ -227,8 +229,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
-
     OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+
     NeighborQueue results =
         HnswGraphSearcher.search(
             target,
@@ -236,7 +238,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             vectorValues,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
-            getAcceptOrds(acceptDocs, fieldEntry));
+            getAcceptOrds(acceptDocs, fieldEntry),
+            visitedLimit);
 
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
@@ -244,34 +247,39 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       int node = results.topNode();
       float score = fieldEntry.similarityFunction.convertToScore(results.topScore());
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc(node), score);
     }
-    // always return >= the case where we can assert == is only when there are fewer than topK
-    // vectors in the index
-    return new TopDocs(
-        new TotalHits(results.visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO),
-        scoreDocs);
+
+    TotalHits.Relation relation =
+        results.incomplete()
+            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+            : TotalHits.Relation.EQUAL_TO;
+    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new OffHeapVectorValues(fieldEntry.dimension, fieldEntry.ordToDoc, bytesSlice);
+    return new OffHeapVectorValues(
+        fieldEntry.dimension, fieldEntry.size(), fieldEntry.ordToDoc, bytesSlice);
   }
 
   private Bits getAcceptOrds(Bits acceptDocs, FieldEntry fieldEntry) {
+    if (fieldEntry.ordToDoc == null) {
+      return acceptDocs;
+    }
     if (acceptDocs == null) {
       return null;
     }
     return new Bits() {
       @Override
       public boolean get(int index) {
-        return acceptDocs.get(fieldEntry.ordToDoc[index]);
+        return acceptDocs.get(fieldEntry.ordToDoc(index));
       }
 
       @Override
       public int length() {
-        return fieldEntry.ordToDoc.length;
+        return fieldEntry.size;
       }
     };
   }
@@ -311,7 +319,9 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final int maxConn;
     final int numLevels;
     final int dimension;
+    private final int size;
     final int[] ordToDoc;
+    private final IntUnaryOperator ordToDocOperator;
     final int[][] nodesByLevel;
     // for each level the start offsets in vectorIndex file from where to read neighbours
     final long[] graphOffsetsByLevel;
@@ -323,12 +333,25 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       vectorIndexOffset = input.readVLong();
       vectorIndexLength = input.readVLong();
       dimension = input.readInt();
-      int size = input.readInt();
-      ordToDoc = new int[size];
-      for (int i = 0; i < size; i++) {
-        int doc = input.readVInt();
-        ordToDoc[i] = doc;
+      size = input.readInt();
+
+      int denseSparseMarker = input.readByte();
+      if (denseSparseMarker == -1) {
+        ordToDoc = null; // each document has a vector value
+      } else {
+        assert denseSparseMarker == 0;
+        // TODO: Can we read docIDs from disk directly instead of loading giant arrays in memory?
+        //  Or possibly switch to something like DirectMonotonicReader if it doesn't slow down
+        // searches.
+
+        // as not all docs have vector values, fill a mapping from dense vector ordinals to docIds
+        ordToDoc = new int[size];
+        for (int i = 0; i < size; i++) {
+          int doc = input.readInt();
+          ordToDoc[i] = doc;
+        }
       }
+      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
 
       // read nodes by level
       maxConn = input.readInt();
@@ -343,7 +366,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         } else {
           nodesByLevel[level] = new int[numNodesOnLevel];
           for (int i = 0; i < numNodesOnLevel; i++) {
-            nodesByLevel[level][i] = input.readVInt();
+            nodesByLevel[level][i] = input.readInt();
           }
         }
       }
@@ -363,7 +386,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     int size() {
-      return ordToDoc.length;
+      return size;
+    }
+
+    int ordToDoc(int ord) {
+      return ordToDocOperator.applyAsInt(ord);
     }
   }
 
@@ -371,21 +398,24 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   static class OffHeapVectorValues extends VectorValues
       implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
 
-    final int dimension;
-    final int[] ordToDoc;
-    final IndexInput dataIn;
+    private final int dimension;
+    private final int size;
+    private final int[] ordToDoc;
+    private final IntUnaryOperator ordToDocOperator;
+    private final IndexInput dataIn;
+    private final BytesRef binaryValue;
+    private final ByteBuffer byteBuffer;
+    private final int byteSize;
+    private final float[] value;
 
-    final BytesRef binaryValue;
-    final ByteBuffer byteBuffer;
-    final int byteSize;
-    final float[] value;
+    private int ord = -1;
+    private int doc = -1;
 
-    int ord = -1;
-    int doc = -1;
-
-    OffHeapVectorValues(int dimension, int[] ordToDoc, IndexInput dataIn) {
+    OffHeapVectorValues(int dimension, int size, int[] ordToDoc, IndexInput dataIn) {
       this.dimension = dimension;
+      this.size = size;
       this.ordToDoc = ordToDoc;
+      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
       this.dataIn = dataIn;
       byteSize = Float.BYTES * dimension;
       byteBuffer = ByteBuffer.allocate(byteSize);
@@ -400,7 +430,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public int size() {
-      return ordToDoc.length;
+      return size;
     }
 
     @Override
@@ -424,10 +454,10 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public int nextDoc() {
-      if (++ord >= size()) {
+      if (++ord >= size) {
         doc = NO_MORE_DOCS;
       } else {
-        doc = ordToDoc[ord];
+        doc = ordToDocOperator.applyAsInt(ord);
       }
       return doc;
     }
@@ -435,27 +465,32 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     @Override
     public int advance(int target) {
       assert docID() < target;
-      ord = Arrays.binarySearch(ordToDoc, ord + 1, ordToDoc.length, target);
-      if (ord < 0) {
-        ord = -(ord + 1);
-      }
-      assert ord <= ordToDoc.length;
-      if (ord == ordToDoc.length) {
-        doc = NO_MORE_DOCS;
+
+      if (ordToDoc == null) {
+        ord = target;
       } else {
-        doc = ordToDoc[ord];
+        ord = Arrays.binarySearch(ordToDoc, ord + 1, ordToDoc.length, target);
+        if (ord < 0) {
+          ord = -(ord + 1);
+        }
+      }
+
+      if (ord < size) {
+        doc = ordToDocOperator.applyAsInt(ord);
+      } else {
+        doc = NO_MORE_DOCS;
       }
       return doc;
     }
 
     @Override
     public long cost() {
-      return ordToDoc.length;
+      return size;
     }
 
     @Override
     public RandomAccessVectorValues randomAccess() {
-      return new OffHeapVectorValues(dimension, ordToDoc, dataIn.clone());
+      return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
 
     @Override
