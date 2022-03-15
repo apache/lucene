@@ -20,7 +20,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -684,10 +687,13 @@ public class TestAddIndexes extends LuceneTestCase {
   }
 
   private class ConcurrentAddIndexesMergePolicy extends TieredMergePolicy {
+
+    public MergeSpecification mergeSpec;
+
     @Override
     public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
       // create a oneMerge for each reader to let them get concurrently processed by addIndexes()
-      MergeSpecification mergeSpec = new MergeSpecification();
+      mergeSpec = new MergeSpecification();
       for (CodecReader reader: readers) {
         mergeSpec.add(new OneMerge(List.of(reader), leaf -> new MergeReader(leaf, leaf.getLiveDocs())));
       }
@@ -696,39 +702,6 @@ public class TestAddIndexes extends LuceneTestCase {
       }
       return mergeSpec;
     }
-  }
-
-  private class PartialMergeScheduler extends MergeScheduler {
-
-    int mergesToDo;
-    int mergesTriggered = 0;
-
-    public PartialMergeScheduler(int mergesToDo) {
-      this.mergesToDo = mergesToDo;
-      if (VERBOSE) {
-        System.out.printf("PartialMergeScheduler configured to mark all merges as failed, after triggering [%s] merges.\n", mergesToDo);
-      }
-    }
-
-    @Override
-    public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
-      while (true) {
-        MergePolicy.OneMerge merge = mergeSource.getNextMerge();
-        if (merge == null) {
-          break;
-        }
-        if (mergesTriggered >= mergesToDo) {
-          merge.close(false, false, mr -> {});
-          mergeSource.onMergeFinished(merge);
-        } else {
-          mergeSource.merge(merge);
-          mergesTriggered++;
-        }
-      }
-    }
-
-    @Override
-    public void close() throws IOException {}
   }
 
   private class AddIndexesWithReadersSetup {
@@ -767,12 +740,63 @@ public class TestAddIndexes extends LuceneTestCase {
     }
   }
 
+  public void testAddIndexesWithConcurrentMerges() throws Exception {
+    ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
+    TestUtil.addIndexesSlowly(c.destWriter, c.readers);
+    c.destWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(c.destDir)){
+      assertEquals(c.INIT_DOCS + c.NUM_READERS * c.ADDED_DOCS_PER_READER, reader.numDocs());
+    }
+    c.closeAll();
+  }
+
+  private class PartialMergeScheduler extends MergeScheduler {
+
+    int mergesToDo;
+    int mergesTriggered = 0;
+
+    public PartialMergeScheduler(int mergesToDo) {
+      this.mergesToDo = mergesToDo;
+      if (VERBOSE) {
+        System.out.printf("PartialMergeScheduler configured to mark all merges as failed, after triggering [%s] merges.\n", mergesToDo);
+      }
+    }
+
+    @Override
+    public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
+      while (true) {
+        MergePolicy.OneMerge merge = mergeSource.getNextMerge();
+        if (merge == null) {
+          break;
+        }
+        if (mergesTriggered >= mergesToDo) {
+          merge.close(false, false, mr -> {});
+          mergeSource.onMergeFinished(merge);
+        } else {
+          mergeSource.merge(merge);
+          mergesTriggered++;
+        }
+      }
+    }
+
+    @Override
+    public void close() throws IOException {}
+  }
+
   public void testAddIndexesWithPartialMergeFailures() throws Exception {
-    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new PartialMergeScheduler(2),
-      new ConcurrentAddIndexesMergePolicy());
+    ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new PartialMergeScheduler(2), mp);
     assertThrows(MergePolicy.MergeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
+
+    // verify no docs got added and all interim files from successful merges have been deleted from dir
     try (IndexReader reader = DirectoryReader.open(c.destDir)){
       assertEquals(c.INIT_DOCS, reader.numDocs());
+    }
+    for (MergePolicy.OneMerge merge: mp.mergeSpec.merges) {
+      if (merge.getMergeInfo() != null) {
+        assertFalse(Arrays.stream(c.destDir.listAll()).collect(Collectors.toSet()).containsAll(merge.getMergeInfo().files()));
+      }
     }
     c.closeAll();
   }
