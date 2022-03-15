@@ -40,7 +40,10 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
+import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -305,9 +308,15 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   private static ValueComparator loadComparator(
       SortField sortField, long topValue, LeafReaderContext context) throws IOException {
     @SuppressWarnings("unchecked")
-    FieldComparator<Long> fieldComparator =
-        (FieldComparator<Long>) sortField.getComparator(1, false);
-    fieldComparator.setTopValue(topValue);
+    FieldComparator<Number> fieldComparator =
+        (FieldComparator<Number>) sortField.getComparator(1, false);
+    // We expect the sortField to be SortedNumericSortField
+    if (sortField instanceof SortedNumericSortField) {
+      fieldComparator.setTopValue(
+          convert(((SortedNumericSortField) sortField).getNumericType(), topValue));
+    } else {
+      fieldComparator.setTopValue(convert(sortField.getType(), topValue));
+    }
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);
     int direction = sortField.getReverse() ? -1 : 1;
@@ -316,6 +325,20 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       int value = leafFieldComparator.compareTop(doc);
       return direction * value;
     };
+  }
+
+  private static Number convert(Type type, long topValue) {
+    if (type == Type.INT) {
+      return (int) topValue;
+    } else if (type == Type.DOUBLE) {
+      return NumericUtils.sortableLongToDouble(topValue);
+    } else if (type == Type.FLOAT) {
+      return NumericUtils.sortableIntToFloat((int) topValue);
+    } else if (type == Type.LONG) {
+      return topValue;
+    } else {
+      throw new AssertionError("The sorted field type is not numeric type");
+    }
   }
 
   /**
