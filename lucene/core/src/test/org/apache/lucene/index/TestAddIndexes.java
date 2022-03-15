@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -843,7 +842,6 @@ public class TestAddIndexes extends LuceneTestCase {
 
   private class CountingSerialMergeScheduler extends MergeScheduler {
 
-    int mergesTriggered = 0;
     int explicitMerges = 0;
     int addIndexesMerges = 0;
 
