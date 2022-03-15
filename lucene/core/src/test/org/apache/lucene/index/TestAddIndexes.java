@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -692,11 +691,13 @@ public class TestAddIndexes extends LuceneTestCase {
     public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
       // create a oneMerge for each reader to let them get concurrently processed by addIndexes()
       MergeSpecification mergeSpec = new MergeSpecification();
-      for (CodecReader reader: readers) {
-        mergeSpec.add(new OneMerge(List.of(reader), leaf -> new MergeReader(leaf, leaf.getLiveDocs())));
+      for (CodecReader reader : readers) {
+        mergeSpec.add(
+            new OneMerge(List.of(reader), leaf -> new MergeReader(leaf, leaf.getLiveDocs())));
       }
       if (VERBOSE) {
-        System.out.println("No. of addIndexes merges returned by MergePolicy: " + mergeSpec.merges.size());
+        System.out.println(
+            "No. of addIndexes merges returned by MergePolicy: " + mergeSpec.merges.size());
       }
       return mergeSpec;
     }
@@ -713,8 +714,8 @@ public class TestAddIndexes extends LuceneTestCase {
     public AddIndexesWithReadersSetup(MergeScheduler ms, MergePolicy mp) throws IOException {
       dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
       IndexWriter writer =
-        new IndexWriter(
-          dir, new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(2));
+          new IndexWriter(
+              dir, new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(2));
       for (int i = 0; i < ADDED_DOCS_PER_READER; i++) addDoc(writer);
       writer.close();
 
@@ -740,10 +741,11 @@ public class TestAddIndexes extends LuceneTestCase {
 
   public void testAddIndexesWithConcurrentMerges() throws Exception {
     ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy();
-    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
+    AddIndexesWithReadersSetup c =
+        new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
     TestUtil.addIndexesSlowly(c.destWriter, c.readers);
     c.destWriter.commit();
-    try (IndexReader reader = DirectoryReader.open(c.destDir)){
+    try (IndexReader reader = DirectoryReader.open(c.destDir)) {
       assertEquals(c.INIT_DOCS + c.NUM_READERS * c.ADDED_DOCS_PER_READER, reader.numDocs());
     }
     c.closeAll();
@@ -757,8 +759,11 @@ public class TestAddIndexes extends LuceneTestCase {
     public PartialMergeScheduler(int mergesToDo) {
       this.mergesToDo = mergesToDo;
       if (VERBOSE) {
-        System.out.println("PartialMergeScheduler configured to mark all merges as failed, " +
-          "after triggering [" + mergesToDo + "] merges.");
+        System.out.println(
+            "PartialMergeScheduler configured to mark all merges as failed, "
+                + "after triggering ["
+                + mergesToDo
+                + "] merges.");
       }
     }
 
@@ -785,38 +790,46 @@ public class TestAddIndexes extends LuceneTestCase {
 
   public void testAddIndexesWithPartialMergeFailures() throws Exception {
     final List<MergePolicy.OneMerge> merges = new ArrayList<>();
-    ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy() {
-      @Override
-      public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
-        MergeSpecification spec = super.findMerges(readers);
-        merges.addAll(spec.merges);
-        return spec;
-      }
-    };
+    ConcurrentAddIndexesMergePolicy mp =
+        new ConcurrentAddIndexesMergePolicy() {
+          @Override
+          public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+            MergeSpecification spec = super.findMerges(readers);
+            merges.addAll(spec.merges);
+            return spec;
+          }
+        };
     AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new PartialMergeScheduler(2), mp);
-    assertThrows(MergePolicy.MergeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
+    assertThrows(
+        MergePolicy.MergeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
     c.destWriter.commit();
 
-    // verify no docs got added and all interim files from successful merges have been deleted from dir
-    try (IndexReader reader = DirectoryReader.open(c.destDir)){
+    // verify no docs got added and all interim files from successful merges have been deleted from
+    // dir
+    try (IndexReader reader = DirectoryReader.open(c.destDir)) {
       assertEquals(c.INIT_DOCS, reader.numDocs());
     }
-    for (MergePolicy.OneMerge merge: merges) {
+    for (MergePolicy.OneMerge merge : merges) {
       if (merge.getMergeInfo() != null) {
-        assertFalse(Arrays.stream(c.destDir.listAll()).collect(Collectors.toSet()).containsAll(merge.getMergeInfo().files()));
+        assertFalse(
+            Arrays.stream(c.destDir.listAll())
+                .collect(Collectors.toSet())
+                .containsAll(merge.getMergeInfo().files()));
       }
     }
     c.closeAll();
   }
 
   public void testAddIndexesWithNullMergeSpec() throws Exception {
-    MergePolicy mp = new TieredMergePolicy() {
-      @Override
-      public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
-        return null;
-      }
-    };
-    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
+    MergePolicy mp =
+        new TieredMergePolicy() {
+          @Override
+          public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+            return null;
+          }
+        };
+    AddIndexesWithReadersSetup c =
+        new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
     TestUtil.addIndexesSlowly(c.destWriter, c.readers);
     c.destWriter.commit();
     try (IndexReader reader = DirectoryReader.open(c.destDir)) {
@@ -826,13 +839,15 @@ public class TestAddIndexes extends LuceneTestCase {
   }
 
   public void testAddIndexesWithEmptyMergeSpec() throws Exception {
-    MergePolicy mp = new TieredMergePolicy() {
-      @Override
-      public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
-        return new MergeSpecification();
-      }
-    };
-    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
+    MergePolicy mp =
+        new TieredMergePolicy() {
+          @Override
+          public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+            return new MergeSpecification();
+          }
+        };
+    AddIndexesWithReadersSetup c =
+        new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
     TestUtil.addIndexesSlowly(c.destWriter, c.readers);
     c.destWriter.commit();
     try (IndexReader reader = DirectoryReader.open(c.destDir)) {

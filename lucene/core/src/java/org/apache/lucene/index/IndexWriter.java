@@ -2337,8 +2337,9 @@ public class IndexWriter
           spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, this);
           break;
         case ADD_INDEXES:
-          throw new IllegalStateException("Merges with ADD_INDEXES trigger should be " +
-            "called from within the addIndexes() API flow");
+          throw new IllegalStateException(
+              "Merges with ADD_INDEXES trigger should be "
+                  + "called from within the addIndexes() API flow");
         case EXPLICIT:
         case FULL_FLUSH:
         case MERGE_FINISHED:
@@ -3137,9 +3138,9 @@ public class IndexWriter
 
     try {
       // Best effort up front validations
-      for (CodecReader leaf: readers) {
+      for (CodecReader leaf : readers) {
         validateMergeReader(leaf);
-        for (FieldInfo fi: leaf.getFieldInfos()) {
+        for (FieldInfo fi : leaf.getFieldInfos()) {
           globalFieldNumberMap.verifyFieldInfo(fi);
         }
         numDocs += leaf.numDocs();
@@ -3149,8 +3150,9 @@ public class IndexWriter
       synchronized (this) {
         ensureOpen();
         if (merges.areEnabled() == false) {
-          throw new AlreadyClosedException("Merges are disabled on current writer. " +
-            "Cannot execute addIndexes(CodecReaders...) API");
+          throw new AlreadyClosedException(
+              "Merges are disabled on current writer. "
+                  + "Cannot execute addIndexes(CodecReaders...) API");
         }
       }
 
@@ -3162,10 +3164,11 @@ public class IndexWriter
           spec.merges.forEach(addIndexesMergeSource::registerMerge);
           mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
           spec.await();
-          mergeSuccess = spec.merges.stream().allMatch(m -> m.hasCompletedSuccessfully().orElse(false));
+          mergeSuccess =
+              spec.merges.stream().allMatch(m -> m.hasCompletedSuccessfully().orElse(false));
         } finally {
           if (mergeSuccess == false) {
-            for (MergePolicy.OneMerge merge: spec.merges) {
+            for (MergePolicy.OneMerge merge : spec.merges) {
               if (merge.getMergeInfo() != null) {
                 deleteNewFiles(merge.getMergeInfo().files());
               }
@@ -3175,11 +3178,13 @@ public class IndexWriter
       } else {
         if (infoStream.isEnabled("IW")) {
           if (spec == null) {
-            infoStream.message("addIndexes(CodecReaders...)",
-              "received null mergeSpecification from MergePolicy. No indexes to add, returning..");
+            infoStream.message(
+                "addIndexes(CodecReaders...)",
+                "received null mergeSpecification from MergePolicy. No indexes to add, returning..");
           } else {
-            infoStream.message("addIndexes(CodecReaders...)",
-              "received empty mergeSpecification from MergePolicy. No indexes to add, returning..");
+            infoStream.message(
+                "addIndexes(CodecReaders...)",
+                "received empty mergeSpecification from MergePolicy. No indexes to add, returning..");
           }
         }
         return docWriter.getNextSequenceNumber();
@@ -3188,7 +3193,7 @@ public class IndexWriter
       if (mergeSuccess) {
         List<SegmentCommitInfo> infos = new ArrayList<>();
         long totalDocs = 0;
-        for (MergePolicy.OneMerge merge: spec.merges) {
+        for (MergePolicy.OneMerge merge : spec.merges) {
           totalDocs += merge.totalMaxDoc;
           if (merge.getMergeInfo() != null) {
             infos.add(merge.getMergeInfo());
@@ -3217,7 +3222,8 @@ public class IndexWriter
           seqNo = docWriter.getNextSequenceNumber();
         }
       } else {
-        throw new MergePolicy.MergeException("failed to successfully merge all provided readers in addIndexes(CodecReader...)");
+        throw new MergePolicy.MergeException(
+            "failed to successfully merge all provided readers in addIndexes(CodecReader...)");
       }
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "addIndexes(CodecReader...)");
@@ -3263,15 +3269,15 @@ public class IndexWriter
 
     public synchronized void abortPendingMerges() throws IOException {
       IOUtils.applyToAll(
-        pendingAddIndexesMerges,
-        merge -> {
-          if (infoStream.isEnabled("IW")) {
-            infoStream.message("IW", "now abort pending addIndexes merge");
-          }
-          merge.setAborted();
-          merge.close(false, false, mr -> {});
-          onMergeFinished(merge);
-        });
+          pendingAddIndexesMerges,
+          merge -> {
+            if (infoStream.isEnabled("IW")) {
+              infoStream.message("IW", "now abort pending addIndexes merge");
+            }
+            merge.setAborted();
+            merge.close(false, false, mr -> {});
+            onMergeFinished(merge);
+          });
       pendingAddIndexesMerges.clear();
     }
 
@@ -3297,8 +3303,8 @@ public class IndexWriter
   /**
    * Runs a single merge operation for {@link IndexWriter#addIndexes(CodecReader...)}.
    *
-   * Merges and creates a SegmentInfo, for the readers grouped together in
-   * provided OneMerge.
+   * <p>Merges and creates a SegmentInfo, for the readers grouped together in provided OneMerge.
+   *
    * @param merge OneMerge object initialized from readers.
    * @throws IOException if there is a low-level IO error
    */
@@ -3323,8 +3329,10 @@ public class IndexWriter
       if (softDeletesEnabled) {
         Bits liveDocs = reader.hardLiveDocs;
         numSoftDeleted +=
-          PendingSoftDeletes.countSoftDeletes(
-            DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), leaf), liveDocs);
+            PendingSoftDeletes.countSoftDeletes(
+                DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(
+                    config.getSoftDeletesField(), leaf),
+                liveDocs);
       }
     }
 
@@ -3332,8 +3340,8 @@ public class IndexWriter
     testReserveDocs(numDocs);
 
     final IOContext context =
-      new IOContext(
-        new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
+        new IOContext(
+            new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
 
     // TODO: somehow we should fix this merge so it's
     // abortable so that IW.close(false) is able to stop it
@@ -3341,21 +3349,23 @@ public class IndexWriter
     Codec codec = config.getCodec();
     // We set the min version to null for now, it will be set later by SegmentMerger
     SegmentInfo segInfo =
-      new SegmentInfo(
-        directoryOrig,
-        Version.LATEST,
-        null,
-        mergedName,
-        -1,
-        false,
-        codec,
-        Collections.emptyMap(),
-        StringHelper.randomId(),
-        Collections.emptyMap(),
-        config.getIndexSort());
+        new SegmentInfo(
+            directoryOrig,
+            Version.LATEST,
+            null,
+            mergedName,
+            -1,
+            false,
+            codec,
+            Collections.emptyMap(),
+            StringHelper.randomId(),
+            Collections.emptyMap(),
+            config.getIndexSort());
 
-    List<CodecReader> readers = merge.getMergeReader().stream().map(r -> r.codecReader).collect(Collectors.toList());
-    SegmentMerger merger = new SegmentMerger(readers, segInfo, infoStream, trackingDir, globalFieldNumberMap, context);
+    List<CodecReader> readers =
+        merge.getMergeReader().stream().map(r -> r.codecReader).collect(Collectors.toList());
+    SegmentMerger merger =
+        new SegmentMerger(readers, segInfo, infoStream, trackingDir, globalFieldNumberMap, context);
 
     if (!merger.shouldMerge()) {
       return;
@@ -3375,8 +3385,8 @@ public class IndexWriter
       }
     }
 
-    merge.setMergeInfo(new SegmentCommitInfo(segInfo, 0, numSoftDeleted,
-        -1L, -1L, -1L, StringHelper.randomId()));
+    merge.setMergeInfo(
+        new SegmentCommitInfo(segInfo, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId()));
     merge.getMergeInfo().info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
     trackingDir.clearCreatedFiles();
 
@@ -3396,7 +3406,8 @@ public class IndexWriter
       // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
       // createCompoundFile tries to cleanup, but it might not always be able to...
       try {
-        createCompoundFile(infoStream, trackingCFSDir, merge.getMergeInfo().info, context, this::deleteNewFiles);
+        createCompoundFile(
+            infoStream, trackingCFSDir, merge.getMergeInfo().info, context, this::deleteNewFiles);
       } finally {
         // delete new non cfs files directly: they were never
         // registered with IFD

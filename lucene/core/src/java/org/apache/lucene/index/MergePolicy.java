@@ -236,14 +236,15 @@ public abstract class MergePolicy {
     }
 
     /**
-     * Create a OneMerge directly from CodecReaders.
-     * Used to merge incoming readers in {@link IndexWriter#addIndexes(CodecReader...)}. This
-     * OneMerge works directly on readers and has an empty segments list.
+     * Create a OneMerge directly from CodecReaders. Used to merge incoming readers in {@link
+     * IndexWriter#addIndexes(CodecReader...)}. This OneMerge works directly on readers and has an
+     * empty segments list.
      *
      * @param codecReaders Codec readers to merge
      * @param readerFactory Function to create a MergeReader from a CodecReader.
      */
-    public OneMerge(List<CodecReader> codecReaders, Function<CodecReader, MergeReader> readerFactory) {
+    public OneMerge(
+        List<CodecReader> codecReaders, Function<CodecReader, MergeReader> readerFactory) {
       List<MergeReader> readers = new ArrayList<>(codecReaders.size());
       codecReaders.forEach(r -> readers.add(readerFactory.apply(r)));
       mergeReaders = List.copyOf(readers);
@@ -496,10 +497,10 @@ public abstract class MergePolicy {
 
     CompletableFuture<Void> getMergeCompletedFutures() {
       return CompletableFuture.allOf(
-        merges.stream()
-          .map(m -> m.mergeCompleted)
-          .collect(Collectors.toList())
-          .toArray(CompletableFuture<?>[]::new));
+          merges.stream()
+              .map(m -> m.mergeCompleted)
+              .collect(Collectors.toList())
+              .toArray(CompletableFuture<?>[]::new));
     }
 
     /** Waits, until interrupted, for all merges to complete. */
@@ -608,15 +609,14 @@ public abstract class MergePolicy {
       throws IOException;
 
   /**
-   * Define the set of merge operations to perform on provided codec readers
-   * in {@link IndexWriter#addIndexes(CodecReader...)}.
+   * Define the set of merge operations to perform on provided codec readers in {@link
+   * IndexWriter#addIndexes(CodecReader...)}.
    *
-   * The merge operation is required to convert provided readers into segments that can be added
-   * to the writer. This API can be overridden in custom merge policies to control the
-   * concurrency for addIndexes. Default implementation creates a single merge operation for
-   * all provided readers (lowest concurrency).
-   * Creating a merge for each reader, would provide the highest level of concurrency possible
-   * with the configured merge scheduler.
+   * <p>The merge operation is required to convert provided readers into segments that can be added
+   * to the writer. This API can be overridden in custom merge policies to control the concurrency
+   * for addIndexes. Default implementation creates a single merge operation for all provided
+   * readers (lowest concurrency). Creating a merge for each reader, would provide the highest level
+   * of concurrency possible with the configured merge scheduler.
    *
    * @param readers set of readers to merge into the main index
    */
