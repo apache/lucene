@@ -18,10 +18,12 @@ package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -163,7 +165,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final Weight weight = this;
-        DocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+        DocIdSetIterator disi =
+            getDocIdSetIteratorOrNull(context, (missingValue, boundedDisi) -> boundedDisi);
         if (disi != null) {
           return new ScorerSupplier() {
             @Override
@@ -198,22 +201,39 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        Sort indexSort = context.reader().getMetaData().getSort();
-        if (indexSort != null
-            && indexSort.getSort().length > 0
-            && indexSort.getSort()[0].getField().equals(field)
-            && indexSort.getSort()[0].getMissingValue() == null) {
-          BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
-          if (disi != null) {
-            return disi.lastDoc - disi.firstDoc;
-          }
+        BoundedDocIdSetIterator disi;
+        PointValues pointValues = context.reader().getPointValues(field);
+        if (pointValues != null && pointValues.getDocCount() == context.reader().maxDoc()) {
+          disi = getDocIdSetIteratorOrNull(context, (missingValue, boundedDisi) -> boundedDisi);
+        } else {
+          disi =
+              getDocIdSetIteratorOrNull(
+                  context,
+                  (missingValue, boundedDisi) -> {
+                    if (missingValue == null
+                        || (long) missingValue < lowerValue
+                        || (long) missingValue > upperValue) {
+                      return boundedDisi;
+                    }
+                    return null;
+                  });
         }
-        return fallbackWeight.count(context);
+
+        if (disi != null) {
+          return disi.lastDoc - disi.firstDoc;
+        }
+        // if no point indexed, PointRangeQuery#count equals 0, that's sometimes not what we want.
+        if (pointValues != null) {
+          return fallbackWeight.count(context);
+        }
+        return super.count(context);
       }
     };
   }
 
-  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
+  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(
+      LeafReaderContext context,
+      BiFunction<Object, BoundedDocIdSetIterator, BoundedDocIdSetIterator> boundedDisiFunction)
       throws IOException {
     SortedNumericDocValues sortedNumericValues =
         DocValues.getSortedNumeric(context.reader(), field);
@@ -225,7 +245,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
           && indexSort.getSort()[0].getField().equals(field)) {
 
         SortField sortField = indexSort.getSort()[0];
-        return getDocIdSetIterator(sortField, context, numericValues);
+        return getDocIdSetIterator(sortField, context, numericValues, boundedDisiFunction);
       }
     }
     return null;
@@ -244,7 +264,10 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * no value.
    */
   private BoundedDocIdSetIterator getDocIdSetIterator(
-      SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
+      SortField sortField,
+      LeafReaderContext context,
+      DocIdSetIterator delegate,
+      BiFunction<Object, BoundedDocIdSetIterator, BoundedDocIdSetIterator> boundedDisiFunction)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
     long upper = sortField.getReverse() ? lowerValue : upperValue;
@@ -284,7 +307,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     int lastDocIdExclusive = high + 1;
-    return new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
+    BoundedDocIdSetIterator disi =
+        new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
+    return boundedDisiFunction.apply(sortField.getMissingValue(), disi);
   }
 
   /** Compares the given document's value with a stored reference value. */

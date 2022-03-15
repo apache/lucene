@@ -485,40 +485,34 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
-  public void testCountWithMissingValue() throws IOException {
+  public void testCountHasMissingValue() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
-    boolean enableMissingValue = random().nextBoolean();
-    // if enableMissingValue equals true, use PointRangeQuery#count, otherwise use
-    // BoundedDocIdSetIterator#lastDoc、firstDoc
-    if (enableMissingValue) {
-      sortField.setMissingValue(3L);
-    }
+    // true: lower
+    // false: upper
+    boolean lowerOrUpper = random().nextBoolean();
+    long lowerValue = 1;
+    long upperValue = 100;
+    sortField.setMissingValue(lowerOrUpper ? lowerValue : upperValue);
     Sort indexSort = new Sort(sortField);
     iwc.setIndexSort(indexSort);
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
 
-    Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("field", 10));
-    doc.add(new LongPoint("field", 10));
-    writer.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new SortedNumericDocValuesField("field", 3));
-    doc.add(new LongPoint("field", 3));
-    writer.addDocument(doc);
-
+    writer.addDocument(
+        createSNDVAndPointDocument("field", random().nextLong(lowerValue, upperValue)));
+    writer.addDocument(
+        createSNDVAndPointDocument("field", random().nextLong(lowerValue, upperValue)));
     // missingValue
-    doc = new Document();
-    doc.add(new StringField("foo", "bar", Field.Store.YES));
-    writer.addDocument(doc);
+    writer.addDocument(createMissingValueDocument());
 
     IndexReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    Query fallbackQuery = LongPoint.newRangeQuery("field", 1, 42);
-    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
+    Query fallbackQuery = LongPoint.newRangeQuery("field", lowerValue, upperValue);
+    Query query =
+        new IndexSortSortedNumericDocValuesRangeQuery(
+            "field", lowerValue, upperValue, fallbackQuery);
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
       assertEquals(2, weight.count(context));
@@ -527,6 +521,19 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     writer.close();
     reader.close();
     dir.close();
+  }
+
+  private Document createMissingValueDocument() {
+    Document doc = new Document();
+    doc.add(new StringField("foo", "fox", Field.Store.YES));
+    return doc;
+  }
+
+  private Document createSNDVAndPointDocument(String field, long value) {
+    Document doc = new Document();
+    doc.add(new SortedNumericDocValuesField(field, value));
+    doc.add(new LongPoint(field, value));
+    return doc;
   }
 
   public void testFallbackCount() throws IOException {
