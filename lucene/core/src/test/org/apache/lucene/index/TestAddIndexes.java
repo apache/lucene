@@ -696,7 +696,7 @@ public class TestAddIndexes extends LuceneTestCase {
         mergeSpec.add(new OneMerge(List.of(reader), leaf -> new MergeReader(leaf, leaf.getLiveDocs())));
       }
       if (VERBOSE) {
-        System.out.printf("[%s] merges found in mergeSpec\n", mergeSpec.merges.size());
+        System.out.println("No. of addIndexes merges returned by MergePolicy: " + mergeSpec.merges.size());
       }
       return mergeSpec;
     }
@@ -757,7 +757,8 @@ public class TestAddIndexes extends LuceneTestCase {
     public PartialMergeScheduler(int mergesToDo) {
       this.mergesToDo = mergesToDo;
       if (VERBOSE) {
-        System.out.printf("PartialMergeScheduler configured to mark all merges as failed, after triggering [%s] merges.\n", mergesToDo);
+        System.out.println("PartialMergeScheduler configured to mark all merges as failed, " +
+          "after triggering [" + mergesToDo + "] merges.");
       }
     }
 
