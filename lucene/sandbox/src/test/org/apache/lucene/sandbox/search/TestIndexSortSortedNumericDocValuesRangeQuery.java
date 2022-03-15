@@ -461,30 +461,6 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     reader.close();
   }
 
-  public void testCount() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    Sort indexSort = new Sort(new SortedNumericSortField("field", SortField.Type.LONG));
-    iwc.setIndexSort(indexSort);
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
-    Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("field", 10));
-    writer.addDocument(doc);
-    IndexReader reader = writer.getReader();
-    IndexSearcher searcher = newSearcher(reader);
-
-    Query fallbackQuery = LongPoint.newRangeQuery("field", 1, 42);
-    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
-    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1, weight.count(context));
-    }
-
-    writer.close();
-    reader.close();
-    dir.close();
-  }
-
   public void testCountHasMissingValue() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -534,32 +510,6 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     doc.add(new SortedNumericDocValuesField(field, value));
     doc.add(new LongPoint(field, value));
     return doc;
-  }
-
-  public void testFallbackCount() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    Sort indexSort = new Sort(new SortedNumericSortField("field", SortField.Type.LONG));
-    iwc.setIndexSort(indexSort);
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
-    Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("field", 10));
-    writer.addDocument(doc);
-    IndexReader reader = writer.getReader();
-    IndexSearcher searcher = newSearcher(reader);
-
-    // we use an unrealistic query that exposes its own Weight#count
-    Query fallbackQuery = new MatchNoDocsQuery();
-    // the index is not sorted on this field, the fallback query is used
-    Query query = new IndexSortSortedNumericDocValuesRangeQuery("another", 1, 42, fallbackQuery);
-    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(0, weight.count(context));
-    }
-
-    writer.close();
-    reader.close();
-    dir.close();
   }
 
   private Document createDocument(String field, long value) {
