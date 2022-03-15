@@ -105,7 +105,6 @@ public class Monitor implements Closeable {
    * Monitor's queryindex
    *
    * @param listener listener to register
-   * @throws IllegalStateException when Monitor is readonly
    */
   public void addQueryIndexUpdateListener(MonitorUpdateListener listener) {
     queryIndex.addListener(listener);

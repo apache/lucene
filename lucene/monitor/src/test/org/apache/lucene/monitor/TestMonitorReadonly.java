@@ -20,6 +20,7 @@ package org.apache.lucene.monitor;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
@@ -70,7 +71,7 @@ public class TestMonitorReadonly extends MonitorTestBase {
                 true);
     try (Monitor monitor = new Monitor(ANALYZER, config)) {
       assertThrows(
-          IllegalStateException.class,
+          UnsupportedOperationException.class,
           () -> {
             TermQuery query = new TermQuery(new Term(FIELD, "test"));
             monitor.register(
@@ -156,7 +157,7 @@ public class TestMonitorReadonly extends MonitorTestBase {
       assertNotNull(matches.matches("query1"));
 
       assertThrows(
-          IllegalStateException.class,
+          UnsupportedOperationException.class,
           () -> {
             TermQuery query = new TermQuery(new Term(FIELD, "test"));
             readMonitor2.register(
@@ -204,8 +205,16 @@ public class TestMonitorReadonly extends MonitorTestBase {
         MatchingQueries<QueryMatch> matches2 = readMonitor.match(doc, QueryMatch.SIMPLE_MATCHER);
         assertNotNull(matches2.getMatches());
         assertEquals(1, matches2.getMatchCount());
-
-        TimeUnit.SECONDS.sleep(readConfig.getPurgeFrequency() + 1);
+        CountDownLatch latch = new CountDownLatch(1);
+        readMonitor.addQueryIndexUpdateListener(
+            new MonitorUpdateListener() {
+              @Override
+              public void onPurge() {
+                latch.countDown();
+              }
+            });
+        assertTrue(
+            latch.await(readConfig.getPurgeFrequency() + 1, readConfig.getPurgeFrequencyUnits()));
 
         // after frequency results are refreshed
         MatchingQueries<QueryMatch> matches3 = readMonitor.match(doc, QueryMatch.SIMPLE_MATCHER);

@@ -40,6 +40,8 @@ abstract class QueryIndex implements Closeable {
   // package-private for testing
   final Map<IndexReader.CacheKey, QueryTermFilter> termFilters = new HashMap<>();
 
+  protected final List<MonitorUpdateListener> listeners = new ArrayList<>();
+
   abstract void commit(List<MonitorQuery> updates) throws IOException;
 
   public MonitorQuery getQuery(String queryId) throws IOException {

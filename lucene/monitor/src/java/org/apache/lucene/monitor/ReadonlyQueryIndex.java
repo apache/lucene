@@ -47,9 +47,9 @@ class ReadonlyQueryIndex extends QueryIndex {
     this.refreshExecutor.scheduleAtFixedRate(
         () -> {
           try {
-            manager.maybeRefresh();
+            this.purgeCache();
           } catch (IOException e) {
-            throw new RuntimeException(e);
+            listeners.forEach(l -> l.onPurgeError(e));
           }
         },
         refreshFrequency,
@@ -59,7 +59,7 @@ class ReadonlyQueryIndex extends QueryIndex {
 
   @Override
   public void commit(List<MonitorQuery> updates) throws IOException {
-    throw new IllegalStateException("Monitor is readOnly cannot commit");
+    throw new UnsupportedOperationException("Monitor is readOnly cannot commit");
   }
 
   @Override
@@ -86,6 +86,7 @@ class ReadonlyQueryIndex extends QueryIndex {
   @Override
   public void purgeCache() throws IOException {
     manager.maybeRefresh();
+    listeners.forEach(MonitorUpdateListener::onPurge);
   }
 
   @Override
@@ -136,7 +137,7 @@ class ReadonlyQueryIndex extends QueryIndex {
 
   @Override
   public void addListener(MonitorUpdateListener listener) {
-    throw new UnsupportedOperationException("Monitor is readOnly cannot register listeners");
+    listeners.add(listener);
   }
 
   // ---------------------------------------------

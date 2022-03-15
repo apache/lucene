@@ -47,7 +47,6 @@ class WritableQueryIndex extends QueryIndex {
   private final Object commitLock = new Object();
 
   private final ScheduledExecutorService purgeExecutor;
-  private final List<MonitorUpdateListener> listeners = new ArrayList<>();
 
   /* The current query cache */
   // NB this is not final because it can be replaced by purgeCache()
