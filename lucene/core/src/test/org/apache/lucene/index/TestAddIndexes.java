@@ -710,7 +710,7 @@ public class TestAddIndexes extends LuceneTestCase {
     final DirectoryReader[] readers;
     final int ADDED_DOCS_PER_READER = 15;
     final int INIT_DOCS = 25;
-    final int NUM_READERS = 10;
+    final int NUM_READERS = 15;
 
     public AddIndexesWithReadersSetup(MergeScheduler ms, MergePolicy mp) throws IOException {
       dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
@@ -788,6 +788,7 @@ public class TestAddIndexes extends LuceneTestCase {
     ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy();
     AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new PartialMergeScheduler(2), mp);
     assertThrows(MergePolicy.MergeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
+    c.destWriter.commit();
 
     // verify no docs got added and all interim files from successful merges have been deleted from dir
     try (IndexReader reader = DirectoryReader.open(c.destDir)){
@@ -810,6 +811,7 @@ public class TestAddIndexes extends LuceneTestCase {
     };
     AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
     TestUtil.addIndexesSlowly(c.destWriter, c.readers);
+    c.destWriter.commit();
     try (IndexReader reader = DirectoryReader.open(c.destDir)) {
       assertEquals(c.INIT_DOCS, reader.numDocs());
     }
@@ -825,10 +827,57 @@ public class TestAddIndexes extends LuceneTestCase {
     };
     AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
     TestUtil.addIndexesSlowly(c.destWriter, c.readers);
+    c.destWriter.commit();
     try (IndexReader reader = DirectoryReader.open(c.destDir)) {
       assertEquals(c.INIT_DOCS, reader.numDocs());
     }
     c.closeAll();
+  }
+
+  private class CountingSerialMergeScheduler extends SerialMergeScheduler {
+
+    int mergesTriggered = 0;
+
+    @Override
+    public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
+      super.merge(mergeSource, trigger);
+      mergesTriggered++;
+    }
+  }
+
+  public void testAddIndexesWithEmptyReaders() throws Exception {
+    Directory destDir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setMergePolicy(new ConcurrentAddIndexesMergePolicy());
+    CountingSerialMergeScheduler ms = new CountingSerialMergeScheduler();
+    iwc.setMergeScheduler(ms);
+    IndexWriter destWriter = new IndexWriter(destDir, iwc);
+    final int initialDocs = 15;
+    for (int i = 0; i < initialDocs; i++) addDoc(destWriter);
+    destWriter.commit();
+
+    // create empty readers
+    Directory dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    writer.close();
+    final int numReaders = 20;
+    DirectoryReader[] readers = new DirectoryReader[numReaders];
+    for (int i = 0; i < numReaders; i++) readers[i] = DirectoryReader.open(dir);
+
+    TestUtil.addIndexesSlowly(destWriter, readers);
+    destWriter.commit();
+
+    // verify no docs were added
+    try (IndexReader reader = DirectoryReader.open(destDir)) {
+      assertEquals(initialDocs, reader.numDocs());
+    }
+    // verify no merges were triggered
+    assertEquals(0, ms.mergesTriggered);
+
+    destWriter.close();
+    for (int i = 0; i < numReaders; i++) readers[i].close();
+    destDir.close();
+    dir.close();
   }
 
   private abstract class RunAddIndexesThreads {
