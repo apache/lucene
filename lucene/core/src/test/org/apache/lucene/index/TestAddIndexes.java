@@ -853,7 +853,6 @@ public class TestAddIndexes extends LuceneTestCase {
           break;
         }
         mergeSource.merge(merge);
-        mergesTriggered++;
         if (trigger == MergeTrigger.EXPLICIT) {
           explicitMerges++;
         }
