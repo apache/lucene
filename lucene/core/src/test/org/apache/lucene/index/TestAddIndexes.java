@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -688,12 +689,10 @@ public class TestAddIndexes extends LuceneTestCase {
 
   private class ConcurrentAddIndexesMergePolicy extends TieredMergePolicy {
 
-    public MergeSpecification mergeSpec;
-
     @Override
     public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
       // create a oneMerge for each reader to let them get concurrently processed by addIndexes()
-      mergeSpec = new MergeSpecification();
+      MergeSpecification mergeSpec = new MergeSpecification();
       for (CodecReader reader: readers) {
         mergeSpec.add(new OneMerge(List.of(reader), leaf -> new MergeReader(leaf, leaf.getLiveDocs())));
       }
@@ -785,7 +784,15 @@ public class TestAddIndexes extends LuceneTestCase {
   }
 
   public void testAddIndexesWithPartialMergeFailures() throws Exception {
-    ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+    final List<MergePolicy.OneMerge> merges = new ArrayList<>();
+    ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy() {
+      @Override
+      public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+        MergeSpecification spec = super.findMerges(readers);
+        merges.addAll(spec.merges);
+        return spec;
+      }
+    };
     AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new PartialMergeScheduler(2), mp);
     assertThrows(MergePolicy.MergeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
     c.destWriter.commit();
@@ -794,7 +801,7 @@ public class TestAddIndexes extends LuceneTestCase {
     try (IndexReader reader = DirectoryReader.open(c.destDir)){
       assertEquals(c.INIT_DOCS, reader.numDocs());
     }
-    for (MergePolicy.OneMerge merge: mp.mergeSpec.merges) {
+    for (MergePolicy.OneMerge merge: merges) {
       if (merge.getMergeInfo() != null) {
         assertFalse(Arrays.stream(c.destDir.listAll()).collect(Collectors.toSet()).containsAll(merge.getMergeInfo().files()));
       }
@@ -834,15 +841,32 @@ public class TestAddIndexes extends LuceneTestCase {
     c.closeAll();
   }
 
-  private class CountingSerialMergeScheduler extends SerialMergeScheduler {
+  private class CountingSerialMergeScheduler extends MergeScheduler {
 
     int mergesTriggered = 0;
+    int explicitMerges = 0;
+    int addIndexesMerges = 0;
 
     @Override
     public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
-      super.merge(mergeSource, trigger);
-      mergesTriggered++;
+      while (true) {
+        MergePolicy.OneMerge merge = mergeSource.getNextMerge();
+        if (merge == null) {
+          break;
+        }
+        mergeSource.merge(merge);
+        mergesTriggered++;
+        if (trigger == MergeTrigger.EXPLICIT) {
+          explicitMerges++;
+        }
+        if (trigger == MergeTrigger.ADD_INDEXES) {
+          addIndexesMerges++;
+        }
+      }
     }
+
+    @Override
+    public void close() throws IOException {}
   }
 
   public void testAddIndexesWithEmptyReaders() throws Exception {
@@ -872,12 +896,21 @@ public class TestAddIndexes extends LuceneTestCase {
       assertEquals(initialDocs, reader.numDocs());
     }
     // verify no merges were triggered
-    assertEquals(0, ms.mergesTriggered);
+    assertEquals(0, ms.addIndexesMerges);
 
     destWriter.close();
     for (int i = 0; i < numReaders; i++) readers[i].close();
     destDir.close();
     dir.close();
+  }
+
+  public void testCascadingMergesTriggered() throws Exception {
+    ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+    CountingSerialMergeScheduler ms = new CountingSerialMergeScheduler();
+    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(ms, mp);
+    TestUtil.addIndexesSlowly(c.destWriter, c.readers);
+    assertTrue(ms.explicitMerges > 0);
+    c.closeAll();
   }
 
   private abstract class RunAddIndexesThreads {
