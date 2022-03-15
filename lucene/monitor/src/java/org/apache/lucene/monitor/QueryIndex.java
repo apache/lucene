@@ -81,7 +81,9 @@ abstract class QueryIndex implements Closeable {
 
   public abstract long getLastPurged();
 
-  abstract void addListener(MonitorUpdateListener listener);
+  public void addListener(MonitorUpdateListener listener) {
+    listeners.add(listener);
+  }
 
   public interface QueryCollector {
 

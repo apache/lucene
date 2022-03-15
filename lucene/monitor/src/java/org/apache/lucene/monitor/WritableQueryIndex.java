@@ -82,11 +82,6 @@ class WritableQueryIndex extends QueryIndex {
   }
 
   @Override
-  public void addListener(MonitorUpdateListener listener) {
-    listeners.add(listener);
-  }
-
-  @Override
   public void commit(List<MonitorQuery> updates) throws IOException {
     commitWithoutNotify(updates);
     listeners.forEach(l -> l.afterUpdate(updates));

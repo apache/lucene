@@ -135,11 +135,6 @@ class ReadonlyQueryIndex extends QueryIndex {
     return -1;
   }
 
-  @Override
-  public void addListener(MonitorUpdateListener listener) {
-    listeners.add(listener);
-  }
-
   // ---------------------------------------------
   //  Helper classes...
   // ---------------------------------------------
