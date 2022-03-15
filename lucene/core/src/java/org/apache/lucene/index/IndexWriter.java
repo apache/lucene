@@ -3165,7 +3165,6 @@ public class IndexWriter
           mergeSuccess = spec.merges.stream().allMatch(m -> m.hasCompletedSuccessfully().orElse(false));
         } finally {
           if (mergeSuccess == false) {
-            // nocommit -- ensure all intermediate files are deleted
             for (MergePolicy.OneMerge merge: spec.merges) {
               if (merge.getMergeInfo() != null) {
                 deleteNewFiles(merge.getMergeInfo().files());
@@ -3196,7 +3195,6 @@ public class IndexWriter
           }
         }
 
-        // nocommit -- add tests for this transactional behavior
         synchronized (this) {
           if (infos.isEmpty() == false) {
             boolean registerSegmentSuccess = false;
