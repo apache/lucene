@@ -800,8 +800,7 @@ public class TestAddIndexes extends LuceneTestCase {
           }
         };
     AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new PartialMergeScheduler(2), mp);
-    assertThrows(
-        RuntimeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
+    assertThrows(RuntimeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
     c.destWriter.commit();
 
     // verify no docs got added and all interim files from successful merges have been deleted from
