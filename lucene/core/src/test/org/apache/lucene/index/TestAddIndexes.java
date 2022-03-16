@@ -925,6 +925,50 @@ public class TestAddIndexes extends LuceneTestCase {
     c.closeAll();
   }
 
+  public void testAddIndexesHittingMaxDocsLimit() throws Exception {
+    final int writerMaxDocs = 15;
+    IndexWriter.setMaxDocs(writerMaxDocs);
+
+    // create destination writer
+    Directory destDir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setMergePolicy(new ConcurrentAddIndexesMergePolicy());
+    CountingSerialMergeScheduler ms = new CountingSerialMergeScheduler();
+    iwc.setMergeScheduler(ms);
+    IndexWriter destWriter = new IndexWriter(destDir, iwc);
+    for (int i = 0; i < writerMaxDocs; i++) addDoc(destWriter);
+    destWriter.commit();
+
+    // create readers to add
+    Directory dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    for (int i = 0; i < 10; i++) addDoc(writer);
+    writer.close();
+    final int numReaders = 20;
+    DirectoryReader[] readers = new DirectoryReader[numReaders];
+    for (int i = 0; i < numReaders; i++) readers[i] = DirectoryReader.open(dir);
+
+    boolean success = false;
+    try {
+      TestUtil.addIndexesSlowly(destWriter, readers);
+      success = true;
+    } catch (IllegalArgumentException e) {
+      assertTrue(e.getMessage().contains("number of documents in the index cannot exceed " + writerMaxDocs));
+    }
+    assertFalse(success);
+
+    // verify no docs were added
+    destWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(destDir)) {
+      assertEquals(writerMaxDocs, reader.numDocs());
+    }
+
+    destWriter.close();
+    for (int i = 0; i < numReaders; i++) readers[i].close();
+    destDir.close();
+    dir.close();
+  }
+
   private abstract class RunAddIndexesThreads {
 
     Directory dir, dir2;
