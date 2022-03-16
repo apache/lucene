@@ -77,8 +77,6 @@ class GeneratingSuggester {
         Math.max(1, word.length() - 4),
         word.length() + 4,
         (rootChars, forms) -> {
-          speller.checkCanceled.run();
-
           assert rootChars.length > 0;
           if (Math.abs(rootChars.length - word.length()) > MAX_ROOT_LENGTH_DIFF) {
             assert rootChars.length < word.length(); // processAllWords takes care of longer keys
@@ -104,6 +102,8 @@ class GeneratingSuggester {
           if (roots.size() == MAX_ROOTS && sc < roots.peek().score) {
             return;
           }
+
+          speller.checkCanceled.run();
 
           String root = rootChars.toString();
           do {
