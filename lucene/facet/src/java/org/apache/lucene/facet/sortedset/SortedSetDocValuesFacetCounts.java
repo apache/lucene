@@ -436,13 +436,24 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   }
 
   /** Returns FacetResult for a dimension. */
-  private FacetResult getFacetResultForDim(String dim, int topNChildren, HashMap<String, SortedSetDocValuesChildOrdsResult> cacheChildOrdsResult) throws IOException {
+  private FacetResult getFacetResultForDim(
+      String dim,
+      int topNChildren,
+      HashMap<String, SortedSetDocValuesChildOrdsResult> cacheChildOrdsResult)
+      throws IOException {
     FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
     if (dimConfig.hierarchical) {
       DimTree dimTree = state.getDimTree(dim);
       int dimOrd = dimTree.dimStartOrd;
       FacetResult fr =
-          getPathResult(dimConfig, dim, emptyPath, dimOrd, dimTree.iterator(), topNChildren, cacheChildOrdsResult);
+          getPathResult(
+              dimConfig,
+              dim,
+              emptyPath,
+              dimOrd,
+              dimTree.iterator(),
+              topNChildren,
+              cacheChildOrdsResult);
       if (fr != null) {
         return fr;
       }
@@ -456,7 +467,9 @@ public class SortedSetDocValuesFacetCounts extends Facets {
         // child:
         childIt.next();
       }
-      FacetResult fr = getPathResult(dimConfig, dim, emptyPath, dimOrd, childIt, topNChildren, cacheChildOrdsResult);
+      FacetResult fr =
+          getPathResult(
+              dimConfig, dim, emptyPath, dimOrd, childIt, topNChildren, cacheChildOrdsResult);
       if (fr != null) {
         return fr;
       }
@@ -495,19 +508,22 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
-    // Creates priority queue to store top dimensions and sort by their aggregated values/hits and string values.
-    PriorityQueue<SortedSetDocValuesDimValueResult> pq = new PriorityQueue<>(topNDims) {
-      @Override
-      protected boolean lessThan(SortedSetDocValuesDimValueResult a, SortedSetDocValuesDimValueResult b) {
-        if (a.value.intValue() > b.value.intValue()) {
-          return false;
-        } else if (a.value.intValue() < b.value.intValue()) {
-          return true;
-        } else {
-          return a.dim.compareTo(b.dim) > 0;
-        }
-      }
-    };
+    // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
+    // string values.
+    PriorityQueue<SortedSetDocValuesDimValueResult> pq =
+        new PriorityQueue<>(topNDims) {
+          @Override
+          protected boolean lessThan(
+              SortedSetDocValuesDimValueResult a, SortedSetDocValuesDimValueResult b) {
+            if (a.value.intValue() > b.value.intValue()) {
+              return false;
+            } else if (a.value.intValue() < b.value.intValue()) {
+              return true;
+            } else {
+              return a.dim.compareTo(b.dim) > 0;
+            }
+          }
+        };
 
     HashMap<String, SortedSetDocValuesChildOrdsResult> cacheChildOrdsResult = new HashMap<>();
 
@@ -517,7 +533,9 @@ public class SortedSetDocValuesFacetCounts extends Facets {
         DimTree dimTree = state.getDimTree(dim);
         int dimOrd = dimTree.dimStartOrd;
         // get dim value
-        int dimCount = getDimValue(dimConfig, dim, dimOrd, dimTree.iterator(), topNChildren, cacheChildOrdsResult);
+        int dimCount =
+            getDimValue(
+                dimConfig, dim, dimOrd, dimTree.iterator(), topNChildren, cacheChildOrdsResult);
         if (dimCount != 0) {
           // use priority queue to store SortedSetDocValuesDimValueResult for topNDims
           pq.insertWithOverflow(new SortedSetDocValuesDimValueResult(dim, dimCount));
@@ -532,7 +550,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
           // child:
           childIt.next();
         }
-        int dimCount = getDimValue(dimConfig, dim, dimOrd, childIt, topNChildren, cacheChildOrdsResult);
+        int dimCount =
+            getDimValue(dimConfig, dim, dimOrd, childIt, topNChildren, cacheChildOrdsResult);
         if (dimCount != 0) {
           pq.insertWithOverflow(new SortedSetDocValuesDimValueResult(dim, dimCount));
         }
@@ -544,7 +563,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     while (pq.size() > 0) {
       SortedSetDocValuesDimValueResult dimValueResult = pq.pop();
       if (dimValueResult != null) {
-        FacetResult factResult = getFacetResultForDim(dimValueResult.dim, topNChildren, cacheChildOrdsResult);
+        FacetResult factResult =
+            getFacetResultForDim(dimValueResult.dim, topNChildren, cacheChildOrdsResult);
         if (factResult != null) {
           results.add(0, factResult);
         }

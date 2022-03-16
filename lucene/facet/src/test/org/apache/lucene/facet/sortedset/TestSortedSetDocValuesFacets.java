@@ -148,7 +148,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           // test getTopDims(1, 0) with topNChildren = 0
           expectThrows(
-                  NullPointerException.class,
+              NullPointerException.class,
               () -> {
                 facets.getTopDims(1, 0);
               });
