@@ -292,11 +292,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     LeafReader reader = context.reader();
     PointValues pointValues = reader.getPointValues(field);
     final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
-    if (reader.hasDeletions() == false
+    // all documents have docValues or missing value falls outside the range
+    if ((reader.hasDeletions() == false
             && pointValues != null
-            && pointValues.getDocCount() == reader.maxDoc()
-        || missingLongValue < lowerValue
-        || missingLongValue > upperValue) {
+            && pointValues.getDocCount() == reader.maxDoc())
+        || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
       disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, null);
     } else {
       disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
