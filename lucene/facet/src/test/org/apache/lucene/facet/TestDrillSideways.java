@@ -236,10 +236,10 @@ public class TestDrillSideways extends FacetTestCase {
 
     // test getTopChildren(0, dim)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              concurrentResult.facets.getTopChildren(0, "Color");
-            });
+        IllegalArgumentException.class,
+        () -> {
+          concurrentResult.facets.getTopChildren(0, "Color");
+        });
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
@@ -381,10 +381,10 @@ public class TestDrillSideways extends FacetTestCase {
     // test getAllDims(0)
     DrillSidewaysResult finalR1 = r;
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              finalR1.facets.getAllDims(0);
-            });
+        IllegalArgumentException.class,
+        () -> {
+          finalR1.facets.getAllDims(0);
+        });
 
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
@@ -475,11 +475,10 @@ public class TestDrillSideways extends FacetTestCase {
     // test getTopChildren(0, dim)
     DrillSidewaysResult finalR = r;
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              finalR.facets.getTopChildren(0, "Author");
-            });
-
+        IllegalArgumentException.class,
+        () -> {
+          finalR.facets.getTopChildren(0, "Author");
+        });
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);

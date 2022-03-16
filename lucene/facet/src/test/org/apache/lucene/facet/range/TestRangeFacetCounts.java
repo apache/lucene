@@ -267,10 +267,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     // test getAllDims(0)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getAllDims(0);
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
 
     r.close();
     d.close();
@@ -373,7 +373,6 @@ public class TestRangeFacetCounts extends FacetTestCase {
     assertEquals(
         "dim=field path=[] value=41 childCount=4\n  0-10 (11)\n  10-20 (11)\n  20-30 (11)\n  30-40 (11)\n",
         result.toString());
-
     r.close();
     d.close();
   }

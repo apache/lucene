@@ -114,10 +114,10 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     // test getTopChildren(0, dim)
     Facets finalFacets = facets;
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              finalFacets.getTopChildren(0, "Author");
-            });
+        IllegalArgumentException.class,
+        () -> {
+          finalFacets.getTopChildren(0, "Author");
+        });
 
     // Retrieve & verify results:
     assertEquals(
@@ -204,10 +204,10 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // test getAllDims(0)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getAllDims(0);
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
 
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
@@ -289,6 +289,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
 
+    // test getAllDims(0)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
+
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -299,6 +306,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         IllegalArgumentException.class,
         () -> {
           facets.getTopChildren(10, "a");
+        });
+
+    // test getTopChildren(0)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(0, "Author");
         });
 
     writer.close();
@@ -484,6 +498,15 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         () -> {
           facets.getSpecificValue("dim");
         });
+
+    // test getTopChildren(0, dim)
+    Facets finalFacets = facets;
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          finalFacets.getTopChildren(0, "Author");
+        });
+
     assertEquals(1, facets.getSpecificValue("dim2"));
     assertEquals(1, facets.getSpecificValue("dim3"));
     writer.close();
@@ -663,10 +686,10 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // test getAllDims(0)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getAllDims(0);
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
 
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
@@ -883,7 +906,6 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       sortFacetResults(expected);
 
       List<FacetResult> actual = facets.getAllDims(10);
-
       // Messy: fixup ties
       sortTies(actual);
 

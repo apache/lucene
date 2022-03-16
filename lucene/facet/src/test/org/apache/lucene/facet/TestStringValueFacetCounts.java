@@ -394,10 +394,10 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
       // test getAllDims(0)
       expectThrows(
-              IllegalArgumentException.class,
-              () -> {
-                facets.getAllDims(0);
-              });
+          IllegalArgumentException.class,
+          () -> {
+            facets.getAllDims(0);
+          });
 
       // This is a little strange, but we request all labels at this point so that when we
       // secondarily sort by label value in order to compare to the expected results, we have
