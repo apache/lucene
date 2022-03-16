@@ -301,6 +301,8 @@ Bug Fixes
   calculation, as this could cause problems with wrapper queries like BooleanQuery which
   expect their child queries hashcodes to be stable. (Alan Woodward)
 
+* LUCENE-10469: Fix ScoreMode propagation by ConstantScoreQuery. (Adrien Grand)
+
 Other
 ---------------------
 
