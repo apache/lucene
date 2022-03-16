@@ -3223,7 +3223,8 @@ public class IndexWriter
         }
       } else {
         if (infoStream.isEnabled("IW")) {
-          infoStream.message("addIndexes(CodecReaders...)", "failed to successfully merge all provided readers.");
+          infoStream.message(
+              "addIndexes(CodecReaders...)", "failed to successfully merge all provided readers.");
         }
         for (MergePolicy.OneMerge merge : spec.merges) {
           Throwable t = merge.getException();
@@ -3232,7 +3233,8 @@ public class IndexWriter
           }
         }
         // If no merge hit an exception but we still failed to add indexes, fail the API
-        throw new RuntimeException("failed to successfully merge all provided readers in addIndexes(CodecReader...)");
+        throw new RuntimeException(
+            "failed to successfully merge all provided readers in addIndexes(CodecReader...)");
       }
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "addIndexes(CodecReader...)");
