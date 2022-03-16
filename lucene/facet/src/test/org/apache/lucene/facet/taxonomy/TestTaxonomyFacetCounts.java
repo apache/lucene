@@ -111,6 +111,14 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertTrue(((TaxonomyFacets) facets).siblingsLoaded());
     assertTrue(((TaxonomyFacets) facets).childrenLoaded());
 
+    // test getTopChildren(0, dim)
+    Facets finalFacets = facets;
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              finalFacets.getTopChildren(0, "Author");
+            });
+
     // Retrieve & verify results:
     assertEquals(
         "dim=Publish Date path=[] value=5 childCount=3\n  2010 (2)\n  2012 (2)\n  1999 (1)\n",
@@ -193,6 +201,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     Facets facets =
         getAllFacets(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher, taxoReader, config);
+
+    // test getAllDims(0)
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              facets.getAllDims(0);
+            });
 
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
@@ -628,6 +643,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       assertEquals(r.numDocs(), result.value.intValue());
     }
 
+
     // test default implementation of getTopDims
     if (allDimsResult.size() > 0) {
       List<FacetResult> topNDimsResult = facets.getTopDims(1, 10);
@@ -644,6 +660,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         () -> {
           facets.getTopDims(1, 0);
         });
+
+    // test getAllDims(0)
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              facets.getAllDims(0);
+            });
 
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);

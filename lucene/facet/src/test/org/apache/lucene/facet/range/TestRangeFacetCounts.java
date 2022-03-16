@@ -104,6 +104,13 @@ public class TestRangeFacetCounts extends FacetTestCase {
         "dim=field path=[] value=22 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
         result.toString());
 
+    // test getTopChildren(0, dim)
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              facets.getTopChildren(0, "field");
+            });
+
     r.close();
     d.close();
   }
@@ -257,6 +264,13 @@ public class TestRangeFacetCounts extends FacetTestCase {
     // test getTopDims(0, 1)
     List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
     assertEquals(0, topDimsResults2.size());
+
+    // test getAllDims(0)
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              facets.getAllDims(0);
+            });
 
     r.close();
     d.close();

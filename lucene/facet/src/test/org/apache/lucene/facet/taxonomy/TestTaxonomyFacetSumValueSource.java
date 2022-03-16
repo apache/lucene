@@ -122,6 +122,13 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
         "dim=Author path=[] value=145.0 childCount=4\n  Lisa (50.0)\n  Frank (45.0)\n  Susan (40.0)\n  Bob (10.0)\n",
         facets.getTopChildren(10, "Author").toString());
 
+    // test getTopChildren(0, dim)
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              facets.getTopChildren(0, "Author");
+            });
+
     taxoReader.close();
     searcher.getIndexReader().close();
     dir.close();
@@ -184,6 +191,13 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
 
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
+
+    // test getAllDims(0)
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              facets.getAllDims(0);
+            });
 
     assertEquals(3, results.size());
     assertEquals(

@@ -139,6 +139,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=b path=[] value=2 childCount=2\n  buzz (2)\n",
               topDimsResults1.get(0).toString());
 
+          // test getTopDims(1, 0) with topNChildren = 0
+          expectThrows(
+                  IllegalArgumentException.class,
+                  () -> {
+                    facets.getAllDims(0);
+                  });
+
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("a", "foo");
@@ -406,6 +413,14 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
             "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
             facets.getTopChildren(10, "a").toString());
 
+        // test topNChildren = 0
+        Facets finalFacets = facets;
+        expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  finalFacets.getTopChildren(0, "a");
+                });
+
         ExecutorService exec =
             new ThreadPoolExecutor(
                 1,
@@ -463,7 +478,6 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         assertEquals(
             "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
             facets.getTopChildren(10, "b", "buzz").toString());
-
         ExecutorService exec =
             new ThreadPoolExecutor(
                 1,
