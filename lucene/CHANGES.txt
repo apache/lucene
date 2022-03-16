@@ -64,7 +64,9 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* LUCENE-10452: Hunspell: call checkCanceled less frequently to reduce the overhead (Peter Gromov)
+
+* LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
 
 Bug Fixes
 ---------------------
