@@ -50,7 +50,6 @@ Other
   framework. (Adrien Grand)
 
 ======================= Lucene 9.2.0 =======================
-
 API Changes
 ---------------------
 (No changes)
@@ -67,7 +66,10 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10452: Hunspell: call checkCanceled less frequently to reduce the overhead (Peter Gromov)
+
+* LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
 
 Bug Fixes
 ---------------------
@@ -130,6 +132,10 @@ API Changes
 
 * LUCENE-10431: MultiTermQuery.setRewriteMethod() has been deprecated, and constructor
   parameters for the various implementations added. (Alan Woodward)
+
+* LUCENE-10171: OpenNLPOpsFactory.getLemmatizerDictionary(String, ResourceLoader) now returns a
+  DictionaryLemmatizer object instead of a raw String serialization of the dictionary.
+  (Spyros Kapnissis via Michael Gibney, Alessandro Benedetti)
 
 New Features
 ---------------------

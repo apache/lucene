@@ -204,7 +204,7 @@ public final class FixedBitSet extends BitSet {
     final int rangeLength = 16;
     final int interval = 1024;
 
-    if (numWords < interval) {
+    if (numWords <= interval) {
       return cardinality();
     }
 
