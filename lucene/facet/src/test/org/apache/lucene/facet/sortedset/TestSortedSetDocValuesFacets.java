@@ -114,7 +114,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=a path=[] value=-1 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
               results.get(1).toString());
 
-          // test getAllDims(1, 0) with topN = 0
+          // test getAllDims(0) with topN = 0
           expectThrows(
               NullPointerException.class,
               () -> {
@@ -123,13 +123,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           // test getTopDims(10, 10) and expect same results from getAllDims(10)
           List<FacetResult> allDimsResults = facets.getTopDims(10, 10);
-          assertEquals(2, results.size());
-          assertEquals(
-              "dim=b path=[] value=2 childCount=2\n  buzz (2)\n  baz (1)\n",
-              allDimsResults.get(0).toString());
-          assertEquals(
-              "dim=a path=[] value=-1 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
-              allDimsResults.get(1).toString());
+          assertEquals(results, allDimsResults);
 
           // test getTopDims(2, 1)
           List<FacetResult> topDimsResults = facets.getTopDims(2, 1);
@@ -154,7 +148,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           // test getTopDims(1, 0) with topNChildren = 0
           expectThrows(
-              NullPointerException.class,
+                  NullPointerException.class,
               () -> {
                 facets.getTopDims(1, 0);
               });

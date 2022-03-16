@@ -252,10 +252,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     // test default implementation of getTopDims
     List<FacetResult> topNDimsResult = facets.getTopDims(1, 1);
-    assertEquals(1, topNDimsResult.size());
-    assertEquals(
-        "dim=field path=[] value=22 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
-        topNDimsResult.get(0).toString());
+    assertEquals(test1Child, topNDimsResult);
 
     // test getTopDims(0, 1)
     List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);

@@ -222,6 +222,10 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "dim=b path=[] value=3 childCount=3\n  bar2 (1)\n", topNDimsResult.get(1).toString());
 
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allDimsResults = facets.getTopDims(10, 10);
+    assertEquals(results, allDimsResults);
+
     // test getTopDims(0, 1)
     List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
     assertEquals(0, topDimsResults2.size());

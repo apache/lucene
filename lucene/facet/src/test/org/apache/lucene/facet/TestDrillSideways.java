@@ -601,6 +601,10 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Susan (1)\n",
         topNDimsResult.get(0).toString());
 
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allDimsResults = r.facets.getTopDims(10, 10);
+    assertEquals(allResults, allDimsResults);
+
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
