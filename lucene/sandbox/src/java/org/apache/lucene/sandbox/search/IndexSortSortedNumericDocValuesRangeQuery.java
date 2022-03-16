@@ -18,9 +18,9 @@ package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
@@ -165,8 +165,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final Weight weight = this;
-        DocIdSetIterator disi =
-            getDocIdSetIteratorOrNull(context, (missingValue, boundedDisi) -> boundedDisi);
+        DocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
         if (disi != null) {
           return new ScorerSupplier() {
             @Override
@@ -201,27 +200,18 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        BoundedDocIdSetIterator disi;
-        PointValues pointValues = context.reader().getPointValues(field);
-        if (pointValues != null && pointValues.getDocCount() == context.reader().maxDoc()) {
-          disi = getDocIdSetIteratorOrNull(context, (missingValue, boundedDisi) -> boundedDisi);
-        } else {
-          disi =
-              getDocIdSetIteratorOrNull(
-                  context,
-                  (missingValue, boundedDisi) -> {
-                    if (missingValue == null
-                        || (long) missingValue < lowerValue
-                        || (long) missingValue > upperValue) {
-                      return boundedDisi;
-                    }
-                    return null;
-                  });
+        LeafReader reader = context.reader();
+        PointValues pointValues = reader.getPointValues(field);
+        BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+        if (disi != null) {
+          if (reader.hasDeletions() == false
+                  && pointValues != null
+                  && pointValues.getDocCount() == context.reader().maxDoc()
+              || disi.delegate == null) {
+            return disi.lastDoc - disi.firstDoc;
+          }
         }
 
-        if (disi != null) {
-          return disi.lastDoc - disi.firstDoc;
-        }
         // if no point indexed, PointRangeQuery#count equals 0, that's sometimes not what we want.
         if (pointValues != null) {
           return fallbackWeight.count(context);
@@ -231,9 +221,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     };
   }
 
-  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(
-      LeafReaderContext context,
-      BiFunction<Object, BoundedDocIdSetIterator, BoundedDocIdSetIterator> boundedDisiFunction)
+  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
       throws IOException {
     SortedNumericDocValues sortedNumericValues =
         DocValues.getSortedNumeric(context.reader(), field);
@@ -245,7 +233,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
           && indexSort.getSort()[0].getField().equals(field)) {
 
         SortField sortField = indexSort.getSort()[0];
-        return getDocIdSetIterator(sortField, context, numericValues, boundedDisiFunction);
+        return getDocIdSetIterator(sortField, context, numericValues);
       }
     }
     return null;
@@ -264,10 +252,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * no value.
    */
   private BoundedDocIdSetIterator getDocIdSetIterator(
-      SortField sortField,
-      LeafReaderContext context,
-      DocIdSetIterator delegate,
-      BiFunction<Object, BoundedDocIdSetIterator, BoundedDocIdSetIterator> boundedDisiFunction)
+      SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
     long upper = sortField.getReverse() ? lowerValue : upperValue;
@@ -307,9 +292,16 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     int lastDocIdExclusive = high + 1;
-    BoundedDocIdSetIterator disi =
-        new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
-    return boundedDisiFunction.apply(sortField.getMissingValue(), disi);
+    Object missingValue = sortField.getMissingValue();
+    BoundedDocIdSetIterator disi;
+    if (missingValue == null
+        || (long) missingValue < lowerValue
+        || (long) missingValue > upperValue) {
+      disi = new BoundedAllMatchDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive);
+    } else {
+      disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
+    }
+    return disi;
   }
 
   /** Compares the given document's value with a stored reference value. */
@@ -338,11 +330,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * [firstDocInclusive, lastDoc).
    */
   private static class BoundedDocIdSetIterator extends DocIdSetIterator {
-    private final int firstDoc;
-    private final int lastDoc;
+    protected final int firstDoc;
+    protected final int lastDoc;
     private final DocIdSetIterator delegate;
 
-    private int docID = -1;
+    protected int docID = -1;
 
     BoundedDocIdSetIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
       this.firstDoc = firstDoc;
@@ -378,6 +370,27 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     @Override
     public long cost() {
       return lastDoc - firstDoc;
+    }
+  }
+
+  private static class BoundedAllMatchDocIdSetIterator extends BoundedDocIdSetIterator {
+
+    BoundedAllMatchDocIdSetIterator(int firstDoc, int lastDoc) {
+      super(firstDoc, lastDoc, null);
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target < firstDoc) {
+        target = firstDoc;
+      }
+
+      if (target < lastDoc) {
+        docID = target;
+      } else {
+        docID = NO_MORE_DOCS;
+      }
+      return docID;
     }
   }
 }
