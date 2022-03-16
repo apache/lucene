@@ -953,7 +953,9 @@ public class TestAddIndexes extends LuceneTestCase {
       TestUtil.addIndexesSlowly(destWriter, readers);
       success = true;
     } catch (IllegalArgumentException e) {
-      assertTrue(e.getMessage().contains("number of documents in the index cannot exceed " + writerMaxDocs));
+      assertTrue(
+          e.getMessage()
+              .contains("number of documents in the index cannot exceed " + writerMaxDocs));
     }
     assertFalse(success);
 
