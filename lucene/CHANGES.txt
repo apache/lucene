@@ -35,7 +35,9 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -287,9 +289,6 @@ Optimizations
   euclidean distance. (Adrien Grand)
 
 * LUCENE-10455: IndexSortSortedNumericDocValuesRangeQuery now implements the scorerSupplier API. (Lu Xugang)
-
-* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
-  (Adrien Grand)
 
 Changes in runtime behavior
 ---------------------
