@@ -22,10 +22,17 @@ import org.apache.lucene.analysis.ko.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ko.dict.Constants;
 import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
 import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
+import org.apache.lucene.analysis.morph.CharacterDefinitionWriter;
 
 class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> {
 
-  private final CharacterDefinitionWriter characterDefinition = new CharacterDefinitionWriter();
+  private final org.apache.lucene.analysis.morph.CharacterDefinitionWriter<CharacterDefinition>
+      characterDefinition =
+          new CharacterDefinitionWriter<>(
+              CharacterDefinition.class,
+              CharacterDefinition.DEFAULT,
+              CharacterDefinition.CLASS_COUNT,
+              CharacterDefinition::lookupCharacterClass);
 
   public UnknownDictionaryWriter(int size) {
     super(UnknownDictionary.class, new TokenInfoDictionaryEntryWriter(size));
@@ -67,6 +74,6 @@ class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> 
         Constants.POSDICT_HEADER,
         Constants.DICT_HEADER,
         Constants.VERSION);
-    characterDefinition.write(baseDir);
+    characterDefinition.write(baseDir, Constants.CHARDEF_HEADER, Constants.VERSION);
   }
 }

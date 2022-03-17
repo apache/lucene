@@ -24,6 +24,8 @@ public final class Constants {
   public static final String TARGETMAP_HEADER = "kuromoji_dict_map";
   /** Codec header of the POS dictionary file. */
   public static final String POSDICT_HEADER = "kuromoji_dict_pos";
+  /** Codec header of the character definition file. */
+  public static final String CHARDEF_HEADER = "kuromoji_cd";
   /** Codec version of the binary dictionary */
   public static final int VERSION = 1;
 }

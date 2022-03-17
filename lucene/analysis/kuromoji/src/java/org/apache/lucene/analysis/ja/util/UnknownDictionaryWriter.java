@@ -21,10 +21,16 @@ import java.nio.file.Path;
 import org.apache.lucene.analysis.ja.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ja.dict.Constants;
 import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
+import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
+import org.apache.lucene.analysis.morph.CharacterDefinitionWriter;
 
-class UnknownDictionaryWriter
-    extends org.apache.lucene.analysis.morph.BinaryDictionaryWriter<UnknownDictionary> {
-  private final CharacterDefinitionWriter characterDefinition = new CharacterDefinitionWriter();
+class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> {
+  private final CharacterDefinitionWriter<CharacterDefinition> characterDefinition =
+      new CharacterDefinitionWriter<>(
+          CharacterDefinition.class,
+          CharacterDefinition.DEFAULT,
+          CharacterDefinition.CLASS_COUNT,
+          CharacterDefinition::lookupCharacterClass);
 
   public UnknownDictionaryWriter(int size) {
     super(UnknownDictionary.class, new TokenInfoDictionaryEntryWriter(size));
@@ -67,6 +73,6 @@ class UnknownDictionaryWriter
         Constants.POSDICT_HEADER,
         Constants.DICT_HEADER,
         Constants.VERSION);
-    characterDefinition.write(baseDir);
+    characterDefinition.write(baseDir, Constants.CHARDEF_HEADER, Constants.VERSION);
   }
 }
