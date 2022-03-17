@@ -49,7 +49,7 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
    * </pre>
    */
   @Override
-  public int putEntry(String[] entry) {
+  protected int putEntry(String[] entry) {
     short leftId = Short.parseShort(entry[1]);
     short rightId = Short.parseShort(entry[2]);
     short wordCost = Short.parseShort(entry[3]);
