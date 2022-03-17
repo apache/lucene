@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.OutputStreamDataOutput;
 
+/** Writes character definition file */
 public final class CharacterDefinitionWriter<T extends CharacterDefinition> {
 
   private final Class<T> implClazz;

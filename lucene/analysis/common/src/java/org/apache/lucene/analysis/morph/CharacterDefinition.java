@@ -64,8 +64,10 @@ public abstract class CharacterDefinition {
     return groupMap[characterCategoryMap[c]];
   }
 
+  /** Functional interface to lookup character class */
   @FunctionalInterface
   public interface LookupCharacterClass {
+    /** looks up character class for given class name */
     byte lookupCharacterClass(String characterClassName);
   }
 }
