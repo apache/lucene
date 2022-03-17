@@ -31,6 +31,7 @@ import org.apache.lucene.util.ArrayUtil;
 public final class OnHeapHnswGraph extends HnswGraph {
 
   private final int maxConn;
+  private final boolean similarityReversed;
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
 
@@ -49,8 +50,9 @@ public final class OnHeapHnswGraph extends HnswGraph {
   private int upto;
   private NeighborArray cur;
 
-  OnHeapHnswGraph(int maxConn, int levelOfFirstNode) {
+  OnHeapHnswGraph(int maxConn, int levelOfFirstNode, boolean similarityReversed) {
     this.maxConn = maxConn;
+    this.similarityReversed = similarityReversed;
     this.numLevels = levelOfFirstNode + 1;
     this.graph = new ArrayList<>(numLevels);
     this.entryNode = 0;
@@ -59,7 +61,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
       // Typically with diversity criteria we see nodes not fully occupied;
       // average fanout seems to be about 1/2 maxConn.
       // There is some indexing time penalty for under-allocating, but saves RAM
-      graph.get(i).add(new NeighborArray(Math.max(32, maxConn / 4)));
+      graph.get(i).add(new NeighborArray(Math.max(32, maxConn / 4), similarityReversed == false));
     }
 
     this.nodesByLevel = new ArrayList<>(numLevels);
@@ -120,7 +122,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
       }
     }
 
-    graph.get(level).add(new NeighborArray(maxConn + 1));
+    graph.get(level).add(new NeighborArray(maxConn + 1, similarityReversed == false));
   }
 
   @Override
