@@ -200,18 +200,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-
         BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
         if (disi != null && disi.delegate == null) {
           return disi.lastDoc - disi.firstDoc;
         }
-
-        PointValues pointValues = context.reader().getPointValues(field);
-        // if no point indexed, PointRangeQuery#count equals 0, that's sometimes not what we want.
-        if (pointValues != null) {
-          return fallbackWeight.count(context);
-        }
-        return super.count(context);
+        return fallbackWeight.count(context);
       }
     };
   }
@@ -330,11 +323,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * [firstDocInclusive, lastDoc).
    */
   private static class BoundedDocIdSetIterator extends DocIdSetIterator {
-    protected final int firstDoc;
-    protected final int lastDoc;
+    private final int firstDoc;
+    private final int lastDoc;
     private final DocIdSetIterator delegate;
 
-    protected int docID = -1;
+    private int docID = -1;
 
     BoundedDocIdSetIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
       this.firstDoc = firstDoc;
