@@ -65,13 +65,10 @@ public final class CharacterDefinitionWriter<T extends CharacterDefinition> {
     if (codePoint == 0x30FB) {
       characterClassName = "SYMBOL";
     }
-    // characterCategoryMap[codePoint] =
-    // CharacterDefinition.lookupCharacterClass(characterClassName);
     characterCategoryMap[codePoint] = lookupCharClass.lookupCharacterClass(characterClassName);
   }
 
   public void putInvokeDefinition(String characterClassName, int invoke, int group, int length) {
-    // final byte characterClass = CharacterDefinition.lookupCharacterClass(characterClassName);
     final byte characterClass = lookupCharClass.lookupCharacterClass(characterClassName);
     invokeMap[characterClass] = invoke == 1;
     groupMap[characterClass] = group == 1;
