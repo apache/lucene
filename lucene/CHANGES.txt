@@ -23,6 +23,9 @@ Optimizations
 
 * LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
 
+* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 (No changes)
