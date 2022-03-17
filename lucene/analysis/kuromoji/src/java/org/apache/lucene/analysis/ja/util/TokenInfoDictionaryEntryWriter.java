@@ -32,6 +32,22 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     super(size);
   }
 
+  /**
+   * put the entry in map
+   *
+   * <p>mecab-ipadic features
+   *
+   * <pre>
+   * 0   - surface
+   * 1   - left cost
+   * 2   - right cost
+   * 3   - word cost
+   * 4-9 - pos
+   * 10  - base form
+   * 11  - reading
+   * 12  - pronounciation
+   * </pre>
+   */
   @Override
   public int putEntry(String[] entry) {
     short leftId = Short.parseShort(entry[1]);
