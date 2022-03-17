@@ -61,7 +61,14 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       boolean reverse = random().nextBoolean();
       SortField sortField = new SortedNumericSortField("dv", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(random().nextLong());
+      boolean enableMissingValue = random().nextBoolean();
+      if (enableMissingValue) {
+        long missingValue =
+            random().nextBoolean()
+                ? Long.MIN_VALUE
+                : (random().nextBoolean() ? Long.MAX_VALUE : random().nextLong());
+        sortField.setMissingValue(missingValue);
+      }
       iwc.setIndexSort(new Sort(sortField));
 
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
@@ -461,7 +468,72 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     reader.close();
   }
 
-  public void testCountHasMissingValue() throws IOException {
+  public void testCompareCount() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
+      boolean enableMissingValue = random().nextBoolean();
+      if (enableMissingValue) {
+        long missingValue =
+            random().nextBoolean()
+                ? Long.MIN_VALUE
+                : (random().nextBoolean() ? Long.MAX_VALUE : random().nextLong());
+        sortField.setMissingValue(missingValue);
+      }
+      RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+
+      final int numDocs = atLeast(100);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        final int numValues = TestUtil.nextInt(random(), 0, 1);
+        for (int j = 0; j < numValues; ++j) {
+          final long value = TestUtil.nextLong(random(), -100, 10000);
+          doc =
+              random().nextBoolean()
+                  ? createMissingValueDocument()
+                  : createSNDVAndPointDocument("field", value);
+        }
+        writer.addDocument(doc);
+      }
+
+      if (random().nextBoolean()) {
+        writer.deleteDocuments(LongPoint.newRangeQuery("field", 0L, 10L));
+      }
+
+      final IndexReader reader = writer.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      writer.close();
+
+      for (int i = 0; i < 100; ++i) {
+        final long min =
+            random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -100, 10000);
+        final long max =
+            random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
+        final Query q1 = LongPoint.newRangeQuery("field", min, max);
+
+        final Query fallbackQuery = LongPoint.newRangeQuery("field", min, max);
+        final Query q2 =
+            new IndexSortSortedNumericDocValuesRangeQuery("field", min, max, fallbackQuery);
+        final Weight weight1 = q1.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+        final Weight weight2 = q2.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+        assertSameCount(weight1, weight2, searcher);
+      }
+
+      reader.close();
+      dir.close();
+    }
+  }
+
+  private void assertSameCount(Weight weight1, Weight weight2, IndexSearcher searcher)
+      throws IOException {
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(weight1.count(context), weight2.count(context));
+    }
+  }
+
+  public void testCountBoundary() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
