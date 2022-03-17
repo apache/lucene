@@ -59,7 +59,7 @@ class UnknownDictionaryWriter
     characterDefinition.putInvokeDefinition(characterClassName, invoke, group, length);
   }
 
-  // @Override
+  @Override
   public void write(Path baseDir) throws IOException {
     super.write(
         baseDir,

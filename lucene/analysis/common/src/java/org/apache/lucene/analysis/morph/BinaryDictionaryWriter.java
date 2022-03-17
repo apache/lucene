@@ -48,6 +48,13 @@ public abstract class BinaryDictionaryWriter<T extends BinaryDictionary<? extend
     return entryWriter.putEntry(entry);
   }
 
+  /**
+   * Write whole dictionary in a directory.
+   *
+   * @throws IOException if an I/O error occurs writing the dictionary files
+   */
+  public abstract void write(Path baseDir) throws IOException;
+
   protected void addMapping(int sourceId, int wordId) {
     if (wordId <= lastWordId) {
       throw new IllegalStateException(

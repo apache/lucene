@@ -42,6 +42,7 @@ class TokenInfoDictionaryWriter extends BinaryDictionaryWriter<TokenInfoDictiona
     super.addMapping(sourceId, wordId);
   }
 
+  @Override
   public void write(Path baseDir) throws IOException {
     super.write(
         baseDir,

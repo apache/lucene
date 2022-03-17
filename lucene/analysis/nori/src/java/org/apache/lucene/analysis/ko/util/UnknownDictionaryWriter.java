@@ -59,6 +59,7 @@ class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> 
     characterDefinition.putInvokeDefinition(characterClassName, invoke, group, length);
   }
 
+  @Override
   public void write(Path baseDir) throws IOException {
     super.write(
         baseDir,
