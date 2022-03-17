@@ -447,7 +447,15 @@ public final class Tessellator {
               tanMin = tan;
             }
           } else if ((tan < tanMin || (tan == tanMin && p.getX() > connection.getX()))
-              && isLocallyInside(p, holeNode)) {
+              && isLocallyInside(p, holeNode)
+              && area(
+                      holeNode.previous.getX(),
+                      holeNode.previous.getY(),
+                      holeNode.getX(),
+                      holeNode.getY(),
+                      p.getX(),
+                      p.getY())
+                  != 0) {
             connection = p;
             tanMin = tan;
           }
