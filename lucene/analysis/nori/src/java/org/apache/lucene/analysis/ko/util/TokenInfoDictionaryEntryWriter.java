@@ -30,7 +30,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 
 /** Writes system dictionary entries. */
-public class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
+class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
   private static final int ID_LIMIT = 8192;
 
   TokenInfoDictionaryEntryWriter(int size) {
