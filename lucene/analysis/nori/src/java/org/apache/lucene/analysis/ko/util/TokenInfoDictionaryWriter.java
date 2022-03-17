@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import org.apache.lucene.analysis.ko.dict.Constants;
+import org.apache.lucene.analysis.ko.dict.DictionaryConstants;
 import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
 import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
 import org.apache.lucene.util.fst.FST;
@@ -46,10 +46,10 @@ class TokenInfoDictionaryWriter extends BinaryDictionaryWriter<TokenInfoDictiona
   public void write(Path baseDir) throws IOException {
     super.write(
         baseDir,
-        Constants.TARGETMAP_HEADER,
-        Constants.POSDICT_HEADER,
-        Constants.DICT_HEADER,
-        Constants.VERSION);
+        DictionaryConstants.TARGETMAP_HEADER,
+        DictionaryConstants.POSDICT_HEADER,
+        DictionaryConstants.DICT_HEADER,
+        DictionaryConstants.VERSION);
     writeFST(baseDir.resolve(getBaseFileName() + TokenInfoDictionary.FST_FILENAME_SUFFIX));
   }
 

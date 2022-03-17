@@ -63,8 +63,8 @@ public final class CharacterDefinition
   private CharacterDefinition() throws IOException {
     super(
         CharacterDefinition::getClassResource,
-        Constants.CHARDEF_HEADER,
-        Constants.VERSION,
+        DictionaryConstants.CHARDEF_HEADER,
+        DictionaryConstants.VERSION,
         CharacterDefinition.CLASS_COUNT);
   }
 

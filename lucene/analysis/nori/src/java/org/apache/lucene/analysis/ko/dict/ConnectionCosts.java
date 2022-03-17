@@ -26,9 +26,6 @@ import org.apache.lucene.util.IOUtils;
 /** n-gram connection cost data */
 public final class ConnectionCosts extends org.apache.lucene.analysis.morph.ConnectionCosts {
 
-  public static final String HEADER = "ko_cc";
-  public static final int VERSION = 1;
-
   /**
    * Create a {@link ConnectionCosts} from an external resource path.
    *
@@ -44,7 +41,8 @@ public final class ConnectionCosts extends org.apache.lucene.analysis.morph.Conn
   }
 
   private ConnectionCosts(IOSupplier<InputStream> connectionCostResource) throws IOException {
-    super(connectionCostResource, HEADER, VERSION);
+    super(
+        connectionCostResource, DictionaryConstants.CONN_COSTS_HEADER, DictionaryConstants.VERSION);
   }
 
   private static InputStream getClassResource() throws IOException {

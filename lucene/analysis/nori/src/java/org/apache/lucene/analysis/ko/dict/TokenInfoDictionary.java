@@ -75,9 +75,9 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
     super(
         targetMapResource,
         dictResource,
-        Constants.TARGETMAP_HEADER,
-        Constants.DICT_HEADER,
-        Constants.VERSION);
+        DictionaryConstants.TARGETMAP_HEADER,
+        DictionaryConstants.DICT_HEADER,
+        DictionaryConstants.VERSION);
     this.morphAtts = new TokenInfoMorphData(buffer, posResource);
     FST<Long> fst;
     try (InputStream is = new BufferedInputStream(fstResource.get())) {

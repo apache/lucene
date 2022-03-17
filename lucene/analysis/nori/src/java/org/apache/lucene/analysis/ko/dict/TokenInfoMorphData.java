@@ -36,7 +36,11 @@ public class TokenInfoMorphData implements KoMorphData {
     this.buffer = buffer;
     try (InputStream posIS = new BufferedInputStream(posResource.get())) {
       DataInput in = new InputStreamDataInput(posIS);
-      CodecUtil.checkHeader(in, Constants.POSDICT_HEADER, Constants.VERSION, Constants.VERSION);
+      CodecUtil.checkHeader(
+          in,
+          DictionaryConstants.POSDICT_HEADER,
+          DictionaryConstants.VERSION,
+          DictionaryConstants.VERSION);
       int posSize = in.readVInt();
       this.posDict = new POS.Tag[posSize];
       for (int j = 0; j < posSize; j++) {

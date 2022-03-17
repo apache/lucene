@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ja.util;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.lucene.analysis.ja.dict.CharacterDefinition;
-import org.apache.lucene.analysis.ja.dict.Constants;
+import org.apache.lucene.analysis.ja.dict.DictionaryConstants;
 import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
 import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
 import org.apache.lucene.analysis.morph.CharacterDefinitionWriter;
@@ -69,10 +69,11 @@ class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> 
   public void write(Path baseDir) throws IOException {
     super.write(
         baseDir,
-        Constants.TARGETMAP_HEADER,
-        Constants.POSDICT_HEADER,
-        Constants.DICT_HEADER,
-        Constants.VERSION);
-    characterDefinition.write(baseDir, Constants.CHARDEF_HEADER, Constants.VERSION);
+        DictionaryConstants.TARGETMAP_HEADER,
+        DictionaryConstants.POSDICT_HEADER,
+        DictionaryConstants.DICT_HEADER,
+        DictionaryConstants.VERSION);
+    characterDefinition.write(
+        baseDir, DictionaryConstants.CHARDEF_HEADER, DictionaryConstants.VERSION);
   }
 }

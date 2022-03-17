@@ -60,9 +60,9 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> 
     super(
         targetMapResource,
         dictResource,
-        Constants.TARGETMAP_HEADER,
-        Constants.DICT_HEADER,
-        Constants.VERSION);
+        DictionaryConstants.TARGETMAP_HEADER,
+        DictionaryConstants.DICT_HEADER,
+        DictionaryConstants.VERSION);
     this.morphAtts = new UnknownMorphData(buffer, posResource);
   }
 

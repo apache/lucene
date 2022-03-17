@@ -37,7 +37,11 @@ public class TokenInfoMorphData implements JaMorphData {
     this.buffer = buffer;
     try (InputStream posIS = new BufferedInputStream(posResource.get())) {
       final DataInput in = new InputStreamDataInput(posIS);
-      CodecUtil.checkHeader(in, Constants.POSDICT_HEADER, Constants.VERSION, Constants.VERSION);
+      CodecUtil.checkHeader(
+          in,
+          DictionaryConstants.POSDICT_HEADER,
+          DictionaryConstants.VERSION,
+          DictionaryConstants.VERSION);
       final int posSize = in.readVInt();
       this.posDict = new String[posSize];
       this.inflTypeDict = new String[posSize];

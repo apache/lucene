@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ko.util;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
+import org.apache.lucene.analysis.ko.dict.DictionaryConstants;
 
 /** Tool to build dictionaries. */
 public class DictionaryBuilder {
@@ -36,7 +36,7 @@ public class DictionaryBuilder {
 
     // Build Connection Cost
     ConnectionCostsBuilder.build(inputDir.resolve("matrix.def"))
-        .write(outputDir, ConnectionCosts.HEADER, ConnectionCosts.VERSION);
+        .write(outputDir, DictionaryConstants.CONN_COSTS_HEADER, DictionaryConstants.VERSION);
   }
 
   public static void main(String[] args) throws IOException {
