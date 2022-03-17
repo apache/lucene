@@ -35,7 +35,9 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
