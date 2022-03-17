@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 import org.apache.lucene.util.IOSupplier;
 
 /** Morphological information for unk dictionary. */
-public class UnknownMorphData extends TokenInfoMorphData {
+final class UnknownMorphData extends TokenInfoMorphData {
   UnknownMorphData(ByteBuffer buffer, IOSupplier<InputStream> posResource) throws IOException {
     super(buffer, posResource);
   }

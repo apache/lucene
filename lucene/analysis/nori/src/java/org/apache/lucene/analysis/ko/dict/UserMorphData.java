@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ko.dict;
 import org.apache.lucene.analysis.ko.POS;
 
 /** Morphological information for user dictionary. */
-public class UserMorphData implements KoMorphData {
+final class UserMorphData implements KoMorphData {
   private static final int WORD_COST = -100000;
 
   // NNG left
