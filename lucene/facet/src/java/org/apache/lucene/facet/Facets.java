@@ -51,8 +51,9 @@ public abstract class Facets {
 
   /**
    * Returns labels for topN dimensions and their topNChildren sorted by the number of
-   * hits/aggregated values that dimension matched; Sub-classes may want to override this
-   * implementation with a more efficient one if they are able.
+   * hits/aggregated values that dimension matched; Results should be the same as calling getAllDims
+   * and then only using the first topNDims; Sub-classes may want to override this implementation
+   * with a more efficient one if they are able.
    */
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
     List<FacetResult> allResults = getAllDims(topNChildren);
