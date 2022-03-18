@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.perfield;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
@@ -154,8 +155,8 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       }
 
       // Check that the new format was used while merging
-      MatcherAssert.assertThat(format1.fieldsWritten, equalTo(Set.of("field1")));
-      MatcherAssert.assertThat(format2.fieldsWritten, equalTo(Set.of("field2")));
+      MatcherAssert.assertThat(format1.fieldsWritten, contains("field1"));
+      MatcherAssert.assertThat(format2.fieldsWritten, contains("field2"));
     }
   }
 
