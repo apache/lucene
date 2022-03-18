@@ -475,7 +475,13 @@ public class RegExp {
     RegExp e;
     if (s.length() == 0) e = makeString(flags, "");
     else {
-      e = parseUnionExp();
+      try {
+        e = parseUnionExp();
+      } catch (
+          @SuppressWarnings("unused")
+          StackOverflowError soe) {
+        throw new IllegalArgumentException("stack overflow during parsing at position " + pos);
+      }
       if (pos < originalString.length())
         throw new IllegalArgumentException("end-of-string expected at position " + pos);
     }

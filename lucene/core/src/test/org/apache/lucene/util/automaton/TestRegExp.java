@@ -245,4 +245,8 @@ public class TestRegExp extends LuceneTestCase {
     }
     return regexPattern;
   }
+
+  public void testTooLongRegexp() {
+    expectThrows(IllegalArgumentException.class, () -> new RegExp(randomDocValue(10000)));
+  }
 }
