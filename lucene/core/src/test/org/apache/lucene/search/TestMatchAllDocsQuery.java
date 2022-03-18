@@ -115,7 +115,6 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
     }
     IndexReader ir = DirectoryReader.open(iw);
 
-
     IndexSearcher singleThreadedSearcher = newSearcher(ir, true, true, false);
     final int totalHitsThreshold = 200;
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
