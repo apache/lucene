@@ -24,7 +24,6 @@ module org.apache.lucene.analysis.kuromoji {
   exports org.apache.lucene.analysis.ja.completion;
   exports org.apache.lucene.analysis.ja.dict;
   exports org.apache.lucene.analysis.ja.tokenattributes;
-  exports org.apache.lucene.analysis.ja.util;
 
   opens org.apache.lucene.analysis.ja to
       org.apache.lucene.core;

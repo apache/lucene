@@ -14,13 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ja.util;
+package org.apache.lucene.analysis.ja.dict;
 
 import java.io.IOException;
 import java.util.HashMap;
 
 /** Utility class for english translations of morphological data, used only for debugging. */
-public class ToStringUtil {
+public final class ToStringUtil {
   // a translation map for parts of speech, only used for reflectWith
   private static final HashMap<String, String> posTranslations = new HashMap<>();
 

@@ -14,14 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.util;
+package org.apache.lucene.analysis.ja.dict;
 
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Utility class for parsing CSV text */
-public final class CSVUtil {
+final class CSVUtil {
   private static final char QUOTE = '"';
 
   private static final char COMMA = ',';
@@ -69,7 +69,7 @@ public final class CSVUtil {
       return new String[0];
     }
 
-    return result.toArray(new String[0]);
+    return result.toArray(new String[result.size()]);
   }
 
   private static String unQuoteUnEscape(String original) {
@@ -83,11 +83,24 @@ public final class CSVUtil {
       }
 
       // Unescape
-      if (result.contains(ESCAPED_QUOTE)) {
+      if (result.indexOf(ESCAPED_QUOTE) >= 0) {
         result = result.replace(ESCAPED_QUOTE, "\"");
       }
     }
 
+    return result;
+  }
+
+  /** Quote and escape input value for CSV */
+  public static String quoteEscape(String original) {
+    String result = original;
+
+    if (result.indexOf('\"') >= 0) {
+      result = result.replace("\"", ESCAPED_QUOTE);
+    }
+    if (result.indexOf(COMMA) >= 0) {
+      result = "\"" + result + "\"";
+    }
     return result;
   }
 }

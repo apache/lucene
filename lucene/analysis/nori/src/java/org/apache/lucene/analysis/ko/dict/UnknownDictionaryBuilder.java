@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ja.util;
+package org.apache.lucene.analysis.ko.dict;
 
 import java.io.IOException;
 import java.io.LineNumberReader;
@@ -25,12 +25,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import org.apache.lucene.analysis.ja.dict.CharacterDefinition;
 
-class UnknownDictionaryBuilder {
-  private static final String NGRAM_DICTIONARY_ENTRY = "NGRAM,5,5,-32768,記号,一般,*,*,*,*,*,*,*";
+final class UnknownDictionaryBuilder {
+  private static final String NGRAM_DICTIONARY_ENTRY = "NGRAM,1801,3559,3677,SY,*,*,*,*,*,*,*";
 
-  private final String encoding;
+  private String encoding;
 
   UnknownDictionaryBuilder(String encoding) {
     this.encoding = encoding;

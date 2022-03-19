@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.util;
+package org.apache.lucene.analysis.ja.dict;
 
 import java.io.IOException;
 import java.io.LineNumberReader;
@@ -22,10 +22,9 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
 import org.apache.lucene.analysis.morph.ConnectionCostsWriter;
 
-class ConnectionCostsBuilder {
+final class ConnectionCostsBuilder {
 
   private ConnectionCostsBuilder() {}
 
