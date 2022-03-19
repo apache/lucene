@@ -27,7 +27,7 @@ import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
 
 /** Morphological information for system dictionary. */
-class TokenInfoMorphData implements KoMorphData {
+public class TokenInfoMorphData implements KoMorphData {
 
   private final ByteBuffer buffer;
   private final POS.Tag[] posDict;

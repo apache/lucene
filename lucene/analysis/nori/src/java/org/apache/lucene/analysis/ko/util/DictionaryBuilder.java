@@ -14,14 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.dict;
+package org.apache.lucene.analysis.ko.util;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.apache.lucene.analysis.ko.dict.DictionaryConstants;
 
 /** Tool to build dictionaries. */
-public final class DictionaryBuilder {
+public class DictionaryBuilder {
 
   private DictionaryBuilder() {}
 

@@ -14,17 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ja.dict;
+package org.apache.lucene.analysis.ja.util;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.lucene.analysis.ja.dict.TokenInfoMorphData;
 import org.apache.lucene.analysis.morph.DictionaryEntryWriter;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 
 /** Writes system dictionary entries */
-final class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
+class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
   private static final int ID_LIMIT = 8192;
 
   TokenInfoDictionaryEntryWriter(int size) {

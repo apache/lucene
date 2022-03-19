@@ -14,18 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ja.dict;
+package org.apache.lucene.analysis.ja.util;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
+import org.apache.lucene.analysis.ja.dict.DictionaryConstants;
 
 /**
  * Tool to build dictionaries. Usage:
  *
  * <pre>
- *    java -cp [lucene classpath] org.apache.lucene.analysis.ja.dict.DictionaryBuilder \
+ *    java -cp [lucene classpath] org.apache.lucene.analysis.ja.util.DictionaryBuilder \
  *          ${inputDir} ${outputDir} ${encoding} ${normalizeEntry}
  * </pre>
  *
@@ -43,7 +44,7 @@ import java.util.Locale;
  *
  * @lucene.experimental
  */
-public final class DictionaryBuilder {
+public class DictionaryBuilder {
 
   /** Format of the dictionary. */
   public enum DictionaryFormat {

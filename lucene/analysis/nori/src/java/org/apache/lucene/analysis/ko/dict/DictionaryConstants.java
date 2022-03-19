@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis.ko.dict;
 
 /** Dictionary constants */
-final class DictionaryConstants {
+public final class DictionaryConstants {
   /** Codec header of the dictionary file. */
   public static final String DICT_HEADER = "ko_dict";
   /** Codec header of the dictionary mapping file. */

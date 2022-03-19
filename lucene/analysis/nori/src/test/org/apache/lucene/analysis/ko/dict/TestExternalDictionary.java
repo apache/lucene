@@ -25,6 +25,7 @@ import java.io.BufferedWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.apache.lucene.analysis.ko.util.DictionaryBuilder;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Before;
 

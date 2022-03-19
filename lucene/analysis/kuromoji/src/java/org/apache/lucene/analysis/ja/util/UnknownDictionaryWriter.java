@@ -14,14 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ja.dict;
+package org.apache.lucene.analysis.ja.util;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import org.apache.lucene.analysis.ja.dict.CharacterDefinition;
+import org.apache.lucene.analysis.ja.dict.DictionaryConstants;
+import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
 import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
 import org.apache.lucene.analysis.morph.CharacterDefinitionWriter;
 
-final class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> {
+class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> {
   private final CharacterDefinitionWriter<CharacterDefinition> characterDefinition =
       new CharacterDefinitionWriter<>(
           CharacterDefinition.class,

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.dict;
+package org.apache.lucene.analysis.ko.util;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;

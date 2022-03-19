@@ -14,16 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.dict;
+package org.apache.lucene.analysis.ko.util;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.apache.lucene.analysis.ko.dict.DictionaryConstants;
+import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
 import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
 import org.apache.lucene.util.fst.FST;
 
-final class TokenInfoDictionaryWriter extends BinaryDictionaryWriter<TokenInfoDictionary> {
+class TokenInfoDictionaryWriter extends BinaryDictionaryWriter<TokenInfoDictionary> {
   private FST<Long> fst;
 
   TokenInfoDictionaryWriter(int size) {
