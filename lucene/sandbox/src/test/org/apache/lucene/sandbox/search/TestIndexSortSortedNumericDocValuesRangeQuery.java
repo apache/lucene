@@ -65,8 +65,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       if (enableMissingValue) {
         long missingValue =
             random().nextBoolean()
-                ? Long.MIN_VALUE
-                : (random().nextBoolean() ? Long.MAX_VALUE : random().nextLong());
+                ? random().nextLong()
+                : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
         sortField.setMissingValue(missingValue);
       }
       iwc.setIndexSort(new Sort(sortField));
@@ -468,6 +468,32 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     reader.close();
   }
 
+  public void testFallbackCount() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    Sort indexSort = new Sort(new SortedNumericSortField("field", SortField.Type.LONG));
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+    Document doc = new Document();
+    doc.add(new SortedNumericDocValuesField("field", 10));
+    writer.addDocument(doc);
+    IndexReader reader = writer.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    // we use an unrealistic query that exposes its own Weight#count
+    Query fallbackQuery = new MatchNoDocsQuery();
+    // the index is not sorted on this field, the fallback query is used
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("another", 1, 42, fallbackQuery);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(0, weight.count(context));
+    }
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
   public void testCompareCount() throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
@@ -478,8 +504,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       if (enableMissingValue) {
         long missingValue =
             random().nextBoolean()
-                ? Long.MIN_VALUE
-                : (random().nextBoolean() ? Long.MAX_VALUE : random().nextLong());
+                ? random().nextLong()
+                : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
         sortField.setMissingValue(missingValue);
       }
       RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
@@ -537,12 +563,10 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
-    // true: lower
-    // false: upper
-    boolean lowerOrUpper = random().nextBoolean();
+    boolean useLower = random().nextBoolean();
     long lowerValue = 1;
     long upperValue = 100;
-    sortField.setMissingValue(lowerOrUpper ? lowerValue : upperValue);
+    sortField.setMissingValue(useLower ? lowerValue : upperValue);
     Sort indexSort = new Sort(sortField);
     iwc.setIndexSort(indexSort);
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
