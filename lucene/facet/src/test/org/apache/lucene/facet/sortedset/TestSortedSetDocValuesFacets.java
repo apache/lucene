@@ -114,13 +114,6 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=a path=[] value=-1 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
               results.get(1).toString());
 
-          // test getAllDims(0) with topN = 0
-          expectThrows(
-              NullPointerException.class,
-              () -> {
-                facets.getAllDims(0);
-              });
-
           // test getTopDims(10, 10) and expect same results from getAllDims(10)
           List<FacetResult> allDimsResults = facets.getTopDims(10, 10);
           assertEquals(results, allDimsResults);
@@ -145,17 +138,6 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(
               "dim=b path=[] value=2 childCount=2\n  buzz (2)\n",
               topDimsResults1.get(0).toString());
-
-          // test getTopDims(1, 0) with topNChildren = 0
-          expectThrows(
-              NullPointerException.class,
-              () -> {
-                facets.getTopDims(1, 0);
-              });
-
-          // test getTopDims(0, 1)
-          List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
-          assertEquals(0, topDimsResults2.size());
 
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
@@ -1326,10 +1308,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
               assertEquals(expectedAllDims, actualAllDims);
 
-              // test getTopDims(1, 10)
+              // test getTopDims(n, 10)
               if (actualAllDims.size() > 0) {
-                List<FacetResult> topDimsResults1 = facets.getTopDims(1, 10);
-                assertEquals(actualAllDims.get(0), topDimsResults1.get(0));
+                for (int i = 1; i < actualAllDims.size(); i++) {
+                  assertEquals(actualAllDims.subList(0, i), facets.getTopDims(i, 10));
+                }
               }
 
               // Dfs through top children
