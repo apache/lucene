@@ -194,7 +194,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
    */
   private ChildOrdsResult getChildOrdsResult(
       PrimitiveIterator.OfInt childOrds, int topN, FacetsConfig.DimConfig dimConfig, int pathOrd) {
-
     TopOrdAndIntQueue q = null;
     int bottomCount = 0;
     int dimCount = 0;

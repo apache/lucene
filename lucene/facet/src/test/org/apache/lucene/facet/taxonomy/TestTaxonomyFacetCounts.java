@@ -288,14 +288,6 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
-
-    // test getAllDims(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllDims(0);
-        });
-
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -306,13 +298,6 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         IllegalArgumentException.class,
         () -> {
           facets.getTopChildren(10, "a");
-        });
-
-    // test getTopChildren(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "Author");
         });
 
     writer.close();
@@ -497,14 +482,6 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         IllegalArgumentException.class,
         () -> {
           facets.getSpecificValue("dim");
-        });
-
-    // test getTopChildren(0, dim)
-    Facets finalFacets = facets;
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          finalFacets.getTopChildren(0, "Author");
         });
 
     assertEquals(1, facets.getSpecificValue("dim2"));

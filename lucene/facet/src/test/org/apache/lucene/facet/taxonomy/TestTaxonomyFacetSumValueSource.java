@@ -274,11 +274,9 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
 
-
     // test default implementation of getTopDims
     List<FacetResult> topDimsResults = facets.getTopDims(10, 10);
     assertTrue(topDimsResults.isEmpty());
-
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -388,7 +386,6 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     assertEquals(
         "dim=a path=[] value=10.0 childCount=2\n  1 (6.0)\n  0 (4.0)\n",
         facets.getTopChildren(10, "a").toString());
-
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
@@ -549,13 +546,11 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
       sortFacetResults(expected);
 
       List<FacetResult> actual = facets.getAllDims(10);
-
       // test default implementation of getTopDims
       if (actual.size() > 0) {
         List<FacetResult> topDimsResults1 = facets.getTopDims(1, 10);
         assertEquals(actual.get(0), topDimsResults1.get(0));
       }
-
       // Messy: fixup ties
       sortTies(actual);
 
