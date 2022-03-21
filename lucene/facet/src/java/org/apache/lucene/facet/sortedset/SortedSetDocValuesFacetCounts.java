@@ -168,8 +168,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     ChildOrdsResult childOrdsResult;
 
     // if getTopDims is called, get results from previously stored dimToChildOrdsResult, otherwise
-    // call
-    // getChildOrdsResult to get dimCount, childCount and the queue for the dimension's top children
+    // call getChildOrdsResult to get dimCount, childCount and the queue for the dimension's top
+    // children
     if (dimToChildOrdsResult != null) {
       childOrdsResult = dimToChildOrdsResult;
     } else {
@@ -198,9 +198,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       PrimitiveIterator.OfInt childOrds, int topN, FacetsConfig.DimConfig dimConfig, int pathOrd) {
 
     TopOrdAndIntQueue q = null;
-
     int bottomCount = 0;
-
     int dimCount = 0;
     int childCount = 0;
 
@@ -275,10 +273,9 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     // if dimCount was not aggregated at indexing time, iterate over childOrds to get dimCount
     ChildOrdsResult childOrdsResult = getChildOrdsResult(childOrds, topN, dimConfig, dimOrd);
 
-    // if no early termination, store dim and childOrdsResult into hashmap
-    if (dimToChildOrdsResult != null) {
-      dimToChildOrdsResult.put(dim, childOrdsResult);
-    }
+    // if no early termination, store dim and childOrdsResult into a hashmap to avoid calling
+    // getChildOrdsResult again in getPathResult
+    dimToChildOrdsResult.put(dim, childOrdsResult);
 
     return childOrdsResult.dimCount;
   }
@@ -445,7 +442,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   /** Returns FacetResult for a dimension. */
   private FacetResult getFacetResultForDim(
-      String dim, int topNChildren, ChildOrdsResult cacheChildOrdsResult) throws IOException {
+      String dim, int topNChildren, ChildOrdsResult dimToChildOrdsResult) throws IOException {
 
     FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
 
@@ -459,7 +456,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
           dimOrd,
           dimTree.iterator(),
           topNChildren,
-          cacheChildOrdsResult);
+          dimToChildOrdsResult);
     } else {
       OrdRange ordRange = state.getOrdRange(dim);
       int dimOrd = ordRange.start;
@@ -471,7 +468,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
         childIt.next();
       }
       return getPathResult(
-          dimConfig, dim, emptyPath, dimOrd, childIt, topNChildren, cacheChildOrdsResult);
+          dimConfig, dim, emptyPath, dimOrd, childIt, topNChildren, dimToChildOrdsResult);
     }
   }
 
