@@ -56,7 +56,9 @@ API Changes
 
 New Features
 ---------------------
-* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` implementation. `Monitor` can be created with a readonly `QueryIndex` in order to have readonly `Monitor` instances. (Niko Usai)
+* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
+implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+have readonly `Monitor` instances. (Niko Usai)
 
 Improvements
 ---------------------
