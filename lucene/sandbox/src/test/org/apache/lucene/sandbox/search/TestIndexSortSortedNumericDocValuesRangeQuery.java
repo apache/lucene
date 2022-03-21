@@ -65,7 +65,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       if (enableMissingValue) {
         long missingValue =
             random().nextBoolean()
-                ? random().nextLong()
+                ? TestUtil.nextLong(random(), -100, 10000)
                 : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
         sortField.setMissingValue(missingValue);
       }
@@ -504,10 +504,12 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       if (enableMissingValue) {
         long missingValue =
             random().nextBoolean()
-                ? random().nextLong()
+                ? TestUtil.nextLong(random(), -100, 10000)
                 : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
         sortField.setMissingValue(missingValue);
       }
+      iwc.setIndexSort(new Sort(sortField));
+
       RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
 
       final int numDocs = atLeast(100);
@@ -516,10 +518,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         final int numValues = TestUtil.nextInt(random(), 0, 1);
         for (int j = 0; j < numValues; ++j) {
           final long value = TestUtil.nextLong(random(), -100, 10000);
-          doc =
-              random().nextBoolean()
-                  ? createMissingValueDocument()
-                  : createSNDVAndPointDocument("field", value);
+          doc = createSNDVAndPointDocument("field", value);
         }
         writer.addDocument(doc);
       }

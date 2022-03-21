@@ -200,9 +200,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
-        if (disi != null && disi.delegate == null) {
-          return disi.lastDoc - disi.firstDoc;
+        if (context.reader().hasDeletions() == false) {
+          BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+          if (disi != null && disi.delegate == null) {
+            return disi.lastDoc - disi.firstDoc;
+          }
         }
         return fallbackWeight.count(context);
       }
@@ -286,9 +288,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     PointValues pointValues = reader.getPointValues(field);
     final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
     // all documents have docValues or missing value falls outside the range
-    if ((reader.hasDeletions() == false
-            && pointValues != null
-            && pointValues.getDocCount() == reader.maxDoc())
+    if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
         || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
       disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, null);
     } else {
