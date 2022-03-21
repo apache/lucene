@@ -594,7 +594,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
       Document doc = new Document();
       xs[2 * id] = nextX();
       ys[2 * id] = nextY();
-      doc.add(newStringField("id", "" + id, Field.Store.YES));
+      doc.add(new StringField("id", "" + id, Field.Store.YES));
       addPointToDoc(FIELD_NAME, doc, xs[2 * id], ys[2 * id]);
       xs[2 * id + 1] = nextX();
       ys[2 * id + 1] = nextY();
@@ -805,6 +805,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (xs.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -887,6 +889,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (xs.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -986,6 +990,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (xs.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1069,6 +1075,8 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (xs.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1146,7 +1154,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
       throws IOException {
     for (int id = 0; id < xs.length; id++) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       if (Float.isNaN(xs[id]) == false && Float.isNaN(ys[id]) == false) {
         addPointToDoc(FIELD_NAME, doc, xs[id], ys[id]);
