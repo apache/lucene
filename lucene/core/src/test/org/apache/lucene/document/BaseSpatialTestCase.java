@@ -259,7 +259,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     Set<Integer> deleted = new HashSet<>();
     for (int id = 0; id < shapes.length; ++id) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       if (shapes[id] != null) {
         addShapeToDoc(FIELD_NAME, doc, shapes[id]);
