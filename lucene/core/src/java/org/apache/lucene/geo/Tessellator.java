@@ -448,15 +448,8 @@ public final class Tessellator {
             }
           } else if ((tan < tanMin || (tan == tanMin && p.getX() > connection.getX()))
               && isLocallyInside(p, holeNode)
-              // prevent bridges that are collinear with the hole edge
-              && area(
-                      holeNode.previous.getX(),
-                      holeNode.previous.getY(),
-                      holeNode.getX(),
-                      holeNode.getY(),
-                      p.getX(),
-                      p.getY()) 
-                  != 0) {
+              // make sure we don't introduce collinear lines    
+              && checkNonCollinearLines(p, holeNode)) {
             connection = p;
             tanMin = tan;
           }
@@ -574,7 +567,7 @@ public final class Tessellator {
               continue earcut;
             case CURE:
               // if this didn't work, try curing all small self-intersections locally
-              currEar = cureLocalIntersections(currEar, tessellation, mortonOptimized);
+             // currEar = cureLocalIntersections(currEar, tessellation, mortonOptimized);
               state = State.SPLIT;
               continue earcut;
             case SPLIT:
@@ -1103,10 +1096,14 @@ public final class Tessellator {
         && isLocallyInside(b, a)
         && middleInsert(a, a.getX(), a.getY(), b.getX(), b.getY())
         // make sure we don't introduce collinear lines
-        && area(a.previous.getX(), a.previous.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
-        && area(a.getX(), a.getY(), b.getX(), b.getY(), b.next.getX(), b.next.getY()) != 0
-        && area(a.next.getX(), a.next.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
-        && area(a.getX(), a.getY(), b.getX(), b.getY(), b.previous.getX(), b.previous.getY()) != 0;
+        && checkNonCollinearLines(a, b);
+  }
+  
+  private static boolean checkNonCollinearLines(final Node a, final Node b) {
+    return area(a.previous.getX(), a.previous.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
+            && area(a.getX(), a.getY(), b.getX(), b.getY(), b.next.getX(), b.next.getY()) != 0
+            && area(a.next.getX(), a.next.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
+            && area(a.getX(), a.getY(), b.getX(), b.getY(), b.previous.getX(), b.previous.getY()) != 0;
   }
 
   /** Determine whether the polygon defined between node start and node end is CW */
