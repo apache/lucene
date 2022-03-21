@@ -16,8 +16,7 @@
  */
 package org.apache.lucene.sandbox.search;
 
-import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
-import java.util.Arrays;
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
@@ -33,23 +32,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestIndexSortSortedNumericDocValuesRangeQueryByType extends LuceneTestCase {
-  private final SortField.Type type;
-
-  public TestIndexSortSortedNumericDocValuesRangeQueryByType(SortField.Type type) {
-    this.type = type;
-  }
-
-  @ParametersFactory(argumentFormatting = "type=%s")
-  public static Iterable<Object[]> parametersWithCustomName() {
-    return Arrays.asList(
-        new Object[][] {
-          {SortField.Type.INT},
-          {SortField.Type.FLOAT},
-          {SortField.Type.LONG},
-          {SortField.Type.DOUBLE}
-        });
-  }
-
   public void testIndexSortDocValues() throws Exception {
     testIndexSortDocValuesWithEvenLength(true);
     testIndexSortDocValuesWithEvenLength(false);
@@ -59,6 +41,12 @@ public class TestIndexSortSortedNumericDocValuesRangeQueryByType extends LuceneT
     Directory dir = newDirectory();
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    final SortField.Type type =
+        RandomPicks.randomFrom(
+            random(),
+            new SortField.Type[] {
+              SortField.Type.INT, SortField.Type.FLOAT, SortField.Type.LONG, SortField.Type.DOUBLE
+            });
     Sort indexSort = new Sort(new SortedNumericSortField("field", type, reverse));
     iwc.setIndexSort(indexSort);
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
