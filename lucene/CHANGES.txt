@@ -68,7 +68,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* LUCENE-10470: Fix bug in the polygon tessellator when introducing collinear edges during polygon
+  holes elimination. (Ignacio Vera)
 
 Other
 ---------------------
