@@ -309,8 +309,7 @@ public class WeightedSpanTermExtractor {
     final IndexSearcher searcher = new IndexSearcher(getLeafContext());
     searcher.setQueryCache(null);
     if (mustRewriteQuery) {
-      final SpanQuery rewrittenQuery =
-          (SpanQuery) new IndexSearcher(getLeafContext()).rewrite(spanQuery);
+      final SpanQuery rewrittenQuery = (SpanQuery) searcher.rewrite(spanQuery);
       for (final String field : fieldNames) {
         queries.put(field, rewrittenQuery);
       }
