@@ -26,8 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.LeafReader;
@@ -38,7 +36,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.NamedThreadFactory;
 
 /**
  * A Monitor contains a set of {@link Query} objects with associated IDs, and efficiently matches
@@ -51,13 +48,7 @@ public class Monitor implements Closeable {
 
   private final QueryIndex queryIndex;
 
-  private final List<MonitorUpdateListener> listeners = new ArrayList<>();
-
   private final long commitBatchSize;
-
-  private final ScheduledExecutorService purgeExecutor;
-
-  private long lastPurged = -1;
 
   /**
    * Create a non-persistent Monitor instance with the default term-filtering Presearcher
@@ -100,22 +91,11 @@ public class Monitor implements Closeable {
 
     this.analyzer = analyzer;
     this.presearcher = presearcher;
-    this.queryIndex = new QueryIndex(configuration, presearcher);
-
-    long purgeFrequency = configuration.getPurgeFrequency();
-    this.purgeExecutor =
-        Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("cache-purge"));
-    this.purgeExecutor.scheduleAtFixedRate(
-        () -> {
-          try {
-            purgeCache();
-          } catch (Throwable e) {
-            listeners.forEach(l -> l.onPurgeError(e));
-          }
-        },
-        purgeFrequency,
-        purgeFrequency,
-        configuration.getPurgeFrequencyUnits());
+    if (configuration.isReadOnly()) {
+      this.queryIndex = new ReadonlyQueryIndex(configuration);
+    } else {
+      this.queryIndex = new WritableQueryIndex(configuration, presearcher);
+    }
 
     this.commitBatchSize = configuration.getQueryUpdateBufferSize();
   }
@@ -127,12 +107,13 @@ public class Monitor implements Closeable {
    * @param listener listener to register
    */
   public void addQueryIndexUpdateListener(MonitorUpdateListener listener) {
-    listeners.add(listener);
+    queryIndex.addListener(listener);
   }
 
   /** @return Statistics for the internal query index and cache */
-  public QueryCacheStats getQueryCacheStats() {
-    return new QueryCacheStats(queryIndex.numDocs(), queryIndex.cacheSize(), lastPurged);
+  public QueryCacheStats getQueryCacheStats() throws IOException {
+    return new QueryCacheStats(
+        queryIndex.numDocs(), queryIndex.cacheSize(), queryIndex.getLastPurged());
   }
 
   /** Statistics for the query cache and query index */
@@ -159,17 +140,17 @@ public class Monitor implements Closeable {
    *
    * <p>This is normally called from a background thread at a rate set by configurePurgeFrequency().
    *
+   * <p>When Monitor is in read-only mode, cache is NEVER purged automatically you MUST call it when
+   * you want new changes.
+   *
    * @throws IOException on IO errors
    */
   public void purgeCache() throws IOException {
     queryIndex.purgeCache();
-    lastPurged = System.nanoTime();
-    listeners.forEach(MonitorUpdateListener::onPurge);
   }
 
   @Override
   public void close() throws IOException {
-    purgeExecutor.shutdown();
     queryIndex.close();
   }
 
@@ -192,7 +173,6 @@ public class Monitor implements Closeable {
 
   private void commit(List<MonitorQuery> updates) throws IOException {
     queryIndex.commit(updates);
-    listeners.forEach(l -> l.afterUpdate(updates));
   }
 
   /**
@@ -213,7 +193,6 @@ public class Monitor implements Closeable {
    */
   public void deleteById(List<String> queryIds) throws IOException {
     queryIndex.deleteQueries(queryIds);
-    listeners.forEach(l -> l.afterDelete(queryIds));
   }
 
   /**
@@ -233,7 +212,6 @@ public class Monitor implements Closeable {
    */
   public void clear() throws IOException {
     queryIndex.clear();
-    listeners.forEach(MonitorUpdateListener::afterClear);
   }
 
   /**
@@ -287,7 +265,7 @@ public class Monitor implements Closeable {
   }
 
   /** @return the number of queries (after decomposition) stored in this Monitor */
-  public int getDisjunctCount() {
+  public int getDisjunctCount() throws IOException {
     return queryIndex.numDocs();
   }
 
