@@ -23,6 +23,7 @@ import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -230,6 +231,8 @@ public abstract class BaseRangeFieldQueryTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (ranges.length > 50000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -239,7 +242,7 @@ public abstract class BaseRangeFieldQueryTestCase extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, iwc);
     for (int id = 0; id < ranges.length; ++id) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       if (ranges[id][0].isMissing == false) {
         for (int n = 0; n < ranges[id].length; ++n) {

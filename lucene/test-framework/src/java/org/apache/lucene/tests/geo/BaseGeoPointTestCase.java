@@ -652,7 +652,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
       Document doc = new Document();
       lats[2 * id] = quantizeLat(nextLatitude());
       lons[2 * id] = quantizeLon(nextLongitude());
-      doc.add(newStringField("id", "" + id, Field.Store.YES));
+      doc.add(new StringField("id", "" + id, Field.Store.YES));
       addPointToDoc(FIELD_NAME, doc, lats[2 * id], lons[2 * id]);
       lats[2 * id + 1] = quantizeLat(nextLatitude());
       lons[2 * id + 1] = quantizeLon(nextLongitude());
@@ -909,6 +909,8 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (lats.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -992,6 +994,8 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (lats.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1095,6 +1099,8 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (lats.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1179,6 +1185,8 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     }
     Directory dir;
     if (lats.length > 100000) {
+      // Avoid slow codecs like SimpleText
+      iwc.setCodec(TestUtil.getDefaultCodec());
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -1259,7 +1267,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
       throws IOException {
     for (int id = 0; id < lats.length; id++) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       if (Double.isNaN(lats[id]) == false) {
         addPointToDoc(FIELD_NAME, doc, lats[id], lons[id]);
