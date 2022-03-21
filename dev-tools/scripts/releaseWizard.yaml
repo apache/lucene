@@ -740,10 +740,10 @@ groups:
 
       You can run the smoke tester directly with this command:
 
-      python3 -u dev-tools/scripts/smokeTestRelease.py --tmp-dir <tmp-working-dir-path> \
+      python3 -u dev-tools/scripts/smokeTestRelease.py \
       https://dist.apache.org/repos/dist/dev/lucene/lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
 
-      Some tests create large files (several gigabytes) in the temporary working directory, make sure there is enough available disk space on your device. 8GB+ free space is recommended.
+      Some tests can create large files in the tmpfs (temporary file system), make sure there is enough available disk space on your device. You can change the location for temporary files by --tmp-dir <tmp-working-dir-path> option.
 
       The vote will be open for at least 72 hours i.e. until {{ vote_close }}.
 
