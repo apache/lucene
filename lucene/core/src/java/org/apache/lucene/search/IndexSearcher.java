@@ -778,9 +778,7 @@ public class IndexSearcher {
     }
   }
 
-  /**
-   * Expert: called to re-write queries into primitive queries.
-   */
+  /** Expert: called to re-write queries into primitive queries. */
   public static Query rewrite(Query original, IndexReader reader) throws IOException {
     Query query = original;
     for (Query rewrittenQuery = query.rewrite(reader);
