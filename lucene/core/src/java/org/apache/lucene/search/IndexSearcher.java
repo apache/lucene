@@ -780,17 +780,25 @@ public class IndexSearcher {
 
   /**
    * Expert: called to re-write queries into primitive queries.
-   *
-   * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
-   *     clauses.
    */
-  public Query rewrite(Query original) throws IOException {
+  public static Query rewrite(Query original, IndexReader reader) throws IOException {
     Query query = original;
     for (Query rewrittenQuery = query.rewrite(reader);
         rewrittenQuery != query;
         rewrittenQuery = query.rewrite(reader)) {
       query = rewrittenQuery;
     }
+    return query;
+  }
+
+  /**
+   * Expert: called to re-write queries into primitive queries.
+   *
+   * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
+   *     clauses.
+   */
+  public Query rewrite(Query original) throws IOException {
+    Query query = rewrite(original, reader);
     query.visit(getNumClausesCheckVisitor());
     return query;
   }
