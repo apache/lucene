@@ -70,10 +70,10 @@ public class TestMonitorReadonly extends MonitorTestBase {
                 MonitorQuerySerializer.fromParser(MonitorTestBase::parse),
                 true);
     try (Monitor monitor = new Monitor(ANALYZER, config)) {
+      TermQuery query = new TermQuery(new Term(FIELD, "test"));
       assertThrows(
           UnsupportedOperationException.class,
           () -> {
-            TermQuery query = new TermQuery(new Term(FIELD, "test"));
             monitor.register(
                 new MonitorQuery("query1", query, query.toString(), Collections.emptyMap()));
           });
@@ -156,10 +156,10 @@ public class TestMonitorReadonly extends MonitorTestBase {
       assertEquals(1, matches.getMatchCount());
       assertNotNull(matches.matches("query1"));
 
+      TermQuery query = new TermQuery(new Term(FIELD, "test"));
       assertThrows(
           UnsupportedOperationException.class,
           () -> {
-            TermQuery query = new TermQuery(new Term(FIELD, "test"));
             readMonitor2.register(
                 new MonitorQuery("query1", query, query.toString(), Collections.emptyMap()));
           });
