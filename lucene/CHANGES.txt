@@ -75,7 +75,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
 
 Other
 ---------------------
