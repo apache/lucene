@@ -24,7 +24,7 @@
 #
 # To use this, first cd to benchmark and then run:
 #
-#   ant run-task -Dtask.alg=conf/readContentSource.alg
+#   gradlew run -P task.alg=conf/readContentSource.alg
 #
 
 # Where to get documents from:

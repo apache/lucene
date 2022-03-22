@@ -22,7 +22,7 @@
 #
 # To use this, cd to benchmark and then run:
 #
-#   ant run-task -Dtask.alg=conf/tokenize.alg
+#   gradlew run -P task.alg=conf/tokenize.alg
 #
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource

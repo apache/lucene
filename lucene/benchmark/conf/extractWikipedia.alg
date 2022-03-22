@@ -22,7 +22,7 @@
 #
 # To use this, first cd to benchmark and then run:
 #
-#   ant run-task -Dtask.alg=conf/extractWikipedia.alg
+#   gradlew run -P task.alg=conf/extractWikipedia.alg
 #
 # Then, to index the documents in the line file, see
 # indexLineFile.alg.

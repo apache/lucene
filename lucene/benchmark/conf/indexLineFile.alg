@@ -26,7 +26,7 @@
 # To use this, you must first run the createLineFile.alg, then cd to
 # benchmark and then run:
 #
-#   ant run-task -Dtask.alg=conf/indexLineFile.alg
+#   gradlew run -P task.alg=conf/indexLineFile.alg
 #
 
 analyzer=org.apache.lucene.analysis.core.SimpleAnalyzer

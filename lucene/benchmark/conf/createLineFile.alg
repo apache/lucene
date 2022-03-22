@@ -22,7 +22,7 @@
 #
 # To use this, first cd to benchmark and then run:
 #
-#   ant run-task -Dtask.alg=conf/createLineFile.alg
+#   gradlew run -P task.alg=conf/createLineFile.alg
 #
 # Then, to index the documents in the line file, see
 # indexLineFile.alg.
