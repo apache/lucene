@@ -311,9 +311,6 @@ Bug Fixes
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
-* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
-  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
-
 * LUCENE-10349: Fix all analyzers to behave according to their documentation:
   getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
 
@@ -322,6 +319,9 @@ Bug Fixes
 
 * LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
   DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
+
+* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
+  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 
 * LUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
   Uwe Schindler)
@@ -347,6 +347,10 @@ Bug Fixes
 * LUCENE-10428: Queries with a misbehaving score function may no longer cause
   infinite loops in their parent BooleanQuery.
   (Ankit Jain, Daniel Doubrovkine, Adrien Grand)
+
+* LUCENE-10431: MultiTermQuery no longer includes its rewrite method in its hashcode
+  calculation, as this could cause problems with wrapper queries like BooleanQuery which
+  expect their child queries hashcodes to be stable. (Alan Woodward)
 
 * LUCENE-10469: Fix ScoreMode propagation by ConstantScoreQuery. (Adrien Grand)
 
