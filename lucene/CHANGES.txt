@@ -43,7 +43,7 @@ API Changes
 
 * LUCENE-10244: MultiCollector::getCollectors is now public, allowing users to access the wrapped
   collectors. (Andriy Redko)
-  
+
 * LUCENE-10197: UnifiedHighlighter now has a Builder to construct it.  The UH's setters are now
   deprecated.  (Animesh Pandey, David Smiley)
 
@@ -194,7 +194,7 @@ Improvements
 
 * LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
   (Patrick Zhai)
-  
+
 Optimizations
 ---------------------
 
@@ -700,14 +700,14 @@ Bug fixes
 
 * LUCENE-10047: Fix a value de-duping bug in LongValueFacetCounts and RangeFacetCounts
   (Greg Miller)
-  
+
 * LUCENE-10101, LUCENE-9281: Use getField() instead of getDeclaredField() to
   minimize security impact by analysis SPI discovery. (Uwe Schindler)
 
 * LUCENE-10114: Remove unused byte order mark in Lucene90PostingsWriter. This
   was initially introduced by accident in Lucene 8.4. (Uwe Schindler)
 
-* LUCENE-10140: Fix cases where minimizing interval iterators could return 
+* LUCENE-10140: Fix cases where minimizing interval iterators could return
   incorrect matches (Nikolay Khitrin, Alan Woodward)
 
 Changes in Backwards Compatibility Policy
