@@ -37,7 +37,6 @@ import org.apache.lucene.util.BytesRef;
 @Monster("consumes a lot of disk space")
 public class Test4GBStoredFields extends LuceneTestCase {
 
-  @Nightly
   public void test() throws Exception {
     assumeWorkingMMapOnWindows();
 
