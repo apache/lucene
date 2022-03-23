@@ -60,6 +60,10 @@ New Features
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
+* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
+implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+have readonly `Monitor` instances. (Niko Usai)
+
 Improvements
 ---------------------
 (No changes)
@@ -71,9 +75,15 @@ Optimizations
 
 * LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
 
+* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
+  (Adrien Grand)
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
+
 Bug Fixes
 ---------------------
-(No changes)
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
 
 Other
 ---------------------
@@ -305,9 +315,6 @@ Bug Fixes
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
-* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
-  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
-
 * LUCENE-10349: Fix all analyzers to behave according to their documentation:
   getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
 
@@ -316,6 +323,9 @@ Bug Fixes
 
 * LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
   DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
+
+* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
+  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 
 * LUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
   Uwe Schindler)
@@ -341,6 +351,12 @@ Bug Fixes
 * LUCENE-10428: Queries with a misbehaving score function may no longer cause
   infinite loops in their parent BooleanQuery.
   (Ankit Jain, Daniel Doubrovkine, Adrien Grand)
+
+* LUCENE-10431: MultiTermQuery no longer includes its rewrite method in its hashcode
+  calculation, as this could cause problems with wrapper queries like BooleanQuery which
+  expect their child queries hashcodes to be stable. (Alan Woodward)
+
+* LUCENE-10469: Fix ScoreMode propagation by ConstantScoreQuery. (Adrien Grand)
 
 Other
 ---------------------
