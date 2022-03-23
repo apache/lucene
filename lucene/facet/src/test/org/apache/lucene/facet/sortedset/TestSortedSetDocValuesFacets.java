@@ -152,8 +152,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     }
   }
 
-  // test tricky combinations of the three config: MultiValued, Hierarchical, and RequireDimCount of a
-  // dim
+  // test tricky combinations of the three config: MultiValued, Hierarchical, and RequireDimCount of
+  // a dim
   public void testCombinationsOfConfig() throws Exception {
     FacetsConfig config = new FacetsConfig();
 
