@@ -81,9 +81,9 @@
  * <ul>
  *   <li>./gradlew -p lucene/benchmark getReuters run <br>
  *       - would run the <code>micro-standard.alg</code> "algorithm".
- *   <li>./gradlew -p lucene/benchmark getReuters run -P task.alg=conf/compound-penalty.alg <br>
+ *   <li>./gradlew -p lucene/benchmark getReuters run -Ptask.alg=conf/compound-penalty.alg <br>
  *       - would run the <code>compound-penalty.alg</code> "algorithm".
- *   <li>./gradlew -p lucene/benchmark getReuters run -P task.alg=[full-path-to-your-alg-file] <br>
+ *   <li>./gradlew -p lucene/benchmark getReuters run -Ptask.alg=[full-path-to-your-alg-file] <br>
  *       - would run <code>your perf test</code> "algorithm".
  *   <li>java org.apache.lucene.benchmark.byTask.programmatic.Sample <br>
  *       - would run a performance test programmatically - without using an alg file. This is less
@@ -131,7 +131,7 @@
  * benchmark.ext.classpath property:
  *
  * <ul>
- *   <li>./gradlew -p lucene/benchmark run -P task.alg=[full-path-to-your-alg-file] <span
+ *   <li>./gradlew -p lucene/benchmark run -Ptask.alg=[full-path-to-your-alg-file] <span
  *       style="color: #FF0000">-Dbenchmark.ext.classpath=/mydir/classes </span> -Dtask.mem=512M
  * </ul>
  *
@@ -494,7 +494,7 @@
  * </pre>
  *
  * <p>The command line for running this sample: <br>
- * <code>./gradlew -p lucene/benchmark getReuters run -P task.alg=conf/sample.alg</code>
+ * <code>./gradlew -p lucene/benchmark getReuters run -Ptask.alg=conf/sample.alg</code>
  *
  * <p>The output report from running this test contains the following:
  *
