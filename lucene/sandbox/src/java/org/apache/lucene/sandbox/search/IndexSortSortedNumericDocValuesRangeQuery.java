@@ -20,8 +20,10 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -198,16 +200,18 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        BoundedDocSetIdIterator disi = getDocIdSetIteratorOrNull(context);
-        if (disi != null) {
-          return disi.lastDoc - disi.firstDoc;
+        if (context.reader().hasDeletions() == false) {
+          BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+          if (disi != null && disi.delegate == null) {
+            return disi.lastDoc - disi.firstDoc;
+          }
         }
         return fallbackWeight.count(context);
       }
     };
   }
 
-  private BoundedDocSetIdIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
+  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
       throws IOException {
     SortedNumericDocValues sortedNumericValues =
         DocValues.getSortedNumeric(context.reader(), field);
@@ -237,7 +241,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * {@link DocIdSetIterator} makes sure to wrap the original docvalues to skip over documents with
    * no value.
    */
-  private BoundedDocSetIdIterator getDocIdSetIterator(
+  private BoundedDocIdSetIterator getDocIdSetIterator(
       SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
@@ -278,7 +282,19 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     int lastDocIdExclusive = high + 1;
-    return new BoundedDocSetIdIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
+    Object missingValue = sortField.getMissingValue();
+    BoundedDocIdSetIterator disi;
+    LeafReader reader = context.reader();
+    PointValues pointValues = reader.getPointValues(field);
+    final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+    // all documents have docValues or missing value falls outside the range
+    if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
+        || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
+      disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, null);
+    } else {
+      disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
+    }
+    return disi;
   }
 
   /** Compares the given document's value with a stored reference value. */
@@ -306,14 +322,14 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * A doc ID set iterator that wraps a delegate iterator and only returns doc IDs in the range
    * [firstDocInclusive, lastDoc).
    */
-  private static class BoundedDocSetIdIterator extends DocIdSetIterator {
+  private static class BoundedDocIdSetIterator extends DocIdSetIterator {
     private final int firstDoc;
     private final int lastDoc;
     private final DocIdSetIterator delegate;
 
     private int docID = -1;
 
-    BoundedDocSetIdIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
+    BoundedDocIdSetIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
       this.firstDoc = firstDoc;
       this.lastDoc = lastDoc;
       this.delegate = delegate;
@@ -335,7 +351,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         target = firstDoc;
       }
 
-      int result = delegate.advance(target);
+      int result;
+      if (delegate != null) {
+        result = delegate.advance(target);
+      } else {
+        result = target;
+      }
       if (result < lastDoc) {
         docID = result;
       } else {
