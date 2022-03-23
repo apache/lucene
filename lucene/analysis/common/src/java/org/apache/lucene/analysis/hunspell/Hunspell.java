@@ -17,7 +17,8 @@
 package org.apache.lucene.analysis.hunspell;
 
 import static org.apache.lucene.analysis.hunspell.Dictionary.FLAG_UNSET;
-import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.*;
+import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.NO_TIMEOUT;
+import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.RETURN_PARTIAL_RESULT;
 import static org.apache.lucene.analysis.hunspell.WordContext.COMPOUND_BEGIN;
 import static org.apache.lucene.analysis.hunspell.WordContext.COMPOUND_END;
 import static org.apache.lucene.analysis.hunspell.WordContext.COMPOUND_MIDDLE;
@@ -25,11 +26,11 @@ import static org.apache.lucene.analysis.hunspell.WordContext.COMPOUND_RULE_END;
 import static org.apache.lucene.analysis.hunspell.WordContext.SIMPLE_WORD;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -399,9 +400,10 @@ public class Hunspell {
       char[] wordChars, int offset, int length, List<IntsRef> words) {
     if (words.size() >= 100) return false;
 
+    checkCanceled.run();
+
     int limit = length - dictionary.compoundMin + 1;
     for (int breakPos = dictionary.compoundMin; breakPos < limit; breakPos++) {
-      checkCanceled.run();
       IntsRef forms = dictionary.lookupWord(wordChars, offset, breakPos);
       if (forms != null) {
         words.add(forms);
@@ -543,25 +545,25 @@ public class Hunspell {
       }
     }
 
-    LinkedHashSet<String> suggestions = new LinkedHashSet<>();
+    LinkedHashSet<Suggestion> suggestions = new LinkedHashSet<>();
     Runnable checkCanceled =
-        policy == NO_TIMEOUT
-            ? this.checkCanceled
-            : checkTimeLimit(word, wordCase, suggestions, timeLimitMs);
+        policy == NO_TIMEOUT ? this.checkCanceled : checkTimeLimit(word, suggestions, timeLimitMs);
     try {
       doSuggest(word, wordCase, suggestions, checkCanceled);
     } catch (SuggestionTimeoutException e) {
-      if (policy == RETURN_PARTIAL_RESULT) {
-        return postprocess(word, wordCase, suggestions);
+      if (policy != RETURN_PARTIAL_RESULT) {
+        throw e;
       }
-      throw e;
     }
 
-    return postprocess(word, wordCase, suggestions);
+    return postprocess(suggestions);
   }
 
   private void doSuggest(
-      String word, WordCase wordCase, LinkedHashSet<String> suggestions, Runnable checkCanceled) {
+      String word,
+      WordCase wordCase,
+      LinkedHashSet<Suggestion> suggestions,
+      Runnable checkCanceled) {
     Hunspell suggestionSpeller =
         new Hunspell(dictionary, policy, checkCanceled) {
           @Override
@@ -570,22 +572,26 @@ public class Hunspell {
                 && !dictionary.hasFlag(formID, dictionary.subStandard);
           }
         };
-    ModifyingSuggester modifier = new ModifyingSuggester(suggestionSpeller, suggestions);
-    boolean hasGoodSuggestions = modifier.suggest(word, wordCase);
+    boolean hasGoodSuggestions =
+        new ModifyingSuggester(suggestionSpeller, suggestions, word, wordCase).suggest();
 
     if (!hasGoodSuggestions && dictionary.maxNGramSuggestions > 0) {
-      suggestions.addAll(
+      List<String> generated =
           new GeneratingSuggester(suggestionSpeller)
-              .suggest(dictionary.toLowerCase(word), wordCase, suggestions));
+              .suggest(dictionary.toLowerCase(word), wordCase, suggestions);
+      for (String raw : generated) {
+        suggestions.add(new Suggestion(raw, word, wordCase, suggestionSpeller));
+      }
     }
 
-    if (word.contains("-") && suggestions.stream().noneMatch(s -> s.contains("-"))) {
-      suggestions.addAll(modifyChunksBetweenDashes(word));
+    if (word.contains("-") && suggestions.stream().noneMatch(s -> s.raw.contains("-"))) {
+      for (String raw : modifyChunksBetweenDashes(word)) {
+        suggestions.add(new Suggestion(raw, word, wordCase, suggestionSpeller));
+      }
     }
   }
 
-  private Runnable checkTimeLimit(
-      String word, WordCase wordCase, Set<String> suggestions, long timeLimitMs) {
+  private Runnable checkTimeLimit(String word, Set<Suggestion> suggestions, long timeLimitMs) {
     return new Runnable() {
       final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeLimitMs);
       int invocationCounter = 100;
@@ -603,38 +609,15 @@ public class Hunspell {
 
       private void stop() {
         List<String> partialResult =
-            policy == RETURN_PARTIAL_RESULT ? null : postprocess(word, wordCase, suggestions);
+            policy == RETURN_PARTIAL_RESULT ? null : postprocess(suggestions);
         String message = "Time limit of " + timeLimitMs + "ms exceeded for " + word;
         throw new SuggestionTimeoutException(message, partialResult);
       }
     };
   }
 
-  private List<String> postprocess(String word, WordCase wordCase, Collection<String> suggestions) {
-    Set<String> result = new LinkedHashSet<>();
-    for (String candidate : suggestions) {
-      result.add(adjustSuggestionCase(candidate, wordCase, word));
-      if (wordCase == WordCase.UPPER && dictionary.checkSharpS && candidate.contains("ß")) {
-        result.add(candidate);
-      }
-    }
-    return result.stream().map(this::cleanOutput).collect(Collectors.toList());
-  }
-
-  private String adjustSuggestionCase(String candidate, WordCase originalCase, String original) {
-    if (originalCase == WordCase.UPPER) {
-      String upper = candidate.toUpperCase(Locale.ROOT);
-      if (upper.contains(" ") || spell(upper)) {
-        return upper;
-      }
-    }
-    if (Character.isUpperCase(original.charAt(0))) {
-      String title = Character.toUpperCase(candidate.charAt(0)) + candidate.substring(1);
-      if (title.contains(" ") || spell(title)) {
-        return title;
-      }
-    }
-    return candidate;
+  private List<String> postprocess(Collection<Suggestion> suggestions) {
+    return suggestions.stream().flatMap(s -> Arrays.stream(s.result)).distinct().toList();
   }
 
   private List<String> modifyChunksBetweenDashes(String word) {
@@ -661,13 +644,5 @@ public class Hunspell {
       chunkStart = chunkEnd + 1;
     }
     return result;
-  }
-
-  private String cleanOutput(String s) {
-    if (dictionary.oconv == null) return s;
-
-    StringBuilder sb = new StringBuilder(s);
-    dictionary.oconv.applyMappings(sb);
-    return sb.toString();
   }
 }

@@ -91,5 +91,8 @@ public class TestBoostQuery extends LuceneTestCase {
 
     Query query = new BoostQuery(new MatchNoDocsQuery(), 2f);
     assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+
+    query = new BoostQuery(new MatchNoDocsQuery(), 0f);
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
   }
 }
