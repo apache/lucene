@@ -276,7 +276,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     // if no early termination, store dim and childOrdsResult into a hashmap to avoid calling
     // getChildOrdsResult again in getPathResult
     dimToChildOrdsResult.put(dim, childOrdsResult);
-
     return childOrdsResult.dimCount;
   }
 
@@ -440,6 +439,14 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     return counts[ord];
   }
 
+  /**
+   * Overloaded method to allow getFacetResultForDim be called without passing in the
+   * dimToChildOrdsResult parameter
+   */
+  private FacetResult getFacetResultForDim(String dim, int topNChildren) throws IOException {
+    return getFacetResultForDim(dim, topNChildren, null);
+  }
+
   /** Returns FacetResult for a dimension. */
   private FacetResult getFacetResultForDim(
       String dim, int topNChildren, ChildOrdsResult dimToChildOrdsResult) throws IOException {
@@ -476,7 +483,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
   public List<FacetResult> getAllDims(int topN) throws IOException {
     List<FacetResult> results = new ArrayList<>();
     for (String dim : state.getDims()) {
-      FacetResult factResult = getFacetResultForDim(dim, topN, null);
+      FacetResult factResult = getFacetResultForDim(dim, topN);
       if (factResult != null) {
         results.add(factResult);
       }

@@ -152,6 +152,149 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     }
   }
 
+  // test tricky combinations of the three config: MultiValued, Hierarchical, and RequireDimCount of a
+  // dim
+  public void testCombinationsOfConfig() throws Exception {
+    FacetsConfig config = new FacetsConfig();
+
+    // case 1: dimension "a" is hierarchical and non-multiValued
+    // expect returns counts[pathOrd]
+    config.setMultiValued("a", false);
+    config.setHierarchical("a", true);
+
+    // case 2:  dimension "b" is hierarchical and multiValued and setRequireDimCount = true
+    // expect returns counts[pathOrd]
+    config.setMultiValued("b", true);
+    config.setHierarchical("b", true);
+    config.setRequireDimCount("b", true);
+
+    // case 3: dimension "c" is hierarchical and multiValued and setRequireDimCount != true
+    // expect always returns counts[pathOrd] for Hierarchical = true
+    config.setMultiValued("c", true);
+    config.setHierarchical("c", true);
+
+    // case 4: dimension "d" is non-hierarchical but multiValued and setRequireDimCount = true
+    // expect returns counts[pathOrd]
+    config.setMultiValued("d", true);
+    config.setHierarchical("d", false);
+    config.setRequireDimCount("d", true);
+
+    // case 4: dimension "e" that is non-hierarchical and multiValued and setRequireDimCount = false
+    // expect returns -1, this is the only case that we reset dimCount to -1
+    config.setMultiValued("e", true);
+    config.setHierarchical("e", false);
+    config.setRequireDimCount("e", false);
+
+    // case 5: dimension "f" that it is non-hierarchical and non-multiValued and expect returns
+    // counts[pathOrd]
+    config.setMultiValued("f", false);
+    config.setHierarchical("f", false);
+
+    // case 6: expect returns counts[pathOrd] for dims with setHierarchical = true
+    config.setHierarchical("g", true);
+
+    // case 7: expect returns counts[pathOrd] for dims with setHierarchical = true
+    config.setHierarchical("g-2", false);
+
+    // case 8: expect returns counts[pathOrd] for dims with setHierarchical = true
+    config.setRequireDimCount("h", true);
+    config.setMultiValued("h", true);
+
+    try (Directory dir = newDirectory();
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new SortedSetDocValuesFacetField("a", "foo"));
+      doc.add(new SortedSetDocValuesFacetField("b", "bar"));
+      doc.add(new SortedSetDocValuesFacetField("c", "zoo"));
+      doc.add(new SortedSetDocValuesFacetField("d", "baz"));
+      doc.add(new SortedSetDocValuesFacetField("e", "buzz"));
+      doc.add(new SortedSetDocValuesFacetField("f", "buzze"));
+      doc.add(new SortedSetDocValuesFacetField("g", "buzzel"));
+      doc.add(new SortedSetDocValuesFacetField("g-2", "buzzell"));
+      doc.add(new SortedSetDocValuesFacetField("h", "buzzele"));
+      writer.addDocument(config.build(doc));
+
+      // NRT open
+      try (IndexReader r = writer.getReader()) {
+        IndexSearcher searcher = newSearcher(r);
+
+        // Per-top-reader state:
+        SortedSetDocValuesReaderState state =
+            new DefaultSortedSetDocValuesReaderState(searcher.getIndexReader(), config);
+
+        ExecutorService exec = randomExecutorServiceOrNull();
+        try {
+          Facets facets = getAllFacets(searcher, state, exec);
+          assertEquals(
+              "dim=a path=[] value=1 childCount=1\n  foo (1)\n",
+              facets.getTopChildren(10, "a").toString());
+          // value for dim b should be 1 since it's multivalued but _does_ require dim counts:
+          assertEquals(
+              "dim=b path=[] value=1 childCount=1\n  bar (1)\n",
+              facets.getTopChildren(10, "b").toString());
+          assertEquals(
+              "dim=c path=[] value=1 childCount=1\n  zoo (1)\n",
+              facets.getTopChildren(10, "c").toString());
+          assertEquals(
+              "dim=d path=[] value=1 childCount=1\n  baz (1)\n",
+              facets.getTopChildren(10, "d").toString());
+          // value for dim e should be -1 since it's multivalued but doesn't require dim counts:
+          assertEquals(
+              "dim=e path=[] value=-1 childCount=1\n  buzz (1)\n",
+              facets.getTopChildren(10, "e").toString());
+          assertEquals(
+              "dim=f path=[] value=1 childCount=1\n  buzze (1)\n",
+              facets.getTopChildren(10, "f").toString());
+          assertEquals(
+              "dim=g path=[] value=1 childCount=1\n  buzzel (1)\n",
+              facets.getTopChildren(10, "g").toString());
+          assertEquals(
+              "dim=g-2 path=[] value=1 childCount=1\n  buzzell (1)\n",
+              facets.getTopChildren(10, "g-2").toString());
+          assertEquals(
+              "dim=h path=[] value=1 childCount=1\n  buzzele (1)\n",
+              facets.getTopChildren(10, "h").toString());
+
+          // test getAllDims
+          List<FacetResult> results = facets.getAllDims(10);
+          assertEquals(9, results.size());
+          assertEquals(
+              "dim=a path=[] value=1 childCount=1\n  foo (1)\n", results.get(0).toString());
+          assertEquals(
+              "dim=b path=[] value=1 childCount=1\n  bar (1)\n", results.get(1).toString());
+          assertEquals(
+              "dim=c path=[] value=1 childCount=1\n  zoo (1)\n", results.get(2).toString());
+          assertEquals(
+              "dim=d path=[] value=1 childCount=1\n  baz (1)\n", results.get(3).toString());
+          assertEquals(
+              "dim=f path=[] value=1 childCount=1\n  buzze (1)\n", results.get(4).toString());
+          assertEquals(
+              "dim=g path=[] value=1 childCount=1\n  buzzel (1)\n", results.get(5).toString());
+          assertEquals(
+              "dim=g-2 path=[] value=1 childCount=1\n  buzzell (1)\n", results.get(6).toString());
+          assertEquals(
+              "dim=h path=[] value=1 childCount=1\n  buzzele (1)\n", results.get(7).toString());
+          assertEquals(
+              "dim=e path=[] value=-1 childCount=1\n  buzz (1)\n", results.get(8).toString());
+
+          // test getTopDims(10, 10) and expect same results from getAllDims(10)
+          List<FacetResult> allTopDimsResults = facets.getTopDims(10, 10);
+          assertEquals(results, allTopDimsResults);
+
+          // test getTopDims(n, 10)
+          if (allTopDimsResults.size() > 0) {
+            for (int i = 1; i < results.size(); i++) {
+              assertEquals(results.subList(0, i), facets.getTopDims(i, 10));
+            }
+          }
+
+        } finally {
+          if (exec != null) exec.shutdownNow();
+        }
+      }
+    }
+  }
+
   public void testBasicHierarchical() throws Exception {
     FacetsConfig config = new FacetsConfig();
     config.setMultiValued("a", true);
