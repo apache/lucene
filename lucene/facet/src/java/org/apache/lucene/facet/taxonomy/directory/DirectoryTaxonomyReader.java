@@ -103,9 +103,14 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     this.taxoEpoch = taxoWriter == null ? -1 : taxoWriter.getTaxonomyEpoch();
 
     // use the same instance of the cache, note the protective code in getOrdinal and getPath
-    this.ordinalCache = ordinalCache == null ? new LRUHashMap<>(DEFAULT_CACHE_VALUE) : ordinalCache;
+    this.ordinalCache =
+        ordinalCache == null
+            ? new LRUHashMap<FacetLabel, Integer>(DEFAULT_CACHE_VALUE)
+            : ordinalCache;
     this.categoryCache =
-        categoryCache == null ? new LRUHashMap<>(DEFAULT_CACHE_VALUE) : categoryCache;
+        categoryCache == null
+            ? new LRUHashMap<Integer, FacetLabel>(DEFAULT_CACHE_VALUE)
+            : categoryCache;
 
     this.taxoArrays = taxoArrays != null ? new TaxonomyIndexArrays(indexReader, taxoArrays) : null;
   }
