@@ -183,7 +183,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     LabelAndValue[] labelValues = getLabelValuesFromTopOrdAndIntQueue(childOrdsResult.q);
 
     if (dimConfig.hierarchical == true) {
-      return new FacetResult(dim, path, counts[pathOrd], labelValues, childOrdsResult.childCount);
+      return new FacetResult(
+          dim, path, childOrdsResult.dimCount, labelValues, childOrdsResult.childCount);
     } else {
       return new FacetResult(
           dim, emptyPath, childOrdsResult.dimCount, labelValues, childOrdsResult.childCount);
@@ -227,7 +228,9 @@ public class SortedSetDocValuesFacetCounts extends Facets {
       }
     }
 
-    if (dimConfig.hierarchical == false) {
+    if (dimConfig.hierarchical == true) {
+      dimCount = counts[pathOrd];
+    } else {
       // see if dimCount is actually reliable or needs to be reset
       if (dimConfig.multiValued) {
         if (dimConfig.requireDimCount) {
