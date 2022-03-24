@@ -212,7 +212,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
 
       final DirectoryTaxonomyReader newtr;
       if (recreated) {
-        // if recreated, do not reuse anything from this instace. the information
+        // if recreated, do not reuse anything from this instance. the information
         // will be lazily computed by the new instance when needed.
         newtr = new DirectoryTaxonomyReader(r2, taxoWriter, null, null, null);
       } else {
