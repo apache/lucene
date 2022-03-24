@@ -78,10 +78,20 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   private volatile TaxonomyIndexArrays taxoArrays;
 
   /**
-   * Called only from {@link #doOpenIfChanged()}. If the taxonomy has been recreated, you should
-   * pass {@code null} as the caches and parent/children arrays.
+   * Expert: Use this method to explicitly force the {@link DirectoryTaxonomyReader} to use specific
+   * parent/children arrays and caches.
+   *
+   * <p>Called from {@link #doOpenIfChanged()}. If the taxonomy has been recreated, you should pass
+   * {@code null} as the caches and parent/children arrays.
+   *
+   * @param indexReader An indexReader that is opened in the desired Directory
+   * @param taxoWriter The {@link DirectoryTaxonomyWriter} from which to obtain newly added
+   *     categories, in real-time.
+   * @param ordinalCache a FacetLabel to Integer ordinal mapping if it already exists
+   * @param categoryCache an ordinal to FacetLabel mapping if it already exists
+   * @param taxoArrays taxonomy arrays that store the parent, siblings, children information
    */
-  DirectoryTaxonomyReader(
+  public DirectoryTaxonomyReader(
       DirectoryReader indexReader,
       DirectoryTaxonomyWriter taxoWriter,
       LRUHashMap<FacetLabel, Integer> ordinalCache,
@@ -93,14 +103,9 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     this.taxoEpoch = taxoWriter == null ? -1 : taxoWriter.getTaxonomyEpoch();
 
     // use the same instance of the cache, note the protective code in getOrdinal and getPath
-    this.ordinalCache =
-        ordinalCache == null
-            ? new LRUHashMap<FacetLabel, Integer>(DEFAULT_CACHE_VALUE)
-            : ordinalCache;
+    this.ordinalCache = ordinalCache == null ? new LRUHashMap<>(DEFAULT_CACHE_VALUE) : ordinalCache;
     this.categoryCache =
-        categoryCache == null
-            ? new LRUHashMap<Integer, FacetLabel>(DEFAULT_CACHE_VALUE)
-            : categoryCache;
+        categoryCache == null ? new LRUHashMap<>(DEFAULT_CACHE_VALUE) : categoryCache;
 
     this.taxoArrays = taxoArrays != null ? new TaxonomyIndexArrays(indexReader, taxoArrays) : null;
   }
@@ -238,7 +243,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
    * Expert: returns the underlying {@link DirectoryReader} instance that is used by this {@link
    * TaxonomyReader}.
    */
-  DirectoryReader getInternalIndexReader() {
+  protected DirectoryReader getInternalIndexReader() {
     ensureOpen();
     return indexReader;
   }
