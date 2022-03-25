@@ -24,10 +24,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.spatial.StrategyTestCase;
 import org.apache.lucene.spatial.prefix.NumberRangePrefixTreeStrategy.Facets;
@@ -39,7 +36,6 @@ import org.apache.lucene.spatial.prefix.tree.NumberRangePrefixTree.UnitNRShape;
 import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
 import org.junit.Test;
 import org.locationtech.spatial4j.shape.Shape;
@@ -220,7 +216,8 @@ public class TestNumberRangeFacets extends StrategyTestCase {
   }
 
   private Bits searchForDocBits(Query query) throws IOException {
-    return indexSearcher.search(query, FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()));
+    return indexSearcher.search(
+        query, FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()));
   }
 
   private void preQueryHavoc() {

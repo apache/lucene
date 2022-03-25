@@ -16,60 +16,58 @@
  */
 package org.apache.lucene.tests.search;
 
+import java.io.IOException;
+import java.util.Collection;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.util.FixedBitSet;
 
-import java.io.IOException;
-import java.util.Collection;
-
-/**
- * Collector that accumulates matching docs in a {@link FixedBitSet}
- */
+/** Collector that accumulates matching docs in a {@link FixedBitSet} */
 public class FixedBitSetCollector extends SimpleCollector {
-    private final FixedBitSet bitSet;
-    
-    private int docBase;
+  private final FixedBitSet bitSet;
 
-    FixedBitSetCollector(int maxDoc) {
-        this.bitSet = new FixedBitSet(maxDoc);
-    }
+  private int docBase;
 
-    @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
-        docBase = context.docBase;
-    }
+  FixedBitSetCollector(int maxDoc) {
+    this.bitSet = new FixedBitSet(maxDoc);
+  }
 
-    @Override
-    public void collect(int doc) throws IOException {
-        bitSet.set(docBase + doc);
-    }
+  @Override
+  protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    docBase = context.docBase;
+  }
 
-    @Override
-    public ScoreMode scoreMode() {
-        return ScoreMode.COMPLETE_NO_SCORES;
-    }
+  @Override
+  public void collect(int doc) throws IOException {
+    bitSet.set(docBase + doc);
+  }
 
-    /**
-     * Creates a {@link CollectorManager} that can concurrently collect matching docs in a {@link FixedBitSet}
-     */
-    public static CollectorManager<FixedBitSetCollector, FixedBitSet> createManager(int maxDoc) {
-        return new CollectorManager<>() {
-            @Override
-            public FixedBitSetCollector newCollector() {
-                return new FixedBitSetCollector(maxDoc);
-            }
+  @Override
+  public ScoreMode scoreMode() {
+    return ScoreMode.COMPLETE_NO_SCORES;
+  }
 
-            @Override
-            public FixedBitSet reduce(Collection<FixedBitSetCollector> collectors) {
-                FixedBitSet reduced = new FixedBitSet(maxDoc);
-                for (FixedBitSetCollector collector : collectors) {
-                    reduced.or(collector.bitSet);
-                }
-                return reduced;
-            }
-        };
-    }
+  /**
+   * Creates a {@link CollectorManager} that can concurrently collect matching docs in a {@link
+   * FixedBitSet}
+   */
+  public static CollectorManager<FixedBitSetCollector, FixedBitSet> createManager(int maxDoc) {
+    return new CollectorManager<>() {
+      @Override
+      public FixedBitSetCollector newCollector() {
+        return new FixedBitSetCollector(maxDoc);
+      }
+
+      @Override
+      public FixedBitSet reduce(Collection<FixedBitSetCollector> collectors) {
+        FixedBitSet reduced = new FixedBitSet(maxDoc);
+        for (FixedBitSetCollector collector : collectors) {
+          reduced.or(collector.bitSet);
+        }
+        return reduced;
+      }
+    };
+  }
 }

@@ -51,7 +51,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
@@ -574,7 +573,8 @@ public class TestPointQueries extends LuceneTestCase {
                   System.out.println(Thread.currentThread().getName() + ":  using query: " + query);
                 }
 
-                final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
+                final FixedBitSet hits =
+                    s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
                 if (VERBOSE) {
                   System.out.println(
@@ -851,7 +851,8 @@ public class TestPointQueries extends LuceneTestCase {
                   System.out.println(Thread.currentThread().getName() + ":  using query: " + query);
                 }
 
-                final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
+                final FixedBitSet hits =
+                    s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
                 if (VERBOSE) {
                   System.out.println(

@@ -29,7 +29,6 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -37,9 +36,6 @@ import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Scorable;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -124,7 +120,9 @@ public class TestHighlighterPhrase extends LuceneTestCase {
               },
               0,
               true);
-      final FixedBitSet bitset = indexSearcher.search(phraseQuery, FixedBitSetCollector.createManager(indexReader.maxDoc()));
+      final FixedBitSet bitset =
+          indexSearcher.search(
+              phraseQuery, FixedBitSetCollector.createManager(indexReader.maxDoc()));
       assertEquals(1, bitset.cardinality());
       final int maxDoc = indexReader.maxDoc();
       final Highlighter highlighter =
