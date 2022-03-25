@@ -16,20 +16,13 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOUtils;
 
 /** Character category data. */
-public final class CharacterDefinition {
-
-  public static final String FILENAME_SUFFIX = ".dat";
-  public static final String HEADER = "ko_cd";
-  public static final int VERSION = 1;
+public final class CharacterDefinition
+    extends org.apache.lucene.analysis.morph.CharacterDefinition {
 
   public static final int CLASS_COUNT = CharacterClass.values().length;
 
@@ -51,11 +44,6 @@ public final class CharacterDefinition {
     HANJANUMERIC
   }
 
-  private final byte[] characterCategoryMap = new byte[0x10000];
-
-  private final boolean[] invokeMap = new boolean[CLASS_COUNT];
-  private final boolean[] groupMap = new boolean[CLASS_COUNT];
-
   // the classes:
   public static final byte NGRAM = (byte) CharacterClass.NGRAM.ordinal();
   public static final byte DEFAULT = (byte) CharacterClass.DEFAULT.ordinal();
@@ -73,34 +61,17 @@ public final class CharacterDefinition {
   public static final byte HANJANUMERIC = (byte) CharacterClass.HANJANUMERIC.ordinal();
 
   private CharacterDefinition() throws IOException {
-    try (InputStream is = new BufferedInputStream(getClassResource())) {
-      final DataInput in = new InputStreamDataInput(is);
-      CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
-      in.readBytes(characterCategoryMap, 0, characterCategoryMap.length);
-      for (int i = 0; i < CLASS_COUNT; i++) {
-        final byte b = in.readByte();
-        invokeMap[i] = (b & 0x01) != 0;
-        groupMap[i] = (b & 0x02) != 0;
-      }
-    }
+    super(
+        CharacterDefinition::getClassResource,
+        DictionaryConstants.CHARDEF_HEADER,
+        DictionaryConstants.VERSION,
+        CharacterDefinition.CLASS_COUNT);
   }
 
   private static InputStream getClassResource() throws IOException {
     final String resourcePath = CharacterDefinition.class.getSimpleName() + FILENAME_SUFFIX;
     return IOUtils.requireResourceNonNull(
         CharacterDefinition.class.getResourceAsStream(resourcePath), resourcePath);
-  }
-
-  public byte getCharacterClass(char c) {
-    return characterCategoryMap[c];
-  }
-
-  public boolean isInvoke(char c) {
-    return invokeMap[characterCategoryMap[c]];
-  }
-
-  public boolean isGroup(char c) {
-    return groupMap[characterCategoryMap[c]];
   }
 
   public boolean isHanja(char c) {

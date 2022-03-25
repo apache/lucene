@@ -49,6 +49,9 @@ Other
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
+* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+  (Tomoko Uchida, Robert Muir)
+
 ======================= Lucene 9.2.0 =======================
 API Changes
 ---------------------
