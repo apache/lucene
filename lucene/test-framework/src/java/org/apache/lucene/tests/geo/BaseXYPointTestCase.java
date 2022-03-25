@@ -65,6 +65,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
@@ -1176,29 +1177,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
   }
 
   private FixedBitSet searchIndex(IndexSearcher s, Query query, int maxDoc) throws IOException {
-    final FixedBitSet hits = new FixedBitSet(maxDoc);
-    s.search(
-        query,
-        new SimpleCollector() {
-
-          private int docBase;
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) {
-            docBase = context.docBase;
-          }
-
-          @Override
-          public void collect(int doc) {
-            hits.set(docBase + doc);
-          }
-        });
-    return hits;
+    return s.search(query, FixedBitSetCollector.createManager(maxDoc));
   }
 
   private void buildError(

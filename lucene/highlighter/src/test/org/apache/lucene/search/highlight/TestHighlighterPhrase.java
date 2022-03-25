@@ -46,6 +46,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -123,32 +124,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
               },
               0,
               true);
-      final FixedBitSet bitset = new FixedBitSet(indexReader.maxDoc());
-      indexSearcher.search(
-          phraseQuery,
-          new SimpleCollector() {
-            private int baseDoc;
-
-            @Override
-            public void collect(int i) {
-              bitset.set(this.baseDoc + i);
-            }
-
-            @Override
-            protected void doSetNextReader(LeafReaderContext context) throws IOException {
-              this.baseDoc = context.docBase;
-            }
-
-            @Override
-            public void setScorer(Scorable scorer) {
-              // Do Nothing
-            }
-
-            @Override
-            public ScoreMode scoreMode() {
-              return ScoreMode.COMPLETE_NO_SCORES;
-            }
-          });
+      final FixedBitSet bitset = indexSearcher.search(phraseQuery, FixedBitSetCollector.createManager(indexReader.maxDoc()));
       assertEquals(1, bitset.cardinality());
       final int maxDoc = indexReader.maxDoc();
       final Highlighter highlighter =

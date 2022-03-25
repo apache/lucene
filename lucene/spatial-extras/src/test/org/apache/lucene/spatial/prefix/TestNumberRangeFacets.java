@@ -36,6 +36,7 @@ import org.apache.lucene.spatial.prefix.tree.CellIterator;
 import org.apache.lucene.spatial.prefix.tree.DateRangePrefixTree;
 import org.apache.lucene.spatial.prefix.tree.NumberRangePrefixTree;
 import org.apache.lucene.spatial.prefix.tree.NumberRangePrefixTree.UnitNRShape;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -219,28 +220,7 @@ public class TestNumberRangeFacets extends StrategyTestCase {
   }
 
   private Bits searchForDocBits(Query query) throws IOException {
-    FixedBitSet bitSet = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
-    indexSearcher.search(
-        query,
-        new SimpleCollector() {
-          int leafDocBase;
-
-          @Override
-          public void collect(int doc) throws IOException {
-            bitSet.set(leafDocBase + doc);
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            leafDocBase = context.docBase;
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
-          }
-        });
-    return bitSet;
+    return indexSearcher.search(query, FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()));
   }
 
   private void preQueryHavoc() {
