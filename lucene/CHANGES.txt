@@ -34,7 +34,7 @@ Improvements
   (Uihyun Kim)
 
 * LUCENE-10484: Add support for concurrent random sampling by calling
-  RandomSamplingFacetsCollector#createManager
+  RandomSamplingFacetsCollector#createManager. (Luca Cavanna)
 
 Optimizations
 ---------------------
