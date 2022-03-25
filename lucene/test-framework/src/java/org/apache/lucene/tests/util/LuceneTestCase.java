@@ -1955,7 +1955,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static IndexSearcher newSearcher(
       IndexReader r, boolean maybeWrap, boolean wrapWithAssertions) {
-    return newSearcher(r, maybeWrap, wrapWithAssertions, true);//TODO revert
+    return newSearcher(r, maybeWrap, wrapWithAssertions, rarely());
   }
 
   /**
