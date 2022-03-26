@@ -73,6 +73,9 @@ Optimizations
 * LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
   (Adrien Grand)
 
+* LUCENE-10436: Deprecate DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery
+  with FieldExistsQuery. (Zach Chen)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite

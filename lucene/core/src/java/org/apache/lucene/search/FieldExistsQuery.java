@@ -1,0 +1,165 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.search;
+
+import java.io.IOException;
+import java.util.Objects;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+
+/**
+ * A {@link Query} that matches documents that contain either a {@link
+ * org.apache.lucene.document.KnnVectorField}, or a field that indexes norms or doc values.
+ */
+public class FieldExistsQuery extends Query {
+  private String field;
+
+  /** Create a query that will match that have a value for the given {@code field}. */
+  public FieldExistsQuery(String field) {
+    this.field = Objects.requireNonNull(field);
+  }
+
+  public String getField() {
+    return field;
+  }
+
+  @Override
+  public String toString(String field) {
+    return "FieldExistsQuery [field=" + this.field + "]";
+  }
+
+  @Override
+  public void visit(QueryVisitor visitor) {
+    if (visitor.acceptField(field)) {
+      visitor.visitLeaf(this);
+    }
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return sameClassAs(other) && field.equals(((FieldExistsQuery) other).field);
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int hash = classHash();
+    hash = prime * hash + field.hashCode();
+    return hash;
+  }
+
+  @Override
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
+    return new ConstantScoreWeight(this, boost) {
+      @Override
+      public Scorer scorer(LeafReaderContext context) throws IOException {
+        FieldInfos fieldInfos = context.reader().getFieldInfos();
+        FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
+        DocIdSetIterator iterator = null;
+
+        if (fieldInfo == null) {
+          return null;
+        }
+
+        if (fieldInfo.hasNorms()) { // the field indexes norms
+          iterator = context.reader().getNormValues(field);
+        } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
+          iterator = context.reader().getVectorValues(field);
+        } else if (fieldInfo.getDocValuesType()
+            != DocValuesType.NONE) { // the field indexes doc values
+          switch (fieldInfo.getDocValuesType()) {
+            case NUMERIC:
+              iterator = context.reader().getNumericDocValues(field);
+              break;
+            case BINARY:
+              iterator = context.reader().getBinaryDocValues(field);
+              break;
+            case SORTED:
+              iterator = context.reader().getSortedDocValues(field);
+              break;
+            case SORTED_NUMERIC:
+              iterator = context.reader().getSortedNumericDocValues(field);
+              break;
+            case SORTED_SET:
+              iterator = context.reader().getSortedSetDocValues(field);
+              break;
+            case NONE:
+            default:
+              throw new AssertionError();
+          }
+        }
+
+        if (iterator == null) {
+          return null;
+        }
+        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        LeafReader reader = context.reader();
+        FieldInfos fieldInfos = reader.getFieldInfos();
+        FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
+
+        if (fieldInfo == null) {
+          return 0;
+        }
+
+        if (fieldInfo.hasNorms()) { // the field indexes norms
+          // If every field has a value then we can shortcut
+          if (reader.getDocCount(field) == reader.maxDoc()) {
+            return reader.numDocs();
+          }
+
+          return super.count(context);
+        } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
+          return super.count(context);
+        } else if (fieldInfo.getDocValuesType()
+            != DocValuesType.NONE) { // the field indexes doc values
+          if (reader.hasDeletions() == false) {
+            if (fieldInfo.getPointDimensionCount() > 0) {
+              return reader.getPointValues(field).getDocCount();
+            } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
+              return reader.terms(field).getDocCount();
+            }
+          }
+
+          return super.count(context);
+        }
+
+        return 0;
+      }
+
+      @Override
+      public boolean isCacheable(LeafReaderContext context) {
+        FieldInfos fieldInfos = context.reader().getFieldInfos();
+        FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
+
+        if (fieldInfo != null && fieldInfo.getDocValuesType() != DocValuesType.NONE) {
+          return DocValues.isCacheable(context, field);
+        }
+
+        return true;
+      }
+    };
+  }
+}
