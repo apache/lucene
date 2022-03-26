@@ -24,12 +24,15 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
@@ -108,10 +111,14 @@ public abstract class ReadTask extends PerfTask {
             // the IndexSearcher search methods that take
             // Weight public again, we can go back to
             // pulling the Weight ourselves:
-            TopFieldCollector collector =
-                TopFieldCollector.create(sort, numHits, withTotalHits() ? Integer.MAX_VALUE : 1);
-            searcher.search(q, collector);
-            hits = collector.topDocs();
+            CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+                TopFieldCollector.createManager(
+                    sort,
+                    numHits,
+                    null,
+                    withTotalHits() ? Integer.MAX_VALUE : 1,
+                    TopDocsCollector.isSearcherMultiThreaded(searcher));
+            hits = searcher.search(q, manager);
           } else {
             hits = searcher.search(q, numHits);
           }

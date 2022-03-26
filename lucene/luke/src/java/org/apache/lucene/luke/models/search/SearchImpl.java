@@ -48,6 +48,7 @@ import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser;
 import org.apache.lucene.queryparser.flexible.standard.config.PointsConfig;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -57,6 +58,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -314,9 +316,10 @@ public final class SearchImpl extends LukeModel implements Search {
       topDocs = searcher.searchAfter(after, query, pageSize, sort);
     } else {
       int hitsThreshold = exactHitsCount ? Integer.MAX_VALUE : DEFAULT_TOTAL_HITS_THRESHOLD;
-      TopScoreDocCollector collector = TopScoreDocCollector.create(pageSize, after, hitsThreshold);
-      searcher.search(query, collector);
-      topDocs = collector.topDocs();
+      CollectorManager<TopScoreDocCollector, TopDocs> manager =
+          TopScoreDocCollector.createManager(
+              pageSize, after, hitsThreshold, TopDocsCollector.isSearcherMultiThreaded(searcher));
+      topDocs = searcher.search(query, manager);
     }
 
     // reset total hits for the current query

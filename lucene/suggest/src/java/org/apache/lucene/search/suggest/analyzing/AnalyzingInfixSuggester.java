@@ -53,6 +53,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
@@ -61,6 +62,7 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.suggest.InputIterator;
@@ -707,8 +709,6 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
 
     // System.out.println("finalQuery=" + finalQuery);
 
-    // Sort by weight, descending:
-    TopFieldCollector c = TopFieldCollector.create(SORT, num, 1);
     List<LookupResult> results = null;
     SearcherManager mgr;
     IndexSearcher searcher;
@@ -718,9 +718,11 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
     }
     try {
       // System.out.println("got searcher=" + searcher);
-      searcher.search(finalQuery, c);
-
-      TopFieldDocs hits = c.topDocs();
+      // Sort by weight, descending:
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createManager(
+              SORT, num, null, 1, TopDocsCollector.isSearcherMultiThreaded(searcher));
+      TopFieldDocs hits = searcher.search(finalQuery, manager);
 
       // Slower way if postings are not pre-sorted by weight:
       // hits = searcher.search(query, null, num, SORT);

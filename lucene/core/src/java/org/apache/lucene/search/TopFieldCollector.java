@@ -482,25 +482,61 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   }
 
   /**
+   * Create a {@link CollectorManager} which uses a shared hit counter as well as a shared {@link
+   * MaxScoreAccumulator} when needed, depending on the provided leaf slices argument provided. When
+   * the searcher does not support concurrency, the returned manager will not incur the overhead of
+   * the shared data structures.
+   */
+  public static CollectorManager<TopFieldCollector, TopFieldDocs> createManager(
+      Sort sort, int numHits, FieldDoc after, int totalHitsThreshold, boolean multiThreaded) {
+    HitsThresholdChecker hitsThresholdChecker =
+        HitsThresholdChecker.create(totalHitsThreshold, multiThreaded);
+    return createManager(
+        sort,
+        numHits,
+        after,
+        hitsThresholdChecker,
+        MaxScoreAccumulator.createOrNull(totalHitsThreshold, multiThreaded));
+  }
+
+  /**
    * Create a CollectorManager which uses a shared hit counter to maintain number of hits and a
-   * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments if the
+   * shared {@link MaxScoreAccumulator} to propagate the minimum score across segments if the
    * primary sort is by relevancy.
    */
   public static CollectorManager<TopFieldCollector, TopFieldDocs> createSharedManager(
       Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
-    return new CollectorManager<>() {
+    HitsThresholdChecker hitsThresholdChecker =
+        HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits));
+    MaxScoreAccumulator maxScoreAccumulator =
+        totalHitsThreshold == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
+    return createManager(sort, numHits, after, hitsThresholdChecker, maxScoreAccumulator);
+  }
 
-      private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits));
-      private final MaxScoreAccumulator minScoreAcc = new MaxScoreAccumulator();
+  private static CollectorManager<TopFieldCollector, TopFieldDocs> createManager(
+      Sort sort,
+      int numHits,
+      FieldDoc after,
+      HitsThresholdChecker hitsThresholdChecker,
+      MaxScoreAccumulator maxScoreAcc) {
+    return new CollectorManager<>() {
+      boolean firstCollectorCreated = false;
 
       @Override
-      public TopFieldCollector newCollector() throws IOException {
-        return create(sort, numHits, after, hitsThresholdChecker, minScoreAcc);
+      public TopFieldCollector newCollector() {
+        if (firstCollectorCreated) {
+          if (hitsThresholdChecker.supportsConcurrency() == false) {
+            throw new IllegalStateException(
+                "Attempted to create multiple collectors from a collector manager that does not support concurrent searches");
+          }
+        } else {
+          firstCollectorCreated = true;
+        }
+        return create(sort, numHits, after, hitsThresholdChecker, maxScoreAcc);
       }
 
       @Override
-      public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) throws IOException {
+      public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) {
         final TopFieldDocs[] topDocs = new TopFieldDocs[collectors.size()];
         int i = 0;
         for (TopFieldCollector collector : collectors) {

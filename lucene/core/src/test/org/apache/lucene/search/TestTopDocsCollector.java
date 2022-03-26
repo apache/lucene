@@ -17,7 +17,11 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -687,5 +691,116 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  public void testCreateManager() throws IOException {
+    Sort sort = new Sort(SortField.FIELD_SCORE, SortField.FIELD_DOC);
+    Executor executor = Executors.newSingleThreadScheduledExecutor();
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+      Document doc = new Document();
+      doc.add(new TextField("f", "foo bar", Store.NO));
+      w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc));
+      w.flush();
+      w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc));
+      w.flush();
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        {
+          IndexSearcher searcher = newSearcher(reader, true, true, false);
+          CollectorManager<TopScoreDocCollector, TopDocs> manager =
+              TopScoreDocCollector.createManager(
+                  10, null, 10, TopDocsCollector.isSearcherMultiThreaded(searcher));
+          assertNoSharedCounters(manager);
+          manager =
+              TopScoreDocCollector.createManager(
+                  10, null, Integer.MAX_VALUE, TopDocsCollector.isSearcherMultiThreaded(searcher));
+          assertNoCounting(manager);
+        }
+        {
+          IndexSearcher searcher = newSearcher(reader, true, true, true);
+          CollectorManager<TopScoreDocCollector, TopDocs> manager =
+              TopScoreDocCollector.createManager(
+                  10, null, 10, TopDocsCollector.isSearcherMultiThreaded(searcher));
+          assertNoSharedCounters(manager);
+          manager =
+              TopScoreDocCollector.createManager(
+                  10, null, Integer.MAX_VALUE, TopDocsCollector.isSearcherMultiThreaded(searcher));
+          assertNoCounting(manager);
+        }
+        {
+          IndexSearcher searcher =
+              new IndexSearcher(reader, executor) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  return new LeafSlice[] {new LeafSlice(new ArrayList<>(leaves))};
+                }
+              };
+          CollectorManager<TopScoreDocCollector, TopDocs> manager =
+              TopScoreDocCollector.createManager(
+                  10, null, 10, TopDocsCollector.isSearcherMultiThreaded(searcher));
+          assertNoSharedCounters(manager);
+          manager =
+              TopScoreDocCollector.createManager(
+                  10, null, Integer.MAX_VALUE, TopDocsCollector.isSearcherMultiThreaded(searcher));
+          assertNoCounting(manager);
+        }
+        {
+          IndexSearcher searcher =
+              new IndexSearcher(reader, executor) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  LeafSlice[] leafSlices = new LeafSlice[leaves.size()];
+                  for (int i = 0; i < leafSlices.length; i++) {
+                    List<LeafReaderContext> list = new ArrayList<>();
+                    list.add(leaves.get(i));
+                    leafSlices[i] = new LeafSlice(list);
+                  }
+                  return leafSlices;
+                }
+              };
+          CollectorManager<TopScoreDocCollector, TopDocs> manager =
+              TopScoreDocCollector.createManager(
+                  10, null, 10, TopDocsCollector.isSearcherMultiThreaded(searcher));
+          TopScoreDocCollector topScoreDocCollector = manager.newCollector();
+          assertNotNull(topScoreDocCollector.minScoreAcc);
+          assertEquals(ScoreMode.TOP_SCORES, topScoreDocCollector.hitsThresholdChecker.scoreMode());
+          assertEquals(10, topScoreDocCollector.hitsThresholdChecker.getHitsThreshold());
+          assertTrue(topScoreDocCollector.hitsThresholdChecker.supportsConcurrency());
+          TopScoreDocCollector topScoreDocCollector2 = manager.newCollector();
+          assertSame(topScoreDocCollector.minScoreAcc, topScoreDocCollector2.minScoreAcc);
+          assertSame(
+              topScoreDocCollector.hitsThresholdChecker,
+              topScoreDocCollector2.hitsThresholdChecker);
+          manager =
+              TopScoreDocCollector.createManager(
+                  10, null, Integer.MAX_VALUE, TopDocsCollector.isSearcherMultiThreaded(searcher));
+          assertNoCounting(manager);
+        }
+      }
+    }
+  }
+
+  private static void assertNoCounting(CollectorManager<TopScoreDocCollector, TopDocs> manager)
+      throws IOException {
+    TopScoreDocCollector topScoreDocCollector = manager.newCollector();
+    assertEquals(ScoreMode.COMPLETE, topScoreDocCollector.hitsThresholdChecker.scoreMode());
+    assertEquals(Integer.MAX_VALUE, topScoreDocCollector.hitsThresholdChecker.getHitsThreshold());
+    assertTrue(topScoreDocCollector.hitsThresholdChecker.supportsConcurrency());
+    TopScoreDocCollector topScoreDocCollector2 = manager.newCollector();
+    assertSame(
+        topScoreDocCollector.hitsThresholdChecker, topScoreDocCollector2.hitsThresholdChecker);
+    assertNull(topScoreDocCollector.minScoreAcc);
+    assertNull(topScoreDocCollector2.minScoreAcc);
+  }
+
+  private static void assertNoSharedCounters(
+      CollectorManager<TopScoreDocCollector, TopDocs> manager) throws IOException {
+    TopScoreDocCollector topScoreDocCollector = manager.newCollector();
+    assertNull(topScoreDocCollector.minScoreAcc);
+    assertEquals(ScoreMode.TOP_SCORES, topScoreDocCollector.hitsThresholdChecker.scoreMode());
+    assertEquals(10, topScoreDocCollector.hitsThresholdChecker.getHitsThreshold());
+    assertFalse(topScoreDocCollector.hitsThresholdChecker.supportsConcurrency());
+    expectThrows(IllegalStateException.class, manager::newCollector);
   }
 }

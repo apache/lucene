@@ -29,6 +29,10 @@ import org.apache.lucene.util.PriorityQueue;
  */
 public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector {
 
+  public static boolean isSearcherMultiThreaded(IndexSearcher searcher) {
+    return searcher.getSlices() != null && searcher.getSlices().length > 1;
+  }
+
   /**
    * This is used in case topDocs() is called with illegal parameters, or there simply aren't
    * (enough) results.
