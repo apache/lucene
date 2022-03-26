@@ -21,5 +21,4 @@ java.lang.Math#random() @ Use RandomizedRunner's random().nextDouble() instead
 #java.lang.System#nanoTime() @ Don't depend on wall clock times
 
 @defaultMessage Use LuceneTestCase.collate instead, which can avoid JDK-8071862
-java.text.Collator#compare(java.lang.Object,java.lang.Object)
-java.text.Collator#compare(java.lang.String,java.lang.String)
+java.text.Collator#compare(**)
