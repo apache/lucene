@@ -483,9 +483,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
   /**
    * Create a {@link CollectorManager} which uses a shared hit counter as well as a shared {@link
-   * MaxScoreAccumulator} when needed, depending on the provided arguments. When
-   * the searcher is not multi-threaded, the returned manager will not incur the overhead of
-   * the shared data structures.
+   * MaxScoreAccumulator} when needed, depending on the provided arguments. When the searcher is not
+   * multi-threaded, the returned manager will not incur the overhead of the shared data structures.
    */
   public static CollectorManager<TopFieldCollector, TopFieldDocs> createManager(
       Sort sort, int numHits, FieldDoc after, int totalHitsThreshold, boolean multiThreaded) {

@@ -693,9 +693,10 @@ public class TestTopDocsCollector extends LuceneTestCase {
   }
 
   public void testCreateManager() throws IOException {
-    Executor executor = command -> {
-      //no-op
-    };
+    Executor executor =
+        command -> {
+          // no-op
+        };
     try (Directory dir = newDirectory();
         IndexWriter w =
             new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
