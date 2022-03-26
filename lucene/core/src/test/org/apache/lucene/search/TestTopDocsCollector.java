@@ -694,7 +694,6 @@ public class TestTopDocsCollector extends LuceneTestCase {
   }
 
   public void testCreateManager() throws IOException {
-    Sort sort = new Sort(SortField.FIELD_SCORE, SortField.FIELD_DOC);
     Executor executor = Executors.newSingleThreadScheduledExecutor();
     try (Directory dir = newDirectory();
         IndexWriter w =

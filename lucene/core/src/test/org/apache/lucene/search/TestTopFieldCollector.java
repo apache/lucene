@@ -844,10 +844,6 @@ public class TestTopFieldCollector extends LuceneTestCase {
     }
   }
 
-  private static boolean isMultiThreaded(IndexSearcher searcher) {
-    return searcher.getSlices() != null && searcher.getSlices().length > 1;
-  }
-
   private static void assertNoCounting(CollectorManager<TopFieldCollector, TopFieldDocs> manager)
       throws IOException {
     TopFieldCollector topFieldCollector = manager.newCollector();
