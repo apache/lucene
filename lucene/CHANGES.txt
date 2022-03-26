@@ -40,6 +40,11 @@ Bug Fixes
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
   multiple times if necessary. (Christine Poerschke, Adrien Grand)
 
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
+
 Other
 ---------------------
 (No changes)
