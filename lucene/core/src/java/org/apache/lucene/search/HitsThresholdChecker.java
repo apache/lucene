@@ -86,7 +86,7 @@ abstract class HitsThresholdChecker {
    * can never be reached. This is useful for cases where early termination is never desired, so
    * that the overhead of counting hits can be avoided.
    */
-  private static final HitsThresholdChecker NO_OP_THRESHOLD_CHECKER =
+  private static final HitsThresholdChecker EXACT_HITS_COUNT_THRESHOLD_CHECKER =
       new HitsThresholdChecker(Integer.MAX_VALUE) {
         @Override
         void incrementHitCount() {
@@ -111,7 +111,7 @@ abstract class HitsThresholdChecker {
 
   static HitsThresholdChecker create(final int totalHitsThreshold, boolean multiThreaded) {
     if (totalHitsThreshold == Integer.MAX_VALUE) {
-      return NO_OP_THRESHOLD_CHECKER;
+      return EXACT_HITS_COUNT_THRESHOLD_CHECKER;
     }
     return multiThreaded
         ? new GlobalHitsThresholdChecker(totalHitsThreshold)
