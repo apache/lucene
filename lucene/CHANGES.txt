@@ -49,6 +49,9 @@ Other
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
+* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+  (Tomoko Uchida, Robert Muir)
+
 ======================= Lucene 9.2.0 =======================
 API Changes
 ---------------------
@@ -56,6 +59,10 @@ API Changes
 
 New Features
 ---------------------
+
+* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
+  to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
+
 * LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
 implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
 have readonly `Monitor` instances. (Niko Usai)
@@ -66,6 +73,7 @@ Improvements
 
 Optimizations
 ---------------------
+
 * LUCENE-10452: Hunspell: call checkCanceled less frequently to reduce the overhead (Peter Gromov)
 
 * LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
@@ -75,6 +83,8 @@ Optimizations
 
 * LUCENE-10436: Deprecate DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery
   with FieldExistsQuery. (Zach Chen)
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
 Bug Fixes
 ---------------------
@@ -195,9 +205,6 @@ New Features
 * LUCENE-10395: Add support for TotalHitCountCollectorManager, a collector manager
   based on TotalHitCountCollector that allows users to parallelize counting the
   number of hits. (Luca Cavanna, Adrien Grand)
-
-* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
-  to speed up computing the number of hits when possible. (Luca Cavanna, Adrien Grand)
 
 * LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
 

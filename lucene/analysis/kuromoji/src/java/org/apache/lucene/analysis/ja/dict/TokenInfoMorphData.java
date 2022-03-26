@@ -17,95 +17,37 @@
 package org.apache.lucene.analysis.ja.dict;
 
 import java.io.BufferedInputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
-import org.apache.lucene.util.IntsRef;
 
-/** Base class for a binary-encoded in-memory dictionary. */
-public abstract class BinaryDictionary implements Dictionary {
-
-  public static final String DICT_FILENAME_SUFFIX = "$buffer.dat";
-  public static final String TARGETMAP_FILENAME_SUFFIX = "$targetMap.dat";
-  public static final String POSDICT_FILENAME_SUFFIX = "$posDict.dat";
-
-  public static final String DICT_HEADER = "kuromoji_dict";
-  public static final String TARGETMAP_HEADER = "kuromoji_dict_map";
-  public static final String POSDICT_HEADER = "kuromoji_dict_pos";
-  public static final int VERSION = 1;
+/** Morphological information for system dictionary. */
+public class TokenInfoMorphData implements JaMorphData {
 
   private final ByteBuffer buffer;
-  private final int[] targetMapOffsets, targetMap;
   private final String[] posDict;
   private final String[] inflTypeDict;
   private final String[] inflFormDict;
 
-  protected BinaryDictionary(
-      IOSupplier<InputStream> targetMapResource,
-      IOSupplier<InputStream> posResource,
-      IOSupplier<InputStream> dictResource)
-      throws IOException {
-    try (InputStream mapIS = new BufferedInputStream(targetMapResource.get())) {
-      final DataInput in = new InputStreamDataInput(mapIS);
-      CodecUtil.checkHeader(in, TARGETMAP_HEADER, VERSION, VERSION);
-      this.targetMap = new int[in.readVInt()];
-      this.targetMapOffsets = new int[in.readVInt()];
-      populateTargetMap(in, this.targetMap, this.targetMapOffsets);
-    }
-
+  TokenInfoMorphData(ByteBuffer buffer, IOSupplier<InputStream> posResource) throws IOException {
+    this.buffer = buffer;
     try (InputStream posIS = new BufferedInputStream(posResource.get())) {
       final DataInput in = new InputStreamDataInput(posIS);
-      CodecUtil.checkHeader(in, POSDICT_HEADER, VERSION, VERSION);
+      CodecUtil.checkHeader(
+          in,
+          DictionaryConstants.POSDICT_HEADER,
+          DictionaryConstants.VERSION,
+          DictionaryConstants.VERSION);
       final int posSize = in.readVInt();
       this.posDict = new String[posSize];
       this.inflTypeDict = new String[posSize];
       this.inflFormDict = new String[posSize];
-      populatePosDict(in, posSize, this.posDict, this.inflTypeDict, this.inflFormDict);
+      populatePosDict(in, posSize, posDict, inflTypeDict, inflFormDict);
     }
-
-    // no buffering here, as we load in one large buffer
-    try (InputStream dictIS = dictResource.get()) {
-      final DataInput in = new InputStreamDataInput(dictIS);
-      CodecUtil.checkHeader(in, DICT_HEADER, VERSION, VERSION);
-      final int size = in.readVInt();
-      final ByteBuffer tmpBuffer = ByteBuffer.allocateDirect(size);
-      final ReadableByteChannel channel = Channels.newChannel(dictIS);
-      final int read = channel.read(tmpBuffer);
-      if (read != size) {
-        throw new EOFException("Cannot read whole dictionary");
-      }
-      this.buffer = tmpBuffer.asReadOnlyBuffer();
-    }
-  }
-
-  private static void populateTargetMap(DataInput in, int[] targetMap, int[] targetMapOffsets)
-      throws IOException {
-    int accum = 0, sourceId = 0;
-    for (int ofs = 0; ofs < targetMap.length; ofs++) {
-      final int val = in.readVInt();
-      if ((val & 0x01) != 0) {
-        targetMapOffsets[sourceId] = ofs;
-        sourceId++;
-      }
-      accum += val >>> 1;
-      targetMap[ofs] = accum;
-    }
-    if (sourceId + 1 != targetMapOffsets.length)
-      throw new IOException(
-          "targetMap file format broken; targetMap.length="
-              + targetMap.length
-              + ", targetMapOffsets.length="
-              + targetMapOffsets.length
-              + ", sourceId="
-              + sourceId);
-    targetMapOffsets[sourceId] = targetMap.length;
   }
 
   private static void populatePosDict(
@@ -125,32 +67,25 @@ public abstract class BinaryDictionary implements Dictionary {
     }
   }
 
-  public void lookupWordIds(int sourceId, IntsRef ref) {
-    ref.ints = targetMap;
-    ref.offset = targetMapOffsets[sourceId];
-    // targetMapOffsets always has one more entry pointing behind last:
-    ref.length = targetMapOffsets[sourceId + 1] - ref.offset;
+  @Override
+  public int getLeftId(int morphId) {
+    return (buffer.getShort(morphId) & 0xffff) >>> 3;
   }
 
   @Override
-  public int getLeftId(int wordId) {
-    return (buffer.getShort(wordId) & 0xffff) >>> 3;
+  public int getRightId(int morphId) {
+    return (buffer.getShort(morphId) & 0xffff) >>> 3;
   }
 
   @Override
-  public int getRightId(int wordId) {
-    return (buffer.getShort(wordId) & 0xffff) >>> 3;
+  public int getWordCost(int morphId) {
+    return buffer.getShort(morphId + 2); // Skip id
   }
 
   @Override
-  public int getWordCost(int wordId) {
-    return buffer.getShort(wordId + 2); // Skip id
-  }
-
-  @Override
-  public String getBaseForm(int wordId, char[] surfaceForm, int off, int len) {
-    if (hasBaseFormData(wordId)) {
-      int offset = baseFormOffset(wordId);
+  public String getBaseForm(int morphId, char[] surfaceForm, int off, int len) {
+    if (hasBaseFormData(morphId)) {
+      int offset = baseFormOffset(morphId);
       int data = buffer.get(offset++) & 0xff;
       int prefix = data >>> 4;
       int suffix = data & 0xF;
@@ -166,9 +101,9 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   @Override
-  public String getReading(int wordId, char[] surface, int off, int len) {
-    if (hasReadingData(wordId)) {
-      int offset = readingOffset(wordId);
+  public String getReading(int morphId, char[] surface, int off, int len) {
+    if (hasReadingData(morphId)) {
+      int offset = readingOffset(morphId);
       int readingData = buffer.get(offset++) & 0xff;
       return readString(offset, readingData >>> 1, (readingData & 1) == 1);
     } else {
@@ -187,33 +122,29 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   @Override
-  public String getPartOfSpeech(int wordId) {
-    return posDict[getLeftId(wordId)];
+  public String getPartOfSpeech(int morphId) {
+    return posDict[getLeftId(morphId)];
   }
 
   @Override
-  public String getPronunciation(int wordId, char[] surface, int off, int len) {
-    if (hasPronunciationData(wordId)) {
-      int offset = pronunciationOffset(wordId);
+  public String getPronunciation(int morphId, char[] surface, int off, int len) {
+    if (hasPronunciationData(morphId)) {
+      int offset = pronunciationOffset(morphId);
       int pronunciationData = buffer.get(offset++) & 0xff;
       return readString(offset, pronunciationData >>> 1, (pronunciationData & 1) == 1);
     } else {
-      return getReading(wordId, surface, off, len); // same as the reading
+      return getReading(morphId, surface, off, len); // same as the reading
     }
   }
 
   @Override
-  public String getInflectionType(int wordId) {
-    return inflTypeDict[getLeftId(wordId)];
+  public String getInflectionType(int morphId) {
+    return inflTypeDict[getLeftId(morphId)];
   }
 
   @Override
   public String getInflectionForm(int wordId) {
     return inflFormDict[getLeftId(wordId)];
-  }
-
-  private static int baseFormOffset(int wordId) {
-    return wordId + 4;
   }
 
   private int readingOffset(int wordId) {
@@ -240,6 +171,10 @@ public abstract class BinaryDictionary implements Dictionary {
     } else {
       return readingOffset(wordId);
     }
+  }
+
+  private static int baseFormOffset(int wordId) {
+    return wordId + 4;
   }
 
   private boolean hasBaseFormData(int wordId) {

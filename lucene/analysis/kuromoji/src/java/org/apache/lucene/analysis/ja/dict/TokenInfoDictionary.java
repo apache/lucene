@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.apache.lucene.analysis.morph.BinaryDictionary;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
@@ -32,11 +33,12 @@ import org.apache.lucene.util.fst.PositiveIntOutputs;
  * Binary dictionary implementation for a known-word dictionary model: Words are encoded into an FST
  * mapping to a list of wordIDs.
  */
-public final class TokenInfoDictionary extends BinaryDictionary {
+public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphData> {
 
   public static final String FST_FILENAME_SUFFIX = "$fst.dat";
 
   private final TokenInfoFST fst;
+  private final TokenInfoMorphData morphAtts;
 
   /**
    * Create a {@link TokenInfoDictionary} from an external resource path.
@@ -70,7 +72,14 @@ public final class TokenInfoDictionary extends BinaryDictionary {
       IOSupplier<InputStream> dictResource,
       IOSupplier<InputStream> fstResource)
       throws IOException {
-    super(targetMapResource, posResource, dictResource);
+    super(
+        targetMapResource,
+        dictResource,
+        DictionaryConstants.TARGETMAP_HEADER,
+        DictionaryConstants.DICT_HEADER,
+        DictionaryConstants.VERSION);
+    this.morphAtts = new TokenInfoMorphData(buffer, posResource);
+
     FST<Long> fst;
     try (InputStream is = new BufferedInputStream(fstResource.get())) {
       DataInput in = new InputStreamDataInput(is);
@@ -84,6 +93,11 @@ public final class TokenInfoDictionary extends BinaryDictionary {
     final String resourcePath = TokenInfoDictionary.class.getSimpleName() + suffix;
     return IOUtils.requireResourceNonNull(
         TokenInfoDictionary.class.getResourceAsStream(resourcePath), resourcePath);
+  }
+
+  @Override
+  public TokenInfoMorphData getMorphAttributes() {
+    return morphAtts;
   }
 
   public TokenInfoFST getFST() {

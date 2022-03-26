@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ko;
 
-import org.apache.lucene.analysis.ko.dict.Dictionary;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
 
 /** A token that was generated from a compound. */
 public class DecompoundToken extends Token {
@@ -71,7 +71,7 @@ public class DecompoundToken extends Token {
   }
 
   @Override
-  public Dictionary.Morpheme[] getMorphemes() {
+  public KoMorphData.Morpheme[] getMorphemes() {
     return null;
   }
 }
