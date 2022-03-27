@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
@@ -104,6 +105,32 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
         heap[i] = sentinelObjectSupplier.get();
       }
       size = maxSize;
+    }
+  }
+
+  /**
+   * Adds all elements of the collection into the queue. This method should be preferred over
+   * calling add() in loop if all elements are known in advance as it builds queue faster.
+   */
+  public void addAll(Collection<T> elements) {
+    if (this.size + elements.size() > this.maxSize) {
+      throw new IllegalArgumentException(
+          "Cannot add "
+              + elements.size()
+              + " elements to a queue with remaining capacity: "
+              + (maxSize - size));
+    }
+    // Heap with size S always takes first S elements of the array,
+    // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
+    Iterator<T> iterator = elements.iterator();
+    while (iterator.hasNext()) {
+      this.heap[size + 1] = iterator.next();
+      this.size++;
+    }
+
+    // The loop goes down to 1 as heap is 1-based not 0-based.
+    for (int i = (size >>> 1); i >= 1; i--) {
+      downHeap(i);
     }
   }
 
