@@ -169,9 +169,6 @@ public abstract class MultiRangeQuery extends Query {
    * merge its overlapping ranges and return a simpler but slightly different form by calling {@link
    * #mergeOverlappingRanges}
    *
-   * @param reader
-   * @return
-   * @throws IOException
    */
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
@@ -194,9 +191,6 @@ public abstract class MultiRangeQuery extends Query {
   /**
    * merge overlapping ranges to some unconnected ranges
    *
-   * @param rangeClauses
-   * @param bytesPerDim
-   * @return
    */
   public static List<RangeClause> mergeOverlappingRanges(
       List<RangeClause> rangeClauses, int bytesPerDim) {
