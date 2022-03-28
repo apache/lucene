@@ -708,9 +708,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       int upper = Math.max(random1, random2);
       Query rangeQuery = LongPoint.newRangeQuery(filedName, low, upper);
       Query indexSortRangeQuery =
-        new IndexSortSortedNumericDocValuesRangeQuery(filedName, low, upper, rangeQuery);
+          new IndexSortSortedNumericDocValuesRangeQuery(filedName, low, upper, rangeQuery);
       Weight indexSortRangeQueryWeight =
-        indexSortRangeQuery.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+          indexSortRangeQuery.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
       Weight rangeQueryWeight = rangeQuery.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
       for (LeafReaderContext context : searcher.getLeafContexts()) {
         assertEquals(rangeQueryWeight.count(context), indexSortRangeQueryWeight.count(context));
@@ -723,7 +723,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   }
 
   private void addDocWithBkd(RandomIndexWriter indexWriter, String field, long value, int repeat)
-    throws IOException {
+      throws IOException {
     for (int i = 0; i < repeat; i++) {
       Document doc = new Document();
       doc.add(new SortedNumericDocValuesField(field, value));

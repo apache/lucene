@@ -28,7 +28,6 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -318,7 +317,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     return true;
   }
 
-  private BoundedDocSetIdIterator getDocIdSetIteratorOrNullFromBkd(
+  private BoundedDocIdSetIterator getDocIdSetIteratorOrNullFromBkd(
       LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
     Sort indexSort = context.reader().getMetaData().getSort();
     if (indexSort != null
@@ -332,18 +331,17 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       // Each doc that has points has exactly one point.
       if (points.size() == points.getDocCount()) {
-        boolean allDocExist = false;
         if (points.getDocCount() == context.reader().maxDoc()) {
-          allDocExist = true;
+          delegate = null;
         }
 
         byte[] queryLowerPoint = LongPoint.pack(lowerValue).bytes;
         byte[] queryUpperPoint = LongPoint.pack(upperValue).bytes;
         if (matchNone(points, queryLowerPoint, queryUpperPoint)) {
-          return new BoundedDocSetIdIterator(-1, -1, delegate, allDocExist);
+          return new BoundedDocIdSetIterator(-1, -1, delegate);
         }
         if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
-          return new BoundedDocSetIdIterator(0, points.getDocCount(), delegate, allDocExist);
+          return new BoundedDocIdSetIterator(0, points.getDocCount(), delegate);
         }
         if (points.getNumDimensions() != 1) {
           return null;
@@ -351,7 +349,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         // >=queryLowerPoint
         int minDocId = nextDoc(points, queryLowerPoint, true);
         if (minDocId == -1) {
-          return new BoundedDocSetIdIterator(-1, -1, delegate, allDocExist);
+          return new BoundedDocIdSetIterator(-1, -1, delegate);
         }
         // >queryUpperPoint,
         int maxDocId = nextDoc(points, queryUpperPoint, false);
@@ -363,7 +361,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
           // <=queryUpperPoint
           maxDocId = maxDocId - 1;
         }
-        return new BoundedDocSetIdIterator(minDocId, maxDocId + 1, delegate, allDocExist);
+        return new BoundedDocIdSetIterator(minDocId, maxDocId + 1, delegate);
       }
     }
     return null;
