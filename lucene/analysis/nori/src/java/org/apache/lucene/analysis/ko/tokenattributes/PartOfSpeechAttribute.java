@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ko.tokenattributes;
 import org.apache.lucene.analysis.ko.POS.Tag;
 import org.apache.lucene.analysis.ko.POS.Type;
 import org.apache.lucene.analysis.ko.Token;
-import org.apache.lucene.analysis.ko.dict.Dictionary.Morpheme;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.util.Attribute;
 
 /**
@@ -37,8 +37,11 @@ public interface PartOfSpeechAttribute extends Attribute {
   /** Get the right part of speech of the token. */
   Tag getRightPOS();
 
-  /** Get the {@link Morpheme} decomposition of the token. */
-  Morpheme[] getMorphemes();
+  /**
+   * Get the {@link org.apache.lucene.analysis.ko.dict.KoMorphData.Morpheme} decomposition of the
+   * token.
+   */
+  KoMorphData.Morpheme[] getMorphemes();
 
   /** Set the current token. */
   void setToken(Token token);

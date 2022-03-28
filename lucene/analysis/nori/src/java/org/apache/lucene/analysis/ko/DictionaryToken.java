@@ -16,17 +16,17 @@
  */
 package org.apache.lucene.analysis.ko;
 
-import org.apache.lucene.analysis.ko.dict.Dictionary;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
 
-/** A token stored in a {@link Dictionary}. */
+/** A token stored in a {@link KoMorphData}. */
 public class DictionaryToken extends Token {
   private final int wordId;
   private final KoreanTokenizer.Type type;
-  private final Dictionary dictionary;
+  private final KoMorphData morphAtts;
 
   public DictionaryToken(
       KoreanTokenizer.Type type,
-      Dictionary dictionary,
+      KoMorphData morphAtts,
       int wordId,
       char[] surfaceForm,
       int offset,
@@ -35,7 +35,7 @@ public class DictionaryToken extends Token {
       int endOffset) {
     super(surfaceForm, offset, length, startOffset, endOffset);
     this.type = type;
-    this.dictionary = dictionary;
+    this.morphAtts = morphAtts;
     this.wordId = wordId;
   }
 
@@ -54,7 +54,7 @@ public class DictionaryToken extends Token {
         + " wordId="
         + wordId
         + " leftID="
-        + dictionary.getLeftId(wordId)
+        + morphAtts.getLeftId(wordId)
         + ")";
   }
 
@@ -96,26 +96,26 @@ public class DictionaryToken extends Token {
 
   @Override
   public POS.Type getPOSType() {
-    return dictionary.getPOSType(wordId);
+    return morphAtts.getPOSType(wordId);
   }
 
   @Override
   public POS.Tag getLeftPOS() {
-    return dictionary.getLeftPOS(wordId);
+    return morphAtts.getLeftPOS(wordId);
   }
 
   @Override
   public POS.Tag getRightPOS() {
-    return dictionary.getRightPOS(wordId);
+    return morphAtts.getRightPOS(wordId);
   }
 
   @Override
   public String getReading() {
-    return dictionary.getReading(wordId);
+    return morphAtts.getReading(wordId);
   }
 
   @Override
-  public Dictionary.Morpheme[] getMorphemes() {
-    return dictionary.getMorphemes(wordId, getSurfaceForm(), getOffset(), getLength());
+  public KoMorphData.Morpheme[] getMorphemes() {
+    return morphAtts.getMorphemes(wordId, getSurfaceForm(), getOffset(), getLength());
   }
 }

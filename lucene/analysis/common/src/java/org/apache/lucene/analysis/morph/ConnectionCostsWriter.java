@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.util;
+package org.apache.lucene.analysis.morph;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -22,20 +22,23 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.OutputStreamDataOutput;
 
-final class ConnectionCostsWriter {
+/** Writes connection costs */
+public final class ConnectionCostsWriter<T extends ConnectionCosts> {
 
+  private final Class<T> implClazz;
   private final ByteBuffer
       costs; // array is backward IDs first since get is called using the same backward ID
   // consecutively. maybe doesn't matter.
   private final int forwardSize;
   private final int backwardSize;
+
   /** Constructor for building. TODO: remove write access */
-  ConnectionCostsWriter(int forwardSize, int backwardSize) {
+  public ConnectionCostsWriter(Class<T> implClazz, int forwardSize, int backwardSize) {
+    this.implClazz = implClazz;
     this.forwardSize = forwardSize;
     this.backwardSize = backwardSize;
     this.costs = ByteBuffer.allocateDirect(2 * backwardSize * forwardSize);
@@ -46,14 +49,18 @@ final class ConnectionCostsWriter {
     costs.putShort(offset, (short) cost);
   }
 
-  public void write(Path baseDir) throws IOException {
+  private String getBaseFileName() {
+    return implClazz.getName().replace('.', '/');
+  }
+
+  public void write(Path baseDir, String connectionCostsCodecHeader, int dictCodecVersion)
+      throws IOException {
     Files.createDirectories(baseDir);
-    String fileName =
-        ConnectionCosts.class.getName().replace('.', '/') + ConnectionCosts.FILENAME_SUFFIX;
+    String fileName = getBaseFileName() + ConnectionCosts.FILENAME_SUFFIX;
     try (OutputStream os = Files.newOutputStream(baseDir.resolve(fileName));
         OutputStream bos = new BufferedOutputStream(os)) {
       final DataOutput out = new OutputStreamDataOutput(bos);
-      CodecUtil.writeHeader(out, ConnectionCosts.HEADER, ConnectionCosts.VERSION);
+      CodecUtil.writeHeader(out, connectionCostsCodecHeader, dictCodecVersion);
       out.writeVInt(forwardSize);
       out.writeVInt(backwardSize);
       int last = 0;
