@@ -751,6 +751,18 @@ public class TestTessellator extends LuceneTestCase {
     }
   }
 
+  public void testComplexPolygon46() throws Exception {
+    String wkt = GeoTestUtil.readShape("lucene-10470.wkt.gz");
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    List<Tessellator.Triangle> tessellation =
+        Tessellator.tessellate(polygon, random().nextBoolean());
+    // calculate the area of big polygons have numerical error
+    assertEquals(area(polygon), area(tessellation), 1e-11);
+    for (Tessellator.Triangle t : tessellation) {
+      checkTriangleEdgesFromPolygon(polygon, t);
+    }
+  }
+
   private void checkPolygon(String wkt) throws Exception {
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
     List<Tessellator.Triangle> tessellation =
