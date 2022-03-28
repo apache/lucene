@@ -265,7 +265,7 @@ public final class JapaneseTokenizer extends Tokenizer {
    * Create a new JapaneseTokenizer, supplying a custom system dictionary and unknown dictionary.
    * This constructor provides an entry point for users that want to construct custom language
    * models that can be used as input to {@link
-   * org.apache.lucene.analysis.ja.util.DictionaryBuilder}.
+   * org.apache.lucene.analysis.ja.dict.DictionaryBuilder}.
    *
    * @param factory the AttributeFactory to use
    * @param systemDictionary a custom known token dictionary

@@ -14,13 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ja.util;
+package org.apache.lucene.analysis.ja.dict;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import org.apache.lucene.analysis.ja.dict.CharacterDefinition;
-import org.apache.lucene.analysis.ja.dict.DictionaryConstants;
-import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
 import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
 import org.apache.lucene.analysis.morph.CharacterDefinitionWriter;
 
