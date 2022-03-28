@@ -16,71 +16,49 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-/** Dictionary interface for retrieving morphological data by id. */
-public interface Dictionary {
+import org.apache.lucene.analysis.morph.MorphData;
 
-  public static final String INTERNAL_SEPARATOR = "\u0000";
-
-  /**
-   * Get left id of specified word
-   *
-   * @return left id
-   */
-  public int getLeftId(int wordId);
-
-  /**
-   * Get right id of specified word
-   *
-   * @return right id
-   */
-  public int getRightId(int wordId);
-
-  /**
-   * Get word cost of specified word
-   *
-   * @return word's cost
-   */
-  public int getWordCost(int wordId);
-
+/** Represents Japanese morphological information. */
+public interface JaMorphData extends MorphData {
   /**
    * Get Part-Of-Speech of tokens
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return Part-Of-Speech of the token
    */
-  public String getPartOfSpeech(int wordId);
+  String getPartOfSpeech(int morphId);
 
   /**
    * Get reading of tokens
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return Reading of the token
    */
-  public String getReading(int wordId, char[] surface, int off, int len);
+  String getReading(int morphId, char[] surface, int off, int len);
 
   /**
    * Get base form of word
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return Base form (only different for inflected words, otherwise null)
    */
-  public String getBaseForm(int wordId, char[] surface, int off, int len);
+  String getBaseForm(int morphId, char[] surface, int off, int len);
 
   /**
    * Get pronunciation of tokens
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return Pronunciation of the token
    */
-  public String getPronunciation(int wordId, char[] surface, int off, int len);
+  String getPronunciation(int morphId, char[] surface, int off, int len);
 
   /**
    * Get inflection type of tokens
    *
-   * @param wordId word ID of token
+   * @param morphId word ID of token
    * @return inflection type, or null
    */
-  public String getInflectionType(int wordId);
+  String getInflectionType(int morphId);
 
   /**
    * Get inflection form of tokens
@@ -88,7 +66,7 @@ public interface Dictionary {
    * @param wordId word ID of token
    * @return inflection form, or null
    */
-  public String getInflectionForm(int wordId);
+  String getInflectionForm(int wordId);
   // TODO: maybe we should have a optimal method, a non-typesafe
   // 'getAdditionalData' if other dictionaries like unidic have additional data
 }

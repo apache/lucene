@@ -17,6 +17,11 @@ API Changes
 
 * LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji and Nori (Tomoko Uchida)
 
+* LUCENE-10440: TaxonomyFacets and FloatTaxonomyFacets have been made pkg-private and only serve
+  as internal implementation details of taxonomy-faceting. (Greg Miller)
+
+* LUCENE-10431: MultiTermQuery.setRewriteMethod() has been removed. (Alan Woodward)
+
 New Features
 ---------------------
 
@@ -38,12 +43,59 @@ Bug Fixes
 
 Other
 ---------------------
-
 * LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
   (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
 
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
+
+* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+  (Tomoko Uchida, Robert Muir)
+
+======================= Lucene 9.2.0 =======================
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+
+* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
+  to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
+
+* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
+implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+have readonly `Monitor` instances. (Niko Usai)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+
+* LUCENE-10452: Hunspell: call checkCanceled less frequently to reduce the overhead (Peter Gromov)
+
+* LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
+
+* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
+  (Adrien Grand)
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
+
+Bug Fixes
+---------------------
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
+
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
+
+Other
+---------------------
+(No changes)
 
 ======================= Lucene 9.1.0 =======================
 
@@ -92,6 +144,16 @@ API Changes
   (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
 
 * LUCENE-10398: Add static method for getting Terms from LeafReader. (Spike Liu)
+
+* LUCENE-10440: TaxonomyFacets and FloatTaxonomyFacets have been deprecated and are no longer
+  supported extension points for user-created faceting implementations. (Greg Miller)
+
+* LUCENE-10431: MultiTermQuery.setRewriteMethod() has been deprecated, and constructor
+  parameters for the various implementations added. (Alan Woodward)
+
+* LUCENE-10171: OpenNLPOpsFactory.getLemmatizerDictionary(String, ResourceLoader) now returns a
+  DictionaryLemmatizer object instead of a raw String serialization of the dictionary.
+  (Spyros Kapnissis via Michael Gibney, Alessandro Benedetti)
 
 New Features
 ---------------------
@@ -146,9 +208,6 @@ New Features
   based on TotalHitCountCollector that allows users to parallelize counting the
   number of hits. (Luca Cavanna, Adrien Grand)
 
-* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
-  to speed up computing the number of hits when possible. (Luca Cavanna, Adrien Grand)
-
 * LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
 
 * LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
@@ -162,6 +221,9 @@ New Features
 
 * LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
   nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
+
+* LUCENE-10237: Add MergeOnFlushMergePolicy to sandbox.
+  (Michael Froh, Anand Kotriwal)
 
 Improvements
 ---------------------
@@ -229,10 +291,20 @@ Optimizations
 
 * LUCENE-10408 Better encoding of doc Ids in vectors. (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
 
-* LUCENE-10424 Optimize the "everything matches" case for count query in PointRangeQuery. (Ignacio Vera, Lu Xugang)
+* LUCENE-10424, LUCENE-10439: Optimize the "everything matches" case for count query in PointRangeQuery. (Ignacio Vera, Lu Xugang)
 
 * LUCENE-10084, LUCENE-10435: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever
   terms or points have a docCount that is equal to maxDoc. (Vigya Sharma, Lu Xugang)
+
+* LUCENE-10442: When indexQuery or/and dvQuery be a MatchAllDocsQuery
+  then IndexOrDocValuesQuery should be rewrite to MatchAllDocsQuery. (Lu Xugang)
+
+* LUCENE-10450: IndexSortSortedNumericDocValuesRangeQuery could be rewrite to MatchAllDocsQuery. (Lu Xugang)
+
+* LUCENE-10453: Indexing and search speedup with KNN vectors when using
+  euclidean distance. (Adrien Grand)
+
+* LUCENE-10455: IndexSortSortedNumericDocValuesRangeQuery now implements the scorerSupplier API. (Lu Xugang)
 
 Changes in runtime behavior
 ---------------------
@@ -240,15 +312,16 @@ Changes in runtime behavior
 * LUCENE-10291: Lucene now only writes files for terms and postings if at least
   one field is indexed with postings. (Yannick Welsch)
 
+* LUCENE-10311: FixedBitSet#approximateCardinality now trades accuracy for
+  speed instead of delegating to FixedBitSet#cardinality.
+  (Robert Muir, Adrien Grand)
+
 Bug Fixes
 ---------------------
 
 * LUCENE-10316: fix TestLRUQueryCache.testCachingAccountableQuery failure. (Patrick Zhai)
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
-
-* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
-  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 
 * LUCENE-10349: Fix all analyzers to behave according to their documentation:
   getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
@@ -258,6 +331,9 @@ Bug Fixes
 
 * LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
   DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
+
+* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
+  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 
 * LUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
   Uwe Schindler)
@@ -279,6 +355,16 @@ Bug Fixes
   
 * LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
    as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
+
+* LUCENE-10428: Queries with a misbehaving score function may no longer cause
+  infinite loops in their parent BooleanQuery.
+  (Ankit Jain, Daniel Doubrovkine, Adrien Grand)
+
+* LUCENE-10431: MultiTermQuery no longer includes its rewrite method in its hashcode
+  calculation, as this could cause problems with wrapper queries like BooleanQuery which
+  expect their child queries hashcodes to be stable. (Alan Woodward)
+
+* LUCENE-10469: Fix ScoreMode propagation by ConstantScoreQuery. (Adrien Grand)
 
 Other
 ---------------------

@@ -60,10 +60,36 @@ public class TermRangeQuery extends AutomatonQuery {
       BytesRef upperTerm,
       boolean includeLower,
       boolean includeUpper) {
+    this(field, lowerTerm, upperTerm, includeLower, includeUpper, CONSTANT_SCORE_REWRITE);
+  }
+
+  /**
+   * Constructs a query selecting all terms greater/equal than <code>lowerTerm</code> but less/equal
+   * than <code>upperTerm</code>.
+   *
+   * <p>If an endpoint is null, it is said to be "open". Either or both endpoints may be open. Open
+   * endpoints may not be exclusive (you can't select all but the first or last term without
+   * explicitly specifying the term to exclude.)
+   *
+   * @param field The field that holds both lower and upper terms.
+   * @param lowerTerm The term text at the lower end of the range
+   * @param upperTerm The term text at the upper end of the range
+   * @param includeLower If true, the <code>lowerTerm</code> is included in the range.
+   * @param includeUpper If true, the <code>upperTerm</code> is included in the range.
+   * @param rewriteMethod the rewrite method to use when building the final query
+   */
+  public TermRangeQuery(
+      String field,
+      BytesRef lowerTerm,
+      BytesRef upperTerm,
+      boolean includeLower,
+      boolean includeUpper,
+      RewriteMethod rewriteMethod) {
     super(
         new Term(field, lowerTerm),
         toAutomaton(lowerTerm, upperTerm, includeLower, includeUpper),
-        true);
+        true,
+        rewriteMethod);
     this.lowerTerm = lowerTerm;
     this.upperTerm = upperTerm;
     this.includeLower = includeLower;
@@ -93,9 +119,21 @@ public class TermRangeQuery extends AutomatonQuery {
       String upperTerm,
       boolean includeLower,
       boolean includeUpper) {
+    return newStringRange(
+        field, lowerTerm, upperTerm, includeLower, includeUpper, CONSTANT_SCORE_REWRITE);
+  }
+
+  /** Factory that creates a new TermRangeQuery using Strings for term text. */
+  public static TermRangeQuery newStringRange(
+      String field,
+      String lowerTerm,
+      String upperTerm,
+      boolean includeLower,
+      boolean includeUpper,
+      RewriteMethod rewriteMethod) {
     BytesRef lower = lowerTerm == null ? null : new BytesRef(lowerTerm);
     BytesRef upper = upperTerm == null ? null : new BytesRef(upperTerm);
-    return new TermRangeQuery(field, lower, upper, includeLower, includeUpper);
+    return new TermRangeQuery(field, lower, upper, includeLower, includeUpper, rewriteMethod);
   }
 
   /** Returns the lower value of this range query */

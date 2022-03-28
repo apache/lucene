@@ -594,7 +594,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     int numDocs = atLeast(1000);
     int numFields = TestUtil.nextInt(random(), 1, 10);
     int[] fieldDocCounts = new int[numFields];
-    float[] fieldTotals = new float[numFields];
+    double[] fieldTotals = new double[numFields];
     int[] fieldDims = new int[numFields];
     VectorSimilarityFunction[] fieldSearchStrategies = new VectorSimilarityFunction[numFields];
     for (int i = 0; i < numFields; i++) {
@@ -622,7 +622,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader r = w.getReader()) {
         for (int field = 0; field < numFields; field++) {
           int docCount = 0;
-          float checksum = 0;
+          double checksum = 0;
           String fieldName = "int" + field;
           for (LeafReaderContext ctx : r.leaves()) {
             VectorValues vectors = ctx.reader().getVectorValues(fieldName);
@@ -1095,7 +1095,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length)];
 
-    float fieldValuesCheckSum = 0f;
+    double fieldValuesCheckSum = 0;
     int fieldDocCount = 0;
     long fieldSumDocIDs = 0;
 
@@ -1120,7 +1120,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       }
 
       try (IndexReader r = w.getReader()) {
-        float checksum = 0;
+        double checksum = 0;
         int docCount = 0;
         long sumDocIds = 0;
         for (LeafReaderContext ctx : r.leaves()) {

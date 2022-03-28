@@ -22,12 +22,14 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
+import org.apache.lucene.analysis.morph.ConnectionCostsWriter;
 
 class ConnectionCostsBuilder {
 
   private ConnectionCostsBuilder() {}
 
-  public static ConnectionCostsWriter build(Path path) throws IOException {
+  public static ConnectionCostsWriter<ConnectionCosts> build(Path path) throws IOException {
     try (Reader reader = Files.newBufferedReader(path, StandardCharsets.US_ASCII);
         LineNumberReader lineReader = new LineNumberReader(reader)) {
 
@@ -41,7 +43,8 @@ class ConnectionCostsBuilder {
 
       assert forwardSize > 0 && backwardSize > 0;
 
-      ConnectionCostsWriter costs = new ConnectionCostsWriter(forwardSize, backwardSize);
+      ConnectionCostsWriter<ConnectionCosts> costs =
+          new ConnectionCostsWriter<>(ConnectionCosts.class, forwardSize, backwardSize);
 
       while ((line = lineReader.readLine()) != null) {
         String[] fields = line.split("\\s+");

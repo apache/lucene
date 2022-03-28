@@ -96,10 +96,10 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       IndexSearcher searcher = newSearcher(reader);
       KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10);
       assertMatches(searcher, kvq, 3);
-      TopDocs topDocs = searcher.search(kvq, 3);
-      assertEquals(2, topDocs.scoreDocs[0].doc);
-      assertEquals(0, topDocs.scoreDocs[1].doc);
-      assertEquals(1, topDocs.scoreDocs[2].doc);
+      ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
+      assertIdMatches(reader, "id2", scoreDocs[0]);
+      assertIdMatches(reader, "id0", scoreDocs[1]);
+      assertIdMatches(reader, "id1", scoreDocs[2]);
     }
   }
 
@@ -113,7 +113,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       Query kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(1, topDocs.totalHits.value);
-      assertEquals(2, topDocs.scoreDocs[0].doc);
+      assertIdMatches(reader, "id2", topDocs.scoreDocs[0]);
     }
   }
 
@@ -424,6 +424,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
           for (int j = 0; j < 5; j++) {
             Document doc = new Document();
             doc.add(new KnnVectorField("field", new float[] {r, r}));
+            doc.add(new StringField("id", "id" + r, Field.Store.YES));
             w.addDocument(doc);
             ++r;
           }
@@ -434,14 +435,14 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         IndexSearcher searcher = newSearcher(reader);
         TopDocs results = searcher.search(new KnnVectorQuery("field", new float[] {0, 0}, 8), 10);
         assertEquals(8, results.scoreDocs.length);
-        assertEquals(0, results.scoreDocs[0].doc);
-        assertEquals(7, results.scoreDocs[7].doc);
+        assertIdMatches(reader, "id0", results.scoreDocs[0]);
+        assertIdMatches(reader, "id7", results.scoreDocs[7]);
 
         // test some results in the middle of the sequence - also tests docid tiebreaking
         results = searcher.search(new KnnVectorQuery("field", new float[] {10, 10}, 8), 10);
         assertEquals(8, results.scoreDocs.length);
-        assertEquals(10, results.scoreDocs[0].doc);
-        assertEquals(6, results.scoreDocs[7].doc);
+        assertIdMatches(reader, "id10", results.scoreDocs[0]);
+        assertIdMatches(reader, "id6", results.scoreDocs[7]);
       }
     }
   }
@@ -664,7 +665,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
       doc.add(new KnnVectorField(field, contents[i]));
-      doc.add(new StringField("id", "id" + i, Field.Store.NO));
+      doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);
     }
     // Add some documents without a vector
@@ -682,6 +683,12 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       throws IOException {
     ScoreDoc[] result = searcher.search(q, 1000).scoreDocs;
     assertEquals(expectedMatches, result.length);
+  }
+
+  private void assertIdMatches(IndexReader reader, String expectedId, ScoreDoc scoreDoc)
+      throws IOException {
+    String actualId = reader.document(scoreDoc.doc).get("id");
+    assertEquals(expectedId, actualId);
   }
 
   /**
