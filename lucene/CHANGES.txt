@@ -55,7 +55,8 @@ Other
 ======================= Lucene 9.2.0 =======================
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10325: Facets API extended to support getTopFacets. (Yuting Gan)
 
 New Features
 ---------------------
