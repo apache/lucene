@@ -387,6 +387,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       assertEquals(1, allDims.size());
       assertEquals(facetResult, allDims.get(0));
 
+      // test default implementation of getTopDims
+      List<FacetResult> topNDimsResult = facets.getTopDims(2, topN);
+      assertEquals(1, topNDimsResult.size());
+      assertEquals(facetResult, topNDimsResult.get(0));
+
       // This is a little strange, but we request all labels at this point so that when we
       // secondarily sort by label value in order to compare to the expected results, we have
       // all the values. See LUCENE-9991:
