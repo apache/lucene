@@ -165,9 +165,20 @@ public abstract class MultiRangeQuery extends Query {
     }
   }
 
+  /**
+   * merge its overlapping ranges and return a simpler but slightly different form by calling {@link
+   * #mergeOverlappingRanges}
+   *
+   * @param reader
+   * @return
+   * @throws IOException
+   */
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
-    List<RangeClause> mergedRanges = mergeOverlappingRanges();
+    if (numDims != 1) {
+      return this;
+    }
+    List<RangeClause> mergedRanges = mergeOverlappingRanges(rangeClauses, bytesPerDim);
     if (mergedRanges != rangeClauses) {
       return new MultiRangeQuery(field, numDims, bytesPerDim, mergedRanges) {
         @Override
@@ -180,8 +191,16 @@ public abstract class MultiRangeQuery extends Query {
     }
   }
 
-  private List<RangeClause> mergeOverlappingRanges() {
-    if (numDims != 1 || rangeClauses.size() <= 1) {
+  /**
+   * merge overlapping ranges to some unconnected ranges
+   *
+   * @param rangeClauses
+   * @param bytesPerDim
+   * @return
+   */
+  public static List<RangeClause> mergeOverlappingRanges(
+      List<RangeClause> rangeClauses, int bytesPerDim) {
+    if (rangeClauses.size() <= 1) {
       return rangeClauses;
     }
     List<RangeClause> originRangeClause = new ArrayList<>(rangeClauses);
@@ -373,12 +392,12 @@ public abstract class MultiRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        if (numDims != 1) {
+        if (numDims != 1 || context.reader().hasDeletions() == true) {
           return super.count(context);
         }
-        List<RangeClause> mergeRanceClause = mergeOverlappingRanges();
+        List<RangeClause> mergeRangeClause = mergeOverlappingRanges(rangeClauses, bytesPerDim);
         int total = 0;
-        for (RangeClause rangeClause : mergeRanceClause) {
+        for (RangeClause rangeClause : mergeRangeClause) {
           PointRangeQuery pointRangeQuery =
               new PointRangeQuery(field, rangeClause.lowerValue, rangeClause.upperValue, numDims) {
                 @Override

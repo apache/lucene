@@ -775,18 +775,46 @@ public class TestMultiRangeQueries extends LuceneTestCase {
     builder.add(new long[] {1}, new long[] {6});
     MultiRangeQuery multiRangeQuery = builder.build();
     Query query = multiRangeQuery.rewrite(null);
-    Assert.assertNotEquals(query, multiRangeQuery);
-    System.out.println(query.toString());
+    assertNotEquals(query, multiRangeQuery);
     Query query1 = query.rewrite(null);
     Assert.assertEquals(query1, query);
   }
 
-  public void testOneDimensionCount() throws IOException {
+  public void testRandomRewrite() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    Random random = random();
     int dims = 1;
+    addRandomDoc(w);
 
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    for (int n = 0; n < 100; n++) {
+      int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
+      LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
+      BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
+      for (int i = 0; i < numRanges; i++) {
+        long[] lower = new long[dims];
+        long[] upper = new long[dims];
+        for (int j = 0; j < dims; j++) {
+          lower[j] = RandomNumbers.randomLongBetween(random(), 0, 2000);
+          upper[j] = lower[j] + RandomNumbers.randomLongBetween(random(), 0, 2000);
+        }
+        builder1.add(lower, upper);
+        builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
+      }
+
+      MultiRangeQuery multiRangeQuery = builder1.build();
+      MultiRangeQuery rewriteMultiRangeQuery = (MultiRangeQuery) multiRangeQuery.rewrite(reader);
+      int count = searcher.count(multiRangeQuery);
+      int rewriteCount = searcher.count(rewriteMultiRangeQuery);
+      assertEquals(rewriteCount, count);
+    }
+    IOUtils.close(reader, w, dir);
+  }
+
+  private void addRandomDoc(RandomIndexWriter w) throws IOException {
+    Random random = random();
     for (int i = 0; i < random.nextInt(100, 500); i++) {
       int numPoints = RandomNumbers.randomIntBetween(random(), 1, 200);
       long value = RandomNumbers.randomLongBetween(random(), 0, 2000);
@@ -798,6 +826,14 @@ public class TestMultiRangeQueries extends LuceneTestCase {
     }
     w.flush();
     w.forceMerge(1);
+  }
+
+  public void testOneDimensionCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    int dims = 1;
+    addRandomDoc(w);
+
     IndexReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
