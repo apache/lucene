@@ -166,7 +166,7 @@ public abstract class MultiRangeQuery extends Query {
   }
 
   /**
-   * merge its overlapping ranges and return a simpler but slightly different form by calling {@link
+   * Merges the overlapping ranges and returns unconnected ranges by calling {@link
    * #mergeOverlappingRanges}
    */
   @Override
@@ -187,7 +187,13 @@ public abstract class MultiRangeQuery extends Query {
     }
   }
 
-  /** merge overlapping ranges to some unconnected ranges */
+  /**
+   * merge overlapping ranges to some unconnected ranges
+   *
+   * @param rangeClauses some overlapping ranges
+   * @param bytesPerDim bytes per Dimension of the point value
+   * @return unconnected ranges
+   */
   public static List<RangeClause> mergeOverlappingRanges(
       List<RangeClause> rangeClauses, int bytesPerDim) {
     if (rangeClauses.size() <= 1) {
@@ -221,6 +227,7 @@ public abstract class MultiRangeQuery extends Query {
       }
     }
     finalRangeClause.add(current);
+    /** saves us from creating an extra MultiRangeQuery object in {@link #rewrite} */
     if (finalRangeClause.size() != rangeClauses.size()) {
       return finalRangeClause;
     } else {
