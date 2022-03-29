@@ -52,6 +52,10 @@ Other
 * LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
   (Tomoko Uchida, Robert Muir)
 
+* LUCENE-10475: Merge dictionary builders in `util` package into `dict` package in Kuromoji and Nori.
+  All classes in `org.apache.lucene.analysis.[ja|ko].util` was moved to `org.apache.lucene.analysis.[ja|ko].dict`.
+  (Tomoko Uchida)
+
 ======================= Lucene 9.2.0 =======================
 API Changes
 ---------------------
