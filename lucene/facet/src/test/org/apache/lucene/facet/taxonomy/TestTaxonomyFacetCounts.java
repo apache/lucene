@@ -643,7 +643,6 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       assertEquals(r.numDocs(), result.value.intValue());
     }
 
-
     // test default implementation of getTopDims
     if (allDimsResult.size() > 0) {
       List<FacetResult> topNDimsResult = facets.getTopDims(1, 10);

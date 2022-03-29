@@ -124,10 +124,10 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
 
     // test getTopChildren(0, dim)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getTopChildren(0, "Author");
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(0, "Author");
+        });
 
     taxoReader.close();
     searcher.getIndexReader().close();
@@ -194,10 +194,10 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
 
     // test getAllDims(0)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getAllDims(0);
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
 
     assertEquals(3, results.size());
     assertEquals(

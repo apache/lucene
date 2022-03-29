@@ -509,9 +509,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
-    if (topNDims <= 0 || topNChildren <= 0) {
-      throw new IllegalArgumentException("topN must be > 0");
-    }
+    validateTopN(topNDims);
+    validateTopN(topNChildren);
 
     // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.

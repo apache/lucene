@@ -106,10 +106,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     // test getTopChildren(0, dim)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getTopChildren(0, "field");
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(0, "field");
+        });
 
     r.close();
     d.close();

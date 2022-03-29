@@ -1900,10 +1900,10 @@ public class TestDrillSideways extends FacetTestCase {
 
     // test getAllDims(0)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getAllDims(0);
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
