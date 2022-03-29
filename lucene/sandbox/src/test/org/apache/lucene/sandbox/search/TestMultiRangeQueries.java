@@ -779,10 +779,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
     w.forceMerge(1);
   }
 
-  /**
-   * test rewrite query. the hit doc count of the rewritten query should be the same as origin
-   * query's.
-   */
+  /** The hit doc count of the rewritten query should be the same as origin query's */
   public void testRandomRewrite() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);

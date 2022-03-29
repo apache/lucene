@@ -188,7 +188,7 @@ public abstract class MultiRangeQuery extends Query {
   }
 
   /**
-   * merge overlapping ranges to some unconnected ranges
+   * Merges overlapping ranges and returns unconnected ranges
    *
    * @param rangeClauses some overlapping ranges
    * @param bytesPerDim bytes per Dimension of the point value
