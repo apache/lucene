@@ -19,20 +19,29 @@ package org.apache.lucene.analysis.ko.util;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.lucene.analysis.ko.dict.CharacterDefinition;
+import org.apache.lucene.analysis.ko.dict.DictionaryConstants;
 import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
+import org.apache.lucene.analysis.morph.BinaryDictionaryWriter;
+import org.apache.lucene.analysis.morph.CharacterDefinitionWriter;
 
-class UnknownDictionaryWriter extends BinaryDictionaryWriter {
+class UnknownDictionaryWriter extends BinaryDictionaryWriter<UnknownDictionary> {
 
-  private final CharacterDefinitionWriter characterDefinition = new CharacterDefinitionWriter();
+  private final org.apache.lucene.analysis.morph.CharacterDefinitionWriter<CharacterDefinition>
+      characterDefinition =
+          new CharacterDefinitionWriter<>(
+              CharacterDefinition.class,
+              CharacterDefinition.DEFAULT,
+              CharacterDefinition.CLASS_COUNT,
+              CharacterDefinition::lookupCharacterClass);
 
   public UnknownDictionaryWriter(int size) {
-    super(UnknownDictionary.class, size);
+    super(UnknownDictionary.class, new TokenInfoDictionaryEntryWriter(size));
   }
 
   @Override
   public int put(String[] entry) {
     // Get wordId of current entry
-    int wordId = buffer.position();
+    int wordId = entryWriter.currentPosition();
 
     // Put entry
     int result = super.put(entry);
@@ -59,7 +68,13 @@ class UnknownDictionaryWriter extends BinaryDictionaryWriter {
 
   @Override
   public void write(Path baseDir) throws IOException {
-    super.write(baseDir);
-    characterDefinition.write(baseDir);
+    super.write(
+        baseDir,
+        DictionaryConstants.TARGETMAP_HEADER,
+        DictionaryConstants.POSDICT_HEADER,
+        DictionaryConstants.DICT_HEADER,
+        DictionaryConstants.VERSION);
+    characterDefinition.write(
+        baseDir, DictionaryConstants.CHARDEF_HEADER, DictionaryConstants.VERSION);
   }
 }

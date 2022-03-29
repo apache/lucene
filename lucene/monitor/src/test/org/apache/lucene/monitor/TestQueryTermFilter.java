@@ -31,8 +31,8 @@ public class TestQueryTermFilter extends LuceneTestCase {
 
   public void testFiltersAreRemoved() throws IOException {
 
-    try (QueryIndex qi =
-        new QueryIndex(new MonitorConfiguration(), new TermFilteredPresearcher())) {
+    try (WritableQueryIndex qi =
+        new WritableQueryIndex(new MonitorConfiguration(), new TermFilteredPresearcher())) {
       qi.commit(
           Collections.singletonList(new MonitorQuery("1", new TermQuery(new Term(FIELD, "term")))));
       assertEquals(1, qi.termFilters.size());

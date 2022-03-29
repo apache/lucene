@@ -211,6 +211,29 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     assertEquals(
         "dim=c path=[] value=30.0 childCount=1\n  baz1 (30.0)\n", results.get(2).toString());
 
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = facets.getTopDims(2, 1);
+    assertEquals(2, topNDimsResult.size());
+    assertEquals(
+        "dim=a path=[] value=60.0 childCount=3\n  foo3 (30.0)\n", topNDimsResult.get(0).toString());
+    assertEquals(
+        "dim=b path=[] value=50.0 childCount=2\n  bar2 (30.0)\n", topNDimsResult.get(1).toString());
+
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allDimsResults = facets.getTopDims(10, 10);
+    assertEquals(results, allDimsResults);
+
+    // test getTopDims(0, 1)
+    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
+    assertEquals(0, topDimsResults2.size());
+
+    // test getTopDims(1, 0) with topNChildren = 0
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(1, 0);
+        });
+
     IOUtils.close(searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }
 
@@ -256,6 +279,10 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
+
+    // test default implementation of getTopDims
+    List<FacetResult> topDimsResults = facets.getTopDims(10, 10);
+    assertTrue(topDimsResults.isEmpty());
 
     expectThrows(
         IllegalArgumentException.class,
@@ -623,8 +650,14 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     List<FacetResult> actual = facets.getAllDims(10);
 
-    // Messy: fixup ties
-    sortTies(actual);
+      // test default implementation of getTopDims
+      if (actual.size() > 0) {
+        List<FacetResult> topDimsResults1 = facets.getTopDims(1, 10);
+        assertEquals(actual.get(0), topDimsResults1.get(0));
+      }
+
+      // Messy: fixup ties
+      sortTies(actual);
 
     if (VERBOSE) {
       System.out.println("expected=\n" + expected.toString());
