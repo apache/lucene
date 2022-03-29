@@ -72,6 +72,8 @@ New Features
 implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
 have readonly `Monitor` instances. (Niko Usai)
 
+* LUCENE-10444: Support alternate aggregation functions in association facets. (Greg Miller)
+
 Improvements
 ---------------------
 (No changes)
@@ -229,8 +231,6 @@ New Features
 
 * LUCENE-10237: Add MergeOnFlushMergePolicy to sandbox.
   (Michael Froh, Anand Kotriwal)
-
-* LUCENE-10444: Support alternate aggregation functions in association facets. (Greg Miller)
 
 Improvements
 ---------------------
