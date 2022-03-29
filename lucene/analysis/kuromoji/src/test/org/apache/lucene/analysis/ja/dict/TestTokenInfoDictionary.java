@@ -27,9 +27,6 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.apache.lucene.analysis.ja.util.DictionaryBuilder;
-import org.apache.lucene.analysis.ja.util.DictionaryBuilder.DictionaryFormat;
-import org.apache.lucene.analysis.ja.util.ToStringUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
@@ -77,7 +74,7 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
             new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
       printer.println("1 1");
     }
-    DictionaryBuilder.build(DictionaryFormat.IPADIC, dir, dir, "utf-8", true);
+    DictionaryBuilder.build(DictionaryBuilder.DictionaryFormat.IPADIC, dir, dir, "utf-8", true);
     String dictionaryPath = TokenInfoDictionary.class.getName().replace('.', '/');
     // We must also load the other files (in BinaryDictionary) from the correct path
     return new TokenInfoDictionary(
