@@ -45,7 +45,7 @@ comprehensive documentation, visit:
 
 We'll assume that you know how to get and set up the JDK - if you don't, then we suggest starting at https://jdk.java.net/ and learning more about Java, before returning to this README.
 
-See [Contributing Gradle](./CONTRIBUTING.md) for details.
+See [Contributing Guide](./CONTRIBUTING.md) for details.
 
 ## Contributing
 
