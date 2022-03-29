@@ -57,17 +57,13 @@ If you want to just build the documentation, type:
 ./gradlew documentation
 ```
 
-### Unit tests
+### Checks
 
-Please make sure that all unit tests succeed before constructing your patch: `./gradlew test`.
+Please make sure that all unit tests and validations succeed before constructing your patch: `./gradlew check`.
 
 To run a single test case from the lucene/core directory in your working copy:  `./gradlew -p lucene/core test --tests NameOfYourUnitTest`. Run `./gradlew helpTests` to get more information about running tests.
 
 In case your contribution fixes a bug, please create a new test case that fails before your fix, to show the presence of the bug and ensure it never re-occurs. A test case showing the presence of a bug is also a good contribution by itself.
-
-### Precommit
-
-Please run `./gradlew precommit` to identify problems that should be addressed before you contribute your changes.
 
 ### IDE support
 
