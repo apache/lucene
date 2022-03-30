@@ -402,12 +402,6 @@ public abstract class LuceneTestCase extends Assert {
   /** Enables or disables dumping of {@link InfoStream} messages. */
   public static final boolean INFOSTREAM = systemPropertyAsBoolean("tests.infostream", VERBOSE);
 
-  /**
-   * A random multiplier which you should use when writing random tests: multiply it by the number
-   * of iterations to scale your tests (for nightly builds).
-   */
-  public static final int RANDOM_MULTIPLIER = systemPropertyAsInt("tests.multiplier", 1);
-
   public static final boolean TEST_ASSERTS_ENABLED = systemPropertyAsBoolean("tests.asserts", true);
 
   /**
@@ -473,6 +467,13 @@ public abstract class LuceneTestCase extends Assert {
   /** Throttling, see {@link MockDirectoryWrapper#setThrottling(Throttling)}. */
   public static final Throttling TEST_THROTTLING =
       TEST_NIGHTLY ? Throttling.SOMETIMES : Throttling.NEVER;
+
+  /**
+   * A random multiplier which you should use when writing random tests: multiply it by the number
+   * of iterations to scale your tests (for nightly builds).
+   */
+  public static final int RANDOM_MULTIPLIER =
+      systemPropertyAsInt("tests.multiplier", TEST_NIGHTLY ? 2 : 1);
 
   /** Leave temporary files on disk, even on successful runs. */
   public static final boolean LEAVE_TEMPORARY;
@@ -873,7 +874,7 @@ public abstract class LuceneTestCase extends Assert {
    * {@link #RANDOM_MULTIPLIER}, but also with some random fudge.
    */
   public static int atLeast(Random random, int i) {
-    int min = (TEST_NIGHTLY ? 2 * i : i) * RANDOM_MULTIPLIER;
+    int min = i * RANDOM_MULTIPLIER;
     int max = min + (min / 2);
     return TestUtil.nextInt(random, min, max);
   }
@@ -889,9 +890,9 @@ public abstract class LuceneTestCase extends Assert {
    * {@link #RANDOM_MULTIPLIER}.
    */
   public static boolean rarely(Random random) {
-    int p = TEST_NIGHTLY ? 10 : 1;
+    int p = TEST_NIGHTLY ? 5 : 1;
     p += (p * Math.log(RANDOM_MULTIPLIER));
-    int min = 100 - Math.min(p, 50); // never more than 50
+    int min = 100 - Math.min(p, 20); // never more than 20
     return random.nextInt(100) >= min;
   }
 
