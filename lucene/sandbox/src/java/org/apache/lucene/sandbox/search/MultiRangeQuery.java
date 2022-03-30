@@ -194,8 +194,7 @@ public abstract class MultiRangeQuery extends Query {
    * @param bytesPerDim bytes per Dimension of the point value
    * @return unconnected ranges
    */
-  public static List<RangeClause> mergeOverlappingRanges(
-      List<RangeClause> rangeClauses, int bytesPerDim) {
+  static List<RangeClause> mergeOverlappingRanges(List<RangeClause> rangeClauses, int bytesPerDim) {
     if (rangeClauses.size() <= 1) {
       return rangeClauses;
     }
@@ -227,7 +226,10 @@ public abstract class MultiRangeQuery extends Query {
       }
     }
     finalRangeClause.add(current);
-    /** saves us from creating an extra MultiRangeQuery object in {@link #rewrite} */
+    /**
+     * in {@link #rewrite} it compares the returned rangeClauses with origin rangeClauses to decide
+     * if rewrite should return a new query or the origin query
+     */
     if (finalRangeClause.size() != rangeClauses.size()) {
       return finalRangeClause;
     } else {
@@ -390,6 +392,10 @@ public abstract class MultiRangeQuery extends Query {
       @Override
       public int count(LeafReaderContext context) throws IOException {
         if (numDims != 1 || context.reader().hasDeletions() == true) {
+          return super.count(context);
+        }
+        PointValues pointValues = context.reader().getPointValues(field);
+        if (pointValues == null || pointValues.size() != pointValues.getDocCount()) {
           return super.count(context);
         }
         List<RangeClause> mergeRangeClause = mergeOverlappingRanges(rangeClauses, bytesPerDim);
