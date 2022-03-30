@@ -39,7 +39,7 @@ import org.apache.lucene.search.Weight;
  * Matches spans which are near one another. One can specify <i>slop</i>, the maximum number of
  * intervening unmatched positions, as well as whether matches are required to be in-order.
  */
-public class SpanNearQuery extends SpanQuery implements Cloneable {
+public class SpanNearQuery extends SpanQuery {
 
   /** A builder for SpanNearQueries */
   public static class Builder {
