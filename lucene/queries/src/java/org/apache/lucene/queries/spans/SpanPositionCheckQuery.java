@@ -31,7 +31,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 
 /** Base class for filtering a SpanQuery based on the position of a match. */
-public abstract class SpanPositionCheckQuery extends SpanQuery implements Cloneable {
+public abstract class SpanPositionCheckQuery extends SpanQuery {
   protected SpanQuery match;
 
   public SpanPositionCheckQuery(SpanQuery match) {
