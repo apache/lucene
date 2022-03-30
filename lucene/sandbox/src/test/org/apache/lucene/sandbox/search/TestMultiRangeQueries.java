@@ -37,6 +37,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
@@ -766,7 +767,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
   private void addRandomDocs(RandomIndexWriter w) throws IOException {
     Random random = random();
-    for (int i = 0; i < random.nextInt(100, 500); i++) {
+    for (int i = 0, end = random.nextInt(100, 500); i < end; i++) {
       int numPoints = RandomNumbers.randomIntBetween(random(), 1, 200);
       long value = RandomNumbers.randomLongBetween(random(), 0, 2000);
       for (int j = 0; j < numPoints; j++) {
@@ -785,15 +786,15 @@ public class TestMultiRangeQueries extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     int dims = 1;
     addRandomDocs(w);
-    Random random = random();
 
     IndexReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
-    int numIters = random.nextInt(200);
+    int numIters = atLeast(100);
 
     for (int n = 0; n < numIters; n++) {
       int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
       LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
+      BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
       for (int i = 0; i < numRanges; i++) {
         long[] lower = new long[dims];
         long[] upper = new long[dims];
@@ -802,13 +803,14 @@ public class TestMultiRangeQueries extends LuceneTestCase {
           upper[j] = lower[j] + RandomNumbers.randomLongBetween(random(), 0, 2000);
         }
         builder1.add(lower, upper);
+        builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
       }
 
-      MultiRangeQuery multiRangeQuery = builder1.build();
-      MultiRangeQuery rewriteMultiRangeQuery = (MultiRangeQuery) multiRangeQuery.rewrite(reader);
-      int count = searcher.count(multiRangeQuery);
-      int rewriteCount = searcher.count(rewriteMultiRangeQuery);
-      assertEquals(rewriteCount, count);
+      MultiRangeQuery multiRangeQuery = (MultiRangeQuery) builder1.build().rewrite(reader);
+      BooleanQuery booleanQuery = builder2.build();
+      int count = searcher.search(multiRangeQuery, new TotalHitCountCollectorManager());
+      int booleanCount = searcher.search(booleanQuery, new TotalHitCountCollectorManager());
+      assertEquals(booleanCount, count);
     }
     IOUtils.close(reader, w, dir);
   }
@@ -821,8 +823,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     IndexReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
-    Random random = random();
-    int numIters = random.nextInt(200);
+    int numIters = atLeast(100);
     for (int n = 0; n < numIters; n++) {
       int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
       LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
