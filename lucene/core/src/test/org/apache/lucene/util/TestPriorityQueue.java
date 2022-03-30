@@ -209,7 +209,7 @@ public class TestPriorityQueue extends LuceneTestCase {
 
     assertThrows(
         "Cannot add 11 elements to a queue with remaining capacity: 9",
-        IllegalArgumentException.class,
+        ArrayIndexOutOfBoundsException.class,
         () -> pq.addAll(list));
   }
 

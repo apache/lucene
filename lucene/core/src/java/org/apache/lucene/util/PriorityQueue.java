@@ -110,16 +110,21 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   /**
    * Adds all elements of the collection into the queue. This method should be preferred over
-   * calling add() in loop if all elements are known in advance as it builds queue faster.
+   * calling {@link #add(Object)} in loop if all elements are known in advance as it builds queue
+   * faster.
+   *
+   * <p>If one tries to add more objects than the maxSize passed in the constructor, an {@link
+   * ArrayIndexOutOfBoundsException} is thrown.
    */
   public void addAll(Collection<T> elements) {
     if (this.size + elements.size() > this.maxSize) {
-      throw new IllegalArgumentException(
+      throw new ArrayIndexOutOfBoundsException(
           "Cannot add "
               + elements.size()
               + " elements to a queue with remaining capacity: "
               + (maxSize - size));
     }
+
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
     Iterator<T> iterator = elements.iterator();
