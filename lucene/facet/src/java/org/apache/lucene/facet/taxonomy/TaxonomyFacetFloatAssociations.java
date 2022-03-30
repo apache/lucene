@@ -120,7 +120,7 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
 
       @Override
       public boolean advanceExact(int doc) throws IOException {
-        index++;
+        index = doc;
         return true;
       }
     };
