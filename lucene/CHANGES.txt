@@ -95,6 +95,9 @@ Bug Fixes
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
   multiple times if necessary. (Christine Poerschke, Adrien Grand)
 
+* LUCENE-10491: A correctness bug in the way scores are provided within TaxonomyFacetSumValueSource
+  was fixed. (Michael McCandless, Greg Miller)
+
 Build
 ---------------------
 
