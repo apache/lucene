@@ -114,13 +114,11 @@ public abstract class SpanPositionCheckQuery extends SpanQuery implements Clonea
   public Query rewrite(IndexReader reader) throws IOException {
     SpanQuery rewritten = (SpanQuery) match.rewrite(reader);
     if (rewritten != match) {
-      try {
+
         SpanPositionCheckQuery clone = (SpanPositionCheckQuery) this.clone();
         clone.match = rewritten;
         return clone;
-      } catch (CloneNotSupportedException e) {
-        throw new AssertionError(e);
-      }
+
     }
 
     return super.rewrite(reader);

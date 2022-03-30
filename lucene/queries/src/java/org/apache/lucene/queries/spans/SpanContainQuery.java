@@ -113,14 +113,12 @@ abstract class SpanContainQuery extends SpanQuery implements Cloneable {
     SpanQuery rewrittenBig = (SpanQuery) big.rewrite(reader);
     SpanQuery rewrittenLittle = (SpanQuery) little.rewrite(reader);
     if (big != rewrittenBig || little != rewrittenLittle) {
-      try {
+
         SpanContainQuery clone = (SpanContainQuery) super.clone();
         clone.big = rewrittenBig;
         clone.little = rewrittenLittle;
         return clone;
-      } catch (CloneNotSupportedException e) {
-        throw new AssertionError(e);
-      }
+
     }
     return super.rewrite(reader);
   }

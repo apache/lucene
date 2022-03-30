@@ -43,7 +43,7 @@ import org.apache.lucene.index.IndexReader;
  * <p>See also additional queries available in the <a
  * href="{@docRoot}/../queries/overview-summary.html">Queries module</a>
  */
-public abstract class Query {
+public abstract class Query implements Cloneable{
 
   /**
    * Prints a query to a string, with <code>field</code> assumed to be the default field and
@@ -135,5 +135,14 @@ public abstract class Query {
    */
   protected final int classHash() {
     return CLASS_NAME_HASH;
+  }
+
+  @Override
+  public Query clone() {
+    try {
+      return (Query) super.clone();
+    } catch (CloneNotSupportedException e) {
+      throw new Error("This cannot happen: Failing to clone Query", e);
+    }
   }
 }

@@ -252,13 +252,11 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
       rewrittenClauses.add(query);
     }
     if (actuallyRewritten) {
-      try {
+
         SpanNearQuery rewritten = (SpanNearQuery) clone();
         rewritten.clauses = rewrittenClauses;
         return rewritten;
-      } catch (CloneNotSupportedException e) {
-        throw new AssertionError(e);
-      }
+
     }
     return super.rewrite(reader);
   }
