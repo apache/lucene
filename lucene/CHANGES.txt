@@ -74,7 +74,9 @@ have readonly `Monitor` instances. (Niko Usai)
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10494: Implement method to bulk add all collection elements to a PriorityQueue.
+  (Bauyrzhan Sakhariyev)
 
 Optimizations
 ---------------------
