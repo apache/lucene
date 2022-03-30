@@ -353,8 +353,13 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     IndexWriter iw = new IndexWriter(indexDir, newIndexWriterConfig(new MockAnalyzer(random())));
 
     FacetsConfig config = new FacetsConfig();
+
+    // Add a doc without the price field to exercise the bug found in LUCENE-10491:
+    Document doc = new Document();
+    iw.addDocument(config.build(taxoWriter, doc));
+
     for (int i = 0; i < 4; i++) {
-      Document doc = new Document();
+      doc = new Document();
       doc.add(new NumericDocValuesField("price", (i + 1)));
       doc.add(new FacetField("a", Integer.toString(i % 2)));
       iw.addDocument(config.build(taxoWriter, doc));
