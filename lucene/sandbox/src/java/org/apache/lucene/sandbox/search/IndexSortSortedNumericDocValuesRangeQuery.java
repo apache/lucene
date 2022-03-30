@@ -43,7 +43,6 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.NumericUtils;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -330,14 +329,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   private static Number convert(Type type, long topValue) {
     if (type == Type.INT) {
       return (int) topValue;
-    } else if (type == Type.DOUBLE) {
-      return NumericUtils.sortableLongToDouble(topValue);
-    } else if (type == Type.FLOAT) {
-      return NumericUtils.sortableIntToFloat((int) topValue);
     } else if (type == Type.LONG) {
       return topValue;
     } else {
-      throw new AssertionError("The sorted field type is not numeric type");
+      throw new IllegalArgumentException(
+          "The sorted field type '" + type.name() + "' is not supported numeric type");
     }
   }
 

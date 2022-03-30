@@ -37,16 +37,42 @@ public class TestIndexSortSortedNumericDocValuesRangeQueryByType extends LuceneT
     testIndexSortDocValuesWithEvenLength(false);
   }
 
+  public void testUnsupportedIndexSortDocValues() throws Exception {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    final SortField.Type type =
+        RandomPicks.randomFrom(
+            random(), new SortField.Type[] {SortField.Type.FLOAT, SortField.Type.DOUBLE});
+    Sort indexSort = new Sort(new SortedNumericSortField("field", type, false));
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+
+    writer.addDocument(createDocument("field", -80));
+    writer.addDocument(createDocument("field", -5));
+    writer.addDocument(createDocument("field", 0));
+    writer.addDocument(createDocument("field", 0));
+    writer.addDocument(createDocument("field", 30));
+    writer.addDocument(createDocument("field", 35));
+
+    DirectoryReader reader = writer.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    assertThrows(
+        IllegalArgumentException.class, () -> searcher.count(createQuery("field", -80, -80)));
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
   private void testIndexSortDocValuesWithEvenLength(boolean reverse) throws Exception {
     Directory dir = newDirectory();
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     final SortField.Type type =
         RandomPicks.randomFrom(
-            random(),
-            new SortField.Type[] {
-              SortField.Type.INT, SortField.Type.FLOAT, SortField.Type.LONG, SortField.Type.DOUBLE
-            });
+            random(), new SortField.Type[] {SortField.Type.INT, SortField.Type.LONG});
     Sort indexSort = new Sort(new SortedNumericSortField("field", type, reverse));
     iwc.setIndexSort(indexSort);
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
