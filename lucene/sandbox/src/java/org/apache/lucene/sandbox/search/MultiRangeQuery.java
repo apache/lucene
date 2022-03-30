@@ -43,8 +43,7 @@ import org.apache.lucene.util.DocIdSetBuilder;
 
 /**
  * Abstract class for range queries involving multiple ranges against physical points such as {@code
- * IntPoints} All ranges are logically ORed together TODO: Add capability for handling overlapping
- * ranges at rewrite time
+ * IntPoints} All ranges are logically ORed together
  *
  * @lucene.experimental
  */
