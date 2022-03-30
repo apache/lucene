@@ -43,7 +43,7 @@ import org.apache.lucene.index.IndexReader;
  * <p>See also additional queries available in the <a
  * href="{@docRoot}/../queries/overview-summary.html">Queries module</a>
  */
-public abstract class Query implements Cloneable{
+public abstract class Query implements Cloneable {
 
   /**
    * Prints a query to a string, with <code>field</code> assumed to be the default field and
