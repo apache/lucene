@@ -22,11 +22,9 @@ import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
 
-  @Test
   /**
    * Tests the expert constructors in {@link DirectoryTaxonomyReader} and checks the {@link
    * DirectoryTaxonomyReader#getInternalIndexReader()} API. Also demonstrates the need for the
