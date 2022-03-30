@@ -48,7 +48,7 @@ import org.apache.lucene.util.DocIdSetBuilder;
  *
  * @lucene.experimental
  */
-public abstract class MultiRangeQuery extends Query {
+public abstract class MultiRangeQuery extends Query implements Cloneable {
   /** Representation of a single clause in a MultiRangeQuery */
   public static final class RangeClause {
     byte[] lowerValue;
@@ -142,7 +142,7 @@ public abstract class MultiRangeQuery extends Query {
   final String field;
   final int numDims;
   final int bytesPerDim;
-  final List<RangeClause> rangeClauses;
+  List<RangeClause> rangeClauses;
   /**
    * Expert: create a multidimensional range query with multiple connected ranges
    *
@@ -176,12 +176,13 @@ public abstract class MultiRangeQuery extends Query {
     }
     List<RangeClause> mergedRanges = mergeOverlappingRanges(rangeClauses, bytesPerDim);
     if (mergedRanges != rangeClauses) {
-      return new MultiRangeQuery(field, numDims, bytesPerDim, mergedRanges) {
-        @Override
-        protected String toString(int dimension, byte[] value) {
-          return MultiRangeQuery.this.toString(dimension, value);
-        }
-      };
+      try {
+        MultiRangeQuery clone = (MultiRangeQuery) super.clone();
+        clone.rangeClauses = mergedRanges;
+        return clone;
+      } catch (CloneNotSupportedException e) {
+        throw new AssertionError(e);
+      }
     } else {
       return this;
     }
