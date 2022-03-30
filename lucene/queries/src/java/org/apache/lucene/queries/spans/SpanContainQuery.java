@@ -29,7 +29,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 
-abstract class SpanContainQuery extends SpanQuery implements Cloneable {
+abstract class SpanContainQuery extends SpanQuery {
 
   SpanQuery big;
   SpanQuery little;
