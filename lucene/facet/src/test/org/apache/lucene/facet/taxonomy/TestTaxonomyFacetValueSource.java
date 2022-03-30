@@ -655,14 +655,14 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     List<FacetResult> actual = facets.getAllDims(10);
 
-      // test default implementation of getTopDims
-      if (actual.size() > 0) {
-        List<FacetResult> topDimsResults1 = facets.getTopDims(1, 10);
-        assertEquals(actual.get(0), topDimsResults1.get(0));
-      }
+    // test default implementation of getTopDims
+    if (actual.size() > 0) {
+      List<FacetResult> topDimsResults1 = facets.getTopDims(1, 10);
+      assertEquals(actual.get(0), topDimsResults1.get(0));
+    }
 
-      // Messy: fixup ties
-      sortTies(actual);
+    // Messy: fixup ties
+    sortTies(actual);
 
     if (VERBOSE) {
       System.out.println("expected=\n" + expected.toString());
