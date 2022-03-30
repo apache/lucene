@@ -45,7 +45,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
@@ -56,8 +55,6 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.spatial3d.geom.GeoArea;
 import org.apache.lucene.spatial3d.geom.GeoAreaFactory;
 import org.apache.lucene.spatial3d.geom.GeoBBoxFactory;
@@ -76,6 +73,7 @@ import org.apache.lucene.spatial3d.geom.XYZSolidFactory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.DocIdSetBuilder;
@@ -1041,29 +1039,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
         System.err.println("  using query: " + query);
       }
 
-      final FixedBitSet hits = new FixedBitSet(r.maxDoc());
-
-      s.search(
-          query,
-          new SimpleCollector() {
-
-            private int docBase;
-
-            @Override
-            public ScoreMode scoreMode() {
-              return ScoreMode.COMPLETE_NO_SCORES;
-            }
-
-            @Override
-            protected void doSetNextReader(LeafReaderContext context) throws IOException {
-              docBase = context.docBase;
-            }
-
-            @Override
-            public void collect(int doc) {
-              hits.set(docBase + doc);
-            }
-          });
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
       if (VERBOSE) {
         System.err.println("  hitCount: " + hits.cardinality());
