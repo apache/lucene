@@ -22,6 +22,11 @@ package org.apache.lucene.facet.taxonomy;
  */
 public abstract class AssociationAggregationFunction {
 
+  // TODO: Would be nice to add support for MIN as well here, but there are a number of places
+  // in our facet implementations where we attribute special meaning to 0 and assume that valid
+  // values are always positive. I think we'd want to break that assumption for MIN to really
+  // make sense.
+
   /** Sole constructor. */
   protected AssociationAggregationFunction() {}
 
