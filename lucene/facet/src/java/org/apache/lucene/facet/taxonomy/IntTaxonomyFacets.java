@@ -176,22 +176,23 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       return null;
     }
 
-    ChildOrdsResult childOrdsResult = getChildOrdsResult(dimConfig, dimOrd,topN);
+    ChildOrdsResult childOrdsResult = getChildOrdsResult(dimConfig, dimOrd, topN);
 
     if (childOrdsResult.q == null || childOrdsResult.aggregatedValue == 0) {
       return null;
     }
 
     LabelAndValue[] labelValues = getLabelValues(childOrdsResult.q, cp.length);
-    return new FacetResult(dim, path, childOrdsResult.aggregatedValue, labelValues, childOrdsResult.childCount);
+    return new FacetResult(
+        dim, path, childOrdsResult.aggregatedValue, labelValues, childOrdsResult.childCount);
   }
 
   /**
-   * Returns label values for dims
-   * This portion of code is moved from getTopChildren because getTopDims needs to reuse it
+   * Returns label values for dims This portion of code is moved from getTopChildren because
+   * getTopDims needs to reuse it
    */
   private LabelAndValue[] getLabelValues(TopOrdAndIntQueue q, int facetLabelLength)
-          throws IOException {
+      throws IOException {
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     int[] ordinals = new int[labelValues.length];
     int[] values = new int[labelValues.length];
@@ -210,12 +211,12 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   }
 
   /**
-   * Returns ChildOrdsResult that contains results of dimCount(totalValue), childCount, and
-   * the queue for the dimension's top children to populate FacetResult in getPathResult.
-   * This portion of code is moved from getTopChildren because getTopDims needs to reuse it
-   *
+   * Returns ChildOrdsResult that contains results of dimCount(totalValue), childCount, and the
+   * queue for the dimension's top children to populate FacetResult in getPathResult. This portion
+   * of code is moved from getTopChildren because getTopDims needs to reuse it
    */
-  private ChildOrdsResult getChildOrdsResult(DimConfig dimConfig, int dimOrd, int topN) throws IOException {
+  private ChildOrdsResult getChildOrdsResult(DimConfig dimConfig, int dimOrd, int topN)
+      throws IOException {
     TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
     int bottomValue = 0;
 
@@ -280,14 +281,14 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     return new ChildOrdsResult (aggregatedValue, childCount, q);
   }
 
-
   /** Returns value/count of a dimension. */
   private int getDimValue(
-          FacetsConfig.DimConfig dimConfig,
-          String dim,
-          int dimOrd,
-          int topN,
-          HashMap<String, ChildOrdsResult> dimToChildOrdsResult) throws IOException {
+      FacetsConfig.DimConfig dimConfig,
+      String dim,
+      int dimOrd,
+      int topN,
+      HashMap<String, ChildOrdsResult> dimToChildOrdsResult)
+      throws IOException {
 
     // if dimConfig.hierarchical == true || dim is multiValued and dim count has been aggregated at
     // indexing time, return dimCount directly
@@ -317,18 +318,18 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
     PriorityQueue<DimValueResult> pq =
-            new PriorityQueue<>(topNDims) {
-              @Override
-              protected boolean lessThan(DimValueResult a, DimValueResult b) {
-                if (a.value > b.value) {
-                  return false;
-                } else if (a.value < b.value) {
-                  return true;
-                } else {
-                  return a.dim.compareTo(b.dim) > 0;
-                }
-              }
-            };
+        new PriorityQueue<>(topNDims) {
+          @Override
+          protected boolean lessThan(DimValueResult a, DimValueResult b) {
+            if (a.value > b.value) {
+              return false;
+            } else if (a.value < b.value) {
+              return true;
+            } else {
+              return a.dim.compareTo(b.dim) > 0;
+            }
+          }
+        };
 
     // create hashMap to store the ChildOrdsResult to avoid calling getChildOrdsResult for all dims
     HashMap<String, ChildOrdsResult> dimToChildOrdsResult = new HashMap<>();
@@ -351,7 +352,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
               pq.add(new DimValueResult(dim, dimOrd, dimCount));
             } else {
               if (dimCount > pq.top().value
-                      || (dimCount == pq.top().value && dim.compareTo(pq.top().dim) < 0)) {
+                  || (dimCount == pq.top().value && dim.compareTo(pq.top().dim) < 0)) {
                 DimValueResult bottomDim = pq.top();
                 bottomDim.dim = dim;
                 bottomDim.value = dimCount;
@@ -364,10 +365,8 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
 
-    // get FacetResult for topNDims
-    int resultSize = pq.size();
     // use fixed-size array to reduce space usage
-    FacetResult[] results = new FacetResult[resultSize];
+    FacetResult[] results = new FacetResult[pq.size()];
 
     while (pq.size() > 0) {
       DimValueResult dimValueResult = pq.pop();
@@ -380,20 +379,25 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         FacetsConfig.DimConfig dimConfig = config.getDimConfig(dim);
         childOrdsResult = getChildOrdsResult(dimConfig, dimValueResult.dimOrd, topNChildren);
       }
-      // FacetResult requires String[] path, and path is always empty for getTopDims. FacetLabelLength
-      // is always equal to 1 when FacetLabel is constructed with FacetLabel(dim, emptyPath), and therefore,
+      // FacetResult requires String[] path, and path is always empty for getTopDims.
+      // FacetLabelLength
+      // is always equal to 1 when FacetLabel is constructed with FacetLabel(dim, emptyPath), and
+      // therefore,
       // 1 is passed in when calling getLabelValues
-      FacetResult facetResult = new FacetResult(dimValueResult.dim, emptyPath, dimValueResult.value,
-              getLabelValues(childOrdsResult.q, 1), childOrdsResult.childCount);
-      resultSize--;
-      results[resultSize] = facetResult;
+      FacetResult facetResult =
+          new FacetResult(
+              dimValueResult.dim,
+              emptyPath,
+              dimValueResult.value,
+              getLabelValues(childOrdsResult.q, 1),
+              childOrdsResult.childCount);
+      results[pq.size()] = facetResult;
     }
     return Arrays.asList(results);
   }
 
   /**
    * Creates DimValueResult to store the label, dim ordinal and dim count of a dim in priority queue
-   *
    */
   private static class DimValueResult {
     String dim;

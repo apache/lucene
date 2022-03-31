@@ -249,10 +249,10 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // test getTopDims(0, 1)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getTopDims(0, 1);
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(0, 1);
+        });
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(
@@ -664,10 +664,10 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // test getTopDims(0, 1)
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              facets.getTopDims(0, 1);
-            });
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(0, 1);
+        });
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(
