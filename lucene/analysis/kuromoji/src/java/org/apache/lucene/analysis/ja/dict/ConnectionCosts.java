@@ -16,27 +16,15 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 
 /** n-gram connection cost data */
-public final class ConnectionCosts {
-
-  public static final String FILENAME_SUFFIX = ".dat";
-  public static final String HEADER = "kuromoji_cc";
-  public static final int VERSION = 1;
-
-  private final ByteBuffer buffer;
-  private final int forwardSize;
+public final class ConnectionCosts extends org.apache.lucene.analysis.morph.ConnectionCosts {
 
   /**
    * Create a {@link ConnectionCosts} from an external resource path.
@@ -53,36 +41,14 @@ public final class ConnectionCosts {
   }
 
   private ConnectionCosts(IOSupplier<InputStream> connectionCostResource) throws IOException {
-    try (InputStream is = new BufferedInputStream(connectionCostResource.get())) {
-      final DataInput in = new InputStreamDataInput(is);
-      CodecUtil.checkHeader(in, HEADER, VERSION, VERSION);
-      forwardSize = in.readVInt();
-      int backwardSize = in.readVInt();
-      int size = forwardSize * backwardSize;
-
-      // copy the matrix into a direct byte buffer
-      final ByteBuffer tmpBuffer = ByteBuffer.allocateDirect(size * 2);
-      int accum = 0;
-      for (int j = 0; j < backwardSize; j++) {
-        for (int i = 0; i < forwardSize; i++) {
-          accum += in.readZInt();
-          tmpBuffer.putShort((short) accum);
-        }
-      }
-      buffer = tmpBuffer.asReadOnlyBuffer();
-    }
+    super(
+        connectionCostResource, DictionaryConstants.CONN_COSTS_HEADER, DictionaryConstants.VERSION);
   }
 
   private static InputStream getClassResource() throws IOException {
     final String resourcePath = ConnectionCosts.class.getSimpleName() + FILENAME_SUFFIX;
     return IOUtils.requireResourceNonNull(
         ConnectionCosts.class.getResourceAsStream(resourcePath), resourcePath);
-  }
-
-  public int get(int forwardId, int backwardId) {
-    // map 2d matrix into a single dimension short array
-    int offset = (backwardId * forwardSize + forwardId) * 2;
-    return buffer.getShort(offset);
   }
 
   public static ConnectionCosts getInstance() {

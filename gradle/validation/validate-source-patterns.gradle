@@ -108,6 +108,7 @@ allprojects {
 configure(project(':lucene:benchmark')) {
   project.tasks.withType(ValidateSourcePatternsTask) {
     sourceFiles.exclude 'data/**'
+    sourceFiles.exclude 'work/**'
 
     // Known .txt offenders.
     sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
