@@ -106,6 +106,8 @@ public class FieldExistsQuery extends Query {
             default:
               throw new AssertionError();
           }
+        } else {
+          throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
 
         if (iterator == null) {
@@ -144,9 +146,9 @@ public class FieldExistsQuery extends Query {
           }
 
           return super.count(context);
+        } else {
+          throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
-
-        return 0;
       }
 
       @Override
@@ -161,5 +163,11 @@ public class FieldExistsQuery extends Query {
         return true;
       }
     };
+  }
+
+  private String buildErrorMsg(FieldInfo fieldInfo) {
+    return "FieldExistsQuery requires that the field indexes doc values, norms or vectors, but field '"
+        + fieldInfo.name
+        + "' exists and indexes neither of these data structures";
   }
 }

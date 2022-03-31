@@ -532,7 +532,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
 
     assertNormsCountWithShortcut(searcher, "text", randomNumDocs);
     assertNormsCountWithShortcut(searcher, "doesNotExist", 0);
-    assertNormsCountWithShortcut(searcher, "text_n", 0);
+    expectThrows(IllegalStateException.class, () -> searcher.count(new FieldExistsQuery("text_n")));
 
     // docs that have a text field that analyzes to an empty token
     // stream still have a recorded norm value but don't show up in
@@ -681,6 +681,24 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = newSearcher(reader);
         assertEquals(1, searcher.count(new FieldExistsQuery("vector")));
+      }
+    }
+  }
+
+  public void testInvalidFieldThrowsException() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      // 1st segment has the field, but 2nd one does not
+      Document doc = new Document();
+      doc.add(new StringField("vector", "a", Store.NO));
+      iw.addDocument(doc);
+      iw.commit();
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        expectThrows(
+            IllegalStateException.class, () -> searcher.search(new FieldExistsQuery("vector"), 1));
+        expectThrows(
+            IllegalStateException.class, () -> searcher.count(new FieldExistsQuery("vector")));
       }
     }
   }
