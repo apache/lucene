@@ -134,13 +134,6 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     List<FacetResult> allTopDimsResults = facets.getTopDims(10, 10);
     assertEquals(results, allTopDimsResults);
 
-    // test getTopDims(n, 10)
-    if (allTopDimsResults.size() > 0) {
-      for (int i = 1; i < results.size(); i++) {
-        assertEquals(results.subList(0, i), facets.getTopDims(i, 10));
-      }
-    }
-
     // Now user drills down on Publish Date/2010:
     DrillDownQuery q2 = new DrillDownQuery(config);
     q2.add("Publish Date", "2010");
@@ -719,10 +712,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "calling getFacetResults twice should return the .equals()=true result", res1, res2);
 
-    // test getTopDims
+    // test getTopDims(n, 10)
     if (res1.size() > 0) {
-      List<FacetResult> topNDimsResult = facets.getTopDims(1, 10);
-      assertEquals(res1.get(0), topNDimsResult.get(0));
+      for (int i = 1; i < res1.size(); i++) {
+        assertEquals(res1.subList(0, i), facets.getTopDims(i, 10));
+      }
     }
 
     iw.close();

@@ -345,23 +345,23 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         // if dimOrd = -1, we skip this dim, else call getDimValue
         if (dimOrd != -1) {
           dimCount = getDimValue(dimConfig, dim, dimOrd, topNChildren, dimToChildOrdsResult);
-        }
-        if (dimCount != 0) {
-          // use priority queue to store DimValueResult for topNDims
-          if (pq.size() < topNDims) {
-            pq.add(new DimValueResult(dim, dimOrd, dimCount));
-          } else {
-            if (dimCount > pq.top().value
-                    || (dimCount == pq.top().value && dim.compareTo(pq.top().dim) < 0)) {
-              DimValueResult bottomDim = pq.top();
-              bottomDim.dim = dim;
-              bottomDim.value = dimCount;
-              pq.updateTop();
+          if (dimCount != 0) {
+            // use priority queue to store DimValueResult for topNDims
+            if (pq.size() < topNDims) {
+              pq.add(new DimValueResult(dim, dimOrd, dimCount));
+            } else {
+              if (dimCount > pq.top().value
+                      || (dimCount == pq.top().value && dim.compareTo(pq.top().dim) < 0)) {
+                DimValueResult bottomDim = pq.top();
+                bottomDim.dim = dim;
+                bottomDim.value = dimCount;
+                pq.updateTop();
+              }
             }
           }
         }
-        ord = siblings[ord];
       }
+      ord = siblings[ord];
     }
 
     // get FacetResult for topNDims
