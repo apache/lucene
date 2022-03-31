@@ -18,11 +18,7 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsConfig;
@@ -110,6 +106,22 @@ abstract class TaxonomyFacets extends Facets {
    */
   public boolean siblingsLoaded() {
     return siblings != null;
+  }
+
+  /**
+   * Returns existing int[] mapping each ordinal to its next sibling to avoid re-creating int[] for siblings in subclass
+   *
+   */
+  public int[] getExistingSiblings() throws IOException {
+    return childrenLoaded() ? this.siblings : getSiblings();
+  }
+
+  /**
+   * Returns existing int[] mapping each ordinal to its first child to avoid re-creating int[] for children in subclass
+   *
+   */
+  public int[] getExistingChildren() throws IOException {
+    return childrenLoaded() ? this.children : getChildren();
   }
 
   /**

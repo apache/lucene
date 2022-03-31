@@ -242,8 +242,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(results, allDimsResults);
 
     // test getTopDims(0, 1)
-    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
-    assertEquals(0, topDimsResults2.size());
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              facets.getTopDims(0, 1);
+            });
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(
@@ -649,8 +652,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     }
 
     // test getTopDims(0, 1)
-    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
-    assertEquals(0, topDimsResults2.size());
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              facets.getTopDims(0, 1);
+            });
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(
@@ -996,10 +1002,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       assertEquals(expected, actual);
 
       // test default implementation of getTopDims
-
-      List<FacetResult> topNDimsResult = facets.getTopDims(actual.size(), 10);
-      sortTies(topNDimsResult);
-      assertEquals(actual, topNDimsResult);
+      if (actual.size() > 0) {
+        List<FacetResult> topNDimsResult = facets.getTopDims(actual.size(), 10);
+        sortTies(topNDimsResult);
+        assertEquals(actual, topNDimsResult);
+      }
 
       // Test facet labels for each matching test doc
       List<List<FacetLabel>> actualLabels = getAllTaxonomyFacetLabels(null, tr, fc);
