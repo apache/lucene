@@ -398,9 +398,8 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
         if (pointValues == null || pointValues.size() != pointValues.getDocCount()) {
           return super.count(context);
         }
-        List<RangeClause> mergeRangeClause = mergeOverlappingRanges(rangeClauses, bytesPerDim);
         int total = 0;
-        for (RangeClause rangeClause : mergeRangeClause) {
+        for (RangeClause rangeClause : rangeClauses) {
           PointRangeQuery pointRangeQuery =
               new PointRangeQuery(field, rangeClause.lowerValue, rangeClause.upperValue, numDims) {
                 @Override
@@ -408,7 +407,10 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
                   return MultiRangeQuery.this.toString(dimension, value);
                 }
               };
-          int count = pointRangeQuery.createWeight(searcher, scoreMode, boost).count(context);
+          int count =
+              pointRangeQuery
+                  .createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f)
+                  .count(context);
 
           if (count != -1) {
             total += count;
