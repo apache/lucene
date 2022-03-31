@@ -72,6 +72,9 @@ import org.apache.lucene.search.Weight;
  *       field, lowerValue, upperValue, fallbackQuery);
  * </pre>
  *
+ * <b>Notes</b>: only {@code SortField.Type.LONG} and {@code SortField.Type.INT} are supported at
+ * the moment.
+ *
  * @lucene.experimental
  */
 public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
@@ -252,6 +255,10 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
     // Perform a binary search to find the first document with value >= lower.
     ValueComparator comparator = loadComparator(sortField, lower, context);
+    if (comparator == null) {
+      // The value comparator is not available for this type of sortField
+      return null;
+    }
     int low = 0;
     int high = maxDoc - 1;
 
@@ -310,12 +317,18 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     FieldComparator<Number> fieldComparator =
         (FieldComparator<Number>) sortField.getComparator(1, false);
     // We expect the sortField to be SortedNumericSortField
+    final Number convertedTopValue;
     if (sortField instanceof SortedNumericSortField) {
-      fieldComparator.setTopValue(
-          convert(((SortedNumericSortField) sortField).getNumericType(), topValue));
+      convertedTopValue = convert(((SortedNumericSortField) sortField).getNumericType(), topValue);
     } else {
-      fieldComparator.setTopValue(convert(sortField.getType(), topValue));
+      convertedTopValue = convert(sortField.getType(), topValue);
     }
+
+    if (convertedTopValue == null) {
+      // The topValue could not be converted to the sortField type, no ValueComparator available
+      return null;
+    }
+    fieldComparator.setTopValue(convertedTopValue);
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);
     int direction = sortField.getReverse() ? -1 : 1;
@@ -332,8 +345,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     } else if (type == Type.LONG) {
       return topValue;
     } else {
-      throw new IllegalArgumentException(
-          "The sorted field type '" + type.name() + "' is not supported numeric type");
+      return null;
     }
   }
 

@@ -40,8 +40,8 @@ Optimizations
 Bug Fixes
 ---------------------
 
-* LUCENE-10466: IndexSortSortedNumericDocValuesRangeQuery unconditionally 
-  assumes the usage of the LONG-encoded SortField (Andriy Redko)
+* LUCENE-10466: Ensure IndexSortSortedNumericDocValuesRangeQuery handles sort field 
+  types besides LONG (Andriy Redko)
 
 Other
 ---------------------

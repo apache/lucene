@@ -62,9 +62,7 @@ public class SortedNumericSortField extends SortField {
   }
 
   /**
-   * Creates a sort, possibly in reverse, by the minimum value in the set for the document. Please
-   * note, only {@code SortField.Type.LONG} and {@code SortField.Type.INT} are supported at the
-   * moment.
+   * Creates a sort, possibly in reverse, by the minimum value in the set for the document.
    *
    * @param field Name of field to sort by. Must not be null.
    * @param type Type of values
