@@ -37,7 +37,7 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestNormsFieldExistsQuery extends LuceneTestCase {
 
-  public void testRandom() throws IOException {
+  public void testNormsRandom() throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
@@ -61,7 +61,7 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
       final IndexSearcher searcher = newSearcher(reader);
       iw.close();
 
-      assertSameMatches(
+      assertNormsSameMatches(
           searcher,
           new TermQuery(new Term("has_value", "yes")),
           new NormsFieldExistsQuery("text1"),
@@ -72,7 +72,7 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     }
   }
 
-  public void testApproximation() throws IOException {
+  public void testNormsApproximation() throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
@@ -103,14 +103,14 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
       BooleanQuery.Builder bq1 = new BooleanQuery.Builder();
       bq1.add(new TermQuery(new Term("f", "yes")), Occur.MUST);
       bq1.add(new NormsFieldExistsQuery("text1"), Occur.FILTER);
-      assertSameMatches(searcher, ref.build(), bq1.build(), true);
+      assertNormsSameMatches(searcher, ref.build(), bq1.build(), true);
 
       reader.close();
       dir.close();
     }
   }
 
-  public void testScore() throws IOException {
+  public void testNormsScore() throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
@@ -140,14 +140,14 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
               new ConstantScoreQuery(new TermQuery(new Term("has_value", "yes"))), boost);
 
       final Query q1 = new BoostQuery(new NormsFieldExistsQuery("text1"), boost);
-      assertSameMatches(searcher, ref, q1, true);
+      assertNormsSameMatches(searcher, ref, q1, true);
 
       reader.close();
       dir.close();
     }
   }
 
-  public void testMissingField() throws IOException {
+  public void testNormsMissingField() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     iw.addDocument(new Document());
@@ -160,7 +160,7 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testAllDocsHaveField() throws IOException {
+  public void testNormsAllDocsHaveField() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
@@ -175,7 +175,7 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testFieldExistsButNoDocsHaveField() throws IOException {
+  public void testNormsFieldExistsButNoDocsHaveField() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     // 1st segment has the field, but 2nd one does not
@@ -193,7 +193,7 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
+  private void assertNormsSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
@@ -207,7 +207,7 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     }
   }
 
-  public void testQueryMatchesCount() throws IOException {
+  public void testNormsQueryMatchesCount() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
@@ -235,27 +235,27 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
 
-    assertCountWithShortcut(searcher, "text", randomNumDocs);
-    assertCountWithShortcut(searcher, "doesNotExist", 0);
-    assertCountWithShortcut(searcher, "text_n", 0);
+    assertNormsCountWithShortcut(searcher, "text", randomNumDocs);
+    assertNormsCountWithShortcut(searcher, "doesNotExist", 0);
+    assertNormsCountWithShortcut(searcher, "text_n", 0);
 
     // docs that have a text field that analyzes to an empty token
     // stream still have a recorded norm value but don't show up in
     // Reader.getDocCount(field), so we can't use the shortcut for
     // these fields
-    assertCountWithoutShortcut(searcher, "text_s", randomNumDocs);
+    assertNormsCountWithoutShortcut(searcher, "text_s", randomNumDocs);
 
     // We can still shortcut with deleted docs
     w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     w.deleteDocuments(new Term("text", "text")); // deletes all but the first doc
     DirectoryReader reader2 = w.getReader();
     final IndexSearcher searcher2 = new IndexSearcher(reader2);
-    assertCountWithShortcut(searcher2, "text", 1);
+    assertNormsCountWithShortcut(searcher2, "text", 1);
 
     IOUtils.close(reader, reader2, w, dir);
   }
 
-  private void assertCountWithoutShortcut(IndexSearcher searcher, String field, int expectedCount)
+  private void assertNormsCountWithoutShortcut(IndexSearcher searcher, String field, int expectedCount)
       throws IOException {
     final Query q = new NormsFieldExistsQuery(field);
     final Weight weight = searcher.createWeight(q, ScoreMode.COMPLETE, 1);
@@ -263,7 +263,7 @@ public class TestNormsFieldExistsQuery extends LuceneTestCase {
     assertEquals(expectedCount, searcher.count(q));
   }
 
-  private void assertCountWithShortcut(IndexSearcher searcher, String field, int numMatchingDocs)
+  private void assertNormsCountWithShortcut(IndexSearcher searcher, String field, int numMatchingDocs)
       throws IOException {
     final Query testQuery = new NormsFieldExistsQuery(field);
     assertEquals(numMatchingDocs, searcher.count(testQuery));

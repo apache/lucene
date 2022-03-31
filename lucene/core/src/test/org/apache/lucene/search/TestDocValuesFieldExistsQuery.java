@@ -39,7 +39,7 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
-  public void testRewriteWithTermsPresent() throws IOException {
+  public void testDocValuesRewriteWithTermsPresent() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     final int numDocs = atLeast(100);
@@ -57,7 +57,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testRewriteWithPointValuesPresent() throws IOException {
+  public void testDocValuesRewriteWithPointValuesPresent() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     final int numDocs = atLeast(100);
@@ -75,7 +75,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testNoRewrite() throws IOException {
+  public void testDocValuesNoRewrite() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     final int numDocs = atLeast(100);
@@ -100,7 +100,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testNoRewriteWithDocValues() throws IOException {
+  public void testDocValuesNoRewriteWithDocValues() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     final int numDocs = atLeast(100);
@@ -125,7 +125,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testRandom() throws IOException {
+  public void testDocValuesRandom() throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
@@ -151,12 +151,12 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
       final IndexSearcher searcher = newSearcher(reader);
       iw.close();
 
-      assertSameMatches(
+      assertDocValuesSameMatches(
           searcher,
           new TermQuery(new Term("has_value", "yes")),
           new DocValuesFieldExistsQuery("dv1"),
           false);
-      assertSameMatches(
+      assertDocValuesSameMatches(
           searcher,
           new TermQuery(new Term("has_value", "yes")),
           new DocValuesFieldExistsQuery("dv2"),
@@ -167,7 +167,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     }
   }
 
-  public void testApproximation() throws IOException {
+  public void testDocValuesApproximation() throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
@@ -200,19 +200,19 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
       BooleanQuery.Builder bq1 = new BooleanQuery.Builder();
       bq1.add(new TermQuery(new Term("f", "yes")), Occur.MUST);
       bq1.add(new DocValuesFieldExistsQuery("dv1"), Occur.FILTER);
-      assertSameMatches(searcher, ref.build(), bq1.build(), true);
+      assertDocValuesSameMatches(searcher, ref.build(), bq1.build(), true);
 
       BooleanQuery.Builder bq2 = new BooleanQuery.Builder();
       bq2.add(new TermQuery(new Term("f", "yes")), Occur.MUST);
       bq2.add(new DocValuesFieldExistsQuery("dv2"), Occur.FILTER);
-      assertSameMatches(searcher, ref.build(), bq2.build(), true);
+      assertDocValuesSameMatches(searcher, ref.build(), bq2.build(), true);
 
       reader.close();
       dir.close();
     }
   }
 
-  public void testScore() throws IOException {
+  public void testDocValuesScore() throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
@@ -244,17 +244,17 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
               new ConstantScoreQuery(new TermQuery(new Term("has_value", "yes"))), boost);
 
       final Query q1 = new BoostQuery(new DocValuesFieldExistsQuery("dv1"), boost);
-      assertSameMatches(searcher, ref, q1, true);
+      assertDocValuesSameMatches(searcher, ref, q1, true);
 
       final Query q2 = new BoostQuery(new DocValuesFieldExistsQuery("dv2"), boost);
-      assertSameMatches(searcher, ref, q2, true);
+      assertDocValuesSameMatches(searcher, ref, q2, true);
 
       reader.close();
       dir.close();
     }
   }
 
-  public void testMissingField() throws IOException {
+  public void testDocValuesMissingField() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     iw.addDocument(new Document());
@@ -267,7 +267,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testAllDocsHaveField() throws IOException {
+  public void testDocValuesAllDocsHaveField() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
@@ -282,7 +282,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testFieldExistsButNoDocsHaveField() throws IOException {
+  public void testDocValuesFieldExistsButNoDocsHaveField() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     // 1st segment has the field, but 2nd one does not
@@ -300,7 +300,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testQueryMatchesCount() throws IOException {
+  public void testDocValuesQueryMatchesCount() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
@@ -324,9 +324,9 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
 
-    assertSameCount(reader, searcher, "long", numMatchingDocs);
-    assertSameCount(reader, searcher, "string", numMatchingDocs);
-    assertSameCount(reader, searcher, "doesNotExist", 0);
+    assertDocValuesSameCount(reader, searcher, "long", numMatchingDocs);
+    assertDocValuesSameCount(reader, searcher, "string", numMatchingDocs);
+    assertDocValuesSameCount(reader, searcher, "doesNotExist", 0);
 
     // Test that we can't count in O(1) when there are deleted documents
     w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
@@ -340,7 +340,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     IOUtils.close(reader, reader2, w, dir);
   }
 
-  private void assertSameCount(
+  private void assertDocValuesSameCount(
       IndexReader reader, IndexSearcher searcher, String field, int numMatchingDocs)
       throws IOException {
     final Query testQuery = new DocValuesFieldExistsQuery(field);
@@ -349,7 +349,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
   }
 
-  private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
+  private void assertDocValuesSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);

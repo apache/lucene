@@ -31,7 +31,7 @@ import org.apache.lucene.util.VectorUtil;
 
 public class TestKnnVectorFieldExistsQuery extends LuceneTestCase {
 
-  public void testRandom() throws IOException {
+  public void testKnnVectorRandom() throws IOException {
     int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       try (Directory dir = newDirectory();
@@ -55,14 +55,14 @@ public class TestKnnVectorFieldExistsQuery extends LuceneTestCase {
         try (IndexReader reader = iw.getReader()) {
           IndexSearcher searcher = newSearcher(reader);
 
-          assertSameMatches(
+          assertKnnVectorSameMatches(
               searcher,
               new TermQuery(new Term("has_value", "yes")),
               new KnnVectorFieldExistsQuery("vector"),
               false);
 
           float boost = random().nextFloat() * 10;
-          assertSameMatches(
+          assertKnnVectorSameMatches(
               searcher,
               new BoostQuery(
                   new ConstantScoreQuery(new TermQuery(new Term("has_value", "yes"))), boost),
@@ -73,7 +73,7 @@ public class TestKnnVectorFieldExistsQuery extends LuceneTestCase {
     }
   }
 
-  public void testMissingField() throws IOException {
+  public void testKnnVectorMissingField() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       iw.addDocument(new Document());
@@ -85,7 +85,7 @@ public class TestKnnVectorFieldExistsQuery extends LuceneTestCase {
     }
   }
 
-  public void testAllDocsHaveField() throws IOException {
+  public void testKnnVectorAllDocsHaveField() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       Document doc = new Document();
@@ -99,7 +99,7 @@ public class TestKnnVectorFieldExistsQuery extends LuceneTestCase {
     }
   }
 
-  public void testConjunction() throws IOException {
+  public void testKnnVectorConjunction() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       int numDocs = atLeast(100);
@@ -133,7 +133,7 @@ public class TestKnnVectorFieldExistsQuery extends LuceneTestCase {
     }
   }
 
-  public void testFieldExistsButNoDocsHaveField() throws IOException {
+  public void testKnnVectorFieldExistsButNoDocsHaveField() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       // 1st segment has the field, but 2nd one does not
@@ -159,7 +159,7 @@ public class TestKnnVectorFieldExistsQuery extends LuceneTestCase {
     return v;
   }
 
-  private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
+  private void assertKnnVectorSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
