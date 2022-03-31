@@ -17,10 +17,13 @@
 package org.apache.lucene.facet.taxonomy.directory;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.IOUtils;
 
 public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
@@ -34,18 +37,49 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
    * (correctly) hiding away that complexity away from the user.
    */
   public void testAlwaysRefreshDirectoryTaxonomyReader() throws IOException {
-    Directory dir = newDirectory();
-    DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(dir);
-    tw.addCategory(new FacetLabel("a"));
-    tw.commit();
+//    Directory dir = newDirectory();
+//    DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(dir);
+//    tw.addCategory(new FacetLabel("a"));
+//    tw.commit();
+//
+//    DirectoryTaxonomyReader dtr1 = new AlwaysRefreshDirectoryTaxonomyReader(dir);
+//    tw.addCategory(new FacetLabel("b"));
+//    tw.commit();
+//    DirectoryTaxonomyReader dtr2 = dtr1.doOpenIfChanged();
+//
+//    assert dtr2.getSize() == 3; // one doc is by default for the root ordinal
+//    IOUtils.close(tw, dtr1, dtr2, dir);
 
-    DirectoryTaxonomyReader dtr1 = new AlwaysRefreshDirectoryTaxonomyReader(dir);
-    tw.addCategory(new FacetLabel("b"));
-    tw.commit();
+    Path taxoPath1 = createTempDir("dir1");
+    Directory dir1 = newFSDirectory(taxoPath1);
+    DirectoryTaxonomyWriter tw1 = new DirectoryTaxonomyWriter(dir1, IndexWriterConfig.OpenMode.CREATE);
+    tw1.addCategory(new FacetLabel("a"));
+    tw1.commit();
+    tw1.close();
+
+    DirectoryTaxonomyReader dtr1 = new AlwaysRefreshDirectoryTaxonomyReader(dir1);
+
+    Path taxoPath2 = createTempDir("dir2");
+    Directory dir2 = newFSDirectory(taxoPath2);
+    DirectoryTaxonomyWriter tw2 = new DirectoryTaxonomyWriter(dir2, IndexWriterConfig.OpenMode.CREATE);
+    tw2.addCategory(new FacetLabel("b"));
+    tw2.addCategory(new FacetLabel("c"));
+    tw2.commit();
+    tw2.close();
+
+    // delete all files from dir1
+    for (String file : dir1.listAll()) {
+      dir1.deleteFile(file);
+    }
+
+    // copy all index files from dir2
+    for (String file : dir2.listAll()) {
+      dir1.copyFrom(dir2, file, file, IOContext.READ);
+    }
+
+    // refresh the old directory reader to see if it has gotten the updates from the new copied files
     DirectoryTaxonomyReader dtr2 = dtr1.doOpenIfChanged();
-
-    assert dtr2.getSize() == 3; // one doc is by default for the root ordinal
-    IOUtils.close(tw, dtr1, dtr2, dir);
+    assert dtr2.getSize() == 3;
   }
 
   /**
