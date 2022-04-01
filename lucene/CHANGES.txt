@@ -98,7 +98,7 @@ Bug Fixes
 * LUCENE-10491: A correctness bug in the way scores are provided within TaxonomyFacetSumValueSource
   was fixed. (Michael McCandless, Greg Miller)
 
-* LUCENE-10470: Check if polygon has been already tessellated before we fail (we are failing some valid
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
   tessellations). (Ignacio Vera)
 
 Build
