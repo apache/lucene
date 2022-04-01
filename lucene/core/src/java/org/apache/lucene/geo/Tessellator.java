@@ -447,9 +447,7 @@ public final class Tessellator {
               tanMin = tan;
             }
           } else if ((tan < tanMin || (tan == tanMin && p.getX() > connection.getX()))
-              && isLocallyInside(p, holeNode)
-              // make sure we don't introduce collinear lines
-              && checkNonCollinearLines(p, holeNode)) {
+              && isLocallyInside(p, holeNode)) {
             connection = p;
             tanMin = tan;
           }
@@ -458,14 +456,6 @@ public final class Tessellator {
       }
     }
     return connection;
-  }
-
-  private static boolean checkNonCollinearLines(final Node a, final Node b) {
-    return (area(a.previous.getX(), a.previous.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
-            && area(a.getX(), a.getY(), b.getX(), b.getY(), b.next.getX(), b.next.getY()) != 0)
-        || (area(a.next.getX(), a.next.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
-            && area(a.getX(), a.getY(), b.getX(), b.getY(), b.previous.getX(), b.previous.getY())
-                != 0);
   }
 
   /** Check if the provided vertex is in the polygon and return it * */
@@ -837,7 +827,8 @@ public final class Tessellator {
       }
       searchNode = searchNode.next;
     } while (searchNode != start);
-    return false;
+    // if there is some area left, we failed
+    return signedArea(start, start) == 0;
   }
 
   /** Computes if edge defined by a and b overlaps with a polygon edge * */
@@ -1112,6 +1103,12 @@ public final class Tessellator {
 
   /** Determine whether the polygon defined between node start and node end is CW */
   private static boolean isCWPolygon(final Node start, final Node end) {
+    // The polygon must be CW
+    return (signedArea(start, end) < 0) ? true : false;
+  }
+
+  /** Determine the signed area between node start and node end */
+  private static double signedArea(final Node start, final Node end) {
     Node next = start;
     double windingSum = 0;
     do {
@@ -1122,7 +1119,7 @@ public final class Tessellator {
       next = next.next;
     } while (next.next != end);
     // The polygon must be CW
-    return (windingSum < 0) ? true : false;
+    return windingSum;
   }
 
   private static final boolean isLocallyInside(final Node a, final Node b) {
