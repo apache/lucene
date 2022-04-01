@@ -18,7 +18,6 @@ package org.apache.lucene.sandbox.search;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -155,16 +154,18 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     assertEquals("foo:{* TO [62 61 7a]]", q2.toString("bar"));
   }
 
-  public void testIndexSortDocValuesWithEvenLength() throws Exception {
-    final SortField.Type type =
-        RandomPicks.randomFrom(
-            random(),
-            new SortField.Type[] {
-              SortField.Type.INT, SortField.Type.LONG, SortField.Type.DOUBLE, SortField.Type.FLOAT
-            });
+  public void testNoIndexSortDocValuesWithEvenLength() throws Exception {
+    for (SortField.Type type : new SortField.Type[] {SortField.Type.FLOAT, SortField.Type.DOUBLE}) {
+      testIndexSortDocValuesWithEvenLength(true, type);
+      testIndexSortDocValuesWithEvenLength(false, type);
+    }
+  }
 
-    testIndexSortDocValuesWithEvenLength(true, type);
-    testIndexSortDocValuesWithEvenLength(false, type);
+  public void testIndexSortDocValuesWithEvenLength() throws Exception {
+    for (SortField.Type type : new SortField.Type[] {SortField.Type.INT, SortField.Type.LONG}) {
+      testIndexSortDocValuesWithEvenLength(true, type);
+      testIndexSortDocValuesWithEvenLength(false, type);
+    }
   }
 
   public void testIndexSortDocValuesWithEvenLength(boolean reverse, SortField.Type type)
