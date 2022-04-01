@@ -91,7 +91,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
    * @param categoryCache an ordinal to FacetLabel mapping if it already exists
    * @param taxoArrays taxonomy arrays that store the parent, siblings, children information
    */
-  public DirectoryTaxonomyReader(
+  DirectoryTaxonomyReader(
       DirectoryReader indexReader,
       DirectoryTaxonomyWriter taxoWriter,
       LRUHashMap<FacetLabel, Integer> ordinalCache,
