@@ -49,27 +49,62 @@ Other
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
+* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+  (Tomoko Uchida, Robert Muir)
+
+* LUCENE-10475: Merge dictionary builders in `util` package into `dict` package in Kuromoji and Nori.
+  All classes in `org.apache.lucene.analysis.[ja|ko].util` was moved to `org.apache.lucene.analysis.[ja|ko].dict`.
+  (Tomoko Uchida)
+
 ======================= Lucene 9.2.0 =======================
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10325: Facets API extended to support getTopFacets. (Yuting Gan)
 
 New Features
 ---------------------
-(No changes)
+
+* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
+  to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
+
+* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory`
+implementation. `Monitor` can be created with a readonly `QueryIndex` in order to
+have readonly `Monitor` instances. (Niko Usai)
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10494: Implement method to bulk add all collection elements to a PriorityQueue.
+  (Bauyrzhan Sakhariyev)
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10452: Hunspell: call checkCanceled less frequently to reduce the overhead (Peter Gromov)
+
+* LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
+
+* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
+  (Adrien Grand)
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
 Bug Fixes
 ---------------------
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
+
+* LUCENE-10491: A correctness bug in the way scores are provided within TaxonomyFacetSumValueSource
+  was fixed. (Michael McCandless, Greg Miller)
+
 * LUCENE-10470: Fix bug in the polygon tessellator when introducing collinear edges during polygon
   holes elimination. (Ignacio Vera)
+
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
 
 Other
 ---------------------
@@ -162,7 +197,7 @@ New Features
   points are indexed.
   (Quentin Pradet, Adrien Grand)
 
-* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all 
+* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all
   documents have the field.. (Alan Woodward)
 
 * LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
@@ -186,19 +221,16 @@ New Features
   based on TotalHitCountCollector that allows users to parallelize counting the
   number of hits. (Luca Cavanna, Adrien Grand)
 
-* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
-  to speed up computing the number of hits when possible. (Luca Cavanna, Adrien Grand)
-
 * LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
 
-* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss,
   Alan Woodward)
-  
+
 * LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
   the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
   (Gautam Worah, Ignacio Vera, Adrien Grand)
 
-* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)
 
 * LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
   nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
@@ -215,10 +247,10 @@ Improvements
 
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
-* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
+* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the
   PointValues abstract class. (Ignacio Vera, Adrien Grand)
-  
-* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree 
+
+* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree
   added in LUCENE-9820 (Ignacio Vera)
 
 * LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
@@ -304,9 +336,6 @@ Bug Fixes
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
 
-* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
-  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
-
 * LUCENE-10349: Fix all analyzers to behave according to their documentation:
   getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
 
@@ -315,6 +344,9 @@ Bug Fixes
 
 * LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
   DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
+
+* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
+  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 
 * LUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
   Uwe Schindler)
@@ -333,13 +365,19 @@ Bug Fixes
 
 * LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
   in a disjunction. (Alan Woodward, Dawid Weiss)
-  
-* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
+
+* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored
    as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
 
 * LUCENE-10428: Queries with a misbehaving score function may no longer cause
   infinite loops in their parent BooleanQuery.
   (Ankit Jain, Daniel Doubrovkine, Adrien Grand)
+
+* LUCENE-10431: MultiTermQuery no longer includes its rewrite method in its hashcode
+  calculation, as this could cause problems with wrapper queries like BooleanQuery which
+  expect their child queries hashcodes to be stable. (Alan Woodward)
+
+* LUCENE-10469: Fix ScoreMode propagation by ConstantScoreQuery. (Adrien Grand)
 
 Other
 ---------------------

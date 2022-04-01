@@ -17,11 +17,11 @@
 package org.apache.lucene.analysis.ja;
 
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Type;
-import org.apache.lucene.analysis.ja.dict.Dictionary;
+import org.apache.lucene.analysis.ja.dict.JaMorphData;
 
 /** Analyzed token with morphological data from its dictionary. */
 public class Token {
-  private final Dictionary dictionary;
+  private final JaMorphData morphAtts;
 
   private final int wordId;
 
@@ -41,14 +41,14 @@ public class Token {
       int length,
       Type type,
       int position,
-      Dictionary dictionary) {
+      JaMorphData morphAtts) {
     this.wordId = wordId;
     this.surfaceForm = surfaceForm;
     this.offset = offset;
     this.length = length;
     this.type = type;
     this.position = position;
-    this.dictionary = dictionary;
+    this.morphAtts = morphAtts;
   }
 
   @Override
@@ -66,7 +66,7 @@ public class Token {
         + " wordId="
         + wordId
         + " leftID="
-        + dictionary.getLeftId(wordId)
+        + morphAtts.getLeftId(wordId)
         + ")";
   }
 
@@ -92,32 +92,32 @@ public class Token {
 
   /** @return reading. null if token doesn't have reading. */
   public String getReading() {
-    return dictionary.getReading(wordId, surfaceForm, offset, length);
+    return morphAtts.getReading(wordId, surfaceForm, offset, length);
   }
 
   /** @return pronunciation. null if token doesn't have pronunciation. */
   public String getPronunciation() {
-    return dictionary.getPronunciation(wordId, surfaceForm, offset, length);
+    return morphAtts.getPronunciation(wordId, surfaceForm, offset, length);
   }
 
   /** @return part of speech. */
   public String getPartOfSpeech() {
-    return dictionary.getPartOfSpeech(wordId);
+    return morphAtts.getPartOfSpeech(wordId);
   }
 
   /** @return inflection type or null */
   public String getInflectionType() {
-    return dictionary.getInflectionType(wordId);
+    return morphAtts.getInflectionType(wordId);
   }
 
   /** @return inflection form or null */
   public String getInflectionForm() {
-    return dictionary.getInflectionForm(wordId);
+    return morphAtts.getInflectionForm(wordId);
   }
 
   /** @return base form or null if token is not inflected */
   public String getBaseForm() {
-    return dictionary.getBaseForm(wordId, surfaceForm, offset, length);
+    return morphAtts.getBaseForm(wordId, surfaceForm, offset, length);
   }
 
   /**
