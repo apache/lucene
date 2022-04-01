@@ -23,8 +23,11 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.Terms;
 
 /**
  * A {@link Query} that matches documents that contain either a {@link
@@ -65,6 +68,52 @@ public class FieldExistsQuery extends Query {
     int hash = classHash();
     hash = prime * hash + field.hashCode();
     return hash;
+  }
+
+  @Override
+  public Query rewrite(IndexReader reader) throws IOException {
+    boolean allReadersRewritable = true;
+
+    for (LeafReaderContext context : reader.leaves()) {
+      LeafReader leaf = context.reader();
+      FieldInfos fieldInfos = leaf.getFieldInfos();
+      FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
+
+      if (fieldInfo == null) {
+        allReadersRewritable = false;
+        break;
+      }
+
+      if (fieldInfo.hasNorms()) { // the field indexes norms
+        if (reader.getDocCount(field) != reader.maxDoc()) {
+          allReadersRewritable = false;
+          break;
+        }
+      } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
+        if (leaf.getVectorValues(field).size() != reader.maxDoc()) {
+          allReadersRewritable = false;
+          break;
+        }
+      } else if (fieldInfo.getDocValuesType() != DocValuesType.NONE
+          || leaf.terms(field) != null
+          || leaf.getPointValues(field) != null) { // the field indexes doc values or points
+
+        Terms terms = leaf.terms(field);
+        PointValues pointValues = leaf.getPointValues(field);
+
+        if ((terms == null || terms.getDocCount() != leaf.maxDoc())
+            && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())) {
+          allReadersRewritable = false;
+          break;
+        }
+      } else {
+        throw new IllegalStateException(buildErrorMsg(fieldInfo));
+      }
+    }
+    if (allReadersRewritable) {
+      return new MatchAllDocsQuery();
+    }
+    return super.rewrite(reader);
   }
 
   @Override
@@ -135,8 +184,9 @@ public class FieldExistsQuery extends Query {
           return super.count(context);
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           return super.count(context);
-        } else if (fieldInfo.getDocValuesType()
-            != DocValuesType.NONE) { // the field indexes doc values
+        } else if (fieldInfo.getDocValuesType() != DocValuesType.NONE
+            || reader.terms(field) != null
+            || reader.getPointValues(field) != null) { // the field indexes doc values
           if (reader.hasDeletions() == false) {
             if (fieldInfo.getPointDimensionCount() > 0) {
               return reader.getPointValues(field).getDocCount();

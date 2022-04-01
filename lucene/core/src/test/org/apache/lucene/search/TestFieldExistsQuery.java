@@ -58,7 +58,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertTrue((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertTrue((new FieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -76,7 +76,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertTrue((new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertTrue((new FieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -99,9 +99,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertFalse(
-        (new DocValuesFieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
-    assertFalse((new DocValuesFieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -121,12 +120,9 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertFalse(
-        (new DocValuesFieldExistsQuery("dv1")).rewrite(reader) instanceof MatchAllDocsQuery);
-    assertFalse(
-        (new DocValuesFieldExistsQuery("dv2")).rewrite(reader) instanceof MatchAllDocsQuery);
-    assertFalse(
-        (new DocValuesFieldExistsQuery("dv3")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("dv1")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("dv2")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("dv3")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -532,7 +528,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
 
     assertNormsCountWithShortcut(searcher, "text", randomNumDocs);
     assertNormsCountWithShortcut(searcher, "doesNotExist", 0);
-    expectThrows(IllegalStateException.class, () -> searcher.count(new FieldExistsQuery("text_n")));
+    // field with norms disabled will now also be counted due to indexed terms match
+    assertNormsCountWithShortcut(searcher, "text_n", randomNumDocs);
 
     // docs that have a text field that analyzes to an empty token
     // stream still have a recorded norm value but don't show up in
@@ -681,24 +678,6 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = newSearcher(reader);
         assertEquals(1, searcher.count(new FieldExistsQuery("vector")));
-      }
-    }
-  }
-
-  public void testInvalidFieldThrowsException() throws IOException {
-    try (Directory dir = newDirectory();
-        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
-      // 1st segment has the field, but 2nd one does not
-      Document doc = new Document();
-      doc.add(new StringField("vector", "a", Store.NO));
-      iw.addDocument(doc);
-      iw.commit();
-      try (IndexReader reader = iw.getReader()) {
-        IndexSearcher searcher = newSearcher(reader);
-        expectThrows(
-            IllegalStateException.class, () -> searcher.search(new FieldExistsQuery("vector"), 1));
-        expectThrows(
-            IllegalStateException.class, () -> searcher.count(new FieldExistsQuery("vector")));
       }
     }
   }

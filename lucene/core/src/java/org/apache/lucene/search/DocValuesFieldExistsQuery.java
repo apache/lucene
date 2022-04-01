@@ -17,13 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Objects;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.Terms;
 
 /**
  * A {@link Query} that matches documents that have a value for a given field as reported by doc
@@ -33,33 +28,10 @@ import org.apache.lucene.index.Terms;
  */
 @Deprecated
 public final class DocValuesFieldExistsQuery extends FieldExistsQuery {
-  private String field;
 
   /** Create a query that will match documents which have a value for the given {@code field}. */
   public DocValuesFieldExistsQuery(String field) {
     super(field);
-    this.field = Objects.requireNonNull(field);
-  }
-
-  // nocommit this seems to be generalizable to norms and knn as well given LUCENE-9334, and thus
-  // could be moved to the new FieldExistsQuery?
-  @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    boolean allReadersRewritable = true;
-    for (LeafReaderContext context : reader.leaves()) {
-      LeafReader leaf = context.reader();
-      Terms terms = leaf.terms(field);
-      PointValues pointValues = leaf.getPointValues(field);
-      if ((terms == null || terms.getDocCount() != leaf.maxDoc())
-          && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())) {
-        allReadersRewritable = false;
-        break;
-      }
-    }
-    if (allReadersRewritable) {
-      return new MatchAllDocsQuery();
-    }
-    return super.rewrite(reader);
   }
 
   /**
