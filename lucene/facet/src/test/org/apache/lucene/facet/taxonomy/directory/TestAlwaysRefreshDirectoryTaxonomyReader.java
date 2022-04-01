@@ -18,12 +18,17 @@ package org.apache.lucene.facet.taxonomy.directory;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
+import org.apache.lucene.facet.Facets;
+import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.SearcherTaxonomyManager;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -92,35 +97,55 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     Directory dir1 = newFSDirectory(taxoPath1);
     DirectoryTaxonomyWriter tw1 = new DirectoryTaxonomyWriter(dir1, IndexWriterConfig.OpenMode.CREATE);
     tw1.addCategory(new FacetLabel("a"));
+    tw1.commit();
+
+    Path taxoPath2 = createTempDir("commit1");
+    Directory commit1 = newFSDirectory(taxoPath2);
+    // copy all index files from dir2
+    for (String file : dir1.listAll()) {
+      System.out.println("copying file " + file);
+      commit1.copyFrom(dir1, file, file, IOContext.READ);
+    }
+
     tw1.addCategory(new FacetLabel("b"));
     tw1.commit();
+    tw1.addCategory(new FacetLabel("c"));
+    tw1.commit();
+
+    Path taxoPath3 = createTempDir("commit2");
+    Directory commit2 = newFSDirectory(taxoPath3);
+    // copy all index files from dir1
+    for (String file : dir1.listAll()) {
+      System.out.println("copying file " + file);
+      commit2.copyFrom(dir1, file, file, IOContext.READ);
+    }
 
     DirectoryReader dr1 = DirectoryReader.open(dir1);
     DirectoryTaxonomyReader dtr1 = new DirectoryTaxonomyReader(dir1);
     final SearcherTaxonomyManager mgr = new SearcherTaxonomyManager(dr1, dtr1, null);
 
-    Path taxoPath2 = createTempDir("dir2");
-    Directory dir2 = newFSDirectory(taxoPath2);
-    DirectoryTaxonomyWriter tw2 = new DirectoryTaxonomyWriter(dir2, IndexWriterConfig.OpenMode.CREATE);
-    tw2.addCategory(new FacetLabel("c"));
-    tw2.commit();
+    final FacetsConfig config = new FacetsConfig();
+    config.setMultiValued("field", true);
+    SearcherTaxonomyManager.SearcherAndTaxonomy pair = mgr.acquire();
+    FacetsCollector sfc = new FacetsCollector();
+    pair.searcher.search(new MatchAllDocsQuery(), sfc);
+    // the call flow here initializes taxoArrays. These taxoArrays form the basis of the inconsistency
+    Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
+    FacetResult facetResult = facets.getTopChildren(10, "field");
 
-     // delete all files from dir1
+    // now try to go back to checkpoint 1
+    // delete all files from dir1
     for (String file : dir1.listAll()) {
-      System.out.println("initial file " + file);
       dir1.deleteFile(file);
     }
 
-    // copy all index files from dir2
-    for (String file : dir2.listAll()) {
-      System.out.println("copying file " + file);
-      dir1.copyFrom(dir2, file, file, IOContext.READ);
+    // copy all index files from commit1
+    for (String file : commit1.listAll()) {
+      dir1.copyFrom(commit1, file, file, IOContext.READ);
     }
 
-    boolean trying = mgr.maybeRefresh();
-    System.out.println("trying is " + trying);
-
-   // System.out.println(dtr1.doOpenIfChanged());
+    boolean result = mgr.maybeRefresh();
+    System.out.println("result " + result);
   }
 
   /**
