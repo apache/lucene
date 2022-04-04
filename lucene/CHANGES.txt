@@ -39,7 +39,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10466: Ensure IndexSortSortedNumericDocValuesRangeQuery handles sort field 
+  types besides LONG (Andriy Redko)
 
 Other
 ---------------------
