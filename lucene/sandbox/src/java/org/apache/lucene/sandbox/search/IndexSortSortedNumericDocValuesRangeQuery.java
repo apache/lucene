@@ -54,9 +54,9 @@ import org.apache.lucene.search.Weight;
  * <ul>
  *   <li>The index is sorted, and its primary sort is on the same field as the query.
  *   <li>The query field has either {@link SortedNumericDocValues} or {@link NumericDocValues}.
+ *   <li>The sort field is of type {@code SortField.Type.LONG} or {@code SortField.Type.INT}.
  *   <li>The segments must have at most one field value per document (otherwise we cannot easily
  *       determine the matching document IDs through a binary search).
- *   <li>The sort field is of type {@code SortField.Type.LONG} or {@code SortField.Type.INT}.
  * </ul>
  *
  * If any of these conditions isn't met, the search is delegated to {@code fallbackQuery}.
@@ -318,7 +318,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     @SuppressWarnings("unchecked")
     FieldComparator<Number> fieldComparator =
         (FieldComparator<Number>) sortField.getComparator(1, false);
-    fieldComparator.setTopValue(convert(type, topValue));
+    if (type == Type.INT) {
+      fieldComparator.setTopValue((int) topValue);
+    } else {
+      // Since we support only Type.INT and Type.LONG, assuming LONG for all other cases
+      fieldComparator.setTopValue(topValue);
+    }
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);
     int direction = sortField.getReverse() ? -1 : 1;
@@ -335,15 +340,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       return ((SortedNumericSortField) sortField).getNumericType();
     } else {
       return sortField.getType();
-    }
-  }
-
-  private static Number convert(Type type, long topValue) {
-    if (type == Type.INT) {
-      return (int) topValue;
-    } else {
-      // Since we support only Type.INT and Type.LONG, assuming LONG for all other cases
-      return topValue;
     }
   }
 
