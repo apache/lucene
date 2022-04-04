@@ -28,6 +28,7 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.DocIdSetBuilder;
@@ -94,6 +95,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private long iteratorCost;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
+    private boolean disableSegmentInternalSkip = false;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);
@@ -127,12 +129,25 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             reverse ? new byte[bytesCount] : topValueSet ? new byte[bytesCount] : null;
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
         this.iteratorCost = maxDoc;
+        this.disableSegmentInternalSkip = checkIfDisableSegmentInternalSkip(context);
       } else {
         this.enableSkipping = false;
         this.maxDoc = 0;
         this.maxValueAsBytes = null;
         this.minValueAsBytes = null;
       }
+    }
+
+    private boolean checkIfDisableSegmentInternalSkip(LeafReaderContext context) {
+      Sort indexSort = context.reader().getMetaData().getSort();
+      if (indexSort != null
+          && indexSort.getSort().length > 0
+          && indexSort.getSort()[0].getField().equals(field)) {
+        if (indexSort.getSort()[0].getReverse() != reverse) {
+          return true;
+        }
+      }
+      return false;
     }
 
     /**
@@ -155,6 +170,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     @Override
     public void setBottom(int slot) throws IOException {
       queueFull = true; // if we are setting bottom, it means that we have collected enough hits
+      if (topValueSet == false && disableSegmentInternalSkip) {
+        return;
+      }
       updateCompetitiveIterator(); // update an iterator if we set a new bottom
     }
 
@@ -175,6 +193,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     @Override
     public void setHitsThresholdReached() throws IOException {
       hitsThresholdReached = true;
+      if (topValueSet == false && disableSegmentInternalSkip) {
+        return;
+      }
       updateCompetitiveIterator();
     }
 
