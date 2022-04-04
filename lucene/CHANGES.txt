@@ -46,6 +46,9 @@ Bug Fixes
 * LUCENE-10491: A correctness bug in the way scores are provided within TaxonomyFacetSumValueSource
   was fixed. (Michael McCandless, Greg Miller)
 
+* LUCENE-10466: Ensure IndexSortSortedNumericDocValuesRangeQuery handles sort field
+  types besides LONG (Andriy Redko)
+
 Build
 ---------------------
 
