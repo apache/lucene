@@ -36,6 +36,9 @@ New Features
 
 * LUCENE-10151 Enable timeout support in IndexSearcher. (Deepika Sharma)
 
+* LUCENE-10626 Hunspell: add tools to aid dictionary editing:
+  analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
+
 Improvements
 ---------------------
 

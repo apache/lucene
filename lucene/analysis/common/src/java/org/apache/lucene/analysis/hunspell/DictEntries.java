@@ -24,26 +24,22 @@ import java.util.List;
  *
  * @see Dictionary#lookupEntries
  */
-public interface DictEntries {
+public interface DictEntries extends List<DictEntry> {
   /**
    * @return a positive number of dictionary entries with the same word. Most often it's 1 (unless
    *     there are homonyms). Entries are indexed from 0 to {@code size() - 1} and these indices can
    *     be passed into other methods of this class.
    */
+  @Override
   int size();
 
-  /**
-   * @param entryIndex an index from 0 (inclusive) to {@link #size()} (exclusive)
-   * @return morphological fields (of {@code kk:vvvvvv} form, sorted, space-separated, excluding
-   *     {@code ph:}) associated with the homonym at the given entry index, or an empty string
-   */
-  String getMorphologicalData(int entryIndex);
+  /** Same as {@code get(entryIndex).getMorphologicalData()} */
+  default String getMorphologicalData(int entryIndex) {
+    return get(entryIndex).getMorphologicalData();
+  }
 
-  /**
-   * @param entryIndex an index from 0 (inclusive) to {@link #size()} (exclusive)
-   * @param key the key in the form {@code kk:} by which to filter the morphological fields
-   * @return the values (of {@code vvvvvv} form) of morphological fields with the given key
-   *     associated with the homonym at the given entry index
-   */
-  List<String> getMorphologicalValues(int entryIndex, String key);
+  /** Same as {@code get(entryIndex).getMorphologicalValues(key)} */
+  default List<String> getMorphologicalValues(int entryIndex, String key) {
+    return get(entryIndex).getMorphologicalValues(key);
+  }
 }
