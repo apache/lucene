@@ -77,6 +77,10 @@ You have two options to contribute your work: you can either create a patch and 
 
 Please be patient. Committers are busy people too. If no one responds to your patch after a few days, please make friendly reminders. Please incorporate others' suggestions into into your patch if you think they're reasonable. Finally, remember that even a patch that is not committed is useful to the community.
 
+### Opening a Jira issue
+
+You may want to open a Jira issue before opening a pull request or creating a patch. This is especially required when adding a [CHANGES](./lucene/CHANGES.txt) entry. If your contribution is a small or minor one (such as fixing typo in documentation), this can be optional.
+
 ### Opening a pull request
 
 Please refer to [GitHub's documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests) for an explanation of how to create a pull request. The pull request title should start with the Jira issue number that your work is related to, this way your pull request will get automatically linked from the Jira issue.
