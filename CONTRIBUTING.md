@@ -79,7 +79,7 @@ Please be patient. Committers are busy people too. If no one responds to your pa
 
 ### Opening a Jira issue
 
-You may want to open a Jira issue before opening a pull request or creating a patch. This is especially required when adding a [CHANGES](./lucene/CHANGES.txt) entry. If your contribution is a small or minor one (such as fixing typo in documentation), this can be optional.
+You may want to open a Jira issue before opening a pull request or creating a patch. This is especially required when adding a [CHANGES](./lucene/CHANGES.txt) entry. If your contribution is a small one (such as fixing typo in documentation) this can be optional.
 
 ### Opening a pull request
 
