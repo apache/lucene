@@ -94,9 +94,8 @@ public class FieldExistsQuery extends Query {
           allReadersRewritable = false;
           break;
         }
-      } else if (fieldInfo.getDocValuesType() != DocValuesType.NONE
-          || leaf.terms(field) != null
-          || leaf.getPointValues(field) != null) { // the field indexes doc values or points
+      } else if (fieldInfo.getDocValuesType()
+          != DocValuesType.NONE) { // the field indexes doc values or points
 
         Terms terms = leaf.terms(field);
         PointValues pointValues = leaf.getPointValues(field);
@@ -184,9 +183,8 @@ public class FieldExistsQuery extends Query {
           return super.count(context);
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           return super.count(context);
-        } else if (fieldInfo.getDocValuesType() != DocValuesType.NONE
-            || reader.terms(field) != null
-            || reader.getPointValues(field) != null) { // the field indexes doc values
+        } else if (fieldInfo.getDocValuesType()
+            != DocValuesType.NONE) { // the field indexes doc values
           if (reader.hasDeletions() == false) {
             if (fieldInfo.getPointDimensionCount() > 0) {
               return reader.getPointValues(field).getDocCount();

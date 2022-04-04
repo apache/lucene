@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
@@ -51,6 +52,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final int numDocs = atLeast(100);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
+      doc.add(new DoubleDocValuesField("f", 2.0));
       doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
       iw.addDocument(doc);
     }
@@ -76,7 +78,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertTrue((new FieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    expectThrows(IllegalStateException.class, () -> new FieldExistsQuery("dim").rewrite(reader));
     reader.close();
     dir.close();
   }
@@ -87,7 +89,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final int numDocs = atLeast(100);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
+      doc.add(new DoubleDocValuesField("dim", 2.0));
       iw.addDocument(doc);
     }
     for (int i = 0; i < numDocs; ++i) {
@@ -100,7 +102,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     iw.close();
 
     assertFalse((new FieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
+    expectThrows(IllegalStateException.class, () -> new FieldExistsQuery("f").rewrite(reader));
     reader.close();
     dir.close();
   }
@@ -528,8 +530,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
 
     assertNormsCountWithShortcut(searcher, "text", randomNumDocs);
     assertNormsCountWithShortcut(searcher, "doesNotExist", 0);
-    // field with norms disabled will now also be counted due to indexed terms match
-    assertNormsCountWithShortcut(searcher, "text_n", randomNumDocs);
+    expectThrows(IllegalStateException.class, () -> searcher.count(new FieldExistsQuery("text_n")));
 
     // docs that have a text field that analyzes to an empty token
     // stream still have a recorded norm value but don't show up in
