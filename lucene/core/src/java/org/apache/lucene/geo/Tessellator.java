@@ -1298,10 +1298,12 @@ public final class Tessellator {
       // we can filter points when:
       // 1. they are the same
       // 2.- each one starts and ends in each other
-      // 3.- they are co-linear and both edges have the same value in .isNextEdgeFromPolygon
+      // 3.- they are collinear and both edges have the same value in .isNextEdgeFromPolygon
+      // 4.-  they are collinear and second edge returns over the first edge
       if (isVertexEquals(node, nextNode)
           || isVertexEquals(prevNode, nextNode)
-          || (prevNode.isNextEdgeFromPolygon == node.isNextEdgeFromPolygon
+          || ((prevNode.isNextEdgeFromPolygon == node.isNextEdgeFromPolygon
+                  || isPointInLine(prevNode, node, nextNode.getX(), nextNode.getY()))
               && area(
                       prevNode.getX(),
                       prevNode.getY(),
