@@ -390,6 +390,13 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       assertEquals(1, topNDimsResult.size());
       assertEquals(facetResult, topNDimsResult.get(0));
 
+      // test getAllDims(0)
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> {
+            facets.getAllDims(0);
+          });
+
       // This is a little strange, but we request all labels at this point so that when we
       // secondarily sort by label value in order to compare to the expected results, we have
       // all the values. See LUCENE-9991:

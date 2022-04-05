@@ -32,6 +32,9 @@ Improvements
 * LUCENE-10484: Add support for concurrent random sampling by calling
   RandomSamplingFacetsCollector#createManager. (Luca Cavanna)
 
+* LUCENE-10467: Throws IllegalArgumentException for Facets#getAllDims and Facets#getTopChildren
+  if topN <= 0. (Yuting Gan)
+
 Optimizations
 ---------------------
 

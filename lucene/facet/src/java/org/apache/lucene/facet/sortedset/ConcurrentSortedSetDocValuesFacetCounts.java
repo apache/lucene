@@ -99,10 +99,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
-    if (topN <= 0) {
-      throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
-    }
-
+    validateTopN(topN);
     FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
 
     if (dimConfig.hierarchical) {
@@ -412,7 +409,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
-
+    validateTopN(topN);
     List<FacetResult> results = new ArrayList<>();
     for (String dim : state.getDims()) {
       FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
