@@ -147,6 +147,7 @@ public abstract class TaxonomyFacets extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
+    validateTopN(topN);
     int[] children = getChildren();
     int[] siblings = getSiblings();
     int ord = children[TaxonomyReader.ROOT_ORDINAL];
