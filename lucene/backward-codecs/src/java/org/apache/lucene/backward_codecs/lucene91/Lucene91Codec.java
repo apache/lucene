@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene91;
+package org.apache.lucene.backward_codecs.lucene91;
 
 import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
@@ -48,9 +48,6 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
  * Implements the Lucene 9.1 index format
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
- *
- * @see org.apache.lucene.codecs.lucene91 package documentation for file format details.
- * @lucene.experimental
  */
 public class Lucene91Codec extends Codec {
 
@@ -115,7 +112,7 @@ public class Lucene91Codec extends Codec {
    * @param mode stored fields compression mode to use for newly flushed/merged segments.
    */
   public Lucene91Codec(Mode mode) {
-    super("Lucene92");
+    super("Lucene91");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene90PostingsFormat();
@@ -164,7 +161,7 @@ public class Lucene91Codec extends Codec {
   }
 
   @Override
-  public final KnnVectorsFormat knnVectorsFormat() {
+  public KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
   }
 
@@ -196,7 +193,7 @@ public class Lucene91Codec extends Codec {
   /**
    * Returns the vectors format that should be used for writing new segments of <code>field</code>
    *
-   * <p>The default implementation always returns "lucene92".
+   * <p>The default implementation always returns "Lucene91".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation.
