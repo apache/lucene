@@ -39,6 +39,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
 (No changes)
 
 Other
@@ -69,14 +70,23 @@ New Features
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
 * LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
-implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
-have readonly `Monitor` instances. (Niko Usai)
+  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+  have readonly `Monitor` instances. (Niko Usai)
+
+* LUCENE-10456: Implement rewrite and Weight#count for MultiRangeQuery
+  by merging overlapping ranges . (Jianping Weng)
 
 Improvements
 ---------------------
 
 * LUCENE-10494: Implement method to bulk add all collection elements to a PriorityQueue.
   (Bauyrzhan Sakhariyev)
+
+* LUCENE-10484: Add support for concurrent random sampling by calling
+  RandomSamplingFacetsCollector#createManager. (Luca Cavanna)
+
+* LUCENE-10467: Throws IllegalArgumentException for Facets#getAllDims and Facets#getTopChildren
+  if topN <= 0. (Yuting Gan)
 
 Optimizations
 ---------------------
@@ -98,8 +108,11 @@ Bug Fixes
 * LUCENE-10491: A correctness bug in the way scores are provided within TaxonomyFacetSumValueSource
   was fixed. (Michael McCandless, Greg Miller)
 
+* LUCENE-10466: Ensure IndexSortSortedNumericDocValuesRangeQuery handles sort field
+  types besides LONG (Andriy Redko)
+
 * LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
-  tessellations ). (Ignacio Vera)
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)  
 
 Build
 ---------------------

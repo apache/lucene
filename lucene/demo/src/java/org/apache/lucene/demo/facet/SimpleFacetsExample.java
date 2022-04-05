@@ -28,6 +28,7 @@ import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
@@ -125,12 +126,10 @@ public class SimpleFacetsExample {
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
 
-    FacetsCollector fc = new FacetsCollector();
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     // Retrieve results
     List<FacetResult> results = new ArrayList<>();

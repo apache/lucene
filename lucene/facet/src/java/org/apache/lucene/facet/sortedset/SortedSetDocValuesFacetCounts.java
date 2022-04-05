@@ -103,10 +103,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
-    if (topN <= 0) {
-      throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
-    }
-
+    validateTopN(topN);
     FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
 
     if (dimConfig.hierarchical) {
@@ -197,7 +194,6 @@ public class SortedSetDocValuesFacetCounts extends Facets {
    */
   private ChildOrdsResult getChildOrdsResult(
       PrimitiveIterator.OfInt childOrds, int topN, FacetsConfig.DimConfig dimConfig, int pathOrd) {
-
     TopOrdAndIntQueue q = null;
     int bottomCount = 0;
     int dimCount = 0;
@@ -484,6 +480,7 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
+    validateTopN(topN);
     List<FacetResult> results = new ArrayList<>();
     for (String dim : state.getDims()) {
       FacetResult factResult = getFacetResultForDim(dim, topN);
@@ -512,9 +509,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
-    if (topNDims <= 0 || topNChildren <= 0) {
-      throw new IllegalArgumentException("topN must be > 0");
-    }
+    validateTopN(topNDims);
+    validateTopN(topNChildren);
 
     // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.

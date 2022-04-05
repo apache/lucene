@@ -73,8 +73,7 @@ public class TestFacetUtils extends LuceneTestCase {
     }
 
     IndexSearcher searcher = newSearcher(writer.getReader());
-    FacetsCollector fc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     int visitedDocs = 0;
     DocIdSetIterator disi;
