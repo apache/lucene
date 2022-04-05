@@ -36,6 +36,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.MultiDoubleValuesSource;
@@ -85,9 +86,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new LongRangeFacetCounts(
@@ -131,9 +131,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new LongRangeFacetCounts(
@@ -182,9 +181,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new LongRangeFacetCounts(
@@ -223,9 +221,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new LongRangeFacetCounts(
@@ -302,9 +299,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new LongRangeFacetCounts(
@@ -342,9 +338,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new LongRangeFacetCounts(
@@ -378,9 +373,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = new LongRangeFacetCounts("field", fc);
 
@@ -408,9 +402,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = new LongRangeFacetCounts("field", fc);
 
@@ -554,10 +547,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     IndexReader r = w.getReader();
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets =
         new DoubleRangeFacetCounts(
             "field",
@@ -592,10 +583,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     IndexReader r = w.getReader();
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets =
         new DoubleRangeFacetCounts(
             "field",
@@ -641,9 +630,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    FacetsCollector fc = new FacetsCollector();
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new DoubleRangeFacetCounts(
@@ -771,8 +759,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         }
       }
 
-      FacetsCollector sfc = new FacetsCollector();
-      s.search(new MatchAllDocsQuery(), sfc);
+      FacetsCollector sfc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
       Query fastMatchQuery;
       if (random().nextBoolean()) {
         if (random().nextBoolean()) {
@@ -968,8 +955,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         }
       }
 
-      FacetsCollector sfc = new FacetsCollector();
-      s.search(new MatchAllDocsQuery(), sfc);
+      FacetsCollector sfc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
       Query fastMatchQuery;
       if (random().nextBoolean()) {
         if (random().nextBoolean()) {
@@ -1121,8 +1107,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         }
       }
 
-      FacetsCollector sfc = new FacetsCollector();
-      s.search(new MatchAllDocsQuery(), sfc);
+      FacetsCollector sfc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
       Query fastMatchFilter;
       if (random().nextBoolean()) {
         if (random().nextBoolean()) {
@@ -1291,8 +1276,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         }
       }
 
-      FacetsCollector sfc = new FacetsCollector();
-      s.search(new MatchAllDocsQuery(), sfc);
+      FacetsCollector sfc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
       Query fastMatchFilter;
       if (random().nextBoolean()) {
         if (random().nextBoolean()) {
@@ -1367,10 +1351,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     IndexReader r = w.getReader();
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets =
         new LongRangeFacetCounts(
             "field",
@@ -1411,10 +1393,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     IndexReader r = w.getReader();
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher s = newSearcher(r);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets =
         new LongRangeFacetCounts(
             "field",
@@ -1559,12 +1539,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     FacetsConfig config = new FacetsConfig();
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexReader r = writer.getReader();
 
     IndexSearcher s = newSearcher(r, false, false);
-    s.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     final DoubleRange[] ranges =
         new DoubleRange[] {
