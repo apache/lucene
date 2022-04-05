@@ -29,7 +29,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.FieldValueHitQueue.Entry;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
@@ -85,10 +84,9 @@ public class TestElevationComparator extends LuceneTestCase {
             new SortField("id", new ElevationComparatorSource(priority), false),
             new SortField(null, SortField.Type.SCORE, reversed));
 
-    TopDocsCollector<Entry> topCollector = TopFieldCollector.create(sort, 50, Integer.MAX_VALUE);
-    searcher.search(newq.build(), topCollector);
-
-    TopDocs topDocs = topCollector.topDocs(0, 10);
+    TopDocs topDocs =
+        searcher.search(
+            newq.build(), TopFieldCollector.createSharedManager(sort, 50, null, Integer.MAX_VALUE));
     int nDocsReturned = topDocs.scoreDocs.length;
 
     assertEquals(4, nDocsReturned);
