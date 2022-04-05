@@ -166,6 +166,12 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     // test getTopDims(0, 1)
     List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
     assertEquals(0, topDimsResults2.size());
+    // test getAllDims(0)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
 
     r.close();
     d.close();
