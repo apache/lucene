@@ -454,8 +454,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       sliced = (token & 1) != 0;
 
-      offsets = ArrayUtil.grow(offsets, chunkDocs + 1);
-      numStoredFields = ArrayUtil.grow(numStoredFields, chunkDocs);
+      offsets = ArrayUtil.grow(offsets, chunkDocs + 1, false);
+      numStoredFields = ArrayUtil.grow(numStoredFields, chunkDocs, false);
 
       if (chunkDocs == 1) {
         numStoredFields[0] = fieldsStream.readVInt();
