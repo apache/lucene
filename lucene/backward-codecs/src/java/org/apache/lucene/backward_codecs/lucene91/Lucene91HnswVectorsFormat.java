@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene91;
+package org.apache.lucene.backward_codecs.lucene91;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -76,17 +76,17 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *       <ul>
  *         <li><b>[int]</b> the number of nodes on this level
  *         <li><b>array[int]</b> for levels greater than 0 list of nodes on this level, stored as
- *             the the level 0th nodes ordinals.
+ *             the level 0th nodes ordinals.
  *       </ul>
  * </ul>
  *
  * @lucene.experimental
  */
-public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
+public class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
 
-  static final String META_CODEC_NAME = "lucene92HnswVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "lucene92HnswVectorsFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "lucene92HnswVectorsFormatIndex";
+  static final String META_CODEC_NAME = "Lucene91HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene91HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "Lucene91HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -101,34 +101,34 @@ public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
    */
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
-  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
-
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
    * {@link Lucene91HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
-  private final int maxConn;
+  final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
    * node. Defaults to to {@link Lucene91HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
-  private final int beamWidth;
+  final int beamWidth;
 
+  /** A constructor for vectors format with default parameters */
   public Lucene91HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
+  /** A constructor for vectors format */
   public Lucene91HnswVectorsFormat(int maxConn, int beamWidth) {
-    super("lucene92HnswVectorsFormat");
+    super("Lucene91HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
   }
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene91HnswVectorsWriter(state, maxConn, beamWidth);
+    throw new UnsupportedOperationException("Old codecs may only be used for reading");
   }
 
   @Override
@@ -138,7 +138,7 @@ public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "lucene92HnswVectorsFormat(name = lucene92HnswVectorsFormat, maxConn = "
+    return "Lucene91HnswVectorsFormat(name = Lucene91HnswVectorsFormat, maxConn = "
         + maxConn
         + ", beamWidth="
         + beamWidth

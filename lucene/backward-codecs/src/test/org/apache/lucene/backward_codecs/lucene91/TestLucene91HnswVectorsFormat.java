@@ -14,21 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene91;
+package org.apache.lucene.backward_codecs.lucene91;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
-import static org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
-import static org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene91HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
+    return new Lucene91RWCodec();
   }
 
   public void testToString() {
@@ -38,11 +37,11 @@ public class TestLucene91HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         new Lucene91Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene91HnswVectorsFormat(maxConn, beamWidth);
+            return new Lucene91RWHnswVectorsFormat(maxConn, beamWidth);
           }
         };
     String expectedString =
-        "Lucene91HnswVectorsFormat(name = Lucene91HnswVectorsFormat, maxConn = "
+        "Lucene91RWHnswVectorsFormat(name = Lucene91RWHnswVectorsFormat, maxConn = "
             + maxConn
             + ", beamWidth="
             + beamWidth
