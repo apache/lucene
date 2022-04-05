@@ -65,21 +65,21 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testDocValuesRewriteWithDocValuesPresent() throws IOException {
+  public void testDocValuesRewriteWithPointValuesPresent() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     final int numDocs = atLeast(100);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      doc.add(new DoubleDocValuesField("f", 2.0));
-      doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
+      doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
+      doc.add(new DoubleDocValuesField("dim", 2.0));
       iw.addDocument(doc);
     }
     iw.commit();
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertTrue(new FieldExistsQuery("f").rewrite(reader) instanceof MatchAllDocsQuery);
+    assertTrue(new FieldExistsQuery("dim").rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
