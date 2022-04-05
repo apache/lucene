@@ -70,11 +70,11 @@ New Features
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
 * LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
-implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
-have readonly `Monitor` instances. (Niko Usai)
+  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+  have readonly `Monitor` instances. (Niko Usai)
 
 * LUCENE-10456: Implement rewrite and Weight#count for MultiRangeQuery
-by merging overlapping ranges . (Jianping Weng)
+  by merging overlapping ranges . (Jianping Weng)
 
 Improvements
 ---------------------
