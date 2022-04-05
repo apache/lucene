@@ -65,20 +65,21 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testDocValuesRewriteWithPointValuesPresent() throws IOException {
+  public void testDocValuesRewriteWithDocValuesPresent() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     final int numDocs = atLeast(100);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
+      doc.add(new DoubleDocValuesField("f", 2.0));
+      doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
       iw.addDocument(doc);
     }
     iw.commit();
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    expectThrows(IllegalStateException.class, () -> new FieldExistsQuery("dim").rewrite(reader));
+    assertTrue(new FieldExistsQuery("f").rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -90,10 +91,12 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
       doc.add(new DoubleDocValuesField("dim", 2.0));
+      doc.add(new BinaryPoint("dim", new byte[4], new byte[4]));
       iw.addDocument(doc);
     }
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
+      doc.add(new DoubleDocValuesField("f", 2.0));
       doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
       iw.addDocument(doc);
     }
@@ -102,7 +105,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     iw.close();
 
     assertFalse((new FieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
-    expectThrows(IllegalStateException.class, () -> new FieldExistsQuery("f").rewrite(reader));
+    assertFalse((new FieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
