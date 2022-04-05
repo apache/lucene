@@ -29,11 +29,17 @@ import org.apache.lucene.util.IOUtils;
  */
 public class AlwaysRefreshDirectoryTaxonomyReader extends DirectoryTaxonomyReader {
 
+  /**
+   * Open for reading a taxonomy stored in a given {@link Directory}.
+   *
+   * @param directory The {@link Directory} in which the taxonomy resides.
+   * @throws IOException if another error occurs
+   */
   public AlwaysRefreshDirectoryTaxonomyReader(Directory directory) throws IOException {
     super(directory);
   }
 
-  public AlwaysRefreshDirectoryTaxonomyReader(DirectoryReader indexReader) throws IOException {
+  AlwaysRefreshDirectoryTaxonomyReader(DirectoryReader indexReader) throws IOException {
     super(indexReader, null, null, null, null);
   }
 
