@@ -321,19 +321,8 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static int[] growExact(int[] array, int newLength) {
-    return growExact(array, newLength, true);
-  }
-
-  /**
-   * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
-   *
-   * @param copyData if need to copy origin array data to the new array
-   */
-  public static int[] growExact(int[] array, int newLength, boolean copyData) {
     int[] copy = new int[newLength];
-    if (copyData) {
-      System.arraycopy(array, 0, copy, 0, array.length);
-    }
+    System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
   }
 
@@ -342,14 +331,20 @@ public final class ArrayUtil {
    * exponentially
    */
   public static int[] grow(int[] array, int minSize) {
-    return grow(array, minSize, true);
-  }
-
-  /** @param copyData if need to copy origin array data to the new array */
-  public static int[] grow(int[] array, int minSize, boolean copyData) {
     assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
     if (array.length < minSize) {
-      return growExact(array, oversize(minSize, Integer.BYTES), copyData);
+      return growExact(array, oversize(minSize, Integer.BYTES));
+    } else return array;
+  }
+
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static int[] growSizeOnly(int[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new int[oversize(minSize, Integer.BYTES)];
     } else return array;
   }
 
@@ -362,15 +357,8 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static long[] growExact(long[] array, int newLength) {
-    return growExact(array, newLength, true);
-  }
-
-  /** @param copyData if need to copy origin array data to the new array */
-  public static long[] growExact(long[] array, int newLength, boolean copyData) {
     long[] copy = new long[newLength];
-    if (copyData) {
-      System.arraycopy(array, 0, copy, 0, array.length);
-    }
+    System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
   }
 
@@ -379,14 +367,20 @@ public final class ArrayUtil {
    * exponentially
    */
   public static long[] grow(long[] array, int minSize) {
-    return grow(array, minSize, true);
-  }
-
-  /** @param copyData if need to copy origin array data to the new array */
-  public static long[] grow(long[] array, int minSize, boolean copyData) {
     assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
     if (array.length < minSize) {
-      return growExact(array, oversize(minSize, Long.BYTES), copyData);
+      return growExact(array, oversize(minSize, Long.BYTES));
+    } else return array;
+  }
+
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static long[] growSizeOnly(long[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new long[oversize(minSize, Long.BYTES)];
     } else return array;
   }
 
@@ -399,17 +393,8 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static byte[] growExact(byte[] array, int newLength) {
-    return growExact(array, newLength, true);
-  }
-
-  /**
-   * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
-   */
-  public static byte[] growExact(byte[] array, int newLength, boolean copyData) {
     byte[] copy = new byte[newLength];
-    if (copyData) {
-      System.arraycopy(array, 0, copy, 0, array.length);
-    }
+    System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
   }
 
@@ -418,14 +403,20 @@ public final class ArrayUtil {
    * exponentially
    */
   public static byte[] grow(byte[] array, int minSize) {
-    return grow(array, minSize, true);
-  }
-
-  /** @param copyData if need to copy origin array data to the new array */
-  public static byte[] grow(byte[] array, int minSize, boolean copyData) {
     assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
     if (array.length < minSize) {
-      return growExact(array, oversize(minSize, Byte.BYTES), copyData);
+      return growExact(array, oversize(minSize, Byte.BYTES));
+    } else return array;
+  }
+
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static byte[] growSizeOnly(byte[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new byte[oversize(minSize, Byte.BYTES)];
     } else return array;
   }
 
