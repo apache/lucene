@@ -132,9 +132,7 @@ public class StringValueFacetCounts extends Facets {
 
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
-    if (topN <= 0) {
-      throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
-    }
+    validateTopN(topN);
     if (dim.equals(field) == false) {
       throw new IllegalArgumentException(
           "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
@@ -223,6 +221,7 @@ public class StringValueFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
+    validateTopN(topN);
     return Collections.singletonList(getTopChildren(topN, field));
   }
 
