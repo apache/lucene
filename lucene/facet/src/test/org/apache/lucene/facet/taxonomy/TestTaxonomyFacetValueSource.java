@@ -31,6 +31,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -105,14 +106,11 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     taxoWriter.close();
 
-    // Aggregate the facet counts:
-    FacetsCollector c = new FacetsCollector();
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query and one of the
     // Facets.search utility methods:
-    searcher.search(new MatchAllDocsQuery(), c);
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     FacetsConfig facetsConfig = new FacetsConfig();
     DoubleValuesSource valuesSource = DoubleValuesSource.fromIntField("num");
@@ -199,8 +197,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     taxoWriter.close();
 
-    FacetsCollector c = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), c);
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         getFacets(
@@ -279,8 +276,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     taxoWriter.close();
 
-    FacetsCollector c = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), c);
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         getFacets(
@@ -388,8 +384,8 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector sfc = new FacetsCollector();
-    newSearcher(r).search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc =
+        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     // Test SUM:
     Facets facets =
@@ -504,8 +500,8 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector sfc = new FacetsCollector();
-    newSearcher(r).search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc =
+        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     // Test SUM:
     Facets facets =

@@ -27,6 +27,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -157,10 +158,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
   public void testIntSumAssociation() throws Exception {
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getIntSumFacets("$facets.int", taxoReader, config, fc);
     assertEquals(
@@ -214,10 +213,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   }
 
   public void testFloatSumAssociation() throws Exception {
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getFloatSumFacets("$facets.float", taxoReader, config, fc, null);
     assertEquals(
@@ -283,10 +280,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
    * different field.
    */
   public void testIntAndFloatAssocation() throws Exception {
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getFloatSumFacets("$facets.float", taxoReader, config, fc, null);
     assertEquals(
@@ -308,10 +303,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   }
 
   public void testWrongIndexFieldName() throws Exception {
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets = getFloatSumFacets("wrong_field", taxoReader, config, fc, null);
     expectThrows(
         IllegalArgumentException.class,
@@ -389,12 +382,10 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   }
 
   public void testIntSumAssociationDrillDown() throws Exception {
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("int", "b");
-    searcher.search(q, fc);
+    FacetsCollector fc = searcher.search(q, new FacetsCollectorManager());
 
     Facets facets = getIntSumFacets("$facets.int", taxoReader, config, fc);
     assertEquals(
