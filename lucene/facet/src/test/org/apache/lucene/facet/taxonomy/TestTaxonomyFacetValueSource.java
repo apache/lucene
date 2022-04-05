@@ -145,10 +145,11 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
         facets.getTopChildren(10, "Author").toString());
 
     // test getTopChildren(0, dim)
+    final Facets f = facets;
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          facets.getTopChildren(0, "Author");
+          f.getTopChildren(0, "Author");
         });
 
     taxoReader.close();
