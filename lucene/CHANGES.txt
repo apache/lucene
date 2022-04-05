@@ -33,9 +33,6 @@ Improvements
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
 
-* LUCENE-10484: Add support for concurrent random sampling by calling
-  RandomSamplingFacetsCollector#createManager. (Luca Cavanna)
-
 Optimizations
 ---------------------
 (No changes)
@@ -81,6 +78,9 @@ Improvements
 
 * LUCENE-10494: Implement method to bulk add all collection elements to a PriorityQueue.
   (Bauyrzhan Sakhariyev)
+
+* LUCENE-10484: Add support for concurrent random sampling by calling
+  RandomSamplingFacetsCollector#createManager. (Luca Cavanna)
 
 Optimizations
 ---------------------
