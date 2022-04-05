@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.util;
+package org.apache.lucene.analysis.ko.dict;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.analysis.ko.POS;
-import org.apache.lucene.analysis.ko.dict.KoMorphData;
-import org.apache.lucene.analysis.ko.dict.TokenInfoMorphData;
 import org.apache.lucene.analysis.morph.DictionaryEntryWriter;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;

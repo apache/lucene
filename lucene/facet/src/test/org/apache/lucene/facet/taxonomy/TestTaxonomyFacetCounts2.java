@@ -32,6 +32,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -274,9 +275,8 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = new FacetsCollector();
     TermQuery q = new TermQuery(A);
-    searcher.search(q, sfc);
+    FacetsCollector sfc = searcher.search(q, new FacetsCollectorManager());
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
     FacetResult result = facets.getTopChildren(NUM_CHILDREN_CP_A, CP_A);
     assertEquals(-1, result.value.intValue());
@@ -298,8 +298,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 
@@ -340,8 +339,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 
@@ -365,8 +363,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 

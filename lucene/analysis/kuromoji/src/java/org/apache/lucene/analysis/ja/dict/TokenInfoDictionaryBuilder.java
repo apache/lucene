@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ja.util;
+package org.apache.lucene.analysis.ja.dict;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -28,7 +28,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.lucene.analysis.ja.util.DictionaryBuilder.DictionaryFormat;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -39,7 +38,7 @@ class TokenInfoDictionaryBuilder {
 
   private final String encoding;
   private final Normalizer.Form normalForm;
-  private final DictionaryFormat format;
+  private final DictionaryBuilder.DictionaryFormat format;
 
   /**
    * Internal word id - incrementally assigned as entries are read and added. This will be byte
@@ -48,7 +47,7 @@ class TokenInfoDictionaryBuilder {
   private int offset = 0;
 
   public TokenInfoDictionaryBuilder(
-      DictionaryFormat format, String encoding, boolean normalizeEntries) {
+      DictionaryBuilder.DictionaryFormat format, String encoding, boolean normalizeEntries) {
     this.format = format;
     this.encoding = encoding;
     normalForm = normalizeEntries ? Normalizer.Form.NFKC : null;
@@ -159,7 +158,7 @@ class TokenInfoDictionaryBuilder {
    */
 
   private String[] formatEntry(String[] features) {
-    if (this.format == DictionaryFormat.IPADIC) {
+    if (this.format == DictionaryBuilder.DictionaryFormat.IPADIC) {
       return features;
     } else {
       String[] features2 = new String[13];

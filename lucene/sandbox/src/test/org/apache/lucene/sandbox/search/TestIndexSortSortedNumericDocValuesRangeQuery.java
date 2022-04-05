@@ -156,15 +156,18 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   }
 
   public void testIndexSortDocValuesWithEvenLength() throws Exception {
-    testIndexSortDocValuesWithEvenLength(false);
-    testIndexSortDocValuesWithEvenLength(true);
+    for (SortField.Type type : new SortField.Type[] {SortField.Type.INT, SortField.Type.LONG}) {
+      testIndexSortDocValuesWithEvenLength(true, type);
+      testIndexSortDocValuesWithEvenLength(false, type);
+    }
   }
 
-  public void testIndexSortDocValuesWithEvenLength(boolean reverse) throws Exception {
+  public void testIndexSortDocValuesWithEvenLength(boolean reverse, SortField.Type type)
+      throws Exception {
     Directory dir = newDirectory();
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    Sort indexSort = new Sort(new SortedNumericSortField("field", SortField.Type.LONG, reverse));
+    Sort indexSort = new Sort(new SortedNumericSortField("field", type, reverse));
     iwc.setIndexSort(indexSort);
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
 
@@ -427,6 +430,24 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     writer.close();
     dir.close();
+  }
+
+  public void testOtherSortTypes() throws Exception {
+    for (SortField.Type type : new SortField.Type[] {SortField.Type.FLOAT, SortField.Type.DOUBLE}) {
+      Directory dir = newDirectory();
+
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      Sort indexSort = new Sort(new SortedNumericSortField("field", type));
+      iwc.setIndexSort(indexSort);
+
+      RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+      writer.addDocument(createDocument("field", 0));
+
+      testIndexSortOptimizationDeactivated(writer);
+
+      writer.close();
+      dir.close();
+    }
   }
 
   /**

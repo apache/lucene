@@ -44,6 +44,8 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
+import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
@@ -58,6 +60,7 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  * <ul>
  *   <li>The index is sorted, and its primary sort is on the same field as the query.
  *   <li>The query field has either {@link SortedNumericDocValues} or {@link NumericDocValues}.
+ *   <li>The sort field is of type {@code SortField.Type.LONG} or {@code SortField.Type.INT}.
  *   <li>The segments must have at most one field value per document (otherwise we cannot easily
  *       determine the matching document IDs through a binary search).
  * </ul>
@@ -382,8 +385,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
           && indexSort.getSort().length > 0
           && indexSort.getSort()[0].getField().equals(field)) {
 
-        SortField sortField = indexSort.getSort()[0];
-        return getDocIdSetIterator(sortField, context, numericValues);
+        final SortField sortField = indexSort.getSort()[0];
+        final SortField.Type sortFieldType = getSortFieldType(sortField);
+        // The index sort optimization is only supported for Type.INT and Type.LONG
+        if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
+          return getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
+        }
       }
     }
     return null;
@@ -402,14 +409,17 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * no value.
    */
   private BoundedDocIdSetIterator getDocIdSetIterator(
-      SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
+      SortField sortField,
+      SortField.Type sortFieldType,
+      LeafReaderContext context,
+      DocIdSetIterator delegate)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
     long upper = sortField.getReverse() ? lowerValue : upperValue;
     int maxDoc = context.reader().maxDoc();
 
     // Perform a binary search to find the first document with value >= lower.
-    ValueComparator comparator = loadComparator(sortField, lower, context);
+    ValueComparator comparator = loadComparator(sortField, sortFieldType, lower, context);
     int low = 0;
     int high = maxDoc - 1;
 
@@ -417,7 +427,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       int mid = (low + high) >>> 1;
       if (comparator.compare(mid) <= 0) {
         high = mid - 1;
-        comparator = loadComparator(sortField, lower, context);
+        comparator = loadComparator(sortField, sortFieldType, lower, context);
       } else {
         low = mid + 1;
       }
@@ -427,7 +437,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     // Perform a binary search to find the first document with value > upper.
     // Since we know that upper >= lower, we can initialize the lower bound
     // of the binary search to the result of the previous search.
-    comparator = loadComparator(sortField, upper, context);
+    comparator = loadComparator(sortField, sortFieldType, upper, context);
     low = firstDocIdInclusive;
     high = maxDoc - 1;
 
@@ -435,7 +445,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       int mid = (low + high) >>> 1;
       if (comparator.compare(mid) < 0) {
         high = mid - 1;
-        comparator = loadComparator(sortField, upper, context);
+        comparator = loadComparator(sortField, sortFieldType, upper, context);
       } else {
         low = mid + 1;
       }
@@ -463,11 +473,17 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   private static ValueComparator loadComparator(
-      SortField sortField, long topValue, LeafReaderContext context) throws IOException {
+      SortField sortField, SortField.Type type, long topValue, LeafReaderContext context)
+      throws IOException {
     @SuppressWarnings("unchecked")
-    FieldComparator<Long> fieldComparator =
-        (FieldComparator<Long>) sortField.getComparator(1, false);
-    fieldComparator.setTopValue(topValue);
+    FieldComparator<Number> fieldComparator =
+        (FieldComparator<Number>) sortField.getComparator(1, false);
+    if (type == Type.INT) {
+      fieldComparator.setTopValue((int) topValue);
+    } else {
+      // Since we support only Type.INT and Type.LONG, assuming LONG for all other cases
+      fieldComparator.setTopValue(topValue);
+    }
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);
     int direction = sortField.getReverse() ? -1 : 1;
@@ -476,6 +492,15 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       int value = leafFieldComparator.compareTop(doc);
       return direction * value;
     };
+  }
+
+  private static SortField.Type getSortFieldType(SortField sortField) {
+    // We expect the sortField to be SortedNumericSortField
+    if (sortField instanceof SortedNumericSortField) {
+      return ((SortedNumericSortField) sortField).getNumericType();
+    } else {
+      return sortField.getType();
+    }
   }
 
   /**

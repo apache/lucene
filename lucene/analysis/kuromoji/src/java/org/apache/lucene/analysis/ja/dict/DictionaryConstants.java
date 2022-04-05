@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis.ja.dict;
 
 /** Dictionary constants */
-public final class DictionaryConstants {
+final class DictionaryConstants {
   /** Codec header of the dictionary file. */
   public static final String DICT_HEADER = "kuromoji_dict";
   /** Codec header of the dictionary mapping file. */
