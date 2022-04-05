@@ -280,10 +280,7 @@ public class StringValueFacetCounts extends Facets {
       // should all ladder up to the same top-level reader:
       validateState(matchingDocs.get(0).context);
 
-      for (int i = 0; i < matchingDocs.size(); i++) {
-
-        FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
-
+      for (FacetsCollector.MatchingDocs hits : matchingDocs) {
         // Assuming the state is valid, ordinalMap should be non-null and docValues should be
         // a MultiSortedSetDocValues since we have more than one segment:
         assert ordinalMap != null;
@@ -292,7 +289,7 @@ public class StringValueFacetCounts extends Facets {
         MultiDocValues.MultiSortedSetDocValues multiValues =
             (MultiDocValues.MultiSortedSetDocValues) docValues;
 
-        countOneSegment(multiValues.values[i], hits.context.ord, hits, null);
+        countOneSegment(multiValues.values[hits.context.ord], hits.context.ord, hits, null);
       }
     }
   }
