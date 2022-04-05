@@ -18,18 +18,13 @@ package org.apache.lucene.facet.taxonomy.directory;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
-import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.SearcherTaxonomyManager;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.IOUtils;
@@ -37,104 +32,52 @@ import org.apache.lucene.util.IOUtils;
 public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
 
   /**
-   * Tests the expert constructors in {@link DirectoryTaxonomyReader} and checks the {@link
-   * DirectoryTaxonomyReader#getInternalIndexReader()} API. Also demonstrates the need for the
-   * constructor and the API.
+   * Tests the behavior of the {@link AlwaysRefreshDirectoryTaxonomyReader} by testing if the
+   * associated {@link SearcherTaxonomyManager} can successfully refresh and serve queries if the
+   * underlying taxonomy index is changed to an older checkpoint. Ideally, each checkpoint should be
+   * self-sufficient and should allow serving search queries when {@link
+   * SearcherTaxonomyManager#maybeRefresh()} is called.
    *
    * <p>It does not check whether the private taxoArrays were actually recreated or no. We are
    * (correctly) hiding away that complexity away from the user.
    */
   public void testAlwaysRefreshDirectoryTaxonomyReader() throws IOException {
-//    Directory dir = newDirectory();
-//    DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(dir);
-//    tw.addCategory(new FacetLabel("a"));
-//    tw.commit();
-//
-//    DirectoryTaxonomyReader dtr1 = new AlwaysRefreshDirectoryTaxonomyReader(dir);
-//    tw.addCategory(new FacetLabel("b"));
-//    tw.commit();
-//    DirectoryTaxonomyReader dtr2 = dtr1.doOpenIfChanged();
-//
-//    assert dtr2.getSize() == 3; // one doc is by default for the root ordinal
-//    IOUtils.close(tw, dtr1, dtr2, dir);
-
-//    Path taxoPath1 = createTempDir("dir1");
-//    Directory dir1 = newFSDirectory(taxoPath1);
-//    DirectoryTaxonomyWriter tw1 = new DirectoryTaxonomyWriter(dir1, IndexWriterConfig.OpenMode.CREATE);
-//    tw1.addCategory(new FacetLabel("a"));
-//    tw1.commit();
-//    tw1.close();
-//
-//    DirectoryTaxonomyReader dtr1 = new AlwaysRefreshDirectoryTaxonomyReader(dir1);
-//
-//    Path taxoPath2 = createTempDir("dir2");
-//    Directory dir2 = newFSDirectory(taxoPath2);
-//    DirectoryTaxonomyWriter tw2 = new DirectoryTaxonomyWriter(dir2, IndexWriterConfig.OpenMode.CREATE);
-//    tw2.addCategory(new FacetLabel("b"));
-//    tw2.addCategory(new FacetLabel("c"));
-//    tw2.commit();
-////    tw2.addCategory(new FacetLabel("d"));
-////    tw2.commit();
-//    tw2.close();
-//
-//    // delete all files from dir1
-//    for (String file : dir1.listAll()) {
-//      System.out.println("initial file " + file);
-//      dir1.deleteFile(file);
-//    }
-//
-//    // copy all index files from dir2
-//    for (String file : dir2.listAll()) {
-//      System.out.println("copying file " + file);
-//      dir1.copyFrom(dir2, file, file, IOContext.READ);
-//    }
-//
-//    // refresh the old directory reader to see if it has gotten the updates from the new copied files
-//    DirectoryTaxonomyReader dtr2 = dtr1.doOpenIfChanged();
-//    assert dtr2.getSize() == 3;
-
-    Path taxoPath1 = createTempDir("dir1");
-    Directory dir1 = newFSDirectory(taxoPath1);
-    DirectoryTaxonomyWriter tw1 = new DirectoryTaxonomyWriter(dir1, IndexWriterConfig.OpenMode.CREATE);
+    final Path taxoPath1 = createTempDir("dir1");
+    final Directory dir1 = newFSDirectory(taxoPath1);
+    final DirectoryTaxonomyWriter tw1 =
+        new DirectoryTaxonomyWriter(dir1, IndexWriterConfig.OpenMode.CREATE);
     tw1.addCategory(new FacetLabel("a"));
-    tw1.commit();
+    tw1.commit(); // commit1
 
-    Path taxoPath2 = createTempDir("commit1");
-    Directory commit1 = newFSDirectory(taxoPath2);
-    // copy all index files from dir2
+    final Path taxoPath2 = createTempDir("commit1");
+    final Directory commit1 = newFSDirectory(taxoPath2);
+    // copy all index files from dir1
     for (String file : dir1.listAll()) {
-      System.out.println("copying file " + file);
       commit1.copyFrom(dir1, file, file, IOContext.READ);
     }
 
     tw1.addCategory(new FacetLabel("b"));
-    tw1.commit();
-    tw1.addCategory(new FacetLabel("c"));
-    tw1.commit();
+    tw1.commit(); // commit2
+    tw1.close();
 
-    Path taxoPath3 = createTempDir("commit2");
-    Directory commit2 = newFSDirectory(taxoPath3);
-    // copy all index files from dir1
-    for (String file : dir1.listAll()) {
-      System.out.println("copying file " + file);
-      commit2.copyFrom(dir1, file, file, IOContext.READ);
-    }
-
-    DirectoryReader dr1 = DirectoryReader.open(dir1);
-    DirectoryTaxonomyReader dtr1 = new DirectoryTaxonomyReader(dir1);
+    final DirectoryReader dr1 = DirectoryReader.open(dir1);
+    // using a DirectoryTaxonomyReader here will cause the test to fail and throw a AIOOB exception
+    // in maybeRefresh()
+    final DirectoryTaxonomyReader dtr1 = new AlwaysRefreshDirectoryTaxonomyReader(dir1);
     final SearcherTaxonomyManager mgr = new SearcherTaxonomyManager(dr1, dtr1, null);
 
     final FacetsConfig config = new FacetsConfig();
-    config.setMultiValued("field", true);
-    SearcherTaxonomyManager.SearcherAndTaxonomy pair = mgr.acquire();
-    FacetsCollector sfc = new FacetsCollector();
-    pair.searcher.search(new MatchAllDocsQuery(), sfc);
-    // the call flow here initializes taxoArrays. These taxoArrays form the basis of the inconsistency
-    Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
-    FacetResult facetResult = facets.getTopChildren(10, "field");
+    final SearcherTaxonomyManager.SearcherAndTaxonomy pair = mgr.acquire();
+    final FacetsCollector sfc = new FacetsCollector();
+    /**
+     * the call flow here initializes {@link DirectoryTaxonomyReader#taxoArrays}. These reused
+     * `taxoArrays` form the basis of the inconsistency *
+     */
+    getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
 
-    // now try to go back to checkpoint 1
-    // delete all files from dir1
+    // now try to go back to checkpoint 1 and refresh the SearcherTaxonomyManager
+
+    // delete all files from commit2
     for (String file : dir1.listAll()) {
       dir1.deleteFile(file);
     }
@@ -144,50 +87,9 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
       dir1.copyFrom(commit1, file, file, IOContext.READ);
     }
 
-    boolean result = mgr.maybeRefresh();
-    System.out.println("result " + result);
-  }
-
-  /**
-   * A modified DirectoryTaxonomyReader that always recreates a new DirectoryTaxonomyReader instance
-   * when {@link AlwaysRefreshDirectoryTaxonomyReader#doOpenIfChanged()} is called. This enables us
-   * to easily go forward or backward in time by re-computing the ordinal space during each refresh.
-   */
-  private class AlwaysRefreshDirectoryTaxonomyReader extends DirectoryTaxonomyReader {
-
-    public AlwaysRefreshDirectoryTaxonomyReader(Directory directory) throws IOException {
-      super(directory);
-    }
-
-    public AlwaysRefreshDirectoryTaxonomyReader(DirectoryReader indexReader) throws IOException {
-      super(indexReader, null, null, null, null);
-    }
-
-    @Override
-    protected DirectoryTaxonomyReader doOpenIfChanged() throws IOException {
-      boolean success = false;
-
-      // the getInternalIndexReader() function performs the ensureOpen() check
-      final DirectoryReader reader = DirectoryReader.openIfChanged(super.getInternalIndexReader());
-      if (reader == null) {
-        return null; // no changes in the directory at all, nothing to do
-      }
-
-      try {
-        // It is important that we create an AlwaysRefreshDirectoryTaxonomyReader here and not a
-        // DirectoryTaxonomyReader.
-        // Returning a AlwaysRefreshDirectoryTaxonomyReader ensures that the recreated taxonomy
-        // reader also uses the overridden doOpenIfChanged
-        // method (that always recomputes values).
-        final AlwaysRefreshDirectoryTaxonomyReader newTaxonomyReader =
-            new AlwaysRefreshDirectoryTaxonomyReader(reader);
-        success = true;
-        return newTaxonomyReader;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(reader);
-        }
-      }
-    }
+    mgr.maybeRefresh();
+    IOUtils.close(mgr, dtr1, dr1);
+    // closing commit1 and dir1 throws exceptions because of checksum mismatches
+    IOUtils.closeWhileHandlingException(commit1, dir1);
   }
 }
