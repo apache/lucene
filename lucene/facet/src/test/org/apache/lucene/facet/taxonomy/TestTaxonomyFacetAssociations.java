@@ -27,6 +27,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -156,10 +157,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
   public void testIntSumAssociation() throws Exception {
 
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetIntAssociations(
@@ -215,10 +214,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   }
 
   public void testFloatSumAssociation() throws Exception {
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetFloatAssociations(
@@ -286,10 +283,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
    * different field.
    */
   public void testIntAndFloatAssocation() throws Exception {
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetFloatAssociations(
@@ -315,10 +310,8 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   }
 
   public void testWrongIndexFieldName() throws Exception {
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets =
         new TaxonomyFacetFloatAssociations(
             "wrong_field", taxoReader, config, fc, AssociationAggregationFunction.SUM);
@@ -398,12 +391,10 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   }
 
   public void testIntSumAssociationDrillDown() throws Exception {
-    FacetsCollector fc = new FacetsCollector();
-
     IndexSearcher searcher = newSearcher(reader);
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("int", "b");
-    searcher.search(q, fc);
+    FacetsCollector fc = searcher.search(q, new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetIntAssociations(
