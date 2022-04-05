@@ -304,13 +304,15 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
-    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
+    int randomNumDocs = TestUtil.nextInt(random(), 11, 100);
     int numMatchingDocs = 0;
 
     for (int i = 0; i < randomNumDocs; i++) {
       Document doc = new Document();
-      // ensure we index at least a document with long between 0 and 10
-      if (i == 0 || random().nextBoolean()) {
+      // We select most documents randomly but keep two documents:
+      //  * #0 ensures we will delete at least one document (with long between 0 and 9)
+      //  * #10 ensures we will keep at least one document (with long greater than 9)
+      if (i == 0 || i == 10 || random().nextBoolean()) {
         doc.add(new LongPoint("long", i));
         doc.add(new NumericDocValuesField("long", i));
         doc.add(new StringField("string", "value", Store.NO));
@@ -330,7 +332,7 @@ public class TestDocValuesFieldExistsQuery extends LuceneTestCase {
 
     // Test that we can't count in O(1) when there are deleted documents
     w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
-    w.deleteDocuments(LongPoint.newRangeQuery("long", 0L, 10L));
+    w.deleteDocuments(LongPoint.newRangeQuery("long", 0L, 9L));
     DirectoryReader reader2 = w.getReader();
     final IndexSearcher searcher2 = new IndexSearcher(reader2);
     final Query testQuery = new DocValuesFieldExistsQuery("long");
