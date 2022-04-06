@@ -35,6 +35,8 @@ import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.*;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
@@ -725,29 +727,38 @@ public class MemoryIndex {
 
     IndexSearcher searcher = createSearcher();
     try {
-      final float[] scores = new float[1]; // inits to 0.0f (no match)
-      searcher.search(
+      return searcher.search(
           query,
-          new SimpleCollector() {
-            private Scorable scorer;
+          new CollectorManager<>() {
+            final float[] scores = new float[1]; // inits to 0.0f (no match)
 
             @Override
-            public void collect(int doc) throws IOException {
-              scores[0] = scorer.score();
+            public Collector newCollector() {
+              return new SimpleCollector() {
+                private Scorable scorer;
+
+                @Override
+                public void collect(int doc) throws IOException {
+                  scores[0] = scorer.score();
+                }
+
+                @Override
+                public void setScorer(Scorable scorer) {
+                  this.scorer = scorer;
+                }
+
+                @Override
+                public ScoreMode scoreMode() {
+                  return ScoreMode.COMPLETE;
+                }
+              };
             }
 
             @Override
-            public void setScorer(Scorable scorer) {
-              this.scorer = scorer;
-            }
-
-            @Override
-            public ScoreMode scoreMode() {
-              return ScoreMode.COMPLETE;
+            public Float reduce(Collection<Collector> collectors) {
+              return scores[0];
             }
           });
-      float score = scores[0];
-      return score;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
