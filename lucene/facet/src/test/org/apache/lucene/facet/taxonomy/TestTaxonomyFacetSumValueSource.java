@@ -30,6 +30,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -104,14 +105,11 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     taxoWriter.close();
 
-    // Aggregate the facet counts:
-    FacetsCollector c = new FacetsCollector();
-
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query and one of the
     // Facets.search utility methods:
-    searcher.search(new MatchAllDocsQuery(), c);
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     TaxonomyFacetSumValueSource facets =
         new TaxonomyFacetSumValueSource(
@@ -121,6 +119,13 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     assertEquals(
         "dim=Author path=[] value=145.0 childCount=4\n  Lisa (50.0)\n  Frank (45.0)\n  Susan (40.0)\n  Bob (10.0)\n",
         facets.getTopChildren(10, "Author").toString());
+
+    // test getTopChildren(0, dim)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(0, "Author");
+        });
 
     taxoReader.close();
     searcher.getIndexReader().close();
@@ -175,8 +180,7 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     taxoWriter.close();
 
-    FacetsCollector c = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), c);
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     TaxonomyFacetSumValueSource facets =
         new TaxonomyFacetSumValueSource(
@@ -184,6 +188,13 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
 
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
+
+    // test getAllDims(0)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
 
     assertEquals(3, results.size());
     assertEquals(
@@ -194,6 +205,29 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
         results.get(1).toString());
     assertEquals(
         "dim=c path=[] value=30.0 childCount=1\n  baz1 (30.0)\n", results.get(2).toString());
+
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = facets.getTopDims(2, 1);
+    assertEquals(2, topNDimsResult.size());
+    assertEquals(
+        "dim=a path=[] value=60.0 childCount=3\n  foo3 (30.0)\n", topNDimsResult.get(0).toString());
+    assertEquals(
+        "dim=b path=[] value=50.0 childCount=2\n  bar2 (30.0)\n", topNDimsResult.get(1).toString());
+
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allDimsResults = facets.getTopDims(10, 10);
+    assertEquals(results, allDimsResults);
+
+    // test getTopDims(0, 1)
+    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
+    assertEquals(0, topDimsResults2.size());
+
+    // test getTopDims(1, 0) with topNChildren = 0
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(1, 0);
+        });
 
     IOUtils.close(searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }
@@ -226,8 +260,7 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     taxoWriter.close();
 
-    FacetsCollector c = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), c);
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     TaxonomyFacetSumValueSource facets =
         new TaxonomyFacetSumValueSource(
@@ -237,6 +270,9 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
 
+    // test default implementation of getTopDims
+    List<FacetResult> topDimsResults = facets.getTopDims(10, 10);
+    assertTrue(topDimsResults.isEmpty());
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -305,15 +341,14 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector sfc = new FacetsCollector();
-    newSearcher(r).search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc =
+        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets =
         new TaxonomyFacetSumValueSource(
             taxoReader, config, sfc, DoubleValuesSource.fromLongField("price"));
     assertEquals(
         "dim=a path=[] value=10.0 childCount=2\n  1 (6.0)\n  0 (4.0)\n",
         facets.getTopChildren(10, "a").toString());
-
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
@@ -326,8 +361,13 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     IndexWriter iw = new IndexWriter(indexDir, newIndexWriterConfig(new MockAnalyzer(random())));
 
     FacetsConfig config = new FacetsConfig();
+
+    // Add a doc without the price field to exercise the bug found in LUCENE-10491:
+    Document doc = new Document();
+    iw.addDocument(config.build(taxoWriter, doc));
+
     for (int i = 0; i < 4; i++) {
-      Document doc = new Document();
+      doc = new Document();
       doc.add(new NumericDocValuesField("price", (i + 1)));
       doc.add(new FacetField("a", Integer.toString(i % 2)));
       iw.addDocument(config.build(taxoWriter, doc));
@@ -347,7 +387,6 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     assertEquals(
         "dim=a path=[] value=10.0 childCount=2\n  1 (6.0)\n  0 (4.0)\n",
         facets.getTopChildren(10, "a").toString());
-
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
@@ -372,8 +411,8 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector sfc = new FacetsCollector();
-    newSearcher(r).search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc =
+        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets =
         new TaxonomyFacetSumValueSource(
             taxoReader, config, sfc, DoubleValuesSource.fromLongField("price"));
@@ -381,7 +420,6 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
     assertEquals(
         "dim=a path=[] value=10.0 childCount=2\n  1 (6.0)\n  0 (4.0)\n",
         facets.getTopChildren(10, "a").toString());
-
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
@@ -509,7 +547,11 @@ public class TestTaxonomyFacetSumValueSource extends FacetTestCase {
       sortFacetResults(expected);
 
       List<FacetResult> actual = facets.getAllDims(10);
-
+      // test default implementation of getTopDims
+      if (actual.size() > 0) {
+        List<FacetResult> topDimsResults1 = facets.getTopDims(1, 10);
+        assertEquals(actual.get(0), topDimsResults1.get(0));
+      }
       // Messy: fixup ties
       sortTies(actual);
 
