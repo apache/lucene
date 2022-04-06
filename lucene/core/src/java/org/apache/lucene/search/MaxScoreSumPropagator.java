@@ -166,7 +166,7 @@ final class MaxScoreSumPropagator {
     return Math.max(minScore, 0f);
   }
 
-  private float scoreSumUpperBound(double sum) {
+  float scoreSumUpperBound(double sum) {
     if (numClauses <= 2) {
       // When there are only two clauses, the sum is always the same regardless
       // of the order.

@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.OptionalInt;
 
 /**
  * This implements the WAND (Weak AND) algorithm for dynamic pruning described in "Efficient Query
@@ -53,9 +52,12 @@ import java.util.OptionalInt;
  */
 final class WANDScorer extends Scorer {
 
+  static final int FLOAT_MANTISSA_BITS = 24;
+  private static final long MAX_SCALED_SCORE = (1L << 24) - 1;
+
   /**
    * Return a scaling factor for the given float so that {@code f x 2^scalingFactor} would be in
-   * {@code ]2^15, 2^16]}. Special cases:
+   * {@code [2^23, 2^24[}. Special cases:
    *
    * <pre>
    *    scalingFactor(0) = scalingFactor(MIN_VALUE) - 1
@@ -74,7 +76,7 @@ final class WANDScorer extends Scorer {
       // Since doubles have more amplitude than floats for the
       // exponent, the cast produces a normal value.
       assert d == 0 || Math.getExponent(d) >= Double.MIN_EXPONENT; // normal double
-      return 15 - Math.getExponent(Math.nextDown(d));
+      return FLOAT_MANTISSA_BITS - 1 - Math.getExponent(d);
     }
   }
 
@@ -83,23 +85,21 @@ final class WANDScorer extends Scorer {
    * are used) as well as floating-point arithmetic errors. Those are rounded up in order to make
    * sure we do not miss any matches.
    */
-  private static long scaleMaxScore(float maxScore, int scalingFactor) {
+  static long scaleMaxScore(float maxScore, int scalingFactor) {
+    assert scalingFactor(maxScore) >= scalingFactor;
     assert Float.isNaN(maxScore) == false;
     assert maxScore >= 0;
 
     // NOTE: because doubles have more amplitude than floats for the
     // exponent, the scalb call produces an accurate value.
-    double scaled = Math.scalb((double) maxScore, scalingFactor);
+    final double scaled = Math.scalb((double) maxScore, scalingFactor);
 
-    if (scaled > 1 << 16) {
-      // This happens if either maxScore is +Infty, or we have a scorer that
-      // returned +Infty as its maximum score over the whole range of doc IDs
-      // when computing the scaling factor in the constructor, and now returned
-      // a finite maximum score for a smaller range of doc IDs.
-      return (1L << 32) - 1; // means +Infinity in practice for this scorer
+    if (scaled > MAX_SCALED_SCORE) {
+      // This happens if one scorer returns +Infty as a max score
+      return MAX_SCALED_SCORE;
     }
 
-    return (long) Math.ceil(scaled); // round up, cast is accurate since value is <= 2^16
+    return (long) Math.ceil(scaled); // round up, cast is accurate since value is < 2^24
   }
 
   /**
@@ -107,7 +107,7 @@ final class WANDScorer extends Scorer {
    * to make sure that we do not miss any matches.
    */
   private static long scaleMinScore(float minScore, int scalingFactor) {
-    assert Float.isNaN(minScore) == false;
+    assert Float.isFinite(minScore);
     assert minScore >= 0;
 
     // like for scaleMaxScore, this scalb call is accurate
@@ -171,21 +171,23 @@ final class WANDScorer extends Scorer {
     tail = new DisiWrapper[scorers.size()];
 
     if (this.scoreMode == ScoreMode.TOP_SCORES) {
-      OptionalInt scalingFactor = OptionalInt.empty();
+      // To avoid accuracy issues with floating-point numbers, this scorer operates on scaled longs.
+      // How do you choose the scaling factor? The thing is that we want to retain as many
+      // significant bits as possible, but not too many, otherwise operations on longs would be more
+      // precise than the equivalent operations on their unscaled counterparts and we might skip too
+      // many hits. So we compute the maximum possible score produced by this scorer, which is the
+      // sum of the maximum scores of each clause, and compute a scaling factor that would preserve
+      // 24 bits of accuracy - the number of mantissa bits of single-precision floating-point
+      // numbers.
+      double maxScoreSumDouble = 0;
       for (Scorer scorer : scorers) {
         scorer.advanceShallow(0);
         float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
-        if (maxScore != 0 && Float.isFinite(maxScore)) {
-          // 0 and +Infty should not impact the scale
-          scalingFactor =
-              OptionalInt.of(
-                  Math.min(scalingFactor.orElse(Integer.MAX_VALUE), scalingFactor(maxScore)));
-        }
+        maxScoreSumDouble += maxScore;
       }
-
-      // Use a scaling factor of 0 if all max scores are either 0 or +Infty
-      this.scalingFactor = scalingFactor.orElse(0);
       this.maxScorePropagator = new MaxScoreSumPropagator(scorers);
+      final float maxScoreSum = maxScorePropagator.scoreSumUpperBound(maxScoreSumDouble);
+      this.scalingFactor = scalingFactor(maxScoreSum);
     } else {
       this.scalingFactor = 0;
       this.maxScorePropagator = null;
