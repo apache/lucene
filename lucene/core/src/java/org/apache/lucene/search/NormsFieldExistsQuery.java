@@ -16,87 +16,19 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
-import java.util.Objects;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
 
 /**
  * A {@link Query} that matches documents that have a value for a given field as reported by field
  * norms. This will not work for fields that omit norms, e.g. {@link StringField}.
+ *
+ * @deprecated Use {@link org.apache.lucene.search.FieldExistsQuery} instead.
  */
-public final class NormsFieldExistsQuery extends Query {
-
-  private final String field;
+@Deprecated
+public final class NormsFieldExistsQuery extends FieldExistsQuery {
 
   /** Create a query that will match that have a value for the given {@code field}. */
   public NormsFieldExistsQuery(String field) {
-    this.field = Objects.requireNonNull(field);
-  }
-
-  public String getField() {
-    return field;
-  }
-
-  @Override
-  public boolean equals(Object other) {
-    return sameClassAs(other) && field.equals(((NormsFieldExistsQuery) other).field);
-  }
-
-  @Override
-  public int hashCode() {
-    return 31 * classHash() + field.hashCode();
-  }
-
-  @Override
-  public String toString(String field) {
-    return "NormsFieldExistsQuery [field=" + this.field + "]";
-  }
-
-  @Override
-  public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-    }
-  }
-
-  @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-      throws IOException {
-    return new ConstantScoreWeight(this, boost) {
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        FieldInfos fieldInfos = context.reader().getFieldInfos();
-        FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-        if (fieldInfo == null || fieldInfo.hasNorms() == false) {
-          return null;
-        }
-        LeafReader reader = context.reader();
-        DocIdSetIterator iterator = reader.getNormValues(field);
-        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
-      }
-
-      @Override
-      public int count(LeafReaderContext context) throws IOException {
-        final LeafReader reader = context.reader();
-        final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
-        if (fieldInfo == null || fieldInfo.hasNorms() == false) {
-          return 0;
-        }
-        // If every field has a value then we can shortcut
-        if (reader.getDocCount(field) == reader.maxDoc()) {
-          return reader.numDocs();
-        }
-        return super.count(context);
-      }
-
-      @Override
-      public boolean isCacheable(LeafReaderContext ctx) {
-        return true;
-      }
-    };
+    super(field);
   }
 }
