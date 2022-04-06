@@ -32,8 +32,10 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -55,6 +57,8 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -349,8 +353,9 @@ public class KnnGraphTester {
     TopDocs[] results = new TopDocs[numIters];
     long elapsed, totalCpuTime, totalVisited = 0;
     try (FileChannel q = FileChannel.open(queryPath)) {
+      int bufferSize = Math.max(numIters, warmCount) * dim * Float.BYTES;
       FloatBuffer targets =
-          q.map(FileChannel.MapMode.READ_ONLY, 0, numIters * dim * Float.BYTES)
+          q.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize)
               .order(ByteOrder.LITTLE_ENDIAN)
               .asFloatBuffer();
       float[] target = new float[dim];
@@ -362,18 +367,19 @@ public class KnnGraphTester {
       long cpuTimeStartNs;
       try (Directory dir = FSDirectory.open(indexPath);
           DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
         numDocs = reader.maxDoc();
         for (int i = 0; i < warmCount; i++) {
           // warm up
           targets.get(target);
-          results[i] = doKnnSearch(reader, KNN_FIELD, target, topK, fanout);
+          doKnnSearch(reader, KNN_FIELD, target, topK, fanout);
         }
         targets.position(0);
         start = System.nanoTime();
         cpuTimeStartNs = bean.getCurrentThreadCpuTime();
         for (int i = 0; i < numIters; i++) {
           targets.get(target);
-          results[i] = doKnnSearch(reader, KNN_FIELD, target, topK, fanout);
+          results[i] = doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout);
         }
         totalCpuTime = (bean.getCurrentThreadCpuTime() - cpuTimeStartNs) / 1_000_000;
         elapsed = (System.nanoTime() - start) / 1_000_000; // ns -> ms
@@ -428,6 +434,11 @@ public class KnnGraphTester {
           totalVisited,
           reindexTimeMsec);
     }
+  }
+
+  private static TopDocs doKnnVectorQuery(
+      IndexSearcher searcher, String field, float[] vector, int k, int fanout) throws IOException {
+    return searcher.search(new KnnVectorQuery(field, vector, k + fanout), k);
   }
 
   private static TopDocs doKnnSearch(
@@ -487,15 +498,26 @@ public class KnnGraphTester {
 
   private int[][] getNN(Path docPath, Path queryPath) throws IOException {
     // look in working directory for cached nn file
-    String nnFileName = "nn-" + numDocs + "-" + numIters + "-" + topK + "-" + dim + ".bin";
+    String hash = Integer.toString(Objects.hash(docPath, queryPath, numDocs, numIters, topK), 36);
+    String nnFileName = "nn-" + hash + ".bin";
     Path nnPath = Paths.get(nnFileName);
-    if (Files.exists(nnPath)) {
+    if (Files.exists(nnPath) && isNewer(nnPath, docPath, queryPath)) {
       return readNN(nnPath);
     } else {
       int[][] nn = computeNN(docPath, queryPath);
       writeNN(nn, nnPath);
       return nn;
     }
+  }
+
+  private boolean isNewer(Path path, Path... others) throws IOException {
+    FileTime modified = Files.getLastModifiedTime(path);
+    for (Path other : others) {
+      if (Files.getLastModifiedTime(other).compareTo(modified) >= 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private int[][] readNN(Path nnPath) throws IOException {
