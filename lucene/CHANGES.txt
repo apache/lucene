@@ -76,6 +76,8 @@ New Features
 * LUCENE-10456: Implement rewrite and Weight#count for MultiRangeQuery
   by merging overlapping ranges . (Jianping Weng)
 
+* LUCENE-10444: Support alternate aggregation functions in association facets. (Greg Miller)
+
 Improvements
 ---------------------
 

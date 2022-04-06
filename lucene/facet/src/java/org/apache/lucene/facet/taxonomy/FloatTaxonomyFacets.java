@@ -29,13 +29,21 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   // TODO: also use native hash map for sparse collection, like IntTaxonomyFacets
 
+  /** Aggregation function used for combining values. */
+  final AssociationAggregationFunction aggregationFunction;
+
   /** Per-ordinal value. */
   final float[] values;
 
   /** Sole constructor. */
-  FloatTaxonomyFacets(String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config)
+  FloatTaxonomyFacets(
+      String indexFieldName,
+      TaxonomyReader taxoReader,
+      AssociationAggregationFunction aggregationFunction,
+      FacetsConfig config)
       throws IOException {
     super(indexFieldName, taxoReader, config);
+    this.aggregationFunction = aggregationFunction;
     values = new float[taxoReader.getSize()];
   }
 
@@ -49,7 +57,9 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       if (ft.hierarchical && ft.multiValued == false) {
         int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
         assert dimRootOrd > 0;
-        values[dimRootOrd] += rollup(children[dimRootOrd]);
+        float newValue =
+            aggregationFunction.aggregate(values[dimRootOrd], rollup(children[dimRootOrd]));
+        values[dimRootOrd] = newValue;
       }
     }
   }
@@ -57,14 +67,14 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
   private float rollup(int ord) throws IOException {
     int[] children = getChildren();
     int[] siblings = getSiblings();
-    float sum = 0;
+    float aggregationValue = 0f;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      float childValue = values[ord] + rollup(children[ord]);
+      float childValue = aggregationFunction.aggregate(values[ord], rollup(children[ord]));
       values[ord] = childValue;
-      sum += childValue;
+      aggregationValue = aggregationFunction.aggregate(aggregationValue, childValue);
       ord = siblings[ord];
     }
-    return sum;
+    return aggregationValue;
   }
 
   @Override
@@ -104,13 +114,13 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     int[] siblings = getSiblings();
 
     int ord = children[dimOrd];
-    float sumValues = 0;
+    float aggregatedValue = 0;
     int childCount = 0;
 
     TopOrdAndFloatQueue.OrdAndValue reuse = null;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       if (values[ord] > 0) {
-        sumValues += values[ord];
+        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, values[ord]);
         childCount++;
         if (values[ord] > bottomValue) {
           if (reuse == null) {
@@ -128,16 +138,16 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
 
-    if (sumValues == 0) {
+    if (aggregatedValue == 0) {
       return null;
     }
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        sumValues = values[dimOrd];
+        aggregatedValue = values[dimOrd];
       } else {
         // Our sum'd count is not correct, in general:
-        sumValues = -1;
+        aggregatedValue = -1;
       }
     } else {
       // Our sum'd dim count is accurate, so we keep it
@@ -158,6 +168,6 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], values[i]);
     }
 
-    return new FacetResult(dim, path, sumValues, labelValues, childCount);
+    return new FacetResult(dim, path, aggregatedValue, labelValues, childCount);
   }
 }
