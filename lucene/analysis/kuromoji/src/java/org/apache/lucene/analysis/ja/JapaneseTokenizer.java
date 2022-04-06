@@ -360,7 +360,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     pending.clear();
 
     // Add BOS:
-    positions.get(0).add(0, 0, -1, -1, -1, Type.KNOWN);
+    positions.get(0).add(0, 0, -1, -1, -1, -1, Type.KNOWN);
   }
 
   @Override
@@ -415,6 +415,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     int[] costs = new int[8];
     int[] lastRightID = new int[8];
     int[] backPos = new int[8];
+    int[] backWordPos = new int[8];
     int[] backIndex = new int[8];
     int[] backID = new int[8];
     Type[] backType = new Type[8];
@@ -431,6 +432,7 @@ public final class JapaneseTokenizer extends Tokenizer {
       costs = ArrayUtil.grow(costs, 1 + count);
       lastRightID = ArrayUtil.grow(lastRightID, 1 + count);
       backPos = ArrayUtil.grow(backPos, 1 + count);
+      backWordPos = ArrayUtil.grow(backWordPos, 1 + count);
       backIndex = ArrayUtil.grow(backIndex, 1 + count);
       backID = ArrayUtil.grow(backID, 1 + count);
 
@@ -456,7 +458,13 @@ public final class JapaneseTokenizer extends Tokenizer {
     }
 
     public void add(
-        int cost, int lastRightID, int backPos, int backIndex, int backID, Type backType) {
+        int cost,
+        int lastRightID,
+        int backPos,
+        int backRPos,
+        int backIndex,
+        int backID,
+        Type backType) {
       // NOTE: this isn't quite a true Viterbi search,
       // because we should check if lastRightID is
       // already present here, and only update if the new
@@ -471,6 +479,7 @@ public final class JapaneseTokenizer extends Tokenizer {
       this.costs[count] = cost;
       this.lastRightID[count] = lastRightID;
       this.backPos[count] = backPos;
+      this.backWordPos[count] = backRPos;
       this.backIndex[count] = backIndex;
       this.backID[count] = backID;
       this.backType[count] = backType;
@@ -498,6 +507,7 @@ public final class JapaneseTokenizer extends Tokenizer {
   private void add(
       JaMorphData morphAtts,
       Position fromPosData,
+      int wordPos,
       int endPos,
       int wordID,
       Type type,
@@ -568,7 +578,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     // positions.get(endPos).add(leastCost, dict.getRightId(wordID), fromPosData.pos, leastIDX,
     // wordID, type);
     assert leftID == morphAtts.getRightId(wordID);
-    positions.get(endPos).add(leastCost, leftID, fromPosData.pos, leastIDX, wordID, type);
+    positions.get(endPos).add(leastCost, leftID, fromPosData.pos, wordPos, leastIDX, wordID, type);
   }
 
   @Override
@@ -903,6 +913,7 @@ public final class JapaneseTokenizer extends Tokenizer {
             add(
                 userDictionary.getMorphAttributes(),
                 posData,
+                pos,
                 posAhead + 1,
                 output + arc.nextFinalOutput().intValue(),
                 Type.USER,
@@ -956,6 +967,7 @@ public final class JapaneseTokenizer extends Tokenizer {
               add(
                   dictionary.getMorphAttributes(),
                   posData,
+                  pos,
                   posAhead + 1,
                   wordIdRef.ints[wordIdRef.offset + ofs],
                   Type.KNOWN,
@@ -1012,6 +1024,7 @@ public final class JapaneseTokenizer extends Tokenizer {
           add(
               unkDictionary.getMorphAttributes(),
               posData,
+              pos,
               posData.pos + unknownWordLength,
               wordIdRef.ints[wordIdRef.offset + ofs],
               Type.UNKNOWN,
@@ -1157,7 +1170,7 @@ public final class JapaneseTokenizer extends Tokenizer {
           }
           positions
               .get(toPos)
-              .add(newCost, dict2.getRightId(wordID), pos, bestStartIDX, wordID, forwardType);
+              .add(newCost, dict2.getRightId(wordID), pos, -1, bestStartIDX, wordID, forwardType);
         }
       } else {
         // On non-initial positions, we maximize score
@@ -1177,6 +1190,7 @@ public final class JapaneseTokenizer extends Tokenizer {
           add(
               getDict(forwardType).getMorphAttributes(),
               posData,
+              pos,
               toPos,
               posData.forwardID[forwardArcIDX],
               forwardType,
