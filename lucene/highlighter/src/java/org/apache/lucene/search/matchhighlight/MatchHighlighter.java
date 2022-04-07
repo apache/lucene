@@ -156,7 +156,7 @@ public class MatchHighlighter {
   public static class QueryOffsetRange extends OffsetRange {
     public final Query query;
 
-    QueryOffsetRange(Query query, int from, int to) {
+    public QueryOffsetRange(Query query, int from, int to) {
       super(from, to);
       this.query = query;
     }
