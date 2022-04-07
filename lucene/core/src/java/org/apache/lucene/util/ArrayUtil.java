@@ -341,7 +341,7 @@ public final class ArrayUtil {
    * Returns an array whose size is at least {@code minSize}, generally over-allocating
    * exponentially, and it will not copy the origin data to the new array
    */
-  public static int[] growSizeOnly(int[] array, int minSize) {
+  public static int[] growNoCopy(int[] array, int minSize) {
     assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
     if (array.length < minSize) {
       return new int[oversize(minSize, Integer.BYTES)];
@@ -377,7 +377,7 @@ public final class ArrayUtil {
    * Returns an array whose size is at least {@code minSize}, generally over-allocating
    * exponentially, and it will not copy the origin data to the new array
    */
-  public static long[] growSizeOnly(long[] array, int minSize) {
+  public static long[] growNoCopy(long[] array, int minSize) {
     assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
     if (array.length < minSize) {
       return new long[oversize(minSize, Long.BYTES)];
@@ -413,7 +413,7 @@ public final class ArrayUtil {
    * Returns an array whose size is at least {@code minSize}, generally over-allocating
    * exponentially, and it will not copy the origin data to the new array
    */
-  public static byte[] growSizeOnly(byte[] array, int minSize) {
+  public static byte[] growNoCopy(byte[] array, int minSize) {
     assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
     if (array.length < minSize) {
       return new byte[oversize(minSize, Byte.BYTES)];

@@ -75,7 +75,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       int totalLength = dictLength;
       int i = 0;
       compressedLengths =
-          ArrayUtil.growSizeOnly(compressedLengths, originalLength / blockLength + 1);
+          ArrayUtil.growNoCopy(compressedLengths, originalLength / blockLength + 1);
       while (totalLength < originalLength) {
 
         compressedLengths[i++] = in.readVInt();
@@ -99,7 +99,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
       final int numBlocks = readCompressedLengths(in, originalLength, dictLength, blockLength);
 
-      buffer = ArrayUtil.growSizeOnly(buffer, dictLength + blockLength);
+      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
       bytes.length = 0;
       // Read the dictionary
       if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
@@ -122,7 +122,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         in.skipBytes(numBytesToSkip);
       } else {
         // The dictionary contains some bytes we need, copy its content to the BytesRef
-        bytes.bytes = ArrayUtil.growSizeOnly(bytes.bytes, dictLength);
+        bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, dictLength);
         System.arraycopy(buffer, 0, bytes.bytes, 0, dictLength);
         bytes.length = dictLength;
       }
@@ -171,7 +171,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
       final int dictLength = len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR);
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
-      buffer = ArrayUtil.growSizeOnly(buffer, dictLength + blockLength);
+      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
       out.writeVInt(dictLength);
       out.writeVInt(blockLength);
       final int end = off + len;
