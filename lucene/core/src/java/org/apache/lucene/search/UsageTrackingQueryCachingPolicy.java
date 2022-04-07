@@ -58,6 +58,11 @@ public class UsageTrackingQueryCachingPolicy implements QueryCachingPolicy {
       return true;
     }
 
+    if (query instanceof FieldExistsQuery) {
+      // We do not bother caching FieldExistsQuery queries since they are already plenty fast.
+      return true;
+    }
+
     if (query instanceof MatchAllDocsQuery) {
       // MatchAllDocsQuery has an iterator that is faster than what a bit set could do.
       return true;
