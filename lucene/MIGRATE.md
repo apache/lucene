@@ -25,6 +25,11 @@ These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to to call
 `Operations.determinize()` for DFA execution.
 
+### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
+
+These classes have been removed and consolidated into `FieldExistsQuery`. To migrate, caller simply replace those classes
+with the new one during object instantiation. 
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

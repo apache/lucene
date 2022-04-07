@@ -22,6 +22,9 @@ API Changes
 
 * LUCENE-10431: MultiTermQuery.setRewriteMethod() has been removed. (Alan Woodward)
 
+* LUCENE-10436: Remove deprecated DocValuesFieldExistsQuery, NormsFieldExistsQuery and
+  KnnVectorFieldExistsQuery. (Zach Chen, Adrien Grand)
+
 New Features
 ---------------------
 
