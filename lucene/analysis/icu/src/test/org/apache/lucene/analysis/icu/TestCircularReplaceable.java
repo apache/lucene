@@ -20,7 +20,7 @@ import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.Transliterator.Position;
 import java.util.Arrays;
 import java.util.Random;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestCircularReplaceable extends BaseTokenStreamTestCase {
 
