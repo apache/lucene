@@ -16,10 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.LeafReader;
-
 /**
  * A {@link Query} that matches documents that have a value for a given field as reported by doc
  * values iterators.
@@ -32,41 +28,5 @@ public final class DocValuesFieldExistsQuery extends FieldExistsQuery {
   /** Create a query that will match documents which have a value for the given {@code field}. */
   public DocValuesFieldExistsQuery(String field) {
     super(field);
-  }
-
-  /**
-   * Returns a {@link DocIdSetIterator} from the given field or null if the field doesn't exist in
-   * the reader or if the reader has no doc values for the field.
-   */
-  public static DocIdSetIterator getDocValuesDocIdSetIterator(String field, LeafReader reader)
-      throws IOException {
-    FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
-    final DocIdSetIterator iterator;
-    if (fieldInfo != null) {
-      switch (fieldInfo.getDocValuesType()) {
-        case NONE:
-          iterator = null;
-          break;
-        case NUMERIC:
-          iterator = reader.getNumericDocValues(field);
-          break;
-        case BINARY:
-          iterator = reader.getBinaryDocValues(field);
-          break;
-        case SORTED:
-          iterator = reader.getSortedDocValues(field);
-          break;
-        case SORTED_NUMERIC:
-          iterator = reader.getSortedNumericDocValues(field);
-          break;
-        case SORTED_SET:
-          iterator = reader.getSortedSetDocValues(field);
-          break;
-        default:
-          throw new AssertionError();
-      }
-      return iterator;
-    }
-    return null;
   }
 }
