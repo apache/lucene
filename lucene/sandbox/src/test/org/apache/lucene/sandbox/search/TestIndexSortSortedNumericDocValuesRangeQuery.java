@@ -30,7 +30,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
@@ -371,7 +371,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     Query query = createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE);
     Query rewrittenQuery = query.rewrite(reader);
-    assertEquals(new DocValuesFieldExistsQuery("field"), rewrittenQuery);
+    assertEquals(new FieldExistsQuery("field"), rewrittenQuery);
 
     writer.close();
     reader.close();

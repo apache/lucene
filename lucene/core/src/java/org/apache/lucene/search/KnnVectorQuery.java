@@ -99,7 +99,7 @@ public class KnnVectorQuery extends Query {
       BooleanQuery booleanQuery =
           new BooleanQuery.Builder()
               .add(filter, BooleanClause.Occur.FILTER)
-              .add(new KnnVectorFieldExistsQuery(field), BooleanClause.Occur.FILTER)
+              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
               .build();
       indexSearcher.search(booleanQuery, filterCollector);
     }
