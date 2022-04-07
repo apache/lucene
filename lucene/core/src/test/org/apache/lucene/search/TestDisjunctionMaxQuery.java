@@ -22,10 +22,9 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -37,13 +36,15 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Test of the DisjunctionMaxQuery. */
 @LuceneTestCase.SuppressCodecs("SimpleText")
@@ -457,40 +458,6 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     }
   }
 
-  // LUCENE-4477 / LUCENE-4401:
-  public void testBooleanSpanQuery() throws Exception {
-    int hits = 0;
-    Directory directory = newDirectory();
-    Analyzer indexerAnalyzer = new MockAnalyzer(random());
-
-    IndexWriterConfig config = new IndexWriterConfig(indexerAnalyzer);
-    IndexWriter writer = new IndexWriter(directory, config);
-    String FIELD = "content";
-    Document d = new Document();
-    d.add(new TextField(FIELD, "clockwork orange", Field.Store.YES));
-    writer.addDocument(d);
-    writer.close();
-
-    IndexReader indexReader = DirectoryReader.open(directory);
-    IndexSearcher searcher = newSearcher(indexReader);
-
-    DisjunctionMaxQuery query =
-        new DisjunctionMaxQuery(
-            Arrays.asList(
-                new SpanTermQuery(new Term(FIELD, "clockwork")),
-                new SpanTermQuery(new Term(FIELD, "clckwork"))),
-            1.0f);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(1000, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    hits = collector.topDocs().scoreDocs.length;
-    for (ScoreDoc scoreDoc : collector.topDocs().scoreDocs) {
-      System.out.println(scoreDoc.doc);
-    }
-    indexReader.close();
-    assertEquals(hits, 1);
-    directory.close();
-  }
-
   public void testRewriteBoolean() throws Exception {
     Query sub1 = tq("hed", "albino");
     Query sub2 = tq("hed", "elephant");
@@ -501,6 +468,13 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
             .add(sub1, BooleanClause.Occur.SHOULD)
             .add(sub2, BooleanClause.Occur.SHOULD)
             .build();
+    assertEquals(expected, rewritten);
+  }
+
+  public void testRewriteEmpty() throws Exception {
+    DisjunctionMaxQuery q = new DisjunctionMaxQuery(Collections.emptyList(), 0.0f);
+    Query rewritten = s.rewrite(q);
+    Query expected = new MatchNoDocsQuery();
     assertEquals(expected, rewritten);
   }
 

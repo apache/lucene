@@ -30,15 +30,15 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.standard.EmojiTokenizationTestUnicode_11_0;
-import org.apache.lucene.analysis.standard.WordBreakTestUnicode_9_0_0;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.standard.EmojiTokenizationTestUnicode_12_1;
+import org.apache.lucene.tests.analysis.standard.WordBreakTestUnicode_12_1_0;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
 
@@ -81,7 +81,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
 
   public void testHugeDoc() throws IOException {
     StringBuilder sb = new StringBuilder();
-    char whitespace[] = new char[4094];
+    char[] whitespace = new char[4094];
     Arrays.fill(whitespace, ' ');
     sb.append(whitespace);
     sb.append("testing 1234");
@@ -678,7 +678,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeWordBreaks() throws Exception {
-    WordBreakTestUnicode_9_0_0 wordBreakTest = new WordBreakTestUnicode_9_0_0();
+    WordBreakTestUnicode_12_1_0 wordBreakTest = new WordBreakTestUnicode_12_1_0();
     wordBreakTest.test(a);
   }
 
@@ -852,7 +852,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeEmojiTests() throws Exception {
-    EmojiTokenizationTestUnicode_11_0 emojiTest = new EmojiTokenizationTestUnicode_11_0();
+    EmojiTokenizationTestUnicode_12_1 emojiTest = new EmojiTokenizationTestUnicode_12_1();
     emojiTest.test(a);
   }
 

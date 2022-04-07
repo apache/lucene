@@ -17,7 +17,7 @@
 package org.apache.lucene.analysis.icu.segmentation;
 
 import java.text.CharacterIterator;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCharArrayIterator extends LuceneTestCase {
   public void testBasicUsage() {
@@ -92,7 +92,7 @@ public class TestCharArrayIterator extends LuceneTestCase {
   }
 
   public void testClone() {
-    char text[] = "testing".toCharArray();
+    char[] text = "testing".toCharArray();
     CharArrayIterator ci = new CharArrayIterator();
     ci.setText(text, 0, text.length);
     ci.next();

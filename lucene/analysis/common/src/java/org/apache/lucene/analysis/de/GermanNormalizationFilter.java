@@ -24,8 +24,8 @@ import org.apache.lucene.analysis.util.StemmerUtil;
 
 /**
  * Normalizes German characters according to the heuristics of the <a
- * href="http://snowball.tartarus.org/algorithms/german2/stemmer.html">German2 snowball
- * algorithm</a>. It allows for the fact that ä, ö and ü are sometimes written as ae, oe and ue.
+ * href="https://snowballstem.org/algorithms/german2/stemmer.html">German2 snowball algorithm</a>.
+ * It allows for the fact that ä, ö and ü are sometimes written as ae, oe and ue.
  *
  * <ul>
  *   <li>'ß' is replaced by 'ss'
@@ -53,7 +53,7 @@ public final class GermanNormalizationFilter extends TokenFilter {
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       int state = N;
-      char buffer[] = termAtt.buffer();
+      char[] buffer = termAtt.buffer();
       int length = termAtt.length();
       for (int i = 0; i < length; i++) {
         final char c = buffer[i];

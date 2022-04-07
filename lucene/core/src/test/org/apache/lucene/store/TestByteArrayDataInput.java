@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.store;
 
-import org.apache.lucene.util.LuceneTestCase;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestByteArrayDataInput extends LuceneTestCase {
 
@@ -24,9 +26,39 @@ public class TestByteArrayDataInput extends LuceneTestCase {
     byte[] bytes = new byte[] {1, 65};
     ByteArrayDataInput in = new ByteArrayDataInput(bytes);
     assertEquals("A", in.readString());
+    assertTrue(in.eof());
 
     bytes = new byte[] {1, 1, 65};
     in.reset(bytes, 1, 2);
     assertEquals("A", in.readString());
+    assertTrue(in.eof());
+  }
+
+  public void testDatatypes() throws Exception {
+    // write some primitives using ByteArrayDataOutput:
+    final byte[] bytes = new byte[32];
+    final ByteArrayDataOutput out = new ByteArrayDataOutput(bytes);
+    out.writeByte((byte) 43);
+    out.writeShort((short) 12345);
+    out.writeInt(1234567890);
+    out.writeLong(1234567890123456789L);
+    final int size = out.getPosition();
+    assertEquals(15, size);
+
+    // read the primitives using ByteBuffer to ensure encoding in byte array is LE:
+    final ByteBuffer buf = ByteBuffer.wrap(bytes, 0, size).order(ByteOrder.LITTLE_ENDIAN);
+    assertEquals(43, buf.get());
+    assertEquals(12345, buf.getShort());
+    assertEquals(1234567890, buf.getInt());
+    assertEquals(1234567890123456789L, buf.getLong());
+    assertEquals(0, buf.remaining());
+
+    // read the primitives using ByteArrayDataInput:
+    final ByteArrayDataInput in = new ByteArrayDataInput(bytes, 0, size);
+    assertEquals(43, in.readByte());
+    assertEquals(12345, in.readShort());
+    assertEquals(1234567890, in.readInt());
+    assertEquals(1234567890123456789L, in.readLong());
+    assertTrue(in.eof());
   }
 }

@@ -26,10 +26,10 @@ import org.apache.commons.codec.language.Nysiis;
 import org.apache.commons.codec.language.RefinedSoundex;
 import org.apache.commons.codec.language.Soundex;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Tests {@link PhoneticFilter} */
 public class TestPhoneticFilter extends BaseTokenStreamTestCase {
@@ -112,7 +112,7 @@ public class TestPhoneticFilter extends BaseTokenStreamTestCase {
 
   /** blast some random strings through the analyzer */
   public void testRandomStrings() throws IOException {
-    Encoder encoders[] =
+    Encoder[] encoders =
         new Encoder[] {
           new Metaphone(),
           new DoubleMetaphone(),
@@ -149,7 +149,7 @@ public class TestPhoneticFilter extends BaseTokenStreamTestCase {
   }
 
   public void testEmptyTerm() throws IOException {
-    Encoder encoders[] =
+    Encoder[] encoders =
         new Encoder[] {
           new Metaphone(),
           new DoubleMetaphone(),

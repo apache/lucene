@@ -19,7 +19,6 @@ package org.apache.lucene.queries.function;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -28,9 +27,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.CheckHits;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
@@ -43,9 +40,12 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -201,10 +201,10 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
     assertEquals(expected, w.isCacheable(ctx));
   }
 
-  void assertHits(DoubleValuesSource vs, float scores[]) throws Exception {
+  void assertHits(DoubleValuesSource vs, float[] scores) throws Exception {
     Query q = new FunctionScoreQuery(new MatchAllDocsQuery(), vs);
-    ScoreDoc expected[] = new ScoreDoc[scores.length];
-    int expectedDocs[] = new int[scores.length];
+    ScoreDoc[] expected = new ScoreDoc[scores.length];
+    int[] expectedDocs = new int[scores.length];
     for (int i = 0; i < expected.length; i++) {
       expectedDocs[i] = i;
       expected[i] = new ScoreDoc(i, scores[i]);
@@ -218,7 +218,7 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
     assertSort(vs, expected);
   }
 
-  void assertSort(DoubleValuesSource vs, ScoreDoc expected[]) throws Exception {
+  void assertSort(DoubleValuesSource vs, ScoreDoc[] expected) throws Exception {
     boolean reversed = random().nextBoolean();
     Arrays.sort(
         expected, (a, b) -> reversed ? (int) (b.score - a.score) : (int) (a.score - b.score));

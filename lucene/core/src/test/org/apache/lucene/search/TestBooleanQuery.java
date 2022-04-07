@@ -20,34 +20,35 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.automaton.Operations;
 
 public class TestBooleanQuery extends LuceneTestCase {
 
@@ -182,11 +183,18 @@ public class TestBooleanQuery extends LuceneTestCase {
     assertEquals(hashCode, bq.hashCode());
   }
 
-  public void testException() {
+  public void testTooManyClauses() {
+    // Bad code (such as in a Query.rewrite() impl) should be prevented from creating a BooleanQuery
+    // that directly exceeds the maxClauseCount (prior to needing IndexSearcher.rewrite() to do a
+    // full walk of the final result)
+    BooleanQuery.Builder bq = new BooleanQuery.Builder();
+    for (int i = 0; i < IndexSearcher.getMaxClauseCount(); i++) {
+      bq.add(new TermQuery(new Term("foo", "bar-" + i)), Occur.SHOULD);
+    }
     expectThrows(
-        IllegalArgumentException.class,
+        IndexSearcher.TooManyClauses.class,
         () -> {
-          IndexSearcher.setMaxClauseCount(0);
+          bq.add(new TermQuery(new Term("foo", "bar-MAX")), Occur.SHOULD);
         });
   }
 
@@ -248,8 +256,11 @@ public class TestBooleanQuery extends LuceneTestCase {
 
     BooleanQuery.Builder query = new BooleanQuery.Builder(); // Query: +foo -ba*
     query.add(new TermQuery(new Term("field", "foo")), BooleanClause.Occur.MUST);
-    WildcardQuery wildcardQuery = new WildcardQuery(new Term("field", "ba*"));
-    wildcardQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    WildcardQuery wildcardQuery =
+        new WildcardQuery(
+            new Term("field", "ba*"),
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     query.add(wildcardQuery, BooleanClause.Occur.MUST_NOT);
 
     MultiReader multireader = new MultiReader(reader1, reader2);
@@ -386,41 +397,6 @@ public class TestBooleanQuery extends LuceneTestCase {
     d.close();
   }
 
-  // LUCENE-4477 / LUCENE-4401:
-  public void testBooleanSpanQuery() throws Exception {
-    boolean failed = false;
-    int hits = 0;
-    Directory directory = newDirectory();
-    Analyzer indexerAnalyzer = new MockAnalyzer(random());
-
-    IndexWriterConfig config = new IndexWriterConfig(indexerAnalyzer);
-    IndexWriter writer = new IndexWriter(directory, config);
-    String FIELD = "content";
-    Document d = new Document();
-    d.add(new TextField(FIELD, "clockwork orange", Field.Store.YES));
-    writer.addDocument(d);
-    writer.close();
-
-    IndexReader indexReader = DirectoryReader.open(directory);
-    IndexSearcher searcher = newSearcher(indexReader);
-
-    BooleanQuery.Builder query = new BooleanQuery.Builder();
-    SpanQuery sq1 = new SpanTermQuery(new Term(FIELD, "clockwork"));
-    SpanQuery sq2 = new SpanTermQuery(new Term(FIELD, "clckwork"));
-    query.add(sq1, BooleanClause.Occur.SHOULD);
-    query.add(sq2, BooleanClause.Occur.SHOULD);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(1000, Integer.MAX_VALUE);
-    searcher.search(query.build(), collector);
-    hits = collector.topDocs().scoreDocs.length;
-    for (ScoreDoc scoreDoc : collector.topDocs().scoreDocs) {
-      System.out.println(scoreDoc.doc);
-    }
-    indexReader.close();
-    assertEquals("Bug in boolean query composed of span queries", failed, false);
-    assertEquals("Bug in boolean query composed of span queries", hits, 1);
-    directory.close();
-  }
-
   public void testMinShouldMatchLeniency() throws Exception {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
@@ -441,30 +417,8 @@ public class TestBooleanQuery extends LuceneTestCase {
     dir.close();
   }
 
-  private static BitSet getMatches(IndexSearcher searcher, Query query) throws IOException {
-    BitSet set = new BitSet();
-    searcher.search(
-        query,
-        new SimpleCollector() {
-          int docBase = 0;
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            super.doSetNextReader(context);
-            docBase = context.docBase;
-          }
-
-          @Override
-          public void collect(int doc) throws IOException {
-            set.set(docBase + doc);
-          }
-        });
-    return set;
+  private static FixedBitSet getMatches(IndexSearcher searcher, Query query) throws IOException {
+    return searcher.search(query, FixedBitSetCollector.createManager(searcher.reader.maxDoc()));
   }
 
   public void testFILTERClauseBehavesLikeMUST() throws IOException {
@@ -498,8 +452,8 @@ public class TestBooleanQuery extends LuceneTestCase {
         bq2.add(q, Occur.FILTER);
       }
 
-      final BitSet matches1 = getMatches(searcher, bq1.build());
-      final BitSet matches2 = getMatches(searcher, bq2.build());
+      final FixedBitSet matches1 = getMatches(searcher, bq1.build());
+      final FixedBitSet matches2 = getMatches(searcher, bq2.build());
       assertEquals(matches1, matches2);
     }
 
@@ -522,33 +476,43 @@ public class TestBooleanQuery extends LuceneTestCase {
     final AtomicBoolean matched = new AtomicBoolean();
     searcher.search(
         bq,
-        new SimpleCollector() {
-          int docBase;
-          Scorable scorer;
-
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            super.doSetNextReader(context);
-            docBase = context.docBase;
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+              int docBase;
+              Scorable scorer;
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) throws IOException {
+                super.doSetNextReader(context);
+                docBase = context.docBase;
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+
+              @Override
+              public void setScorer(Scorable scorer) {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                final float actualScore = scorer.score();
+                final float expectedScore =
+                    searcher.explain(bq2, docBase + doc).getValue().floatValue();
+                assertEquals(expectedScore, actualScore, 10e-5);
+                matched.set(true);
+              }
+            };
           }
 
           @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
-          }
-
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {
-            this.scorer = scorer;
-          }
-
-          @Override
-          public void collect(int doc) throws IOException {
-            final float actualScore = scorer.score();
-            final float expectedScore =
-                searcher.explain(bq2, docBase + doc).getValue().floatValue();
-            assertEquals(expectedScore, actualScore, 10e-5);
-            matched.set(true);
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
           }
         });
     assertTrue(matched.get());
@@ -568,10 +532,9 @@ public class TestBooleanQuery extends LuceneTestCase {
     w.commit();
 
     DirectoryReader reader = w.getReader();
-    final IndexSearcher searcher = new IndexSearcher(reader);
+    final IndexSearcher searcher = newSearcher(reader);
 
     BooleanQuery.Builder qBuilder = new BooleanQuery.Builder();
-    BooleanQuery q = qBuilder.build();
     qBuilder.add(new TermQuery(new Term("field", "a")), Occur.FILTER);
 
     // With a single clause, we will rewrite to the underlying
@@ -581,7 +544,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     // Now with two clauses, we will get a conjunction scorer
     // Make sure it returns null scores
     qBuilder.add(new TermQuery(new Term("field", "b")), Occur.FILTER);
-    q = qBuilder.build();
+    BooleanQuery q = qBuilder.build();
     assertSameScoresWithoutFilters(searcher, q);
 
     // Now with a scoring clause, we need to make sure that
@@ -766,6 +729,45 @@ public class TestBooleanQuery extends LuceneTestCase {
     reader.close();
     w.close();
     dir.close();
+  }
+
+  // LUCENE-9620 Add Weight#count(LeafReaderContext)
+  public void testQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
+    int numMatchingDocs = 0;
+
+    for (int i = 0; i < randomNumDocs; i++) {
+      Document doc = new Document();
+      Field f;
+      if (random().nextBoolean()) {
+        f = newTextField("field", "a b c " + random().nextInt(), Field.Store.NO);
+        numMatchingDocs++;
+      } else {
+        f = newTextField("field", String.valueOf(random().nextInt()), Field.Store.NO);
+      }
+      doc.add(f);
+      w.addDocument(doc);
+    }
+    w.commit();
+
+    DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+
+    BooleanQuery.Builder q = new BooleanQuery.Builder();
+    q.add(new PhraseQuery("field", "a", "b"), Occur.SHOULD);
+    q.add(new TermQuery(new Term("field", "c")), Occur.SHOULD);
+
+    Query builtQuery = q.build();
+
+    assertEquals(searcher.count(builtQuery), numMatchingDocs);
+    final Weight weight = searcher.createWeight(builtQuery, ScoreMode.COMPLETE, 1);
+    // tests that the Weight#count API returns -1 instead of returning the total number of matches
+    assertEquals(weight.count(reader.leaves().get(0)), -1);
+
+    IOUtils.close(reader, w, dir);
   }
 
   public void testToString() {

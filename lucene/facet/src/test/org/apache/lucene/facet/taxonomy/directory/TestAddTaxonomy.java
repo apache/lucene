@@ -27,16 +27,16 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter.DiskOr
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter.MemoryOrdinalMap;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter.OrdinalMap;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestAddTaxonomy extends FacetTestCase {
 
   private void dotest(int ncats, final int range) throws Exception {
     final AtomicInteger numCats = new AtomicInteger(ncats);
-    Directory dirs[] = new Directory[2];
+    Directory[] dirs = new Directory[2];
     for (int i = 0; i < dirs.length; i++) {
       dirs[i] = newDirectory();
       final DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(dirs[i]);

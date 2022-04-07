@@ -20,12 +20,13 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Bits;
 
 /** LeafReader implemented by codec APIs. */
 public abstract class CodecReader extends LeafReader {
@@ -80,7 +81,7 @@ public abstract class CodecReader extends LeafReader {
    *
    * @lucene.internal
    */
-  public abstract VectorReader getVectorReader();
+  public abstract KnnVectorsReader getVectorReader();
 
   @Override
   public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
@@ -104,10 +105,12 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final Terms terms(String field) throws IOException {
-    // ensureOpen(); no; getPostingsReader calls this
-    // We could check the FieldInfo IndexOptions but there's no point since
-    //   PostingsReader will simply return null for fields that don't exist or that have no terms
-    // index.
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getIndexOptions() == IndexOptions.NONE) {
+      // Field does not exist or does not index postings
+      return null;
+    }
     return getPostingsReader().terms(field);
   }
 
@@ -220,8 +223,8 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final TopDocs searchNearestVectors(String field, float[] target, int k, int fanout)
-      throws IOException {
+  public final TopDocs searchNearestVectors(
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
@@ -229,7 +232,7 @@ public abstract class CodecReader extends LeafReader {
       return null;
     }
 
-    return getVectorReader().search(field, target, k, fanout);
+    return getVectorReader().search(field, target, k, acceptDocs, visitedLimit);
   }
 
   @Override
@@ -240,7 +243,9 @@ public abstract class CodecReader extends LeafReader {
     ensureOpen();
 
     // terms/postings
-    getPostingsReader().checkIntegrity();
+    if (getPostingsReader() != null) {
+      getPostingsReader().checkIntegrity();
+    }
 
     // norms
     if (getNormsReader() != null) {

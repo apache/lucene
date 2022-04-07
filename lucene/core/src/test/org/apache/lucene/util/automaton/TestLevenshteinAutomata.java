@@ -16,11 +16,11 @@
  */
 package org.apache.lucene.util.automaton;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestLevenshteinAutomata extends LuceneTestCase {
 
@@ -64,8 +64,8 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
   private void assertLev(String s, int maxDistance) {
     LevenshteinAutomata builder = new LevenshteinAutomata(s, false);
     LevenshteinAutomata tbuilder = new LevenshteinAutomata(s, true);
-    Automaton automata[] = new Automaton[maxDistance + 1];
-    Automaton tautomata[] = new Automaton[maxDistance + 1];
+    Automaton[] automata = new Automaton[maxDistance + 1];
+    Automaton[] tautomata = new Automaton[maxDistance + 1];
     for (int n = 0; n < automata.length; n++) {
       automata[n] = builder.toAutomaton(n);
       tautomata[n] = tbuilder.toAutomaton(n);
@@ -133,11 +133,11 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
   private Automaton naiveLev1(String s) {
     Automaton a = Automata.makeString(s);
     a = Operations.union(a, insertionsOf(s));
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     a = Operations.union(a, deletionsOf(s));
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     a = Operations.union(a, substitutionsOf(s));
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
 
     return a;
   }
@@ -149,7 +149,7 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
   private Automaton naiveLev1T(String s) {
     Automaton a = naiveLev1(s);
     a = Operations.union(a, transpositionsOf(s));
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     return a;
   }
 
@@ -165,7 +165,7 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
     }
 
     Automaton a = Operations.union(list);
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     return a;
   }
 
@@ -180,7 +180,7 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
     }
 
     Automaton a = Operations.union(list);
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     return a;
   }
 
@@ -198,7 +198,7 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
     }
 
     Automaton a = Operations.union(list);
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     return a;
   }
 
@@ -222,7 +222,7 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
       }
     }
     Automaton a = Operations.union(list);
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     return a;
   }
 
@@ -263,9 +263,9 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
   private int getDistance(String target, String other) {
     char[] sa;
     int n;
-    int p[]; // 'previous' cost array, horizontally
-    int d[]; // cost array, horizontally
-    int _d[]; // placeholder to assist in swapping p and d
+    int[] p; // 'previous' cost array, horizontally
+    int[] d; // cost array, horizontally
+    int[] _d; // placeholder to assist in swapping p and d
 
     /*
       The difference between this impl. and the previous is that, rather
@@ -334,7 +334,7 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
   private int getTDistance(String target, String other) {
     char[] sa;
     int n;
-    int d[][]; // cost array
+    int[][] d; // cost array
 
     sa = target.toCharArray();
     n = sa.length;

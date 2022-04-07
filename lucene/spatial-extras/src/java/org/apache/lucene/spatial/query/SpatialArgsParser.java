@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.spatial.query;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Locale;
@@ -28,10 +29,10 @@ import org.locationtech.spatial4j.shape.Shape;
 /**
  * Parses a string that usually looks like "OPERATION(SHAPE)" into a {@link SpatialArgs} object. The
  * set of operations supported are defined in {@link SpatialOperation}, such as "Intersects" being a
- * common one. The shape portion is defined by WKT {@link
- * org.locationtech.spatial4j.io.WktShapeParser}, but it can be overridden/customized via {@link
- * #parseShape(String, org.locationtech.spatial4j.context.SpatialContext)}. There are some optional
- * name-value pair parameters that follow the closing parenthesis. Example:
+ * common one. The shape portion is defined by WKT {@link org.locationtech.spatial4j.io.WKTReader},
+ * but it can be overridden/customized via {@link #parseShape(String,
+ * org.locationtech.spatial4j.context.SpatialContext)}. There are some optional name-value pair
+ * parameters that follow the closing parenthesis. Example:
  *
  * <pre>
  *   Intersects(ENVELOPE(-10,-8,22,20)) distErrPct=0.025
@@ -117,8 +118,11 @@ public class SpatialArgsParser {
   }
 
   protected Shape parseShape(String str, SpatialContext ctx) throws ParseException {
-    // return ctx.readShape(str);//still in Spatial4j 0.4 but will be deleted
-    return ctx.readShapeFromWkt(str);
+    try {
+      return ctx.getFormats().getWktReader().read(str);
+    } catch (IOException e) {
+      throw new ParseException(e.toString(), 0); // impossible but whatever;
+    }
   }
 
   protected static Double readDouble(String v) {

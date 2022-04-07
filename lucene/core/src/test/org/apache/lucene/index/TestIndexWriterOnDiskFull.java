@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -32,10 +31,11 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOSupplier;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** Tests for IndexWriter when the disk runs out of space */
 public class TestIndexWriterOnDiskFull extends LuceneTestCase {
@@ -328,7 +328,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               }
               writer.forceMerge(1);
             } else if (1 == method) {
-              DirectoryReader readers[] = new DirectoryReader[dirs.length];
+              DirectoryReader[] readers = new DirectoryReader[dirs.length];
               for (int i = 0; i < dirs.length; i++) {
                 readers[i] = DirectoryReader.open(dirs[i]);
               }

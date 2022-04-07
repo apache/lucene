@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 
 /** Tests MMapDirectory */
@@ -34,10 +36,9 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
     return m;
   }
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    assumeTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 
   @Ignore(
@@ -53,7 +54,7 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
       out.close();
       IndexInput in = dir.openInput("test", IOContext.DEFAULT);
       IndexInput clone = in.clone();
-      final byte accum[] = new byte[32 * 1024 * 1024];
+      final byte[] accum = new byte[32 * 1024 * 1024];
       final CountDownLatch shotgun = new CountDownLatch(1);
       Thread t1 =
           new Thread(

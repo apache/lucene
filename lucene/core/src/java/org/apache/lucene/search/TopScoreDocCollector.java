@@ -55,14 +55,15 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       // reset the minimum competitive score
       docBase = context.docBase;
-      return new ScorerLeafCollector() {
+      minCompetitiveScore = 0f;
 
+      return new ScorerLeafCollector() {
         @Override
         public void setScorer(Scorable scorer) throws IOException {
           super.setScorer(scorer);
-          minCompetitiveScore = 0f;
-          updateMinCompetitiveScore(scorer);
-          if (minScoreAcc != null) {
+          if (minScoreAcc == null) {
+            updateMinCompetitiveScore(scorer);
+          } else {
             updateGlobalMinCompetitiveScore(scorer);
           }
         }
@@ -132,8 +133,19 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       docBase = context.docBase;
       final int afterDoc = after.doc - context.docBase;
+      minCompetitiveScore = 0f;
 
       return new ScorerLeafCollector() {
+        @Override
+        public void setScorer(Scorable scorer) throws IOException {
+          super.setScorer(scorer);
+          if (minScoreAcc == null) {
+            updateMinCompetitiveScore(scorer);
+          } else {
+            updateGlobalMinCompetitiveScore(scorer);
+          }
+        }
+
         @Override
         public void collect(int doc) throws IOException {
           float score = scorer.score();
@@ -242,12 +254,15 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments
    */
   public static CollectorManager<TopScoreDocCollector, TopDocs> createSharedManager(
-      int numHits, FieldDoc after, int totalHitsThreshold) {
+      int numHits, ScoreDoc after, int totalHitsThreshold) {
+
+    int totalHitsMax = Math.max(totalHitsThreshold, numHits);
     return new CollectorManager<>() {
 
       private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits));
-      private final MaxScoreAccumulator minScoreAcc = new MaxScoreAccumulator();
+          HitsThresholdChecker.createShared(totalHitsMax);
+      private final MaxScoreAccumulator minScoreAcc =
+          totalHitsMax == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
 
       @Override
       public TopScoreDocCollector newCollector() throws IOException {
@@ -307,7 +322,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       // the next float if the global minimum score is set on a document id that is
       // smaller than the ids in the current leaf
       float score =
-          docBase > maxMinScore.docID ? Math.nextUp(maxMinScore.score) : maxMinScore.score;
+          docBase >= maxMinScore.docBase ? Math.nextUp(maxMinScore.score) : maxMinScore.score;
       if (score > minCompetitiveScore) {
         assert hitsThresholdChecker.isThresholdReached();
         scorer.setMinCompetitiveScore(score);
@@ -332,7 +347,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           // we don't use the next float but we register the document
           // id so that other leaves can require it if they are after
           // the current maximum
-          minScoreAcc.accumulate(pqTop.doc, pqTop.score);
+          minScoreAcc.accumulate(docBase, pqTop.score);
         }
       }
     }

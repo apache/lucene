@@ -32,6 +32,7 @@
 <li><a href="#Location_of_the_source">Location of the source</a></li>
 <li><a href="#IndexFiles">IndexFiles</a></li>
 <li><a href="#Searching_Files">Searching Files</a></li>
+<li><a href="#Embeddings">Working with vector embeddings</a></li>
 </ul>
 </div>
 <a id="About_this_Document"></a>
@@ -202,6 +203,17 @@ IndexSearcher.search(query,n)} method that returns
 {@link org.apache.lucene.search.TopDocs TopDocs} with max
 <span class="codefrag">n</span> hits. The results are printed in pages, sorted
 by score (i.e. relevance).</p>
+</div>
+<h2 id="Embeddings" class="boxed">Working with vector embeddings</h2>
+<div class="section">
+    <p>In addition to indexing and searching text, IndexFiles and SearchFiles can also index and search
+        numeric vectors derived from that text, known as "embeddings." This demo code uses pre-computed embeddings
+        provided by the <a href="https://nlp.stanford.edu/projects/glove/">GloVe</a> project, which are in the public
+        domain. The dictionary here is a tiny subset of the full GloVe dataset. It includes only the words that occur
+        in the toy data set, and is definitely <i>not ready for production use</i>! If you use this code to create
+        a vector index for a larger document set, the indexer will throw an exception because
+        a more complete set of embeddings is needed to get reasonable results.
+    </p>
 </div>
 </body>
 </html>

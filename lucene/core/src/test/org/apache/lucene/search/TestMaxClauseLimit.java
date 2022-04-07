@@ -21,9 +21,22 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMaxClauseLimit extends LuceneTestCase {
+  public void testIllegalArgumentExceptionOnZero() {
+    final int current = IndexSearcher.getMaxClauseCount();
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          IndexSearcher.setMaxClauseCount(0);
+        });
+    assertEquals(
+        "attempt to change to 0 should have failed w/o modifying",
+        current,
+        IndexSearcher.getMaxClauseCount());
+  }
+
   public void testFlattenInnerDisjunctionsWithMoreThan1024Terms() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
 
@@ -38,11 +51,15 @@ public class TestMaxClauseLimit extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "baz")), BooleanClause.Occur.SHOULD)
             .build();
 
-    expectThrows(
-        IndexSearcher.TooManyClauses.class,
-        () -> {
-          searcher.rewrite(query);
-        });
+    Exception e =
+        expectThrows(
+            IndexSearcher.TooManyClauses.class,
+            () -> {
+              searcher.rewrite(query);
+            });
+    assertFalse(
+        "Should have been caught during flattening and not required full nested walk",
+        e instanceof IndexSearcher.TooManyNestedClauses);
   }
 
   public void testLargeTermsNestedFirst() throws IOException {
@@ -66,8 +83,9 @@ public class TestMaxClauseLimit extends LuceneTestCase {
 
     Query query = builderMixed.build();
 
+    // Can't be flattened, but high clause count should still be cause during nested walk...
     expectThrows(
-        IndexSearcher.TooManyClauses.class,
+        IndexSearcher.TooManyNestedClauses.class,
         () -> {
           searcher.rewrite(query);
         });
@@ -95,8 +113,9 @@ public class TestMaxClauseLimit extends LuceneTestCase {
 
     Query query = builderMixed.build();
 
+    // Can't be flattened, but high clause count should still be cause during nested walk...
     expectThrows(
-        IndexSearcher.TooManyClauses.class,
+        IndexSearcher.TooManyNestedClauses.class,
         () -> {
           searcher.rewrite(query);
         });
@@ -116,8 +135,9 @@ public class TestMaxClauseLimit extends LuceneTestCase {
 
     DisjunctionMaxQuery dmq = new DisjunctionMaxQuery(Arrays.asList(clausesQueryArray), 0.5f);
 
+    // Can't be flattened, but high clause count should still be cause during nested walk...
     expectThrows(
-        IndexSearcher.TooManyClauses.class,
+        IndexSearcher.TooManyNestedClauses.class,
         () -> {
           searcher.rewrite(dmq);
         });
@@ -131,8 +151,9 @@ public class TestMaxClauseLimit extends LuceneTestCase {
       qb.add(new Term[] {new Term("foo", "bar-" + i), new Term("foo", "bar+" + i)}, 0);
     }
 
+    // Can't be flattened, but high clause count should still be cause during nested walk...
     expectThrows(
-        IndexSearcher.TooManyClauses.class,
+        IndexSearcher.TooManyNestedClauses.class,
         () -> {
           searcher.rewrite(qb.build());
         });

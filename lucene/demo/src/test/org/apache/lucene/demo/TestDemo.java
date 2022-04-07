@@ -20,7 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDemo extends LuceneTestCase {
 
@@ -28,12 +28,13 @@ public class TestDemo extends LuceneTestCase {
     PrintStream outSave = System.out;
     try {
       ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-      PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset().name());
+      PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset());
       System.setOut(fakeSystemOut);
-      SearchFiles.main(new String[] {"-query", query, "-index", indexPath.toString()});
+      SearchFiles.main(
+          new String[] {"-query", query, "-index", indexPath.toString(), "-paging", "20"});
       fakeSystemOut.flush();
       String output =
-          bytes.toString(Charset.defaultCharset().name()); // intentionally use default encoding
+          bytes.toString(Charset.defaultCharset()); // intentionally use default encoding
       assertTrue(
           "output=" + output, output.contains(expectedHitCount + " total matching documents"));
     } finally {
@@ -52,5 +53,65 @@ public class TestDemo extends LuceneTestCase {
     testOneSearch(indexDir, "gnu", 6);
     testOneSearch(indexDir, "derivative", 8);
     testOneSearch(indexDir, "license", 13);
+  }
+
+  private void testVectorSearch(Path indexPath, String query, int expectedHitCount)
+      throws Exception {
+    testVectorSearch(indexPath, query, expectedHitCount, expectedHitCount);
+  }
+
+  private void testVectorSearch(
+      Path indexPath, String query, int expectedMinHitCount, int expectedMaxHitCount)
+      throws Exception {
+    PrintStream outSave = System.out;
+    try {
+      ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      PrintStream fakeSystemOut = new PrintStream(bytes, false, Charset.defaultCharset());
+      System.setOut(fakeSystemOut);
+      SearchFiles.main(
+          new String[] {
+            "-query", query, "-index", indexPath.toString(), "-knn_vector", "1", "-paging", "20"
+          });
+      fakeSystemOut.flush();
+      String output =
+          bytes.toString(Charset.defaultCharset()); // intentionally use default encoding
+      int offset = output.indexOf(" total matching documents");
+      int hitCount =
+          Integer.parseInt(output.substring(output.lastIndexOf('\n', offset) + 1, offset));
+      assertTrue(
+          "unexpected hit count " + hitCount + " for query: " + query,
+          hitCount >= expectedMinHitCount && hitCount <= expectedMaxHitCount);
+    } finally {
+      System.setOut(outSave);
+    }
+  }
+
+  public void testKnnVectorSearch() throws Exception {
+    Path dir = getDataPath("test-files/docs");
+    Path indexDir = createTempDir("ContribDemoTest");
+
+    Path vectorDictSource = getDataPath("test-files/knn-dict").resolve("knn-token-vectors");
+    IndexFiles.main(
+        new String[] {
+          "-create",
+          "-docs",
+          dir.toString(),
+          "-index",
+          indexDir.toString(),
+          "-knn_dict",
+          vectorDictSource.toString()
+        });
+
+    // We add a single semantic hit by passing the "-knn_vector 1" argument to SearchFiles.  The
+    // term-based matches are usually also the best semantic matches and overlap, but sometimes due
+    // to randomness in the vector search algorithm, it picks a different top hit.
+    testVectorSearch(indexDir, "apache", 3, 4);
+    testVectorSearch(indexDir, "gnu", 6, 7);
+    testVectorSearch(indexDir, "derivative", 8, 9);
+    testVectorSearch(indexDir, "patent", 8, 9);
+    testVectorSearch(indexDir, "license", 13, 14);
+
+    // this matched 0 by token; semantic matching always adds one
+    testVectorSearch(indexDir, "lucene", 1);
   }
 }

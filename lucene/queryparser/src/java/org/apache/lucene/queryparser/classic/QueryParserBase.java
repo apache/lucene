@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.queryparser.classic;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.StringReader;
 import java.text.DateFormat;
@@ -79,7 +79,7 @@ public abstract class QueryParserBase extends QueryBuilder
   Map<String, DateTools.Resolution> fieldToDateResolution = null;
 
   boolean autoGeneratePhraseQueries;
-  int maxDeterminizedStates = DEFAULT_MAX_DETERMINIZED_STATES;
+  int determinizeWorkLimit = DEFAULT_DETERMINIZE_WORK_LIMIT;
 
   // So the generated QueryParser(CharStream) won't error out
   protected QueryParserBase() {
@@ -328,20 +328,19 @@ public abstract class QueryParserBase extends QueryBuilder
   }
 
   /**
-   * @param maxDeterminizedStates the maximum number of states that determinizing a regexp query can
-   *     result in. If the query results in any more states a TooComplexToDeterminizeException is
-   *     thrown.
+   * @param determinizeWorkLimit the maximum effort that determinizing a regexp query can spend. If
+   *     the query requires more effort, a TooComplexToDeterminizeException is thrown.
    */
-  public void setMaxDeterminizedStates(int maxDeterminizedStates) {
-    this.maxDeterminizedStates = maxDeterminizedStates;
+  public void setDeterminizeWorkLimit(int determinizeWorkLimit) {
+    this.determinizeWorkLimit = determinizeWorkLimit;
   }
 
   /**
-   * @return the maximum number of states that determinizing a regexp query can result in. If the
-   *     query results in any more states a TooComplexToDeterminizeException is thrown.
+   * @return the maximum effort that determinizing a regexp query can spend. If the query requires
+   *     more effort, a TooComplexToDeterminizeException is thrown.
    */
-  public int getMaxDeterminizedStates() {
-    return maxDeterminizedStates;
+  public int getDeterminizeWorkLimit() {
+    return determinizeWorkLimit;
   }
 
   protected void addClause(List<BooleanClause> clauses, int conj, int mods, Query q) {
@@ -542,9 +541,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new PrefixQuery instance
    */
   protected Query newPrefixQuery(Term prefix) {
-    PrefixQuery query = new PrefixQuery(prefix);
-    query.setRewriteMethod(multiTermRewriteMethod);
-    return query;
+    return new PrefixQuery(prefix, multiTermRewriteMethod);
   }
 
   /**
@@ -554,9 +551,13 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new RegexpQuery instance
    */
   protected Query newRegexpQuery(Term regexp) {
-    RegexpQuery query = new RegexpQuery(regexp, RegExp.ALL, maxDeterminizedStates);
-    query.setRewriteMethod(multiTermRewriteMethod);
-    return query;
+    return new RegexpQuery(
+        regexp,
+        RegExp.ALL,
+        0,
+        RegexpQuery.DEFAULT_PROVIDER,
+        determinizeWorkLimit,
+        multiTermRewriteMethod);
   }
 
   /**
@@ -602,11 +603,8 @@ public abstract class QueryParserBase extends QueryBuilder
       end = getAnalyzer().normalize(field, part2);
     }
 
-    final TermRangeQuery query =
-        new TermRangeQuery(field, start, end, startInclusive, endInclusive);
-
-    query.setRewriteMethod(multiTermRewriteMethod);
-    return query;
+    return new TermRangeQuery(
+        field, start, end, startInclusive, endInclusive, multiTermRewriteMethod);
   }
 
   /**
@@ -625,9 +623,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new WildcardQuery instance
    */
   protected Query newWildcardQuery(Term t) {
-    WildcardQuery query = new WildcardQuery(t, maxDeterminizedStates);
-    query.setRewriteMethod(multiTermRewriteMethod);
-    return query;
+    return new WildcardQuery(t, determinizeWorkLimit, multiTermRewriteMethod);
   }
 
   /**
@@ -811,23 +807,38 @@ public abstract class QueryParserBase extends QueryBuilder
     return q;
   }
 
-  Query handleBareFuzzy(String qfield, Token fuzzySlop, String termImage) throws ParseException {
-    Query q;
-    float fms = fuzzyMinSim;
+  /**
+   * Determines the similarity distance for the given fuzzy token and term string.
+   *
+   * <p>The default implementation uses the string image of the {@code fuzzyToken} in an attempt to
+   * parse it to a primitive float value. Otherwise, the {@linkplain #getFuzzyMinSim() minimal
+   * similarity} distance is returned. Subclasses can override this method to return a similarity
+   * distance, say based on the {@code termStr}, if the {@code fuzzyToken} does not specify a
+   * distance.
+   *
+   * @param fuzzyToken The Fuzzy token
+   * @param termStr The Term string
+   * @return The similarity distance
+   */
+  protected float getFuzzyDistance(Token fuzzyToken, String termStr) {
     try {
-      fms = Float.parseFloat(fuzzySlop.image.substring(1));
+      return Float.parseFloat(fuzzyToken.image.substring(1));
     } catch (
         @SuppressWarnings("unused")
         Exception ignored) {
     }
+    return fuzzyMinSim;
+  }
+
+  Query handleBareFuzzy(String qfield, Token fuzzySlop, String termImage) throws ParseException {
+    float fms = getFuzzyDistance(fuzzySlop, termImage);
     if (fms < 0.0f) {
       throw new ParseException(
           "Minimum similarity for a FuzzyQuery has to be between 0.0f and 1.0f !");
     } else if (fms >= 1.0f && fms != (int) fms) {
       throw new ParseException("Fractional edit distances are not allowed!");
     }
-    q = getFuzzyQuery(qfield, termImage, fms);
-    return q;
+    return getFuzzyQuery(qfield, termImage, fms);
   }
 
   // extracted from the .jj grammar

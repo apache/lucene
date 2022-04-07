@@ -1,0 +1,152 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Configure Lucene's binary release. This is a bit convoluted so is placed
+// in a separate script.
+
+configure(project(":lucene:distribution")) {
+  def packageBaseName = "${buildDir}/packages/lucene-${version}"
+
+   // Prepare site documentation dependency for inclusion.
+  configurations {
+    docs
+
+    jars
+    jarsTestFramework
+    jarsThirdParty
+
+    binaryDirForTests
+  }
+
+  dependencies { DependencyHandler handler ->
+    docs project(path: ':lucene:documentation', configuration: 'site')
+
+    // Maven-published submodule JARs are part of the binary distribution.
+    // We don't copy their transitive dependencies.
+    def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p in [
+      // Placed in a separate folder (module layer conflicts).
+      project(":lucene:test-framework"),
+    ]) }
+    for (Project module : binaryModules) {
+      jars(module, {
+        transitive = false
+      })
+    }
+
+    // It's placed in a separate modules folder since it has service providers that are consumed by lucene-core for tests.
+    // We won't resolve it when running the Luke app.
+    jarsTestFramework(project(":lucene:test-framework"), {
+      transitive = false
+    })
+
+    // The third-party JARs consist of all the transitive dependencies from a subset of
+    // all Lucene modules. We only include the demos and Luke. Everything else has to be downloaded
+    // manually or via maven POMs.
+    for (Project module : [
+        project(":lucene:luke"),
+        project(":lucene:demo")
+    ]) {
+      jarsThirdParty(module, {
+        transitive = true
+      })
+    }
+  }
+
+  task assembleBinaryTgz(type: Tar) {
+    description "Assemble binary Lucene artifact as a .tgz file."
+
+    archiveFileName = packageBaseName + ".tgz"
+    destinationDirectory = file(archiveFileName).parentFile
+
+    reproducibleFileOrder = true
+    compression = Compression.GZIP
+
+    // Internal archive folder for all files.
+    into "lucene-${rootProject.version}/"
+  }
+
+  task assembleBinaryDirForTests(type: Sync) {
+    description "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
+
+    destinationDir file("${packageBaseName}-itests")
+  }
+
+  artifacts {
+    binaryDirForTests tasks.assembleBinaryDirForTests.destinationDir, {
+      builtBy tasks.assembleBinaryDirForTests
+    }
+  }
+
+  // Configure distribution content for archives and stand-alone directories.
+  // This is split into binaries and other artifacts to speed up distribution
+  // tests.
+  Closure<Void> distributionBinaryContent = { AbstractCopyTask task ->
+    // Manually correct posix permissions (matters when assembling archives on Windows).
+    filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
+      copy.setMode(0755)
+    }
+
+    // Attach binary release - only files.
+    from(file("src/binary-release"), {
+      filteringCharset = 'UTF-8'
+    })
+
+    // Binary modules (Lucene).
+    from(configurations.jars, {
+      into 'modules'
+    })
+    from(configurations.jarsTestFramework, {
+      into 'modules-test-framework'
+    })
+
+    // Binary modules (with dependencies). Don't duplicate project artifacts.
+    from((configurations.jarsThirdParty - configurations.jars), {
+      into 'modules-thirdparty'
+    })
+  }
+
+  Closure<Void> distributionOtherContent = { AbstractCopyTask task ->
+    // Cherry-pick certain files from the root.
+    from(project(':').projectDir, {
+      include "LICENSE.txt"
+      include "NOTICE.txt"
+    })
+
+    // Cherry-pick certain files from the lucene module.
+    from(project(':lucene').projectDir, {
+      include "CHANGES.txt"
+      include "JRE_VERSION_MIGRATION.md"
+      include "MIGRATE.md"
+      include "SYSTEM_REQUIREMENTS.md"
+      include "licenses/*"
+    })
+
+    // The documentation.
+    from(configurations.docs, {
+      into 'docs'
+    })
+  }
+
+  [tasks.assembleBinaryTgz].each { Task task ->
+    task.configure distributionBinaryContent
+    task.configure distributionOtherContent
+  }
+
+  [tasks.assembleBinaryDirForTests].each { Task task ->
+    task.configure distributionBinaryContent
+  }
+}

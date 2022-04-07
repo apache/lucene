@@ -26,9 +26,9 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Basic Tests for {@link WikipediaTokenizer} */
 public class TestWikipediaTokenizer extends BaseTokenStreamTestCase {
@@ -413,7 +413,7 @@ public class TestWikipediaTokenizer extends BaseTokenStreamTestCase {
     // now check the flags, TODO: add way to check flags from BaseTokenStreamTestCase?
     tf = new WikipediaTokenizer(newAttributeFactory(), WikipediaTokenizer.BOTH, untoks);
     tf.setReader(new StringReader(test));
-    int expectedFlags[] =
+    int[] expectedFlags =
         new int[] {
           UNTOKENIZED_TOKEN_FLAG,
           0,

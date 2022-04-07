@@ -1,39 +1,44 @@
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    The ASF licenses this file to You under the Apache License, Version 2.0
+    the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+ -->
+
 # JRE Version Migration Guide
 
 If possible, use the same JRE major version at both index and search time.
 When upgrading to a different JRE major version, consider re-indexing. 
 
-Different JRE major versions may implement different versions of Unicode,
+Different Java versions may implement different versions of Unicode,
 which will change the way some parts of Lucene treat your text.
 
-For example: with Java 1.4, `LetterTokenizer` will split around the character U+02C6,
-but with Java 5 it will not.
-This is because Java 1.4 implements Unicode 3, but Java 5 implements Unicode 4.
+An (outdated) example: with Java 1.4, `LetterTokenizer` will split around the 
+character U+02C6, but with Java 5 it will not. This is because Java 1.4 
+implements Unicode 3, but Java 5 implements Unicode 4.
 
-For reference, JRE major versions with their corresponding Unicode versions:
+The version of Unicode supported by Java is listed in the documentation
+of java.lang.Character class. For reference, Java versions after Java 11
+support the following Unicode versions:
 
- * Java 1.4, Unicode 3.0
- * Java 5, Unicode 4.0
- * Java 6, Unicode 4.0
- * Java 7, Unicode 6.0
- * Java 8, Unicode 6.2
- * Java 9, Unicode 8.0
+ * Java 11, Unicode 10.0
+ * Java 12, Unicode 11.0
+ * Java 13, Unicode 12.1
+ * Java 15, Unicode 13.0
+ * Java 16, Unicode 13.0
+ * Java 17, Unicode 13.0
 
 In general, whether you need to re-index largely depends upon the data that
 you are searching, and what was changed in any given Unicode version. For example, 
 if you are completely sure your content is limited to the "Basic Latin" range
 of Unicode, you can safely ignore this. 
-
-## Special Notes: LUCENE 2.9 TO 3.0, JAVA 1.4 TO JAVA 5 TRANSITION
-
-* `StandardAnalyzer` will return the same results under Java 5 as it did under 
-Java 1.4. This is because it is largely independent of the runtime JRE for
-Unicode support, (except for lowercasing).  However, no changes to
-casing have occurred in Unicode 4.0 that affect StandardAnalyzer, so if you are 
-using this Analyzer you are NOT affected.
-
-* `SimpleAnalyzer`, `StopAnalyzer`, `LetterTokenizer`, `LowerCaseFilter`, and 
-`LowerCaseTokenizer` may return different results, along with many other `Analyzer`s
-and `TokenStream`s in Lucene's analysis modules. If you are using one of these 
-components, you may be affected.
-

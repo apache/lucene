@@ -553,7 +553,7 @@
  * <h3>Testing Your Analysis Component</h3>
  *
  * <p>The lucene-test-framework component defines <a
- * href="{@docRoot}/../test-framework/org/apache/lucene/analysis/BaseTokenStreamTestCase.html">BaseTokenStreamTestCase</a>.
+ * href="{@docRoot}/../test-framework/org/apache/lucene/tests/analysis/BaseTokenStreamTestCase.html">BaseTokenStreamTestCase</a>.
  * By extending this class, you can create JUnit tests that validate that your Analyzer and/or
  * analysis components correctly implement the protocol. The checkRandomData methods of that class
  * are particularly effective in flushing out errors.

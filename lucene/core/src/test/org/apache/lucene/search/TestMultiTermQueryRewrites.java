@@ -17,21 +17,21 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -120,8 +120,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
   }
 
   private void checkDuplicateTerms(MultiTermQuery.RewriteMethod method) throws Exception {
-    final MultiTermQuery mtq = TermRangeQuery.newStringRange("data", "2", "7", true, true);
-    mtq.setRewriteMethod(method);
+    final MultiTermQuery mtq = TermRangeQuery.newStringRange("data", "2", "7", true, true, method);
     final Query q1 = searcher.rewrite(mtq);
     final Query q2 = multiSearcher.rewrite(mtq);
     final Query q3 = multiSearcherDupls.rewrite(mtq);
@@ -163,7 +162,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
 
   private void checkBoosts(MultiTermQuery.RewriteMethod method) throws Exception {
     final MultiTermQuery mtq =
-        new MultiTermQuery("data") {
+        new MultiTermQuery("data", method) {
           @Override
           protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
             return new FilteredTermsEnum(terms.iterator()) {
@@ -198,7 +197,6 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
           @Override
           public void visit(QueryVisitor visitor) {}
         };
-    mtq.setRewriteMethod(method);
     final Query q1 = searcher.rewrite(mtq);
     final Query q2 = multiSearcher.rewrite(mtq);
     final Query q3 = multiSearcherDupls.rewrite(mtq);
@@ -233,8 +231,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
     int savedMaxClauseCount = IndexSearcher.getMaxClauseCount();
     IndexSearcher.setMaxClauseCount(3);
 
-    final MultiTermQuery mtq = TermRangeQuery.newStringRange("data", "2", "7", true, true);
-    mtq.setRewriteMethod(method);
+    final MultiTermQuery mtq = TermRangeQuery.newStringRange("data", "2", "7", true, true, method);
     try {
       IndexSearcher.TooManyClauses expected =
           expectThrows(
@@ -256,8 +253,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
     int savedMaxClauseCount = IndexSearcher.getMaxClauseCount();
     IndexSearcher.setMaxClauseCount(3);
 
-    final MultiTermQuery mtq = TermRangeQuery.newStringRange("data", "2", "7", true, true);
-    mtq.setRewriteMethod(method);
+    final MultiTermQuery mtq = TermRangeQuery.newStringRange("data", "2", "7", true, true, method);
     try {
       multiSearcherDupls.rewrite(mtq);
     } finally {

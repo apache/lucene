@@ -34,9 +34,10 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestIndexableField extends LuceneTestCase {
 
@@ -113,8 +114,8 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public VectorValues.SimilarityFunction vectorSimilarityFunction() {
-            return VectorValues.SimilarityFunction.NONE;
+          public VectorSimilarityFunction vectorSimilarityFunction() {
+            return VectorSimilarityFunction.EUCLIDEAN;
           }
 
           @Override
@@ -139,7 +140,7 @@ public class TestIndexableField extends LuceneTestCase {
         for (int idx = 0; idx < bytes.length; idx++) {
           bytes[idx] = (byte) (counter + idx);
         }
-        return new BytesRef(bytes, 0, bytes.length);
+        return newBytesRef(bytes, 0, bytes.length);
       } else {
         return null;
       }
@@ -296,14 +297,14 @@ public class TestIndexableField extends LuceneTestCase {
             final Terms tfv = r.getTermVectors(docID).terms(name);
             assertNotNull(tfv);
             TermsEnum termsEnum = tfv.iterator();
-            assertEquals(new BytesRef("" + counter), termsEnum.next());
+            assertEquals(newBytesRef("" + counter), termsEnum.next());
             assertEquals(1, termsEnum.totalTermFreq());
             PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);
             assertTrue(dpEnum.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
             assertEquals(1, dpEnum.freq());
             assertEquals(1, dpEnum.nextPosition());
 
-            assertEquals(new BytesRef("text"), termsEnum.next());
+            assertEquals(newBytesRef("text"), termsEnum.next());
             assertEquals(1, termsEnum.totalTermFreq());
             dpEnum = termsEnum.postings(dpEnum, PostingsEnum.ALL);
             assertTrue(dpEnum.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);

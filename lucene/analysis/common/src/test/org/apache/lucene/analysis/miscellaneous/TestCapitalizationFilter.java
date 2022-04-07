@@ -25,11 +25,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.junit.Test;
 
 /** Tests {@link CapitalizationFilter} */
@@ -192,7 +192,7 @@ public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
 
   static void assertCapitalizesTo(
       Tokenizer tokenizer,
-      String expected[],
+      String[] expected,
       boolean onlyFirstWord,
       CharArraySet keep,
       boolean forceFirstLetter,
@@ -216,7 +216,7 @@ public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
 
   static void assertCapitalizesTo(
       String input,
-      String expected[],
+      String[] expected,
       boolean onlyFirstWord,
       CharArraySet keep,
       boolean forceFirstLetter,

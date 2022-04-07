@@ -55,8 +55,10 @@ import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
 import org.apache.lucene.index.DocValuesUpdate.NumericDocValuesUpdate;
 import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.internal.tests.IndexPackageAccess;
+import org.apache.lucene.internal.tests.IndexWriterAccess;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -77,6 +79,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.IOConsumer;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.StringHelper;
@@ -448,10 +452,6 @@ public class IndexWriter
         }
       };
 
-  DirectoryReader getReader() throws IOException {
-    return getReader(true, false);
-  }
-
   /**
    * Expert: returns a readonly reader, covering all committed as well as un-committed changes to
    * the index. This provides "near real-time" searching, in that changes made during an IndexWriter
@@ -526,7 +526,7 @@ public class IndexWriter
     final Map<String, SegmentReader> openedReadOnlyClones = new HashMap<>();
     // this function is used to control which SR are opened in order to keep track of them
     // and to reuse them in the case we wait for merges in this getReader call.
-    IOUtils.IOFunction<SegmentCommitInfo, SegmentReader> readerFactory =
+    IOFunction<SegmentCommitInfo, SegmentReader> readerFactory =
         sci -> {
           final ReadersAndUpdates rld = getPooledInstance(sci, true);
           try {
@@ -3141,7 +3141,7 @@ public class IndexWriter
           Bits liveDocs = leaf.getLiveDocs();
           numSoftDeleted +=
               PendingSoftDeletes.countSoftDeletes(
-                  DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(
+                  DocValuesIterator.getDocValuesDocIdSetIterator(
                       config.getSoftDeletesField(), leaf),
                   liveDocs);
         }
@@ -3570,7 +3570,7 @@ public class IndexWriter
       SegmentInfos mergingSegmentInfos,
       BooleanSupplier stopCollectingMergeResults,
       MergeTrigger trigger,
-      IOUtils.IOConsumer<SegmentCommitInfo> mergeFinished)
+      IOConsumer<SegmentCommitInfo> mergeFinished)
       throws IOException {
     assert Thread.holdsLock(this);
     assert trigger == MergeTrigger.GET_READER || trigger == MergeTrigger.COMMIT
@@ -3665,8 +3665,7 @@ public class IndexWriter
 
                       @Override
                       void initMergeReaders(
-                          IOUtils.IOFunction<SegmentCommitInfo, MergePolicy.MergeReader>
-                              readerFactory)
+                          IOFunction<SegmentCommitInfo, MergePolicy.MergeReader> readerFactory)
                           throws IOException {
                         if (onlyOnce.compareAndSet(false, true)) {
                           // we do this only once below to pull readers as point in time readers
@@ -4138,7 +4137,6 @@ public class IndexWriter
       assert rld != null : "seg=" + info.info.name;
 
       MergeState.DocMap segDocMap = mergeState.docMaps[i];
-      MergeState.DocMap segLeafDocMap = mergeState.leafDocMaps[i];
 
       carryOverHardDeletes(
           mergedDeletesAndUpdates,
@@ -4146,8 +4144,7 @@ public class IndexWriter
           mergeState.liveDocs[i],
           merge.getMergeReader().get(i).hardLiveDocs,
           rld.getHardLiveDocs(),
-          segDocMap,
-          segLeafDocMap);
+          segDocMap);
 
       // Now carry over all doc values updates that were resolved while we were merging, remapping
       // the docIDs to the newly merged docIDs.
@@ -4200,7 +4197,7 @@ public class IndexWriter
           DocValuesFieldUpdates.Iterator it = updates.iterator();
           int doc;
           while ((doc = it.nextDoc()) != NO_MORE_DOCS) {
-            int mappedDoc = segDocMap.get(segLeafDocMap.get(doc));
+            int mappedDoc = segDocMap.get(doc);
             if (mappedDoc != -1) {
               if (it.hasValue()) {
                 // not deleted
@@ -4250,8 +4247,7 @@ public class IndexWriter
       Bits mergeLiveDocs, // the liveDocs used to build the segDocMaps
       Bits prevHardLiveDocs, // the hard deletes when the merge reader was pulled
       Bits currentHardLiveDocs, // the current hard deletes
-      MergeState.DocMap segDocMap,
-      MergeState.DocMap segLeafDocMap)
+      MergeState.DocMap segDocMap)
       throws IOException {
 
     assert mergeLiveDocs == null || mergeLiveDocs.length() == maxDoc;
@@ -4293,7 +4289,7 @@ public class IndexWriter
             assert currentHardLiveDocs.get(j) == false;
           } else if (carryOverDelete.test(j)) {
             // the document was deleted while we were merging:
-            mergedReadersAndUpdates.delete(segDocMap.get(segLeafDocMap.get(j)));
+            mergedReadersAndUpdates.delete(segDocMap.get(j));
           }
         }
       }
@@ -4303,7 +4299,7 @@ public class IndexWriter
       // does:
       for (int j = 0; j < maxDoc; j++) {
         if (carryOverDelete.test(j)) {
-          mergedReadersAndUpdates.delete(segDocMap.get(segLeafDocMap.get(j)));
+          mergedReadersAndUpdates.delete(segDocMap.get(j));
         }
       }
     }
@@ -4851,8 +4847,7 @@ public class IndexWriter
     int hardDeleteCount = 0;
     int softDeletesCount = 0;
     DocIdSetIterator softDeletedDocs =
-        DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(
-            config.getSoftDeletesField(), reader);
+        DocValuesIterator.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), reader);
     if (softDeletedDocs != null) {
       int docId;
       while ((docId = softDeletedDocs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -5001,7 +4996,7 @@ public class IndexWriter
                   + ("; "
                       + (mergeState.mergeFieldInfos.hasDocValues() ? "docValues" : "no docValues"))
                   + ("; " + (mergeState.mergeFieldInfos.hasProx() ? "prox" : "no prox"))
-                  + ("; " + (mergeState.mergeFieldInfos.hasProx() ? "freqs" : "no freqs"))
+                  + ("; " + (mergeState.mergeFieldInfos.hasFreq() ? "freqs" : "no freqs"))
                   + ("; " + (mergeState.mergeFieldInfos.hasPointValues() ? "points" : "no points"))
                   + ("; "
                       + String.format(
@@ -5549,7 +5544,7 @@ public class IndexWriter
       TrackingDirectoryWrapper directory,
       final SegmentInfo info,
       IOContext context,
-      IOUtils.IOConsumer<Collection<String>> deleteFiles)
+      IOConsumer<Collection<String>> deleteFiles)
       throws IOException {
 
     // maybe this check is not needed, but why take the risk?
@@ -6279,5 +6274,85 @@ public class IndexWriter
       assert Thread.holdsLock(IndexWriter.this);
       mergesEnabled = true;
     }
+  }
+
+  static {
+    TestSecrets.setIndexWriterAccess(
+        new IndexWriterAccess() {
+          @Override
+          public String segString(IndexWriter iw) {
+            return iw.segString();
+          }
+
+          @Override
+          public int getSegmentCount(IndexWriter iw) {
+            return iw.getSegmentCount();
+          }
+
+          @Override
+          public boolean isClosed(IndexWriter iw) {
+            return iw.isClosed();
+          }
+
+          @Override
+          public DirectoryReader getReader(
+              IndexWriter iw, boolean applyDeletions, boolean writeAllDeletes) throws IOException {
+            return iw.getReader(applyDeletions, writeAllDeletes);
+          }
+
+          @Override
+          public int getDocWriterThreadPoolSize(IndexWriter iw) {
+            return iw.docWriter.perThreadPool.size();
+          }
+
+          @Override
+          public boolean isDeleterClosed(IndexWriter iw) {
+            return iw.isDeleterClosed();
+          }
+
+          @Override
+          public SegmentCommitInfo newestSegment(IndexWriter iw) {
+            return iw.newestSegment();
+          }
+        });
+
+    // Piggyback general package-scope accessors.
+    TestSecrets.setIndexPackageAccess(
+        new IndexPackageAccess() {
+
+          @Override
+          public IndexReader.CacheKey newCacheKey() {
+            return new IndexReader.CacheKey();
+          }
+
+          @Override
+          public void setIndexWriterMaxDocs(int limit) {
+            IndexWriter.setMaxDocs(limit);
+          }
+
+          @Override
+          public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
+            return new FieldInfosBuilder() {
+              private FieldInfos.Builder builder =
+                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+
+              @Override
+              public FieldInfosBuilder add(FieldInfo fi) {
+                builder.add(fi);
+                return this;
+              }
+
+              @Override
+              public FieldInfos finish() {
+                return builder.finish();
+              }
+            };
+          }
+
+          @Override
+          public void checkImpacts(Impacts impacts, int max) {
+            CheckIndex.checkImpacts(impacts, max);
+          }
+        });
   }
 }

@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * A {@link TokenFilter} that normalizes Japanese numbers (kansūji) to regular Arabic decimal
@@ -82,6 +83,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
  * <p>Japanese formal numbers (daiji), accounting numbers and decimal fractions are currently not
  * supported.
  */
+@IgnoreRandomChains(reason = "LUCENE-10362: fails with incorrect offsets")
 public class JapaneseNumberFilter extends TokenFilter {
 
   private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);

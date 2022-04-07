@@ -18,23 +18,25 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingScorable;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -75,6 +77,34 @@ public class TestSubScorerFreqs extends LuceneTestCase {
     s = null;
     dir.close();
     dir = null;
+  }
+
+  private static class CountingCollectorManager
+      implements CollectorManager<CountingCollector, Map<Integer, Map<Query, Float>>> {
+
+    private final Set<String> relationships;
+
+    CountingCollectorManager(Set<String> relationships) {
+      this.relationships = relationships;
+    }
+
+    @Override
+    public CountingCollector newCollector() {
+      TopScoreDocCollector topScoreDocCollector =
+          TopScoreDocCollector.create(10, Integer.MAX_VALUE);
+      return relationships == null
+          ? new CountingCollector(topScoreDocCollector)
+          : new CountingCollector(topScoreDocCollector, relationships);
+    }
+
+    @Override
+    public Map<Integer, Map<Query, Float>> reduce(Collection<CountingCollector> collectors) {
+      Map<Integer, Map<Query, Float>> docCounts = new HashMap<>();
+      for (CountingCollector collector : collectors) {
+        docCounts.putAll(collector.docCounts);
+      }
+      return docCounts;
+    }
   }
 
   private static class CountingCollector extends FilterCollector {
@@ -134,16 +164,15 @@ public class TestSubScorerFreqs extends LuceneTestCase {
   @Test
   public void testTermQuery() throws Exception {
     TermQuery q = new TermQuery(new Term("f", "d"));
-    CountingCollector c = new CountingCollector(TopScoreDocCollector.create(10, Integer.MAX_VALUE));
-    s.search(q, c);
+    Map<Integer, Map<Query, Float>> docCounts = s.search(q, new CountingCollectorManager(null));
     final int maxDocs = s.getIndexReader().maxDoc();
-    assertEquals(maxDocs, c.docCounts.size());
+    assertEquals(maxDocs, docCounts.size());
     for (int i = 0; i < maxDocs; i++) {
-      Map<Query, Float> doc0 = c.docCounts.get(i);
+      Map<Query, Float> doc0 = docCounts.get(i);
       assertEquals(1, doc0.size());
       assertEquals(4.0F, doc0.get(q), FLOAT_TOLERANCE);
 
-      Map<Query, Float> doc1 = c.docCounts.get(++i);
+      Map<Query, Float> doc1 = docCounts.get(++i);
       assertEquals(1, doc1.size());
       assertEquals(1.0F, doc1.get(q), FLOAT_TOLERANCE);
     }
@@ -173,14 +202,13 @@ public class TestSubScorerFreqs extends LuceneTestCase {
             Collections.singleton("MUST"), new HashSet<>(Arrays.asList("MUST", "SHOULD")));
 
     for (final Set<String> occur : occurList) {
-      CountingCollector c =
-          new CountingCollector(TopScoreDocCollector.create(10, Integer.MAX_VALUE), occur);
-      s.search(query.build(), c);
+      Map<Integer, Map<Query, Float>> docCounts =
+          s.search(query.build(), new CountingCollectorManager(occur));
       final int maxDocs = s.getIndexReader().maxDoc();
-      assertEquals(maxDocs, c.docCounts.size());
+      assertEquals(maxDocs, docCounts.size());
       boolean includeOptional = occur.contains("SHOULD");
       for (int i = 0; i < maxDocs; i++) {
-        Map<Query, Float> doc0 = c.docCounts.get(i);
+        Map<Query, Float> doc0 = docCounts.get(i);
         // Y doesnt exist in the index, so it's not in the scorer tree
         assertEquals(4, doc0.size());
         assertEquals(1.0F, doc0.get(aQuery), FLOAT_TOLERANCE);
@@ -189,7 +217,7 @@ public class TestSubScorerFreqs extends LuceneTestCase {
           assertEquals(3.0F, doc0.get(cQuery), FLOAT_TOLERANCE);
         }
 
-        Map<Query, Float> doc1 = c.docCounts.get(++i);
+        Map<Query, Float> doc1 = docCounts.get(++i);
         // Y doesnt exist in the index, so it's not in the scorer tree
         assertEquals(4, doc1.size());
         assertEquals(1.0F, doc1.get(aQuery), FLOAT_TOLERANCE);
@@ -204,16 +232,15 @@ public class TestSubScorerFreqs extends LuceneTestCase {
   @Test
   public void testPhraseQuery() throws Exception {
     PhraseQuery q = new PhraseQuery("f", "b", "c");
-    CountingCollector c = new CountingCollector(TopScoreDocCollector.create(10, Integer.MAX_VALUE));
-    s.search(q, c);
+    Map<Integer, Map<Query, Float>> docCounts = s.search(q, new CountingCollectorManager(null));
     final int maxDocs = s.getIndexReader().maxDoc();
-    assertEquals(maxDocs, c.docCounts.size());
+    assertEquals(maxDocs, docCounts.size());
     for (int i = 0; i < maxDocs; i++) {
-      Map<Query, Float> doc0 = c.docCounts.get(i);
+      Map<Query, Float> doc0 = docCounts.get(i);
       assertEquals(1, doc0.size());
       assertEquals(2.0F, doc0.get(q), FLOAT_TOLERANCE);
 
-      Map<Query, Float> doc1 = c.docCounts.get(++i);
+      Map<Query, Float> doc1 = docCounts.get(++i);
       assertEquals(1, doc1.size());
       assertEquals(1.0F, doc1.get(q), FLOAT_TOLERANCE);
     }

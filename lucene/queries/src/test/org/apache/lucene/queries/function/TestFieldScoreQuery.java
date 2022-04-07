@@ -20,9 +20,9 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.tests.search.QueryUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -123,7 +123,7 @@ public class TestFieldScoreQuery extends FunctionTestSetup {
     IndexSearcher s = newSearcher(r);
     TopDocs td = s.search(functionQuery, 1000);
     assertEquals("All docs should be matched!", N_DOCS, td.totalHits.value);
-    ScoreDoc sd[] = td.scoreDocs;
+    ScoreDoc[] sd = td.scoreDocs;
     for (ScoreDoc aSd : sd) {
       float score = aSd.score;
       log(s.explain(functionQuery, aSd.doc));

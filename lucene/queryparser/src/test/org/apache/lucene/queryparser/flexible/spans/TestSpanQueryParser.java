@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.queryparser.flexible.spans;
 
+import org.apache.lucene.queries.spans.SpanOrQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.nodes.OrQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
@@ -24,10 +27,7 @@ import org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessor
 import org.apache.lucene.queryparser.flexible.standard.parser.StandardSyntaxParser;
 import org.apache.lucene.queryparser.flexible.standard.processors.WildcardQueryNodeProcessor;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * This test case demonstrates how the new query parser can be used.<br>

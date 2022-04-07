@@ -20,12 +20,12 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestStopAnalyzer extends BaseTokenStreamTestCase {
 
@@ -86,7 +86,7 @@ public class TestStopAnalyzer extends BaseTokenStreamTestCase {
     CharArraySet stopWordsSet = new CharArraySet(asSet("good", "test", "analyzer"), false);
     StopAnalyzer newStop = new StopAnalyzer(stopWordsSet);
     String s = "This is a good test of the english stop analyzer with positions";
-    int expectedIncr[] = {1, 1, 1, 3, 1, 1, 1, 2, 1};
+    int[] expectedIncr = {1, 1, 1, 3, 1, 1, 1, 2, 1};
     try (TokenStream stream = newStop.tokenStream("test", s)) {
       assertNotNull(stream);
       int i = 0;

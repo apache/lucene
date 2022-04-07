@@ -20,9 +20,9 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTotalHitCountCollector extends LuceneTestCase {
 
@@ -38,10 +38,10 @@ public class TestTotalHitCountCollector extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     writer.close();
 
-    IndexSearcher searcher = newSearcher(reader);
-    TotalHitCountCollector c = new TotalHitCountCollector();
-    searcher.search(new MatchAllDocsQuery(), c);
-    assertEquals(5, c.getTotalHits());
+    IndexSearcher searcher = newSearcher(reader, true, true, random().nextBoolean());
+    TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager();
+    int totalHits = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    assertEquals(5, totalHits);
     reader.close();
     indexStore.close();
   }

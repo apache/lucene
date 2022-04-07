@@ -16,46 +16,13 @@
  */
 package org.apache.lucene.analysis.ko;
 
-import org.apache.lucene.analysis.ko.dict.Dictionary.Morpheme;
+import org.apache.lucene.analysis.ko.dict.KoMorphData;
 
 /** Analyzed token with morphological data. */
-public abstract class Token {
-  private final char[] surfaceForm;
-  private final int offset;
-  private final int length;
+public abstract class Token extends org.apache.lucene.analysis.morph.Token {
 
-  private final int startOffset;
-  private final int endOffset;
-  private int posIncr = 1;
-  private int posLen = 1;
-
-  public Token(char[] surfaceForm, int offset, int length, int startOffset, int endOffset) {
-    this.surfaceForm = surfaceForm;
-    this.offset = offset;
-    this.length = length;
-
-    this.startOffset = startOffset;
-    this.endOffset = endOffset;
-  }
-
-  /** @return surfaceForm */
-  public char[] getSurfaceForm() {
-    return surfaceForm;
-  }
-
-  /** @return offset into surfaceForm */
-  public int getOffset() {
-    return offset;
-  }
-
-  /** @return length of surfaceForm */
-  public int getLength() {
-    return length;
-  }
-
-  /** @return surfaceForm as a String */
-  public String getSurfaceFormString() {
-    return new String(surfaceForm, offset, length);
+  protected Token(char[] surfaceForm, int offset, int length, int startOffset, int endOffset) {
+    super(surfaceForm, offset, length, startOffset, endOffset);
   }
 
   /** Get the {@link POS.Type} of the token. */
@@ -70,32 +37,9 @@ public abstract class Token {
   /** Get the reading of the token. */
   public abstract String getReading();
 
-  /** Get the {@link Morpheme} decomposition of the token. */
-  public abstract Morpheme[] getMorphemes();
-
-  /** Get the start offset of the term in the analyzed text. */
-  public int getStartOffset() {
-    return startOffset;
-  }
-
-  /** Get the end offset of the term in the analyzed text. */
-  public int getEndOffset() {
-    return endOffset;
-  }
-
-  public void setPositionIncrement(int posIncr) {
-    this.posIncr = posIncr;
-  }
-
-  public int getPositionIncrement() {
-    return posIncr;
-  }
-
-  public void setPositionLength(int posLen) {
-    this.posLen = posLen;
-  }
-
-  public int getPositionLength() {
-    return posLen;
-  }
+  /**
+   * Get the {@link org.apache.lucene.analysis.ko.dict.KoMorphData.Morpheme} decomposition of the
+   * token.
+   */
+  public abstract KoMorphData.Morpheme[] getMorphemes();
 }

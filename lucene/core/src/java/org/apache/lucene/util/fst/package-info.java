@@ -25,8 +25,6 @@
  *   <li>Fast and low memory overhead construction of the minimal FST (but inputs must be provided
  *       in sorted order)
  *   <li>Low object overhead and quick deserialization (byte[] representation)
- *   <li>{@link org.apache.lucene.util.fst.Util#getByOutput Lookup-by-output} when the outputs are
- *       in sorted order (e.g., ordinals or file pointers)
  *   <li>Pluggable {@link org.apache.lucene.util.fst.Outputs Outputs} representation
  *   <li>{@link org.apache.lucene.util.fst.Util#shortestPaths N-shortest-paths} search by weight
  *   <li>Enumerators ({@link org.apache.lucene.util.fst.IntsRefFSTEnum IntsRef} and {@link

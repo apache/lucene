@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
@@ -34,9 +33,11 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** Test Indexing/IndexWriter with points */
 public class TestPointValues extends LuceneTestCase {
@@ -74,7 +75,8 @@ public class TestPointValues extends LuceneTestCase {
               w.addDocument(doc);
             });
     assertEquals(
-        "Inconsistency of field data structures across documents for field [dim] of doc [0].",
+        "Inconsistency of field data structures across documents for field [dim] of doc [0]."
+            + " point dimension: expected '1', but it has '2'.",
         expected.getMessage());
     w.close();
     dir.close();
@@ -97,7 +99,8 @@ public class TestPointValues extends LuceneTestCase {
               w.addDocument(doc2);
             });
     assertEquals(
-        "Inconsistency of field data structures across documents for field [dim] of doc [1].",
+        "Inconsistency of field data structures across documents for field [dim] of doc [1]."
+            + " point dimension: expected '1', but it has '2'.",
         expected.getMessage());
     w.close();
     dir.close();
@@ -254,7 +257,8 @@ public class TestPointValues extends LuceneTestCase {
               w.addDocument(doc);
             });
     assertEquals(
-        "Inconsistency of field data structures across documents for field [dim] of doc [0].",
+        "Inconsistency of field data structures across documents for field [dim] of doc [0]."
+            + " point num bytes: expected '4', but it has '6'.",
         expected.getMessage());
     w.close();
     dir.close();
@@ -277,7 +281,8 @@ public class TestPointValues extends LuceneTestCase {
               w.addDocument(doc2);
             });
     assertEquals(
-        "Inconsistency of field data structures across documents for field [dim] of doc [1].",
+        "Inconsistency of field data structures across documents for field [dim] of doc [1]."
+            + " point num bytes: expected '4', but it has '6'.",
         expected.getMessage());
     w.close();
     dir.close();
@@ -640,7 +645,7 @@ public class TestPointValues extends LuceneTestCase {
     w.deleteDocuments(new Term("id", "0"));
 
     w.forceMerge(1);
-    DirectoryReader r = w.getReader();
+    DirectoryReader r = DirectoryReader.open(w);
     assertNull(r.leaves().get(0).reader().getPointValues("int"));
     w.close();
     r.close();
@@ -726,7 +731,7 @@ public class TestPointValues extends LuceneTestCase {
     w.close();
 
     ByteArrayOutputStream output = new ByteArrayOutputStream();
-    CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, output);
+    CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
     assertEquals(1, status.segmentInfos.size());
     CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
     // total 3 point values were index:

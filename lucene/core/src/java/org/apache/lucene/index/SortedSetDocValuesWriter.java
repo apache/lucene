@@ -23,6 +23,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.index.SortedDocValuesWriter.BufferedSortedDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ByteBlockPool;
@@ -30,6 +31,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.BytesRefHash.DirectBytesStartArray;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -39,9 +41,9 @@ import org.apache.lucene.util.packed.PackedLongValues;
  */
 class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   final BytesRefHash hash;
-  private PackedLongValues.Builder pending; // stream of all termIDs
+  private final PackedLongValues.Builder pending; // stream of all termIDs
   private PackedLongValues.Builder pendingCounts; // termIDs per doc
-  private DocsWithFieldSet docsWithField;
+  private final DocsWithFieldSet docsWithField;
   private final Counter iwBytesUsed;
   private long bytesUsed; // this only tracks differences in 'pending' and 'pendingCounts'
   private final FieldInfo fieldInfo;
@@ -55,18 +57,20 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   private int[] finalSortedValues;
   private int[] finalOrdMap;
 
-  SortedSetDocValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed) {
+  SortedSetDocValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = iwBytesUsed;
     hash =
         new BytesRefHash(
-            new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(iwBytesUsed)),
+            pool,
             BytesRefHash.DEFAULT_CAPACITY,
             new DirectBytesStartArray(BytesRefHash.DEFAULT_CAPACITY, iwBytesUsed));
     pending = PackedLongValues.packedBuilder(PackedInts.COMPACT);
-    pendingCounts = PackedLongValues.deltaPackedBuilder(PackedInts.COMPACT);
     docsWithField = new DocsWithFieldSet();
-    bytesUsed = pending.ramBytesUsed() + pendingCounts.ramBytesUsed();
+    bytesUsed =
+        pending.ramBytesUsed()
+            + docsWithField.ramBytesUsed()
+            + RamUsageEstimator.sizeOf(currentValues);
     iwBytesUsed.addAndGet(bytesUsed);
   }
 
@@ -111,7 +115,15 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       lastValue = termID;
     }
     // record the number of unique term ids for this doc
-    pendingCounts.add(count);
+    if (pendingCounts != null) {
+      pendingCounts.add(count);
+    } else if (count != 1) {
+      pendingCounts = PackedLongValues.deltaPackedBuilder(PackedInts.COMPACT);
+      for (int i = 0; i < docsWithField.cardinality(); ++i) {
+        pendingCounts.add(1);
+      }
+      pendingCounts.add(count);
+    }
     maxCount = Math.max(maxCount, count);
     currentUpto = 0;
     docsWithField.add(currentDoc);
@@ -139,7 +151,11 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   }
 
   private void updateBytesUsed() {
-    final long newBytesUsed = pending.ramBytesUsed() + pendingCounts.ramBytesUsed();
+    final long newBytesUsed =
+        pending.ramBytesUsed()
+            + (pendingCounts == null ? 0 : pendingCounts.ramBytesUsed())
+            + docsWithField.ramBytesUsed()
+            + RamUsageEstimator.sizeOf(currentValues);
     iwBytesUsed.addAndGet(newBytesUsed - bytesUsed);
     bytesUsed = newBytesUsed;
   }
@@ -151,21 +167,32 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       finishCurrentDoc();
       int valueCount = hash.size();
       finalOrds = pending.build();
-      finalOrdCounts = pendingCounts.build();
+      finalOrdCounts = pendingCounts == null ? null : pendingCounts.build();
       finalSortedValues = hash.sort();
       finalOrdMap = new int[valueCount];
     }
     for (int ord = 0; ord < finalOrdMap.length; ord++) {
       finalOrdMap[finalSortedValues[ord]] = ord;
     }
-    return new BufferedSortedSetDocValues(
-        finalSortedValues,
-        finalOrdMap,
-        hash,
-        finalOrds,
-        finalOrdCounts,
-        maxCount,
-        docsWithField.iterator());
+    return getValues(
+        finalSortedValues, finalOrdMap, hash, finalOrds, finalOrdCounts, maxCount, docsWithField);
+  }
+
+  private SortedSetDocValues getValues(
+      int[] sortedValues,
+      int[] ordMap,
+      BytesRefHash hash,
+      PackedLongValues ords,
+      PackedLongValues ordCounts,
+      int maxCount,
+      DocsWithFieldSet docsWithField) {
+    if (ordCounts == null) {
+      return DocValues.singleton(
+          new BufferedSortedDocValues(hash, ords, sortedValues, ordMap, docsWithField.iterator()));
+    } else {
+      return new BufferedSortedSetDocValues(
+          sortedValues, ordMap, hash, ords, ordCounts, maxCount, docsWithField.iterator());
+    }
   }
 
   @Override
@@ -181,7 +208,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       assert finalOrdCounts == null && finalSortedValues == null && finalOrdMap == null;
       finishCurrentDoc();
       ords = pending.build();
-      ordCounts = pendingCounts.build();
+      ordCounts = pendingCounts == null ? null : pendingCounts.build();
       sortedValues = hash.sort();
       ordMap = new int[valueCount];
       for (int ord = 0; ord < valueCount; ord++) {
@@ -200,8 +227,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
           new DocOrds(
               state.segmentInfo.maxDoc(),
               sortMap,
-              new BufferedSortedSetDocValues(
-                  sortedValues, ordMap, hash, ords, ordCounts, maxCount, docsWithField.iterator()),
+              getValues(sortedValues, ordMap, hash, ords, ordCounts, maxCount, docsWithField),
               PackedInts.FASTEST);
     } else {
       docOrds = null;
@@ -215,14 +241,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
               throw new IllegalArgumentException("wrong fieldInfo");
             }
             final SortedSetDocValues buf =
-                new BufferedSortedSetDocValues(
-                    sortedValues,
-                    ordMap,
-                    hash,
-                    ords,
-                    ordCounts,
-                    maxCount,
-                    docsWithField.iterator());
+                getValues(sortedValues, ordMap, hash, ords, ordCounts, maxCount, docsWithField);
             if (docOrds == null) {
               return buf;
             } else {

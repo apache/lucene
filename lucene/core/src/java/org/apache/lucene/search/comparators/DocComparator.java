@@ -35,10 +35,10 @@ public class DocComparator extends FieldComparator<Integer> {
   private boolean hitsThresholdReached;
 
   /** Creates a new comparator based on document ids for {@code numHits} */
-  public DocComparator(int numHits, boolean reverse, int sortPost) {
+  public DocComparator(int numHits, boolean reverse, boolean enableSkipping) {
     this.docIDs = new int[numHits];
     // skipping functionality is enabled if we are sorting by _doc in asc order as a primary sort
-    this.enableSkipping = (reverse == false && sortPost == 0);
+    this.enableSkipping = (reverse == false && enableSkipping);
   }
 
   @Override
@@ -81,7 +81,11 @@ public class DocComparator extends FieldComparator<Integer> {
     public DocLeafComparator(LeafReaderContext context) {
       this.docBase = context.docBase;
       if (enableSkipping) {
-        this.minDoc = topValue + 1;
+        // Skip docs before topValue, but include docs starting with topValue.
+        // Including topValue is necessary when doing sort on [_doc, other fields]
+        // in a distributed search where there are docs from different indices
+        // with the same docID.
+        this.minDoc = topValue;
         this.maxDoc = context.reader().maxDoc();
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
       } else {
@@ -127,7 +131,7 @@ public class DocComparator extends FieldComparator<Integer> {
         return null;
       } else {
         return new DocIdSetIterator() {
-          private int docID = -1;
+          private int docID = competitiveIterator.docID();
 
           @Override
           public int nextDoc() throws IOException {

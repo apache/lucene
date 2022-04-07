@@ -151,9 +151,6 @@ public final class CompetitiveImpactAccumulator {
 
   // Only called by assertions
   private boolean assertConsistent() {
-    for (int freq : maxFreqs) {
-      assert freq >= 0;
-    }
     int previousFreq = 0;
     long previousNorm = 0;
     for (Impact impact : otherFreqNormPairs) {

@@ -18,10 +18,10 @@ package org.apache.lucene.queryparser.surround.query;
 
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class Test02Boolean extends LuceneTestCase {
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     TestRunner.run(new TestSuite(Test02Boolean.class));
   }
 
@@ -46,8 +46,8 @@ public class Test02Boolean extends LuceneTestCase {
   SingleFieldTestDb db1;
 
   public void normalTest1(String query, int[] expdnrs) throws Exception {
-    TestBooleanQuery tbq =
-        new TestBooleanQuery(
+    BooleanQueryTestFacade tbq =
+        new BooleanQueryTestFacade(
             query, expdnrs, db1, fieldName, this, new BasicQueryFactory(maxBasicQueries));
     tbq.setVerbose(verbose);
     tbq.doTest();

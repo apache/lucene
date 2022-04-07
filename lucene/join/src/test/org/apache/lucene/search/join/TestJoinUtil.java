@@ -33,8 +33,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.DoublePoint;
@@ -60,7 +58,6 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
@@ -68,12 +65,15 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Test;
 
@@ -559,7 +559,7 @@ public class TestJoinUtil extends LuceneTestCase {
   static Query numericDocValuesScoreQuery(final String field) {
     return new Query() {
 
-      private final Query fieldQuery = new DocValuesFieldExistsQuery(field);
+      private final Query fieldQuery = new FieldExistsQuery(field);
 
       @Override
       public Weight createWeight(
@@ -681,15 +681,14 @@ public class TestJoinUtil extends LuceneTestCase {
       Query joinQuery =
           JoinUtil.createJoinQuery(
               "join_field", fromQuery, toQuery, searcher, scoreMode, ordinalMap, min, max);
-      TotalHitCountCollector collector = new TotalHitCountCollector();
-      searcher.search(joinQuery, collector);
+      int totalHits = searcher.count(joinQuery);
       int expectedCount = 0;
       for (int numChildDocs : childDocsPerParent) {
         if (numChildDocs >= min && numChildDocs <= max) {
           expectedCount++;
         }
       }
-      assertEquals(expectedCount, collector.getTotalHits());
+      assertEquals(expectedCount, totalHits);
     }
     searcher.getIndexReader().close();
     dir.close();

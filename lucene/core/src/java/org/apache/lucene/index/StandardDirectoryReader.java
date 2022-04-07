@@ -32,6 +32,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.Version;
 
@@ -111,7 +112,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
   /** Used by near real-time search */
   static StandardDirectoryReader open(
       IndexWriter writer,
-      IOUtils.IOFunction<SegmentCommitInfo, SegmentReader> readerFunction,
+      IOFunction<SegmentCommitInfo, SegmentReader> readerFunction,
       SegmentInfos infos,
       boolean applyAllDeletes,
       boolean writeAllDeletes)
@@ -579,7 +580,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
       };
 
   @Override
-  void notifyReaderClosedListeners() throws IOException {
+  protected void notifyReaderClosedListeners() throws IOException {
     synchronized (readerClosedListeners) {
       IOUtils.applyToAll(readerClosedListeners, l -> l.onClose(cacheHelper.getKey()));
     }

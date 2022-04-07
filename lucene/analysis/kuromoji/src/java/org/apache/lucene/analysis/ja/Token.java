@@ -17,107 +17,78 @@
 package org.apache.lucene.analysis.ja;
 
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Type;
-import org.apache.lucene.analysis.ja.dict.Dictionary;
+import org.apache.lucene.analysis.ja.dict.JaMorphData;
 
 /** Analyzed token with morphological data from its dictionary. */
-public class Token {
-  private final Dictionary dictionary;
+public class Token extends org.apache.lucene.analysis.morph.Token {
+  private final JaMorphData morphData;
 
-  private final int wordId;
-
-  private final char[] surfaceForm;
-  private final int offset;
-  private final int length;
-
-  private final int position;
-  private int positionLength;
+  private final int morphId;
 
   private final Type type;
 
   public Token(
-      int wordId,
       char[] surfaceForm,
       int offset,
       int length,
+      int startOffset,
+      int endOffset,
+      int morphId,
       Type type,
-      int position,
-      Dictionary dictionary) {
-    this.wordId = wordId;
-    this.surfaceForm = surfaceForm;
-    this.offset = offset;
-    this.length = length;
+      JaMorphData morphData) {
+    super(surfaceForm, offset, length, startOffset, endOffset);
+    this.morphId = morphId;
     this.type = type;
-    this.position = position;
-    this.dictionary = dictionary;
+    this.morphData = morphData;
   }
 
   @Override
   public String toString() {
     return "Token(\""
         + new String(surfaceForm, offset, length)
-        + "\" pos="
-        + position
+        + "\" offset="
+        + startOffset
         + " length="
         + length
         + " posLen="
-        + positionLength
+        + posLen
         + " type="
         + type
-        + " wordId="
-        + wordId
+        + " morphId="
+        + morphId
         + " leftID="
-        + dictionary.getLeftId(wordId)
+        + morphData.getLeftId(morphId)
         + ")";
-  }
-
-  /** @return surfaceForm */
-  public char[] getSurfaceForm() {
-    return surfaceForm;
-  }
-
-  /** @return offset into surfaceForm */
-  public int getOffset() {
-    return offset;
-  }
-
-  /** @return length of surfaceForm */
-  public int getLength() {
-    return length;
-  }
-
-  /** @return surfaceForm as a String */
-  public String getSurfaceFormString() {
-    return new String(surfaceForm, offset, length);
   }
 
   /** @return reading. null if token doesn't have reading. */
   public String getReading() {
-    return dictionary.getReading(wordId, surfaceForm, offset, length);
+    return morphData.getReading(morphId, surfaceForm, offset, length);
   }
 
   /** @return pronunciation. null if token doesn't have pronunciation. */
   public String getPronunciation() {
-    return dictionary.getPronunciation(wordId, surfaceForm, offset, length);
+    return morphData.getPronunciation(morphId, surfaceForm, offset, length);
   }
 
   /** @return part of speech. */
   public String getPartOfSpeech() {
-    return dictionary.getPartOfSpeech(wordId);
+    return morphData.getPartOfSpeech(morphId);
   }
 
   /** @return inflection type or null */
   public String getInflectionType() {
-    return dictionary.getInflectionType(wordId);
+    return morphData.getInflectionType(morphId);
   }
 
   /** @return inflection form or null */
   public String getInflectionForm() {
-    return dictionary.getInflectionForm(wordId);
+    return morphData.getInflectionForm(morphId);
   }
 
   /** @return base form or null if token is not inflected */
   public String getBaseForm() {
-    return dictionary.getBaseForm(wordId, surfaceForm, offset, length);
+    return morphData.getBaseForm(morphId, surfaceForm, offset, length);
   }
 
   /**
@@ -154,32 +125,5 @@ public class Token {
    */
   public boolean isUser() {
     return type == Type.USER;
-  }
-
-  /**
-   * Get index of this token in input text
-   *
-   * @return position of token
-   */
-  public int getPosition() {
-    return position;
-  }
-
-  /**
-   * Set the position length (in tokens) of this token. For normal tokens this is 1; for compound
-   * tokens it's &gt; 1.
-   */
-  public void setPositionLength(int positionLength) {
-    this.positionLength = positionLength;
-  }
-
-  /**
-   * Get the length (in tokens) of this token. For normal tokens this is 1; for compound tokens it's
-   * &gt; 1.
-   *
-   * @return position length of token
-   */
-  public int getPositionLength() {
-    return positionLength;
   }
 }

@@ -21,9 +21,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * GeoShape representing a path across the surface of the globe, with a specified half-width. Path
@@ -1070,7 +1070,7 @@ class GeoStandardPath extends GeoBasePath {
     /** End point of the segment */
     public final GeoPoint end;
     /** Place to keep any complete segment distances we've calculated so far */
-    public final Map<DistanceStyle, Double> fullDistanceCache = new HashMap<>();
+    public final Map<DistanceStyle, Double> fullDistanceCache = new ConcurrentHashMap<>();
     /** Normalized plane connecting the two points and going through world center */
     public final Plane normalizedConnectingPlane;
     /** Cutoff plane parallel to connecting plane representing one side of the path segment */
@@ -1175,16 +1175,14 @@ class GeoStandardPath extends GeoBasePath {
      * @return the distance metric, in aggregation form.
      */
     public double fullPathDistance(final DistanceStyle distanceStyle) {
-      synchronized (fullDistanceCache) {
-        Double dist = fullDistanceCache.get(distanceStyle);
-        if (dist == null) {
-          dist =
-              distanceStyle.toAggregationForm(
-                  distanceStyle.computeDistance(start, end.x, end.y, end.z));
-          fullDistanceCache.put(distanceStyle, dist);
-        }
-        return dist.doubleValue();
+      Double dist = fullDistanceCache.get(distanceStyle);
+      if (dist == null) {
+        dist =
+            distanceStyle.toAggregationForm(
+                distanceStyle.computeDistance(start, end.x, end.y, end.z));
+        fullDistanceCache.put(distanceStyle, dist);
       }
+      return dist.doubleValue();
     }
 
     /**

@@ -23,8 +23,9 @@ public final class VectorUtil {
   private VectorUtil() {}
 
   /**
-   * Returns the vector dot product of the two vectors. IllegalArgumentException is thrown if the
-   * vectors' dimensions differ.
+   * Returns the vector dot product of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float dotProduct(float[] a, float[] b) {
     if (a.length != b.length) {
@@ -95,8 +96,35 @@ public final class VectorUtil {
   }
 
   /**
-   * Returns the sum of squared differences of the two vectors. IllegalArgumentException is thrown
-   * if the vectors' dimensions differ.
+   * Returns the cosine similarity between the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
+   */
+  public static float cosine(float[] v1, float[] v2) {
+    if (v1.length != v2.length) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + v1.length + "!=" + v2.length);
+    }
+
+    float sum = 0.0f;
+    float norm1 = 0.0f;
+    float norm2 = 0.0f;
+    int dim = v1.length;
+
+    for (int i = 0; i < dim; i++) {
+      float elem1 = v1[i];
+      float elem2 = v2[i];
+      sum += elem1 * elem2;
+      norm1 += elem1 * elem1;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt(norm1 * norm2));
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float squareDistance(float[] v1, float[] v2) {
     if (v1.length != v2.length) {
@@ -105,29 +133,84 @@ public final class VectorUtil {
     }
     float squareSum = 0.0f;
     int dim = v1.length;
-    for (int i = 0; i < dim; i++) {
+    int i;
+    for (i = 0; i + 8 <= dim; i += 8) {
+      squareSum += squareDistanceUnrolled8(v1, v2, i);
+    }
+    for (; i < dim; i++) {
       float diff = v1[i] - v2[i];
       squareSum += diff * diff;
     }
     return squareSum;
   }
 
+  private static float squareDistanceUnrolled8(float[] v1, float[] v2, int index) {
+    float diff0 = v1[index + 0] - v2[index + 0];
+    float diff1 = v1[index + 1] - v2[index + 1];
+    float diff2 = v1[index + 2] - v2[index + 2];
+    float diff3 = v1[index + 3] - v2[index + 3];
+    float diff4 = v1[index + 4] - v2[index + 4];
+    float diff5 = v1[index + 5] - v2[index + 5];
+    float diff6 = v1[index + 6] - v2[index + 6];
+    float diff7 = v1[index + 7] - v2[index + 7];
+    return diff0 * diff0
+        + diff1 * diff1
+        + diff2 * diff2
+        + diff3 * diff3
+        + diff4 * diff4
+        + diff5 * diff5
+        + diff6 * diff6
+        + diff7 * diff7;
+  }
+
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm. IllegalArgumentException is
    * thrown for zero vectors.
+   *
+   * @return the input array after normalization
    */
-  public static void l2normalize(float[] v) {
+  public static float[] l2normalize(float[] v) {
+    l2normalize(v, true);
+    return v;
+  }
+
+  /**
+   * Modifies the argument to be unit length, dividing by its l2-norm.
+   *
+   * @param v the vector to normalize
+   * @param throwOnZero whether to throw an exception when <code>v</code> has all zeros
+   * @return the input array after normalization
+   * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
+   */
+  public static float[] l2normalize(float[] v, boolean throwOnZero) {
     double squareSum = 0.0f;
     int dim = v.length;
     for (float x : v) {
       squareSum += x * x;
     }
     if (squareSum == 0) {
-      throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return v;
+      }
     }
     double length = Math.sqrt(squareSum);
     for (int i = 0; i < dim; i++) {
       v[i] /= length;
+    }
+    return v;
+  }
+
+  /**
+   * Adds the second argument to the first
+   *
+   * @param u the destination
+   * @param v the vector to add to the destination
+   */
+  public static void add(float[] u, float[] v) {
+    for (int i = 0; i < u.length; i++) {
+      u[i] += v[i];
     }
   }
 }

@@ -20,12 +20,12 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   id "base"
-  id "com.palantir.consistent-versions" version "1.28.0"
+  id "com.palantir.consistent-versions" version "2.0.0"
   id "org.owasp.dependencycheck" version "5.3.0"
-  id 'de.thetaphi.forbiddenapis' version '3.1' apply false
+  id 'de.thetaphi.forbiddenapis' version '3.3' apply false
   id "de.undercouch.download" version "4.1.1" apply false
-  id "net.ltgt.errorprone" version "1.2.1" apply false
-  id 'com.diffplug.spotless' version "5.8.2" apply false
+  id "net.ltgt.errorprone" version "2.0.2" apply false
+  id 'com.diffplug.spotless' version "5.14.3" apply false
 }
 
 apply from: file('gradle/globals.gradle')
@@ -35,7 +35,7 @@ apply from: file('gradle/globals.gradle')
 // Calculate project version:
 version = {
   // Release manager: update base version here after release:
-  String baseVersion = '9.0.0'
+  String baseVersion = '10.0.0'
 
   // On a release explicitly set release version in one go:
   //  -Dversion.release=x.y.z
@@ -46,7 +46,7 @@ version = {
   String versionSuffix = propertyOrDefault('version.suffix', 'SNAPSHOT')
   return propertyOrDefault('version.release', "${baseVersion}-${versionSuffix}")
 }()
-description = 'Grandparent project for Apache Lucene Core and Apache Solr'
+description = 'Grandparent project for Apache Lucene Core'
 
 // Propagate version and derived properties across projects.
 allprojects {
@@ -70,6 +70,10 @@ ext {
     }
     return m[0][1] as int
   }
+
+  // Minimum Java version required to compile and run Lucene.
+  minJavaVersion = JavaVersion.VERSION_17
+
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
 
@@ -78,8 +82,6 @@ ext {
   buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp)
   buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp)
   buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp)
-
-  minJavaVersion = JavaVersion.VERSION_11
 
   // Allow definiting external tool locations using system props.
   externalTool = { name ->
@@ -95,7 +97,7 @@ configurations {
 
 dependencies {
   // Use a newer groovy that doesn't have illegal reflective accesses.
-  groovy "org.codehaus.groovy:groovy-all:3.0.7"
+  groovy "org.codehaus.groovy:groovy-all:3.0.9"
 }
 
 apply from: file('buildSrc/scriptDepVersions.gradle')
@@ -108,6 +110,10 @@ apply from: file('buildSrc/scriptDepVersions.gradle')
 
 apply from: file('gradle/generation/local-settings.gradle')
 
+// IDE support, settings and specials.
+apply from: file('gradle/ide/intellij-idea.gradle')
+apply from: file('gradle/ide/eclipse.gradle')
+
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
 apply from: file('gradle/java/folder-layout.gradle')
@@ -117,14 +123,10 @@ apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/testing/alternative-jdk-support.gradle')
 apply from: file('gradle/java/jar-manifest.gradle')
+apply from: file('gradle/java/modules.gradle')
 
-// Publishing and releasing
-apply from: file('gradle/publishing/defaults-maven.gradle')
-apply from: file('gradle/publishing/distribution.gradle')
-
-// IDE support, settings and specials.
-apply from: file('gradle/ide/intellij-idea.gradle')
-apply from: file('gradle/ide/eclipse.gradle')
+// Maven artifact publishing.
+apply from: file('gradle/maven/publications.gradle')
 
 // Validation tasks
 apply from: file('gradle/validation/measure-task-times.gradle')
@@ -151,6 +153,8 @@ apply from: file('gradle/generation/kuromoji.gradle')
 apply from: file('gradle/generation/nori.gradle')
 apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
+apply from: file('gradle/generation/forUtil.gradle')
+apply from: file('gradle/generation/antlr.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
 
@@ -158,7 +162,6 @@ apply from: file('gradle/datasets/external-datasets.gradle')
 apply from: file('gradle/native/disable-native.gradle')
 
 // Additional development aids.
-apply from: file('gradle/publishing/maven-local.gradle')
 apply from: file('gradle/testing/per-project-summary.gradle')
 apply from: file('gradle/testing/slowest-tests-at-end.gradle')
 apply from: file('gradle/testing/failed-tests-at-end.gradle')
@@ -178,3 +181,5 @@ apply from: file('gradle/hacks/wipe-temp.gradle')
 apply from: file('gradle/hacks/hashmapAssertions.gradle')
 apply from: file('gradle/hacks/turbocharge-jvm-opts.gradle')
 apply from: file('gradle/hacks/dummy-outputs.gradle')
+
+apply from: file('gradle/pylucene/pylucene.gradle')

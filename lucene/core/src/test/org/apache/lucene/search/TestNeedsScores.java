@@ -23,11 +23,11 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestNeedsScores extends LuceneTestCase {
   Directory dir;
@@ -46,6 +46,9 @@ public class TestNeedsScores extends LuceneTestCase {
     }
     reader = iw.getReader();
     searcher = newSearcher(reader);
+    // Needed so that the cache doesn't consume weights with ScoreMode.COMPLETE_NO_SCORES for the
+    // purpose of populating the cache.
+    searcher.setQueryCache(null);
     iw.close();
   }
 
@@ -70,9 +73,31 @@ public class TestNeedsScores extends LuceneTestCase {
   /** nested inside constant score query */
   public void testConstantScoreQuery() throws Exception {
     Query term = new TermQuery(new Term("field", "this"));
+
+    // Counting queries and top-score queries that compute the hit count should use
+    // COMPLETE_NO_SCORES
     Query constantScore =
         new ConstantScoreQuery(new AssertNeedsScores(term, ScoreMode.COMPLETE_NO_SCORES));
+    assertEquals(5, searcher.count(constantScore));
+
+    TopDocs hits =
+        searcher.search(
+            constantScore, TopScoreDocCollector.createSharedManager(5, null, Integer.MAX_VALUE));
+    assertEquals(5, hits.totalHits.value);
+
+    // Queries that support dynamic pruning like top-score or top-doc queries that do not compute
+    // the hit count should use TOP_DOCS
+    constantScore = new ConstantScoreQuery(new AssertNeedsScores(term, ScoreMode.TOP_DOCS));
     assertEquals(5, searcher.search(constantScore, 5).totalHits.value);
+
+    assertEquals(
+        5, searcher.search(constantScore, 5, new Sort(SortField.FIELD_DOC)).totalHits.value);
+
+    assertEquals(
+        5,
+        searcher.search(constantScore, 5, new Sort(SortField.FIELD_DOC, SortField.FIELD_SCORE))
+            .totalHits
+            .value);
   }
 
   /** when not sorting by score */

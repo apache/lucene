@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
+
 public class TestVectorUtil extends LuceneTestCase {
 
   public static final double DELTA = 1e-4;
@@ -69,6 +72,33 @@ public class TestVectorUtil extends LuceneTestCase {
     assertEquals(4 * l2(v), VectorUtil.squareDistance(u, v), DELTA);
   }
 
+  public void testBasicCosine() {
+    assertEquals(
+        0.11952f, VectorUtil.cosine(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), DELTA);
+  }
+
+  public void testSelfCosine() {
+    // the dot product of a vector with itself is always equal to 1
+    float[] v = randomVector();
+    assertEquals(1.0f, VectorUtil.cosine(v, v), DELTA);
+  }
+
+  public void testOrthogonalCosine() {
+    // the cosine of two perpendicular vectors is 0
+    float[] v = new float[2];
+    v[0] = random().nextInt(100);
+    v[1] = random().nextInt(100);
+    float[] u = new float[2];
+    u[0] = v[1];
+    u[1] = -v[0];
+    assertEquals(0, VectorUtil.cosine(u, v), DELTA);
+  }
+
+  public void testCosineThrowsForDimensionMismatch() {
+    float[] v = {1, 0, 0}, u = {0, 1};
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.cosine(u, v));
+  }
+
   public void testNormalize() {
     float[] v = randomVector();
     v[random().nextInt(v.length)] = 1; // ensure vector is not all zeroes
@@ -81,7 +111,7 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
   }
 
-  private float l2(float[] v) {
+  private static float l2(float[] v) {
     float l2 = 0;
     for (float x : v) {
       l2 += x * x;
@@ -89,7 +119,7 @@ public class TestVectorUtil extends LuceneTestCase {
     return l2;
   }
 
-  private float[] negative(float[] v) {
+  private static float[] negative(float[] v) {
     float[] u = new float[v.length];
     for (int i = 0; i < v.length; i++) {
       u[i] = -v[i];
@@ -97,10 +127,15 @@ public class TestVectorUtil extends LuceneTestCase {
     return u;
   }
 
-  private float[] randomVector() {
-    float[] v = new float[random().nextInt(100) + 1];
-    for (int i = 0; i < v.length; i++) {
-      v[i] = random().nextFloat();
+  private static float[] randomVector() {
+    return randomVector(random().nextInt(100) + 1);
+  }
+
+  public static float[] randomVector(int dim) {
+    float[] v = new float[dim];
+    Random random = random();
+    for (int i = 0; i < dim; i++) {
+      v[i] = random.nextFloat();
     }
     return v;
   }

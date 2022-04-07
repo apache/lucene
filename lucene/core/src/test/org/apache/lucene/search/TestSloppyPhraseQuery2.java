@@ -18,7 +18,8 @@ package org.apache.lucene.search;
 
 import java.util.Random;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.search.SearchEquivalenceTestBase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** random sloppy phrase query tests */
 public class TestSloppyPhraseQuery2 extends SearchEquivalenceTestBase {
@@ -156,7 +157,7 @@ public class TestSloppyPhraseQuery2 extends SearchEquivalenceTestBase {
     int position = 0;
     for (int i = 0; i < length; i++) {
       int depth = TestUtil.nextInt(random, 1, 3);
-      Term terms[] = new Term[depth];
+      Term[] terms = new Term[depth];
       for (int j = 0; j < depth; j++) {
         terms[j] = new Term("field", "" + (char) TestUtil.nextInt(random, 'a', 'z'));
       }

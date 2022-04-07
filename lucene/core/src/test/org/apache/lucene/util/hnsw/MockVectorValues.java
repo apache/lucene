@@ -20,8 +20,8 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 class MockVectorValues extends VectorValues
     implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
@@ -30,13 +30,11 @@ class MockVectorValues extends VectorValues
   protected final int dimension;
   protected final float[][] denseValues;
   protected final float[][] values;
-  protected final SimilarityFunction similarityFunction;
   private final int numVectors;
 
   private int pos = -1;
 
-  MockVectorValues(SimilarityFunction similarityFunction, float[][] values) {
-    this.similarityFunction = similarityFunction;
+  MockVectorValues(float[][] values) {
     this.dimension = values[0].length;
     this.values = values;
     int maxDoc = values.length;
@@ -52,17 +50,12 @@ class MockVectorValues extends VectorValues
   }
 
   public MockVectorValues copy() {
-    return new MockVectorValues(similarityFunction, values);
+    return new MockVectorValues(values);
   }
 
   @Override
   public int size() {
     return numVectors;
-  }
-
-  @Override
-  public SimilarityFunction similarityFunction() {
-    return similarityFunction;
   }
 
   @Override

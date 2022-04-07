@@ -20,13 +20,13 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.Collections;
 import java.util.Set;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
-import org.apache.lucene.util.English;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.English;
 
 public class TestTypeTokenFilter extends BaseTokenStreamTestCase {
 
@@ -51,7 +51,7 @@ public class TestTypeTokenFilter extends BaseTokenStreamTestCase {
       }
     }
     log(sb.toString());
-    String stopTypes[] = new String[] {"<NUM>"};
+    String[] stopTypes = new String[] {"<NUM>"};
     Set<String> stopSet = asSet(stopTypes);
 
     // with increments

@@ -21,8 +21,10 @@ import static org.apache.lucene.sandbox.search.CombinedFieldQuery.FieldAndWeight
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.Explanation;
@@ -30,7 +32,13 @@ import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.SmallFloat;
 
-/** Copy of {@link LeafSimScorer} that sums document's norms from multiple fields. */
+/**
+ * Copy of {@link LeafSimScorer} that sums document's norms from multiple fields.
+ *
+ * <p>For all fields, norms must be encoded using {@link SmallFloat#intToByte4}. This scorer also
+ * requires that either all fields or no fields have norms enabled. Having only some fields with
+ * norms enabled can result in errors or undefined behavior.
+ */
 final class MultiNormsLeafSimScorer {
   /** Cache of decoded norms. */
   private static final float[] LENGTH_TABLE = new float[256];
@@ -55,17 +63,22 @@ final class MultiNormsLeafSimScorer {
     if (needsScores) {
       final List<NumericDocValues> normsList = new ArrayList<>();
       final List<Float> weightList = new ArrayList<>();
+      final Set<String> duplicateCheckingSet = new HashSet<>();
       for (FieldAndWeight field : normFields) {
+        assert duplicateCheckingSet.add(field.field)
+            : "There is a duplicated field ["
+                + field.field
+                + "] used to construct MultiNormsLeafSimScorer";
+
         NumericDocValues norms = reader.getNormValues(field.field);
         if (norms != null) {
           normsList.add(norms);
           weightList.add(field.weight);
         }
       }
+
       if (normsList.isEmpty()) {
         norms = null;
-      } else if (normsList.size() == 1) {
-        norms = normsList.get(0);
       } else {
         final NumericDocValues[] normsArr = normsList.toArray(new NumericDocValues[0]);
         final float[] weightArr = new float[normsList.size()];
@@ -128,14 +141,16 @@ final class MultiNormsLeafSimScorer {
     @Override
     public boolean advanceExact(int target) throws IOException {
       float normValue = 0;
+      boolean found = false;
       for (int i = 0; i < normsArr.length; i++) {
-        boolean found = normsArr[i].advanceExact(target);
-        assert found;
-        normValue +=
-            weightArr[i] * LENGTH_TABLE[Byte.toUnsignedInt((byte) normsArr[i].longValue())];
+        if (normsArr[i].advanceExact(target)) {
+          normValue +=
+              weightArr[i] * LENGTH_TABLE[Byte.toUnsignedInt((byte) normsArr[i].longValue())];
+          found = true;
+        }
       }
       current = SmallFloat.intToByte4(Math.round(normValue));
-      return true;
+      return found;
     }
 
     @Override

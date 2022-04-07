@@ -24,22 +24,20 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockGraphTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
-import org.apache.lucene.analysis.ja.dict.BinaryDictionary.ResourceScheme;
 import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ja.dict.TokenInfoDictionary;
-import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.apache.lucene.analysis.ja.tokenattributes.*;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.UnicodeUtil;
 
 public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
@@ -489,31 +487,6 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
         4);
   }
 
-  // Make sure loading custom dictionaries from classpath works:
-  public void testCustomDictionary() throws Exception {
-    Tokenizer tokenizer =
-        new JapaneseTokenizer(
-            newAttributeFactory(),
-            new TokenInfoDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/TokenInfoDictionary"),
-            new UnknownDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/UnknownDictionary"),
-            new ConnectionCosts(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/ConnectionCosts"),
-            readDict(),
-            true,
-            false,
-            Mode.SEARCH);
-    try (Analyzer a = makeAnalyzer(tokenizer)) {
-      assertTokenStreamContents(
-          a.tokenStream("foo", "abcd"),
-          new String[] {"a", "b", "cd"},
-          new int[] {0, 1, 2},
-          new int[] {1, 2, 4},
-          4);
-    }
-  }
-
   // HMM: fails (segments as a/b/cd/efghij)... because the
   // two paths have exactly equal paths (1 KNOWN + 1
   // UNKNOWN) and we don't seem to favor longer KNOWN /
@@ -885,5 +858,29 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     assertAnalyzesTo(analyzer, "北海道日本ハムファイターズ", new String[] {"北海道", "日本", "ハムファイターズ"});
 
     assertAnalyzesTo(analyzerNoCompound, "北海道日本ハムファイターズ", new String[] {"北海道", "日本", "ハムファイターズ"});
+  }
+
+  public void testEmptyBacktrace() throws IOException {
+    String text = "";
+
+    // since the max backtrace gap ({@link JapaneseTokenizer#MAX_BACKTRACE_GAP)
+    // is set to 1024, we want the first 1023 characters to generate multiple paths
+    // so that the regular backtrace is not executed.
+    for (int i = 0; i < 1023; i++) {
+      text += "あ";
+    }
+
+    // and the last 2 characters to be a valid word so that they
+    // will end-up together
+    text += "手紙";
+
+    List<String> outputs = new ArrayList<>();
+    for (int i = 0; i < 511; i++) {
+      outputs.add("ああ");
+    }
+    outputs.add("あ");
+    outputs.add("手紙");
+
+    assertAnalyzesTo(analyzer, text, outputs.toArray(new String[0]));
   }
 }

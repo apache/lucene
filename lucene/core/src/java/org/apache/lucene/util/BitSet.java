@@ -46,6 +46,9 @@ public abstract class BitSet implements Bits, Accountable {
   /** Set the bit at <code>i</code>. */
   public abstract void set(int i);
 
+  /** Set the bit at <code>i</code>, returning <code>true</code> if it was previously set. */
+  public abstract boolean getAndSet(int i);
+
   /** Clear the bit at <code>i</code>. */
   public abstract void clear(int i);
 
@@ -65,9 +68,7 @@ public abstract class BitSet implements Bits, Accountable {
    * for speed if they have the ability to estimate the cardinality of the set without iterating
    * over all the data. The default implementation returns {@link #cardinality()}.
    */
-  public int approximateCardinality() {
-    return cardinality();
-  }
+  public abstract int approximateCardinality();
 
   /**
    * Returns the index of the last set bit before or on the index specified. -1 is returned if there

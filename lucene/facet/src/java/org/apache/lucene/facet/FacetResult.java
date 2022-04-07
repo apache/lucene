@@ -28,8 +28,9 @@ public final class FacetResult {
   public final String[] path;
 
   /**
-   * Total value for this path (sum of all child counts, or sum of all child values), even those not
-   * included in the topN.
+   * Total number of documents containing a value for this path, even those not included in the
+   * topN. If a document contains multiple values for the same path, it will only be counted once in
+   * this value.
    */
   public final Number value;
 

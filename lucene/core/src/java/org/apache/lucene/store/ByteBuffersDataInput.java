@@ -22,6 +22,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,6 +39,7 @@ public final class ByteBuffersDataInput extends DataInput
     implements Accountable, RandomAccessInput {
   private final ByteBuffer[] blocks;
   private final FloatBuffer[] floatBuffers;
+  private final LongBuffer[] longBuffers;
   private final int blockBits;
   private final int blockMask;
   private final long size;
@@ -57,8 +59,9 @@ public final class ByteBuffersDataInput extends DataInput
         buffers.stream()
             .map(buf -> buf.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
             .toArray(ByteBuffer[]::new);
-    // pre-allocate this array and create the FloatBuffers lazily
+    // pre-allocate these arrays and create the view buffers lazily
     this.floatBuffers = new FloatBuffer[blocks.length * Float.BYTES];
+    this.longBuffers = new LongBuffer[blocks.length * Long.BYTES];
     if (blocks.length == 1) {
       this.blockBits = 32;
       this.blockMask = ~0;
@@ -164,6 +167,42 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
+  public short readShort() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Short.BYTES <= blockMask) {
+      short v = blocks[blockIndex(pos)].getShort(blockOffset);
+      pos += Short.BYTES;
+      return v;
+    } else {
+      return super.readShort();
+    }
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Integer.BYTES <= blockMask) {
+      int v = blocks[blockIndex(pos)].getInt(blockOffset);
+      pos += Integer.BYTES;
+      return v;
+    } else {
+      return super.readInt();
+    }
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    int blockOffset = blockOffset(pos);
+    if (blockOffset + Long.BYTES <= blockMask) {
+      long v = blocks[blockIndex(pos)].getLong(blockOffset);
+      pos += Long.BYTES;
+      return v;
+    } else {
+      return super.readLong();
+    }
+  }
+
+  @Override
   public byte readByte(long pos) {
     pos += offset;
     return blocks[blockIndex(pos)].get(blockOffset(pos));
@@ -252,6 +291,38 @@ public final class ByteBuffersDataInput extends DataInput
     }
   }
 
+  @Override
+  public void readLongs(long[] arr, int off, int len) throws EOFException {
+    try {
+      while (len > 0) {
+        LongBuffer longBuffer = getLongBuffer(pos);
+        longBuffer.position(blockOffset(pos) >> 3);
+        int chunk = Math.min(len, longBuffer.remaining());
+        if (chunk == 0) {
+          // read a single long spanning the boundary between two buffers
+          arr[off] = readLong(pos - offset);
+          off++;
+          len--;
+          pos += Long.BYTES;
+          continue;
+        }
+
+        // Update pos early on for EOF detection, then try to get buffer content.
+        pos += chunk << 3;
+        longBuffer.get(arr, off, chunk);
+
+        len -= chunk;
+        off += chunk;
+      }
+    } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
+      if (pos - offset + Long.BYTES > size()) {
+        throw new EOFException();
+      } else {
+        throw e; // Something is wrong.
+      }
+    }
+  }
+
   private FloatBuffer getFloatBuffer(long pos) {
     // This creates a separate FloatBuffer for each observed combination of ByteBuffer/alignment
     int bufferIndex = blockIndex(pos);
@@ -263,6 +334,19 @@ public final class ByteBuffersDataInput extends DataInput
       floatBuffers[floatBufferIndex] = dup.order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
     }
     return floatBuffers[floatBufferIndex];
+  }
+
+  private LongBuffer getLongBuffer(long pos) {
+    // This creates a separate LongBuffer for each observed combination of ByteBuffer/alignment
+    int bufferIndex = blockIndex(pos);
+    int alignment = (int) pos & 0x7;
+    int longBufferIndex = bufferIndex * Long.BYTES + alignment;
+    if (longBuffers[longBufferIndex] == null) {
+      ByteBuffer dup = blocks[bufferIndex].duplicate();
+      dup.position(alignment);
+      longBuffers[longBufferIndex] = dup.order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
+    }
+    return longBuffers[longBufferIndex];
   }
 
   public long position() {

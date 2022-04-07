@@ -27,11 +27,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.codecs.DocValuesFormat;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
-import org.apache.lucene.codecs.asserting.AssertingDocValuesFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -49,11 +45,16 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NRTCachingDirectory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.codecs.asserting.AssertingDocValuesFormat;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 @SuppressWarnings("resource")
 public class TestNumericDocValuesUpdates extends LuceneTestCase {
@@ -426,10 +427,10 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       Document doc = new Document();
       doc.add(new StringField("dvUpdateKey", "dv", Store.NO));
       doc.add(new NumericDocValuesField("ndv", i));
-      doc.add(new BinaryDocValuesField("bdv", new BytesRef(Integer.toString(i))));
-      doc.add(new SortedDocValuesField("sdv", new BytesRef(Integer.toString(i))));
-      doc.add(new SortedSetDocValuesField("ssdv", new BytesRef(Integer.toString(i))));
-      doc.add(new SortedSetDocValuesField("ssdv", new BytesRef(Integer.toString(i * 2))));
+      doc.add(new BinaryDocValuesField("bdv", newBytesRef(Integer.toString(i))));
+      doc.add(new SortedDocValuesField("sdv", newBytesRef(Integer.toString(i))));
+      doc.add(new SortedSetDocValuesField("ssdv", newBytesRef(Integer.toString(i))));
+      doc.add(new SortedSetDocValuesField("ssdv", newBytesRef(Integer.toString(i * 2))));
       writer.addDocument(doc);
     }
     writer.commit();
@@ -449,10 +450,10 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       assertEquals(17, ndv.longValue());
       assertEquals(i, bdv.nextDoc());
       BytesRef term = bdv.binaryValue();
-      assertEquals(new BytesRef(Integer.toString(i)), term);
+      assertEquals(newBytesRef(Integer.toString(i)), term);
       assertEquals(i, sdv.nextDoc());
       term = sdv.lookupOrd(sdv.ordValue());
-      assertEquals(new BytesRef(Integer.toString(i)), term);
+      assertEquals(newBytesRef(Integer.toString(i)), term);
       assertEquals(i, ssdv.nextDoc());
 
       long ord = ssdv.nextOrd();
@@ -594,7 +595,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     Document doc = new Document();
     doc.add(new StringField("key", "doc", Store.NO));
     doc.add(new NumericDocValuesField("ndv", 5));
-    doc.add(new SortedDocValuesField("sorted", new BytesRef("value")));
+    doc.add(new SortedDocValuesField("sorted", newBytesRef("value")));
     writer.addDocument(doc); // flushed document
     writer.commit();
     writer.addDocument(doc); // in-memory document
@@ -611,7 +612,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       assertEquals(17, ndv.longValue());
       assertEquals(i, sdv.nextDoc());
       final BytesRef term = sdv.lookupOrd(sdv.ordValue());
-      assertEquals(new BytesRef("value"), term);
+      assertEquals(newBytesRef("value"), term);
     }
 
     reader.close();
@@ -1614,7 +1615,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       // update all doc values
       long value = random().nextInt();
       for (int i = 0; i < numDocs; i++) {
-        Term term = new Term("id", new BytesRef(Integer.toString(i)));
+        Term term = new Term("id", newBytesRef(Integer.toString(i)));
         writer.updateDocValues(term, new NumericDocValuesField("ndv", value));
       }
 
@@ -1683,7 +1684,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
 
       // update some docs to a random value
       long value = random().nextInt();
-      Term term = new Term("id", new BytesRef(Integer.toString(random().nextInt(numDocs) * 2)));
+      Term term = new Term("id", newBytesRef(Integer.toString(random().nextInt(numDocs) * 2)));
       writer.updateDocValues(
           term,
           new NumericDocValuesField("ndv", value),

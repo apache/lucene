@@ -29,7 +29,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -48,8 +47,9 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 /**
  * Demonstrates an application of the {@link DiversifiedTopDocsCollector} in assembling a collection
@@ -419,7 +419,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
 
     parsedRecords.clear();
     for (int i = 0; i < hitsOfThe60s.length; i++) {
-      String cols[] = hitsOfThe60s[i].split("\t");
+      String[] cols = hitsOfThe60s[i].split("\t");
       Record record =
           new Record(String.valueOf(i), cols[0], cols[1], cols[2], Float.parseFloat(cols[3]));
       parsedRecords.put(record.id, record);

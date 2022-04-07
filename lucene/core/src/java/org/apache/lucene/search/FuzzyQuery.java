@@ -56,6 +56,11 @@ public class FuzzyQuery extends MultiTermQuery {
   public static final int defaultMaxExpansions = 50;
   public static final boolean defaultTranspositions = true;
 
+  /** Creates a default top-terms blended frequency scoring rewrite with the given max expansions */
+  public static RewriteMethod defaultRewriteMethod(int maxExpansions) {
+    return new MultiTermQuery.TopTermsBlendedFreqScoringRewrite(maxExpansions);
+  }
+
   private final int maxEdits;
   private final int maxExpansions;
   private final boolean transpositions;
@@ -76,10 +81,16 @@ public class FuzzyQuery extends MultiTermQuery {
    *     maxClauseCount will be used instead.
    * @param transpositions true if transpositions should be treated as a primitive edit operation.
    *     If this is false, comparisons will implement the classic Levenshtein algorithm.
+   * @param rewriteMethod the rewrite method to use to build the final query
    */
   public FuzzyQuery(
-      Term term, int maxEdits, int prefixLength, int maxExpansions, boolean transpositions) {
-    super(term.field());
+      Term term,
+      int maxEdits,
+      int prefixLength,
+      int maxExpansions,
+      boolean transpositions,
+      RewriteMethod rewriteMethod) {
+    super(term.field(), rewriteMethod);
 
     if (maxEdits < 0 || maxEdits > LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE) {
       throw new IllegalArgumentException(
@@ -97,7 +108,22 @@ public class FuzzyQuery extends MultiTermQuery {
     this.prefixLength = prefixLength;
     this.transpositions = transpositions;
     this.maxExpansions = maxExpansions;
-    setRewriteMethod(new MultiTermQuery.TopTermsBlendedFreqScoringRewrite(maxExpansions));
+  }
+
+  /**
+   * Calls {@link #FuzzyQuery(Term, int, int, int, boolean,
+   * org.apache.lucene.search.MultiTermQuery.RewriteMethod)} FuzzyQuery(term, maxEdits,
+   * prefixLength, maxExpansions, defaultRewriteMethod(maxExpansions))
+   */
+  public FuzzyQuery(
+      Term term, int maxEdits, int prefixLength, int maxExpansions, boolean transpositions) {
+    this(
+        term,
+        maxEdits,
+        prefixLength,
+        maxExpansions,
+        transpositions,
+        defaultRewriteMethod(maxExpansions));
   }
 
   /**
@@ -141,8 +167,27 @@ public class FuzzyQuery extends MultiTermQuery {
 
   /** Returns the compiled automata used to match terms */
   public CompiledAutomaton getAutomata() {
+    return getFuzzyAutomaton(term.text(), maxEdits, prefixLength, transpositions);
+  }
+
+  /**
+   * Returns the {@link CompiledAutomaton} internally used by {@link FuzzyQuery} to match terms.
+   * This is a very low-level method and may no longer exist in case the implementation of
+   * fuzzy-matching changes in the future.
+   *
+   * @lucene.internal
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}.
+   * @param prefixLength length of common (non-fuzzy) prefix
+   * @param transpositions true if transpositions should be treated as a primitive edit operation.
+   *     If this is false, comparisons will implement the classic Levenshtein algorithm.
+   * @return A {@link CompiledAutomaton} that matches terms that satisfy input parameters.
+   */
+  public static CompiledAutomaton getFuzzyAutomaton(
+      String term, int maxEdits, int prefixLength, boolean transpositions) {
     FuzzyAutomatonBuilder builder =
-        new FuzzyAutomatonBuilder(term.text(), maxEdits, prefixLength, transpositions);
+        new FuzzyAutomatonBuilder(term, maxEdits, prefixLength, transpositions);
     return builder.buildMaxEditAutomaton();
   }
 
@@ -197,10 +242,10 @@ public class FuzzyQuery extends MultiTermQuery {
     if (!super.equals(obj)) return false;
     if (getClass() != obj.getClass()) return false;
     FuzzyQuery other = (FuzzyQuery) obj;
-    return Objects.equals(maxEdits, other.maxEdits)
-        && Objects.equals(prefixLength, other.prefixLength)
-        && Objects.equals(maxExpansions, other.maxExpansions)
-        && Objects.equals(transpositions, other.transpositions)
+    return maxEdits == other.maxEdits
+        && prefixLength == other.prefixLength
+        && maxExpansions == other.maxExpansions
+        && transpositions == other.transpositions
         && Objects.equals(term, other.term);
   }
 

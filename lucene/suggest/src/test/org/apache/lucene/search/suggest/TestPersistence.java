@@ -22,11 +22,10 @@ import java.util.List;
 import java.util.Random;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
 import org.apache.lucene.search.suggest.fst.FSTCompletionLookup;
-import org.apache.lucene.search.suggest.jaspell.JaspellLookup;
 import org.apache.lucene.search.suggest.tst.TSTLookup;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestPersistence extends LuceneTestCase {
   public final String[] keys =
@@ -50,11 +49,6 @@ public class TestPersistence extends LuceneTestCase {
 
   public void testTSTPersistence() throws Exception {
     runTest(TSTLookup.class, true);
-  }
-
-  @Deprecated
-  public void testJaspellPersistence() throws Exception {
-    runTest(JaspellLookup.class, true);
   }
 
   public void testFSTPersistence() throws Exception {

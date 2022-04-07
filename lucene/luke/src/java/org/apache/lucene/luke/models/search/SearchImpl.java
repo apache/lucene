@@ -30,8 +30,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -230,7 +230,7 @@ public final class SearchImpl extends LukeModel implements Search {
         } else if (type == Float.class || type == Double.class) {
           pc = new PointsConfig(NumberFormat.getNumberInstance(Locale.ROOT), type);
         } else {
-          log.warn(
+          log.warning(
               String.format(Locale.ENGLISH, "Ignored invalid number type: %s.", type.getName()));
           continue;
         }
@@ -344,7 +344,7 @@ public final class SearchImpl extends LukeModel implements Search {
     if (totalHits.value == 0
         || (totalHits.relation == TotalHits.Relation.EQUAL_TO
             && currentPage * pageSize >= totalHits.value)) {
-      log.warn("No more next search results are available.");
+      log.warning("No more next search results are available.");
       return Optional.empty();
     }
 
@@ -375,7 +375,7 @@ public final class SearchImpl extends LukeModel implements Search {
     currentPage -= 1;
 
     if (currentPage < 0) {
-      log.warn("No more previous search results are available.");
+      log.warning("No more previous search results are available.");
       return Optional.empty();
     }
 
@@ -462,7 +462,7 @@ public final class SearchImpl extends LukeModel implements Search {
     Objects.requireNonNull(type);
     List<SortField> candidates = guessSortTypes(name);
     if (candidates.isEmpty()) {
-      log.warn(String.format(Locale.ENGLISH, "No available sort types for: %s", name));
+      log.warning(String.format(Locale.ENGLISH, "No available sort types for: %s", name));
       return Optional.empty();
     }
 

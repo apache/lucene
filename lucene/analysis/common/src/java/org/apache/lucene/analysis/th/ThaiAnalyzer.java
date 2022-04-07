@@ -26,7 +26,9 @@ import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.core.DecimalDigitFilter;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * {@link Analyzer} for Thai language. It uses {@link java.text.BreakIterator} to break words.
@@ -59,7 +61,11 @@ public final class ThaiAnalyzer extends StopwordAnalyzerBase {
     static {
       try {
         DEFAULT_STOP_SET =
-            loadStopwordSet(false, ThaiAnalyzer.class, DEFAULT_STOPWORD_FILE, STOPWORDS_COMMENT);
+            WordlistLoader.getWordSet(
+                IOUtils.requireResourceNonNull(
+                    ThaiAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    DEFAULT_STOPWORD_FILE),
+                STOPWORDS_COMMENT);
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)

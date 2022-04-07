@@ -35,7 +35,7 @@ final class XYPointSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, int sortPos) {
+  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
     return new XYPointDistanceComparator(getField(), x, y, numHits);
   }
 

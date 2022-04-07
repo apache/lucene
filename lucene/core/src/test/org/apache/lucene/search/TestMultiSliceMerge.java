@@ -23,10 +23,11 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestMultiSliceMerge extends LuceneTestCase {
   Directory dir1;
@@ -88,7 +89,7 @@ public class TestMultiSliceMerge extends LuceneTestCase {
     Executor executor1 = runnable -> runnable.run();
     Executor executor2 = runnable -> runnable.run();
 
-    IndexSearcher searchers[] =
+    IndexSearcher[] searchers =
         new IndexSearcher[] {
           new IndexSearcher(reader1, executor1), new IndexSearcher(reader2, executor2)
         };
@@ -105,7 +106,7 @@ public class TestMultiSliceMerge extends LuceneTestCase {
     Executor executor1 = runnable -> runnable.run();
     Executor executor2 = runnable -> runnable.run();
 
-    IndexSearcher searchers[] =
+    IndexSearcher[] searchers =
         new IndexSearcher[] {
           new IndexSearcher(reader1, executor1), new IndexSearcher(reader2, executor2)
         };

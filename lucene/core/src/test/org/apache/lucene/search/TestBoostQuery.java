@@ -20,7 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestBoostQuery extends LuceneTestCase {
 
@@ -73,8 +73,8 @@ public class TestBoostQuery extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(new MultiReader());
 
     // inner queries are rewritten
-    Query q = new BoostQuery(new BooleanQuery.Builder().build(), 2);
-    assertEquals(new BoostQuery(new MatchNoDocsQuery(), 2), searcher.rewrite(q));
+    Query q = new BoostQuery(new PhraseQuery("foo", "bar"), 2);
+    assertEquals(new BoostQuery(new TermQuery(new Term("foo", "bar")), 2), searcher.rewrite(q));
 
     // boosts are merged
     q = new BoostQuery(new BoostQuery(new MatchAllDocsQuery(), 3), 2);
@@ -84,5 +84,15 @@ public class TestBoostQuery extends LuceneTestCase {
     q = new BoostQuery(new MatchAllDocsQuery(), 0);
     assertEquals(
         new BoostQuery(new ConstantScoreQuery(new MatchAllDocsQuery()), 0), searcher.rewrite(q));
+  }
+
+  public void testRewriteBubblesUpMatchNoDocsQuery() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    Query query = new BoostQuery(new MatchNoDocsQuery(), 2f);
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+
+    query = new BoostQuery(new MatchNoDocsQuery(), 0f);
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
   }
 }

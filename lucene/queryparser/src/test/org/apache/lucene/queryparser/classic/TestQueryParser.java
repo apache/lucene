@@ -18,11 +18,6 @@ package org.apache.lucene.queryparser.classic;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockBytesAnalyzer;
-import org.apache.lucene.analysis.MockLowerCaseFilter;
-import org.apache.lucene.analysis.MockSynonymAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -34,7 +29,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.charstream.CharStream;
 import org.apache.lucene.queryparser.classic.QueryParser.Operator;
@@ -51,6 +45,12 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockBytesAnalyzer;
+import org.apache.lucene.tests.analysis.MockLowerCaseFilter;
+import org.apache.lucene.tests.analysis.MockSynonymAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 /** Tests QueryParser. */
@@ -194,6 +194,34 @@ public class TestQueryParser extends QueryParserTestBase {
           }
         };
     assertEquals(qp.parse("a:[11.95 TO 12.95]"), qp.parse("12.45~1€"));
+  }
+
+  public void testFuzzyDistanceExtendability() throws ParseException {
+    QueryParser qp =
+        new QueryParser("a", new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false)) {
+          @Override
+          protected float getFuzzyDistance(Token fuzzySlop, String termStr) {
+            try {
+              return Float.parseFloat(fuzzySlop.image.substring(1));
+            } catch (
+                @SuppressWarnings("unused")
+                Exception ignored) {
+            }
+            return 1f; // alternative value to the default min similarity
+          }
+        };
+    assertEquals(qp.parse("term~"), qp.parse("term~1"));
+    assertEquals(qp.parse("term~XXX"), qp.parse("term~1"));
+
+    QueryParser qp2 =
+        new QueryParser("a", new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false)) {
+          @Override
+          protected float getFuzzyDistance(Token fuzzySlop, String termStr) {
+            return termStr.length(); // distance based on the term length
+          }
+        };
+    assertEquals(qp2.parse("a~"), qp2.parse("a~1"));
+    assertEquals(qp2.parse("ab~"), qp2.parse("ab~2"));
   }
 
   @Override
@@ -502,10 +530,10 @@ public class TestQueryParser extends QueryParserTestBase {
     assertEquals(expected, qp.parse("\"中国\"~3^2"));
   }
 
-  /** LUCENE-6677: make sure wildcard query respects maxDeterminizedStates. */
-  public void testWildcardMaxDeterminizedStates() throws Exception {
+  /** LUCENE-6677: make sure wildcard query respects determinizeWorkLimit. */
+  public void testWildcardDeterminizeWorkLimit() throws Exception {
     QueryParser qp = new QueryParser(FIELD, new MockAnalyzer(random()));
-    qp.setMaxDeterminizedStates(10);
+    qp.setDeterminizeWorkLimit(1);
     expectThrows(
         TooComplexToDeterminizeException.class,
         () -> {
@@ -918,7 +946,7 @@ public class TestQueryParser extends QueryParserTestBase {
     @Override
     public boolean incrementToken() throws IOException {
       if (input.incrementToken()) {
-        char term[] = termAtt.buffer();
+        char[] term = termAtt.buffer();
         for (int i = 0; i < term.length; i++)
           switch (term[i]) {
             case 'ü':

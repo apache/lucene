@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import org.apache.lucene.index.Term;
-import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.AutomatonProvider;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
@@ -42,14 +41,9 @@ import org.apache.lucene.util.automaton.RegExp;
  * @lucene.experimental
  */
 public class RegexpQuery extends AutomatonQuery {
+
   /** A provider that provides no named automata */
-  private static AutomatonProvider defaultProvider =
-      new AutomatonProvider() {
-        @Override
-        public Automaton getAutomaton(String name) {
-          return null;
-        }
-      };
+  public static final AutomatonProvider DEFAULT_PROVIDER = name -> null;
 
   /**
    * Constructs a query for terms matching <code>term</code>.
@@ -69,7 +63,7 @@ public class RegexpQuery extends AutomatonQuery {
    * @param flags optional RegExp features from {@link RegExp}
    */
   public RegexpQuery(Term term, int flags) {
-    this(term, flags, defaultProvider, Operations.DEFAULT_MAX_DETERMINIZED_STATES);
+    this(term, flags, DEFAULT_PROVIDER, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   /**
@@ -77,12 +71,13 @@ public class RegexpQuery extends AutomatonQuery {
    *
    * @param term regular expression.
    * @param flags optional RegExp syntax features from {@link RegExp}
-   * @param maxDeterminizedStates maximum number of states that compiling the automaton for the
-   *     regexp can result in. Set higher to allow more complex queries and lower to prevent memory
-   *     exhaustion.
+   * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
+   *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
+   *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
+   *     otherwise know what to specify.
    */
-  public RegexpQuery(Term term, int flags, int maxDeterminizedStates) {
-    this(term, flags, defaultProvider, maxDeterminizedStates);
+  public RegexpQuery(Term term, int flags, int determinizeWorkLimit) {
+    this(term, flags, DEFAULT_PROVIDER, determinizeWorkLimit);
   }
 
   /**
@@ -93,10 +88,19 @@ public class RegexpQuery extends AutomatonQuery {
    *     regexp can result in. Set higher to allow more complex queries and lower to prevent memory
    *     exhaustion.
    * @param match_flags boolean 'or' of match behavior options such as case insensitivity
-   * @param maxDeterminizedStates maximum number of states that compiling the
+   * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
+   *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
+   *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
+   *     otherwise know what to specify.
    */
-  public RegexpQuery(Term term, int syntax_flags, int match_flags, int maxDeterminizedStates) {
-    this(term, syntax_flags, match_flags, defaultProvider, maxDeterminizedStates);
+  public RegexpQuery(Term term, int syntax_flags, int match_flags, int determinizeWorkLimit) {
+    this(
+        term,
+        syntax_flags,
+        match_flags,
+        DEFAULT_PROVIDER,
+        determinizeWorkLimit,
+        CONSTANT_SCORE_REWRITE);
   }
 
   /**
@@ -105,13 +109,14 @@ public class RegexpQuery extends AutomatonQuery {
    * @param term regular expression.
    * @param syntax_flags optional RegExp features from {@link RegExp}
    * @param provider custom AutomatonProvider for named automata
-   * @param maxDeterminizedStates maximum number of states that compiling the automaton for the
-   *     regexp can result in. Set higher to allow more complex queries and lower to prevent memory
-   *     exhaustion.
+   * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
+   *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
+   *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
+   *     otherwise know what to specify.
    */
   public RegexpQuery(
-      Term term, int syntax_flags, AutomatonProvider provider, int maxDeterminizedStates) {
-    this(term, syntax_flags, 0, provider, maxDeterminizedStates);
+      Term term, int syntax_flags, AutomatonProvider provider, int determinizeWorkLimit) {
+    this(term, syntax_flags, 0, provider, determinizeWorkLimit, CONSTANT_SCORE_REWRITE);
   }
 
   /**
@@ -121,21 +126,26 @@ public class RegexpQuery extends AutomatonQuery {
    * @param syntax_flags optional RegExp features from {@link RegExp}
    * @param match_flags boolean 'or' of match behavior options such as case insensitivity
    * @param provider custom AutomatonProvider for named automata
-   * @param maxDeterminizedStates maximum number of states that compiling the automaton for the
-   *     regexp can result in. Set higher to allow more complex queries and lower to prevent memory
-   *     exhaustion.
+   * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
+   *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
+   *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
+   *     otherwise know what to specify.
+   * @param rewriteMethod the rewrite method to use to build the final query
    */
   public RegexpQuery(
       Term term,
       int syntax_flags,
       int match_flags,
       AutomatonProvider provider,
-      int maxDeterminizedStates) {
+      int determinizeWorkLimit,
+      RewriteMethod rewriteMethod) {
     super(
         term,
-        new RegExp(term.text(), syntax_flags, match_flags)
-            .toAutomaton(provider, maxDeterminizedStates),
-        maxDeterminizedStates);
+        Operations.determinize(
+            new RegExp(term.text(), syntax_flags, match_flags).toAutomaton(provider),
+            determinizeWorkLimit),
+        false,
+        rewriteMethod);
   }
 
   /** Returns the regexp of this query wrapped in a Term. */

@@ -30,7 +30,7 @@ import com.ibm.icu.text.UnicodeSet;
 final class BreakIteratorWrapper {
   private final CharArrayIterator textIterator = new CharArrayIterator();
   private final RuleBasedBreakIterator rbbi;
-  private char text[];
+  private char[] text;
   private int start;
   private int status;
 
@@ -90,7 +90,7 @@ final class BreakIteratorWrapper {
     return false;
   }
 
-  void setText(char text[], int start, int length) {
+  void setText(char[] text, int start, int length) {
     this.text = text;
     this.start = start;
     textIterator.setText(text, start, length);

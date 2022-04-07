@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.snowball;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -53,7 +54,7 @@ public final class SnowballFilter extends TokenFilter {
 
   public SnowballFilter(TokenStream input, SnowballStemmer stemmer) {
     super(input);
-    this.stemmer = stemmer;
+    this.stemmer = Objects.requireNonNull(stemmer, "stemmer");
   }
 
   /**
@@ -68,6 +69,7 @@ public final class SnowballFilter extends TokenFilter {
    */
   public SnowballFilter(TokenStream in, String name) {
     super(in);
+    Objects.requireNonNull(name, "name");
     // Class.forName is frowned upon in place of the ResourceLoader but in this case,
     // the factory will use the other constructor so that the program is already loaded.
     try {
@@ -75,7 +77,7 @@ public final class SnowballFilter extends TokenFilter {
           Class.forName("org.tartarus.snowball.ext." + name + "Stemmer")
               .asSubclass(SnowballStemmer.class);
       stemmer = stemClass.getConstructor().newInstance();
-    } catch (Exception e) {
+    } catch (ReflectiveOperationException e) {
       throw new IllegalArgumentException("Invalid stemmer class specified: " + name, e);
     }
   }
@@ -85,11 +87,11 @@ public final class SnowballFilter extends TokenFilter {
   public final boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       if (!keywordAttr.isKeyword()) {
-        char termBuffer[] = termAtt.buffer();
+        char[] termBuffer = termAtt.buffer();
         final int length = termAtt.length();
         stemmer.setCurrent(termBuffer, length);
         stemmer.stem();
-        final char finalTerm[] = stemmer.getCurrentBuffer();
+        final char[] finalTerm = stemmer.getCurrentBuffer();
         final int newLength = stemmer.getCurrentBufferLength();
         if (finalTerm != termBuffer) termAtt.copyBuffer(finalTerm, 0, newLength);
         else termAtt.setLength(newLength);

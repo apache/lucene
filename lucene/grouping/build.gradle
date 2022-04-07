@@ -21,9 +21,9 @@ apply plugin: 'java-library'
 description = 'Collectors for grouping search results'
 
 dependencies {
-  api project(':lucene:core')
+  moduleApi project(':lucene:core')
 
-  implementation project(':lucene:queries')
+  moduleImplementation project(':lucene:queries')
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }

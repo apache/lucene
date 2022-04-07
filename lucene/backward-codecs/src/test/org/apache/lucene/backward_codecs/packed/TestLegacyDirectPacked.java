@@ -16,17 +16,20 @@
  */
 package org.apache.lucene.backward_codecs.packed;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.Random;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.LongValues;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.packed.PackedInts;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLegacyDirectPacked extends LuceneTestCase {
 
   /** simple encode/decode */
@@ -94,10 +97,10 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
   }
 
   private void doTestBpv(Directory directory, int bpv, long offset) throws Exception {
-    MyRandom random = new MyRandom(random().nextLong());
+    Random random = random();
     int numIters = TEST_NIGHTLY ? 100 : 10;
     for (int i = 0; i < numIters; i++) {
-      long original[] = randomLongs(random, bpv);
+      long[] original = randomLongs(random, bpv);
       int bitsRequired = bpv == 64 ? 64 : LegacyDirectWriter.bitsRequired(1L << (bpv - 1));
       String name = "bpv" + bpv + "_" + i;
       IndexOutput output = EndiannessReverserUtil.createOutput(directory, name, IOContext.DEFAULT);
@@ -122,29 +125,13 @@ public class TestLegacyDirectPacked extends LuceneTestCase {
     }
   }
 
-  private long[] randomLongs(MyRandom random, int bpv) {
+  private long[] randomLongs(Random random, int bpv) {
     int amount = random.nextInt(5000);
-    long longs[] = new long[amount];
+    long[] longs = new long[amount];
+    long max = PackedInts.maxValue(bpv);
     for (int i = 0; i < longs.length; i++) {
-      longs[i] = random.nextLong(bpv);
+      longs[i] = RandomNumbers.randomLongBetween(random, 0, max);
     }
     return longs;
-  }
-
-  // java.util.Random only returns 48bits of randomness in nextLong...
-  static class MyRandom extends Random {
-    byte buffer[] = new byte[8];
-    ByteArrayDataInput input = new ByteArrayDataInput();
-
-    MyRandom(long seed) {
-      super(seed);
-    }
-
-    public synchronized long nextLong(int bpv) {
-      nextBytes(buffer);
-      input.reset(buffer);
-      long bits = input.readLong();
-      return bits >>> (64 - bpv);
-    }
   }
 }

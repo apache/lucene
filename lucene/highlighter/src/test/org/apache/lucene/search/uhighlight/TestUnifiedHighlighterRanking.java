@@ -22,15 +22,12 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -40,9 +37,12 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestUnifiedHighlighterRanking extends LuceneTestCase {
 
@@ -116,25 +116,21 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     for (int n = 1; n < maxTopN; n++) {
       final FakePassageFormatter f1 = new FakePassageFormatter();
       UnifiedHighlighter p1 =
-          new UnifiedHighlighter(is, indexAnalyzer) {
-            @Override
-            protected PassageFormatter getFormatter(String field) {
-              assertEquals("body", field);
-              return f1;
-            }
-          };
-      p1.setMaxLength(Integer.MAX_VALUE - 1);
+          creatUHObjectForCurrentTestSuite(
+              is,
+              indexAnalyzer,
+              new UnifiedHighlighter.Builder(is, indexAnalyzer)
+                  .withFormatter(f1)
+                  .withMaxLength(Integer.MAX_VALUE - 1));
 
       final FakePassageFormatter f2 = new FakePassageFormatter();
       UnifiedHighlighter p2 =
-          new UnifiedHighlighter(is, indexAnalyzer) {
-            @Override
-            protected PassageFormatter getFormatter(String field) {
-              assertEquals("body", field);
-              return f2;
-            }
-          };
-      p2.setMaxLength(Integer.MAX_VALUE - 1);
+          creatUHObjectForCurrentTestSuite(
+              is,
+              indexAnalyzer,
+              new UnifiedHighlighter.Builder(is, indexAnalyzer)
+                  .withFormatter(f2)
+                  .withMaxLength(Integer.MAX_VALUE - 1));
 
       BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
       queryBuilder.add(query, BooleanClause.Occur.MUST);
@@ -176,7 +172,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     HashSet<Pair> seen = new HashSet<>();
 
     @Override
-    public String format(Passage passages[], String content) {
+    public String format(Passage[] passages, String content) {
       for (Passage p : passages) {
         // verify some basics about the passage
         assertTrue(p.getScore() >= 0);
@@ -278,8 +274,9 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(searcher, indexAnalyzer) {
+        new UnifiedHighlighter(uhBuilder) {
           @Override
           protected Set<HighlightFlag> getFlags(String field) {
             if (random().nextBoolean()) {
@@ -300,7 +297,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     Query query = new TermQuery(new Term("body", "test"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
-    String snippets[] = highlighter.highlight("body", query, topDocs, 1);
+    String[] snippets = highlighter.highlight("body", query, topDocs, 1);
     assertEquals(1, snippets.length);
     assertTrue(snippets[0].startsWith("This <b>test</b> is a better <b>test</b>"));
 
@@ -330,8 +327,10 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
+
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(searcher, indexAnalyzer) {
+        new UnifiedHighlighter(uhBuilder) {
           @Override
           protected Set<HighlightFlag> getFlags(String field) {
             if (random().nextBoolean()) {
@@ -356,11 +355,29 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
             .build();
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(1, topDocs.totalHits.value);
-    String snippets[] = highlighter.highlight("body", query, topDocs, 1);
+    String[] snippets = highlighter.highlight("body", query, topDocs, 1);
     assertEquals(1, snippets.length);
     assertTrue(snippets[0].startsWith("On the other hand"));
 
     ir.close();
     dir.close();
+  }
+
+  private UnifiedHighlighter creatUHObjectForCurrentTestSuite(
+      IndexSearcher searcher, Analyzer indexAnalyzer, UnifiedHighlighter.Builder uhBuilder) {
+    UnifiedHighlighter.Builder builder =
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer) {
+          @Override
+          public UnifiedHighlighter build() {
+            return new UnifiedHighlighter(uhBuilder) {
+              @Override
+              protected PassageFormatter getFormatter(String field) {
+                assertEquals("body", field);
+                return super.getFormatter(field);
+              }
+            };
+          }
+        };
+    return builder.build();
   }
 }

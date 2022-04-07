@@ -71,7 +71,7 @@ public class IndicNormalizer {
    * <p>the columns are: ch1, ch2, ch3, res, flags ch1, ch2, and ch3 are the decomposition res is
    * the composition, and flags are the scripts to which it applies.
    */
-  private static final int decompositions[][] = {
+  private static final int[][] decompositions = {
     /* devanagari, gujarati vowel candra O */
     {0x05, 0x3E, 0x45, 0x11, flag(DEVANAGARI) | flag(GUJARATI)},
     /* devanagari short O */
@@ -243,7 +243,7 @@ public class IndicNormalizer {
    * @param len valid length
    * @return normalized length
    */
-  public int normalize(char text[], int len) {
+  public int normalize(char[] text, int len) {
     for (int i = 0; i < len; i++) {
       final Character.UnicodeBlock block = Character.UnicodeBlock.of(text[i]);
       final ScriptData sd = scripts.get(block);
@@ -257,7 +257,7 @@ public class IndicNormalizer {
 
   /** Compose into standard form any compositions in the decompositions table. */
   private int compose(
-      int ch0, Character.UnicodeBlock block0, ScriptData sd, char text[], int pos, int len) {
+      int ch0, Character.UnicodeBlock block0, ScriptData sd, char[] text, int pos, int len) {
     if (pos + 1 >= len) /* need at least 2 chars! */ return len;
 
     final int ch1 = text[pos + 1] - sd.base;

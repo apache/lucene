@@ -32,7 +32,7 @@ Please describe the tests you've developed or run to confirm this patch implemen
 
 Please review the following and check all that apply:
 
-- [ ] I have reviewed the guidelines for [How to Contribute](https://wiki.apache.org/lucene/HowToContribute) and my code conforms to the standards described there to the best of my ability.
+- [ ] I have reviewed the guidelines for [How to Contribute](https://github.com/apache/lucene/blob/main/CONTRIBUTING.md) and my code conforms to the standards described there to the best of my ability.
 - [ ] I have created a Jira issue and added the issue ID to my pull request title.
 - [ ] I have given Lucene maintainers [access](https://help.github.com/en/articles/allowing-changes-to-a-pull-request-branch-created-from-a-fork) to contribute to my PR branch. (optional but recommended)
 - [ ] I have developed this patch against the `main` branch.

@@ -19,6 +19,7 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -34,8 +35,10 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.UnicodeUtil;
 
 /**
- * Immutable class holding compiled details for a given Automaton. The Automaton is deterministic,
- * must not have dead states but is not necessarily minimal.
+ * Immutable class holding compiled details for a given Automaton. The Automaton could either be
+ * deterministic or non-deterministic, For deterministic automaton, it must not have dead states but
+ * is not necessarily minimal. And will be executed using {@link ByteRunAutomaton} For
+ * non-deterministic automaton, it will be executed using {@link NFARunAutomaton}
  *
  * @lucene.experimental
  */
@@ -76,6 +79,14 @@ public class CompiledAutomaton implements Accountable {
    * AUTOMATON_TYPE#NORMAL}.
    */
   public final Automaton automaton;
+
+  /**
+   * Matcher directly run on a NFA, it will determinize the state on need and caches it, note that
+   * this field and {@link #runAutomaton} will not be non-null at the same time
+   *
+   * <p>TODO: merge this with runAutomaton
+   */
+  final NFARunAutomaton nfaRunAutomaton;
 
   /**
    * Shared common suffix accepted by the automaton. Only valid for {@link AUTOMATON_TYPE#NORMAL},
@@ -133,28 +144,24 @@ public class CompiledAutomaton implements Accountable {
    * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
    */
   public CompiledAutomaton(Automaton automaton, Boolean finite, boolean simplify) {
-    this(automaton, finite, simplify, Operations.DEFAULT_MAX_DETERMINIZED_STATES, false);
+    this(automaton, finite, simplify, false);
   }
 
   /**
    * Create this. If finite is null, we use {@link Operations#isFinite} to determine whether it is
    * finite. If simplify is true, we run possibly expensive operations to determine if the automaton
-   * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}. If simplify requires
-   * determinizing the automaton then only maxDeterminizedStates will be created. Any more than that
-   * will cause a TooComplexToDeterminizeException.
+   * is one the cases in {@link CompiledAutomaton.AUTOMATON_TYPE}.
    */
   public CompiledAutomaton(
-      Automaton automaton,
-      Boolean finite,
-      boolean simplify,
-      int maxDeterminizedStates,
-      boolean isBinary) {
+      Automaton automaton, Boolean finite, boolean simplify, boolean isBinary) {
+
     if (automaton.getNumStates() == 0) {
       automaton = new Automaton();
       automaton.createState();
     }
 
-    if (simplify) {
+    // simplify requires a DFA
+    if (simplify && automaton.isDeterministic()) {
 
       // Test whether the automaton is a "simple" form and
       // if so, don't create a runAutomaton.  Note that on a
@@ -169,6 +176,7 @@ public class CompiledAutomaton implements Accountable {
         this.automaton = null;
         this.finite = null;
         sinkState = -1;
+        nfaRunAutomaton = null;
         return;
       }
 
@@ -190,10 +198,9 @@ public class CompiledAutomaton implements Accountable {
         this.automaton = null;
         this.finite = null;
         sinkState = -1;
+        nfaRunAutomaton = null;
         return;
       }
-
-      automaton = Operations.determinize(automaton, maxDeterminizedStates);
 
       IntsRef singleton = Operations.getSingleton(automaton);
 
@@ -213,6 +220,7 @@ public class CompiledAutomaton implements Accountable {
                   UnicodeUtil.newString(singleton.ints, singleton.offset, singleton.length));
         }
         sinkState = -1;
+        nfaRunAutomaton = null;
         return;
       }
     }
@@ -237,14 +245,12 @@ public class CompiledAutomaton implements Accountable {
       binary = new UTF32ToUTF8().convert(automaton);
     }
 
-    if (this.finite) {
+    // compute a common suffix for infinite DFAs, this is an optimization for "leading wildcard"
+    // so don't burn cycles on it if the DFA is finite, or largeish
+    if (this.finite || automaton.getNumStates() + automaton.getNumTransitions() > 1000) {
       commonSuffixRef = null;
     } else {
-      // NOTE: this is a very costly operation!  We should test if it's really warranted in
-      // practice... we could do a fast match
-      // by looking for a sink state (which means it has no common suffix).  Or maybe we shouldn't
-      // do it when simplify is false?:
-      BytesRef suffix = Operations.getCommonSuffixBytesRef(binary, maxDeterminizedStates);
+      BytesRef suffix = Operations.getCommonSuffixBytesRef(binary);
       if (suffix.length == 0) {
         commonSuffixRef = null;
       } else {
@@ -252,15 +258,24 @@ public class CompiledAutomaton implements Accountable {
       }
     }
 
-    // This will determinize the binary automaton for us:
-    runAutomaton = new ByteRunAutomaton(binary, true, maxDeterminizedStates);
+    if (automaton.isDeterministic() == false && binary.isDeterministic() == false) {
+      this.automaton = null;
+      this.runAutomaton = null;
+      this.sinkState = -1;
+      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0xff);
+    } else {
+      // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
+      binary = Operations.determinize(binary, Integer.MAX_VALUE);
+      runAutomaton = new ByteRunAutomaton(binary, true);
 
-    this.automaton = runAutomaton.automaton;
+      this.automaton = runAutomaton.automaton;
 
-    // TODO: this is a bit fragile because if the automaton is not minimized there could be more
-    // than 1 sink state but auto-prefix will fail
-    // to run for those:
-    sinkState = findSinkState(this.automaton);
+      // TODO: this is a bit fragile because if the automaton is not minimized there could be more
+      // than 1 sink state but auto-prefix will fail
+      // to run for those:
+      sinkState = findSinkState(this.automaton);
+      nfaRunAutomaton = null;
+    }
   }
 
   private Transition transition = new Transition();
@@ -472,6 +487,32 @@ public class CompiledAutomaton implements Accountable {
     }
   }
 
+  /**
+   * Get a {@link ByteRunnable} instance, it will be different depending on whether a NFA or DFA is
+   * passed in, and does not guarantee returning non-null object
+   */
+  public ByteRunnable getByteRunnable() {
+    // they can be both null but not both non-null
+    assert nfaRunAutomaton == null || runAutomaton == null;
+    if (nfaRunAutomaton == null) {
+      return runAutomaton;
+    }
+    return nfaRunAutomaton;
+  }
+
+  /**
+   * Get a {@link TransitionAccessor} instance, it will be different depending on whether a NFA or
+   * DFA is passed in, and does not guarantee returning non-null object
+   */
+  public TransitionAccessor getTransitionAccessor() {
+    // they can be both null but not both non-null
+    assert nfaRunAutomaton == null || automaton == null;
+    if (nfaRunAutomaton == null) {
+      return automaton;
+    }
+    return nfaRunAutomaton;
+  }
+
   @Override
   public int hashCode() {
     final int prime = 31;
@@ -492,7 +533,8 @@ public class CompiledAutomaton implements Accountable {
     if (type == AUTOMATON_TYPE.SINGLE) {
       if (!term.equals(other.term)) return false;
     } else if (type == AUTOMATON_TYPE.NORMAL) {
-      if (!runAutomaton.equals(other.runAutomaton)) return false;
+      return Objects.equals(runAutomaton, other.runAutomaton)
+          && Objects.equals(nfaRunAutomaton, other.nfaRunAutomaton);
     }
 
     return true;

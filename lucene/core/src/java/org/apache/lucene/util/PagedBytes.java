@@ -101,6 +101,17 @@ public final class PagedBytes implements Accountable {
     }
 
     /**
+     * Get the byte at the given offset.
+     *
+     * @lucene.internal
+     */
+    public byte getByte(long o) {
+      final int index = (int) (o >> blockBits);
+      final int offset = (int) (o & blockMask);
+      return blocks[index][offset];
+    }
+
+    /**
      * Reads length as 1 or 2 byte vInt prefix, starting at <i>start</i>.
      *
      * <p><b>Note:</b> this method does not support slices spanning across block borders.
@@ -117,7 +128,7 @@ public final class PagedBytes implements Accountable {
         b.length = block[offset];
         b.offset = offset + 1;
       } else {
-        b.length = ((block[offset] & 0x7f) << 8) | (block[1 + offset] & 0xff);
+        b.length = ((short) BitUtil.VH_BE_SHORT.get(block, offset)) & 0x7FFF;
         b.offset = offset + 2;
         assert b.length > 0;
       }
@@ -274,8 +285,8 @@ public final class PagedBytes implements Accountable {
     if (bytes.length < 128) {
       currentBlock[upto++] = (byte) bytes.length;
     } else {
-      currentBlock[upto++] = (byte) (0x80 | (bytes.length >> 8));
-      currentBlock[upto++] = (byte) (bytes.length & 0xff);
+      BitUtil.VH_BE_SHORT.set(currentBlock, upto, (short) (bytes.length | 0x8000));
+      upto += 2;
     }
     System.arraycopy(bytes.bytes, bytes.offset, currentBlock, upto, bytes.length);
     upto += bytes.length;
@@ -380,7 +391,8 @@ public final class PagedBytes implements Accountable {
 
     @Override
     public void writeBytes(byte[] b, int offset, int length) {
-      assert b.length >= offset + length;
+      assert b.length >= offset + length
+          : "b.length=" + b.length + " offset=" + offset + " length=" + length;
       if (length == 0) {
         return;
       }

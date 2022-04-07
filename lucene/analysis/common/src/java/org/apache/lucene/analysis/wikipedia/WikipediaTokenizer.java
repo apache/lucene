@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Extension of StandardTokenizer that is aware of Wikipedia syntax. It is based off of the
@@ -34,6 +35,7 @@ import org.apache.lucene.util.AttributeSource;
  *
  * @lucene.experimental
  */
+@IgnoreRandomChains(reason = "TODO: it seems to mess up offsets!?")
 public final class WikipediaTokenizer extends Tokenizer {
   public static final String INTERNAL_LINK = "il";
   public static final String EXTERNAL_LINK = "el";

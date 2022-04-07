@@ -24,10 +24,10 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TimeUnits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TimeUnits;
 import org.junit.Ignore;
 
 @Ignore("Requires tons of heap to run (30 GB hits OOME but 35 GB passes after ~4.5 hours)")
@@ -277,12 +277,8 @@ public class Test2BFST extends LuceneTestCase {
               System.out.println(i + "...: ");
             }
 
-            // forward lookup:
             assertEquals(output, Util.get(fst, input).longValue());
-            // reverse lookup:
-            @SuppressWarnings("deprecation")
-            IntsRef inputResult = Util.getByOutput(fst, output);
-            assertEquals(input, inputResult);
+
             output += 1 + r.nextInt(10);
             nextInput(r, ints);
           }

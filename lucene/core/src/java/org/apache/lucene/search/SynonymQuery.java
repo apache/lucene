@@ -51,7 +51,7 @@ import org.apache.lucene.util.PriorityQueue;
  */
 public final class SynonymQuery extends Query {
 
-  private final TermAndBoost terms[];
+  private final TermAndBoost[] terms;
   private final String field;
 
   /** A builder for {@link SynonymQuery}. */
@@ -144,14 +144,12 @@ public final class SynonymQuery extends Query {
 
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
-    // optimize zero and single term cases
+    // optimize zero and non-boosted single term cases
     if (terms.length == 0) {
       return new BooleanQuery.Builder().build();
     }
-    if (terms.length == 1) {
-      return terms[0].boost == 1f
-          ? new TermQuery(terms[0].term)
-          : new BoostQuery(new TermQuery(terms[0].term), terms[0].boost);
+    if (terms.length == 1 && terms[0].boost == 1f) {
+      return new TermQuery(terms[0].term);
     }
     return this;
   }
@@ -184,7 +182,7 @@ public final class SynonymQuery extends Query {
   }
 
   class SynonymWeight extends Weight {
-    private final TermStates termStates[];
+    private final TermStates[] termStates;
     private final Similarity similarity;
     private final Similarity.SimScorer simWeight;
     private final ScoreMode scoreMode;

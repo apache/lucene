@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.cn.smart;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.IOUtils;
 
 public class TestSmartChineseAnalyzer extends BaseTokenStreamTestCase {
@@ -28,7 +28,7 @@ public class TestSmartChineseAnalyzer extends BaseTokenStreamTestCase {
   public void testChineseStopWordsDefault() throws Exception {
     Analyzer ca = new SmartChineseAnalyzer(); /* will load stopwords */
     String sentence = "我购买了道具和服装。";
-    String result[] = {"我", "购买", "了", "道具", "和", "服装"};
+    String[] result = {"我", "购买", "了", "道具", "和", "服装"};
     assertAnalyzesTo(ca, sentence, result);
     ca.close();
     // set stop-words from the outer world - must yield same behavior
@@ -44,7 +44,7 @@ public class TestSmartChineseAnalyzer extends BaseTokenStreamTestCase {
   public void testChineseStopWordsDefaultTwoPhrases() throws Exception {
     Analyzer ca = new SmartChineseAnalyzer(); /* will load stopwords */
     String sentence = "我购买了道具和服装。 我购买了道具和服装。";
-    String result[] = {"我", "购买", "了", "道具", "和", "服装", "我", "购买", "了", "道具", "和", "服装"};
+    String[] result = {"我", "购买", "了", "道具", "和", "服装", "我", "购买", "了", "道具", "和", "服装"};
     assertAnalyzesTo(ca, sentence, result);
     ca.close();
   }
@@ -65,7 +65,7 @@ public class TestSmartChineseAnalyzer extends BaseTokenStreamTestCase {
                 "\uD872\uDF2D",
                 "\u9FD4")
             .collect(Collectors.joining());
-    String result[] = {
+    String[] result = {
       "\uD872\uDF3B",
       "\uD872\uDF4A",
       "\uD872\uDF73",
@@ -86,7 +86,7 @@ public class TestSmartChineseAnalyzer extends BaseTokenStreamTestCase {
   public void testChineseStopWordsDefaultTwoPhrasesIdeoSpace() throws Exception {
     Analyzer ca = new SmartChineseAnalyzer(); /* will load stopwords */
     String sentence = "我购买了道具和服装　我购买了道具和服装。";
-    String result[] = {"我", "购买", "了", "道具", "和", "服装", "我", "购买", "了", "道具", "和", "服装"};
+    String[] result = {"我", "购买", "了", "道具", "和", "服装", "我", "购买", "了", "道具", "和", "服装"};
     assertAnalyzesTo(ca, sentence, result);
     ca.close();
   }
@@ -104,7 +104,7 @@ public class TestSmartChineseAnalyzer extends BaseTokenStreamTestCase {
           new SmartChineseAnalyzer(null) /* sets stopwords to empty set */
         };
     String sentence = "我购买了道具和服装。";
-    String result[] = {"我", "购买", "了", "道具", "和", "服装", ","};
+    String[] result = {"我", "购买", "了", "道具", "和", "服装", ","};
     for (Analyzer analyzer : analyzers) {
       assertAnalyzesTo(analyzer, sentence, result);
       assertAnalyzesTo(analyzer, sentence, result);
@@ -119,10 +119,10 @@ public class TestSmartChineseAnalyzer extends BaseTokenStreamTestCase {
   public void testChineseStopWords2() throws Exception {
     Analyzer ca = new SmartChineseAnalyzer(); /* will load stopwords */
     String sentence = "Title:San"; // : is a stopword
-    String result[] = {"titl", "san"};
-    int startOffsets[] = {0, 6};
-    int endOffsets[] = {5, 9};
-    int posIncr[] = {1, 2};
+    String[] result = {"titl", "san"};
+    int[] startOffsets = {0, 6};
+    int[] endOffsets = {5, 9};
+    int[] posIncr = {1, 2};
     assertAnalyzesTo(ca, sentence, result, startOffsets, endOffsets, posIncr);
     ca.close();
   }

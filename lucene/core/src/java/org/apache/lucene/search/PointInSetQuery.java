@@ -31,6 +31,8 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefIterator;
@@ -236,6 +238,11 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
 
     @Override
+    public void visit(DocIdSetIterator iterator) throws IOException {
+      adder.add(iterator);
+    }
+
+    @Override
     public void visit(int docID, byte[] packedValue) {
       if (matches(packedValue)) {
         visit(docID);
@@ -307,11 +314,13 @@ public abstract class PointInSetQuery extends Query implements Accountable {
    */
   private class SinglePointVisitor implements IntersectVisitor {
 
+    private final ByteArrayComparator comparator;
     private final DocIdSetBuilder result;
     private final byte[] pointBytes;
     private DocIdSetBuilder.BulkAdder adder;
 
     public SinglePointVisitor(DocIdSetBuilder result) {
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       this.result = result;
       this.pointBytes = new byte[bytesPerDim * numDims];
     }
@@ -330,6 +339,11 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public void visit(int docID) {
       adder.add(docID);
+    }
+
+    @Override
+    public void visit(DocIdSetIterator iterator) throws IOException {
+      adder.add(iterator);
     }
 
     @Override
@@ -361,26 +375,12 @@ public abstract class PointInSetQuery extends Query implements Accountable {
       for (int dim = 0; dim < numDims; dim++) {
         int offset = dim * bytesPerDim;
 
-        int cmpMin =
-            Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                pointBytes,
-                offset,
-                offset + bytesPerDim);
+        int cmpMin = comparator.compare(minPackedValue, offset, pointBytes, offset);
         if (cmpMin > 0) {
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        int cmpMax =
-            Arrays.compareUnsigned(
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim,
-                pointBytes,
-                offset,
-                offset + bytesPerDim);
+        int cmpMax = comparator.compare(maxPackedValue, offset, pointBytes, offset);
         if (cmpMax < 0) {
           return Relation.CELL_OUTSIDE_QUERY;
         }

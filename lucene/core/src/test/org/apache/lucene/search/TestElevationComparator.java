@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -30,12 +29,12 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.FieldValueHitQueue.Entry;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestElevationComparator extends LuceneTestCase {
 
@@ -85,10 +84,9 @@ public class TestElevationComparator extends LuceneTestCase {
             new SortField("id", new ElevationComparatorSource(priority), false),
             new SortField(null, SortField.Type.SCORE, reversed));
 
-    TopDocsCollector<Entry> topCollector = TopFieldCollector.create(sort, 50, Integer.MAX_VALUE);
-    searcher.search(newq.build(), topCollector);
-
-    TopDocs topDocs = topCollector.topDocs(0, 10);
+    TopDocs topDocs =
+        searcher.search(
+            newq.build(), TopFieldCollector.createSharedManager(sort, 50, null, Integer.MAX_VALUE));
     int nDocsReturned = topDocs.scoreDocs.length;
 
     assertEquals(4, nDocsReturned);
@@ -151,7 +149,7 @@ class ElevationComparatorSource extends FieldComparatorSource {
 
   @Override
   public FieldComparator<Integer> newComparator(
-      final String fieldname, final int numHits, int sortPos, boolean reversed) {
+      final String fieldname, final int numHits, boolean enableSkipping, boolean reversed) {
     return new FieldComparator<Integer>() {
 
       private final int[] values = new int[numHits];

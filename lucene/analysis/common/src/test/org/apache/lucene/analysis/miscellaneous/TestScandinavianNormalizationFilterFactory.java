@@ -16,15 +16,15 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 public class TestScandinavianNormalizationFilterFactory extends BaseTokenStreamFactoryTestCase {
 
-  public void testStemming() throws Exception {
-    TokenStream stream = whitespaceMockTokenizer("räksmörgås");
+  public void testDefault() throws Exception {
+    TokenStream stream = whitespaceMockTokenizer("räksmörgås_ae_oe_aa_oo_ao_AE_OE_AA_OO_AO");
     stream = tokenFilterFactory("ScandinavianNormalization").create(stream);
-    assertTokenStreamContents(stream, new String[] {"ræksmørgås"});
+    assertTokenStreamContents(stream, new String[] {"ræksmørgås_æ_ø_å_ø_å_Æ_Ø_Å_Ø_Å"});
   }
 
   /** Test that bogus arguments result in exception */
@@ -35,6 +35,7 @@ public class TestScandinavianNormalizationFilterFactory extends BaseTokenStreamF
             () -> {
               tokenFilterFactory("ScandinavianNormalization", "bogusArg", "bogusValue");
             });
-    assertTrue(expected.getMessage().contains("Unknown parameters"));
+    assertTrue(
+        "Got " + expected.getMessage(), expected.getMessage().contains("Unknown parameters"));
   }
 }

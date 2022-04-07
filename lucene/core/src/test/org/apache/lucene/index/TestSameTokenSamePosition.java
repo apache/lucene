@@ -24,7 +24,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSameTokenSamePosition extends LuceneTestCase {
 
@@ -63,10 +64,10 @@ final class BugReproTokenStream extends TokenStream {
       addAttribute(PositionIncrementAttribute.class);
   private static final int TOKEN_COUNT = 4;
   private int nextTokenIndex = 0;
-  private final String terms[] = new String[] {"six", "six", "drunken", "drunken"};
-  private final int starts[] = new int[] {0, 0, 4, 4};
-  private final int ends[] = new int[] {3, 3, 11, 11};
-  private final int incs[] = new int[] {1, 0, 1, 0};
+  private final String[] terms = new String[] {"six", "six", "drunken", "drunken"};
+  private final int[] starts = new int[] {0, 0, 4, 4};
+  private final int[] ends = new int[] {3, 3, 11, 11};
+  private final int[] incs = new int[] {1, 0, 1, 0};
 
   @Override
   public boolean incrementToken() {

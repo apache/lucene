@@ -20,11 +20,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.fst.Util;
 
@@ -182,6 +183,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     RegExp re = new RegExp(".+\u0775");
     String input = "\ufadc\ufffd\ub80b\uda5a\udc68\uf234\u0056\uda5b\udcc1\ufffd\ufffd\u0775";
     Automaton automaton = re.toAutomaton();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CharacterRunAutomaton cra = new CharacterRunAutomaton(automaton);
     ByteRunAutomaton bra = new ByteRunAutomaton(automaton);
 
@@ -196,6 +198,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     String input =
         "\u5cfd\ufffd\ub2f7\u0033\ue304\u51d7\u3692\udb50\udfb3\u0576\udae2\udc62\u0053\u0449\u04d4";
     Automaton automaton = re.toAutomaton();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CharacterRunAutomaton cra = new CharacterRunAutomaton(automaton);
     ByteRunAutomaton bra = new ByteRunAutomaton(automaton);
 
@@ -208,8 +211,10 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
   public void testRandomRegexes() throws Exception {
     int num = atLeast(50);
     for (int i = 0; i < num; i++) {
-      assertAutomaton(
-          new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton());
+      Automaton automaton =
+          new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton();
+      automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+      assertAutomaton(automaton);
     }
   }
 
@@ -252,7 +257,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
           throw e;
         }
       }
-      byte bytes[] = string.getBytes(StandardCharsets.UTF_8);
+      byte[] bytes = string.getBytes(StandardCharsets.UTF_8);
       assertEquals(cra.run(string), bra.run(bytes, 0, bytes.length));
     }
   }

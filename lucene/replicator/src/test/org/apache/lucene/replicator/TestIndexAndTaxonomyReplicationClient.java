@@ -30,6 +30,7 @@ import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
@@ -48,9 +49,9 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.junit.After;
 import org.junit.Before;
@@ -109,8 +110,7 @@ public class TestIndexAndTaxonomyReplicationClient extends ReplicatorTestCase {
         // verify faceted search
         int id = Integer.parseInt(indexReader.getIndexCommit().getUserData().get(VERSION_ID), 16);
         IndexSearcher searcher = new IndexSearcher(indexReader);
-        FacetsCollector fc = new FacetsCollector();
-        searcher.search(new MatchAllDocsQuery(), fc);
+        FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
         Facets facets = new FastTaxonomyFacetCounts(taxoReader, config, fc);
         assertEquals(1, facets.getSpecificValue("A", Integer.toString(id, 16)).intValue());
 

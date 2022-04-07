@@ -108,7 +108,7 @@ public abstract class FilterCodec extends Codec {
   }
 
   @Override
-  public VectorFormat vectorFormat() {
-    return delegate.vectorFormat();
+  public KnnVectorsFormat knnVectorsFormat() {
+    return delegate.knnVectorsFormat();
   }
 }

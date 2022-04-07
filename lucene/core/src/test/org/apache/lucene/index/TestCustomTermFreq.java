@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.index.PostingsEnum.NO_MORE_DOCS;
 
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
@@ -31,9 +30,9 @@ import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestCustomTermFreq extends LuceneTestCase {
 
@@ -87,14 +86,14 @@ public class TestCustomTermFreq extends LuceneTestCase {
     w.addDocument(doc);
     IndexReader r = DirectoryReader.open(w);
     PostingsEnum postings =
-        MultiTerms.getTermPostingsEnum(r, "field", new BytesRef("bar"), (int) PostingsEnum.FREQS);
+        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("bar"), (int) PostingsEnum.FREQS);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
     assertEquals(128, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
     postings =
-        MultiTerms.getTermPostingsEnum(r, "field", new BytesRef("foo"), (int) PostingsEnum.FREQS);
+        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("foo"), (int) PostingsEnum.FREQS);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
     assertEquals(42, postings.freq());
@@ -129,7 +128,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
 
     IndexReader r = DirectoryReader.open(w);
     PostingsEnum postings =
-        MultiTerms.getTermPostingsEnum(r, "field", new BytesRef("bar"), (int) PostingsEnum.FREQS);
+        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("bar"), (int) PostingsEnum.FREQS);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
     assertEquals(128, postings.freq());
@@ -138,7 +137,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
     postings =
-        MultiTerms.getTermPostingsEnum(r, "field", new BytesRef("foo"), (int) PostingsEnum.FREQS);
+        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("foo"), (int) PostingsEnum.FREQS);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
     assertEquals(42, postings.freq());
@@ -166,14 +165,14 @@ public class TestCustomTermFreq extends LuceneTestCase {
     w.addDocument(doc);
     IndexReader r = DirectoryReader.open(w);
     PostingsEnum postings =
-        MultiTerms.getTermPostingsEnum(r, "field", new BytesRef("bar"), (int) PostingsEnum.FREQS);
+        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("bar"), (int) PostingsEnum.FREQS);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
     assertEquals(228, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
     postings =
-        MultiTerms.getTermPostingsEnum(r, "field", new BytesRef("foo"), (int) PostingsEnum.FREQS);
+        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("foo"), (int) PostingsEnum.FREQS);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
     assertEquals(59, postings.freq());
@@ -211,7 +210,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
 
     IndexReader r = DirectoryReader.open(w);
     PostingsEnum postings =
-        MultiTerms.getTermPostingsEnum(r, "field", new BytesRef("bar"), (int) PostingsEnum.FREQS);
+        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("bar"), (int) PostingsEnum.FREQS);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
     assertEquals(228, postings.freq());
@@ -220,7 +219,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
     postings =
-        MultiTerms.getTermPostingsEnum(r, "field", new BytesRef("foo"), (int) PostingsEnum.FREQS);
+        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("foo"), (int) PostingsEnum.FREQS);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
     assertEquals(59, postings.freq());
@@ -261,9 +260,9 @@ public class TestCustomTermFreq extends LuceneTestCase {
     IndexReader r = DirectoryReader.open(w);
 
     TermsEnum termsEnum = MultiTerms.getTerms(r, "field").iterator();
-    assertTrue(termsEnum.seekExact(new BytesRef("foo")));
+    assertTrue(termsEnum.seekExact(newBytesRef("foo")));
     assertEquals(179, termsEnum.totalTermFreq());
-    assertTrue(termsEnum.seekExact(new BytesRef("bar")));
+    assertTrue(termsEnum.seekExact(newBytesRef("bar")));
     assertEquals(368, termsEnum.totalTermFreq());
 
     IOUtils.close(r, w, dir);
@@ -441,7 +440,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
 
     Fields fields = r.getTermVectors(0);
     TermsEnum termsEnum = fields.terms("field").iterator();
-    assertTrue(termsEnum.seekExact(new BytesRef("bar")));
+    assertTrue(termsEnum.seekExact(newBytesRef("bar")));
     assertEquals(228, termsEnum.totalTermFreq());
     PostingsEnum postings = termsEnum.postings(null);
     assertNotNull(postings);
@@ -449,7 +448,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     assertEquals(228, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
-    assertTrue(termsEnum.seekExact(new BytesRef("foo")));
+    assertTrue(termsEnum.seekExact(newBytesRef("foo")));
     assertEquals(59, termsEnum.totalTermFreq());
     postings = termsEnum.postings(null);
     assertNotNull(postings);
@@ -459,7 +458,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
 
     fields = r.getTermVectors(1);
     termsEnum = fields.terms("field").iterator();
-    assertTrue(termsEnum.seekExact(new BytesRef("bar")));
+    assertTrue(termsEnum.seekExact(newBytesRef("bar")));
     assertEquals(140, termsEnum.totalTermFreq());
     postings = termsEnum.postings(null);
     assertNotNull(postings);
@@ -467,7 +466,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     assertEquals(140, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
-    assertTrue(termsEnum.seekExact(new BytesRef("foo")));
+    assertTrue(termsEnum.seekExact(newBytesRef("foo")));
     assertEquals(120, termsEnum.totalTermFreq());
     postings = termsEnum.postings(null);
     assertNotNull(postings);

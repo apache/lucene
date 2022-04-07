@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -26,7 +25,9 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Tests MatchNoDocsQuery. */
 public class TestMatchNoDocsQuery extends LuceneTestCase {
@@ -88,7 +89,7 @@ public class TestMatchNoDocsQuery extends LuceneTestCase {
     hits = searcher.search(query, 1000).scoreDocs;
     Query rewrite = query.rewrite(ir);
     assertEquals(1, hits.length);
-    assertEquals(rewrite.toString(), "key:one MatchNoDocsQuery(\"field not found\")");
+    assertEquals(rewrite.toString(), "key:one");
 
     iw.close();
     ir.close();

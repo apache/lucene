@@ -22,7 +22,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSizeBoundedForceMerge extends LuceneTestCase {
 
@@ -45,6 +45,8 @@ public class TestSizeBoundedForceMerge extends LuceneTestCase {
     IndexWriterConfig conf = newIndexWriterConfig(null);
     conf.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
     conf.setRAMBufferSizeMB(IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB);
+    // don't use compound files, because the overhead make size checks unreliable.
+    conf.setUseCompoundFile(false);
     // prevent any merges by default.
     conf.setMergePolicy(NoMergePolicy.INSTANCE);
     return conf;

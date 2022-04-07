@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.containsString;
-
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,27 +25,26 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
-import org.apache.lucene.util.automaton.Operations;
 
 /** Tests {@link FuzzyQuery}. */
 public class TestFuzzyQuery extends LuceneTestCase {
@@ -318,7 +314,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     searcher.setSimilarity(
         new ClassicSimilarity()); // avoid randomisation of similarity algo by test framework
     writer.close();
-    String searchTerms[] = {"smith", "smythe", "smdssasd"};
+    String[] searchTerms = {"smith", "smythe", "smdssasd"};
     for (String searchTerm : searchTerms) {
       FuzzyQuery query = new FuzzyQuery(new Term("field", searchTerm), 2, 1);
       ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
@@ -440,8 +436,14 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     writer.close();
 
-    FuzzyQuery query = new FuzzyQuery(new Term("field", "lucene"));
-    query.setRewriteMethod(new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(50));
+    FuzzyQuery query =
+        new FuzzyQuery(
+            new Term("field", "lucene"),
+            FuzzyQuery.defaultMaxEdits,
+            FuzzyQuery.defaultPrefixLength,
+            FuzzyQuery.defaultMaxExpansions,
+            FuzzyQuery.defaultTranspositions,
+            new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(50));
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(3, hits.length);
     // normally, 'Lucenne' would be the first result as IDF will skew the score.
@@ -564,36 +566,6 @@ public class TestFuzzyQuery extends LuceneTestCase {
               new FuzzyQuery(new Term("field", "foo"), 1, 0, -1, false);
             });
     assertTrue(expected.getMessage().contains("maxExpansions must be positive"));
-  }
-
-  private String randomRealisticMultiByteUnicode(int length) {
-    while (true) {
-      // There is 1 single-byte unicode block, and 194 multi-byte blocks
-      String value = RandomizedTest.randomRealisticUnicodeOfCodepointLength(length);
-      if (value.charAt(0) > Byte.MAX_VALUE) {
-        return value;
-      }
-    }
-  }
-
-  public void testErrorMessage() {
-    // 45 states per vector from Lev2TParametricDescription
-    final int length = (Operations.DEFAULT_MAX_DETERMINIZED_STATES / 45) + 10;
-    final String value = randomRealisticMultiByteUnicode(length);
-
-    FuzzyTermsEnum.FuzzyTermsException expected =
-        expectThrows(
-            FuzzyTermsEnum.FuzzyTermsException.class,
-            () -> {
-              new FuzzyAutomatonBuilder(value, 2, 0, true).buildMaxEditAutomaton();
-            });
-    assertThat(expected.getMessage(), containsString(value));
-
-    expected =
-        expectThrows(
-            FuzzyTermsEnum.FuzzyTermsException.class,
-            () -> new FuzzyAutomatonBuilder(value, 2, 0, true).buildAutomatonSet());
-    assertThat(expected.getMessage(), containsString(value));
   }
 
   private void addDoc(String text, RandomIndexWriter writer) throws IOException {
@@ -757,7 +729,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IntsRef targetPoints;
     IntsRef otherPoints;
     int n;
-    int d[][]; // cost array
+    int[][] d; // cost array
 
     // NOTE: if we cared, we could 3*m space instead of m*n space, similar to
     // what LevenshteinDistance does, except cycling thru a ring of three
@@ -845,12 +817,12 @@ public class TestFuzzyQuery extends LuceneTestCase {
   }
 
   private static void assertMatches(ByteRunAutomaton automaton, String text) {
-    BytesRef b = new BytesRef(text);
+    BytesRef b = newBytesRef(text);
     assertTrue(automaton.run(b.bytes, b.offset, b.length));
   }
 
   private static void assertNoMatches(ByteRunAutomaton automaton, String text) {
-    BytesRef b = new BytesRef(text);
+    BytesRef b = newBytesRef(text);
     assertFalse(automaton.run(b.bytes, b.offset, b.length));
   }
 }

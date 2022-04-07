@@ -20,7 +20,6 @@ import org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50Compressin
 import org.apache.lucene.backward_codecs.lucene87.Lucene87StoredFieldsFormat;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.packed.BlockPackedWriter;
 import org.apache.lucene.util.packed.PackedInts;
@@ -154,6 +153,6 @@ public final class Lucene50TermVectorsFormat extends Lucene50CompressingTermVect
 
   /** Sole constructor. */
   public Lucene50TermVectorsFormat() {
-    super("Lucene50TermVectorsData", "", CompressionMode.FAST, 1 << 12, 10);
+    super("Lucene50TermVectorsData", "", Lucene50StoredFieldsFormat.FAST_MODE, 1 << 12, 128, 10);
   }
 }

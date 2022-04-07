@@ -18,13 +18,14 @@ package org.apache.lucene.util.bkd;
 
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
 import org.apache.lucene.index.CheckIndex;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.Monster;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 import org.apache.lucene.util.NumericUtils;
 
 // e.g. run like this: ant test -Dtestcase=Test2BBKDPoints -Dtests.nightly=true -Dtests.verbose=true
@@ -72,7 +73,7 @@ public class Test2BBKDPoints extends LuceneTestCase {
 
     IndexInput in = dir.openInput("1d.bkd", IOContext.DEFAULT);
     in.seek(indexFP);
-    BKDReader r = new BKDReader(in, in, in);
+    PointValues r = new BKDReader(in, in, in);
     CheckIndex.VerifyPointsVisitor visitor = new CheckIndex.VerifyPointsVisitor("1d", numDocs, r);
     r.intersect(visitor);
     assertEquals(r.size(), visitor.getPointCountSeen());
@@ -121,7 +122,7 @@ public class Test2BBKDPoints extends LuceneTestCase {
 
     IndexInput in = dir.openInput("2d.bkd", IOContext.DEFAULT);
     in.seek(indexFP);
-    BKDReader r = new BKDReader(in, in, in);
+    PointValues r = new BKDReader(in, in, in);
     CheckIndex.VerifyPointsVisitor visitor = new CheckIndex.VerifyPointsVisitor("2d", numDocs, r);
     r.intersect(visitor);
     assertEquals(r.size(), visitor.getPointCountSeen());

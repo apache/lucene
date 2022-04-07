@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.core;
 
 import java.io.StringReader;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.document.Document;
@@ -33,9 +32,10 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestKeywordAnalyzer extends BaseTokenStreamTestCase {
 

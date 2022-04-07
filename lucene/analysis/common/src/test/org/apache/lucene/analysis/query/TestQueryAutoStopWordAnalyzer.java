@@ -28,12 +28,15 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 public class TestQueryAutoStopWordAnalyzer extends BaseTokenStreamTestCase {
-  String variedFieldValues[] = {
+  String[] variedFieldValues = {
     "the", "quick", "brown", "fox", "jumped", "over", "the", "lazy", "boring", "dog"
   };
-  String repetitiveFieldValues[] = {"boring", "boring", "vaguelyboring"};
+  String[] repetitiveFieldValues = {"boring", "boring", "vaguelyboring"};
   Directory dir;
   Analyzer appAnalyzer;
   IndexReader reader;

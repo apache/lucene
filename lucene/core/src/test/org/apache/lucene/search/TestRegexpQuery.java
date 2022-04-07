@@ -16,22 +16,23 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.AutomatonProvider;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
+import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 /** Some simple regex tests, mostly converted from contrib's TestRegexQuery. */
 public class TestRegexpQuery extends LuceneTestCase {
@@ -79,7 +80,7 @@ public class TestRegexpQuery extends LuceneTestCase {
             newTerm(regex),
             RegExp.ALL,
             RegExp.ASCII_CASE_INSENSITIVE,
-            Operations.DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     return searcher.count(query);
   }
 
@@ -141,10 +142,9 @@ public class TestRegexpQuery extends LuceneTestCase {
     assertEquals(1, caseInsensitiveRegexQueryNrHits("Quick"));
   }
 
-  public void testRegexComplement() throws IOException {
-    assertEquals(1, regexQueryNrHits("4934~[3]"));
-    // not the empty lang, i.e. match all docs
-    assertEquals(1, regexQueryNrHits("~#"));
+  public void testRegexNegatedCharacterClass() throws IOException {
+    assertEquals(1, regexQueryNrHits("[^a-z]"));
+    assertEquals(1, regexQueryNrHits("[^03ad]"));
   }
 
   public void testCustomProvider() throws IOException {
@@ -166,7 +166,7 @@ public class TestRegexpQuery extends LuceneTestCase {
         };
     RegexpQuery query =
         new RegexpQuery(
-            newTerm("<quickBrown>"), RegExp.ALL, myProvider, DEFAULT_MAX_DETERMINIZED_STATES);
+            newTerm("<quickBrown>"), RegExp.ALL, myProvider, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertEquals(1, searcher.search(query, 5).totalHits.value);
   }
 
@@ -177,5 +177,14 @@ public class TestRegexpQuery extends LuceneTestCase {
    */
   public void testBacktracking() throws IOException {
     assertEquals(1, regexQueryNrHits("4934[314]"));
+  }
+
+  /** Test worst-case for getCommonSuffix optimization */
+  public void testSlowCommonSuffix() throws Exception {
+    expectThrows(
+        TooComplexToDeterminizeException.class,
+        () -> {
+          new RegexpQuery(new Term("stringvalue", "(.*a){2000}"));
+        });
   }
 }

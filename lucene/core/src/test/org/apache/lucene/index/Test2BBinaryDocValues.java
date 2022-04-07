@@ -17,20 +17,20 @@
 package org.apache.lucene.index;
 
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Monster;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.TimeUnits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.Monster;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
-import org.apache.lucene.util.TestUtil;
-import org.apache.lucene.util.TimeUnits;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 @TimeoutSuite(millis = 80 * TimeUnits.HOUR) // effectively no limit
@@ -59,7 +59,7 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
                 .setCodec(TestUtil.getDefaultCodec()));
 
     Document doc = new Document();
-    byte bytes[] = new byte[4];
+    byte[] bytes = new byte[4];
     BytesRef data = new BytesRef(bytes);
     BinaryDocValuesField dvField = new BinaryDocValuesField("dv", data);
     doc.add(dvField);
@@ -122,7 +122,7 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
                 .setCodec(TestUtil.getDefaultCodec()));
 
     Document doc = new Document();
-    byte bytes[] = new byte[4];
+    byte[] bytes = new byte[4];
     ByteArrayDataOutput encoder = new ByteArrayDataOutput(bytes);
     BytesRef data = new BytesRef(bytes);
     BinaryDocValuesField dvField = new BinaryDocValuesField("dv", data);

@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.util.automaton;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,14 +26,15 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil.RandomAcceptedStrings;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.UnicodeUtil;
-import org.apache.lucene.util.automaton.AutomatonTestUtil.RandomAcceptedStrings;
 import org.apache.lucene.util.fst.Util;
 
 public class TestAutomaton extends LuceneTestCase {
@@ -89,9 +90,119 @@ public class TestAutomaton extends LuceneTestCase {
     assertTrue(Operations.sameLanguage(a1, a2));
   }
 
-  public void testCommonPrefix() throws Exception {
+  public void testCommonPrefixString() throws Exception {
     Automaton a = Operations.concatenate(Automata.makeString("foobar"), Automata.makeAnyString());
     assertEquals("foobar", Operations.getCommonPrefix(a));
+  }
+
+  public void testCommonPrefixEmpty() throws Exception {
+    assertEquals("", Operations.getCommonPrefix(Automata.makeEmpty()));
+  }
+
+  public void testCommonPrefixEmptyString() throws Exception {
+    assertEquals("", Operations.getCommonPrefix(Automata.makeEmptyString()));
+  }
+
+  public void testCommonPrefixAny() throws Exception {
+    assertEquals("", Operations.getCommonPrefix(Automata.makeAnyString()));
+  }
+
+  public void testCommonPrefixRange() throws Exception {
+    assertEquals("", Operations.getCommonPrefix(Automata.makeCharRange('a', 'b')));
+  }
+
+  public void testAlternatives() throws Exception {
+    Automaton a = Automata.makeChar('a');
+    Automaton c = Automata.makeChar('c');
+    assertEquals("", Operations.getCommonPrefix(Operations.union(a, c)));
+  }
+
+  public void testCommonPrefixLeadingWildcard() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeAnyChar(), Automata.makeString("boo"));
+    assertEquals("", Operations.getCommonPrefix(a));
+  }
+
+  public void testCommonPrefixTrailingWildcard() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeString("boo"), Automata.makeAnyChar());
+    assertEquals("boo", Operations.getCommonPrefix(a));
+  }
+
+  public void testCommonPrefixLeadingKleenStar() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo"));
+    assertEquals("", Operations.getCommonPrefix(a));
+  }
+
+  public void testCommonPrefixTrailingKleenStar() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeString("boo"), Automata.makeAnyString());
+    assertEquals("boo", Operations.getCommonPrefix(a));
+  }
+
+  public void testCommonPrefixDeadStates() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo"));
+    // reverse it twice, to create some dead states
+    // TODO: is it possible to fix reverse() to not create dead states?!
+    Automaton withDeadStates = Operations.reverse(Operations.reverse(a));
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              Operations.getCommonPrefix(withDeadStates);
+            });
+    assertEquals("input automaton has dead states", expected.getMessage());
+  }
+
+  public void testCommonPrefixRemoveDeadStates() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo"));
+    // reverse it twice, to create some dead states
+    // TODO: is it possible to fix reverse() to not create dead states?!
+    Automaton withDeadStates = Operations.reverse(Operations.reverse(a));
+    // now remove the deadstates
+    Automaton withoutDeadStates = Operations.removeDeadStates(withDeadStates);
+    assertEquals("", Operations.getCommonPrefix(withoutDeadStates));
+  }
+
+  public void testCommonPrefixOptional() throws Exception {
+    Automaton a = new Automaton();
+    int init = a.createState();
+    int fini = a.createState();
+    a.setAccept(init, true);
+    a.setAccept(fini, true);
+    a.addTransition(init, fini, 'm');
+    a.addTransition(fini, fini, 'm');
+    a.finishState();
+    assertEquals("", Operations.getCommonPrefix(a));
+  }
+
+  public void testCommonPrefixNFA() throws Exception {
+    Automaton a = new Automaton();
+    int init = a.createState();
+    int medial = a.createState();
+    int fini = a.createState();
+    a.setAccept(fini, true);
+    a.addTransition(init, medial, 'm');
+    a.addTransition(init, fini, 'm');
+    a.addTransition(medial, fini, 'o');
+    a.finishState();
+    assertEquals("m", Operations.getCommonPrefix(a));
+  }
+
+  public void testCommonPrefixNFAInfinite() throws Exception {
+    Automaton a = new Automaton();
+    int init = a.createState();
+    int medial = a.createState();
+    int fini = a.createState();
+    a.setAccept(fini, true);
+    a.addTransition(init, medial, 'm');
+    a.addTransition(init, fini, 'm');
+    a.addTransition(medial, fini, 'm');
+    a.addTransition(fini, fini, 'm');
+    a.finishState();
+    assertEquals("m", Operations.getCommonPrefix(a));
+  }
+
+  public void testCommonPrefixUnicode() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeString("boo😂😂😂"), Automata.makeAnyChar());
+    assertEquals("boo😂😂😂", Operations.getCommonPrefix(a));
   }
 
   public void testConcatenate1() throws Exception {
@@ -109,7 +220,7 @@ public class TestAutomaton extends LuceneTestCase {
                 Automata.makeAnyString(),
                 Automata.makeString("n"),
                 Automata.makeAnyString()));
-    a = Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a, "mn"));
     assertTrue(Operations.run(a, "mone"));
     assertFalse(Operations.run(a, "m"));
@@ -120,7 +231,7 @@ public class TestAutomaton extends LuceneTestCase {
     Automaton a =
         Operations.union(
             Arrays.asList(Automata.makeString("foobar"), Automata.makeString("barbaz")));
-    a = Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a, "foobar"));
     assertTrue(Operations.run(a, "barbaz"));
 
@@ -134,7 +245,7 @@ public class TestAutomaton extends LuceneTestCase {
                 Automata.makeString("foobar"),
                 Automata.makeString(""),
                 Automata.makeString("barbaz")));
-    a = Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a, "foobar"));
     assertTrue(Operations.run(a, "barbaz"));
     assertTrue(Operations.run(a, ""));
@@ -144,7 +255,7 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testMinimizeSimple() throws Exception {
     Automaton a = Automata.makeString("foobar");
-    Automaton aMin = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    Automaton aMin = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
 
     assertTrue(Operations.sameLanguage(a, aMin));
   }
@@ -153,17 +264,17 @@ public class TestAutomaton extends LuceneTestCase {
     Automaton a =
         Operations.union(
             Arrays.asList(Automata.makeString("foobar"), Automata.makeString("boobar")));
-    Automaton aMin = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    Automaton aMin = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(
         Operations.sameLanguage(
-            Operations.determinize(Operations.removeDeadStates(a), DEFAULT_MAX_DETERMINIZED_STATES),
+            Operations.determinize(Operations.removeDeadStates(a), DEFAULT_DETERMINIZE_WORK_LIMIT),
             aMin));
   }
 
   public void testReverse() throws Exception {
     Automaton a = Automata.makeString("foobar");
     Automaton ra = Operations.reverse(a);
-    Automaton a2 = Operations.determinize(Operations.reverse(ra), DEFAULT_MAX_DETERMINIZED_STATES);
+    Automaton a2 = Operations.determinize(Operations.reverse(ra), DEFAULT_DETERMINIZE_WORK_LIMIT);
 
     assertTrue(Operations.sameLanguage(a, a2));
   }
@@ -171,7 +282,7 @@ public class TestAutomaton extends LuceneTestCase {
   public void testOptional() throws Exception {
     Automaton a = Automata.makeString("foobar");
     Automaton a2 = Operations.optional(a);
-    a2 = Operations.determinize(a2, DEFAULT_MAX_DETERMINIZED_STATES);
+    a2 = Operations.determinize(a2, DEFAULT_DETERMINIZE_WORK_LIMIT);
 
     assertTrue(Operations.run(a, "foobar"));
     assertFalse(Operations.run(a, ""));
@@ -181,7 +292,7 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testRepeatAny() throws Exception {
     Automaton a = Automata.makeString("zee");
-    Automaton a2 = Operations.determinize(Operations.repeat(a), DEFAULT_MAX_DETERMINIZED_STATES);
+    Automaton a2 = Operations.determinize(Operations.repeat(a), DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a2, ""));
     assertTrue(Operations.run(a2, "zee"));
     assertTrue(Operations.run(a2, "zeezee"));
@@ -190,7 +301,7 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testRepeatMin() throws Exception {
     Automaton a = Automata.makeString("zee");
-    Automaton a2 = Operations.determinize(Operations.repeat(a, 2), DEFAULT_MAX_DETERMINIZED_STATES);
+    Automaton a2 = Operations.determinize(Operations.repeat(a, 2), DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertFalse(Operations.run(a2, ""));
     assertFalse(Operations.run(a2, "zee"));
     assertTrue(Operations.run(a2, "zeezee"));
@@ -200,7 +311,7 @@ public class TestAutomaton extends LuceneTestCase {
   public void testRepeatMinMax1() throws Exception {
     Automaton a = Automata.makeString("zee");
     Automaton a2 =
-        Operations.determinize(Operations.repeat(a, 0, 2), DEFAULT_MAX_DETERMINIZED_STATES);
+        Operations.determinize(Operations.repeat(a, 0, 2), DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a2, ""));
     assertTrue(Operations.run(a2, "zee"));
     assertTrue(Operations.run(a2, "zeezee"));
@@ -210,7 +321,7 @@ public class TestAutomaton extends LuceneTestCase {
   public void testRepeatMinMax2() throws Exception {
     Automaton a = Automata.makeString("zee");
     Automaton a2 =
-        Operations.determinize(Operations.repeat(a, 2, 4), DEFAULT_MAX_DETERMINIZED_STATES);
+        Operations.determinize(Operations.repeat(a, 2, 4), DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertFalse(Operations.run(a2, ""));
     assertFalse(Operations.run(a2, "zee"));
     assertTrue(Operations.run(a2, "zeezee"));
@@ -223,8 +334,8 @@ public class TestAutomaton extends LuceneTestCase {
     Automaton a = Automata.makeString("zee");
     Automaton a2 =
         Operations.determinize(
-            Operations.complement(a, DEFAULT_MAX_DETERMINIZED_STATES),
-            DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.complement(a, DEFAULT_DETERMINIZE_WORK_LIMIT),
+            DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a2, ""));
     assertFalse(Operations.run(a2, "zee"));
     assertTrue(Operations.run(a2, "zeezee"));
@@ -234,7 +345,7 @@ public class TestAutomaton extends LuceneTestCase {
   public void testInterval() throws Exception {
     Automaton a =
         Operations.determinize(
-            Automata.makeDecimalInterval(17, 100, 3), DEFAULT_MAX_DETERMINIZED_STATES);
+            Automata.makeDecimalInterval(17, 100, 3), DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertFalse(Operations.run(a, ""));
     assertTrue(Operations.run(a, "017"));
     assertTrue(Operations.run(a, "100"));
@@ -250,7 +361,37 @@ public class TestAutomaton extends LuceneTestCase {
     a.addTransition(init, fini, 'm');
     a.addTransition(fini, fini, 'm');
     a.finishState();
-    assertEquals(0, Operations.getCommonSuffixBytesRef(a, DEFAULT_MAX_DETERMINIZED_STATES).length);
+    assertEquals(0, Operations.getCommonSuffixBytesRef(a).length);
+  }
+
+  public void testCommonSuffixEmpty() throws Exception {
+    assertEquals(newBytesRef(), Operations.getCommonSuffixBytesRef(Automata.makeEmpty()));
+  }
+
+  public void testCommonSuffixEmptyString() throws Exception {
+    assertEquals(newBytesRef(), Operations.getCommonSuffixBytesRef(Automata.makeEmptyString()));
+  }
+
+  public void testCommonSuffixTrailingWildcard() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeString("boo"), Automata.makeAnyChar());
+    assertEquals(newBytesRef(), Operations.getCommonSuffixBytesRef(a));
+  }
+
+  public void testCommonSuffixLeadingKleenStar() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo"));
+    assertEquals(newBytesRef("boo"), Operations.getCommonSuffixBytesRef(a));
+  }
+
+  public void testCommonSuffixTrailingKleenStar() throws Exception {
+    Automaton a = Operations.concatenate(Automata.makeString("boo"), Automata.makeAnyString());
+    assertEquals(newBytesRef(), Operations.getCommonSuffixBytesRef(a));
+  }
+
+  public void testCommonSuffixUnicode() throws Exception {
+    Automaton a =
+        Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo😂😂😂"));
+    Automaton binary = new UTF32ToUTF8().convert(a);
+    assertEquals(newBytesRef("boo😂😂😂"), Operations.getCommonSuffixBytesRef(binary));
   }
 
   public void testReverseRandom1() throws Exception {
@@ -303,7 +444,7 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testAnyStringEmptyString() throws Exception {
-    Automaton a = Operations.determinize(Automata.makeAnyString(), DEFAULT_MAX_DETERMINIZED_STATES);
+    Automaton a = Operations.determinize(Automata.makeAnyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a, ""));
   }
 
@@ -382,7 +523,7 @@ public class TestAutomaton extends LuceneTestCase {
     assertFalse(Operations.isTotal(a));
     a.setAccept(init, true);
     assertTrue(
-        Operations.isTotal(MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES)));
+        Operations.isTotal(MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT)));
   }
 
   public void testMinimizeEmpty() throws Exception {
@@ -391,7 +532,7 @@ public class TestAutomaton extends LuceneTestCase {
     int fini = a.createState();
     a.addTransition(init, fini, 'a');
     a.finishState();
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertEquals(0, a.getNumStates());
   }
 
@@ -401,16 +542,16 @@ public class TestAutomaton extends LuceneTestCase {
     Automaton a3 = Automata.makeString("beebar");
     Automaton a = Operations.union(Arrays.asList(a1, a2, a3));
     if (random().nextBoolean()) {
-      a = Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+      a = Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     } else if (random().nextBoolean()) {
-      a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+      a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     }
     assertMatches(a, "foobar", "beebar", "boobar");
 
     Automaton a4 =
         Operations.determinize(
-            Operations.minus(a, a2, DEFAULT_MAX_DETERMINIZED_STATES),
-            DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.minus(a, a2, DEFAULT_DETERMINIZE_WORK_LIMIT),
+            DEFAULT_DETERMINIZE_WORK_LIMIT);
 
     assertTrue(Operations.run(a4, "foobar"));
     assertFalse(Operations.run(a4, "boobar"));
@@ -419,8 +560,8 @@ public class TestAutomaton extends LuceneTestCase {
 
     a4 =
         Operations.determinize(
-            Operations.minus(a4, a1, DEFAULT_MAX_DETERMINIZED_STATES),
-            DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.minus(a4, a1, DEFAULT_DETERMINIZE_WORK_LIMIT),
+            DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertFalse(Operations.run(a4, "foobar"));
     assertFalse(Operations.run(a4, "boobar"));
     assertTrue(Operations.run(a4, "beebar"));
@@ -428,8 +569,8 @@ public class TestAutomaton extends LuceneTestCase {
 
     a4 =
         Operations.determinize(
-            Operations.minus(a4, a3, DEFAULT_MAX_DETERMINIZED_STATES),
-            DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.minus(a4, a3, DEFAULT_DETERMINIZE_WORK_LIMIT),
+            DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertFalse(Operations.run(a4, "foobar"));
     assertFalse(Operations.run(a4, "boobar"));
     assertFalse(Operations.run(a4, "beebar"));
@@ -438,7 +579,7 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testOneInterval() throws Exception {
     Automaton a = Automata.makeDecimalInterval(999, 1032, 0);
-    a = Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a, "0999"));
     assertTrue(Operations.run(a, "00999"));
     assertTrue(Operations.run(a, "000999"));
@@ -446,7 +587,7 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testAnotherInterval() throws Exception {
     Automaton a = Automata.makeDecimalInterval(1, 2, 0);
-    a = Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.run(a, "01"));
   }
 
@@ -470,9 +611,9 @@ public class TestAutomaton extends LuceneTestCase {
 
       Automaton a =
           Operations.determinize(
-              Automata.makeDecimalInterval(min, max, digits), DEFAULT_MAX_DETERMINIZED_STATES);
+              Automata.makeDecimalInterval(min, max, digits), DEFAULT_DETERMINIZE_WORK_LIMIT);
       if (random().nextBoolean()) {
-        a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+        a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
       }
       String mins = Integer.toString(min);
       String maxs = Integer.toString(max);
@@ -514,8 +655,7 @@ public class TestAutomaton extends LuceneTestCase {
 
     assertEquals(
         expected,
-        TestOperations.getFiniteStrings(
-            Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES)));
+        TestOperations.getFiniteStrings(Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT)));
   }
 
   public void testConcatenatePreservesDet() throws Exception {
@@ -610,7 +750,7 @@ public class TestAutomaton extends LuceneTestCase {
           if (VERBOSE) {
             System.out.println("  randomNoOp: minimize");
           }
-          return MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+          return MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
         } else {
           if (VERBOSE) {
             System.out.println(
@@ -689,7 +829,7 @@ public class TestAutomaton extends LuceneTestCase {
 
     Set<BytesRef> terms = new HashSet<>();
     while (terms.size() < numTerms) {
-      terms.add(new BytesRef(getRandomString()));
+      terms.add(newBytesRef(getRandomString()));
     }
 
     Automaton a = unionTerms(terms);
@@ -719,7 +859,7 @@ public class TestAutomaton extends LuceneTestCase {
               System.out.println("  op=concat prefix");
             }
             Set<BytesRef> newTerms = new HashSet<>();
-            BytesRef prefix = new BytesRef(getRandomString());
+            BytesRef prefix = newBytesRef(getRandomString());
             BytesRefBuilder newTerm = new BytesRefBuilder();
             for (BytesRef term : terms) {
               newTerm.copyBytes(prefix);
@@ -736,7 +876,7 @@ public class TestAutomaton extends LuceneTestCase {
         case 1:
           // concatenate suffix
           {
-            BytesRef suffix = new BytesRef(getRandomString());
+            BytesRef suffix = newBytesRef(getRandomString());
             if (VERBOSE) {
               System.out.println("  op=concat suffix " + suffix);
             }
@@ -767,7 +907,7 @@ public class TestAutomaton extends LuceneTestCase {
               System.out.println("  op=minimize");
             }
             // minimize
-            a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+            a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
           } else if (VERBOSE) {
             System.out.println("  skip op=minimize: too many states (" + a.getNumStates() + ")");
           }
@@ -782,7 +922,7 @@ public class TestAutomaton extends LuceneTestCase {
             Set<BytesRef> newTerms = new HashSet<>();
             int numNewTerms = random().nextInt(5);
             while (newTerms.size() < numNewTerms) {
-              newTerms.add(new BytesRef(getRandomString()));
+              newTerms.add(newBytesRef(getRandomString()));
             }
             terms.addAll(newTerms);
             Automaton newA = unionTerms(newTerms);
@@ -798,7 +938,7 @@ public class TestAutomaton extends LuceneTestCase {
             }
             // NOTE: This can add a dead state:
             a = Operations.optional(a);
-            terms.add(new BytesRef());
+            terms.add(newBytesRef());
           }
           break;
 
@@ -815,7 +955,7 @@ public class TestAutomaton extends LuceneTestCase {
               int numToRemove = TestUtil.nextInt(random(), 1, (terms.size() + 1) / 2);
               while (toRemove.size() < numToRemove) {
                 int[] ints = rasl.getRandomAcceptedString(random());
-                BytesRef term = new BytesRef(UnicodeUtil.newString(ints, 0, ints.length));
+                BytesRef term = newBytesRef(UnicodeUtil.newString(ints, 0, ints.length));
                 if (toRemove.contains(term) == false) {
                   toRemove.add(term);
                 }
@@ -865,7 +1005,7 @@ public class TestAutomaton extends LuceneTestCase {
               }
             }
             Automaton a2 = randomNoOp(Operations.union(as));
-            a = Operations.minus(a, a2, DEFAULT_MAX_DETERMINIZED_STATES);
+            a = Operations.minus(a, a2, DEFAULT_DETERMINIZE_WORK_LIMIT);
           }
           break;
 
@@ -887,7 +1027,7 @@ public class TestAutomaton extends LuceneTestCase {
               System.out.println("  prefixes=" + prefixes);
             }
 
-            for (int prefix : prefixes) {
+            for (int prefix : prefixes.stream().mapToInt(Integer::intValue).toArray()) {
               // prefix is a leading ascii byte; we retain <prefix>* in a
               Automaton a2 = new Automaton();
               int init = a2.createState();
@@ -902,9 +1042,9 @@ public class TestAutomaton extends LuceneTestCase {
 
             Automaton a2 = Operations.union(as);
             if (random().nextBoolean()) {
-              a2 = Operations.determinize(a2, DEFAULT_MAX_DETERMINIZED_STATES);
+              a2 = Operations.determinize(a2, DEFAULT_DETERMINIZE_WORK_LIMIT);
             } else if (random().nextBoolean()) {
-              a2 = MinimizationOperations.minimize(a2, DEFAULT_MAX_DETERMINIZED_STATES);
+              a2 = MinimizationOperations.minimize(a2, DEFAULT_DETERMINIZE_WORK_LIMIT);
             }
             a = Operations.intersection(a, a2);
 
@@ -935,7 +1075,7 @@ public class TestAutomaton extends LuceneTestCase {
             Set<BytesRef> newTerms = new HashSet<>();
             for (BytesRef term : terms) {
               newTerms.add(
-                  new BytesRef(new StringBuilder(term.utf8ToString()).reverse().toString()));
+                  newBytesRef(new StringBuilder(term.utf8ToString()).reverse().toString()));
             }
             terms = newTerms;
           }
@@ -971,7 +1111,7 @@ public class TestAutomaton extends LuceneTestCase {
                 // Left-fill with 0s
                 s = prefix.substring(s.length()) + s;
               }
-              terms.add(new BytesRef(s));
+              terms.add(newBytesRef(s));
             }
           }
           break;
@@ -980,8 +1120,8 @@ public class TestAutomaton extends LuceneTestCase {
           if (VERBOSE) {
             System.out.println("  op=remove the empty string");
           }
-          a = Operations.minus(a, Automata.makeEmptyString(), DEFAULT_MAX_DETERMINIZED_STATES);
-          terms.remove(new BytesRef());
+          a = Operations.minus(a, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
+          terms.remove(newBytesRef());
           break;
 
         case 13:
@@ -989,7 +1129,7 @@ public class TestAutomaton extends LuceneTestCase {
             System.out.println("  op=add the empty string");
           }
           a = Operations.union(a, Automata.makeEmptyString());
-          terms.add(new BytesRef());
+          terms.add(newBytesRef());
           break;
 
         case 14:
@@ -1001,7 +1141,7 @@ public class TestAutomaton extends LuceneTestCase {
             int count = random().nextBoolean() ? 2 : 3;
             Set<BytesRef> addTerms = new HashSet<>();
             while (addTerms.size() < count) {
-              addTerms.add(new BytesRef(getRandomString()));
+              addTerms.add(newBytesRef(getRandomString()));
             }
             if (VERBOSE) {
               for (BytesRef term : addTerms) {
@@ -1100,7 +1240,7 @@ public class TestAutomaton extends LuceneTestCase {
       assertTrue(Operations.isFinite(a));
       assertFalse(Operations.isTotal(a));
 
-      Automaton detA = Operations.determinize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+      Automaton detA = Operations.determinize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
 
       // Make sure all terms are accepted:
       IntsRefBuilder scratch = new IntsRefBuilder();
@@ -1213,50 +1353,50 @@ public class TestAutomaton extends LuceneTestCase {
     // 0 (incl) - 00 (incl)
     byte[] zeros = new byte[3];
     Automaton a =
-        makeBinaryInterval(new BytesRef(zeros, 0, 1), true, new BytesRef(zeros, 0, 2), true);
+        makeBinaryInterval(newBytesRef(zeros, 0, 1), true, newBytesRef(zeros, 0, 2), true);
     assertTrue(Operations.isFinite(a));
-    assertFalse(accepts(a, new BytesRef()));
-    assertTrue(accepts(a, new BytesRef(zeros, 0, 1)));
-    assertTrue(accepts(a, new BytesRef(zeros, 0, 2)));
-    assertFalse(accepts(a, new BytesRef(zeros, 0, 3)));
+    assertFalse(accepts(a, newBytesRef()));
+    assertTrue(accepts(a, newBytesRef(zeros, 0, 1)));
+    assertTrue(accepts(a, newBytesRef(zeros, 0, 2)));
+    assertFalse(accepts(a, newBytesRef(zeros, 0, 3)));
 
     // '' (incl) - 00 (incl)
-    a = makeBinaryInterval(new BytesRef(), true, new BytesRef(zeros, 0, 2), true);
+    a = makeBinaryInterval(newBytesRef(), true, newBytesRef(zeros, 0, 2), true);
     assertTrue(Operations.isFinite(a));
-    assertTrue(accepts(a, new BytesRef()));
-    assertTrue(accepts(a, new BytesRef(zeros, 0, 1)));
-    assertTrue(accepts(a, new BytesRef(zeros, 0, 2)));
-    assertFalse(accepts(a, new BytesRef(zeros, 0, 3)));
+    assertTrue(accepts(a, newBytesRef()));
+    assertTrue(accepts(a, newBytesRef(zeros, 0, 1)));
+    assertTrue(accepts(a, newBytesRef(zeros, 0, 2)));
+    assertFalse(accepts(a, newBytesRef(zeros, 0, 3)));
 
     // '' (excl) - 00 (incl)
-    a = makeBinaryInterval(new BytesRef(), false, new BytesRef(zeros, 0, 2), true);
+    a = makeBinaryInterval(newBytesRef(), false, newBytesRef(zeros, 0, 2), true);
     assertTrue(Operations.isFinite(a));
-    assertFalse(accepts(a, new BytesRef()));
-    assertTrue(accepts(a, new BytesRef(zeros, 0, 1)));
-    assertTrue(accepts(a, new BytesRef(zeros, 0, 2)));
-    assertFalse(accepts(a, new BytesRef(zeros, 0, 3)));
+    assertFalse(accepts(a, newBytesRef()));
+    assertTrue(accepts(a, newBytesRef(zeros, 0, 1)));
+    assertTrue(accepts(a, newBytesRef(zeros, 0, 2)));
+    assertFalse(accepts(a, newBytesRef(zeros, 0, 3)));
 
     // 0 (excl) - 00 (incl)
-    a = makeBinaryInterval(new BytesRef(zeros, 0, 1), false, new BytesRef(zeros, 0, 2), true);
+    a = makeBinaryInterval(newBytesRef(zeros, 0, 1), false, newBytesRef(zeros, 0, 2), true);
     assertTrue(Operations.isFinite(a));
-    assertFalse(accepts(a, new BytesRef()));
-    assertFalse(accepts(a, new BytesRef(zeros, 0, 1)));
-    assertTrue(accepts(a, new BytesRef(zeros, 0, 2)));
-    assertFalse(accepts(a, new BytesRef(zeros, 0, 3)));
+    assertFalse(accepts(a, newBytesRef()));
+    assertFalse(accepts(a, newBytesRef(zeros, 0, 1)));
+    assertTrue(accepts(a, newBytesRef(zeros, 0, 2)));
+    assertFalse(accepts(a, newBytesRef(zeros, 0, 3)));
 
     // 0 (excl) - 00 (excl)
-    a = makeBinaryInterval(new BytesRef(zeros, 0, 1), false, new BytesRef(zeros, 0, 2), false);
+    a = makeBinaryInterval(newBytesRef(zeros, 0, 1), false, newBytesRef(zeros, 0, 2), false);
     assertTrue(Operations.isFinite(a));
-    assertFalse(accepts(a, new BytesRef()));
-    assertFalse(accepts(a, new BytesRef(zeros, 0, 1)));
-    assertFalse(accepts(a, new BytesRef(zeros, 0, 2)));
-    assertFalse(accepts(a, new BytesRef(zeros, 0, 3)));
+    assertFalse(accepts(a, newBytesRef()));
+    assertFalse(accepts(a, newBytesRef(zeros, 0, 1)));
+    assertFalse(accepts(a, newBytesRef(zeros, 0, 2)));
+    assertFalse(accepts(a, newBytesRef(zeros, 0, 3)));
   }
 
   public void testMakeBinaryIntervalFiniteCasesRandom() throws Exception {
     int iters = atLeast(100);
     for (int iter = 0; iter < iters; iter++) {
-      BytesRef prefix = new BytesRef(TestUtil.randomRealisticUnicodeString(random()));
+      BytesRef prefix = newBytesRef(TestUtil.randomRealisticUnicodeString(random()));
 
       BytesRefBuilder b = new BytesRefBuilder();
       b.append(prefix);
@@ -1357,12 +1497,12 @@ public class TestAutomaton extends LuceneTestCase {
 
   private static IntsRef intsRef(String s) {
     IntsRefBuilder intsBuilder = new IntsRefBuilder();
-    Util.toIntsRef(new BytesRef(s), intsBuilder);
+    Util.toIntsRef(newBytesRef(s), intsBuilder);
     return intsBuilder.toIntsRef();
   }
 
   public void testMakeBinaryIntervalBasic() throws Exception {
-    Automaton a = Automata.makeBinaryInterval(new BytesRef("bar"), true, new BytesRef("foo"), true);
+    Automaton a = Automata.makeBinaryInterval(newBytesRef("bar"), true, newBytesRef("foo"), true);
     assertTrue(Operations.run(a, intsRef("bar")));
     assertTrue(Operations.run(a, intsRef("foo")));
     assertTrue(Operations.run(a, intsRef("beep")));
@@ -1371,14 +1511,14 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testMakeBinaryIntervalLowerBoundEmptyString() throws Exception {
-    Automaton a = Automata.makeBinaryInterval(new BytesRef(""), true, new BytesRef("bar"), true);
+    Automaton a = Automata.makeBinaryInterval(newBytesRef(""), true, newBytesRef("bar"), true);
     assertTrue(Operations.run(a, intsRef("")));
     assertTrue(Operations.run(a, intsRef("a")));
     assertTrue(Operations.run(a, intsRef("bar")));
     assertFalse(Operations.run(a, intsRef("bara")));
     assertFalse(Operations.run(a, intsRef("baz")));
 
-    a = Automata.makeBinaryInterval(new BytesRef(""), false, new BytesRef("bar"), true);
+    a = Automata.makeBinaryInterval(newBytesRef(""), false, newBytesRef("bar"), true);
     assertFalse(Operations.run(a, intsRef("")));
     assertTrue(Operations.run(a, intsRef("a")));
     assertTrue(Operations.run(a, intsRef("bar")));
@@ -1387,7 +1527,7 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testMakeBinaryIntervalEqual() throws Exception {
-    Automaton a = Automata.makeBinaryInterval(new BytesRef("bar"), true, new BytesRef("bar"), true);
+    Automaton a = Automata.makeBinaryInterval(newBytesRef("bar"), true, newBytesRef("bar"), true);
     assertTrue(Operations.run(a, intsRef("bar")));
     assertTrue(Operations.isFinite(a));
     assertEquals(1, TestOperations.getFiniteStrings(a).size());
@@ -1395,7 +1535,7 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testMakeBinaryIntervalCommonPrefix() throws Exception {
     Automaton a =
-        Automata.makeBinaryInterval(new BytesRef("bar"), true, new BytesRef("barfoo"), true);
+        Automata.makeBinaryInterval(newBytesRef("bar"), true, newBytesRef("barfoo"), true);
     assertFalse(Operations.run(a, intsRef("bam")));
     assertTrue(Operations.run(a, intsRef("bar")));
     assertTrue(Operations.run(a, intsRef("bara")));
@@ -1414,7 +1554,7 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testMakeBinaryIntervalOpenMax() throws Exception {
-    Automaton a = Automata.makeBinaryInterval(new BytesRef("bar"), true, null, true);
+    Automaton a = Automata.makeBinaryInterval(newBytesRef("bar"), true, null, true);
     assertFalse(Operations.run(a, intsRef("bam")));
     assertTrue(Operations.run(a, intsRef("bar")));
     assertTrue(Operations.run(a, intsRef("bara")));
@@ -1429,19 +1569,19 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testMakeBinaryIntervalOpenMaxZeroLengthMin() throws Exception {
     // when including min, automaton should accept "a"
-    Automaton a = Automata.makeBinaryInterval(new BytesRef(""), true, null, true);
+    Automaton a = Automata.makeBinaryInterval(newBytesRef(""), true, null, true);
     assertTrue(Operations.run(a, intsRef("")));
     assertTrue(Operations.run(a, intsRef("a")));
     assertTrue(Operations.run(a, intsRef("aaaaaa")));
     // excluding min should still accept "a"
-    a = Automata.makeBinaryInterval(new BytesRef(""), false, null, true);
+    a = Automata.makeBinaryInterval(newBytesRef(""), false, null, true);
     assertFalse(Operations.run(a, intsRef("")));
     assertTrue(Operations.run(a, intsRef("a")));
     assertTrue(Operations.run(a, intsRef("aaaaaa")));
   }
 
   public void testMakeBinaryIntervalOpenMin() throws Exception {
-    Automaton a = Automata.makeBinaryInterval(null, true, new BytesRef("foo"), true);
+    Automaton a = Automata.makeBinaryInterval(null, true, newBytesRef("foo"), true);
     assertFalse(Operations.run(a, intsRef("foz")));
     assertFalse(Operations.run(a, intsRef("zzz")));
     assertTrue(Operations.run(a, intsRef("foo")));
@@ -1463,7 +1603,7 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testAcceptAllEmptyStringMin() throws Exception {
-    Automaton a = Automata.makeBinaryInterval(new BytesRef(), true, null, true);
+    Automaton a = Automata.makeBinaryInterval(newBytesRef(), true, null, true);
     assertTrue(Operations.sameLanguage(Automata.makeAnyBinary(), a));
   }
 
@@ -1512,5 +1652,24 @@ public class TestAutomaton extends LuceneTestCase {
     a.addTransition(s, y, 58);
     a.finishState();
     assertNull(Operations.getSingleton(a));
+  }
+
+  // LUCENE-9981
+  public void testDeterminizeTooMuchEffort() {
+    // make sure determinize properly aborts, relatively quickly, for this regexp:
+    expectThrows(
+        TooComplexToDeterminizeException.class,
+        () -> {
+          Automaton a = new RegExp("(.*a){2000}").toAutomaton();
+          Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        });
+    // ... and for its reversed form too:
+    expectThrows(
+        TooComplexToDeterminizeException.class,
+        () -> {
+          Automaton a = new RegExp("(.*a){2000}").toAutomaton();
+          a = Operations.reverse(a);
+          Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        });
   }
 }

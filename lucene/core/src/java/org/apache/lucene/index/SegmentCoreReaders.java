@@ -28,12 +28,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.VectorReader;
 import org.apache.lucene.index.IndexReader.CacheKey;
 import org.apache.lucene.index.IndexReader.ClosedListener;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -59,7 +59,7 @@ final class SegmentCoreReaders {
   final StoredFieldsReader fieldsReaderOrig;
   final TermVectorsReader termVectorsReaderOrig;
   final PointsReader pointsReader;
-  final VectorReader vectorReader;
+  final KnnVectorsReader knnVectorsReader;
   final CompoundDirectory cfsReader;
   final String segment;
   /**
@@ -112,10 +112,14 @@ final class SegmentCoreReaders {
 
       final SegmentReadState segmentReadState =
           new SegmentReadState(cfsDir, si.info, coreFieldInfos, context);
-      final PostingsFormat format = codec.postingsFormat();
-      // Ask codec for its Fields
-      fields = format.fieldsProducer(segmentReadState);
-      assert fields != null;
+      if (coreFieldInfos.hasPostings()) {
+        final PostingsFormat format = codec.postingsFormat();
+        // Ask codec for its Fields
+        fields = format.fieldsProducer(segmentReadState);
+        assert fields != null;
+      } else {
+        fields = null;
+      }
       // ask codec for its Norms:
       // TODO: since we don't write any norms file if there are no norms,
       // kinda jaky to assume the codec handles the case of no norms file at all gracefully?!
@@ -150,9 +154,9 @@ final class SegmentCoreReaders {
       }
 
       if (coreFieldInfos.hasVectorValues()) {
-        vectorReader = codec.vectorFormat().fieldsReader(segmentReadState);
+        knnVectorsReader = codec.knnVectorsFormat().fieldsReader(segmentReadState);
       } else {
-        vectorReader = null;
+        knnVectorsReader = null;
       }
 
       success = true;
@@ -194,7 +198,7 @@ final class SegmentCoreReaders {
             cfsReader,
             normsProducer,
             pointsReader,
-            vectorReader);
+            knnVectorsReader);
       }
     }
   }

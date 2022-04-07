@@ -41,10 +41,9 @@ library {
 }
 
 tasks.withType(CppCompile).configureEach {
-  def javaHome = rootProject.ext.runtimeJava.getInstallationDirectory().getAsFile().getPath()
+  def javaHome = rootProject.ext.runtimeJavaHome
 
-  // Assume standard openjdk layout. This means only one architecture-specific include folder
-  // is present.
+  // Assume standard openjdk layout. This means only one architecture-specific include folder is present.
   systemIncludes.from file("${javaHome}/include")
 
   for (def path : [file("${javaHome}/include/win32")]) {

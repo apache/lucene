@@ -16,18 +16,19 @@
  */
 package org.apache.lucene.util.automaton;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.fst.Util;
 
 /** Test for {@link FiniteStringsIterator}. */
@@ -96,7 +97,7 @@ public class TestFiniteStringsIterator extends LuceneTestCase {
   /** Basic test for getFiniteStrings */
   public void testFiniteStringsBasic() {
     Automaton a = Operations.union(Automata.makeString("dog"), Automata.makeString("duck"));
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     FiniteStringsIterator iterator = new FiniteStringsIterator(a);
     List<IntsRef> actual = getFiniteStrings(iterator);
     assertFiniteStringsRecursive(a, actual);
@@ -149,7 +150,7 @@ public class TestFiniteStringsIterator extends LuceneTestCase {
 
   public void testShortAccept() {
     Automaton a = Operations.union(Automata.makeString("x"), Automata.makeString("xy"));
-    a = MinimizationOperations.minimize(a, DEFAULT_MAX_DETERMINIZED_STATES);
+    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     FiniteStringsIterator iterator = new FiniteStringsIterator(a);
     List<IntsRef> actual = getFiniteStrings(iterator);
     assertEquals(2, actual.size());

@@ -39,6 +39,15 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.memory.MemoryIndex;
 import org.apache.lucene.queries.CommonTermsQuery;
 import org.apache.lucene.queries.function.FunctionScoreQuery;
+import org.apache.lucene.queries.spans.FieldMaskingSpanQuery;
+import org.apache.lucene.queries.spans.SpanFirstQuery;
+import org.apache.lucene.queries.spans.SpanNearQuery;
+import org.apache.lucene.queries.spans.SpanNotQuery;
+import org.apache.lucene.queries.spans.SpanOrQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.queries.spans.SpanTermQuery;
+import org.apache.lucene.queries.spans.SpanWeight;
+import org.apache.lucene.queries.spans.Spans;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
@@ -54,15 +63,6 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.spans.FieldMaskingSpanQuery;
-import org.apache.lucene.search.spans.SpanFirstQuery;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanNotQuery;
-import org.apache.lucene.search.spans.SpanOrQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
-import org.apache.lucene.search.spans.SpanWeight;
-import org.apache.lucene.search.spans.Spans;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
@@ -309,11 +309,11 @@ public class WeightedSpanTermExtractor {
     final IndexSearcher searcher = new IndexSearcher(getLeafContext());
     searcher.setQueryCache(null);
     if (mustRewriteQuery) {
+      final SpanQuery rewrittenQuery = (SpanQuery) searcher.rewrite(spanQuery);
       for (final String field : fieldNames) {
-        final SpanQuery rewrittenQuery = (SpanQuery) spanQuery.rewrite(getLeafContext().reader());
         queries.put(field, rewrittenQuery);
-        rewrittenQuery.visit(QueryVisitor.termCollector(nonWeightedTerms));
       }
+      rewrittenQuery.visit(QueryVisitor.termCollector(nonWeightedTerms));
     } else {
       spanQuery.visit(QueryVisitor.termCollector(nonWeightedTerms));
     }

@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestByteBlockPool extends LuceneTestCase {
 
@@ -45,18 +47,12 @@ public class TestByteBlockPool extends LuceneTestCase {
       for (BytesRef expected : list) {
         ref.grow(expected.length);
         ref.setLength(expected.length);
-        switch (random().nextInt(3)) {
+        switch (random().nextInt(2)) {
           case 0:
             // copy bytes
             pool.readBytes(position, ref.bytes(), 0, ref.length());
             break;
           case 1:
-            // copy bytes one by one
-            for (int i = 0; i < ref.length(); ++i) {
-              ref.setByteAt(i, pool.readByte(position + i));
-            }
-            break;
-          case 2:
             BytesRef scratch = new BytesRef();
             scratch.length = ref.length();
             pool.setRawBytesRef(scratch, position);

@@ -16,12 +16,13 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
 /**
- * A PriorityQueue maintains a partial ordering of its elements such that the least element can
+ * A priority queue maintains a partial ordering of its elements such that the least element can
  * always be found in constant time. Put()'s and pop()'s require log(size) time but the remove()
  * cost implemented here is linear.
  *
@@ -74,11 +75,11 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    */
   public PriorityQueue(int maxSize, Supplier<T> sentinelObjectSupplier) {
     final int heapSize;
+
     if (0 == maxSize) {
       // We allocate 1 extra to avoid if statement in top()
       heapSize = 2;
     } else {
-
       if ((maxSize < 0) || (maxSize >= ArrayUtil.MAX_ARRAY_LENGTH)) {
         // Throw exception to prevent confusing OOME:
         throw new IllegalArgumentException(
@@ -89,7 +90,8 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
       // 1-based not 0-based.  heap[0] is unused.
       heapSize = maxSize + 1;
     }
-    // T is unbounded type, so this unchecked cast works always:
+
+    // T is an unbounded type, so this unchecked cast works always.
     @SuppressWarnings("unchecked")
     final T[] h = (T[]) new Object[heapSize];
     this.heap = h;
@@ -103,6 +105,37 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
         heap[i] = sentinelObjectSupplier.get();
       }
       size = maxSize;
+    }
+  }
+
+  /**
+   * Adds all elements of the collection into the queue. This method should be preferred over
+   * calling {@link #add(Object)} in loop if all elements are known in advance as it builds queue
+   * faster.
+   *
+   * <p>If one tries to add more objects than the maxSize passed in the constructor, an {@link
+   * ArrayIndexOutOfBoundsException} is thrown.
+   */
+  public void addAll(Collection<T> elements) {
+    if (this.size + elements.size() > this.maxSize) {
+      throw new ArrayIndexOutOfBoundsException(
+          "Cannot add "
+              + elements.size()
+              + " elements to a queue with remaining capacity: "
+              + (maxSize - size));
+    }
+
+    // Heap with size S always takes first S elements of the array,
+    // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
+    Iterator<T> iterator = elements.iterator();
+    while (iterator.hasNext()) {
+      this.heap[size + 1] = iterator.next();
+      this.size++;
+    }
+
+    // The loop goes down to 1 as heap is 1-based not 0-based.
+    for (int i = (size >>> 1); i >= 1; i--) {
+      downHeap(i);
     }
   }
 
@@ -121,9 +154,11 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * @return the new 'top' element in the queue.
    */
   public final T add(T element) {
-    size++;
-    heap[size] = element;
-    upHeap(size);
+    // don't modify size until we know heap access didn't throw AIOOB.
+    int index = size + 1;
+    heap[index] = element;
+    size = index;
+    upHeap(index);
     return heap[1];
   }
 
@@ -138,7 +173,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     if (size < maxSize) {
       add(element);
       return null;
-    } else if (size > 0 && !lessThan(element, heap[1])) {
+    } else if (size > 0 && lessThan(heap[1], element)) {
       T ret = heap[1];
       heap[1] = element;
       updateTop();
@@ -273,7 +308,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * @lucene.internal
    */
   protected final Object[] getHeapArray() {
-    return (Object[]) heap;
+    return heap;
   }
 
   @Override

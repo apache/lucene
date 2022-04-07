@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -31,11 +31,18 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
+import org.apache.lucene.tests.analysis.MockHoleInjectingTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.analysis.TokenStreamToDot;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.fst.Util;
 
@@ -615,10 +622,9 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
   private void assertSameLanguage(Automaton expected, Automaton actual) {
     Automaton expectedDet =
         Operations.determinize(
-            Operations.removeDeadStates(expected), DEFAULT_MAX_DETERMINIZED_STATES);
+            Operations.removeDeadStates(expected), DEFAULT_DETERMINIZE_WORK_LIMIT);
     Automaton actualDet =
-        Operations.determinize(
-            Operations.removeDeadStates(actual), DEFAULT_MAX_DETERMINIZED_STATES);
+        Operations.determinize(Operations.removeDeadStates(actual), DEFAULT_DETERMINIZE_WORK_LIMIT);
     if (Operations.sameLanguage(expectedDet, actualDet) == false) {
       Set<String> expectedPaths = toPathStrings(expectedDet);
       Set<String> actualPaths = toPathStrings(actualDet);

@@ -265,13 +265,11 @@ public class FuzzyLikeThisQuery extends Query {
       // equal to 1
       TermStates context = new TermStates(reader.getContext());
       for (LeafReaderContext leafContext : reader.leaves()) {
-        Terms terms = leafContext.reader().terms(term.field());
-        if (terms != null) {
-          TermsEnum termsEnum = terms.iterator();
-          if (termsEnum.seekExact(term.bytes())) {
-            int freq = 1 - context.docFreq(); // we want the total df and ttf to be 1
-            context.register(termsEnum.termState(), leafContext.ord, freq, freq);
-          }
+        Terms terms = Terms.getTerms(leafContext.reader(), term.field());
+        TermsEnum termsEnum = terms.iterator();
+        if (termsEnum.seekExact(term.bytes())) {
+          int freq = 1 - context.docFreq(); // we want the total df and ttf to be 1
+          context.register(termsEnum.termState(), leafContext.ord, freq, freq);
         }
       }
       return new TermQuery(term, context);

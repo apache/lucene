@@ -25,10 +25,6 @@ import java.util.Locale;
 import java.util.TimeZone;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.LowerCaseFilter;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockSynonymFilter;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -63,9 +59,14 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockSynonymFilter;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -1035,16 +1036,6 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertEquals(q, getQuery("/[a-z][123]/", qp));
     assertEquals(q, getQuery("/[A-Z][123]/", qp));
     assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
-    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    q.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);
-    assertTrue(((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery() instanceof RegexpQuery);
-    assertEquals(
-        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
-        ((RegexpQuery) ((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery())
-            .getRewriteMethod());
-    assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
-    qp.setMultiTermRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
 
     Query escaped = new RegexpQuery(new Term("field", "[a-z]\\/[123]"));
     assertEquals(escaped, getQuery("/[a-z]\\/[123]/", qp));
@@ -1080,6 +1071,23 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     two.add(new RegexpQuery(new Term("field", "bar")), Occur.SHOULD);
     assertEquals(two.build(), getQuery("field:/foo/ field:/bar/", qp));
     assertEquals(two.build(), getQuery("/foo/ /bar/", qp));
+
+    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    q =
+        new RegexpQuery(
+            new Term("field", "[a-z][123]"),
+            RegExp.ALL,
+            0,
+            name -> null,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);
+    assertTrue(((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery() instanceof RegexpQuery);
+    assertEquals(
+        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
+        ((RegexpQuery) ((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery())
+            .getRewriteMethod());
+    assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
   }
 
   public void testStopwords() throws Exception {
@@ -1116,12 +1124,12 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     qp.setEnablePositionIncrements(true);
     String qtxt = "\"the words in poisitions pos02578 are stopped in this phrasequery\"";
     //               0         2                      5           7  8
-    int expectedPositions[] = {1, 3, 4, 6, 9};
+    int[] expectedPositions = {1, 3, 4, 6, 9};
     PhraseQuery pq = (PhraseQuery) getQuery(qtxt, qp);
     // System.out.println("Query text: "+qtxt);
     // System.out.println("Result: "+pq);
-    Term t[] = pq.getTerms();
-    int pos[] = pq.getPositions();
+    Term[] t = pq.getTerms();
+    int[] pos = pq.getPositions();
     for (int i = 0; i < t.length; i++) {
       // System.out.println(i+". "+t[i]+"  pos: "+pos[i]);
       assertEquals(
@@ -1270,7 +1278,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     CommonQueryParserConfiguration qp = getParserConfig(new MockAnalyzer(random()));
     qp.setAllowLeadingWildcard(true);
 
-    String prefixQueries[][] = {
+    String[][] prefixQueries = {
       {
         "a*", "ab*", "abc*",
       },
@@ -1278,7 +1286,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
       {"o*", "op*", "opq*", "\\\\\\\\*"},
     };
 
-    String wildcardQueries[][] = {
+    String[][] wildcardQueries = {
       {"*a*", "*ab*", "*abc**", "ab*e*", "*g?", "*f?1", "abc**"},
       {"*h*", "*hi*", "*hij**", "hi*k*", "*n?", "*m?1", "hij**"},
       {"*o*", "*op*", "*opq**", "op*q*", "*u?", "*t?1", "opq**"},

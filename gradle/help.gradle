@@ -28,7 +28,8 @@ configure(rootProject) {
       ["LocalSettings", "help/localSettings.txt", "Local settings, overrides and build performance tweaks."],
       ["Regeneration", "help/regeneration.txt", "How to refresh generated and derived resources."],
       ["Git", "help/git.txt", "Git assistance and guides."],
-      ["IDEs", "help/IDEs.txt", "IDE support."]
+      ["IDEs", "help/IDEs.txt", "IDE support."],
+      ["Publishing", "help/publishing.txt", "Maven and other artifact publishing, signing, etc."],
   ]
 
   helpFiles.each { section, path, sectionInfo ->
@@ -52,7 +53,7 @@ configure(rootProject) {
             "  gradlew :help%-16s # %s", section, sectionInfo)
       }
       println ""
-      println "For the impatient, build the project with 'gradlew assemble' or 'gradlew dev' "
+      println "For the impatient, build the project with 'gradlew assemble'"
     }
   }
 

@@ -16,10 +16,13 @@
  */
 package org.apache.lucene.util.automaton;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_MAX_DETERMINIZED_STATES;
+import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.*;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.*;
 
 public class TestOperations extends LuceneTestCase {
@@ -49,7 +52,7 @@ public class TestOperations extends LuceneTestCase {
       eachIndividual[i++] = Automata.makeString(bref.utf8ToString());
     }
     return Operations.determinize(
-        Operations.union(Arrays.asList(eachIndividual)), DEFAULT_MAX_DETERMINIZED_STATES);
+        Operations.union(Arrays.asList(eachIndividual)), DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   /** Test concatenation with empty language returns empty */
@@ -86,7 +89,7 @@ public class TestOperations extends LuceneTestCase {
 
       final RegExp re = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
       // System.out.println("TEST i=" + i + " re=" + re);
-      final Automaton a = Operations.determinize(re.toAutomaton(), DEFAULT_MAX_DETERMINIZED_STATES);
+      final Automaton a = Operations.determinize(re.toAutomaton(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       assertFalse(Operations.isEmpty(a));
 
       final AutomatonTestUtil.RandomAcceptedStrings rx =

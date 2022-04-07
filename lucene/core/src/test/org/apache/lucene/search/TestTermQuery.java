@@ -27,16 +27,18 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestTermQuery extends LuceneTestCase {
 
@@ -89,16 +91,44 @@ public class TestTermQuery extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(reader);
     // use a collector rather than searcher.count() which would just read the
     // doc freq instead of creating a scorer
-    TotalHitCountCollector collector = new TotalHitCountCollector();
-    searcher.search(query, collector);
-    assertEquals(1, collector.getTotalHits());
+    TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager();
+    int totalHits = searcher.search(query, collectorManager);
+    assertEquals(1, totalHits);
     TermQuery queryWithContext =
         new TermQuery(
             new Term("foo", "bar"),
             TermStates.build(reader.getContext(), new Term("foo", "bar"), true));
-    collector = new TotalHitCountCollector();
-    searcher.search(queryWithContext, collector);
-    assertEquals(1, collector.getTotalHits());
+    totalHits = searcher.search(queryWithContext, collectorManager);
+    assertEquals(1, totalHits);
+
+    IOUtils.close(reader, w, dir);
+  }
+
+  // LUCENE-9620 Add Weight#count(LeafReaderContext)
+  public void testQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int randomNumDocs = TestUtil.nextInt(random(), 10, 100);
+    int numMatchingDocs = 0;
+
+    for (int i = 0; i < randomNumDocs; i++) {
+      Document doc = new Document();
+      if (random().nextBoolean()) {
+        doc.add(new StringField("foo", "bar", Store.NO));
+        numMatchingDocs++;
+      }
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+
+    DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+
+    Query testQuery = new TermQuery(new Term("foo", "bar"));
+    assertEquals(searcher.count(testQuery), numMatchingDocs);
+    final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
+    assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
 
     IOUtils.close(reader, w, dir);
   }

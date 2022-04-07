@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetField;
@@ -43,8 +43,9 @@ import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Test;
 
 public class TestDirectoryTaxonomyWriter extends FacetTestCase {
@@ -314,7 +315,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
       System.out.println("TEST: use cache=" + cache);
     }
     final DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(dir, OpenMode.CREATE, cache);
-    Thread[] addThreads = new Thread[atLeast(4)];
+    Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
     for (int z = 0; z < addThreads.length; z++) {
       addThreads[z] =
           new Thread() {

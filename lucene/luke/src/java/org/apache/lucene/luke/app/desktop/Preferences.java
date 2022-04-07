@@ -28,6 +28,8 @@ public interface Preferences {
 
   void addHistory(String indexPath) throws IOException;
 
+  void removeHistory(String indexPath) throws IOException;
+
   boolean isReadOnly();
 
   String getDirImpl();

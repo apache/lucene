@@ -20,8 +20,9 @@ import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleRange;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.BaseRangeFieldQueryTestCase;
 
 /** Random testing for RangeFieldQueries. */
 public class TestDoubleRangeFieldQueries extends BaseRangeFieldQueryTestCase {

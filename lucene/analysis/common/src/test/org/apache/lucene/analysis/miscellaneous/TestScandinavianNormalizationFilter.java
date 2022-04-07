@@ -16,37 +16,14 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase {
-  private Analyzer analyzer;
-
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    analyzer =
-        new Analyzer() {
-          @Override
-          protected TokenStreamComponents createComponents(String field) {
-            final Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-            final TokenStream stream = new ScandinavianNormalizationFilter(tokenizer);
-            return new TokenStreamComponents(tokenizer, stream);
-          }
-        };
-  }
-
-  @Override
-  public void tearDown() throws Exception {
-    analyzer.close();
-    super.tearDown();
-  }
-
-  public void test() throws Exception {
+  public void testDefault() throws Exception {
+    Analyzer analyzer = createAnalyzer();
 
     checkOneTerm(analyzer, "aeäaeeea", "æææeea"); // should not cause ArrayIndexOutOfBoundsException
 
@@ -107,6 +84,7 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
     checkOneTerm(analyzer, "Oe", "Ø");
     checkOneTerm(analyzer, "OO", "Ø");
     checkOneTerm(analyzer, "OE", "Ø");
+    analyzer.close();
   }
 
   /** check that the empty string doesn't cause issues */
@@ -126,6 +104,19 @@ public class TestScandinavianNormalizationFilter extends BaseTokenStreamTestCase
 
   /** blast some random strings through the analyzer */
   public void testRandomData() throws Exception {
+    Analyzer analyzer = createAnalyzer();
     checkRandomData(random(), analyzer, 200 * RANDOM_MULTIPLIER);
+    analyzer.close();
+  }
+
+  private Analyzer createAnalyzer() {
+    return new Analyzer() {
+      @Override
+      protected TokenStreamComponents createComponents(String field) {
+        final Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+        final TokenStream stream = new ScandinavianNormalizationFilter(tokenizer);
+        return new TokenStreamComponents(tokenizer, stream);
+      }
+    };
   }
 }

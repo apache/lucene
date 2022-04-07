@@ -38,8 +38,8 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
   /** Maximum length for a binary field. */
   private static final int MAX_LENGTH = ArrayUtil.MAX_ARRAY_LENGTH;
 
-  // 32 KB block sizes for PagedBytes storage:
-  private static final int BLOCK_BITS = 15;
+  // 4 kB block sizes for PagedBytes storage:
+  private static final int BLOCK_BITS = 12;
 
   private final PagedBytes bytes;
   private final DataOutput bytesOut;

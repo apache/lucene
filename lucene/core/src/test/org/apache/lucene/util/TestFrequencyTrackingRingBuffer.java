@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 
 public class TestFrequencyTrackingRingBuffer extends LuceneTestCase {
 
@@ -72,6 +74,6 @@ public class TestFrequencyTrackingRingBuffer extends LuceneTestCase {
     for (int i = 0; i < 10000; ++i) {
       buffer.add(random().nextInt());
     }
-    assertEquals(RamUsageTester.sizeOf(buffer), buffer.ramBytesUsed());
+    assertEquals(RamUsageTester.ramUsed(buffer), buffer.ramBytesUsed());
   }
 }

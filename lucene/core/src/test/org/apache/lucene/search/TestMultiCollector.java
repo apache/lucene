@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,10 +30,10 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Test;
 
 public class TestMultiCollector extends LuceneTestCase {
@@ -99,7 +100,7 @@ public class TestMultiCollector extends LuceneTestCase {
       }
       final IndexReader reader = w.getReader();
       w.close();
-      final IndexSearcher searcher = newSearcher(reader);
+      final IndexSearcher searcher = newSearcher(reader, true, true, false);
       Map<TotalHitCountCollector, Integer> expectedCounts = new HashMap<>();
       List<Collector> collectors = new ArrayList<>();
       final int numCollectors = TestUtil.nextInt(random(), 1, 5);
@@ -110,7 +111,19 @@ public class TestMultiCollector extends LuceneTestCase {
         expectedCounts.put(collector, expectedCount);
         collectors.add(new TerminateAfterCollector(collector, terminateAfter));
       }
-      searcher.search(new MatchAllDocsQuery(), MultiCollector.wrap(collectors));
+      searcher.search(
+          new MatchAllDocsQuery(),
+          new CollectorManager<Collector, Void>() {
+            @Override
+            public Collector newCollector() {
+              return MultiCollector.wrap(collectors);
+            }
+
+            @Override
+            public Void reduce(Collection<Collector> collectors) {
+              return null;
+            }
+          });
       for (Map.Entry<TotalHitCountCollector, Integer> expectedCount : expectedCounts.entrySet()) {
         assertEquals(expectedCount.getValue().intValue(), expectedCount.getKey().getTotalHits());
       }
@@ -215,6 +228,69 @@ public class TestMultiCollector extends LuceneTestCase {
     LeafCollector leafCollector = multiCollector.getLeafCollector(reader.leaves().get(0));
     leafCollector.setScorer(scorer);
     leafCollector.collect(0); // no exception
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testDisablesSetMinScoreWithEarlyTermination() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    w.addDocument(new Document());
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+
+    Scorable scorer =
+        new Scorable() {
+          @Override
+          public int docID() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public float score() {
+            return 0;
+          }
+
+          @Override
+          public void setMinCompetitiveScore(float minScore) {
+            throw new AssertionError();
+          }
+        };
+
+    Collector collector =
+        new SimpleCollector() {
+          private Scorable scorer;
+          float minScore = 0;
+
+          @Override
+          public ScoreMode scoreMode() {
+            return ScoreMode.TOP_SCORES;
+          }
+
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {
+            this.scorer = scorer;
+          }
+
+          @Override
+          public void collect(int doc) throws IOException {
+            minScore = Math.nextUp(minScore);
+            scorer.setMinCompetitiveScore(minScore);
+          }
+        };
+    for (int numCol = 1; numCol < 4; numCol++) {
+      List<Collector> cols = new ArrayList<>();
+      cols.add(collector);
+      for (int col = 0; col < numCol; col++) {
+        cols.add(new TerminateAfterCollector(new TotalHitCountCollector(), 0));
+      }
+      Collections.shuffle(cols, random());
+      Collector multiCollector = MultiCollector.wrap(cols);
+      LeafCollector leafCollector = multiCollector.getLeafCollector(reader.leaves().get(0));
+      leafCollector.setScorer(scorer);
+      leafCollector.collect(0); // no exception
+    }
 
     reader.close();
     dir.close();

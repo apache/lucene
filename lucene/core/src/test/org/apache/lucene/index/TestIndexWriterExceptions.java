@@ -29,8 +29,6 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -51,22 +49,25 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.store.MockDirectoryWrapper.FakeIOException;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper.FakeIOException;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
 
 @SuppressCodecs("SimpleText") // too slow here
 public class TestIndexWriterExceptions extends LuceneTestCase {
@@ -1058,7 +1059,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
               + "",
           failure.failOnCommit && (failure.failOnDeleteFile || failure.failOnSyncMetadata));
       w.rollback();
-      String files[] = dir.listAll();
+      String[] files = dir.listAll();
       assertTrue(
           files.length == fileCount
               || (files.length == fileCount + 1
@@ -1668,7 +1669,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         NullPointerException.class,
         () -> {
           // set to null value
-          byte v[] = null;
+          byte[] v = null;
           Field theField = new StoredField("foo", v);
           doc.add(theField);
           iw.addDocument(doc);
@@ -1697,7 +1698,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         NullPointerException.class,
         () -> {
           // set to null value
-          byte v[] = null;
+          byte[] v = null;
           theField.setBytesValue(v);
           iw.addDocument(doc);
         });

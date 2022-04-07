@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.util.automaton;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestIntSet extends LuceneTestCase {
@@ -31,33 +31,31 @@ public class TestIntSet extends LuceneTestCase {
   }
 
   private void testFreezeEquality(int size) {
-    SortedIntSet sortedSet = new SortedIntSet(0);
+    StateSet stateSet = new StateSet(0);
 
     for (int i = 0; i < size; i++) {
       // Some duplicates is nice but not critical
-      sortedSet.incr(random().nextInt(i + 1));
+      stateSet.incr(random().nextInt(i + 1));
     }
 
-    sortedSet.computeHash();
-    IntSet frozen0 = sortedSet.freeze(0);
+    IntSet frozen0 = stateSet.freeze(0);
 
-    assertEquals("Frozen set not equal to origin sorted set.", sortedSet, frozen0);
-    assertEquals("Symmetry: Sorted set not equal to frozen set.", frozen0, sortedSet);
+    assertEquals("Frozen set not equal to origin sorted set.", stateSet, frozen0);
+    assertEquals("Symmetry: Sorted set not equal to frozen set.", frozen0, stateSet);
 
-    IntSet frozen1 = sortedSet.freeze(random().nextInt());
-    assertEquals("Sorted set modified while freezing?", sortedSet, frozen1);
+    IntSet frozen1 = stateSet.freeze(random().nextInt());
+    assertEquals("Sorted set modified while freezing?", stateSet, frozen1);
     assertEquals("Frozen sets were not equal", frozen0, frozen1);
   }
 
   @Test
   public void testMapCutover() {
-    SortedIntSet set = new SortedIntSet(10);
+    StateSet set = new StateSet(10);
     for (int i = 0; i < 35; i++) {
       // No duplicates so there are enough elements to trigger impl cutover
       set.incr(i);
     }
 
-    set.computeHash();
     assertTrue(set.size() > 32);
 
     for (int i = 0; i < 35; i++) {
@@ -65,30 +63,36 @@ public class TestIntSet extends LuceneTestCase {
       set.decr(i);
     }
 
-    set.computeHash();
     assertTrue(set.size() == 0);
   }
 
   @Test
   public void testModify() {
-    SortedIntSet set = new SortedIntSet(2);
+    StateSet set = new StateSet(2);
     set.incr(1);
     set.incr(2);
-    set.computeHash();
 
     FrozenIntSet set2 = set.freeze(0);
     assertEquals(set, set2);
 
     set.incr(1);
-    set.computeHash();
     assertEquals(set, set2);
 
     set.decr(1);
-    set.computeHash();
     assertEquals(set, set2);
 
     set.decr(1);
-    set.computeHash();
     assertNotEquals(set, set2);
+  }
+
+  @Test
+  public void testHashCode() {
+    StateSet set = new StateSet(1000);
+    StateSet set2 = new StateSet(100);
+    for (int i = 0; i < 100; i++) {
+      set.incr(i);
+      set2.incr(99 - i);
+    }
+    assertEquals(set.hashCode(), set2.hashCode());
   }
 }

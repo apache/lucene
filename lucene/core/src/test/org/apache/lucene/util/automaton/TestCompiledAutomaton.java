@@ -22,21 +22,21 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestCompiledAutomaton extends LuceneTestCase {
 
-  private CompiledAutomaton build(int maxDeterminizedStates, String... strings) {
+  private CompiledAutomaton build(int determinizeWorkLimit, String... strings) {
     final List<BytesRef> terms = new ArrayList<>();
     for (String s : strings) {
       terms.add(new BytesRef(s));
     }
     Collections.sort(terms);
     final Automaton a = DaciukMihovAutomatonBuilder.build(terms);
-    return new CompiledAutomaton(a, true, false, maxDeterminizedStates, false);
+    return new CompiledAutomaton(a, true, false, false);
   }
 
   private void testFloor(CompiledAutomaton c, String input, String expected) {
@@ -53,8 +53,8 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     }
   }
 
-  private void testTerms(int maxDeterminizedStates, String[] terms) throws Exception {
-    final CompiledAutomaton c = build(maxDeterminizedStates, terms);
+  private void testTerms(int determinizeWorkLimit, String[] terms) throws Exception {
+    final CompiledAutomaton c = build(determinizeWorkLimit, terms);
     final BytesRef[] termBytes = new BytesRef[terms.length];
     for (int idx = 0; idx < terms.length; idx++) {
       termBytes[idx] = new BytesRef(terms[idx]);
@@ -110,7 +110,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   }
 
   public void testBasic() throws Exception {
-    CompiledAutomaton c = build(Operations.DEFAULT_MAX_DETERMINIZED_STATES, "fob", "foo", "goo");
+    CompiledAutomaton c = build(Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, "fob", "foo", "goo");
     testFloor(c, "goo", "goo");
     testFloor(c, "ga", "foo");
     testFloor(c, "g", "foo");
@@ -130,7 +130,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     a.addTransition(state, state, 0, 0xff);
     a.finishState();
 
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, true);
+    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, true);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.ALL, ca.type);
   }
 
@@ -142,7 +142,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     a.addTransition(state, state, 0, Character.MAX_CODE_POINT);
     a.finishState();
 
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, false);
+    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.ALL, ca.type);
   }
 
@@ -150,14 +150,14 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   public void testBinarySingleton() throws Exception {
     // This is just ascii so we can pretend it's binary:
     Automaton a = Automata.makeString("foobar");
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, true);
+    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, true);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);
   }
 
   // LUCENE-6367
   public void testUnicodeSingleton() throws Exception {
     Automaton a = Automata.makeString(TestUtil.randomRealisticUnicodeString(random()));
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, false);
+    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);
   }
 }

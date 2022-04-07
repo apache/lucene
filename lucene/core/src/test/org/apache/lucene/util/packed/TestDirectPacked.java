@@ -16,15 +16,15 @@
  */
 package org.apache.lucene.util.packed;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.Random;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.LongValues;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestDirectPacked extends LuceneTestCase {
 
@@ -78,7 +78,7 @@ public class TestDirectPacked extends LuceneTestCase {
   public void testRandom() throws Exception {
     Directory dir = newDirectory();
     for (int bpv = 1; bpv <= 64; bpv++) {
-      doTestBpv(dir, bpv, 0);
+      doTestBpv(dir, bpv, 0, false);
     }
     dir.close();
   }
@@ -87,16 +87,34 @@ public class TestDirectPacked extends LuceneTestCase {
     Directory dir = newDirectory();
     final int offset = TestUtil.nextInt(random(), 1, 100);
     for (int bpv = 1; bpv <= 64; bpv++) {
-      doTestBpv(dir, bpv, offset);
+      doTestBpv(dir, bpv, offset, false);
     }
     dir.close();
   }
 
-  private void doTestBpv(Directory directory, int bpv, long offset) throws Exception {
-    MyRandom random = new MyRandom(random().nextLong());
+  public void testRandomMerge() throws Exception {
+    Directory dir = newDirectory();
+    for (int bpv = 1; bpv <= 64; bpv++) {
+      doTestBpv(dir, bpv, 0, true);
+    }
+    dir.close();
+  }
+
+  public void testRandomMergeWithOffset() throws Exception {
+    Directory dir = newDirectory();
+    final int offset = TestUtil.nextInt(random(), 1, 100);
+    for (int bpv = 1; bpv <= 64; bpv++) {
+      doTestBpv(dir, bpv, offset, true);
+    }
+    dir.close();
+  }
+
+  private void doTestBpv(Directory directory, int bpv, long offset, boolean merge)
+      throws Exception {
+    Random random = random();
     int numIters = TEST_NIGHTLY ? 100 : 10;
     for (int i = 0; i < numIters; i++) {
-      long original[] = randomLongs(random, bpv);
+      long[] original = randomLongs(random, bpv);
       int bitsRequired = bpv == 64 ? 64 : DirectWriter.bitsRequired(1L << (bpv - 1));
       String name = "bpv" + bpv + "_" + i;
       IndexOutput output = directory.createOutput(name, IOContext.DEFAULT);
@@ -110,9 +128,16 @@ public class TestDirectPacked extends LuceneTestCase {
       writer.finish();
       output.close();
       IndexInput input = directory.openInput(name, IOContext.DEFAULT);
-      LongValues reader =
-          DirectReader.getInstance(
-              input.randomAccessSlice(0, input.length()), bitsRequired, offset);
+      LongValues reader;
+      if (merge) {
+        reader =
+            DirectReader.getMergeInstance(
+                input.randomAccessSlice(0, input.length()), bitsRequired, offset, original.length);
+      } else {
+        reader =
+            DirectReader.getInstance(
+                input.randomAccessSlice(0, input.length()), bitsRequired, offset);
+      }
       for (int j = 0; j < original.length; j++) {
         assertEquals("bpv=" + bpv, original[j], reader.get(j));
       }
@@ -120,29 +145,13 @@ public class TestDirectPacked extends LuceneTestCase {
     }
   }
 
-  private long[] randomLongs(MyRandom random, int bpv) {
+  private long[] randomLongs(Random random, int bpv) {
     int amount = random.nextInt(5000);
-    long longs[] = new long[amount];
+    long[] longs = new long[amount];
+    long max = PackedInts.maxValue(bpv);
     for (int i = 0; i < longs.length; i++) {
-      longs[i] = random.nextLong(bpv);
+      longs[i] = RandomNumbers.randomLongBetween(random, 0, max);
     }
     return longs;
-  }
-
-  // java.util.Random only returns 48bits of randomness in nextLong...
-  static class MyRandom extends Random {
-    byte buffer[] = new byte[8];
-    ByteArrayDataInput input = new ByteArrayDataInput();
-
-    MyRandom(long seed) {
-      super(seed);
-    }
-
-    public synchronized long nextLong(int bpv) {
-      nextBytes(buffer);
-      input.reset(buffer);
-      long bits = input.readLong();
-      return bits >>> (64 - bpv);
-    }
   }
 }

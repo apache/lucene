@@ -62,7 +62,7 @@ public abstract class ReportTask extends PerfTask {
   protected static final String ELAPSED = "  elapsedSec";
   protected static final String USEDMEM = "    avgUsedMem";
   protected static final String TOTMEM = "    avgTotalMem";
-  protected static final String COLS[] = {RUNCNT, RECCNT, RECSEC, ELAPSED, USEDMEM, TOTMEM};
+  protected static final String[] COLS = {RUNCNT, RECCNT, RECSEC, ELAPSED, USEDMEM, TOTMEM};
 
   /**
    * Compute a title line for a report table

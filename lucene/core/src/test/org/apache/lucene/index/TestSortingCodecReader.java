@@ -25,12 +25,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -38,7 +38,6 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.document.VectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
@@ -48,9 +47,11 @@ import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestSortingCodecReader extends LuceneTestCase {
 
@@ -127,7 +128,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
           doc.add(new BinaryDocValuesField("binary_dv", new BytesRef(Integer.toString(docId))));
           doc.add(
               new SortedSetDocValuesField("sorted_set_dv", new BytesRef(Integer.toString(docId))));
-          doc.add(new VectorField("vector", new float[] {(float) docId}));
+          doc.add(new KnnVectorField("vector", new float[] {(float) docId}));
           doc.add(new NumericDocValuesField("foo", random().nextInt(20)));
 
           FieldType ft = new FieldType(StringField.TYPE_NOT_STORED);

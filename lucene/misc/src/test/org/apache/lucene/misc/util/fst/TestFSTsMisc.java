@@ -24,15 +24,15 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.misc.util.fst.UpToTwoPositiveIntOutputs.TwoLongs;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.fst.FSTTester;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
-import org.apache.lucene.util.fst.FSTTester;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
 import org.apache.lucene.util.fst.Util;
 
@@ -109,7 +109,7 @@ public class TestFSTsMisc extends LuceneTestCase {
         }
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<Object>(random(), dir, inputMode, pairs, outputs, false) {
+      new FSTTester<Object>(random(), dir, inputMode, pairs, outputs) {
         @Override
         protected boolean outputsEqual(Object output1, Object output2) {
           if (output1 instanceof TwoLongs && output2 instanceof List) {
@@ -157,7 +157,7 @@ public class TestFSTsMisc extends LuceneTestCase {
 
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs, false).doTest(false);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(false);
     }
   }
 

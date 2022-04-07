@@ -17,7 +17,6 @@
 package org.apache.lucene.facet;
 
 import java.util.Arrays;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -26,8 +25,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestFacetsConfig extends FacetTestCase {
 
@@ -73,8 +73,7 @@ public class TestFacetsConfig extends FacetTestCase {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
-    FacetsCollector fc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, facetsConfig, fc);
     FacetResult res = facets.getTopChildren(10, "a");
@@ -83,6 +82,23 @@ public class TestFacetsConfig extends FacetTestCase {
     IOUtils.close(indexReader, taxoReader);
 
     IOUtils.close(indexDir, taxoDir);
+  }
+
+  public void testIsDimConfigured() {
+    FacetsConfig config = new FacetsConfig();
+    config.setIndexFieldName("configured1", "name");
+    config.setMultiValued("configured2", true);
+    config.setRequireDimCount("configured3", true);
+    config.setHierarchical("configured4", true);
+    config.setDrillDownTermsIndexing("configured5", FacetsConfig.DrillDownTermsIndexing.ALL);
+
+    assertTrue(config.isDimConfigured("configured1"));
+    assertTrue(config.isDimConfigured("configured2"));
+    assertTrue(config.isDimConfigured("configured3"));
+    assertTrue(config.isDimConfigured("configured4"));
+    assertTrue(config.isDimConfigured("configured5"));
+
+    assertFalse(config.isDimConfigured("unconfigured"));
   }
 
   /** LUCENE-5479 */

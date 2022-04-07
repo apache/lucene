@@ -40,8 +40,8 @@ import org.apache.lucene.index.IndexReader;
  *   <li>{@link MatchAllDocsQuery}
  * </ul>
  *
- * <p>See also the family of {@link org.apache.lucene.search.spans Span Queries} and additional
- * queries available in the <a href="{@docRoot}/../queries/overview-summary.html">Queries module</a>
+ * <p>See also additional queries available in the <a
+ * href="{@docRoot}/../queries/overview-summary.html">Queries module</a>
  */
 public abstract class Query {
 
@@ -73,6 +73,11 @@ public abstract class Query {
   /**
    * Expert: called to re-write queries into primitive queries. For example, a PrefixQuery will be
    * rewritten into a BooleanQuery that consists of TermQuerys.
+   *
+   * <p>Callers are expected to call <code>rewrite</code> multiple times if necessary, until the
+   * rewritten query is the same as the original query.
+   *
+   * @see IndexSearcher#rewrite(Query)
    */
   public Query rewrite(IndexReader reader) throws IOException {
     return this;

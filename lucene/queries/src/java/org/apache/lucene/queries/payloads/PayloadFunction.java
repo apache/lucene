@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.queries.payloads;
 
+import org.apache.lucene.queries.spans.Spans;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.spans.Spans;
 
 /**
  * An abstract class that defines a way for PayloadScoreQuery instances to transform the cumulative

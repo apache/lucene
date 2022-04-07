@@ -17,8 +17,8 @@
 package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.ja.util.CSVUtil;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.analysis.ja.dict.CSVUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /*
  * Tests for the CSVUtil class.

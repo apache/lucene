@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.core;
 import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -28,6 +27,7 @@ import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
@@ -200,7 +200,7 @@ public class TestAnalyzers extends BaseTokenStreamTestCase {
 
   /** blast some random strings through the analyzer */
   public void testRandomStrings() throws Exception {
-    Analyzer analyzers[] =
+    Analyzer[] analyzers =
         new Analyzer[] {
           new WhitespaceAnalyzer(),
           new SimpleAnalyzer(),
@@ -215,7 +215,7 @@ public class TestAnalyzers extends BaseTokenStreamTestCase {
 
   /** blast some random large strings through the analyzer */
   public void testRandomHugeStrings() throws Exception {
-    Analyzer analyzers[] =
+    Analyzer[] analyzers =
         new Analyzer[] {
           new WhitespaceAnalyzer(),
           new SimpleAnalyzer(),

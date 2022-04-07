@@ -37,7 +37,7 @@ import org.apache.lucene.util.AttributeFactory;
  */
 public abstract class SegmentingTokenizerBase extends Tokenizer {
   protected static final int BUFFERMAX = 1024;
-  protected final char buffer[] = new char[BUFFERMAX];
+  protected final char[] buffer = new char[BUFFERMAX];
   /** true length of text in the buffer */
   private int length = 0;
   /** length in buffer that can be evaluated safely, up to a safe end point */

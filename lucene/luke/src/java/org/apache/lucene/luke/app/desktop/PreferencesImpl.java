@@ -76,6 +76,14 @@ public final class PreferencesImpl implements Preferences {
     saveHistory();
   }
 
+  @Override
+  public void removeHistory(String indexPath) throws IOException {
+    if (history.contains(indexPath)) {
+      history.remove(indexPath);
+      saveHistory();
+    }
+  }
+
   private void saveHistory() throws IOException {
     Files.write(historyFile(), history);
   }

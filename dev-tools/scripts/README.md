@@ -1,9 +1,26 @@
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    The ASF licenses this file to You under the Apache License, Version 2.0
+    the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+ -->
+
 # Developer Scripts
 
 This folder contains various useful scripts for developers, mostly related to
-releasing new versions of Lucene/Solr and testing those.
+releasing new versions of Lucene and testing those.
 
-Python scripts require Python 3. To install necessary python modules, please run:
+Python scripts require Python 3.6 or avobe. To install necessary python modules, please run:
 
     pip3 install -r requirements.txt
 
@@ -45,7 +62,7 @@ the full tests.
       --download-only       Only perform download and sha hash check steps
     
     Example usage:
-    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-solr-6.0.1-RC2-revc7510a0...
+    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-9.0.1-RC2-revc7510a0...
 
 ### releaseWizard.py
 
@@ -85,7 +102,7 @@ of the other tools in this folder.
       --push-local PATH  Push the release to the local path
       --sign KEYID       Sign the release with the given gpg key
       --rc-num NUM       Release Candidate number. Default: 1
-      --root PATH        Root of Git working tree for lucene-solr. Default: "."
+      --root PATH        Root of Git working tree for lucene. Default: "."
                          (the current directory)
       --logfile PATH     Specify log file path (default /tmp/release.log)
     
@@ -115,8 +132,7 @@ of the other tools in this folder.
 
     usage: addVersion.py [-h] version
     
-    Add a new version to CHANGES, to Version.java, build.gradle and
-    solrconfig.xml files
+    Add a new version to CHANGES, to Version.java and build.gradle files
     
     positional arguments:
       version
@@ -146,9 +162,9 @@ and prints a regular expression that will match all of them
 
     usage: reproduceJenkinsFailures.py [-h] [--no-git] [--iters N] URL
     
-    Must be run from a Lucene/Solr git workspace. Downloads the Jenkins
+    Must be run from a Lucene git workspace. Downloads the Jenkins
     log pointed to by the given URL, parses it for Git revision and failed
-    Lucene/Solr tests, checks out the Git revision in the local workspace,
+    Lucene tests, checks out the Git revision in the local workspace,
     groups the failed tests by module, then runs
     'ant test -Dtest.dups=%d -Dtests.class="*.test1[|*.test2[...]]" ...'
     in each module of interest, failing at the end if any of the runs fails.
@@ -162,25 +178,6 @@ and prints a regular expression that will match all of them
       -h, --help  show this help message and exit
       --no-git    Do not run "git" at all
       --iters N   Number of iterations per test suite (default: 5)
-
-### poll-mirrors.py
-
-    usage: poll-mirrors.py [-h] [-version VERSION] [-path PATH]
-                           [-interval INTERVAL] [-details] [-once]
-    
-    Periodically checks that all Lucene/Solr mirrors contain either a copy of a
-    release or a specified path
-    
-    optional arguments:
-      -h, --help            show this help message and exit
-      -version VERSION, -v VERSION
-                            Lucene/Solr version to check
-      -path PATH, -p PATH   instead of a versioned release, check for
-                            some/explicit/path
-      -interval INTERVAL, -i INTERVAL
-                            seconds to wait before re-querying mirrors
-      -details, -d          print missing mirror URLs
-      -once, -o             run only once
 
 ### githubPRs.py
 

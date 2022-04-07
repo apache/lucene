@@ -23,9 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
@@ -34,9 +34,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLiveFieldValues extends LuceneTestCase {
   public void test() throws Exception {
@@ -112,7 +112,7 @@ public class TestLiveFieldValues extends LuceneTestCase {
                         String.format(
                             Locale.ROOT, "%d_%04x", threadID, threadRandom.nextInt(idCount));
                     Integer field = threadRandom.nextInt(Integer.MAX_VALUE);
-                    doc.add(newStringField("id", new BytesRef(id), Field.Store.YES));
+                    doc.add(newStringField("id", newBytesRef(id), Field.Store.YES));
                     doc.add(new StoredField("field", field.intValue()));
                     w.updateDocument(new Term("id", id), doc);
                     rt.add(id, field);
@@ -123,7 +123,7 @@ public class TestLiveFieldValues extends LuceneTestCase {
 
                   if (allIDs.size() > 0 && threadRandom.nextDouble() <= deleteChance) {
                     String randomID = allIDs.get(threadRandom.nextInt(allIDs.size()));
-                    w.deleteDocuments(new Term("id", new BytesRef(randomID)));
+                    w.deleteDocuments(new Term("id", newBytesRef(randomID)));
                     rt.delete(randomID);
                     values.put(randomID, missing);
                   }
@@ -149,7 +149,7 @@ public class TestLiveFieldValues extends LuceneTestCase {
                   if (allIDs.size() > 0) {
                     String randomID = allIDs.get(threadRandom.nextInt(allIDs.size()));
                     Integer expected = values.get(randomID);
-                    if (expected == missing) {
+                    if (Objects.equals(expected, missing)) {
                       expected = null;
                     }
                     assertEquals("id=" + randomID, expected, rt.get(randomID));

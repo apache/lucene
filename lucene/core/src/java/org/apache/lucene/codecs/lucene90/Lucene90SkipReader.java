@@ -49,11 +49,11 @@ import org.apache.lucene.store.IndexInput;
  * <p>Therefore, we'll trim df before passing it to the interface. see trim(int)
  */
 class Lucene90SkipReader extends MultiLevelSkipListReader {
-  private long docPointer[];
-  private long posPointer[];
-  private long payPointer[];
-  private int posBufferUpto[];
-  private int payloadByteUpto[];
+  private long[] docPointer;
+  private long[] posPointer;
+  private long[] payPointer;
+  private int[] posBufferUpto;
+  private int[] payloadByteUpto;
 
   private long lastPosPointer;
   private long lastPayPointer;

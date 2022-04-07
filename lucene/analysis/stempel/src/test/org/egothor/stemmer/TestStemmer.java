@@ -55,15 +55,15 @@ individuals  on  behalf  of  the  Egothor  Project  and was originally
 created by Leo Galambos (Leo.G@seznam.cz).
 */
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestStemmer extends LuceneTestCase {
 
   public void testTrie() {
     Trie t = new Trie(true);
 
-    String keys[] = {"a", "ba", "bb", "c"};
-    String vals[] = {"1", "2", "2", "4"};
+    String[] keys = {"a", "ba", "bb", "c"};
+    String[] vals = {"1", "2", "2", "4"};
 
     for (int i = 0; i < keys.length; i++) {
       t.add(keys[i], vals[i]);
@@ -78,8 +78,8 @@ public class TestStemmer extends LuceneTestCase {
   public void testTrieBackwards() {
     Trie t = new Trie(false);
 
-    String keys[] = {"a", "ba", "bb", "c"};
-    String vals[] = {"1", "2", "2", "4"};
+    String[] keys = {"a", "ba", "bb", "c"};
+    String[] vals = {"1", "2", "2", "4"};
 
     for (int i = 0; i < keys.length; i++) {
       t.add(keys[i], vals[i]);
@@ -91,8 +91,8 @@ public class TestStemmer extends LuceneTestCase {
   public void testMultiTrie() {
     Trie t = new MultiTrie(true);
 
-    String keys[] = {"a", "ba", "bb", "c"};
-    String vals[] = {"1", "2", "2", "4"};
+    String[] keys = {"a", "ba", "bb", "c"};
+    String[] vals = {"1", "2", "2", "4"};
 
     for (int i = 0; i < keys.length; i++) {
       t.add(keys[i], vals[i]);
@@ -104,8 +104,8 @@ public class TestStemmer extends LuceneTestCase {
   public void testMultiTrieBackwards() {
     Trie t = new MultiTrie(false);
 
-    String keys[] = {"a", "ba", "bb", "c"};
-    String vals[] = {"1", "2", "2", "4"};
+    String[] keys = {"a", "ba", "bb", "c"};
+    String[] vals = {"1", "2", "2", "4"};
 
     for (int i = 0; i < keys.length; i++) {
       t.add(keys[i], vals[i]);
@@ -117,12 +117,12 @@ public class TestStemmer extends LuceneTestCase {
   public void testMultiTrie2() {
     Trie t = new MultiTrie2(true);
 
-    String keys[] = {"a", "ba", "bb", "c"};
+    String[] keys = {"a", "ba", "bb", "c"};
     /*
      * short vals won't work, see line 155 for example
      * the IOOBE is caught (wierd), but shouldnt affect patch cmds?
      */
-    String vals[] = {"1111", "2222", "2223", "4444"};
+    String[] vals = {"1111", "2222", "2223", "4444"};
 
     for (int i = 0; i < keys.length; i++) {
       t.add(keys[i], vals[i]);
@@ -134,12 +134,12 @@ public class TestStemmer extends LuceneTestCase {
   public void testMultiTrie2Backwards() {
     Trie t = new MultiTrie2(false);
 
-    String keys[] = {"a", "ba", "bb", "c"};
+    String[] keys = {"a", "ba", "bb", "c"};
     /*
      * short vals won't work, see line 155 for example
      * the IOOBE is caught (wierd), but shouldnt affect patch cmds?
      */
-    String vals[] = {"1111", "2222", "2223", "4444"};
+    String[] vals = {"1111", "2222", "2223", "4444"};
 
     for (int i = 0; i < keys.length; i++) {
       t.add(keys[i], vals[i]);
@@ -148,7 +148,7 @@ public class TestStemmer extends LuceneTestCase {
     assertTrieContents(t, keys, vals);
   }
 
-  private static void assertTrieContents(Trie trie, String keys[], String vals[]) {
+  private static void assertTrieContents(Trie trie, String[] keys, String[] vals) {
     Trie[] tries =
         new Trie[] {
           trie,

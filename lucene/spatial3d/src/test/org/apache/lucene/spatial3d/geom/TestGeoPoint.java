@@ -18,7 +18,7 @@ package org.apache.lucene.spatial3d.geom;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Test basic GeoPoint functionality. */

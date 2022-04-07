@@ -19,34 +19,38 @@ package org.apache.lucene.sandbox.search;
 import static org.hamcrest.CoreMatchers.instanceOf;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
+@LuceneTestCase.SuppressCodecs(value = "SimpleText")
 public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCase {
 
   public void testSameHitsAsPointRangeQuery() throws IOException {
@@ -57,7 +61,14 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       boolean reverse = random().nextBoolean();
       SortField sortField = new SortedNumericSortField("dv", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(random().nextLong());
+      boolean enableMissingValue = random().nextBoolean();
+      if (enableMissingValue) {
+        long missingValue =
+            random().nextBoolean()
+                ? TestUtil.nextLong(random(), -100, 10000)
+                : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
+        sortField.setMissingValue(missingValue);
+      }
       iwc.setIndexSort(new Sort(sortField));
 
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
@@ -95,7 +106,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     }
   }
 
-  private void assertSameHits(IndexSearcher searcher, Query q1, Query q2, boolean scores)
+  private static void assertSameHits(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
@@ -144,15 +155,18 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   }
 
   public void testIndexSortDocValuesWithEvenLength() throws Exception {
-    testIndexSortDocValuesWithEvenLength(false);
-    testIndexSortDocValuesWithEvenLength(true);
+    for (SortField.Type type : new SortField.Type[] {SortField.Type.INT, SortField.Type.LONG}) {
+      testIndexSortDocValuesWithEvenLength(true, type);
+      testIndexSortDocValuesWithEvenLength(false, type);
+    }
   }
 
-  public void testIndexSortDocValuesWithEvenLength(boolean reverse) throws Exception {
+  public void testIndexSortDocValuesWithEvenLength(boolean reverse, SortField.Type type)
+      throws Exception {
     Directory dir = newDirectory();
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    Sort indexSort = new Sort(new SortedNumericSortField("field", SortField.Type.LONG, reverse));
+    Sort indexSort = new Sort(new SortedNumericSortField("field", type, reverse));
     iwc.setIndexSort(indexSort);
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
 
@@ -167,41 +181,48 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexSearcher searcher = newSearcher(reader);
 
     // Test ranges consisting of one value.
-    assertEquals(1, searcher.count(createQuery("field", -80, -80)));
-    assertEquals(1, searcher.count(createQuery("field", -5, -5)));
-    assertEquals(2, searcher.count(createQuery("field", 0, 0)));
-    assertEquals(1, searcher.count(createQuery("field", 30, 30)));
-    assertEquals(1, searcher.count(createQuery("field", 35, 35)));
+    assertNumberOfHits(searcher, createQuery("field", -80, -80), 1);
+    assertNumberOfHits(searcher, createQuery("field", -5, -5), 1);
+    assertNumberOfHits(searcher, createQuery("field", 0, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", 30, 30), 1);
+    assertNumberOfHits(searcher, createQuery("field", 35, 35), 1);
 
-    assertEquals(0, searcher.count(createQuery("field", -90, -90)));
-    assertEquals(0, searcher.count(createQuery("field", 5, 5)));
-    assertEquals(0, searcher.count(createQuery("field", 40, 40)));
+    assertNumberOfHits(searcher, createQuery("field", -90, -90), 0);
+    assertNumberOfHits(searcher, createQuery("field", 5, 5), 0);
+    assertNumberOfHits(searcher, createQuery("field", 40, 40), 0);
 
     // Test the lower end of the document value range.
-    assertEquals(2, searcher.count(createQuery("field", -90, -4)));
-    assertEquals(2, searcher.count(createQuery("field", -80, -4)));
-    assertEquals(1, searcher.count(createQuery("field", -70, -4)));
-    assertEquals(2, searcher.count(createQuery("field", -80, -5)));
+    assertNumberOfHits(searcher, createQuery("field", -90, -4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -80, -4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -70, -4), 1);
+    assertNumberOfHits(searcher, createQuery("field", -80, -5), 2);
 
     // Test the upper end of the document value range.
-    assertEquals(1, searcher.count(createQuery("field", 25, 34)));
-    assertEquals(2, searcher.count(createQuery("field", 25, 35)));
-    assertEquals(2, searcher.count(createQuery("field", 25, 36)));
-    assertEquals(2, searcher.count(createQuery("field", 30, 35)));
+    assertNumberOfHits(searcher, createQuery("field", 25, 34), 1);
+    assertNumberOfHits(searcher, createQuery("field", 25, 35), 2);
+    assertNumberOfHits(searcher, createQuery("field", 25, 36), 2);
+    assertNumberOfHits(searcher, createQuery("field", 30, 35), 2);
 
     // Test multiple occurrences of the same value.
-    assertEquals(2, searcher.count(createQuery("field", -4, 4)));
-    assertEquals(2, searcher.count(createQuery("field", -4, 0)));
-    assertEquals(2, searcher.count(createQuery("field", 0, 4)));
-    assertEquals(3, searcher.count(createQuery("field", 0, 30)));
+    assertNumberOfHits(searcher, createQuery("field", -4, 4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -4, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", 0, 4), 2);
+    assertNumberOfHits(searcher, createQuery("field", 0, 30), 3);
 
     // Test ranges that span all documents.
-    assertEquals(6, searcher.count(createQuery("field", -80, 35)));
-    assertEquals(6, searcher.count(createQuery("field", -90, 40)));
+    assertNumberOfHits(searcher, createQuery("field", -80, 35), 6);
+    assertNumberOfHits(searcher, createQuery("field", -90, 40), 6);
 
     writer.close();
     reader.close();
     dir.close();
+  }
+
+  private static void assertNumberOfHits(IndexSearcher searcher, Query query, int numberOfHits)
+      throws IOException {
+    assertEquals(
+        numberOfHits, searcher.search(query, new TotalHitCountCollectorManager()).intValue());
+    assertEquals(numberOfHits, searcher.count(query));
   }
 
   public void testIndexSortDocValuesWithOddLength() throws Exception {
@@ -229,38 +250,38 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexSearcher searcher = newSearcher(reader);
 
     // Test ranges consisting of one value.
-    assertEquals(1, searcher.count(createQuery("field", -80, -80)));
-    assertEquals(1, searcher.count(createQuery("field", -5, -5)));
-    assertEquals(2, searcher.count(createQuery("field", 0, 0)));
-    assertEquals(1, searcher.count(createQuery("field", 5, 5)));
-    assertEquals(1, searcher.count(createQuery("field", 30, 30)));
-    assertEquals(1, searcher.count(createQuery("field", 35, 35)));
+    assertNumberOfHits(searcher, createQuery("field", -80, -80), 1);
+    assertNumberOfHits(searcher, createQuery("field", -5, -5), 1);
+    assertNumberOfHits(searcher, createQuery("field", 0, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", 5, 5), 1);
+    assertNumberOfHits(searcher, createQuery("field", 30, 30), 1);
+    assertNumberOfHits(searcher, createQuery("field", 35, 35), 1);
 
-    assertEquals(0, searcher.count(createQuery("field", -90, -90)));
-    assertEquals(0, searcher.count(createQuery("field", 6, 6)));
-    assertEquals(0, searcher.count(createQuery("field", 40, 40)));
+    assertNumberOfHits(searcher, createQuery("field", -90, -90), 0);
+    assertNumberOfHits(searcher, createQuery("field", 6, 6), 0);
+    assertNumberOfHits(searcher, createQuery("field", 40, 40), 0);
 
     // Test the lower end of the document value range.
-    assertEquals(2, searcher.count(createQuery("field", -90, -4)));
-    assertEquals(2, searcher.count(createQuery("field", -80, -4)));
-    assertEquals(1, searcher.count(createQuery("field", -70, -4)));
-    assertEquals(2, searcher.count(createQuery("field", -80, -5)));
+    assertNumberOfHits(searcher, createQuery("field", -90, -4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -80, -4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -70, -4), 1);
+    assertNumberOfHits(searcher, createQuery("field", -80, -5), 2);
 
     // Test the upper end of the document value range.
-    assertEquals(1, searcher.count(createQuery("field", 25, 34)));
-    assertEquals(2, searcher.count(createQuery("field", 25, 35)));
-    assertEquals(2, searcher.count(createQuery("field", 25, 36)));
-    assertEquals(2, searcher.count(createQuery("field", 30, 35)));
+    assertNumberOfHits(searcher, createQuery("field", 25, 34), 1);
+    assertNumberOfHits(searcher, createQuery("field", 25, 35), 2);
+    assertNumberOfHits(searcher, createQuery("field", 25, 36), 2);
+    assertNumberOfHits(searcher, createQuery("field", 30, 35), 2);
 
     // Test multiple occurrences of the same value.
-    assertEquals(2, searcher.count(createQuery("field", -4, 4)));
-    assertEquals(2, searcher.count(createQuery("field", -4, 0)));
-    assertEquals(2, searcher.count(createQuery("field", 0, 4)));
-    assertEquals(4, searcher.count(createQuery("field", 0, 30)));
+    assertNumberOfHits(searcher, createQuery("field", -4, 4), 2);
+    assertNumberOfHits(searcher, createQuery("field", -4, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", 0, 4), 2);
+    assertNumberOfHits(searcher, createQuery("field", 0, 30), 4);
 
     // Test ranges that span all documents.
-    assertEquals(7, searcher.count(createQuery("field", -80, 35)));
-    assertEquals(7, searcher.count(createQuery("field", -90, 40)));
+    assertNumberOfHits(searcher, createQuery("field", -80, 35), 7);
+    assertNumberOfHits(searcher, createQuery("field", -90, 40), 7);
 
     writer.close();
     reader.close();
@@ -285,10 +306,10 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     DirectoryReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    assertEquals(1, searcher.count(createQuery("field", 42, 43)));
-    assertEquals(1, searcher.count(createQuery("field", 42, 42)));
-    assertEquals(0, searcher.count(createQuery("field", 41, 41)));
-    assertEquals(0, searcher.count(createQuery("field", 43, 43)));
+    assertNumberOfHits(searcher, createQuery("field", 42, 43), 1);
+    assertNumberOfHits(searcher, createQuery("field", 42, 42), 1);
+    assertNumberOfHits(searcher, createQuery("field", 41, 41), 0);
+    assertNumberOfHits(searcher, createQuery("field", 43, 43), 0);
 
     writer.close();
     reader.close();
@@ -316,11 +337,11 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     DirectoryReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    assertEquals(2, searcher.count(createQuery("field", -70, 0)));
-    assertEquals(2, searcher.count(createQuery("field", -2, 35)));
+    assertNumberOfHits(searcher, createQuery("field", -70, 0), 2);
+    assertNumberOfHits(searcher, createQuery("field", -2, 35), 2);
 
-    assertEquals(4, searcher.count(createQuery("field", -80, 35)));
-    assertEquals(4, searcher.count(createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE)));
+    assertNumberOfHits(searcher, createQuery("field", -80, 35), 4);
+    assertNumberOfHits(searcher, createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE), 4);
 
     writer.close();
     reader.close();
@@ -350,7 +371,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     Query query = createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE);
     Query rewrittenQuery = query.rewrite(reader);
-    assertEquals(new DocValuesFieldExistsQuery("field"), rewrittenQuery);
+    assertEquals(new FieldExistsQuery("field"), rewrittenQuery);
 
     writer.close();
     reader.close();
@@ -410,6 +431,24 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
+  public void testOtherSortTypes() throws Exception {
+    for (SortField.Type type : new SortField.Type[] {SortField.Type.FLOAT, SortField.Type.DOUBLE}) {
+      Directory dir = newDirectory();
+
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      Sort indexSort = new Sort(new SortedNumericSortField("field", type));
+      iwc.setIndexSort(indexSort);
+
+      RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+      writer.addDocument(createDocument("field", 0));
+
+      testIndexSortOptimizationDeactivated(writer);
+
+      writer.close();
+      dir.close();
+    }
+  }
+
   /**
    * Test that the index sort optimization is not activated when some documents have multiple
    * values.
@@ -448,6 +487,145 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     }
 
     reader.close();
+  }
+
+  public void testFallbackCount() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    Sort indexSort = new Sort(new SortedNumericSortField("field", SortField.Type.LONG));
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+    Document doc = new Document();
+    doc.add(new SortedNumericDocValuesField("field", 10));
+    writer.addDocument(doc);
+    IndexReader reader = writer.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    // we use an unrealistic query that exposes its own Weight#count
+    Query fallbackQuery = new MatchNoDocsQuery();
+    // the index is not sorted on this field, the fallback query is used
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("another", 1, 42, fallbackQuery);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(0, weight.count(context));
+    }
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  public void testCompareCount() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
+      boolean enableMissingValue = random().nextBoolean();
+      if (enableMissingValue) {
+        long missingValue =
+            random().nextBoolean()
+                ? TestUtil.nextLong(random(), -100, 10000)
+                : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
+        sortField.setMissingValue(missingValue);
+      }
+      iwc.setIndexSort(new Sort(sortField));
+
+      RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+
+      final int numDocs = atLeast(100);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        final int numValues = TestUtil.nextInt(random(), 0, 1);
+        for (int j = 0; j < numValues; ++j) {
+          final long value = TestUtil.nextLong(random(), -100, 10000);
+          doc = createSNDVAndPointDocument("field", value);
+        }
+        writer.addDocument(doc);
+      }
+
+      if (random().nextBoolean()) {
+        writer.deleteDocuments(LongPoint.newRangeQuery("field", 0L, 10L));
+      }
+
+      final IndexReader reader = writer.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      writer.close();
+
+      for (int i = 0; i < 100; ++i) {
+        final long min =
+            random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -100, 10000);
+        final long max =
+            random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
+        final Query q1 = LongPoint.newRangeQuery("field", min, max);
+
+        final Query fallbackQuery = LongPoint.newRangeQuery("field", min, max);
+        final Query q2 =
+            new IndexSortSortedNumericDocValuesRangeQuery("field", min, max, fallbackQuery);
+        final Weight weight1 = q1.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+        final Weight weight2 = q2.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+        assertSameCount(weight1, weight2, searcher);
+      }
+
+      reader.close();
+      dir.close();
+    }
+  }
+
+  private void assertSameCount(Weight weight1, Weight weight2, IndexSearcher searcher)
+      throws IOException {
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(weight1.count(context), weight2.count(context));
+    }
+  }
+
+  public void testCountBoundary() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
+    boolean useLower = random().nextBoolean();
+    long lowerValue = 1;
+    long upperValue = 100;
+    sortField.setMissingValue(useLower ? lowerValue : upperValue);
+    Sort indexSort = new Sort(sortField);
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+
+    writer.addDocument(
+        createSNDVAndPointDocument("field", random().nextLong(lowerValue, upperValue)));
+    writer.addDocument(
+        createSNDVAndPointDocument("field", random().nextLong(lowerValue, upperValue)));
+    // missingValue
+    writer.addDocument(createMissingValueDocument());
+
+    IndexReader reader = writer.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query fallbackQuery = LongPoint.newRangeQuery("field", lowerValue, upperValue);
+    Query query =
+        new IndexSortSortedNumericDocValuesRangeQuery(
+            "field", lowerValue, upperValue, fallbackQuery);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(2, weight.count(context));
+    }
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  private Document createMissingValueDocument() {
+    Document doc = new Document();
+    doc.add(new StringField("foo", "fox", Field.Store.YES));
+    return doc;
+  }
+
+  private Document createSNDVAndPointDocument(String field, long value) {
+    Document doc = new Document();
+    doc.add(new SortedNumericDocValuesField(field, value));
+    doc.add(new LongPoint(field, value));
+    return doc;
   }
 
   private Document createDocument(String field, long value) {

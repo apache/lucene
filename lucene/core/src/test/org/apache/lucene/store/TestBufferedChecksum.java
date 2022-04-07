@@ -18,7 +18,7 @@ package org.apache.lucene.store;
 
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestBufferedChecksum extends LuceneTestCase {
 
@@ -39,7 +39,7 @@ public class TestBufferedChecksum extends LuceneTestCase {
         case 0:
           // update(byte[], int, int)
           int length = random().nextInt(1024);
-          byte bytes[] = new byte[length];
+          byte[] bytes = new byte[length];
           random().nextBytes(bytes);
           c1.update(bytes, 0, bytes.length);
           c2.update(bytes, 0, bytes.length);

@@ -20,13 +20,13 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Collections;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.util.BytesRef;
 
 /** test tokenstream reuse by DefaultIndexingChain */

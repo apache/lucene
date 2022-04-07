@@ -16,11 +16,10 @@
  */
 package org.apache.lucene.queryparser.xml.builders;
 
+import org.apache.lucene.queries.spans.SpanFirstQuery;
+import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queryparser.xml.DOMUtils;
 import org.apache.lucene.queryparser.xml.ParserException;
-import org.apache.lucene.search.spans.SpanBoostQuery;
-import org.apache.lucene.search.spans.SpanFirstQuery;
-import org.apache.lucene.search.spans.SpanQuery;
 import org.w3c.dom.Element;
 
 /** Builder for {@link SpanFirstQuery} */
@@ -38,9 +37,6 @@ public class SpanFirstBuilder extends SpanBuilderBase {
     Element child = DOMUtils.getFirstChildElement(e);
     SpanQuery q = factory.getSpanQuery(child);
 
-    SpanFirstQuery sfq = new SpanFirstQuery(q, end);
-
-    float boost = DOMUtils.getAttribute(e, "boost", 1.0f);
-    return new SpanBoostQuery(sfq, boost);
+    return new SpanFirstQuery(q, end);
   }
 }

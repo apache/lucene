@@ -17,13 +17,12 @@
 package org.apache.lucene.backward_codecs.lucene50;
 
 import org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50RWCompressingTermVectorsFormat;
-import org.apache.lucene.codecs.compressing.CompressionMode;
 
 /** RW impersonation of Lucene50StoredFieldsFormat. */
 public final class Lucene50RWTermVectorsFormat extends Lucene50RWCompressingTermVectorsFormat {
 
   /** Sole constructor. */
   public Lucene50RWTermVectorsFormat() {
-    super("Lucene50TermVectorsData", "", CompressionMode.FAST, 1 << 12, 10);
+    super("Lucene50TermVectorsData", "", Lucene50StoredFieldsFormat.FAST_MODE, 1 << 12, 128, 10);
   }
 }

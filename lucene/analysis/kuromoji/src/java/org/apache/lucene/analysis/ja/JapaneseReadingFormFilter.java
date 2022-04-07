@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.ja;
 import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.ja.dict.ToStringUtil;
 import org.apache.lucene.analysis.ja.tokenattributes.ReadingAttribute;
-import org.apache.lucene.analysis.ja.util.ToStringUtil;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**

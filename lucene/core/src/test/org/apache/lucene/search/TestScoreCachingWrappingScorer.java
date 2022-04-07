@@ -18,10 +18,10 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestScoreCachingWrappingScorer extends LuceneTestCase {
 
@@ -105,7 +105,7 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
 
     @Override
     public void setScorer(Scorable scorer) {
-      this.scorer = new ScoreCachingWrappingScorer(scorer);
+      this.scorer = ScoreCachingWrappingScorer.wrap(scorer);
     }
 
     @Override
@@ -155,5 +155,29 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     }
     ir.close();
     directory.close();
+  }
+
+  public void testNoUnnecessaryWrap() throws Exception {
+    Scorable base =
+        new Scorable() {
+          @Override
+          public float score() throws IOException {
+            return -1;
+          }
+
+          @Override
+          public int docID() {
+            return -1;
+          }
+        };
+
+    // Wrapping the first time should produce a different instance:
+    Scorable wrapped = ScoreCachingWrappingScorer.wrap(base);
+    assertNotEquals(base, wrapped);
+
+    // But if we try to wrap an instance of ScoreCachingWrappingScorer, it shouldn't unnecessarily
+    // wrap again:
+    Scorable doubleWrapped = ScoreCachingWrappingScorer.wrap(wrapped);
+    assertSame(wrapped, doubleWrapped);
   }
 }

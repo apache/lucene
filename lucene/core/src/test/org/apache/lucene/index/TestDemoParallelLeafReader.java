@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,13 +46,13 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.store.MockDirectoryWrapper.Throttling;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper.Throttling;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 // TODO:
@@ -676,9 +675,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         @Override
         public void setMergeInfo(SegmentCommitInfo info) {
           // Record that this merged segment is current as of this schemaGen:
-          Map<String, String> copy = new HashMap<>(info.info.getDiagnostics());
-          copy.put(SCHEMA_GEN_KEY, Long.toString(schemaGen));
-          info.info.setDiagnostics(copy);
+          info.info.addDiagnostics(Map.of(SCHEMA_GEN_KEY, Long.toString(schemaGen)));
           super.setMergeInfo(info);
         }
       }

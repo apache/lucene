@@ -136,7 +136,11 @@ public final class LongBitSet implements Accountable {
    */
   public long cardinality() {
     // Depends on the ghost bits being clear!
-    return BitUtil.pop_array(bits, 0, numWords);
+    long tot = 0;
+    for (int i = 0; i < numWords; ++i) {
+      tot += Long.bitCount(bits[i]);
+    }
+    return tot;
   }
 
   public boolean get(long index) {

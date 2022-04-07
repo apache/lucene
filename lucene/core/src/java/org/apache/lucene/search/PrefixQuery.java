@@ -30,9 +30,14 @@ public class PrefixQuery extends AutomatonQuery {
 
   /** Constructs a query for terms starting with <code>prefix</code>. */
   public PrefixQuery(Term prefix) {
-    // It's OK to pass unlimited maxDeterminizedStates: the automaton is born small and
-    // determinized:
-    super(prefix, toAutomaton(prefix.bytes()), Integer.MAX_VALUE, true);
+    this(prefix, CONSTANT_SCORE_REWRITE);
+  }
+
+  /**
+   * Constructs a query for terms starting with <code>prefix</code> using a defined RewriteMethod
+   */
+  public PrefixQuery(Term prefix, RewriteMethod rewriteMethod) {
+    super(prefix, toAutomaton(prefix.bytes()), true, rewriteMethod);
   }
 
   /** Build an automaton accepting all terms with the specified prefix. */

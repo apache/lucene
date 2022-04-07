@@ -27,15 +27,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
@@ -97,9 +93,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   // Records the taxonomy index epoch, updated on replaceTaxonomy as well.
   private long indexEpoch;
 
-  private SinglePositionTokenStream parentStream =
-      new SinglePositionTokenStream(Consts.PAYLOAD_PARENT);
-  private Field parentStreamField;
   private Field fullPathField;
   private int cacheMissesUntilFill = 11;
   private boolean shouldFillCache = true;
@@ -123,12 +116,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   private volatile boolean isClosed = false;
   private volatile TaxonomyIndexArrays taxoArrays;
   private volatile int nextID;
-
-  /** Reads the commit data from a Directory. */
-  private static Map<String, String> readCommitData(Directory dir) throws IOException {
-    SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
-    return infos.getUserData();
-  }
 
   /**
    * Construct a Taxonomy writer.
@@ -162,11 +149,12 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     // after we opened the writer, and the index is locked, it's safe to check
     // the commit data and read the index epoch
     openMode = config.getOpenMode();
-    if (!DirectoryReader.indexExists(directory)) {
+    if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
     } else {
       String epochStr = null;
-      Map<String, String> commitData = readCommitData(directory);
+      SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+      Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
         epochStr = commitData.get(INDEX_EPOCH);
       }
@@ -179,9 +167,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       ++indexEpoch;
     }
 
-    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
-    ft.setOmitNorms(true);
-    parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
     fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
 
     nextID = indexWriter.getDocStats().maxDoc;
@@ -371,17 +356,15 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
           new BytesRef(FacetsConfig.pathToString(categoryPath.components, categoryPath.length));
       PostingsEnum docs = null; // reuse
       for (LeafReaderContext ctx : reader.leaves()) {
-        Terms terms = ctx.reader().terms(Consts.FULL);
-        if (terms != null) {
-          // TODO: share per-segment TermsEnum here!
-          TermsEnum termsEnum = terms.iterator();
-          if (termsEnum.seekExact(catTerm)) {
-            // liveDocs=null because the taxonomy has no deletes
-            docs = termsEnum.postings(docs, 0 /* freqs not required */);
-            // if the term was found, we know it has exactly one document.
-            doc = docs.nextDoc() + ctx.docBase;
-            break;
-          }
+        Terms terms = Terms.getTerms(ctx.reader(), Consts.FULL);
+        // TODO: share per-segment TermsEnum here!
+        TermsEnum termsEnum = terms.iterator();
+        if (termsEnum.seekExact(catTerm)) {
+          // liveDocs=null because the taxonomy has no deletes
+          docs = termsEnum.postings(docs, 0 /* freqs not required */);
+          // if the term was found, we know it has exactly one document.
+          doc = docs.nextDoc() + ctx.docBase;
+          break;
         }
       }
     } finally {
@@ -460,23 +443,17 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * effectively synchronized as well.
    */
   private int addCategoryDocument(FacetLabel categoryPath, int parent) throws IOException {
-    // Before Lucene 2.9, position increments >=0 were supported, so we
-    // added 1 to parent to allow the parent -1 (the parent of the root).
-    // Unfortunately, starting with Lucene 2.9, after LUCENE-1542, this is
-    // no longer enough, since 0 is not encoded consistently either (see
-    // comment in SinglePositionTokenStream). But because we must be
-    // backward-compatible with existing indexes, we can't just fix what
-    // we write here (e.g., to write parent+2), and need to do a workaround
-    // in the reader (which knows that anyway only category 0 has a parent
-    // -1).
-    parentStream.set(Math.max(parent + 1, 1));
     Document d = new Document();
-    d.add(parentStreamField);
+    /* Lucene 9 switches to NumericDocValuesField for storing parent ordinals */
+    d.add(new NumericDocValuesField(Consts.FIELD_PARENT_ORDINAL_NDV, parent));
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
-    d.add(fullPathField);
+
+    /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
     d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
+
+    d.add(fullPathField);
 
     // Note that we do no pass an Analyzer here because the fields that are
     // added to the Document are untokenized or contains their own TokenStream.
@@ -495,50 +472,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     addToCache(categoryPath, id);
 
     return id;
-  }
-
-  private static class SinglePositionTokenStream extends TokenStream {
-    private CharTermAttribute termAtt;
-    private PositionIncrementAttribute posIncrAtt;
-    private boolean returned;
-    private int val;
-    private final String word;
-
-    public SinglePositionTokenStream(String word) {
-      termAtt = addAttribute(CharTermAttribute.class);
-      posIncrAtt = addAttribute(PositionIncrementAttribute.class);
-      this.word = word;
-      returned = true;
-    }
-
-    /**
-     * Set the value we want to keep, as the position increment. Note that when
-     * TermPositions.nextPosition() is later used to retrieve this value, val-1 will be returned,
-     * not val.
-     *
-     * <p>IMPORTANT NOTE: Before Lucene 2.9, val&gt;=0 were safe (for val==0, the retrieved position
-     * would be -1). But starting with Lucene 2.9, this unfortunately changed, and only val&gt;0 are
-     * safe. val=0 can still be used, but don't count on the value you retrieve later (it could be 0
-     * or -1, depending on circumstances or versions). This change is described in Lucene's JIRA:
-     * LUCENE-1542.
-     */
-    public void set(int val) {
-      this.val = val;
-      returned = false;
-    }
-
-    @Override
-    public boolean incrementToken() throws IOException {
-      if (returned) {
-        return false;
-      }
-      clearAttributes();
-      posIncrAtt.setPositionIncrement(val);
-      termAtt.setEmpty();
-      termAtt.append(word);
-      returned = true;
-      return true;
-    }
   }
 
   private void addToCache(FacetLabel categoryPath, int id) throws IOException {
@@ -679,28 +612,26 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     try {
       PostingsEnum postingsEnum = null;
       for (LeafReaderContext ctx : reader.leaves()) {
-        Terms terms = ctx.reader().terms(Consts.FULL);
-        if (terms != null) { // cannot really happen, but be on the safe side
-          // TODO: share per-segment TermsEnum here!
-          TermsEnum termsEnum = terms.iterator();
-          while (termsEnum.next() != null) {
-            if (!cache.isFull()) {
-              BytesRef t = termsEnum.term();
-              // Since we guarantee uniqueness of categories, each term has exactly
-              // one document. Also, since we do not allow removing categories (and
-              // hence documents), there are no deletions in the index. Therefore, it
-              // is sufficient to call next(), and then doc(), exactly once with no
-              // 'validation' checks.
-              FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(t.utf8ToString()));
-              postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.NONE);
-              boolean res = cache.put(cp, postingsEnum.nextDoc() + ctx.docBase);
-              assert !res : "entries should not have been evicted from the cache";
-            } else {
-              // the cache is full and the next put() will evict entries from it, therefore abort
-              // the iteration.
-              aborted = true;
-              break;
-            }
+        Terms terms = Terms.getTerms(ctx.reader(), Consts.FULL);
+        // TODO: share per-segment TermsEnum here!
+        TermsEnum termsEnum = terms.iterator();
+        while (termsEnum.next() != null) {
+          if (!cache.isFull()) {
+            BytesRef t = termsEnum.term();
+            // Since we guarantee uniqueness of categories, each term has exactly
+            // one document. Also, since we do not allow removing categories (and
+            // hence documents), there are no deletions in the index. Therefore, it
+            // is sufficient to call next(), and then doc(), exactly once with no
+            // 'validation' checks.
+            FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(t.utf8ToString()));
+            postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.NONE);
+            boolean res = cache.put(cp, postingsEnum.nextDoc() + ctx.docBase);
+            assert !res : "entries should not have been evicted from the cache";
+          } else {
+            // the cache is full and the next put() will evict entries from it, therefore abort
+            // the iteration.
+            aborted = true;
+            break;
           }
         }
         if (aborted) {

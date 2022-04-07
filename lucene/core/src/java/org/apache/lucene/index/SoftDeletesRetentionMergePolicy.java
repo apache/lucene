@@ -23,7 +23,7 @@ import java.util.function.Supplier;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
@@ -115,7 +115,7 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
             },
             reader.maxDoc() - reader.numDocs());
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
-    builder.add(new DocValuesFieldExistsQuery(softDeleteField), BooleanClause.Occur.FILTER);
+    builder.add(new FieldExistsQuery(softDeleteField), BooleanClause.Occur.FILTER);
     builder.add(retentionQuery, BooleanClause.Occur.FILTER);
     Scorer scorer = getScorer(builder.build(), wrappedReader);
     if (scorer != null) {
@@ -158,7 +158,7 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
       final CodecReader reader = readerSupplier.get();
       if (reader.getLiveDocs() != null) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
-        builder.add(new DocValuesFieldExistsQuery(field), BooleanClause.Occur.FILTER);
+        builder.add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER);
         builder.add(retentionQuerySupplier.get(), BooleanClause.Occur.FILTER);
         Scorer scorer =
             getScorer(

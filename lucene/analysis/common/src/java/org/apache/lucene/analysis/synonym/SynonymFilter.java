@@ -192,7 +192,7 @@ public final class SynonymFilter extends TokenFilter {
 
     public void add(char[] output, int offset, int len, int endOffset, int posLength) {
       if (count == outputs.length) {
-        outputs = ArrayUtil.grow(outputs, count + 1);
+        outputs = ArrayUtil.grow(outputs);
       }
       if (count == endOffsets.length) {
         final int[] next = new int[ArrayUtil.oversize(1 + count, Integer.BYTES)];
