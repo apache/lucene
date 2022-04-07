@@ -33,12 +33,15 @@ import org.apache.lucene.facet.TopOrdAndIntQueue;
  *
  * @deprecated Visibility of this class will be reduced to pkg-private in a future version. This
  *     class is meant to host common code as an internal implementation detail to {@link
- *     FastTaxonomyFacetCounts} and {@link TaxonomyFacetSumIntAssociations},and is not intended as
- *     an extension point for user-created {@code Facets} implementations. If your code is relying
- *     on this, please migrate necessary functionality down into your own class.
+ *     FastTaxonomyFacetCounts} and {@link TaxonomyFacetIntAssociations},and is not intended as an
+ *     extension point for user-created {@code Facets} implementations. If your code is relying on
+ *     this, please migrate necessary functionality down into your own class.
  */
 @Deprecated
 public abstract class IntTaxonomyFacets extends TaxonomyFacets {
+
+  /** Aggregation function used for combining values. */
+  protected final AssociationAggregationFunction aggregationFunction;
 
   /**
    * Dense ordinal values.
@@ -56,11 +59,35 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
    */
   protected final IntIntHashMap sparseValues;
 
-  /** Sole constructor. */
+  /**
+   * Constructor that defaults the aggregation function to {@link
+   * AssociationAggregationFunction#SUM}.
+   */
   protected IntTaxonomyFacets(
       String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
       throws IOException {
     super(indexFieldName, taxoReader, config);
+    this.aggregationFunction = AssociationAggregationFunction.SUM;
+
+    if (useHashTable(fc, taxoReader)) {
+      sparseValues = new IntIntHashMap();
+      values = null;
+    } else {
+      sparseValues = null;
+      values = new int[taxoReader.getSize()];
+    }
+  }
+
+  /** Constructor that uses the provided aggregation function. */
+  protected IntTaxonomyFacets(
+      String indexFieldName,
+      TaxonomyReader taxoReader,
+      FacetsConfig config,
+      AssociationAggregationFunction aggregationFunction,
+      FacetsCollector fc)
+      throws IOException {
+    super(indexFieldName, taxoReader, config);
+    this.aggregationFunction = aggregationFunction;
 
     if (useHashTable(fc, taxoReader)) {
       sparseValues = new IntIntHashMap();
@@ -108,6 +135,15 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
   }
 
+  /** Set the count for this ordinal to {@code newValue}. */
+  void setValue(int ordinal, int newValue) {
+    if (sparseValues != null) {
+      sparseValues.put(ordinal, newValue);
+    } else {
+      values[ordinal] = newValue;
+    }
+  }
+
   /** Get the count for this ordinal. */
   protected int getValue(int ordinal) {
     if (sparseValues != null) {
@@ -133,7 +169,9 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
             // lazy init
             children = getChildren();
           }
-          increment(dimRootOrd, rollup(children[dimRootOrd]));
+          int currentValue = getValue(dimRootOrd);
+          int newValue = aggregationFunction.aggregate(currentValue, rollup(children[dimRootOrd]));
+          setValue(dimRootOrd, newValue);
         }
       }
     }
@@ -142,13 +180,15 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
   private int rollup(int ord) throws IOException {
     int[] children = getChildren();
     int[] siblings = getSiblings();
-    int sum = 0;
+    int aggregatedValue = 0;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      increment(ord, rollup(children[ord]));
-      sum += getValue(ord);
+      int currentValue = getValue(ord);
+      int newValue = aggregationFunction.aggregate(currentValue, rollup(children[ord]));
+      setValue(ord, newValue);
+      aggregatedValue = aggregationFunction.aggregate(aggregatedValue, getValue(ord));
       ord = siblings[ord];
     }
-    return sum;
+    return aggregatedValue;
   }
 
   @Override
@@ -185,7 +225,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     int bottomValue = 0;
 
-    int totValue = 0;
+    int aggregatedValue = 0;
     int childCount = 0;
 
     TopOrdAndIntQueue.OrdAndValue reuse = null;
@@ -195,17 +235,17 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     if (sparseValues != null) {
       for (IntIntCursor c : sparseValues) {
-        int count = c.value;
+        int value = c.value;
         int ord = c.key;
-        if (parents[ord] == dimOrd && count > 0) {
-          totValue += count;
+        if (parents[ord] == dimOrd && value > 0) {
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
-          if (count > bottomValue) {
+          if (value > bottomValue) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
             reuse.ord = ord;
-            reuse.value = count;
+            reuse.value = value;
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomValue = q.top().value;
@@ -220,7 +260,7 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int value = values[ord];
         if (value > 0) {
-          totValue += value;
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
           if (value > bottomValue) {
             if (reuse == null) {
@@ -239,16 +279,16 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       }
     }
 
-    if (totValue == 0) {
+    if (aggregatedValue == 0) {
       return null;
     }
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        totValue = getValue(dimOrd);
+        aggregatedValue = getValue(dimOrd);
       } else {
         // Our sum'd value is not correct, in general:
-        totValue = -1;
+        aggregatedValue = -1;
       }
     } else {
       // Our sum'd dim value is accurate, so we keep it
@@ -269,6 +309,6 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], values[i]);
     }
 
-    return new FacetResult(dim, path, totValue, labelValues, childCount);
+    return new FacetResult(dim, path, aggregatedValue, labelValues, childCount);
   }
 }

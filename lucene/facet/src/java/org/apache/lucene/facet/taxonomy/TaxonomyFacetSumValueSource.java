@@ -17,28 +17,23 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
-import java.util.List;
-import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
-import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConjunctionUtils;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
-import org.apache.lucene.util.IntsRef;
 
 /**
  * Aggregates sum of values from {@link DoubleValues#doubleValue()}, for each facet label.
  *
  * @lucene.experimental
+ * @deprecated This class is being deprecated in favor of {@link TaxonomyFacetFloatAssociations},
+ *     which provides more flexible aggregation functionality beyond just "sum"
  */
-public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
-  private final OrdinalsReader ordinalsReader;
+@Deprecated
+public class TaxonomyFacetSumValueSource extends TaxonomyFacetFloatAssociations {
 
   /**
-   * Aggreggates double facet values from the provided {@link DoubleValuesSource}, pulling ordinals
+   * Aggregates double facet values from the provided {@link DoubleValuesSource}, pulling ordinals
    * from the default indexed facet field {@link FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
    */
   public TaxonomyFacetSumValueSource(
@@ -51,7 +46,7 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
   }
 
   /**
-   * Aggreggates double facet values from the provided {@link DoubleValuesSource}, pulling ordinals
+   * Aggregates double facet values from the provided {@link DoubleValuesSource}, pulling ordinals
    * from the specified indexed facet field.
    */
   public TaxonomyFacetSumValueSource(
@@ -61,13 +56,11 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       FacetsCollector fc,
       DoubleValuesSource valueSource)
       throws IOException {
-    super(indexField, taxoReader, config);
-    ordinalsReader = null;
-    sumValues(fc.getMatchingDocs(), fc.getKeepScores(), valueSource);
+    super(indexField, taxoReader, config, fc, AssociationAggregationFunction.SUM, valueSource);
   }
 
   /**
-   * Aggreggates float facet values from the provided {@link DoubleValuesSource}, and pulls ordinals
+   * Aggregates float facet values from the provided {@link DoubleValuesSource}, and pulls ordinals
    * from the provided {@link OrdinalsReader}.
    *
    * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
@@ -81,79 +74,6 @@ public class TaxonomyFacetSumValueSource extends FloatTaxonomyFacets {
       FacetsCollector fc,
       DoubleValuesSource vs)
       throws IOException {
-    super(ordinalsReader.getIndexFieldName(), taxoReader, config);
-    this.ordinalsReader = ordinalsReader;
-    sumValues(fc.getMatchingDocs(), fc.getKeepScores(), vs);
-  }
-
-  private static DoubleValues scores(MatchingDocs hits) {
-    return new DoubleValues() {
-
-      int index = -1;
-
-      @Override
-      public double doubleValue() throws IOException {
-        return hits.scores[index];
-      }
-
-      @Override
-      public boolean advanceExact(int doc) throws IOException {
-        index = doc;
-        return true;
-      }
-    };
-  }
-
-  private void sumValues(
-      List<MatchingDocs> matchingDocs, boolean keepScores, DoubleValuesSource valueSource)
-      throws IOException {
-
-    if (ordinalsReader != null) {
-      // If the user provided a custom ordinals reader, use it to retrieve the document ordinals:
-      IntsRef scratch = new IntsRef();
-      for (MatchingDocs hits : matchingDocs) {
-        OrdinalsReader.OrdinalsSegmentReader ords = ordinalsReader.getReader(hits.context);
-        DoubleValues scores = keepScores ? scores(hits) : null;
-        DoubleValues functionValues = valueSource.getValues(hits.context, scores);
-        DocIdSetIterator docs = hits.bits.iterator();
-
-        int doc;
-        while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          ords.get(doc, scratch);
-          if (functionValues.advanceExact(doc)) {
-            float value = (float) functionValues.doubleValue();
-            for (int i = 0; i < scratch.length; i++) {
-              values[scratch.ints[i]] += value;
-            }
-          }
-        }
-      }
-    } else {
-      // If no custom ordinals reader is provided, expect the default encoding:
-      for (MatchingDocs hits : matchingDocs) {
-        SortedNumericDocValues ordinalValues =
-            FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
-        if (ordinalValues == null) {
-          continue;
-        }
-
-        DoubleValues scores = keepScores ? scores(hits) : null;
-        DoubleValues functionValues = valueSource.getValues(hits.context, scores);
-        DocIdSetIterator it =
-            ConjunctionUtils.intersectIterators(List.of(hits.bits.iterator(), ordinalValues));
-
-        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-          if (functionValues.advanceExact(doc)) {
-            float value = (float) functionValues.doubleValue();
-            int ordinalCount = ordinalValues.docValueCount();
-            for (int i = 0; i < ordinalCount; i++) {
-              values[(int) ordinalValues.nextValue()] += value;
-            }
-          }
-        }
-      }
-    }
-
-    rollup();
+    super(ordinalsReader, taxoReader, config, fc, AssociationAggregationFunction.SUM, vs);
   }
 }
