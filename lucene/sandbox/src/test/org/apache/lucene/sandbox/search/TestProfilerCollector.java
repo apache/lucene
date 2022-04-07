@@ -73,12 +73,13 @@ public class TestProfilerCollector extends LuceneTestCase {
 
   public void testProfilerCollectorCustomName() {
     ProfilerCollector collector =
-            new ProfilerCollector(new TestCollector(new TotalHitCountCollector()), "filter", List.of()) {
-              @Override
-              protected String deriveCollectorName(Collector c) {
-                return c.toString();
-              }
-            };
+        new ProfilerCollector(
+            new TestCollector(new TotalHitCountCollector()), "filter", List.of()) {
+          @Override
+          protected String deriveCollectorName(Collector c) {
+            return c.toString();
+          }
+        };
 
     assertEquals("TestCollector(TotalHitCountCollector)", collector.getName());
   }

@@ -68,7 +68,8 @@ public class ProfilerCollector implements Collector {
   }
 
   /**
-   * Creates a human-friendly representation of the Collector name. Override to customize how the name is derived.
+   * Creates a human-friendly representation of the Collector name. Override to customize how the
+   * name is derived.
    *
    * @param c The Collector to derive a name from
    * @return A (hopefully) prettier name
