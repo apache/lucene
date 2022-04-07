@@ -21,7 +21,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
@@ -78,7 +77,7 @@ final class PendingSoftDeletes extends PendingDeletes {
     // only re-calculate this if we haven't seen this generation
     if (dvGeneration < info.getDocValuesGen()) {
       final DocIdSetIterator iterator =
-          DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
+          DocValuesIterator.getDocValuesDocIdSetIterator(field, reader);
       int newDelCount;
       if (iterator
           != null) { // nothing is deleted we don't have a soft deletes field in this segment
