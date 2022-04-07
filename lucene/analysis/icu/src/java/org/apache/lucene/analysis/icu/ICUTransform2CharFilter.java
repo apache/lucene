@@ -104,7 +104,7 @@ public final class ICUTransform2CharFilter extends BaseCharFilter {
    * @param registrar - callback that receives notifications of incremental offset diffs upon
    *     flushing completed portions of the transliteration buffer.
    */
-  public ICUTransform2CharFilter(
+  ICUTransform2CharFilter(
       Reader in,
       Transliterator[] leaves,
       IntUnaryOperator[] bypassFilterFunctions,
