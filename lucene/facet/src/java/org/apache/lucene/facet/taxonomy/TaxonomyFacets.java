@@ -113,6 +113,22 @@ abstract class TaxonomyFacets extends Facets {
   }
 
   /**
+   * Returns existing int[] mapping each ordinal to its next sibling to avoid re-creating int[] for
+   * siblings in subclass
+   */
+  public int[] getExistingSiblings() throws IOException {
+    return childrenLoaded() ? this.siblings : getSiblings();
+  }
+
+  /**
+   * Returns existing int[] mapping each ordinal to its first child to avoid re-creating int[] for
+   * children in subclass
+   */
+  public int[] getExistingChildren() throws IOException {
+    return childrenLoaded() ? this.children : getChildren();
+  }
+
+  /**
    * Verifies and returns {@link DimConfig} for the given dimension name.
    *
    * @return {@link DimConfig} for the given dim, or {@link FacetsConfig#DEFAULT_DIM_CONFIG} if it

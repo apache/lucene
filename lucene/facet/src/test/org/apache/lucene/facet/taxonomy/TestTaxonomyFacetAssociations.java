@@ -202,6 +202,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
+
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   public void testIntAssociationRandom() throws Exception {
@@ -229,6 +234,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
     validateInts("int_single_valued", expected, AssociationAggregationFunction.SUM, false, facets);
 
+    // test getAllDims and getTopDims
+    List<FacetResult> allDims = facets.getAllDims(10);
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    assertEquals(topDims, allDims);
+
     // MAX:
     facets =
         new TaxonomyFacetIntAssociations(
@@ -243,6 +253,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       expected.put(e.getKey(), e.getValue().stream().max(Integer::compareTo).orElse(0));
     }
     validateInts("int_single_valued", expected, AssociationAggregationFunction.MAX, false, facets);
+
+    // test getAllDims and getTopDims
+    topDims = facets.getTopDims(10, 10);
+    allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   public void testFloatSumAssociation() throws Exception {
@@ -265,6 +280,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         10f,
         facets.getSpecificValue("float", "b").floatValue(),
         0.00001);
+
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   public void testFloatAssociationRandom() throws Exception {
@@ -293,6 +313,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     validateFloats(
         "float_single_valued", expected, AssociationAggregationFunction.SUM, false, facets);
 
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
+
     // MAX:
     facets =
         new TaxonomyFacetFloatAssociations(
@@ -308,6 +333,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
     validateFloats(
         "float_single_valued", expected, AssociationAggregationFunction.MAX, false, facets);
+
+    // test getAllDims and getTopDims
+    topDims = facets.getTopDims(10, 10);
+    allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   /**
