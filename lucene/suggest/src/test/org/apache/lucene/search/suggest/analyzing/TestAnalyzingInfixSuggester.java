@@ -21,6 +21,7 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,6 +41,7 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.suggest.Input;
 import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
+import org.apache.lucene.search.suggest.SuggestRebuildTestUtil;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -176,6 +178,51 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
     assertEquals(10, results.get(0).value);
     assertEquals(new BytesRef("foobaz"), results.get(0).payload);
     assertEquals(2, suggester.getCount());
+    suggester.close();
+    a.close();
+  }
+
+  public void testLookupsDuringReBuild() throws Exception {
+    Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+    AnalyzingInfixSuggester suggester = new AnalyzingInfixSuggester(newDirectory(), a, a, 3, false);
+
+    SuggestRebuildTestUtil.testLookupsDuringReBuild(
+        suggester,
+        Arrays.asList(
+            new Input("lend me your ear", 8, new BytesRef("foobar")),
+            new Input("a penny saved is a penny earned", 10, new BytesRef("foobaz"))),
+        s -> {
+          assertEquals(2, s.getCount());
+          List<LookupResult> results =
+              s.lookup(
+                  TestUtil.stringToCharSequence("ear", random()),
+                  (BooleanQuery) null,
+                  10,
+                  true,
+                  true);
+          assertEquals(2, results.size());
+          assertEquals("a penny saved is a penny earned", results.get(0).key);
+          assertEquals("a penny saved is a penny <b>ear</b>ned", results.get(0).highlightKey);
+          assertEquals(10, results.get(0).value);
+          assertEquals(new BytesRef("foobaz"), results.get(0).payload);
+        },
+        Arrays.asList(new Input("earned run average", 42, new BytesRef("yakbaz"))),
+        s -> {
+          assertEquals(3, s.getCount());
+          List<LookupResult> results =
+              s.lookup(
+                  TestUtil.stringToCharSequence("ear", random()),
+                  (BooleanQuery) null,
+                  10,
+                  true,
+                  true);
+          assertEquals(3, results.size());
+          assertEquals("earned run average", results.get(0).key);
+          assertEquals("<b>ear</b>ned run average", results.get(0).highlightKey);
+          assertEquals(42, results.get(0).value);
+          assertEquals(new BytesRef("yakbaz"), results.get(0).payload);
+        });
+
     suggester.close();
     a.close();
   }
