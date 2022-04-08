@@ -146,10 +146,15 @@ class GeoRectangle extends GeoBaseBBox {
     this.centerPoint =
         new GeoPoint(planetModel, sinMiddleLat, sinMiddleLon, cosMiddleLat, cosMiddleLon);
 
-    this.topPlane = new SidedPlane(centerPoint, planetModel, sinTopLat);
-    this.bottomPlane = new SidedPlane(centerPoint, planetModel, sinBottomLat);
-    this.leftPlane = new SidedPlane(centerPoint, cosLeftLon, sinLeftLon);
-    this.rightPlane = new SidedPlane(centerPoint, cosRightLon, sinRightLon);
+    this.topPlane = new SidedPlane(LLHC, planetModel, sinTopLat);
+    this.bottomPlane = new SidedPlane(URHC, planetModel, sinBottomLat);
+    this.leftPlane = new SidedPlane(URHC, cosLeftLon, sinLeftLon);
+    this.rightPlane = new SidedPlane(LLHC, cosRightLon, sinRightLon);
+
+    assert (topPlane.isWithin(centerPoint));
+    assert (bottomPlane.isWithin(centerPoint));
+    assert (leftPlane.isWithin(centerPoint));
+    assert (rightPlane.isWithin(centerPoint));
 
     // Compute the backing plane
     // The normal for this plane is a unit vector through the origin that goes through the middle
