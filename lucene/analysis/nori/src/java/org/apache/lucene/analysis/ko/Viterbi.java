@@ -64,6 +64,8 @@ final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.
     this.discardPunctuation = discardPunctuation;
     this.mode = mode;
     this.outputUnknownUnigrams = outputUnknownUnigrams;
+    this.enableSpacePenaltyFactor = true;
+    this.outputLongestUserEntryOnly = true;
     dictionaryMap.put(TokenType.KNOWN, dictionary);
     dictionaryMap.put(TokenType.UNKNOWN, unkDictionary);
     dictionaryMap.put(TokenType.USER, userDictionary);
@@ -133,7 +135,8 @@ final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.
             pos,
             pos + unknownWordLength,
             wordIdRef.ints[wordIdRef.offset + ofs],
-            TokenType.UNKNOWN);
+            TokenType.UNKNOWN,
+          false);
       }
     }
   }

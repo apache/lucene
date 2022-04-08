@@ -50,7 +50,6 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
   protected final RollingCharBuffer buffer = new RollingCharBuffer();
 
   protected final WrappedPositionArray<U> positions;
-  private final Class<U> positionImpl;
 
   // True once we've hit the EOF from the input reader:
   protected boolean end;
@@ -63,6 +62,12 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
 
   // Already parsed, but not yet passed to caller, tokens:
   protected final List<T> pending = new ArrayList<>();
+
+  protected boolean outputNBest = false;
+
+  protected boolean enableSpacePenaltyFactor = false;
+
+  protected boolean outputLongestUserEntryOnly = false;
 
   protected Viterbi(
       TokenInfoFST fst,
@@ -82,7 +87,6 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     this.userDictionary = userDictionary;
     this.costs = costs;
     this.positions = new WrappedPositionArray<>(positionImpl);
-    this.positionImpl = positionImpl;
   }
 
 
@@ -123,7 +127,13 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
         // alive, so whatever the eventual best path is must
         // come through this node.  So we can safely commit
         // to the prefix of the best path at this point:
+        if (outputNBest) {
+          backtraceNBest(posData, false);
+        }
         backtrace(posData, 0);
+        if (outputNBest) {
+          fixupPendingList();
+        }
 
         // Re-base cost so we don't risk int overflow:
         posData.costs[0] = 0;
@@ -167,6 +177,10 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
         // We will always have at least one live path:
         assert leastIDX != -1;
 
+        if (outputNBest) {
+          backtraceNBest(leastPosData, false);
+        }
+
         // Second pass: prune all but the best path:
         for (int pos2 = pos; pos2 < positions.getNextPos(); pos2++) {
           final Position posData2 = positions.get(pos2);
@@ -187,6 +201,9 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
         }
 
         backtrace(leastPosData, 0);
+        if (outputNBest) {
+          fixupPendingList();
+        }
 
         // Re-base cost so we don't risk int overflow:
         Arrays.fill(leastPosData.costs, 0, leastPosData.count, 0);
@@ -219,11 +236,11 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
         System.out.println("    " + posData.count + " arcs in");
       }
 
-      // We add single space separator as prefixes of the terms that we extract.
-      // This information is needed to compute the space penalty factor of each term.
-      // These whitespace prefixes are removed when the final tokens are generated, or
-      // added as separated tokens when discardPunctuation is unset.
-      if (Character.getType(buffer.get(pos)) == Character.SPACE_SEPARATOR) {
+      if (enableSpacePenaltyFactor && Character.getType(buffer.get(pos)) == Character.SPACE_SEPARATOR) {
+        // We add single space separator as prefixes of the terms that we extract.
+        // This information is needed to compute the space penalty factor of each term.
+        // These whitespace prefixes are removed when the final tokens are generated, or
+        // added as separated tokens when discardPunctuation is unset.
         if (buffer.get(++pos) == -1) {
           pos = posData.pos;
         }
@@ -271,7 +288,8 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
               pos,
               maxPosAhead + 1,
               outputMaxPosAhead + arcFinalOutMaxPosAhead,
-              TokenType.USER);
+              TokenType.USER,
+            false);
           userWordMaxPosAhead = Math.max(userWordMaxPosAhead, maxPosAhead);
         }
       }
@@ -323,7 +341,8 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
                   pos,
                   posAhead + 1,
                   wordIdRef.ints[wordIdRef.offset + ofs],
-                  TokenType.KNOWN);
+                  TokenType.KNOWN,
+                false);
               anyMatches = true;
             }
           }
@@ -358,7 +377,13 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
         }
       }
 
+      if (outputNBest) {
+        backtraceNBest(endPosData, true);
+      }
       backtrace(endPosData, leastIDX);
+      if (outputNBest) {
+        fixupPendingList();
+      }
     } else {
       // No characters in the input string; return no tokens!
     }
@@ -377,13 +402,22 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
   // (last token should be returned first).
   protected abstract void backtrace(final Position endPosData, final int fromIDX);
 
+  protected void backtraceNBest(final Position endPosData, final boolean useEOS) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  protected void fixupPendingList() {
+    throw new UnsupportedOperationException();
+  }
+
   protected void add(
       MorphData morphData,
       Position fromPosData,
       int wordPos,
       int endPos,
       int wordID,
-      TokenType type) {
+      TokenType type,
+      boolean addPenalty) throws IOException {
     final int wordCost = morphData.getWordCost(wordID);
     final int leftID = morphData.getLeftId(wordID);
     int leastCost = Integer.MAX_VALUE;
@@ -446,6 +480,16 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
               + positions.get(endPos).count);
     }
 
+    if (addPenalty && type != TokenType.USER) {
+      final int penalty = computePenalty(fromPosData.pos, endPos - fromPosData.pos);
+      if (VERBOSE) {
+        if (penalty > 0) {
+          System.out.println("        + penalty=" + penalty + " cost=" + (leastCost + penalty));
+        }
+      }
+      leastCost += penalty;
+    }
+
     positions
         .get(endPos)
         .add(
@@ -460,6 +504,11 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
 
   /** Returns the space penalty. */
   protected int computeSpacePenalty(MorphData morphData, int wordID, int numSpaces) {
+    return 0;
+  }
+
+  /** Returns the penalty for a specific input region */
+  protected int computePenalty(int pos, int length) throws IOException {
     return 0;
   }
 
