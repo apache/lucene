@@ -80,6 +80,8 @@ public class TestVectorUtil extends LuceneTestCase {
   public void testSelfCosine() {
     // the dot product of a vector with itself is always equal to 1
     float[] v = randomVector();
+    // ensure the vector is non-zero so that cosine is defined
+    v[0] = random().nextFloat() + 0.01f;
     assertEquals(1.0f, VectorUtil.cosine(v, v), DELTA);
   }
 
@@ -87,7 +89,8 @@ public class TestVectorUtil extends LuceneTestCase {
     // the cosine of two perpendicular vectors is 0
     float[] v = new float[2];
     v[0] = random().nextInt(100);
-    v[1] = random().nextInt(100);
+    // ensure the vector is non-zero so that cosine is defined
+    v[1] = 1 + random().nextInt(99);
     float[] u = new float[2];
     u[0] = v[1];
     u[1] = -v[0];
