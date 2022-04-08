@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.morph;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +28,7 @@ import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 
-public abstract class Viterbi<T extends Token> {
+public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
   protected static final boolean VERBOSE = false;
 
   // For safety:
@@ -48,7 +49,8 @@ public abstract class Viterbi<T extends Token> {
 
   protected final RollingCharBuffer buffer = new RollingCharBuffer();
 
-  protected final WrappedPositionArray positions = new WrappedPositionArray();
+  protected final WrappedPositionArray<U> positions;
+  private final Class<U> positionImpl;
 
   // True once we've hit the EOF from the input reader:
   protected boolean end;
@@ -69,7 +71,8 @@ public abstract class Viterbi<T extends Token> {
       TokenInfoFST userFST,
       FST.BytesReader userFSTReader,
       Dictionary<? extends MorphData> userDictionary,
-      ConnectionCosts costs
+      ConnectionCosts costs,
+      Class<U> positionImpl
       ) {
     this.fst = fst;
     this.fstReader = fstReader;
@@ -78,6 +81,8 @@ public abstract class Viterbi<T extends Token> {
     this.userFSTReader = userFSTReader;
     this.userDictionary = userDictionary;
     this.costs = costs;
+    this.positions = new WrappedPositionArray<>(positionImpl);
+    this.positionImpl = positionImpl;
   }
 
 
@@ -485,7 +490,11 @@ public abstract class Viterbi<T extends Token> {
     positions.get(0).add(0, 0, -1, -1, -1, -1, TokenType.KNOWN);
   }
 
-  // Holds all back pointers arriving to this position:
+  /**
+   * Holds all back pointers arriving to this position.
+   *
+   * NOTE: This and subclasses must have no-arg constructor. See {@link WrappedPositionArray}.
+   * */
   public static class Position {
 
     int pos;
@@ -587,15 +596,21 @@ public abstract class Viterbi<T extends Token> {
     }
   }
 
-  // TODO: make generic'd version of this "circular array"?
-  // It's a bit tricky because we do things to the Position
-  // (eg, set .pos = N on reuse)...
-  public static final class WrappedPositionArray {
-    private Position[] positions = new Position[8];
+  public static final class WrappedPositionArray<U extends Position> {
+    private U[] positions;
+    private final Class<U> clazz;
 
-    public WrappedPositionArray() {
+    @SuppressWarnings("unchecked")
+    public WrappedPositionArray(Class<U> clazz) {
+      this.clazz = clazz;
+      positions = (U[]) Array.newInstance(clazz, 8);
       for (int i = 0; i < positions.length; i++) {
-        positions[i] = new Position();
+        try {
+          positions[i] = clazz.getConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
+          // shouldn't happen; Position class should have no-arg constructor.
+          throw new IllegalStateException(e);
+        }
       }
     }
 
@@ -627,17 +642,24 @@ public abstract class Viterbi<T extends Token> {
      * Get Position instance for this absolute position; this is allowed to be arbitrarily far "in
      * the future" but cannot be before the last freeBefore.
      */
-    public Position get(int pos) {
+    @SuppressWarnings("unchecked")
+    public U get(int pos) {
       while (pos >= nextPos) {
         // System.out.println("count=" + count + " vs len=" + positions.length);
         if (count == positions.length) {
-          Position[] newPositions =
-              new Position[ArrayUtil.oversize(1 + count, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+          //Position[] newPositions =
+          //    new Position[ArrayUtil.oversize(1 + count, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+          U[] newPositions = (U[]) Array.newInstance(clazz, ArrayUtil.oversize(1 + count, RamUsageEstimator.NUM_BYTES_OBJECT_REF));
           // System.out.println("grow positions " + newPositions.length);
           System.arraycopy(positions, nextWrite, newPositions, 0, positions.length - nextWrite);
           System.arraycopy(positions, 0, newPositions, positions.length - nextWrite, nextWrite);
           for (int i = positions.length; i < newPositions.length; i++) {
-            newPositions[i] = new Position();
+            try {
+              newPositions[i] = clazz.getConstructor().newInstance();
+            } catch (ReflectiveOperationException e) {
+              // shouldn't happen
+              throw new IllegalStateException(e);
+            }
           }
           nextWrite = positions.length;
           positions = newPositions;

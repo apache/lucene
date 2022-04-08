@@ -32,7 +32,7 @@ import org.apache.lucene.analysis.morph.TokenInfoFST;
 import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.util.fst.FST;
 
-final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
+final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.apache.lucene.analysis.morph.Viterbi.Position> {
 
   private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap = new EnumMap<>(TokenType.class);
 
@@ -58,7 +58,7 @@ final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
       boolean discardPunctuation,
       KoreanTokenizer.DecompoundMode mode,
       boolean outputUnknownUnigrams) {
-    super(fst, fstReader, dictionary, userFST, userFSTReader, userDictionary, costs);
+    super(fst, fstReader, dictionary, userFST, userFSTReader, userDictionary, costs, Position.class);
     this.unkDictionary = unkDictionary;
     this.characterDefinition = characterDefinition;
     this.discardPunctuation = discardPunctuation;

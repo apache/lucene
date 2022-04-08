@@ -51,7 +51,7 @@ public class GraphvizFormatter<T extends MorphData> {
   // Backtraces another incremental fragment:
   public void onBacktrace(
     DictionaryProvider<T> dictProvider,
-    Viterbi.WrappedPositionArray positions,
+    Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
     int lastBackTracePos,
     Viterbi.Position endPosData,
     int fromIDX,
@@ -69,7 +69,7 @@ public class GraphvizFormatter<T extends MorphData> {
 
   // Records which arcs make up the best bath:
   private void setBestPathMap(
-    Viterbi.WrappedPositionArray positions,
+    Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
     int startPos,
     Viterbi.Position endPosData,
     int fromIDX) {
@@ -96,7 +96,7 @@ public class GraphvizFormatter<T extends MorphData> {
 
   private String formatNodes(
     DictionaryProvider<T> dictProvider,
-    Viterbi.WrappedPositionArray positions,
+    Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
     int startPos,
     Viterbi.Position endPosData,
     char[] fragment) {
