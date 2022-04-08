@@ -1,8 +1,23 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.analysis.ko;
 
 import java.io.IOException;
 import java.util.EnumMap;
-import java.util.Map;
 
 import org.apache.lucene.analysis.ko.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ko.dict.KoMorphData;
@@ -17,7 +32,7 @@ import org.apache.lucene.analysis.morph.TokenInfoFST;
 import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.util.fst.FST;
 
-public class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
+final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
 
   private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap = new EnumMap<>(TokenType.class);
 
@@ -30,7 +45,7 @@ public class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
 
   private GraphvizFormatter<KoMorphData> dotOut;
 
-  protected Viterbi(
+  Viterbi(
       TokenInfoFST fst,
       FST.BytesReader fstReader,
       TokenInfoDictionary dictionary,
