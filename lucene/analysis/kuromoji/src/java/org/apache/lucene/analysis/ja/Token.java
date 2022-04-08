@@ -16,16 +16,14 @@
  */
 package org.apache.lucene.analysis.ja;
 
-import org.apache.lucene.analysis.ja.JapaneseTokenizer.Type;
 import org.apache.lucene.analysis.ja.dict.JaMorphData;
+import org.apache.lucene.analysis.morph.TokenType;
 
 /** Analyzed token with morphological data from its dictionary. */
 public class Token extends org.apache.lucene.analysis.morph.Token {
   private final JaMorphData morphData;
 
   private final int morphId;
-
-  private final Type type;
 
   public Token(
       char[] surfaceForm,
@@ -34,11 +32,10 @@ public class Token extends org.apache.lucene.analysis.morph.Token {
       int startOffset,
       int endOffset,
       int morphId,
-      Type type,
+      TokenType type,
       JaMorphData morphData) {
-    super(surfaceForm, offset, length, startOffset, endOffset);
+    super(surfaceForm, offset, length, startOffset, endOffset, type);
     this.morphId = morphId;
-    this.type = type;
     this.morphData = morphData;
   }
 
@@ -92,21 +89,12 @@ public class Token extends org.apache.lucene.analysis.morph.Token {
   }
 
   /**
-   * Returns the type of this token
-   *
-   * @return token type, not null
-   */
-  public Type getType() {
-    return type;
-  }
-
-  /**
    * Returns true if this token is known word
    *
    * @return true if this token is in standard dictionary. false if not.
    */
   public boolean isKnown() {
-    return type == Type.KNOWN;
+    return type == TokenType.KNOWN;
   }
 
   /**
@@ -115,7 +103,7 @@ public class Token extends org.apache.lucene.analysis.morph.Token {
    * @return true if this token is unknown word. false if not.
    */
   public boolean isUnknown() {
-    return type == Type.UNKNOWN;
+    return type == TokenType.UNKNOWN;
   }
 
   /**
@@ -124,6 +112,6 @@ public class Token extends org.apache.lucene.analysis.morph.Token {
    * @return true if this token is in user dictionary. false if not.
    */
   public boolean isUser() {
-    return type == Type.USER;
+    return type == TokenType.USER;
   }
 }
