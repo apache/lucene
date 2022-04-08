@@ -350,7 +350,8 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
       }
 
       if (!shouldSkipProcessUnknownWord(unknownWordEndIndex, posData)) {
-        processUnknownWord(anyMatches, posData);
+        int unknownWordLength = processUnknownWord(anyMatches, posData);
+        unknownWordEndIndex = posData.pos + unknownWordLength;
       }
       pos++;
     }
@@ -393,14 +394,18 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     return unknownWordEndIndex > posData.pos;
   }
 
-  protected abstract void processUnknownWord(boolean anyMatches, Position posData)
+  /**
+   * Add unknown words to the position graph.
+   * @return word length
+   */
+  protected abstract int processUnknownWord(boolean anyMatches, Position posData)
       throws IOException;
 
   // Backtrace from the provided position, back to the last
   // time we back-traced, accumulating the resulting tokens to
   // the pending list.  The pending list is then in-reverse
   // (last token should be returned first).
-  protected abstract void backtrace(final Position endPosData, final int fromIDX);
+  protected abstract void backtrace(final Position endPosData, final int fromIDX) throws IOException;
 
   protected void backtraceNBest(final Position endPosData, final boolean useEOS) throws IOException {
     throw new UnsupportedOperationException();
@@ -524,6 +529,10 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     return pending;
   }
 
+  public boolean isOutputNBest() {
+    return outputNBest;
+  }
+
   public void resetBuffer(Reader reader) {
     buffer.reset(reader);
   }
@@ -614,6 +623,10 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
 
     public int getCount() {
       return count;
+    }
+
+    public void setCount(int count) {
+      this.count = count;
     }
 
     public int getCost(int index) {

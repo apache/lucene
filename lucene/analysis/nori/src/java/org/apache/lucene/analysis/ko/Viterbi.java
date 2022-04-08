@@ -72,7 +72,7 @@ final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.
   }
 
   @Override
-  protected void processUnknownWord(boolean anyMatches, Position posData) throws IOException {
+  protected int processUnknownWord(boolean anyMatches, Position posData) throws IOException {
     final char firstCharacter = (char) buffer.get(pos);
     if (!anyMatches || characterDefinition.isInvoke(firstCharacter)) {
 
@@ -139,6 +139,8 @@ final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.
           false);
       }
     }
+    // TODO: should return meaningful value?
+    return 0;
   }
 
   public void setGraphvizFormatter(GraphvizFormatter<KoMorphData> dotOut) {
