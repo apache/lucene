@@ -50,13 +50,13 @@ public class GraphvizFormatter<T extends MorphData> {
 
   // Backtraces another incremental fragment:
   public void onBacktrace(
-    DictionaryProvider<T> dictProvider,
-    Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
-    int lastBackTracePos,
-    Viterbi.Position endPosData,
-    int fromIDX,
-    char[] fragment,
-    boolean isEnd) {
+      DictionaryProvider<T> dictProvider,
+      Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
+      int lastBackTracePos,
+      Viterbi.Position endPosData,
+      int fromIDX,
+      char[] fragment,
+      boolean isEnd) {
     setBestPathMap(positions, lastBackTracePos, endPosData, fromIDX);
     sb.append(formatNodes(dictProvider, positions, lastBackTracePos, endPosData, fragment));
     if (isEnd) {
@@ -69,10 +69,10 @@ public class GraphvizFormatter<T extends MorphData> {
 
   // Records which arcs make up the best bath:
   private void setBestPathMap(
-    Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
-    int startPos,
-    Viterbi.Position endPosData,
-    int fromIDX) {
+      Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
+      int startPos,
+      Viterbi.Position endPosData,
+      int fromIDX) {
     bestPathMap.clear();
 
     int pos = endPosData.getPos();
@@ -95,11 +95,11 @@ public class GraphvizFormatter<T extends MorphData> {
   }
 
   private String formatNodes(
-    DictionaryProvider<T> dictProvider,
-    Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
-    int startPos,
-    Viterbi.Position endPosData,
-    char[] fragment) {
+      DictionaryProvider<T> dictProvider,
+      Viterbi.WrappedPositionArray<? extends Viterbi.Position> positions,
+      int startPos,
+      Viterbi.Position endPosData,
+      char[] fragment) {
 
     StringBuilder sb = new StringBuilder();
     // Output nodes
@@ -140,12 +140,12 @@ public class GraphvizFormatter<T extends MorphData> {
         final Dictionary<? extends T> dict = dictProvider.get(posData.getBackType(idx));
         final int wordCost = dict.getWordCost(posData.getBackID(idx));
         final int bgCost =
-          costs.get(
-            backPosData.getLastRightID(posData.getBackIndex(idx)),
-            dict.getLeftId(posData.getBackID(idx)));
+            costs.get(
+                backPosData.getLastRightID(posData.getBackIndex(idx)),
+                dict.getLeftId(posData.getBackID(idx)));
 
         final String surfaceForm =
-          new String(fragment, posData.getBackPos(idx) - startPos, pos - posData.getBackPos(idx));
+            new String(fragment, posData.getBackPos(idx) - startPos, pos - posData.getBackPos(idx));
 
         sb.append(" [label=\"");
         sb.append(surfaceForm);
@@ -165,18 +165,18 @@ public class GraphvizFormatter<T extends MorphData> {
 
   private String formatHeader() {
     return "digraph viterbi {\n"
-      + "  graph [ fontsize=30 labelloc=\"t\" label=\"\" splines=true overlap=false rankdir = \"LR\"];\n"
-      +
-      // sb.append("  // A2 paper size\n");
-      // sb.append("  size = \"34.4,16.5\";\n");
-      // sb.append("  // try to fill paper\n");
-      // sb.append("  ratio = fill;\n");
-      "  edge [ fontname=\""
-      + FONT_NAME
-      + "\" fontcolor=\"red\" color=\"#606060\" ]\n"
-      + "  node [ style=\"filled\" fillcolor=\"#e8e8f0\" shape=\"Mrecord\" fontname=\""
-      + FONT_NAME
-      + "\" ]\n";
+        + "  graph [ fontsize=30 labelloc=\"t\" label=\"\" splines=true overlap=false rankdir = \"LR\"];\n"
+        +
+        // sb.append("  // A2 paper size\n");
+        // sb.append("  size = \"34.4,16.5\";\n");
+        // sb.append("  // try to fill paper\n");
+        // sb.append("  ratio = fill;\n");
+        "  edge [ fontname=\""
+        + FONT_NAME
+        + "\" fontcolor=\"red\" color=\"#606060\" ]\n"
+        + "  node [ style=\"filled\" fillcolor=\"#e8e8f0\" shape=\"Mrecord\" fontname=\""
+        + FONT_NAME
+        + "\" ]\n";
   }
 
   private String formatTrailer() {

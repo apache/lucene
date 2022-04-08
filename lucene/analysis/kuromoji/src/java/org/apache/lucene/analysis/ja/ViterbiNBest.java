@@ -1,5 +1,28 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.analysis.ja;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
 import org.apache.lucene.analysis.ja.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ja.dict.JaMorphData;
 import org.apache.lucene.analysis.ja.dict.TokenInfoDictionary;
@@ -14,18 +37,11 @@ import org.apache.lucene.analysis.morph.Viterbi;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.fst.FST;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-
-public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token, ViterbiNBest.PositionNBest>{
+public class ViterbiNBest
+    extends org.apache.lucene.analysis.morph.Viterbi<Token, ViterbiNBest.PositionNBest> {
 
   private final EnumMap<TokenType, Dictionary<? extends JaMorphData>> dictionaryMap =
-    new EnumMap<>(TokenType.class);
+      new EnumMap<>(TokenType.class);
 
   private final UnknownDictionary unkDictionary;
   private final CharacterDefinition characterDefinition;
@@ -43,11 +59,21 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
 
   private GraphvizFormatter<JaMorphData> dotOut;
 
-  protected ViterbiNBest(TokenInfoFST fst, FST.BytesReader fstReader, TokenInfoDictionary dictionary,
-                         TokenInfoFST userFST, FST.BytesReader userFSTReader, UserDictionary userDictionary,
-                         ConnectionCosts costs, Class<PositionNBest> positionImpl,
-                         UnknownDictionary unkDictionary, CharacterDefinition characterDefinition,
-                         boolean discardPunctuation, boolean searchMode, boolean extendedMode, boolean outputCompounds) {
+  protected ViterbiNBest(
+      TokenInfoFST fst,
+      FST.BytesReader fstReader,
+      TokenInfoDictionary dictionary,
+      TokenInfoFST userFST,
+      FST.BytesReader userFSTReader,
+      UserDictionary userDictionary,
+      ConnectionCosts costs,
+      Class<PositionNBest> positionImpl,
+      UnknownDictionary unkDictionary,
+      CharacterDefinition characterDefinition,
+      boolean discardPunctuation,
+      boolean searchMode,
+      boolean extendedMode,
+      boolean outputCompounds) {
     super(fst, fstReader, dictionary, userFST, userFSTReader, userDictionary, costs, positionImpl);
     this.unkDictionary = unkDictionary;
     this.characterDefinition = characterDefinition;
@@ -128,7 +154,7 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
             break;
           }
           if (characterId == characterDefinition.getCharacterClass((char) ch)
-            && isPunctuation((char) ch) == isPunct) {
+              && isPunctuation((char) ch) == isPunct) {
             unknownWordLength++;
           } else {
             break;
@@ -137,20 +163,20 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
       }
 
       unkDictionary.lookupWordIds(
-        characterId, wordIdRef); // characters in input text are supposed to be the same
+          characterId, wordIdRef); // characters in input text are supposed to be the same
       if (VERBOSE) {
         System.out.println(
-          "    UNKNOWN word len=" + unknownWordLength + " " + wordIdRef.length + " wordIDs");
+            "    UNKNOWN word len=" + unknownWordLength + " " + wordIdRef.length + " wordIDs");
       }
       for (int ofs = 0; ofs < wordIdRef.length; ofs++) {
         add(
-          unkDictionary.getMorphAttributes(),
-          posData,
-          pos,
-          posData.getPos() + unknownWordLength,
-          wordIdRef.ints[wordIdRef.offset + ofs],
-          TokenType.UNKNOWN,
-          false);
+            unkDictionary.getMorphAttributes(),
+            posData,
+            pos,
+            posData.getPos() + unknownWordLength,
+            wordIdRef.ints[wordIdRef.offset + ofs],
+            TokenType.UNKNOWN,
+            false);
       }
 
       return unknownWordLength;
@@ -177,24 +203,24 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
 
     if (VERBOSE) {
       System.out.println(
-        "\n  backtrace: endPos="
-          + endPos
-          + " pos="
-          + pos
-          + "; "
-          + (pos - lastBackTracePos)
-          + " characters; last="
-          + lastBackTracePos
-          + " cost="
-          + endPosData.getCost(fromIDX));
+          "\n  backtrace: endPos="
+              + endPos
+              + " pos="
+              + pos
+              + "; "
+              + (pos - lastBackTracePos)
+              + " characters; last="
+              + lastBackTracePos
+              + " cost="
+              + endPosData.getCost(fromIDX));
     }
 
     final char[] fragment = buffer.get(lastBackTracePos, endPos - lastBackTracePos);
 
     if (dotOut != null) {
-      dotOut.onBacktrace(this::getDict, positions, lastBackTracePos, endPosData, fromIDX, fragment, end);
+      dotOut.onBacktrace(
+          this::getDict, positions, lastBackTracePos, endPosData, fromIDX, fragment, end);
     }
-
 
     int pos = endPos;
     int bestIDX = fromIDX;
@@ -221,7 +247,7 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
 
       int backPos = posData.getBackPos(bestIDX);
       assert backPos >= lastBackTracePos
-        : "backPos=" + backPos + " vs lastBackTracePos=" + lastBackTracePos;
+          : "backPos=" + backPos + " vs lastBackTracePos=" + lastBackTracePos;
       int length = pos - backPos;
       TokenType backType = posData.getBackType(bestIDX);
       int backID = posData.getBackID(bestIDX);
@@ -242,20 +268,20 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
         if (penalty > 0) {
           if (VERBOSE) {
             System.out.println(
-              "  compound="
-                + new String(buffer.get(backPos, pos - backPos))
-                + " backPos="
-                + backPos
-                + " pos="
-                + pos
-                + " penalty="
-                + penalty
-                + " cost="
-                + posData.getCost(bestIDX)
-                + " bestIDX="
-                + bestIDX
-                + " lastLeftID="
-                + lastLeftWordID);
+                "  compound="
+                    + new String(buffer.get(backPos, pos - backPos))
+                    + " backPos="
+                    + backPos
+                    + " pos="
+                    + pos
+                    + " penalty="
+                    + penalty
+                    + " cost="
+                    + posData.getCost(bestIDX)
+                    + " bestIDX="
+                    + bestIDX
+                    + " lastLeftID="
+                    + lastLeftWordID);
           }
 
           // Use the penalty to set maxCost on the 2nd best
@@ -278,9 +304,9 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
 
             if (lastLeftWordID != -1) {
               cost +=
-                costs.get(
-                  getDict(posData.getBackType(idx)).getRightId(posData.getBackID(idx)),
-                  lastLeftWordID);
+                  costs.get(
+                      getDict(posData.getBackType(idx)).getRightId(posData.getBackID(idx)),
+                      lastLeftWordID);
               // System.out.println("      += bgCost=" +
               // costs.get(getDict(posData.backType[idx]).getRightId(posData.backID[idx]),
               // lastLeftWordID) + " -> " + cost);
@@ -297,14 +323,14 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
 
           if (VERBOSE) {
             System.out.println(
-              "  afterPrune: "
-                + posData.getCount()
-                + " arcs arriving; leastCost="
-                + leastCost
-                + " vs threshold="
-                + maxCost
-                + " lastLeftWordID="
-                + lastLeftWordID);
+                "  afterPrune: "
+                    + posData.getCount()
+                    + " arcs arriving; leastCost="
+                    + leastCost
+                    + " vs threshold="
+                    + maxCost
+                    + " lastLeftWordID="
+                    + lastLeftWordID);
           }
 
           if (leastIDX != -1 && leastCost <= maxCost && posData.getBackPos(leastIDX) != backPos) {
@@ -314,15 +340,15 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
             // Save the current compound token, to output when
             // this alternate path joins back:
             altToken =
-              new Token(
-                fragment,
-                backPos - lastBackTracePos,
-                length,
-                backPos,
-                backPos + length,
-                backID,
-                backType,
-                getDict(backType).getMorphAttributes());
+                new Token(
+                    fragment,
+                    backPos - lastBackTracePos,
+                    length,
+                    backPos,
+                    backPos + length,
+                    backID,
+                    backType,
+                    getDict(backType).getMorphAttributes());
 
             // Redirect our backtrace to 2nd best:
             bestIDX = leastIDX;
@@ -356,7 +382,7 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
           // ensures that the back trace will align back with
           // the start of the altToken:
           assert altToken.getStartOffset() == backPos
-            : altToken.getStartOffset() + " vs " + backPos;
+              : altToken.getStartOffset() + " vs " + backPos;
 
           // NOTE: not quite right: the compound token may
           // have had all punctuation back traced so far, but
@@ -396,15 +422,15 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
           // System.out.println("    add user: len=" + len);
           int startOffset = current + backPos;
           pending.add(
-            new Token(
-              fragment,
-              current + offset,
-              len,
-              startOffset,
-              startOffset + len,
-              wordID + j - 1,
-              TokenType.USER,
-              dict.getMorphAttributes()));
+              new Token(
+                  fragment,
+                  current + offset,
+                  len,
+                  startOffset,
+                  startOffset + len,
+                  wordID + j - 1,
+                  TokenType.USER,
+                  dict.getMorphAttributes()));
           if (VERBOSE) {
             System.out.println("    add USER token=" + pending.get(pending.size() - 1));
           }
@@ -415,7 +441,7 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
         // serve them up from incrementToken we serve in
         // reverse:
         Collections.reverse(
-          pending.subList(pending.size() - (wordIDAndLength.length - 1), pending.size()));
+            pending.subList(pending.size() - (wordIDAndLength.length - 1), pending.size()));
 
         backCount += wordIDAndLength.length - 1;
       } else {
@@ -435,15 +461,15 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
             if (!discardPunctuation || !isPunctuation(fragment[offset + i])) {
               int startOffset = backPos + i;
               pending.add(
-                new Token(
-                  fragment,
-                  offset + i,
-                  charLen,
-                  startOffset,
-                  startOffset + charLen,
-                  CharacterDefinition.NGRAM,
-                  TokenType.UNKNOWN,
-                  unkDictionary.getMorphAttributes()));
+                  new Token(
+                      fragment,
+                      offset + i,
+                      charLen,
+                      startOffset,
+                      startOffset + charLen,
+                      CharacterDefinition.NGRAM,
+                      TokenType.UNKNOWN,
+                      unkDictionary.getMorphAttributes()));
               unigramTokenCount++;
             }
           }
@@ -451,15 +477,15 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
 
         } else if (!discardPunctuation || length == 0 || !isPunctuation(fragment[offset])) {
           pending.add(
-            new Token(
-              fragment,
-              offset,
-              length,
-              backPos,
-              backPos + length,
-              backID,
-              backType,
-              dict.getMorphAttributes()));
+              new Token(
+                  fragment,
+                  offset,
+                  length,
+                  backPos,
+                  backPos + length,
+                  backID,
+                  backType,
+                  dict.getMorphAttributes()));
           if (VERBOSE) {
             System.out.println("    add token=" + pending.get(pending.size() - 1));
           }
@@ -467,7 +493,7 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
         } else {
           if (VERBOSE) {
             System.out.println(
-              "    skip punctuation token=" + new String(fragment, offset, length));
+                "    skip punctuation token=" + new String(fragment, offset, length));
           }
         }
       }
@@ -497,12 +523,12 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
   private void pruneAndRescore(int startPos, int endPos, int bestStartIDX) throws IOException {
     if (VERBOSE) {
       System.out.println(
-        "  pruneAndRescore startPos="
-          + startPos
-          + " endPos="
-          + endPos
-          + " bestStartIDX="
-          + bestStartIDX);
+          "  pruneAndRescore startPos="
+              + startPos
+              + " endPos="
+              + endPos
+              + " bestStartIDX="
+              + bestStartIDX);
     }
 
     // First pass: walk backwards, building up the forward
@@ -518,8 +544,8 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
           // Keep this arc:
           // System.out.println("      keep backPos=" + backPos);
           positions
-            .get(backPos)
-            .addForward(pos, arcIDX, posData.getBackID(arcIDX), posData.getBackType(arcIDX));
+              .get(backPos)
+              .addForward(pos, arcIDX, posData.getBackID(arcIDX), posData.getBackType(arcIDX));
         } else {
           if (VERBOSE) {
             System.out.println("      prune");
@@ -556,7 +582,8 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
           rightID = 0;
         } else {
           rightID =
-            getDict(posData.getBackType(bestStartIDX)).getRightId(posData.getBackID(bestStartIDX));
+              getDict(posData.getBackType(bestStartIDX))
+                  .getRightId(posData.getBackID(bestStartIDX));
         }
         final int pathCost = posData.getCost(bestStartIDX);
         for (int forwardArcIDX = 0; forwardArcIDX < posData.forwardCount; forwardArcIDX++) {
@@ -565,28 +592,28 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
           final int wordID = posData.forwardID[forwardArcIDX];
           final int toPos = posData.forwardPos[forwardArcIDX];
           final int newCost =
-            pathCost
-              + dict2.getWordCost(wordID)
-              + costs.get(rightID, dict2.getLeftId(wordID))
-              + computePenalty(pos, toPos - pos);
+              pathCost
+                  + dict2.getWordCost(wordID)
+                  + costs.get(rightID, dict2.getLeftId(wordID))
+                  + computePenalty(pos, toPos - pos);
           if (VERBOSE) {
             System.out.println(
-              "      + "
-                + forwardType
-                + " word "
-                + new String(buffer.get(pos, toPos - pos))
-                + " toPos="
-                + toPos
-                + " cost="
-                + newCost
-                + " penalty="
-                + computePenalty(pos, toPos - pos)
-                + " toPos.idx="
-                + positions.get(toPos).getCount());
+                "      + "
+                    + forwardType
+                    + " word "
+                    + new String(buffer.get(pos, toPos - pos))
+                    + " toPos="
+                    + toPos
+                    + " cost="
+                    + newCost
+                    + " penalty="
+                    + computePenalty(pos, toPos - pos)
+                    + " toPos.idx="
+                    + positions.get(toPos).getCount());
           }
           positions
-            .get(toPos)
-            .add(newCost, dict2.getRightId(wordID), pos, -1, bestStartIDX, wordID, forwardType);
+              .get(toPos)
+              .add(newCost, dict2.getRightId(wordID), pos, -1, bestStartIDX, wordID, forwardType);
         }
       } else {
         // On non-initial positions, we maximize score
@@ -596,30 +623,30 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
           final int toPos = posData.forwardPos[forwardArcIDX];
           if (VERBOSE) {
             System.out.println(
-              "      + "
-                + forwardType
-                + " word "
-                + new String(buffer.get(pos, toPos - pos))
-                + " toPos="
-                + toPos);
+                "      + "
+                    + forwardType
+                    + " word "
+                    + new String(buffer.get(pos, toPos - pos))
+                    + " toPos="
+                    + toPos);
           }
           add(
-            getDict(forwardType).getMorphAttributes(),
-            posData,
-            pos,
-            toPos,
-            posData.forwardID[forwardArcIDX],
-            forwardType,
-            true);
+              getDict(forwardType).getMorphAttributes(),
+              posData,
+              pos,
+              toPos,
+              posData.forwardID[forwardArcIDX],
+              forwardType,
+              true);
         }
       }
       posData.forwardCount = 0;
     }
   }
 
-
   @Override
-  protected void backtraceNBest(final Position endPosData, final boolean useEOS) throws IOException {
+  protected void backtraceNBest(final Position endPosData, final boolean useEOS)
+      throws IOException {
     if (lattice == null) {
       lattice = new Lattice();
     }
@@ -672,15 +699,15 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
         final int[] wordIDAndLength = userDictionary.lookupSegmentation(lattice.nodeWordID[node]);
         int wordID = wordIDAndLength[0];
         pending.add(
-          new Token(
-            fragment,
-            left,
-            right - left,
-            lattice.rootBase + left,
-            lattice.rootBase + right,
-            wordID,
-            TokenType.USER,
-            userDictionary.getMorphAttributes()));
+            new Token(
+                fragment,
+                left,
+                right - left,
+                lattice.rootBase + left,
+                lattice.rootBase + right,
+                wordID,
+                TokenType.USER,
+                userDictionary.getMorphAttributes()));
         // Output compound
         int current = 0;
         for (int j = 1; j < wordIDAndLength.length; j++) {
@@ -688,29 +715,29 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
           if (len < right - left) {
             int startOffset = lattice.rootBase + current + left;
             pending.add(
-              new Token(
-                fragment,
-                current + left,
-                len,
-                startOffset,
-                startOffset + len,
-                wordID + j - 1,
-                TokenType.USER,
-                userDictionary.getMorphAttributes()));
+                new Token(
+                    fragment,
+                    current + left,
+                    len,
+                    startOffset,
+                    startOffset + len,
+                    wordID + j - 1,
+                    TokenType.USER,
+                    userDictionary.getMorphAttributes()));
           }
           current += len;
         }
       } else {
         pending.add(
-          new Token(
-            fragment,
-            left,
-            right - left,
-            lattice.rootBase + left,
-            lattice.rootBase + right,
-            lattice.nodeWordID[node],
-            type,
-            getDict(type).getMorphAttributes()));
+            new Token(
+                fragment,
+                left,
+                right - left,
+                lattice.rootBase + left,
+                lattice.rootBase + right,
+                lattice.nodeWordID[node],
+                type,
+                getDict(type).getMorphAttributes()));
       }
     }
   }
@@ -720,22 +747,22 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
     // Sort for removing same tokens.
     // USER token should be ahead from normal one.
     Collections.sort(
-      pending,
-      (a, b) -> {
-        int aOff = a.getOffset();
-        int bOff = b.getOffset();
-        if (aOff != bOff) {
-          return aOff - bOff;
-        }
-        int aLen = a.getLength();
-        int bLen = b.getLength();
-        if (aLen != bLen) {
-          return aLen - bLen;
-        }
-        // order of Type is KNOWN, UNKNOWN, USER,
-        // so we use reversed comparison here.
-        return b.getType().ordinal() - a.getType().ordinal();
-      });
+        pending,
+        (a, b) -> {
+          int aOff = a.getOffset();
+          int bOff = b.getOffset();
+          if (aOff != bOff) {
+            return aOff - bOff;
+          }
+          int aLen = a.getLength();
+          int bLen = b.getLength();
+          if (aLen != bLen) {
+            return aLen - bLen;
+          }
+          // order of Type is KNOWN, UNKNOWN, USER,
+          // so we use reversed comparison here.
+          return b.getType().ordinal() - a.getType().ordinal();
+        });
 
     // Remove same token.
     for (int i = 1; i < pending.size(); ++i) {
@@ -845,12 +872,12 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
       forwardCount++;
     }
 
+    @Override
     public void reset() {
       super.reset();
       // forwardCount naturally resets after it runs:
       assert forwardCount == 0 : "pos=" + getPos() + " forwardCount=" + forwardCount;
     }
-
   }
 
   // yet another lattice data structure
@@ -939,12 +966,12 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
     private int addNode(TokenType dicType, int wordID, int left, int right) {
       if (VERBOSE) {
         System.out.printf(
-          "DEBUG: addNode: dicType=%s, wordID=%d, left=%d, right=%d, str=%s\n",
-          dicType.toString(),
-          wordID,
-          left,
-          right,
-          left == -1 ? "BOS" : right == -1 ? "EOS" : new String(fragment, left, right - left));
+            "DEBUG: addNode: dicType=%s, wordID=%d, left=%d, right=%d, str=%s\n",
+            dicType.toString(),
+            wordID,
+            left,
+            right,
+            left == -1 ? "BOS" : right == -1 ? "EOS" : new String(fragment, left, right - left));
       }
       assert nodeCount < capacity;
       assert left == -1 || right == -1 || left < right;
@@ -976,8 +1003,8 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
 
       if (VERBOSE) {
         System.out.printf(
-          "DEBUG: addNode: wordCost=%d, leftID=%d, rightID=%d\n",
-          nodeWordCost[node], nodeLeftID[node], nodeRightID[node]);
+            "DEBUG: addNode: wordCost=%d, leftID=%d, rightID=%d\n",
+            nodeWordCost[node], nodeLeftID[node], nodeRightID[node]);
       }
 
       nodeLeft[node] = left;
@@ -1009,12 +1036,12 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
     }
 
     void setup(
-      char[] fragment,
-      EnumMap<TokenType, Dictionary<? extends JaMorphData>> dictionaryMap,
-      WrappedPositionArray<PositionNBest> positions,
-      int prevOffset,
-      int endOffset,
-      boolean useEOS) {
+        char[] fragment,
+        EnumMap<TokenType, Dictionary<? extends JaMorphData>> dictionaryMap,
+        WrappedPositionArray<PositionNBest> positions,
+        int prevOffset,
+        int endOffset,
+        boolean useEOS) {
       assert positions.get(prevOffset).getCount() == 1;
       if (VERBOSE) {
         System.out.printf("DEBUG: setup: prevOffset=%d, endOffset=%d\n", prevOffset, endOffset);
@@ -1081,9 +1108,9 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
             for (int leftNode = rRoot[index]; 0 <= leftNode; leftNode = nodeRightChain[leftNode]) {
               if (0 <= nodeMark[leftNode]) {
                 int cost =
-                  nodeLeftCost[leftNode]
-                    + nodeWordCost[leftNode]
-                    + connectionCost(costs, leftNode, node);
+                    nodeLeftCost[leftNode]
+                        + nodeWordCost[leftNode]
+                        + connectionCost(costs, leftNode, node);
                 if (cost < leastCost) {
                   leastCost = cost;
                   leastNode = leftNode;
@@ -1095,8 +1122,8 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
             nodeLeftCost[node] = leastCost;
             if (VERBOSE) {
               System.out.printf(
-                "DEBUG: calcLeftCost: node=%d, leftNode=%d, leftCost=%d\n",
-                node, nodeLeftNode[node], nodeLeftCost[node]);
+                  "DEBUG: calcLeftCost: node=%d, leftNode=%d, leftCost=%d\n",
+                  node, nodeLeftNode[node], nodeLeftCost[node]);
             }
           }
         }
@@ -1110,13 +1137,13 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
             int leastNode = -1;
             int leastCost = Integer.MAX_VALUE;
             for (int rightNode = lRoot[index];
-                 0 <= rightNode;
-                 rightNode = nodeLeftChain[rightNode]) {
+                0 <= rightNode;
+                rightNode = nodeLeftChain[rightNode]) {
               if (0 <= nodeMark[rightNode]) {
                 int cost =
-                  nodeRightCost[rightNode]
-                    + nodeWordCost[rightNode]
-                    + connectionCost(costs, node, rightNode);
+                    nodeRightCost[rightNode]
+                        + nodeWordCost[rightNode]
+                        + connectionCost(costs, node, rightNode);
                 if (cost < leastCost) {
                   leastCost = cost;
                   leastNode = rightNode;
@@ -1128,8 +1155,8 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
             nodeRightCost[node] = leastCost;
             if (VERBOSE) {
               System.out.printf(
-                "DEBUG: calcRightCost: node=%d, rightNode=%d, rightCost=%d\n",
-                node, nodeRightNode[node], nodeRightCost[node]);
+                  "DEBUG: calcRightCost: node=%d, rightNode=%d, rightCost=%d\n",
+                  node, nodeRightNode[node], nodeRightCost[node]);
             }
           }
         }
@@ -1175,7 +1202,7 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
             list.clear();
             list.add(node);
           } else if (cost == leastCost
-            && (nodeLeft[node] != leastLeft || nodeRight[node] != leastRight)) {
+              && (nodeLeft[node] != leastLeft || nodeRight[node] != leastRight)) {
             list.add(node);
           }
         }
@@ -1209,11 +1236,10 @@ public class ViterbiNBest extends org.apache.lucene.analysis.morph.Viterbi<Token
       if (VERBOSE) {
         for (int node = 0; node < nodeCount; ++node) {
           System.out.printf(
-            "DEBUG NODE: node=%d, mark=%d, cost=%d, left=%d, right=%d\n",
-            node, nodeMark[node], cost(node), nodeLeft[node], nodeRight[node]);
+              "DEBUG NODE: node=%d, mark=%d, cost=%d, left=%d, right=%d\n",
+              node, nodeMark[node], cost(node), nodeLeft[node], nodeRight[node]);
         }
       }
     }
   }
-
 }

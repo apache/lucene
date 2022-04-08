@@ -17,7 +17,6 @@
 package org.apache.lucene.analysis.ko;
 
 import java.io.IOException;
-import java.util.EnumMap;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
 import org.apache.lucene.analysis.ko.dict.DictionaryBuilder;
@@ -28,9 +27,7 @@ import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ko.dict.UserDictionary;
 import org.apache.lucene.analysis.ko.tokenattributes.PartOfSpeechAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.ReadingAttribute;
-import org.apache.lucene.analysis.morph.Dictionary;
 import org.apache.lucene.analysis.morph.GraphvizFormatter;
-import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -76,9 +73,6 @@ public final class KoreanTokenizer extends Tokenizer {
   public static final DecompoundMode DEFAULT_DECOMPOUND = DecompoundMode.DISCARD;
 
   private static final boolean VERBOSE = false;
-
-  private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap =
-      new EnumMap<>(TokenType.class);
 
   private final Viterbi viterbi;
 
@@ -254,5 +248,4 @@ public final class KoreanTokenizer extends Tokenizer {
   public void setGraphvizFormatter(GraphvizFormatter<KoMorphData> dotOut) {
     viterbi.setGraphvizFormatter(dotOut);
   }
-
 }

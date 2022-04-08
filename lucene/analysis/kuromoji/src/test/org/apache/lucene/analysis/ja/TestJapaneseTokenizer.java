@@ -520,7 +520,8 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testLatticeToDot() throws Exception {
-    final GraphvizFormatter<JaMorphData> gv2 = new GraphvizFormatter<>(ConnectionCosts.getInstance());
+    final GraphvizFormatter<JaMorphData> gv2 =
+        new GraphvizFormatter<>(ConnectionCosts.getInstance());
     final Analyzer analyzer =
         new Analyzer() {
           @Override

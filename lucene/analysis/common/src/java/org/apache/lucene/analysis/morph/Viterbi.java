@@ -77,8 +77,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
       FST.BytesReader userFSTReader,
       Dictionary<? extends MorphData> userDictionary,
       ConnectionCosts costs,
-      Class<U> positionImpl
-      ) {
+      Class<U> positionImpl) {
     this.fst = fst;
     this.fstReader = fstReader;
     this.dictionary = dictionary;
@@ -88,7 +87,6 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     this.costs = costs;
     this.positions = new WrappedPositionArray<>(positionImpl);
   }
-
 
   /* Incrementally parse some more characters.  This runs
    * the viterbi search forwards "enough" so that we
@@ -236,7 +234,8 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
         System.out.println("    " + posData.count + " arcs in");
       }
 
-      if (enableSpacePenaltyFactor && Character.getType(buffer.get(pos)) == Character.SPACE_SEPARATOR) {
+      if (enableSpacePenaltyFactor
+          && Character.getType(buffer.get(pos)) == Character.SPACE_SEPARATOR) {
         // We add single space separator as prefixes of the terms that we extract.
         // This information is needed to compute the space penalty factor of each term.
         // These whitespace prefixes are removed when the final tokens are generated, or
@@ -289,7 +288,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
               maxPosAhead + 1,
               outputMaxPosAhead + arcFinalOutMaxPosAhead,
               TokenType.USER,
-            false);
+              false);
           userWordMaxPosAhead = Math.max(userWordMaxPosAhead, maxPosAhead);
         }
       }
@@ -342,7 +341,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
                   posAhead + 1,
                   wordIdRef.ints[wordIdRef.offset + ofs],
                   TokenType.KNOWN,
-                false);
+                  false);
               anyMatches = true;
             }
           }
@@ -396,6 +395,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
 
   /**
    * Add unknown words to the position graph.
+   *
    * @return word length
    */
   protected abstract int processUnknownWord(boolean anyMatches, Position posData)
@@ -405,9 +405,11 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
   // time we back-traced, accumulating the resulting tokens to
   // the pending list.  The pending list is then in-reverse
   // (last token should be returned first).
-  protected abstract void backtrace(final Position endPosData, final int fromIDX) throws IOException;
+  protected abstract void backtrace(final Position endPosData, final int fromIDX)
+      throws IOException;
 
-  protected void backtraceNBest(final Position endPosData, final boolean useEOS) throws IOException {
+  protected void backtraceNBest(final Position endPosData, final boolean useEOS)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -422,7 +424,8 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
       int endPos,
       int wordID,
       TokenType type,
-      boolean addPenalty) throws IOException {
+      boolean addPenalty)
+      throws IOException {
     final int wordCost = morphData.getWordCost(wordID);
     final int leftID = morphData.getLeftId(wordID);
     int leastCost = Integer.MAX_VALUE;
@@ -551,8 +554,8 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
   /**
    * Holds all back pointers arriving to this position.
    *
-   * NOTE: This and subclasses must have no-arg constructor. See {@link WrappedPositionArray}.
-   * */
+   * <p>NOTE: This and subclasses must have no-arg constructor. See {@link WrappedPositionArray}.
+   */
   public static class Position {
 
     int pos;
@@ -709,9 +712,12 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
       while (pos >= nextPos) {
         // System.out.println("count=" + count + " vs len=" + positions.length);
         if (count == positions.length) {
-          //Position[] newPositions =
+          // Position[] newPositions =
           //    new Position[ArrayUtil.oversize(1 + count, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
-          U[] newPositions = (U[]) Array.newInstance(clazz, ArrayUtil.oversize(1 + count, RamUsageEstimator.NUM_BYTES_OBJECT_REF));
+          U[] newPositions =
+              (U[])
+                  Array.newInstance(
+                      clazz, ArrayUtil.oversize(1 + count, RamUsageEstimator.NUM_BYTES_OBJECT_REF));
           // System.out.println("grow positions " + newPositions.length);
           System.arraycopy(positions, nextWrite, newPositions, 0, positions.length - nextWrite);
           System.arraycopy(positions, 0, newPositions, positions.length - nextWrite, nextWrite);

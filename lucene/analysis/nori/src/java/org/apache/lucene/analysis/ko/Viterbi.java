@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.ko;
 
 import java.io.IOException;
 import java.util.EnumMap;
-
 import org.apache.lucene.analysis.ko.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
@@ -32,9 +31,12 @@ import org.apache.lucene.analysis.morph.TokenInfoFST;
 import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.util.fst.FST;
 
-final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.apache.lucene.analysis.morph.Viterbi.Position> {
+final class Viterbi
+    extends org.apache.lucene.analysis.morph.Viterbi<
+        Token, org.apache.lucene.analysis.morph.Viterbi.Position> {
 
-  private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap = new EnumMap<>(TokenType.class);
+  private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap =
+      new EnumMap<>(TokenType.class);
 
   private final UnknownDictionary unkDictionary;
   private final CharacterDefinition characterDefinition;
@@ -58,7 +60,8 @@ final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.
       boolean discardPunctuation,
       KoreanTokenizer.DecompoundMode mode,
       boolean outputUnknownUnigrams) {
-    super(fst, fstReader, dictionary, userFST, userFSTReader, userDictionary, costs, Position.class);
+    super(
+        fst, fstReader, dictionary, userFST, userFSTReader, userDictionary, costs, Position.class);
     this.unkDictionary = unkDictionary;
     this.characterDefinition = characterDefinition;
     this.discardPunctuation = discardPunctuation;
@@ -136,7 +139,7 @@ final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.
             pos + unknownWordLength,
             wordIdRef.ints[wordIdRef.offset + ofs],
             TokenType.UNKNOWN,
-          false);
+            false);
       }
     }
     // TODO: should return meaningful value?
@@ -168,7 +171,8 @@ final class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token, org.
     final char[] fragment = buffer.get(lastBackTracePos, endPos - lastBackTracePos);
 
     if (dotOut != null) {
-      dotOut.onBacktrace(this::getDict, positions, lastBackTracePos, endPosData, fromIDX, fragment, end);
+      dotOut.onBacktrace(
+          this::getDict, positions, lastBackTracePos, endPosData, fromIDX, fragment, end);
     }
 
     int pos = endPos;

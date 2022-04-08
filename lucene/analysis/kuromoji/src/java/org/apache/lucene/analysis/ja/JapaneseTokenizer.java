@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.EnumMap;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
@@ -28,9 +27,7 @@ import org.apache.lucene.analysis.ja.dict.TokenInfoFST;
 import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.apache.lucene.analysis.ja.tokenattributes.*;
-import org.apache.lucene.analysis.morph.Dictionary;
 import org.apache.lucene.analysis.morph.GraphvizFormatter;
-import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -38,9 +35,6 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.IgnoreRandomChains;
 import org.apache.lucene.util.fst.FST;
-
-// TODO: somehow factor out a reusable viterbi search here,
-// so other decompounders/tokenizers can reuse...
 
 /**
  * Tokenizer for Japanese that uses morphological analysis.
@@ -86,9 +80,6 @@ public final class JapaneseTokenizer extends Tokenizer {
   public static final Mode DEFAULT_MODE = Mode.SEARCH;
 
   private static final boolean VERBOSE = false;
-
-  private final EnumMap<TokenType, Dictionary<? extends JaMorphData>> dictionaryMap =
-      new EnumMap<>(TokenType.class);
 
   // Position of last token we returned; we use this to
   // figure out whether to set posIncr to 0 or 1:
@@ -252,7 +243,22 @@ public final class JapaneseTokenizer extends Tokenizer {
         break;
     }
     CharacterDefinition characterDefinition = unkDictionary.getCharacterDefinition();
-    this.viterbi = new ViterbiNBest(fst, fstReader, systemDictionary, userFST, userFSTReader, userDictionary, connectionCosts, ViterbiNBest.PositionNBest.class, unkDictionary, characterDefinition, discardPunctuation, searchMode, extendedMode, outputCompounds);
+    this.viterbi =
+        new ViterbiNBest(
+            fst,
+            fstReader,
+            systemDictionary,
+            userFST,
+            userFSTReader,
+            userDictionary,
+            connectionCosts,
+            ViterbiNBest.PositionNBest.class,
+            unkDictionary,
+            characterDefinition,
+            discardPunctuation,
+            searchMode,
+            extendedMode,
+            outputCompounds);
     viterbi.resetBuffer(this.input);
     viterbi.resetState();
   }
@@ -299,7 +305,7 @@ public final class JapaneseTokenizer extends Tokenizer {
       viterbi.forward();
     }
 
-    final Token token = viterbi.getPending().remove(viterbi.getPending().size()-1);
+    final Token token = viterbi.getPending().remove(viterbi.getPending().size() - 1);
 
     int length = token.getLength();
     clearAttributes();
@@ -350,7 +356,8 @@ public final class JapaneseTokenizer extends Tokenizer {
       while (incrementToken()) {
         if (viterbi.lattice.rootBase != prevRootBase) {
           prevRootBase = viterbi.lattice.rootBase;
-          delta = Math.min(delta, viterbi.lattice.probeDelta(start, start + requiredToken.length()));
+          delta =
+              Math.min(delta, viterbi.lattice.probeDelta(start, start + requiredToken.length()));
         }
       }
     } finally {
@@ -390,5 +397,4 @@ public final class JapaneseTokenizer extends Tokenizer {
   public void setNBestCost(int value) {
     viterbi.setNBestCost(value);
   }
-
 }
