@@ -60,7 +60,11 @@ class ConjunctionMatchesIterator implements IntervalMatchesIterator {
   public int startOffset() throws IOException {
     int start = Integer.MAX_VALUE;
     for (MatchesIterator s : subs) {
-      start = Math.min(start, s.startOffset());
+      int v = s.startOffset();
+      if (v == -1) {
+        return -1;
+      }
+      start = Math.min(start, v);
     }
     return start;
   }
@@ -69,7 +73,11 @@ class ConjunctionMatchesIterator implements IntervalMatchesIterator {
   public int endOffset() throws IOException {
     int end = -1;
     for (MatchesIterator s : subs) {
-      end = Math.max(end, s.endOffset());
+      int v = s.endOffset();
+      if (v == -1) {
+        return -1;
+      }
+      end = Math.max(end, v);
     }
     return end;
   }

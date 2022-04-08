@@ -30,9 +30,4 @@ public interface OffsetsRetrievalStrategy {
   List<OffsetRange> get(
       MatchesIterator matchesIterator, MatchRegionRetriever.FieldValueProvider doc)
       throws IOException;
-
-  /** Whether this strategy requires document field access. */
-  default boolean requiresDocument() {
-    return false;
-  }
 }
