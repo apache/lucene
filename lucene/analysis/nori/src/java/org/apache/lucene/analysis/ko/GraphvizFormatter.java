@@ -18,11 +18,10 @@ package org.apache.lucene.analysis.ko;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.ko.KoreanTokenizer.Position;
-import org.apache.lucene.analysis.ko.KoreanTokenizer.WrappedPositionArray;
 import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
 import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.morph.Viterbi;
 
 // TODO: would be nice to show 2nd best path in a diff't
 // color...
@@ -58,9 +57,9 @@ public class GraphvizFormatter {
   // Backtraces another incremental fragment:
   void onBacktrace(
       KoreanTokenizer tok,
-      WrappedPositionArray positions,
+      Viterbi.WrappedPositionArray positions,
       int lastBackTracePos,
-      Position endPosData,
+      Viterbi.Position endPosData,
       int fromIDX,
       char[] fragment,
       boolean isEnd) {
@@ -69,23 +68,26 @@ public class GraphvizFormatter {
     if (isEnd) {
       sb.append("  fini [style=invis]\n");
       sb.append("  ");
-      sb.append(getNodeID(endPosData.pos, fromIDX));
+      sb.append(getNodeID(endPosData.getPos(), fromIDX));
       sb.append(" -> fini [label=\"" + EOS_LABEL + "\"]");
     }
   }
 
   // Records which arcs make up the best bath:
   private void setBestPathMap(
-      WrappedPositionArray positions, int startPos, Position endPosData, int fromIDX) {
+      Viterbi.WrappedPositionArray positions,
+      int startPos,
+      Viterbi.Position endPosData,
+      int fromIDX) {
     bestPathMap.clear();
 
-    int pos = endPosData.pos;
+    int pos = endPosData.getPos();
     int bestIDX = fromIDX;
     while (pos > startPos) {
-      final Position posData = positions.get(pos);
+      final Viterbi.Position posData = positions.get(pos);
 
-      final int backPos = posData.backPos[bestIDX];
-      final int backIDX = posData.backIndex[bestIDX];
+      final int backPos = posData.getBackPos(bestIDX);
+      final int backIDX = posData.getBackIndex(bestIDX);
 
       final String toNodeID = getNodeID(pos, bestIDX);
       final String fromNodeID = getNodeID(backPos, backIDX);
@@ -100,33 +102,33 @@ public class GraphvizFormatter {
 
   private String formatNodes(
       KoreanTokenizer tok,
-      WrappedPositionArray positions,
+      Viterbi.WrappedPositionArray positions,
       int startPos,
-      Position endPosData,
+      Viterbi.Position endPosData,
       char[] fragment) {
 
     StringBuilder sb = new StringBuilder();
     // Output nodes
-    for (int pos = startPos + 1; pos <= endPosData.pos; pos++) {
-      final Position posData = positions.get(pos);
-      for (int idx = 0; idx < posData.count; idx++) {
+    for (int pos = startPos + 1; pos <= endPosData.getPos(); pos++) {
+      final Viterbi.Position posData = positions.get(pos);
+      for (int idx = 0; idx < posData.getCount(); idx++) {
         sb.append("  ");
         sb.append(getNodeID(pos, idx));
         sb.append(" [label=\"");
         sb.append(pos);
         sb.append(": ");
-        sb.append(posData.lastRightID[idx]);
+        sb.append(posData.getLastRightID(idx));
         sb.append("\"]\n");
       }
     }
 
     // Output arcs
-    for (int pos = endPosData.pos; pos > startPos; pos--) {
-      final Position posData = positions.get(pos);
-      for (int idx = 0; idx < posData.count; idx++) {
-        final Position backPosData = positions.get(posData.backPos[idx]);
+    for (int pos = endPosData.getPos(); pos > startPos; pos--) {
+      final Viterbi.Position posData = positions.get(pos);
+      for (int idx = 0; idx < posData.getCount(); idx++) {
+        final Viterbi.Position backPosData = positions.get(posData.getBackPos(idx));
         final String toNodeID = getNodeID(pos, idx);
-        final String fromNodeID = getNodeID(posData.backPos[idx], posData.backIndex[idx]);
+        final String fromNodeID = getNodeID(posData.getBackPos(idx), posData.getBackIndex(idx));
 
         sb.append("  ");
         sb.append(fromNodeID);
@@ -141,15 +143,15 @@ public class GraphvizFormatter {
           attrs = "";
         }
 
-        final Dictionary<? extends KoMorphData> dict = tok.getDict(posData.backType[idx]);
-        final int wordCost = dict.getWordCost(posData.backID[idx]);
+        final Dictionary<? extends KoMorphData> dict = tok.getDict(posData.getBackType(idx));
+        final int wordCost = dict.getWordCost(posData.getBackID(idx));
         final int bgCost =
             costs.get(
-                backPosData.lastRightID[posData.backIndex[idx]],
-                dict.getLeftId(posData.backID[idx]));
+                backPosData.getLastRightID(posData.getBackIndex(idx)),
+                dict.getLeftId(posData.getBackID(idx)));
 
         final String surfaceForm =
-            new String(fragment, posData.backPos[idx] - startPos, pos - posData.backPos[idx]);
+            new String(fragment, posData.getBackPos(idx) - startPos, pos - posData.getBackPos(idx));
 
         sb.append(" [label=\"");
         sb.append(surfaceForm);
