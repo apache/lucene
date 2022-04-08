@@ -2,6 +2,8 @@ package org.apache.lucene.analysis.ko;
 
 import java.io.IOException;
 import java.util.EnumMap;
+import java.util.Map;
+
 import org.apache.lucene.analysis.ko.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
@@ -9,6 +11,7 @@ import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ko.dict.UserDictionary;
 import org.apache.lucene.analysis.morph.ConnectionCosts;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.morph.GraphvizFormatter;
 import org.apache.lucene.analysis.morph.MorphData;
 import org.apache.lucene.analysis.morph.TokenInfoFST;
 import org.apache.lucene.analysis.morph.TokenType;
@@ -16,8 +19,7 @@ import org.apache.lucene.util.fst.FST;
 
 public class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
 
-  private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap =
-      new EnumMap<>(TokenType.class);
+  private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap = new EnumMap<>(TokenType.class);
 
   private final UnknownDictionary unkDictionary;
   private final CharacterDefinition characterDefinition;
@@ -25,6 +27,8 @@ public class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
   private final boolean discardPunctuation;
   private final KoreanTokenizer.DecompoundMode mode;
   private final boolean outputUnknownUnigrams;
+
+  private GraphvizFormatter<KoMorphData> dotOut;
 
   protected Viterbi(
       TokenInfoFST fst,
@@ -45,7 +49,6 @@ public class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
     this.discardPunctuation = discardPunctuation;
     this.mode = mode;
     this.outputUnknownUnigrams = outputUnknownUnigrams;
-
     dictionaryMap.put(TokenType.KNOWN, dictionary);
     dictionaryMap.put(TokenType.UNKNOWN, unkDictionary);
     dictionaryMap.put(TokenType.USER, userDictionary);
@@ -120,6 +123,10 @@ public class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
     }
   }
 
+  public void setGraphvizFormatter(GraphvizFormatter<KoMorphData> dotOut) {
+    this.dotOut = dotOut;
+  }
+
   @Override
   protected void backtrace(Position endPosData, int fromIDX) {
     final int endPos = endPosData.getPos();
@@ -140,10 +147,9 @@ public class Viterbi extends org.apache.lucene.analysis.morph.Viterbi<Token> {
 
     final char[] fragment = buffer.get(lastBackTracePos, endPos - lastBackTracePos);
 
-    // TODO
-    // if (dotOut != null) {
-    //  dotOut.onBacktrace(this, positions, lastBackTracePos, endPosData, fromIDX, fragment, end);
-    // }
+    if (dotOut != null) {
+      dotOut.onBacktrace(this::getDict, positions, lastBackTracePos, endPosData, fromIDX, fragment, end);
+    }
 
     int pos = endPos;
     int bestIDX = fromIDX;

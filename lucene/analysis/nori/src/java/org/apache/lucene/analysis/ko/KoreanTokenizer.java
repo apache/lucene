@@ -29,6 +29,7 @@ import org.apache.lucene.analysis.ko.dict.UserDictionary;
 import org.apache.lucene.analysis.ko.tokenattributes.PartOfSpeechAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.ReadingAttribute;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.morph.GraphvizFormatter;
 import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -75,10 +76,6 @@ public final class KoreanTokenizer extends Tokenizer {
   public static final DecompoundMode DEFAULT_DECOMPOUND = DecompoundMode.DISCARD;
 
   private static final boolean VERBOSE = false;
-
-  // For safety:
-  private static final int MAX_UNKNOWN_WORD_LENGTH = 1024;
-  private static final int MAX_BACKTRACE_GAP = 1024;
 
   private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap =
       new EnumMap<>(TokenType.class);
@@ -197,13 +194,6 @@ public final class KoreanTokenizer extends Tokenizer {
     viterbi.resetState();
   }
 
-  private GraphvizFormatter dotOut;
-
-  /** Expert: set this to produce graphviz (dot) output of the Viterbi lattice */
-  public void setGraphvizFormatter(GraphvizFormatter dotOut) {
-    this.dotOut = dotOut;
-  }
-
   @Override
   public void close() throws IOException {
     super.close();
@@ -260,7 +250,9 @@ public final class KoreanTokenizer extends Tokenizer {
     return true;
   }
 
-  Dictionary<? extends KoMorphData> getDict(TokenType type) {
-    return dictionaryMap.get(type);
+  /** Expert: set this to produce graphviz (dot) output of the Viterbi lattice */
+  public void setGraphvizFormatter(GraphvizFormatter<KoMorphData> dotOut) {
+    viterbi.setGraphvizFormatter(dotOut);
   }
+
 }

@@ -56,7 +56,7 @@ public class GraphvizFormatter {
   }
 
   // Backtraces another incremental fragment:
-  void onBacktrace(
+  public void onBacktrace(
       JapaneseTokenizer tok,
       WrappedPositionArray positions,
       int lastBackTracePos,

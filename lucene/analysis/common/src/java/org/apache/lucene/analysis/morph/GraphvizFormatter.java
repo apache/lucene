@@ -14,21 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko;
+package org.apache.lucene.analysis.morph;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ko.dict.KoMorphData;
-import org.apache.lucene.analysis.morph.Dictionary;
-import org.apache.lucene.analysis.morph.Viterbi;
 
 // TODO: would be nice to show 2nd best path in a diff't
 // color...
 
-/** Outputs the dot (graphviz) string for the viterbi lattice. */
-public class GraphvizFormatter {
-
+public class GraphvizFormatter<T extends MorphData> {
   private static final String BOS_LABEL = "BOS";
 
   private static final String EOS_LABEL = "EOS";
@@ -55,16 +49,16 @@ public class GraphvizFormatter {
   }
 
   // Backtraces another incremental fragment:
-  void onBacktrace(
-      KoreanTokenizer tok,
-      Viterbi.WrappedPositionArray positions,
-      int lastBackTracePos,
-      Viterbi.Position endPosData,
-      int fromIDX,
-      char[] fragment,
-      boolean isEnd) {
+  public void onBacktrace(
+    DictionaryProvider<T> dictProvider,
+    Viterbi.WrappedPositionArray positions,
+    int lastBackTracePos,
+    Viterbi.Position endPosData,
+    int fromIDX,
+    char[] fragment,
+    boolean isEnd) {
     setBestPathMap(positions, lastBackTracePos, endPosData, fromIDX);
-    sb.append(formatNodes(tok, positions, lastBackTracePos, endPosData, fragment));
+    sb.append(formatNodes(dictProvider, positions, lastBackTracePos, endPosData, fragment));
     if (isEnd) {
       sb.append("  fini [style=invis]\n");
       sb.append("  ");
@@ -75,10 +69,10 @@ public class GraphvizFormatter {
 
   // Records which arcs make up the best bath:
   private void setBestPathMap(
-      Viterbi.WrappedPositionArray positions,
-      int startPos,
-      Viterbi.Position endPosData,
-      int fromIDX) {
+    Viterbi.WrappedPositionArray positions,
+    int startPos,
+    Viterbi.Position endPosData,
+    int fromIDX) {
     bestPathMap.clear();
 
     int pos = endPosData.getPos();
@@ -101,11 +95,11 @@ public class GraphvizFormatter {
   }
 
   private String formatNodes(
-      KoreanTokenizer tok,
-      Viterbi.WrappedPositionArray positions,
-      int startPos,
-      Viterbi.Position endPosData,
-      char[] fragment) {
+    DictionaryProvider<T> dictProvider,
+    Viterbi.WrappedPositionArray positions,
+    int startPos,
+    Viterbi.Position endPosData,
+    char[] fragment) {
 
     StringBuilder sb = new StringBuilder();
     // Output nodes
@@ -143,15 +137,15 @@ public class GraphvizFormatter {
           attrs = "";
         }
 
-        final Dictionary<? extends KoMorphData> dict = tok.getDict(posData.getBackType(idx));
+        final Dictionary<? extends T> dict = dictProvider.get(posData.getBackType(idx));
         final int wordCost = dict.getWordCost(posData.getBackID(idx));
         final int bgCost =
-            costs.get(
-                backPosData.getLastRightID(posData.getBackIndex(idx)),
-                dict.getLeftId(posData.getBackID(idx)));
+          costs.get(
+            backPosData.getLastRightID(posData.getBackIndex(idx)),
+            dict.getLeftId(posData.getBackID(idx)));
 
         final String surfaceForm =
-            new String(fragment, posData.getBackPos(idx) - startPos, pos - posData.getBackPos(idx));
+          new String(fragment, posData.getBackPos(idx) - startPos, pos - posData.getBackPos(idx));
 
         sb.append(" [label=\"");
         sb.append(surfaceForm);
@@ -171,18 +165,18 @@ public class GraphvizFormatter {
 
   private String formatHeader() {
     return "digraph viterbi {\n"
-        + "  graph [ fontsize=30 labelloc=\"t\" label=\"\" splines=true overlap=false rankdir = \"LR\"];\n"
-        +
-        // sb.append("  // A2 paper size\n");
-        // sb.append("  size = \"34.4,16.5\";\n");
-        // sb.append("  // try to fill paper\n");
-        // sb.append("  ratio = fill;\n");
-        "  edge [ fontname=\""
-        + FONT_NAME
-        + "\" fontcolor=\"red\" color=\"#606060\" ]\n"
-        + "  node [ style=\"filled\" fillcolor=\"#e8e8f0\" shape=\"Mrecord\" fontname=\""
-        + FONT_NAME
-        + "\" ]\n";
+      + "  graph [ fontsize=30 labelloc=\"t\" label=\"\" splines=true overlap=false rankdir = \"LR\"];\n"
+      +
+      // sb.append("  // A2 paper size\n");
+      // sb.append("  size = \"34.4,16.5\";\n");
+      // sb.append("  // try to fill paper\n");
+      // sb.append("  ratio = fill;\n");
+      "  edge [ fontname=\""
+      + FONT_NAME
+      + "\" fontcolor=\"red\" color=\"#606060\" ]\n"
+      + "  node [ style=\"filled\" fillcolor=\"#e8e8f0\" shape=\"Mrecord\" fontname=\""
+      + FONT_NAME
+      + "\" ]\n";
   }
 
   private String formatTrailer() {
@@ -191,5 +185,10 @@ public class GraphvizFormatter {
 
   private String getNodeID(int pos, int idx) {
     return pos + "." + idx;
+  }
+
+  @FunctionalInterface
+  public interface DictionaryProvider<T extends MorphData> {
+    Dictionary<? extends T> get(TokenType type);
   }
 }

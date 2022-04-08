@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import org.apache.lucene.analysis.util.RollingCharBuffer;
 import org.apache.lucene.util.ArrayUtil;
@@ -53,7 +54,8 @@ public abstract class Viterbi<T extends Token> {
       TokenInfoFST userFST,
       FST.BytesReader userFSTReader,
       Dictionary<? extends MorphData> userDictionary,
-      ConnectionCosts costs) {
+      ConnectionCosts costs
+      ) {
     this.fst = fst;
     this.fstReader = fstReader;
     this.dictionary = dictionary;
@@ -62,7 +64,7 @@ public abstract class Viterbi<T extends Token> {
     this.userDictionary = userDictionary;
     this.costs = costs;
   }
-  ;
+
 
   /* Incrementally parse some more characters.  This runs
    * the viterbi search forwards "enough" so that we
