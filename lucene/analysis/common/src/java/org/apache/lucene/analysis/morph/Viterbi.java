@@ -275,26 +275,39 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
             outputMaxPosAhead = output;
             arcFinalOutMaxPosAhead = arc.nextFinalOutput().intValue();
             anyMatches = true;
+            if (!outputLongestUserEntryOnly) {
+              // add all matched user entries.
+              add(
+                  userDictionary.getMorphAttributes(),
+                  posData,
+                  pos,
+                  posAhead + 1,
+                  output + arc.nextFinalOutput().intValue(),
+                  TokenType.USER,
+                  false);
+            }
           }
         }
 
         // Longest matching for user word
         if (anyMatches && maxPosAhead > userWordMaxPosAhead) {
-          if (VERBOSE) {
-            System.out.println(
-                "    USER word "
-                    + new String(buffer.get(pos, maxPosAhead + 1))
-                    + " toPos="
-                    + (maxPosAhead + 1));
+          if (outputLongestUserEntryOnly) {
+            if (VERBOSE) {
+              System.out.println(
+                  "    USER word "
+                      + new String(buffer.get(pos, maxPosAhead + 1))
+                      + " toPos="
+                      + (maxPosAhead + 1));
+            }
+            add(
+                userDictionary.getMorphAttributes(),
+                posData,
+                pos,
+                maxPosAhead + 1,
+                outputMaxPosAhead + arcFinalOutMaxPosAhead,
+                TokenType.USER,
+                false);
           }
-          add(
-              userDictionary.getMorphAttributes(),
-              posData,
-              pos,
-              maxPosAhead + 1,
-              outputMaxPosAhead + arcFinalOutMaxPosAhead,
-              TokenType.USER,
-              false);
           userWordMaxPosAhead = Math.max(userWordMaxPosAhead, maxPosAhead);
         }
       }
