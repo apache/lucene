@@ -29,7 +29,8 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 
 /**
- * Performs <a href="https://en.wikipedia.org/wiki/Viterbi_algorithm">Viterbi algorithm</a> for morphological Tokenizers, which split texts by Hidden Markov Model or Conditional Random Fields.
+ * Performs <a href="https://en.wikipedia.org/wiki/Viterbi_algorithm">Viterbi algorithm</a> for
+ * morphological Tokenizers, which split texts by Hidden Markov Model or Conditional Random Fields.
  *
  * @param <T> output token class
  * @param <U> position class
@@ -94,14 +95,13 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     this.positions = new WrappedPositionArray<>(positionImpl);
   }
 
-  /* Incrementally parse some more characters.  This runs
-   * the viterbi search forwards "enough" so that we
-   * generate some more tokens.  How much forward depends on
-   * the chars coming in, since some chars could cause
-   * longer-lasting ambiguity in the parsing.  Once the
-   * ambiguity is resolved, then we back trace, produce
-   * the pending tokens, and return. */
-  public void forward() throws IOException {
+  /**
+   * Incrementally parse some more characters. This runs the viterbi search forwards "enough" so
+   * that we generate some more tokens. How much forward depends on the chars coming in, since some
+   * chars could cause longer-lasting ambiguity in the parsing. Once the ambiguity is resolved, then
+   * we back trace, produce the pending tokens, and return.
+   */
+  public final void forward() throws IOException {
     if (VERBOSE) {
       System.out.println("\nPARSE");
     }
@@ -407,22 +407,32 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
   protected abstract int processUnknownWord(boolean anyMatches, Position posData)
       throws IOException;
 
-  // Backtrace from the provided position, back to the last
-  // time we back-traced, accumulating the resulting tokens to
-  // the pending list.  The pending list is then in-reverse
-  // (last token should be returned first).
+  /**
+   * Backtrace from the provided position, back to the last time we back-traced, accumulating the
+   * resulting tokens to the pending list. The pending list is then in-reverse (last token should be
+   * returned first).
+   */
   protected abstract void backtrace(final Position endPosData, final int fromIDX)
       throws IOException;
 
+  /**
+   * Backtrace the n-best path. Subclasses that support n-best paths should implement this method.
+   */
   protected void backtraceNBest(final Position endPosData, final boolean useEOS)
       throws IOException {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * Remove duplicated tokens from the pending list; this is needed because {@link
+   * #backtrace(Position, int)} and {@link #backtraceNBest(Position, boolean)} can add same tokens
+   * to the list. Subclasses that support n-best paths should implement this method.
+   */
   protected void fixupPendingList() {
     throw new UnsupportedOperationException();
   }
 
+  /** Add a token on the minimum cost path to the pending token list. */
   protected void add(
       MorphData morphData,
       Position fromPosData,

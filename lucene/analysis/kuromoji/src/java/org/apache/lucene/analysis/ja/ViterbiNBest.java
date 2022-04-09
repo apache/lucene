@@ -37,8 +37,11 @@ import org.apache.lucene.analysis.morph.Viterbi;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.fst.FST;
 
-/** {@link org.apache.lucene.analysis.morph.Viterbi} subclass for Japanese morphological analysis. This also performs n-best path calculation */
-public class ViterbiNBest
+/**
+ * {@link org.apache.lucene.analysis.morph.Viterbi} subclass for Japanese morphological analysis.
+ * This also performs n-best path calculation
+ */
+final class ViterbiNBest
     extends org.apache.lucene.analysis.morph.Viterbi<Token, ViterbiNBest.PositionNBest> {
 
   private final EnumMap<TokenType, Dictionary<? extends JaMorphData>> dictionaryMap =
@@ -783,11 +786,11 @@ public class ViterbiNBest
       map.put(t.getOffset() + t.getLength(), 0);
     }
 
-    // Get uniqe and sorted list of all edge position of tokens.
+    // Get unique and sorted list of all edge position of tokens.
     Integer[] offsets = map.keySet().toArray(new Integer[0]);
     Arrays.sort(offsets);
 
-    // setup all value of map.  It specify N-th position from begin.
+    // setup all value of map.  It specifies N-th position from begin.
     for (int i = 0; i < offsets.length; ++i) {
       map.put(offsets[i], i);
     }
@@ -841,7 +844,8 @@ public class ViterbiNBest
   }
 
   /**
-   * {@link org.apache.lucene.analysis.morph.Viterbi.Position} extension; this holds all forward pointers to calculate n-best path.
+   * {@link org.apache.lucene.analysis.morph.Viterbi.Position} extension; this holds all forward
+   * pointers to calculate n-best path.
    */
   public static class PositionNBest extends Viterbi.Position {
     // Only used when finding 2nd best segmentation under a
