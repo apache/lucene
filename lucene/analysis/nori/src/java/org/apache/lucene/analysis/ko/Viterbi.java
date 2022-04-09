@@ -31,6 +31,7 @@ import org.apache.lucene.analysis.morph.TokenInfoFST;
 import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.util.fst.FST;
 
+/** {@link org.apache.lucene.analysis.morph.Viterbi} subclass for Korean morphological analysis. */
 final class Viterbi
     extends org.apache.lucene.analysis.morph.Viterbi<
         Token, org.apache.lucene.analysis.morph.Viterbi.Position> {

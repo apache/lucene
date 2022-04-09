@@ -22,6 +22,7 @@ import java.util.Map;
 // TODO: would be nice to show 2nd best path in a diff't
 // color...
 
+/** Outputs the dot (graphviz) string for the viterbi lattice. */
 public class GraphvizFormatter<T extends MorphData> {
   private static final String BOS_LABEL = "BOS";
 
@@ -187,6 +188,7 @@ public class GraphvizFormatter<T extends MorphData> {
     return pos + "." + idx;
   }
 
+  /** {@link Dictionary} provider */
   @FunctionalInterface
   public interface DictionaryProvider<T extends MorphData> {
     Dictionary<? extends T> get(TokenType type);

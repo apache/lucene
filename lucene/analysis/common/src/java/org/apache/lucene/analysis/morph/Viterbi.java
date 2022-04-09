@@ -28,6 +28,12 @@ import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 
+/**
+ * Performs <a href="https://en.wikipedia.org/wiki/Viterbi_algorithm">Viterbi algorithm</a> for morphological Tokenizers, which split texts by Hidden Markov Model or Conditional Random Fields.
+ *
+ * @param <T> output token class
+ * @param <U> position class
+ */
 public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
   protected static final boolean VERBOSE = false;
 
@@ -661,6 +667,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     }
   }
 
+  /** Holds partial graph (array of positions) for calculating the minimum cost path */
   public static final class WrappedPositionArray<U extends Position> {
     private U[] positions;
     private final Class<U> clazz;
