@@ -27,12 +27,16 @@ public abstract class Token {
   protected int posIncr = 1;
   protected int posLen = 1;
 
-  protected Token(char[] surfaceForm, int offset, int length, int startOffset, int endOffset) {
+  protected final TokenType type;
+
+  protected Token(
+      char[] surfaceForm, int offset, int length, int startOffset, int endOffset, TokenType type) {
     this.surfaceForm = surfaceForm;
     this.offset = offset;
     this.length = length;
     this.startOffset = startOffset;
     this.endOffset = endOffset;
+    this.type = type;
   }
 
   /** @return surfaceForm */
@@ -87,5 +91,10 @@ public abstract class Token {
    */
   public int getPositionLength() {
     return posLen;
+  }
+
+  /** Returns the type of this token */
+  public TokenType getType() {
+    return type;
   }
 }

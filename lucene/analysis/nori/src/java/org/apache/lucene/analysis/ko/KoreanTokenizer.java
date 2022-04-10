@@ -35,6 +35,7 @@ import org.apache.lucene.analysis.ko.dict.UserDictionary;
 import org.apache.lucene.analysis.ko.tokenattributes.PartOfSpeechAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.ReadingAttribute;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -65,16 +66,6 @@ import org.apache.lucene.util.fst.FST;
 @IgnoreRandomChains(reason = "LUCENE-10359: fails with incorrect offsets")
 public final class KoreanTokenizer extends Tokenizer {
 
-  /** Token type reflecting the original source of this token */
-  public enum Type {
-    /** Known words from the system dictionary. */
-    KNOWN,
-    /** Unknown words (heuristically segmented). */
-    UNKNOWN,
-    /** Known words from the user dictionary. */
-    USER
-  }
-
   /**
    * Decompound mode: this determines how the tokenizer handles {@link POS.Type#COMPOUND}, {@link
    * POS.Type#INFLECT} and {@link POS.Type#PREANALYSIS} tokens.
@@ -99,8 +90,8 @@ public final class KoreanTokenizer extends Tokenizer {
   private static final int MAX_UNKNOWN_WORD_LENGTH = 1024;
   private static final int MAX_BACKTRACE_GAP = 1024;
 
-  private final EnumMap<Type, Dictionary<? extends KoMorphData>> dictionaryMap =
-      new EnumMap<>(Type.class);
+  private final EnumMap<TokenType, Dictionary<? extends KoMorphData>> dictionaryMap =
+      new EnumMap<>(TokenType.class);
 
   private final TokenInfoFST fst;
   private final TokenInfoDictionary dictionary;
@@ -242,9 +233,9 @@ public final class KoreanTokenizer extends Tokenizer {
 
     resetState();
 
-    dictionaryMap.put(Type.KNOWN, dictionary);
-    dictionaryMap.put(Type.UNKNOWN, unkDictionary);
-    dictionaryMap.put(Type.USER, userDictionary);
+    dictionaryMap.put(TokenType.KNOWN, dictionary);
+    dictionaryMap.put(TokenType.UNKNOWN, unkDictionary);
+    dictionaryMap.put(TokenType.USER, userDictionary);
   }
 
   private GraphvizFormatter dotOut;
@@ -275,7 +266,7 @@ public final class KoreanTokenizer extends Tokenizer {
     pending.clear();
 
     // Add BOS:
-    positions.get(0).add(0, 0, -1, -1, -1, -1, Type.KNOWN);
+    positions.get(0).add(0, 0, -1, -1, -1, -1, TokenType.KNOWN);
   }
 
   @Override
@@ -300,7 +291,7 @@ public final class KoreanTokenizer extends Tokenizer {
     int[] backWordPos = new int[8];
     int[] backIndex = new int[8];
     int[] backID = new int[8];
-    Type[] backType = new Type[8];
+    TokenType[] backType = new TokenType[8];
 
     public void grow() {
       costs = ArrayUtil.grow(costs, 1 + count);
@@ -313,7 +304,7 @@ public final class KoreanTokenizer extends Tokenizer {
       // NOTE: sneaky: grow separately because
       // ArrayUtil.grow will otherwise pick a different
       // length than the int[]s we just grew:
-      final Type[] newBackType = new Type[backID.length];
+      final TokenType[] newBackType = new TokenType[backID.length];
       System.arraycopy(backType, 0, newBackType, 0, backType.length);
       backType = newBackType;
     }
@@ -325,7 +316,7 @@ public final class KoreanTokenizer extends Tokenizer {
         int backRPos,
         int backIndex,
         int backID,
-        Type backType) {
+        TokenType backType) {
       // NOTE: this isn't quite a true Viterbi search,
       // because we should check if lastRightID is
       // already present here, and only update if the new
@@ -409,7 +400,12 @@ public final class KoreanTokenizer extends Tokenizer {
   }
 
   private void add(
-      KoMorphData morphAtts, Position fromPosData, int wordPos, int endPos, int wordID, Type type) {
+      KoMorphData morphAtts,
+      Position fromPosData,
+      int wordPos,
+      int endPos,
+      int wordID,
+      TokenType type) {
     final POS.Tag leftPOS = morphAtts.getLeftPOS(wordID);
     final int wordCost = morphAtts.getWordCost(wordID);
     final int leftID = morphAtts.getLeftId(wordID);
@@ -811,7 +807,7 @@ public final class KoreanTokenizer extends Tokenizer {
               pos,
               maxPosAhead + 1,
               outputMaxPosAhead + arcFinalOutMaxPosAhead,
-              Type.USER);
+              TokenType.USER);
           userWordMaxPosAhead = Math.max(userWordMaxPosAhead, maxPosAhead);
         }
       }
@@ -863,7 +859,7 @@ public final class KoreanTokenizer extends Tokenizer {
                   pos,
                   posAhead + 1,
                   wordIdRef.ints[wordIdRef.offset + ofs],
-                  Type.KNOWN);
+                  TokenType.KNOWN);
               anyMatches = true;
             }
           }
@@ -937,7 +933,7 @@ public final class KoreanTokenizer extends Tokenizer {
               pos,
               pos + unknownWordLength,
               wordIdRef.ints[wordIdRef.offset + ofs],
-              Type.UNKNOWN);
+              TokenType.UNKNOWN);
         }
       }
 
@@ -1019,7 +1015,7 @@ public final class KoreanTokenizer extends Tokenizer {
           : "backPos=" + backPos + " vs lastBackTracePos=" + lastBackTracePos;
       // the length of the word without the whitespaces at the beginning.
       int length = pos - backWordPos;
-      Type backType = posData.backType[bestIDX];
+      TokenType backType = posData.backType[bestIDX];
       int backID = posData.backID[bestIDX];
       int nextBestIDX = posData.backIndex[bestIDX];
       // the start of the word after the whitespace at the beginning.
@@ -1028,7 +1024,7 @@ public final class KoreanTokenizer extends Tokenizer {
 
       final Dictionary<? extends KoMorphData> dict = getDict(backType);
 
-      if (outputUnknownUnigrams && backType == Type.UNKNOWN) {
+      if (outputUnknownUnigrams && backType == TokenType.UNKNOWN) {
         // outputUnknownUnigrams converts unknown word into unigrams:
         for (int i = length - 1; i >= 0; i--) {
           int charLen = 1;
@@ -1038,7 +1034,7 @@ public final class KoreanTokenizer extends Tokenizer {
           }
           final DictionaryToken token =
               new DictionaryToken(
-                  Type.UNKNOWN,
+                  TokenType.UNKNOWN,
                   unkDictionary.getMorphAttributes(),
                   CharacterDefinition.NGRAM,
                   fragment,
@@ -1090,14 +1086,16 @@ public final class KoreanTokenizer extends Tokenizer {
                         morpheme.posTag,
                         morpheme.surfaceForm,
                         endOffset - morpheme.surfaceForm.length(),
-                        endOffset);
+                        endOffset,
+                        backType);
               } else {
                 compoundToken =
                     new DecompoundToken(
                         morpheme.posTag,
                         morpheme.surfaceForm,
                         token.getStartOffset(),
-                        token.getEndOffset());
+                        token.getEndOffset(),
+                        backType);
               }
               if (i == 0 && mode == DecompoundMode.MIXED) {
                 compoundToken.setPositionIncrement(0);
@@ -1128,7 +1126,7 @@ public final class KoreanTokenizer extends Tokenizer {
         unkDictionary.lookupWordIds(characterDefinition.getCharacterClass(' '), wordIdRef);
         DictionaryToken spaceToken =
             new DictionaryToken(
-                Type.UNKNOWN,
+                TokenType.UNKNOWN,
                 unkDictionary.getMorphAttributes(),
                 wordIdRef.ints[wordIdRef.offset],
                 fragment,
@@ -1154,7 +1152,7 @@ public final class KoreanTokenizer extends Tokenizer {
     positions.freeBefore(endPos);
   }
 
-  Dictionary<? extends KoMorphData> getDict(Type type) {
+  Dictionary<? extends KoMorphData> getDict(TokenType type) {
     return dictionaryMap.get(type);
   }
 

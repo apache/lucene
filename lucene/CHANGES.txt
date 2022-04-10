@@ -122,6 +122,10 @@ Bug Fixes
 * LUCENE-10466: Ensure IndexSortSortedNumericDocValuesRangeQuery handles sort field
   types besides LONG (Andriy Redko)
 
+* LUCENE-10292: Suggest: Fix AnalyzingInfixSuggester / BlendedInfixSuggester to correctly return
+  existing lookup() results during concurrent build().  Fix other FST based suggesters so that
+  getCount() returned results consistent with lookup() during concurrent build().  (hossman)
+
 Build
 ---------------------
 
