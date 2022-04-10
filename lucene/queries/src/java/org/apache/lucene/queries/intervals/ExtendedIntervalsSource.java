@@ -87,12 +87,18 @@ class ExtendedIntervalsSource extends IntervalsSource {
 
           @Override
           public int startOffset() throws IOException {
-            return before > 0 ? -1 : in.startOffset();
+            // We could return this:
+            // before > 0 ? -1 : in.startOffset();
+            // but keep it consistent for start/end offset:
+            return -1;
           }
 
           @Override
           public int endOffset() throws IOException {
-            return after > 0 ? -1 : in.startOffset();
+            // We could return this:
+            // after > 0 ? -1 : in.startOffset();
+            // but keep it consistent for start/end offset:
+            return -1;
           }
 
           @Override
