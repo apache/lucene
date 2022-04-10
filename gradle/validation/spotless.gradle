@@ -22,19 +22,6 @@
 
 def resources = scriptResources(buildscript)
 
-// Check that GJF has access to jdk.compiler internals (this is set up
-// in gradle JVM options via the generated gradle.properties).
-def checkGoogleFormatHasAccessToJdkInternals = rootProject.tasks.register("checkGoogleFormatHasAccessToJdkInternals", {
-  doFirst {
-    def isExported = ModuleLayer.boot().findModule("jdk.compiler")
-        .get().isExported("com.sun.tools.javac.parser", getClass().module)
-    if (!isExported) {
-      throw new GradleException("Spotless (Google Java Format) has no access to jdk.compiler " +
-          "internals, your gradle.properties may be out of sync (see help/localSettings.txt)")
-    }
-  }
-})
-
 configure(project(":lucene").subprojects) { prj ->
   plugins.withType(JavaPlugin) {
     prj.apply plugin: 'com.diffplug.spotless'
@@ -116,11 +103,9 @@ configure(project(":lucene").subprojects) { prj ->
 
   tasks.matching { task -> task.name == "spotlessApply" }.configureEach { v ->
     tidy.dependsOn v
-    v.dependsOn checkGoogleFormatHasAccessToJdkInternals
   }
 
   tasks.matching { task -> task.name == "spotlessCheck" }.configureEach { v ->
     check.dependsOn v
-    v.dependsOn checkGoogleFormatHasAccessToJdkInternals
   }
 }
