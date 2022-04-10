@@ -22,6 +22,30 @@
 def hasDefaults = rootProject.file("gradle.properties").exists()
 
 configure(rootProject) {
+  // Add a task verifying that gradle process has access to JVM internals.
+  // this is occasionally needed for certain tasks.
+  task checkJdkInternalsExportedToGradle() {
+    doFirst {
+      def jdkCompilerModule = ModuleLayer.boot().findModule("jdk.compiler").orElseThrow()
+      def gradleModule = getClass().module
+      def internalsExported = [
+          "com.sun.tools.javac.api",
+          "com.sun.tools.javac.file",
+          "com.sun.tools.javac.parser",
+          "com.sun.tools.javac.tree",
+          "com.sun.tools.javac.util"
+      ].stream()
+        .allMatch(pkg -> jdkCompilerModule.isExported(pkg, gradleModule))
+
+      if (!internalsExported) {
+        throw new GradleException(
+            "Certain gradle tasks and plugins require access to jdk.compiler" +
+                " internals, your gradle.properties might have just been generated or could be" +
+                " out of sync (see help/localSettings.txt)")
+      }
+    }
+  }
+
   task localSettings() {
     doFirst {
       // If we don't have the defaults yet, create them.
@@ -43,7 +67,7 @@ systemProp.file.encoding=UTF-8
 # Set up gradle JVM defaults.
 # The heap seems huge but gradle runs out of memory on lower values (don't know why).
 #
-# We also open up internal compiler modules for spotless/ google jaa format.
+# We also open up internal compiler modules for spotless/ google java format.
 org.gradle.jvmargs=-Xmx3g \\
  --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \\
  --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \\
