@@ -59,7 +59,7 @@ If you want to just build the documentation, type:
 
 ### Checks
 
-Please make sure that all unit tests and validations succeed before constructing your patch: `./gradlew check`.
+Please make sure that all unit tests and validations succeed before constructing your patch: `./gradlew check`. If you've modified any sources, run `./gradlew tidy` to apply code formatting conventions automatically (see [help/formatting.txt](https://github.com/apache/lucene/blob/main/help/formatting.txt)).
 
 To run a single test case from the lucene/core directory in your working copy:  `./gradlew -p lucene/core test --tests NameOfYourUnitTest`. Run `./gradlew helpTests` to get more information about running tests.
 
