@@ -83,7 +83,7 @@ final class WANDScorer extends Scorer {
    * are used) as well as floating-point arithmetic errors. Those are rounded up in order to make
    * sure we do not miss any matches.
    */
-  private static long scaleMaxScore(float maxScore, int scalingFactor) {
+  static long scaleMaxScore(float maxScore, int scalingFactor) {
     assert Float.isNaN(maxScore) == false;
     assert maxScore >= 0;
 
@@ -106,7 +106,7 @@ final class WANDScorer extends Scorer {
    * Scale min competitive scores the same way as max scores but this time by rounding down in order
    * to make sure that we do not miss any matches.
    */
-  private static long scaleMinScore(float minScore, int scalingFactor) {
+  static long scaleMinScore(float minScore, int scalingFactor) {
     assert Float.isNaN(minScore) == false;
     assert minScore >= 0;
 
@@ -171,20 +171,9 @@ final class WANDScorer extends Scorer {
     tail = new DisiWrapper[scorers.size()];
 
     if (this.scoreMode == ScoreMode.TOP_SCORES) {
-      OptionalInt scalingFactor = OptionalInt.empty();
-      for (Scorer scorer : scorers) {
-        scorer.advanceShallow(0);
-        float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
-        if (maxScore != 0 && Float.isFinite(maxScore)) {
-          // 0 and +Infty should not impact the scale
-          scalingFactor =
-              OptionalInt.of(
-                  Math.min(scalingFactor.orElse(Integer.MAX_VALUE), scalingFactor(maxScore)));
-        }
-      }
 
       // Use a scaling factor of 0 if all max scores are either 0 or +Infty
-      this.scalingFactor = scalingFactor.orElse(0);
+      this.scalingFactor = getScalingFactor(scorers);
       this.maxScorePropagator = new MaxScoreSumPropagator(scorers);
     } else {
       this.scalingFactor = 0;
@@ -200,6 +189,21 @@ final class WANDScorer extends Scorer {
             scorers.stream().map(Scorer::iterator).mapToLong(DocIdSetIterator::cost),
             scorers.size(),
             minShouldMatch);
+  }
+
+  static int getScalingFactor(Collection<Scorer> scorers) throws IOException {
+    OptionalInt scalingFactor = OptionalInt.empty();
+    for (Scorer scorer : scorers) {
+      scorer.advanceShallow(0);
+      float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
+      if (maxScore != 0 && Float.isFinite(maxScore)) {
+        // 0 and +Infty should not impact the scale
+        scalingFactor =
+            OptionalInt.of(
+                Math.min(scalingFactor.orElse(Integer.MAX_VALUE), scalingFactor(maxScore)));
+      }
+    }
+    return scalingFactor.orElse(0);
   }
 
   // returns a boolean so that it can be called from assert

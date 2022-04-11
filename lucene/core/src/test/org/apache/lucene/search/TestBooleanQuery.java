@@ -634,7 +634,7 @@ public class TestBooleanQuery extends LuceneTestCase {
 
     final Weight weight = searcher.createWeight(searcher.rewrite(q.build()), ScoreMode.COMPLETE, 1);
     final Scorer scorer = weight.scorer(reader.leaves().get(0));
-    assertTrue(scorer instanceof DisjunctionScorer);
+    assertTrue(scorer instanceof DisjunctionScorer || scorer instanceof BlockMaxMaxscoreScorer);
     assertNotNull(scorer.twoPhaseIterator());
 
     reader.close();
