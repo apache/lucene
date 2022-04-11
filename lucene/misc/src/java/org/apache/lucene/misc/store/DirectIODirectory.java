@@ -74,7 +74,7 @@ public class DirectIODirectory extends FilterDirectory {
    * <ol>
    *   <li>ExtendedOpenOption.DIRECT is OpenJDK's internal proprietary API. This API causes
    *       un-suppressible(?) warning to be emitted when compiling with --release flag and value N,
-   *       where N is smaller than the the version of javac used for compilation. For details,
+   *       where N is smaller than the version of javac used for compilation. For details,
    *       please refer to https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8259039.
    *   <li>It is possible that Lucene is run using JDK that does not support
    *       ExtendedOpenOption.DIRECT. In such a case, dynamic lookup allows us to bail out with
