@@ -396,8 +396,8 @@ public class BKDWriter implements Closeable {
     int numLeaves();
     /**
      * pointer to the leaf node previously written. Leaves are order from left to right, so leaf at
-     * {@code index} 0 is the leftmost leaf and the leaf at {@code numleaves()} -1 is the
-     * rightmost leaf
+     * {@code index} 0 is the leftmost leaf and the leaf at {@code numleaves()} -1 is the rightmost
+     * leaf
      */
     long getLeafLP(int index);
     /**
