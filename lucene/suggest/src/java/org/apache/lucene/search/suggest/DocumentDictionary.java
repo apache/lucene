@@ -64,8 +64,8 @@ public class DocumentDictionary implements Dictionary {
 
   /**
    * Creates a new dictionary with the contents of the fields named <code>field</code> for the
-   * terms, <code>weightField</code> for the weights that will be used for the corresponding
-   * terms and <code>payloadField</code> for the corresponding payloads for the entry.
+   * terms, <code>weightField</code> for the weights that will be used for the corresponding terms
+   * and <code>payloadField</code> for the corresponding payloads for the entry.
    */
   public DocumentDictionary(
       IndexReader reader, String field, String weightField, String payloadField) {
@@ -74,8 +74,8 @@ public class DocumentDictionary implements Dictionary {
 
   /**
    * Creates a new dictionary with the contents of the fields named <code>field</code> for the
-   * terms, <code>weightField</code> for the weights that will be used for the corresponding
-   * terms, <code>payloadField</code> for the corresponding payloads for the entry and <code>
+   * terms, <code>weightField</code> for the weights that will be used for the corresponding terms,
+   * <code>payloadField</code> for the corresponding payloads for the entry and <code>
    * contextsField</code> for associated contexts.
    */
   public DocumentDictionary(
