@@ -40,19 +40,19 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
 
   // For safety:
   protected static final int MAX_UNKNOWN_WORD_LENGTH = 1024;
-  protected static final int MAX_BACKTRACE_GAP = 1024;
+  private static final int MAX_BACKTRACE_GAP = 1024;
 
-  protected final TokenInfoFST fst;
-  protected final BinaryDictionary<? extends MorphData> dictionary;
+  private final TokenInfoFST fst;
+  private final BinaryDictionary<? extends MorphData> dictionary;
+  private final Dictionary<? extends MorphData> userDictionary;
   protected final ConnectionCosts costs;
-  protected final Dictionary<? extends MorphData> userDictionary;
 
-  protected final FST.Arc<Long> arc = new FST.Arc<>();
-  protected final FST.BytesReader fstReader;
+  private final FST.Arc<Long> arc = new FST.Arc<>();
+  private final FST.BytesReader fstReader;
   protected final IntsRef wordIdRef = new IntsRef();
 
-  protected final FST.BytesReader userFSTReader;
-  protected final TokenInfoFST userFST;
+  private final FST.BytesReader userFSTReader;
+  private final TokenInfoFST userFST;
 
   protected final RollingCharBuffer buffer = new RollingCharBuffer();
 
@@ -446,7 +446,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
   }
 
   /** Add a token on the minimum cost path to the pending token list. */
-  protected void add(
+  protected final void add(
       MorphData morphData,
       Position fromPosData,
       int wordPos,
@@ -696,7 +696,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     private final Class<U> clazz;
 
     @SuppressWarnings("unchecked")
-    public WrappedPositionArray(Class<U> clazz) {
+    WrappedPositionArray(Class<U> clazz) {
       this.clazz = clazz;
       positions = (U[]) Array.newInstance(clazz, 8);
       for (int i = 0; i < positions.length; i++) {
@@ -719,7 +719,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     // positions array:
     private int count;
 
-    public void reset() {
+    void reset() {
       nextWrite--;
       while (count > 0) {
         if (nextWrite == -1) {
@@ -776,7 +776,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
       return positions[index];
     }
 
-    public int getNextPos() {
+    int getNextPos() {
       return nextPos;
     }
 

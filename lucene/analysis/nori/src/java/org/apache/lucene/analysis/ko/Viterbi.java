@@ -147,7 +147,7 @@ final class Viterbi
     return 0;
   }
 
-  public void setGraphvizFormatter(GraphvizFormatter<KoMorphData> dotOut) {
+  void setGraphvizFormatter(GraphvizFormatter<KoMorphData> dotOut) {
     this.dotOut = dotOut;
   }
 

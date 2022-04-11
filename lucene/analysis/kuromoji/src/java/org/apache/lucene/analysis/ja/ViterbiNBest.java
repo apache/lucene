@@ -63,7 +63,7 @@ final class ViterbiNBest
 
   private GraphvizFormatter<JaMorphData> dotOut;
 
-  protected ViterbiNBest(
+  ViterbiNBest(
       TokenInfoFST fst,
       FST.BytesReader fstReader,
       TokenInfoDictionary dictionary,
@@ -188,7 +188,7 @@ final class ViterbiNBest
     return 0;
   }
 
-  public void setGraphvizFormatter(GraphvizFormatter<JaMorphData> dotOut) {
+  void setGraphvizFormatter(GraphvizFormatter<JaMorphData> dotOut) {
     this.dotOut = dotOut;
   }
 
@@ -810,12 +810,12 @@ final class ViterbiNBest
     return dictionaryMap.get(type);
   }
 
-  public void setNBestCost(int value) {
+  void setNBestCost(int value) {
     nBestCost = value;
     outputNBest = 0 < nBestCost;
   }
 
-  public int getNBestCost() {
+  int getNBestCost() {
     return nBestCost;
   }
 
