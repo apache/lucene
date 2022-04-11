@@ -91,9 +91,4 @@ public final class OffsetsFromTokens implements OffsetsRetrievalStrategy {
     }
     return ranges;
   }
-
-  @Override
-  public boolean requiresDocument() {
-    return true;
-  }
 }

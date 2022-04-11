@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.TreeMap;
@@ -43,6 +44,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * Utility class to compute a list of "match regions" for a given query, searcher and document(s)
@@ -75,7 +77,7 @@ public class MatchRegionRetriever {
    */
   @FunctionalInterface
   public interface FieldValueProvider {
-    List<CharSequence> getValues(String field);
+    List<CharSequence> getValues(String field) throws IOException;
   }
 
   /**
@@ -131,9 +133,7 @@ public class MatchRegionRetriever {
     preloadFields = new HashSet<>();
     offsetStrategies.forEach(
         (field, strategy) -> {
-          if (strategy.requiresDocument()) {
-            preloadFields.add(field);
-          }
+          preloadFields.add(field);
         });
 
     // Only preload those field values that can be affected by the query and are required
@@ -181,17 +181,12 @@ public class MatchRegionRetriever {
       int contextRelativeDocId = docId - currentContext.docBase;
 
       // Only preload fields we may potentially need.
-      FieldValueProvider documentSupplier;
-      if (preloadFields.isEmpty()) {
-        documentSupplier = null;
-      } else {
-        Document doc = currentContext.reader().document(contextRelativeDocId, preloadFields);
-        documentSupplier = new DocumentFieldValueProvider(doc);
-      }
+      FieldValueProvider docFieldsSupplier =
+          new DocumentFieldValueProvider(currentContext, contextRelativeDocId, preloadFields);
 
       highlights.clear();
       highlightDocument(
-          currentContext, contextRelativeDocId, documentSupplier, (field) -> true, highlights);
+          currentContext, contextRelativeDocId, docFieldsSupplier, (field) -> true, highlights);
       consumer.accept(docId, currentContext.reader(), contextRelativeDocId, highlights);
     }
   }
@@ -262,7 +257,7 @@ public class MatchRegionRetriever {
 
       switch (fieldInfo.getIndexOptions()) {
         case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS:
-          return new OffsetsFromMatchIterator(field);
+          return new OffsetsFromMatchIterator(field, new OffsetsFromPositions(field, analyzer));
 
         case DOCS_AND_FREQS_AND_POSITIONS:
           return new OffsetsFromPositions(field, analyzer);
@@ -293,14 +288,20 @@ public class MatchRegionRetriever {
 
   /** Implements {@link FieldValueProvider} wrapping a preloaded {@link Document}. */
   private static final class DocumentFieldValueProvider implements FieldValueProvider {
-    private final Document doc;
+    private final IOSupplier<Document> docSupplier;
+    private Document doc;
 
-    public DocumentFieldValueProvider(Document doc) {
-      this.doc = doc;
+    public DocumentFieldValueProvider(
+        LeafReaderContext currentContext, int docId, Set<String> preloadFields) {
+      docSupplier = () -> currentContext.reader().document(docId, preloadFields);
     }
 
     @Override
-    public List<CharSequence> getValues(String field) {
+    public List<CharSequence> getValues(String field) throws IOException {
+      if (doc == null) {
+        doc = Objects.requireNonNull(docSupplier.get());
+      }
+
       return Arrays.asList(doc.getValues(field));
     }
   }
