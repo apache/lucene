@@ -67,7 +67,8 @@ public class TestIntervals extends LuceneTestCase {
     "Pease porridge cold, pease porridge hot, pease porridge in the pot twelve days old.  Some like it cold, some like it hot, some like it in the fraggle",
     "Nor here, nowt hot going on in pease this one",
     "Pease porridge hot, pease porridge cold, pease porridge in the pot nine years old.  Some like it hot, some like it twelve",
-    "Porridge is great"
+    "Porridge is great",
+    ""
   };
 
   //   0         1         2         3         4         5         6         7         8         9
@@ -79,7 +80,8 @@ public class TestIntervals extends LuceneTestCase {
     "a b a c b a b c",
     "So thrice five miles of fertile ground",
     "Pease hot porridge porridge",
-    "w1 w2 w3 w4 w1 w6 w3 w8 w4 w7 w1 w6"
+    "w1 w2 w3 w4 w1 w6 w3 w8 w4 w7 w1 w6",
+    "the quick brown fox jumps over the lazy dog"
   };
 
   private static Directory directory;
@@ -117,8 +119,13 @@ public class TestIntervals extends LuceneTestCase {
     IOUtils.close(searcher.getIndexReader(), directory);
   }
 
+  /**
+   * @param expectedIntervals An array of expected position intervals for each document. Each
+   *     sub-array contains a number of pairs corresponding to (start, end) positions of each
+   *     interval.
+   */
   private void checkIntervals(
-      IntervalsSource source, String field, int expectedMatchCount, int[][] expected)
+      IntervalsSource source, String field, int expectedMatchCount, int[][] expectedIntervals)
       throws IOException {
     int matchedDocs = 0;
     for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
@@ -138,13 +145,17 @@ public class TestIntervals extends LuceneTestCase {
           assertEquals(-1, intervals.start());
           assertEquals(-1, intervals.end());
           while ((pos = intervals.nextInterval()) != IntervalIterator.NO_MORE_INTERVALS) {
-            if (i >= expected[id].length) {
+            if (i >= expectedIntervals[id].length) {
               fail("Unexpected match in doc " + id + ": " + intervals);
             }
-            assertEquals(source + ": wrong start value in doc " + id, expected[id][i], pos);
             assertEquals(
-                "start() != pos returned from nextInterval()", expected[id][i], intervals.start());
-            assertEquals("Wrong end value in doc " + id, expected[id][i + 1], intervals.end());
+                source + ": wrong start value in doc " + id, expectedIntervals[id][i], pos);
+            assertEquals(
+                "start() != pos returned from nextInterval()",
+                expectedIntervals[id][i],
+                intervals.start());
+            assertEquals(
+                "Wrong end value in doc " + id, expectedIntervals[id][i + 1], intervals.end());
             i += 2;
             assertTrue(mi.next());
             assertEquals(
@@ -156,7 +167,8 @@ public class TestIntervals extends LuceneTestCase {
                 intervals.end(),
                 mi.endPosition());
           }
-          assertEquals(source + ": wrong number of endpoints in doc " + id, expected[id].length, i);
+          assertEquals(
+              source + ": wrong number of endpoints in doc " + id, expectedIntervals[id].length, i);
           assertEquals(IntervalIterator.NO_MORE_INTERVALS, intervals.start());
           assertEquals(IntervalIterator.NO_MORE_INTERVALS, intervals.end());
           if (i > 0) {
@@ -166,7 +178,11 @@ public class TestIntervals extends LuceneTestCase {
             assertNull("Expected null matches iterator on doc " + id, mi);
           }
         } else {
-          assertEquals(0, expected[id].length);
+          // Assume empty matches if the expected array of IDs is shorter
+          // than the number of docs.
+          if (expectedIntervals.length > id) {
+            assertEquals(0, expectedIntervals[id].length);
+          }
           assertNull(mi);
         }
       }
@@ -218,10 +234,10 @@ public class TestIntervals extends LuceneTestCase {
   private void assertMatch(MatchesIterator mi, int start, int end, int startOffset, int endOffset)
       throws IOException {
     assertTrue(mi.next());
-    assertEquals(start, mi.startPosition());
-    assertEquals(end, mi.endPosition());
-    assertEquals(startOffset, mi.startOffset());
-    assertEquals(endOffset, mi.endOffset());
+    assertEquals("Start position", start, mi.startPosition());
+    assertEquals("End position", end, mi.endPosition());
+    assertEquals("Start offset", startOffset, mi.startOffset());
+    assertEquals("End offset", endOffset, mi.endOffset());
   }
 
   private void assertGaps(IntervalsSource source, int doc, String field, int[] expectedGaps)
@@ -249,6 +265,17 @@ public class TestIntervals extends LuceneTestCase {
     assertEquals(
         "Cannot create an IntervalIterator over field id because it has no indexed positions",
         e.getMessage());
+  }
+
+  public void testExtends() throws IOException {
+    IntervalsSource source = Intervals.extend(Intervals.term("fox"), 1, 2);
+    checkIntervals(source, "field2", 1, new int[][] {{}, {}, {}, {}, {}, {}, {2, 5}});
+    MatchesIterator mi = getMatches(source, 6, "field2");
+
+    // LUCENE-10229: we can't report offsets for the "extended" position range because this
+    // information
+    // is not available from term positions index alone. Report the truth (-1 - not available).
+    assertMatch(mi, 2, 5, -1, -1);
   }
 
   public void testTermQueryIntervals() throws IOException {
@@ -838,11 +865,11 @@ public class TestIntervals extends LuceneTestCase {
     assertEquals(5, source.minExtent());
 
     MatchesIterator mi = getMatches(source, 1, "field1");
-    assertMatch(mi, 3, 7, 20, 55);
+    assertMatch(mi, 3, 7, -1, -1);
     MatchesIterator sub = mi.getSubMatches();
     assertNotNull(sub);
     assertMatch(sub, 3, 3, 20, 25);
-    assertMatch(sub, 4, 6, 35, 39);
+    assertMatch(sub, 4, 6, -1, -1);
     assertMatch(sub, 7, 7, 47, 55);
 
     source = Intervals.extend(Intervals.term("w1"), 5, Integer.MAX_VALUE);

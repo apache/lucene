@@ -28,6 +28,9 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-10229: return -1 for unknown offsets in ExtendedIntervalsSource. Modify highlighting to
+  work properly with or without offsets. (Dawid Weiss)
+
 * LUCENE-10494: Implement method to bulk add all collection elements to a PriorityQueue.
   (Bauyrzhan Sakhariyev)
 
