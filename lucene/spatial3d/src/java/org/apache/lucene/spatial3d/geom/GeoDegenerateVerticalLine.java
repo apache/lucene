@@ -107,8 +107,11 @@ public class GeoDegenerateVerticalLine extends GeoBaseBBox {
     this.centerPoint =
         new GeoPoint(planetModel, sinMiddleLat, sinLongitude, cosMiddleLat, cosLongitude);
 
-    this.topPlane = new SidedPlane(centerPoint, planetModel, sinTopLat);
-    this.bottomPlane = new SidedPlane(centerPoint, planetModel, sinBottomLat);
+    this.topPlane = new SidedPlane(LHC, planetModel, sinTopLat);
+    this.bottomPlane = new SidedPlane(UHC, planetModel, sinBottomLat);
+
+    assert (topPlane.isWithin(centerPoint));
+    assert (bottomPlane.isWithin(centerPoint));
 
     this.boundingPlane = new SidedPlane(centerPoint, -sinLongitude, cosLongitude);
 

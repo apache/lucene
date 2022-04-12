@@ -126,6 +126,10 @@ Bug Fixes
   existing lookup() results during concurrent build().  Fix other FST based suggesters so that
   getCount() returned results consistent with lookup() during concurrent build().  (hossman)
 
+* LUCENE-10508: Fixes some edge cases where GeoArea were built in a way that vertical planes
+  could not evaluate their sign, either because the planes where the same or the center between those
+  planes was lying in one of the planes. (Ignacio Vera)
+  
 Build
 ---------------------
 

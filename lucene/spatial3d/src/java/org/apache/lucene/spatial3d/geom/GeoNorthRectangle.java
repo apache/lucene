@@ -124,9 +124,9 @@ class GeoNorthRectangle extends GeoBaseBBox {
     this.centerPoint =
         new GeoPoint(planetModel, sinMiddleLat, sinMiddleLon, cosMiddleLat, cosMiddleLon);
 
-    this.bottomPlane = new SidedPlane(centerPoint, planetModel, sinBottomLat);
-    this.leftPlane = new SidedPlane(centerPoint, cosLeftLon, sinLeftLon);
-    this.rightPlane = new SidedPlane(centerPoint, cosRightLon, sinRightLon);
+    this.bottomPlane = new SidedPlane(planetModel.NORTH_POLE, planetModel, sinBottomLat);
+    this.leftPlane = new SidedPlane(LRHC, cosLeftLon, sinLeftLon);
+    this.rightPlane = new SidedPlane(LLHC, cosRightLon, sinRightLon);
 
     assert (bottomPlane.isWithin(centerPoint));
     assert (leftPlane.isWithin(centerPoint));
