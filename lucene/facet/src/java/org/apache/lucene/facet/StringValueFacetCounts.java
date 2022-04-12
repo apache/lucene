@@ -356,22 +356,46 @@ public class StringValueFacetCounts extends Facets {
     if (ordinalMap == null) {
       // If there's no ordinal map we don't need to map segment ordinals to globals, so counting
       // is very straight-forward:
-      if (singleValues != null) {
+      if (singleValues == it) {
+        for (int doc = singleValues.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = singleValues.nextDoc()) {
+          increment(singleValues.ordValue());
+          totalDocCount++;
+        }
+      } else if (singleValues != null) {
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           increment(singleValues.ordValue());
           totalDocCount++;
         }
       } else {
-        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-          int term = (int) multiValues.nextOrd();
-          boolean countedDocInTotal = false;
-          while (term != SortedSetDocValues.NO_MORE_ORDS) {
-            increment(term);
-            if (countedDocInTotal == false) {
-              totalDocCount++;
-              countedDocInTotal = true;
+        if (multiValues == it) {
+          for (int doc = multiValues.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = multiValues.nextDoc()) {
+            boolean countedDocInTotal = false;
+            for (int term = (int) multiValues.nextOrd();
+                term != SortedSetDocValues.NO_MORE_ORDS;
+                term = (int) multiValues.nextOrd()) {
+              increment(term);
+              if (countedDocInTotal == false) {
+                totalDocCount++;
+                countedDocInTotal = true;
+              }
             }
-            term = (int) multiValues.nextOrd();
+          }
+        } else {
+          for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+            boolean countedDocInTotal = false;
+            for (int term = (int) multiValues.nextOrd();
+                term != SortedSetDocValues.NO_MORE_ORDS;
+                term = (int) multiValues.nextOrd()) {
+              increment(term);
+              if (countedDocInTotal == false) {
+                totalDocCount++;
+                countedDocInTotal = true;
+              }
+            }
           }
         }
       }
@@ -385,21 +409,47 @@ public class StringValueFacetCounts extends Facets {
       if (hits != null && hits.totalHits < segmentCardinality / 10) {
         // Remap every ord to global ord as we iterate:
         if (singleValues != null) {
-          for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            increment((int) ordMap.get(singleValues.ordValue()));
-            totalDocCount++;
+          if (singleValues == it) {
+            for (int doc = singleValues.nextDoc();
+                doc != DocIdSetIterator.NO_MORE_DOCS;
+                doc = singleValues.nextDoc()) {
+              increment((int) ordMap.get(singleValues.ordValue()));
+              totalDocCount++;
+            }
+          } else {
+            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+              increment((int) ordMap.get(singleValues.ordValue()));
+              totalDocCount++;
+            }
           }
         } else {
-          for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
-            boolean countedDocInTotal = false;
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
-              increment((int) ordMap.get(term));
-              if (countedDocInTotal == false) {
-                totalDocCount++;
-                countedDocInTotal = true;
+          if (multiValues == it) {
+            for (int doc = multiValues.nextDoc();
+                doc != DocIdSetIterator.NO_MORE_DOCS;
+                doc = multiValues.nextDoc()) {
+              boolean countedDocInTotal = false;
+              for (int term = (int) multiValues.nextOrd();
+                  term != SortedSetDocValues.NO_MORE_ORDS;
+                  term = (int) multiValues.nextOrd()) {
+                increment((int) ordMap.get(term));
+                if (countedDocInTotal == false) {
+                  totalDocCount++;
+                  countedDocInTotal = true;
+                }
               }
-              term = (int) multiValues.nextOrd();
+            }
+          } else {
+            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+              boolean countedDocInTotal = false;
+              for (int term = (int) multiValues.nextOrd();
+                  term != SortedSetDocValues.NO_MORE_ORDS;
+                  term = (int) multiValues.nextOrd()) {
+                increment((int) ordMap.get(term));
+                if (countedDocInTotal == false) {
+                  totalDocCount++;
+                  countedDocInTotal = true;
+                }
+              }
             }
           }
         }
@@ -410,21 +460,47 @@ public class StringValueFacetCounts extends Facets {
         // to the segment cardinality), so we count the segment densely:
         final int[] segCounts = new int[segmentCardinality];
         if (singleValues != null) {
-          for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            segCounts[singleValues.ordValue()]++;
-            totalDocCount++;
+          if (singleValues == it) {
+            for (int doc = singleValues.nextDoc();
+                doc != DocIdSetIterator.NO_MORE_DOCS;
+                doc = singleValues.nextDoc()) {
+              segCounts[singleValues.ordValue()]++;
+              totalDocCount++;
+            }
+          } else {
+            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+              segCounts[singleValues.ordValue()]++;
+              totalDocCount++;
+            }
           }
         } else {
-          for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
-            boolean countedDocInTotal = false;
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
-              segCounts[term]++;
-              if (countedDocInTotal == false) {
-                totalDocCount++;
-                countedDocInTotal = true;
+          if (multiValues == it) {
+            for (int doc = multiValues.nextDoc();
+                doc != DocIdSetIterator.NO_MORE_DOCS;
+                doc = multiValues.nextDoc()) {
+              boolean countedDocInTotal = false;
+              for (int term = (int) multiValues.nextOrd();
+                  term != SortedSetDocValues.NO_MORE_ORDS;
+                  term = (int) multiValues.nextOrd()) {
+                segCounts[term]++;
+                if (countedDocInTotal == false) {
+                  totalDocCount++;
+                  countedDocInTotal = true;
+                }
               }
-              term = (int) multiValues.nextOrd();
+            }
+          } else {
+            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+              boolean countedDocInTotal = false;
+              for (int term = (int) multiValues.nextOrd();
+                  term != SortedSetDocValues.NO_MORE_ORDS;
+                  term = (int) multiValues.nextOrd()) {
+                segCounts[term]++;
+                if (countedDocInTotal == false) {
+                  totalDocCount++;
+                  countedDocInTotal = true;
+                }
+              }
             }
           }
         }
