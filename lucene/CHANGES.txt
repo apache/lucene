@@ -84,6 +84,9 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-10229: return -1 for unknown offsets in ExtendedIntervalsSource. Modify highlighting to
+  work properly with or without offsets. (Dawid Weiss)
+
 * LUCENE-10494: Implement method to bulk add all collection elements to a PriorityQueue.
   (Bauyrzhan Sakhariyev)
 
@@ -119,10 +122,14 @@ Bug Fixes
 * LUCENE-10466: Ensure IndexSortSortedNumericDocValuesRangeQuery handles sort field
   types besides LONG (Andriy Redko)
 
+* LUCENE-10292: Suggest: Fix AnalyzingInfixSuggester / BlendedInfixSuggester to correctly return
+  existing lookup() results during concurrent build().  Fix other FST based suggesters so that
+  getCount() returned results consistent with lookup() during concurrent build().  (hossman)
+
 * LUCENE-10508: Fixes some edge cases where GeoArea were built in a way that vertical planes
   could not evaluate their sign, either because the planes where the same or the center between those
   planes was lying in one of the planes. (Ignacio Vera)
-
+  
 Build
 ---------------------
 
