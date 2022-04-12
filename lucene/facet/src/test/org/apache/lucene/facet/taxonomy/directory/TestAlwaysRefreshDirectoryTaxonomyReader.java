@@ -35,6 +35,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.junit.Assume;
+import org.junit.AssumptionViolatedException;
 
 public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
 
@@ -53,6 +55,15 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
       throws IOException {
     final Path taxoPath1 = createTempDir(String.valueOf(Instant.now()));
     final Directory dir1 = newFSDirectory(taxoPath1);
+    try {
+      Assume.assumeFalse(
+          "Nefarious FS will delay/stop deletion of index files and this test specifically does that",
+          TestUtil.hasVirusChecker(dir1) || TestUtil.hasWindowsFS(dir1));
+    } catch (AssumptionViolatedException e) {
+      IOUtils.close(dir1); // closing to cleanly end the test case
+      throw e;
+    }
+
     final DirectoryTaxonomyWriter tw1 =
         new DirectoryTaxonomyWriter(dir1, IndexWriterConfig.OpenMode.CREATE);
     tw1.addCategory(new FacetLabel("a"));
@@ -94,10 +105,6 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
 
     while (dir1.getPendingDeletions().isEmpty() == false) {
       // make the test more robust to the OS taking more time to actually delete files
-      if (TestUtil.hasVirusChecker(dir1) || TestUtil.hasWindowsFS(dir1)) {
-        // nefarious FS will delay/stop deletion of index files
-        return;
-      }
       sleep(5);
     }
 

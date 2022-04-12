@@ -50,9 +50,13 @@ Other
   framework. (Adrien Grand)
 
 ======================= Lucene 9.2.0 =======================
+
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10482: Allow users to create their own DirectoryTaxonomyReaders with empty taxoArrays instead of letting the
+  taxoEpoch decide. Add a test case that demonstrates the inconsistencies caused when you reuse taxoArrays on older
+  checkpoints. (Gautam Worah)
 
 New Features
 ---------------------
