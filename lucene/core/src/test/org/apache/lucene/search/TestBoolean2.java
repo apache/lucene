@@ -386,27 +386,30 @@ public class TestBoolean2 extends LuceneTestCase {
         }
 
         // check diff (randomized) scorers (from AssertingSearcher) produce the same results
-        TopFieldCollector collector = TopFieldCollector.create(sort, 1000, 1);
-        searcher.search(q1, collector);
-        ScoreDoc[] hits1 = collector.topDocs().scoreDocs;
-        collector = TopFieldCollector.create(sort, 1000, 1);
-        searcher.search(q1, collector);
-        ScoreDoc[] hits2 = collector.topDocs().scoreDocs;
+        ScoreDoc[] hits1 =
+            searcher.search(q1, TopFieldCollector.createSharedManager(sort, 1000, null, 1))
+                .scoreDocs;
+        TopDocs topDocs =
+            searcher.search(q1, TopFieldCollector.createSharedManager(sort, 1000, null, 1));
+        ScoreDoc[] hits2 = topDocs.scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
 
         BooleanQuery.Builder q3 = new BooleanQuery.Builder();
         q3.add(q1, BooleanClause.Occur.SHOULD);
         q3.add(new PrefixQuery(new Term("field2", "b")), BooleanClause.Occur.SHOULD);
         assertEquals(
-            mulFactor * collector.totalHits + NUM_EXTRA_DOCS / 2, bigSearcher.count(q3.build()));
+            mulFactor * topDocs.totalHits.value + NUM_EXTRA_DOCS / 2,
+            bigSearcher.count(q3.build()));
 
         // test diff (randomized) scorers produce the same results on bigSearcher as well
-        collector = TopFieldCollector.create(sort, 1000 * mulFactor, 1);
-        bigSearcher.search(q1, collector);
-        hits1 = collector.topDocs().scoreDocs;
-        collector = TopFieldCollector.create(sort, 1000 * mulFactor, 1);
-        bigSearcher.search(q1, collector);
-        hits2 = collector.topDocs().scoreDocs;
+        hits1 =
+            bigSearcher.search(
+                    q1, TopFieldCollector.createSharedManager(sort, 1000 * mulFactor, null, 1))
+                .scoreDocs;
+        hits2 =
+            bigSearcher.search(
+                    q1, TopFieldCollector.createSharedManager(sort, 1000 * mulFactor, null, 1))
+                .scoreDocs;
         CheckHits.checkEqual(q1, hits1, hits2);
       }
 

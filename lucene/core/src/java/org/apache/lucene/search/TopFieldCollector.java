@@ -488,11 +488,13 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    */
   public static CollectorManager<TopFieldCollector, TopFieldDocs> createSharedManager(
       Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
-    return new CollectorManager<>() {
 
+    int totalHitsMax = Math.max(totalHitsThreshold, numHits);
+    return new CollectorManager<>() {
       private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits));
-      private final MaxScoreAccumulator minScoreAcc = new MaxScoreAccumulator();
+          HitsThresholdChecker.createShared(totalHitsMax);
+      private final MaxScoreAccumulator minScoreAcc =
+          totalHitsMax == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
 
       @Override
       public TopFieldCollector newCollector() throws IOException {

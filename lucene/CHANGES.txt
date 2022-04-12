@@ -22,6 +22,9 @@ API Changes
 
 * LUCENE-10431: MultiTermQuery.setRewriteMethod() has been removed. (Alan Woodward)
 
+* LUCENE-10436: Remove deprecated DocValuesFieldExistsQuery, NormsFieldExistsQuery and
+  KnnVectorFieldExistsQuery. (Zach Chen, Adrien Grand)
+
 New Features
 ---------------------
 
@@ -39,6 +42,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
 (No changes)
 
 Other
@@ -49,10 +53,19 @@ Other
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
+* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+  (Tomoko Uchida, Robert Muir)
+
+* LUCENE-10475: Merge dictionary builders in `util` package into `dict` package in Kuromoji and Nori.
+  All classes in `org.apache.lucene.analysis.[ja|ko].util` was moved to `org.apache.lucene.analysis.[ja|ko].dict`.
+  (Tomoko Uchida)
+
 ======================= Lucene 9.2.0 =======================
 
 API Changes
 ---------------------
+
+* LUCENE-10325: Facets API extended to support getTopFacets. (Yuting Gan)
 
 * LUCENE-10482: Allow users to create their own DirectoryTaxonomyReaders with empty taxoArrays instead of letting the
   taxoEpoch decide. Add a test case that demonstrates the inconsistencies caused when you reuse taxoArrays on older
@@ -65,12 +78,28 @@ New Features
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
 * LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
-implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
-have readonly `Monitor` instances. (Niko Usai)
+  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+  have readonly `Monitor` instances. (Niko Usai)
+
+* LUCENE-10456: Implement rewrite and Weight#count for MultiRangeQuery
+  by merging overlapping ranges . (Jianping Weng)
+
+* LUCENE-10444: Support alternate aggregation functions in association facets. (Greg Miller)
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10229: return -1 for unknown offsets in ExtendedIntervalsSource. Modify highlighting to
+  work properly with or without offsets. (Dawid Weiss)
+
+* LUCENE-10494: Implement method to bulk add all collection elements to a PriorityQueue.
+  (Bauyrzhan Sakhariyev)
+
+* LUCENE-10484: Add support for concurrent random sampling by calling
+  RandomSamplingFacetsCollector#createManager. (Luca Cavanna)
+
+* LUCENE-10467: Throws IllegalArgumentException for Facets#getAllDims and Facets#getTopChildren
+  if topN <= 0. (Yuting Gan)
 
 Optimizations
 ---------------------
@@ -82,12 +111,34 @@ Optimizations
 * LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
   (Adrien Grand)
 
+* LUCENE-10436: Deprecate DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery
+  with FieldExistsQuery. (Zach Chen, Michael McCandless, Adrien Grand)
+
 * LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
   multiple times if necessary. (Christine Poerschke, Adrien Grand)
+
+* LUCENE-10491: A correctness bug in the way scores are provided within TaxonomyFacetSumValueSource
+  was fixed. (Michael McCandless, Greg Miller)
+
+* LUCENE-10466: Ensure IndexSortSortedNumericDocValuesRangeQuery handles sort field
+  types besides LONG (Andriy Redko)
+
+* LUCENE-10292: Suggest: Fix AnalyzingInfixSuggester / BlendedInfixSuggester to correctly return
+  existing lookup() results during concurrent build().  Fix other FST based suggesters so that
+  getCount() returned results consistent with lookup() during concurrent build().  (hossman)
+
+* LUCENE-10508: Fixes some edge cases where GeoArea were built in a way that vertical planes
+  could not evaluate their sign, either because the planes where the same or the center between those
+  planes was lying in one of the planes. (Ignacio Vera)
+  
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
 
 Other
 ---------------------

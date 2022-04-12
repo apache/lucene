@@ -28,4 +28,40 @@ abstract class DocValuesIterator extends DocIdSetIterator {
    * returns {@code target}.
    */
   public abstract boolean advanceExact(int target) throws IOException;
+
+  /**
+   * Returns a {@link DocIdSetIterator} from the given field or null if the field doesn't exist in
+   * the reader or if the reader has no doc values for the field.
+   */
+  public static DocIdSetIterator getDocValuesDocIdSetIterator(String field, LeafReader reader)
+      throws IOException {
+    FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+    final DocIdSetIterator iterator;
+    if (fieldInfo != null) {
+      switch (fieldInfo.getDocValuesType()) {
+        case NONE:
+          iterator = null;
+          break;
+        case NUMERIC:
+          iterator = reader.getNumericDocValues(field);
+          break;
+        case BINARY:
+          iterator = reader.getBinaryDocValues(field);
+          break;
+        case SORTED:
+          iterator = reader.getSortedDocValues(field);
+          break;
+        case SORTED_NUMERIC:
+          iterator = reader.getSortedNumericDocValues(field);
+          break;
+        case SORTED_SET:
+          iterator = reader.getSortedSetDocValues(field);
+          break;
+        default:
+          throw new AssertionError();
+      }
+      return iterator;
+    }
+    return null;
+  }
 }

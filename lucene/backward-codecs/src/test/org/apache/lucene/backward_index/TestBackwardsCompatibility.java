@@ -97,12 +97,11 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.NormsFieldExistsQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -2132,10 +2131,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private void searchExampleIndex(DirectoryReader reader) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
 
-    TopDocs topDocs = searcher.search(new NormsFieldExistsQuery("titleTokenized"), 10);
+    TopDocs topDocs = searcher.search(new FieldExistsQuery("titleTokenized"), 10);
     assertEquals(50, topDocs.totalHits.value);
 
-    topDocs = searcher.search(new DocValuesFieldExistsQuery("titleDV"), 10);
+    topDocs = searcher.search(new FieldExistsQuery("titleDV"), 10);
     assertEquals(50, topDocs.totalHits.value);
 
     topDocs = searcher.search(new TermQuery(new Term("body", "ja")), 10);

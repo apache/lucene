@@ -21,7 +21,8 @@ import java.util.Map;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Position;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.WrappedPositionArray;
 import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ja.dict.Dictionary;
+import org.apache.lucene.analysis.ja.dict.JaMorphData;
+import org.apache.lucene.analysis.morph.Dictionary;
 
 // TODO: would be nice to show 2nd best path in a diff't
 // color...
@@ -140,7 +141,7 @@ public class GraphvizFormatter {
           attrs = "";
         }
 
-        final Dictionary dict = tok.getDict(posData.backType[idx]);
+        final Dictionary<? extends JaMorphData> dict = tok.getDict(posData.backType[idx]);
         final int wordCost = dict.getWordCost(posData.backID[idx]);
         final int bgCost =
             costs.get(

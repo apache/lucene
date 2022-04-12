@@ -348,6 +348,7 @@ public class LongValueFacetCounts extends Facets {
 
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) {
+    validateTopN(topN);
     if (dim.equals(field) == false) {
       throw new IllegalArgumentException(
           "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
@@ -489,6 +490,7 @@ public class LongValueFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) {
+    validateTopN(topN);
     return Collections.singletonList(getTopChildren(topN, field));
   }
 

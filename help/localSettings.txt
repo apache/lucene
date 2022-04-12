@@ -4,9 +4,14 @@ Local developer settings
 The first invocation of any task in Lucene's gradle build will generate
 and save a project-local 'gradle.properties' file. This file contains
 the defaults you may (but don't have to) tweak for your particular hardware
-(or taste).
+(or taste). Note there are certain settings in that file that may
+be _required_ at runtime for certain plugins (an example is the spotless/
+google java format plugin, which requires adding custom exports to JVM modules). Gradle
+build only generates this file if it's not already present (it never overwrites
+the defaults) -- occasionally you may have to manually delete (or move) this
+file and regenerate from scratch.
 
-This is an overview of some of these settings.
+This is an overview of some settings present in gradle.properties.
 
 Parallelism
 -----------
