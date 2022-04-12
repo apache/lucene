@@ -57,7 +57,7 @@ For more information, consult with the help task: this will show the main tasks 
 
 ### Code formatting and checks
 
-Please make sure that all unit tests and validations succeed before constructing your patch. There are various commands to format/check the code; type this to show typical workflow tasks.
+Please make sure that all unit tests and validations succeed before constructing your patch. There are various commands to format/check the code; type this to show typical workflow tasks ([help/workflow.txt](./help/workflow.txt)).
 
 ```
 ./gradlew helpWorkflow
