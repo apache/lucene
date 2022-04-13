@@ -19,7 +19,6 @@ package org.apache.lucene.util.bkd;
 import java.io.IOException;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.DocBaseBitSetIterator;
@@ -107,10 +106,10 @@ final class DocIdsWriter {
           int doc8 = docIds[start + i + 7];
           long l1 = (doc1 & 0xffffffL) << 40 | (doc2 & 0xffffffL) << 16 | ((doc3 >>> 8) & 0xffffL);
           long l2 =
-                  (doc3 & 0xffL) << 56
-                          | (doc4 & 0xffffffL) << 32
-                          | (doc5 & 0xffffffL) << 8
-                          | ((doc6 >> 16) & 0xffL);
+              (doc3 & 0xffL) << 56
+                  | (doc4 & 0xffffffL) << 32
+                  | (doc5 & 0xffffffL) << 8
+                  | ((doc6 >> 16) & 0xffL);
           long l3 = (doc6 & 0xffffL) << 48 | (doc7 & 0xffffffL) << 24 | (doc8 & 0xffffffL);
           out.writeLong(l1);
           out.writeLong(l2);
@@ -325,7 +324,7 @@ final class DocIdsWriter {
   }
 
   private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
-          throws IOException {
+      throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
       long l1 = in.readLong();
