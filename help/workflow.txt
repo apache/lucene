@@ -25,10 +25,18 @@ Assemble a single module's JAR (here for lucene-core):
 gradlew -p lucene/core assemble
 ls lucene/core/build/libs
 
+Assemble all JARs:
+gradlew assemble
+
 Create all distributable packages, POMs, etc. and create a
 local maven repository for inspection:
 gradlew mavenLocal
 ls -R build/maven-local/
+
+
+Assemble entire documentation (including javadocs):
+gradlew documentation
+ls lucene/documentation/build/site
 
 
 Other validation and checks
