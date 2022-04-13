@@ -33,6 +33,9 @@ local maven repository for inspection:
 gradlew mavenLocal
 ls -R build/maven-local/
 
+Assemble Javdocs on a module:
+gradlew -p lucene/core javadoc
+ls lucene/core/build/docs
 
 Assemble entire documentation (including javadocs):
 gradlew documentation
