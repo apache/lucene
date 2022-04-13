@@ -103,6 +103,8 @@ Optimizations
 
 * LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
+* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
