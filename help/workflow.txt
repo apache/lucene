@@ -25,7 +25,7 @@ Assemble a single module's JAR (here for lucene-core):
 gradlew -p lucene/core assemble
 ls lucene/core/build/libs
 
-Assemble all JARs:
+Assemble all Lucene artifacts (JARs, and so on):
 gradlew assemble
 
 Create all distributable packages, POMs, etc. and create a
