@@ -451,8 +451,9 @@ public class TestKnnGraph extends LuceneTestCase {
 
         // assert vector values:
         // stored vector values are the same as original
+        int nextDocWithVectors = 0;
         for (int i = 0; i < reader.maxDoc(); i++) {
-          int nextDocWithVectors = vectorValues.advance(i);
+          nextDocWithVectors = vectorValues.advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
             int id = Integer.parseInt(reader.document(i).get("id"));
             assertNull("document " + id + " has no vector, but was expected to", values[id]);
@@ -471,7 +472,12 @@ public class TestKnnGraph extends LuceneTestCase {
               0f);
           numDocsWithVectors++;
         }
-        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        // if IndexDisi.doc == NO_MORE_DOCS, we should not call IndexDisi.nextDoc()
+        if (nextDocWithVectors != NO_MORE_DOCS) {
+          assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        } else {
+          assertEquals(NO_MORE_DOCS, vectorValues.docID());
+        }
 
         // assert graph values:
         // For each level of the graph assert that:

@@ -24,9 +24,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -42,6 +42,7 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -49,6 +50,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -189,7 +191,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     return VectorSimilarityFunction.values()[similarityFunctionId];
   }
 
-  private FieldEntry readField(DataInput input) throws IOException {
+  private FieldEntry readField(IndexInput input) throws IOException {
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
     return new FieldEntry(input, similarityFunction);
   }
@@ -200,9 +202,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     totalBytes +=
         RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
-    for (FieldEntry entry : fields.values()) {
-      totalBytes += RamUsageEstimator.sizeOf(entry.ordToDoc);
-    }
     return totalBytes;
   }
 
@@ -238,7 +237,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             vectorValues,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
-            getAcceptOrds(acceptDocs, fieldEntry),
+            getAcceptOrds(acceptDocs, vectorValues),
             visitedLimit);
 
     int i = 0;
@@ -247,7 +246,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       int node = results.topNode();
       float score = fieldEntry.similarityFunction.convertToScore(results.topScore());
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc(node), score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
     }
 
     TotalHits.Relation relation =
@@ -258,14 +257,18 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
-    IndexInput bytesSlice =
-        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new OffHeapVectorValues(
-        fieldEntry.dimension, fieldEntry.size(), fieldEntry.ordToDoc, bytesSlice);
+    if (fieldEntry.docsWithFieldOffset == -2) {
+      return OffHeapVectorValues.emptyOffHeapVectorValues(fieldEntry.dimension);
+    } else {
+      IndexInput bytesSlice =
+          vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
+      return new OffHeapVectorValues(
+          fieldEntry.dimension, fieldEntry.size(), fieldEntry, vectorData, bytesSlice);
+    }
   }
 
-  private Bits getAcceptOrds(Bits acceptDocs, FieldEntry fieldEntry) {
-    if (fieldEntry.ordToDoc == null) {
+  private Bits getAcceptOrds(Bits acceptDocs, OffHeapVectorValues vectorValues) {
+    if (vectorValues.ordToDoc == null) {
       return acceptDocs;
     }
     if (acceptDocs == null) {
@@ -274,12 +277,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     return new Bits() {
       @Override
       public boolean get(int index) {
-        return acceptDocs.get(fieldEntry.ordToDoc(index));
+        return acceptDocs.get(vectorValues.ordToDoc(index));
       }
 
       @Override
       public int length() {
-        return fieldEntry.size;
+        return vectorValues.size;
       }
     };
   }
@@ -320,13 +323,19 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final int numLevels;
     final int dimension;
     private final int size;
-    final int[] ordToDoc;
-    private final IntUnaryOperator ordToDocOperator;
     final int[][] nodesByLevel;
     // for each level the start offsets in vectorIndex file from where to read neighbours
     final long[] graphOffsetsByLevel;
+    final long docsWithFieldOffset;
+    final long docsWithFieldLength;
+    final short jumpTableEntryCount;
+    final byte denseRankPower;
+    final long addressesOffset;
+    final int blockShift;
+    final DirectMonotonicReader.Meta meta;
+    final long addressesLength;
 
-    FieldEntry(DataInput input, VectorSimilarityFunction similarityFunction) throws IOException {
+    FieldEntry(IndexInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
@@ -335,23 +344,15 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       dimension = input.readInt();
       size = input.readInt();
 
-      int denseSparseMarker = input.readByte();
-      if (denseSparseMarker == -1) {
-        ordToDoc = null; // each document has a vector value
-      } else {
-        assert denseSparseMarker == 0;
-        // TODO: Can we read docIDs from disk directly instead of loading giant arrays in memory?
-        //  Or possibly switch to something like DirectMonotonicReader if it doesn't slow down
-        // searches.
+      docsWithFieldOffset = input.readLong();
+      docsWithFieldLength = input.readLong();
+      jumpTableEntryCount = input.readShort();
+      denseRankPower = input.readByte();
 
-        // as not all docs have vector values, fill a mapping from dense vector ordinals to docIds
-        ordToDoc = new int[size];
-        for (int i = 0; i < size; i++) {
-          int doc = input.readInt();
-          ordToDoc[i] = doc;
-        }
-      }
-      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
+      addressesOffset = input.readLong();
+      blockShift = input.readVInt();
+      meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
+      addressesLength = input.readLong();
 
       // read nodes by level
       maxConn = input.readInt();
@@ -388,10 +389,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     int size() {
       return size;
     }
-
-    int ordToDoc(int ord) {
-      return ordToDocOperator.applyAsInt(ord);
-    }
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
@@ -400,27 +397,42 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     private final int dimension;
     private final int size;
-    private final int[] ordToDoc;
-    private final IntUnaryOperator ordToDocOperator;
+    // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
+    private final IndexInput slice;
     private final BytesRef binaryValue;
     private final ByteBuffer byteBuffer;
     private final int byteSize;
     private final float[] value;
+    private final IndexedDISI disi;
+    private final FieldEntry fieldEntry;
+    final DirectMonotonicReader ordToDoc;
 
     private int ord = -1;
     private int doc = -1;
 
-    OffHeapVectorValues(int dimension, int size, int[] ordToDoc, IndexInput dataIn) {
+    OffHeapVectorValues(
+        int dimension, int size, FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
+        throws IOException {
       this.dimension = dimension;
       this.size = size;
-      this.ordToDoc = ordToDoc;
-      ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
+      this.fieldEntry = fieldEntry;
       this.dataIn = dataIn;
+      this.slice = slice;
+      this.disi = initDISI(dataIn);
       byteSize = Float.BYTES * dimension;
       byteBuffer = ByteBuffer.allocate(byteSize);
       value = new float[dimension];
       binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
+      // dense or OffHeapVectorValues used to get OnHeapHnswGraph in
+      // Lucene91HnswVectorsWriter#writeField
+      if (fieldEntry == null || fieldEntry.docsWithFieldOffset == -1) {
+        ordToDoc = null;
+      } else {
+        final RandomAccessInput addressesData =
+            dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
+        ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
+      }
     }
 
     @Override
@@ -435,52 +447,39 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public float[] vectorValue() throws IOException {
-      dataIn.seek((long) ord * byteSize);
-      dataIn.readFloats(value, 0, value.length);
+      slice.seek((long) (disi == null ? ord : disi.index()) * byteSize);
+      slice.readFloats(value, 0, value.length);
       return value;
     }
 
     @Override
     public BytesRef binaryValue() throws IOException {
-      dataIn.seek((long) ord * byteSize);
-      dataIn.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
+      slice.seek((long) (disi == null ? ord : disi.index()) * byteSize);
+      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
       return binaryValue;
     }
 
     @Override
     public int docID() {
-      return doc;
+      return disi == null ? doc : disi.docID();
     }
 
     @Override
-    public int nextDoc() {
-      if (++ord >= size) {
-        doc = NO_MORE_DOCS;
-      } else {
-        doc = ordToDocOperator.applyAsInt(ord);
-      }
-      return doc;
+    public int nextDoc() throws IOException {
+      return disi == null ? advance(doc + 1) : disi.nextDoc();
     }
 
     @Override
-    public int advance(int target) {
+    public int advance(int target) throws IOException {
       assert docID() < target;
-
-      if (ordToDoc == null) {
-        ord = target;
-      } else {
-        ord = Arrays.binarySearch(ordToDoc, ord + 1, ordToDoc.length, target);
-        if (ord < 0) {
-          ord = -(ord + 1);
-        }
+      if (disi != null) {
+        return disi.advance(target);
       }
-
-      if (ord < size) {
-        doc = ordToDocOperator.applyAsInt(ord);
-      } else {
-        doc = NO_MORE_DOCS;
+      ord = target;
+      if (target >= size) {
+        return doc = NO_MORE_DOCS;
       }
-      return doc;
+      return doc = target;
     }
 
     @Override
@@ -489,14 +488,14 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
+    public RandomAccessVectorValues randomAccess() throws IOException {
+      return new OffHeapVectorValues(dimension, size, fieldEntry, dataIn, slice.clone());
     }
 
     @Override
     public float[] vectorValue(int targetOrd) throws IOException {
-      dataIn.seek((long) targetOrd * byteSize);
-      dataIn.readFloats(value, 0, value.length);
+      slice.seek((long) targetOrd * byteSize);
+      slice.readFloats(value, 0, value.length);
       return value;
     }
 
@@ -507,8 +506,90 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     private void readValue(int targetOrd) throws IOException {
-      dataIn.seek((long) targetOrd * byteSize);
-      dataIn.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
+      slice.seek((long) targetOrd * byteSize);
+      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
+    }
+
+    public IndexedDISI initDISI(IndexInput vectorData) throws IOException {
+      // dense
+      if (fieldEntry == null || fieldEntry.docsWithFieldOffset == -1) {
+        return null;
+      }
+      assert fieldEntry.docsWithFieldOffset != -2;
+      // sparse
+      return new IndexedDISI(
+          vectorData,
+          fieldEntry.docsWithFieldOffset,
+          fieldEntry.docsWithFieldLength,
+          fieldEntry.jumpTableEntryCount,
+          fieldEntry.denseRankPower,
+          fieldEntry.size);
+    }
+
+    public static final OffHeapVectorValues emptyOffHeapVectorValues(int dimension)
+        throws IOException {
+      return new OffHeapVectorValues(dimension, 0, null, null, null) {
+        private int doc = -1;
+
+        @Override
+        public int dimension() {
+          return super.dimension();
+        }
+
+        @Override
+        public int size() {
+          return 0;
+        }
+
+        @Override
+        public float[] vectorValue() throws IOException {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public BytesRef binaryValue() throws IOException {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public int docID() {
+          return doc;
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          return advance(doc + 1);
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          return doc = NO_MORE_DOCS;
+        }
+
+        @Override
+        public long cost() {
+          return 0;
+        }
+
+        @Override
+        public RandomAccessVectorValues randomAccess() throws IOException {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public float[] vectorValue(int targetOrd) throws IOException {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public BytesRef binaryValue(int targetOrd) throws IOException {
+          throw new UnsupportedOperationException();
+        }
+      };
+    }
+
+    public int ordToDoc(int ord) {
+      return ordToDoc == null ? ord : (int) ordToDoc.get(ord);
     }
   }
 

@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene91;
 
+import static org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -24,6 +25,7 @@ import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -40,6 +42,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
+import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -144,7 +147,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       // TODO: separate random access vector values from DocIdSetIterator?
       Lucene91HnswVectorsReader.OffHeapVectorValues offHeapVectors =
           new Lucene91HnswVectorsReader.OffHeapVectorValues(
-              vectors.dimension(), docsWithField.cardinality(), null, vectorDataInput);
+              vectors.dimension(), docsWithField.cardinality(), null, null, vectorDataInput);
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
@@ -207,15 +210,41 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     // write docIDs
     int count = docsWithField.cardinality();
     meta.writeInt(count);
-    if (count == maxDoc) {
-      meta.writeByte((byte) -1); // dense marker, each document has a vector value
+    if (count == 0) {
+      meta.writeLong(-2); // docsWithFieldOffset
+      meta.writeLong(0L); // docsWithFieldLength
+      meta.writeShort((short) -1); // jumpTableEntryCount
+      meta.writeByte((byte) -1); // denseRankPower
+    } else if (count == maxDoc) {
+      meta.writeLong(-1); // docsWithFieldOffset
+      meta.writeLong(0L); // docsWithFieldLength
+      meta.writeShort((short) -1); // jumpTableEntryCount
+      meta.writeByte((byte) -1); // denseRankPower
     } else {
-      meta.writeByte((byte) 0); // sparse marker, some documents don't have vector values
-      DocIdSetIterator iter = docsWithField.iterator();
-      for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
-        meta.writeInt(doc);
-      }
+      long offset = vectorData.getFilePointer();
+      meta.writeLong(offset); // docsWithFieldOffset
+      final short jumpTableEntryCount =
+          IndexedDISI.writeBitSet(
+              docsWithField.iterator(), vectorData, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+      meta.writeLong(vectorData.getFilePointer() - offset); // docsWithFieldLength
+      meta.writeShort(jumpTableEntryCount);
+      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
     }
+
+    // write ordToDoc mapping
+    long start = vectorData.getFilePointer();
+    meta.writeLong(start);
+    meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
+    final DirectMonotonicWriter ordToDocWriter =
+        DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
+    DocIdSetIterator iterator = docsWithField.iterator();
+    for (int doc = iterator.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = iterator.nextDoc()) {
+      ordToDocWriter.add(doc);
+    }
+    ordToDocWriter.finish();
+    meta.writeLong(vectorData.getFilePointer() - start);
 
     meta.writeInt(maxConn);
     // write graph nodes on each level
