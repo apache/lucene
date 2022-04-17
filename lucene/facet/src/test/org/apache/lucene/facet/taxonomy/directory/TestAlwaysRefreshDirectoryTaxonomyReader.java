@@ -21,7 +21,6 @@ import static org.apache.lucene.tests.mockfile.ExtrasFS.isExtra;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import java.util.function.Function;
 import org.apache.lucene.facet.FacetTestCase;
