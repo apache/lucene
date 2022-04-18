@@ -44,12 +44,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @lucene.internal
  */
 public class CloseableThreadLocal<T> implements Closeable {
-
-  private ThreadLocal<WeakReference<T>> t = new ThreadLocal<>();
-
   // Use a WeakHashMap so that if a Thread exits and is
   // GC'able, its entry may be removed:
-  private Map<Thread, T> hardRefs = new WeakHashMap<>();
+  private Map<Thread, T> perThreadValues = new WeakHashMap<>();
 
   // Increase this to decrease frequency of purging in get:
   private static int PURGE_MULTIPLIER = 20;
@@ -65,8 +62,11 @@ public class CloseableThreadLocal<T> implements Closeable {
   }
 
   public T get() {
-    WeakReference<T> weakRef = t.get();
-    if (weakRef == null) {
+    T value;
+    synchronized (perThreadValues) {
+      value = perThreadValues.get(Thread.currentThread());
+    }
+    if (value == null) {
       T iv = initialValue();
       if (iv != null) {
         set(iv);
@@ -76,18 +76,16 @@ public class CloseableThreadLocal<T> implements Closeable {
       }
     } else {
       maybePurge();
-      return weakRef.get();
+      return value;
     }
   }
 
   public void set(T object) {
-
-    t.set(new WeakReference<>(object));
-
-    synchronized (hardRefs) {
-      hardRefs.put(Thread.currentThread(), object);
+    synchronized (perThreadValues) {
+      perThreadValues.put(Thread.currentThread(), object);
       maybePurge();
     }
+
   }
 
   private void maybePurge() {
@@ -98,9 +96,9 @@ public class CloseableThreadLocal<T> implements Closeable {
 
   // Purge dead threads
   private void purge() {
-    synchronized (hardRefs) {
+    synchronized (perThreadValues) {
       int stillAliveCount = 0;
-      for (Iterator<Thread> it = hardRefs.keySet().iterator(); it.hasNext(); ) {
+      for (Iterator<Thread> it = perThreadValues.keySet().iterator(); it.hasNext(); ) {
         final Thread t = it.next();
         if (!t.isAlive()) {
           it.remove();
@@ -123,12 +121,27 @@ public class CloseableThreadLocal<T> implements Closeable {
     // Clear the hard refs; then, the only remaining refs to
     // all values we were storing are weak (unless somewhere
     // else is still using them) and so GC may reclaim them:
-    hardRefs = null;
-    // Take care of the current thread right now; others will be
-    // taken care of via the WeakReferences.
-    if (t != null) {
-      t.remove();
+    perThreadValues = null;
+  }
+
+
+  /**
+   * Visible to test.
+   *
+   * @return per-thread values map.
+   */
+  Map<String,T> getValuesAfterPurge() {
+    Map<String, T> values = new HashMap<>();
+    synchronized (perThreadValues) {
+      purge();
+
+      for (Map.Entry<Thread, T> e : perThreadValues.entrySet()) {
+        Thread t = e.getKey();
+        if (t != null) {
+          values.put(t.getName(), e.getValue());
+        }
+      }
     }
-    t = null;
+    return values;
   }
 }
