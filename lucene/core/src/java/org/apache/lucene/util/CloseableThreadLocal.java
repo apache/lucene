@@ -47,6 +47,7 @@ public class CloseableThreadLocal<T> implements Closeable {
   // Use a WeakHashMap so that if a Thread exits and is
   // GC'able, its entry may be removed:
   private Map<Thread, T> perThreadValues = new WeakHashMap<>();
+  private final Object lock = new Object();
 
   // Increase this to decrease frequency of purging in get:
   private static int PURGE_MULTIPLIER = 20;
@@ -63,7 +64,7 @@ public class CloseableThreadLocal<T> implements Closeable {
 
   public T get() {
     T value;
-    synchronized (perThreadValues) {
+    synchronized (lock) {
       value = perThreadValues.get(Thread.currentThread());
     }
     if (value == null) {
@@ -81,7 +82,7 @@ public class CloseableThreadLocal<T> implements Closeable {
   }
 
   public void set(T object) {
-    synchronized (perThreadValues) {
+    synchronized (lock) {
       perThreadValues.put(Thread.currentThread(), object);
       maybePurge();
     }
@@ -96,7 +97,7 @@ public class CloseableThreadLocal<T> implements Closeable {
 
   // Purge dead threads
   private void purge() {
-    synchronized (perThreadValues) {
+    synchronized (lock) {
       int stillAliveCount = 0;
       for (Iterator<Thread> it = perThreadValues.keySet().iterator(); it.hasNext(); ) {
         final Thread t = it.next();
@@ -121,7 +122,14 @@ public class CloseableThreadLocal<T> implements Closeable {
     // Clear the hard refs; then, the only remaining refs to
     // all values we were storing are weak (unless somewhere
     // else is still using them) and so GC may reclaim them:
-    perThreadValues = null;
+    synchronized (lock) {
+      if (perThreadValues == null) {
+        return;
+      }
+
+      perThreadValues.clear();
+      perThreadValues = null;
+    }
   }
 
 
@@ -132,7 +140,7 @@ public class CloseableThreadLocal<T> implements Closeable {
    */
   Map<String,T> getValuesAfterPurge() {
     Map<String, T> values = new HashMap<>();
-    synchronized (perThreadValues) {
+    synchronized (lock) {
       purge();
 
       for (Map.Entry<Thread, T> e : perThreadValues.entrySet()) {
