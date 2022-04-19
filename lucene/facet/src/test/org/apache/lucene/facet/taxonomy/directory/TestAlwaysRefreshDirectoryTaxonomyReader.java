@@ -21,7 +21,6 @@ import static org.apache.lucene.tests.mockfile.ExtrasFS.isExtra;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import java.util.function.Function;
 import org.apache.lucene.facet.FacetTestCase;
@@ -35,6 +34,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
+import org.junit.Ignore;
 
 // Nefarious FS will delay/stop deletion of index files and this test specifically does that
 @LuceneTestCase.SuppressFileSystems({"WindowsFS", "VirusCheckingFS"})
@@ -50,10 +50,11 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
    * <p>It does not check whether the private taxoArrays were actually recreated or no. We are
    * (correctly) hiding away that complexity away from the user.
    */
+  @Ignore("LUCENE-10482: need to make this work on Windows too")
   private <T extends Throwable> void testAlwaysRefreshDirectoryTaxonomyReader(
       Function<Directory, DirectoryTaxonomyReader> dtrProducer, Class<T> exceptionType)
       throws IOException {
-    final Path taxoPath1 = createTempDir(String.valueOf(Instant.now()));
+    final Path taxoPath1 = createTempDir();
     final Directory dir1 = newFSDirectory(taxoPath1);
 
     final DirectoryTaxonomyWriter tw1 =
@@ -61,7 +62,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     tw1.addCategory(new FacetLabel("a"));
     tw1.commit(); // commit1
 
-    final Path taxoPath2 = createTempDir(String.valueOf(Instant.now()));
+    final Path taxoPath2 = createTempDir();
     final Directory commit1 = newFSDirectory(taxoPath2);
     // copy all index files from dir1
     for (String file : dir1.listAll()) {
