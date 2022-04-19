@@ -600,7 +600,7 @@ public abstract class Viterbi<T extends Token, U extends Viterbi.Position> {
     int[] backID = new int[8];
     TokenType[] backType = new TokenType[8];
 
-    public void grow() {
+    private void grow() {
       costs = ArrayUtil.grow(costs, 1 + count);
       lastRightID = ArrayUtil.grow(lastRightID, 1 + count);
       backPos = ArrayUtil.grow(backPos, 1 + count);

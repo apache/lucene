@@ -856,7 +856,7 @@ final class ViterbiNBest
     int[] forwardIndex = new int[8];
     TokenType[] forwardType = new TokenType[8];
 
-    public void growForward() {
+    private void growForward() {
       forwardPos = ArrayUtil.grow(forwardPos, 1 + forwardCount);
       forwardID = ArrayUtil.grow(forwardID, 1 + forwardCount);
       forwardIndex = ArrayUtil.grow(forwardIndex, 1 + forwardCount);
@@ -869,7 +869,7 @@ final class ViterbiNBest
       forwardType = newForwardType;
     }
 
-    public void addForward(int forwardPos, int forwardIndex, int forwardID, TokenType forwardType) {
+    void addForward(int forwardPos, int forwardIndex, int forwardID, TokenType forwardType) {
       if (forwardCount == this.forwardID.length) {
         growForward();
       }
@@ -1102,7 +1102,7 @@ final class ViterbiNBest
       }
     }
 
-    int connectionCost(ConnectionCosts costs, int left, int right) {
+    private int connectionCost(ConnectionCosts costs, int left, int right) {
       int leftID = nodeLeftID[right];
       return ((leftID == 0 && !useEOS) ? 0 : costs.get(nodeRightID[left], leftID));
     }
