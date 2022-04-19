@@ -114,6 +114,6 @@ configure(project(":lucene").subprojects) { prj ->
 
 gradle.taskGraph.afterTask { Task task, TaskState state ->
   if (task.name == 'spotlessJavaCheck' && state.failure) {
-    throw new GradleException("\n***************************\n*PLEASE RUN ./gradle tidy!*\n***************************");
+    throw new GradleException("\n****************************\n*PLEASE RUN ./gradlew tidy!*\n****************************");
   }
 }
