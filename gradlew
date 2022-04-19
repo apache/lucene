@@ -126,6 +126,10 @@ if ! "$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apa
     exit $?
 fi
 
+if ! "$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/VersionTester.java" ; then
+    exit $?
+fi
+
 CLASSPATH=$GRADLE_WRAPPER_JAR
 
 # Don't fork a daemon mode on initial run that generates local defaults.
