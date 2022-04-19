@@ -586,8 +586,7 @@ public class UnifiedHighlighter {
   }
 
   /**
-   * Returns the {@link PassageScorer} to use for ranking passages. This returns a new {@code
-   * PassageScorer} by default; subclasses can override to customize.
+   * Returns the {@link PassageScorer} to use for ranking passages.
    */
   protected PassageScorer getScorer(String field) {
     return scorer;
@@ -595,7 +594,6 @@ public class UnifiedHighlighter {
 
   /**
    * Returns the {@link PassageFormatter} to use for formatting passages into highlighted snippets.
-   * This returns a new {@code PassageFormatter} by default; subclasses can override to customize.
    */
   protected PassageFormatter getFormatter(String field) {
     return formatter;
