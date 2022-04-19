@@ -585,9 +585,7 @@ public class UnifiedHighlighter {
     return breakIterator.get();
   }
 
-  /**
-   * Returns the {@link PassageScorer} to use for ranking passages.
-   */
+  /** Returns the {@link PassageScorer} to use for ranking passages. */
   protected PassageScorer getScorer(String field) {
     return scorer;
   }
