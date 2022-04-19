@@ -155,6 +155,10 @@ final class Viterbi
   protected void backtrace(Position endPosData, int fromIDX) {
     final int endPos = endPosData.getPos();
 
+    if (endPos == lastBackTracePos) {
+      return;
+    }
+
     if (VERBOSE) {
       System.out.println(
           "\n  backtrace: endPos="
