@@ -59,7 +59,7 @@ Optimizations
 
 * LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
-* LUCENE-10153: Potential speedup for pure disjunctions whose clauses produce
+* LUCENE-10503: Potential speedup for pure disjunctions whose clauses produce
   scores that are very close to each other. (Adrien Grand)
 
 Bug Fixes
