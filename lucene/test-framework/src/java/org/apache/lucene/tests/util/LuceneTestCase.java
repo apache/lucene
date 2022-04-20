@@ -140,7 +140,6 @@ import org.apache.lucene.tests.index.MismatchedDirectoryReader;
 import org.apache.lucene.tests.index.MismatchedLeafReader;
 import org.apache.lucene.tests.index.MockIndexWriterEventListener;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
-import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.VirusCheckingFS;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
@@ -1399,7 +1398,7 @@ public abstract class LuceneTestCase extends Assert {
     if (TestUtil.hasVirusChecker(path) == false) {
       VirusCheckingFS fs = new VirusCheckingFS(path.getFileSystem(), random().nextLong());
       FileSystem filesystem = fs.getFileSystem(URI.create("file:///"));
-      path = new FilterPath(path, filesystem);
+      path = fs.wrapPath(path, filesystem);
     }
     return path;
   }

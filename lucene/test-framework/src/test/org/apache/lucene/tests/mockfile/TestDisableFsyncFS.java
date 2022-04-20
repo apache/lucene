@@ -28,8 +28,9 @@ public class TestDisableFsyncFS extends MockFileSystemTestCase {
 
   @Override
   protected Path wrap(Path path) {
-    FileSystem fs = new DisableFsyncFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    DisableFsyncFS provider = new DisableFsyncFS(path.getFileSystem());
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    return provider.wrapPath(path, fs);
   }
 
   /** Test that we don't corrumpt fsync: it just doesnt happen */

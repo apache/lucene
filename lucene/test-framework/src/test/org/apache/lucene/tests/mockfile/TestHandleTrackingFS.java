@@ -31,8 +31,9 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
 
   @Override
   protected Path wrap(Path path) {
-    FileSystem fs = new LeakFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    LeakFS provider = new LeakFS(path.getFileSystem());
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    return provider.wrapPath(path, fs);
   }
 
   /** Test that the delegate gets closed on exception in HandleTrackingFS#onClose */
@@ -40,7 +41,7 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
     Path path =
         wrap(createTempDir()); // we are using LeakFS under the hood if we don't get closed the test
     // fails
-    FileSystem fs =
+    HandleTrackingFS provider =
         new HandleTrackingFS("test://", path.getFileSystem()) {
           @Override
           protected void onClose(Path path, Object stream) throws IOException {
@@ -51,8 +52,9 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
           protected void onOpen(Path path, Object stream) throws IOException {
             //
           }
-        }.getFileSystem(URI.create("file:///"));
-    Path dir = new FilterPath(path, fs);
+        };
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    Path dir = provider.wrapPath(path, fs);
 
     OutputStream file = Files.newOutputStream(dir.resolve("somefile"));
     file.write(5);
@@ -74,7 +76,7 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
     Path path =
         wrap(createTempDir()); // we are using LeakFS under the hood if we don't get closed the test
     // fails
-    FileSystem fs =
+    HandleTrackingFS provider =
         new HandleTrackingFS("test://", path.getFileSystem()) {
           @Override
           protected void onClose(Path path, Object stream) throws IOException {}
@@ -83,8 +85,9 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
           protected void onOpen(Path path, Object stream) throws IOException {
             throw new IOException("boom");
           }
-        }.getFileSystem(URI.create("file:///"));
-    Path dir = new FilterPath(path, fs);
+        };
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    Path dir = provider.wrapPath(path, fs);
 
     expectThrows(IOException.class, () -> Files.newOutputStream(dir.resolve("somefile")));
 

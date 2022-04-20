@@ -34,7 +34,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.TestIndexWriterReader;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.WindowsFS;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -180,8 +179,9 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
     // relies on windows semantics
     Path path = createTempDir();
     assumeFalse("Irony we seem to not emulate windows well enough", Constants.WINDOWS);
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    Path indexPath = new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    Path indexPath = provider.wrapPath(path, fs);
     try (final FileSwitchDirectory dir =
         new FileSwitchDirectory(
             Collections.singleton("tim"),

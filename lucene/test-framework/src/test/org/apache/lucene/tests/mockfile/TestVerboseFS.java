@@ -44,9 +44,9 @@ public class TestVerboseFS extends MockFileSystemTestCase {
   }
 
   Path wrap(Path path, InfoStream stream) {
-    FileSystem fs =
-        new VerboseFS(path.getFileSystem(), stream).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    VerboseFS provider = new VerboseFS(path.getFileSystem(), stream);
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    return provider.wrapPath(path, fs);
   }
 
   /** InfoStream that looks for a substring and indicates if it saw it */

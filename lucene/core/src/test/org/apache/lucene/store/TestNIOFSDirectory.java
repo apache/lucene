@@ -25,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Set;
 import org.apache.lucene.tests.mockfile.FilterFileChannel;
-import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.LeakFS;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 
@@ -54,7 +53,7 @@ public class TestNIOFSDirectory extends BaseDirectoryTestCase {
           }
         };
     FileSystem fs = leakFS.getFileSystem(URI.create("file:///"));
-    Path wrapped = new FilterPath(path, fs);
+    Path wrapped = leakFS.wrapPath(path, fs);
     try (Directory dir = new NIOFSDirectory(wrapped)) {
       try (IndexOutput out = dir.createOutput("test.bin", IOContext.DEFAULT)) {
         out.writeString("hello");

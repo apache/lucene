@@ -30,10 +30,9 @@ public class TestVirusCheckingFS extends MockFileSystemTestCase {
 
   @Override
   protected Path wrap(Path path) {
-    FileSystem fs =
-        new VirusCheckingFS(path.getFileSystem(), random().nextLong())
-            .getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    VirusCheckingFS provider = new VirusCheckingFS(path.getFileSystem(), random().nextLong());
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    return provider.wrapPath(path, fs);
   }
 
   /** Test Files.delete fails if a file has an open inputstream against it */

@@ -35,8 +35,9 @@ public class TestShuffleFS extends MockFileSystemTestCase {
   }
 
   Path wrap(Path path, long seed) {
-    FileSystem fs = new ShuffleFS(path.getFileSystem(), seed).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    ShuffleFS provider = new ShuffleFS(path.getFileSystem(), seed);
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    return provider.wrapPath(path, fs);
   }
 
   /** test that we return directory listings correctly */

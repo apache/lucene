@@ -125,10 +125,10 @@ public class TestIOUtils extends LuceneTestCase {
 
   public void testFsyncAccessDeniedOpeningDirectory() throws Exception {
     final Path path = createTempDir().toRealPath();
-    final FileSystem fs =
-        new AccessDeniedWhileOpeningDirectoryFileSystem(path.getFileSystem())
-            .getFileSystem(URI.create("file:///"));
-    final Path wrapped = new FilterPath(path, fs);
+    final FilterFileSystemProvider provider =
+        new AccessDeniedWhileOpeningDirectoryFileSystem(path.getFileSystem());
+    final FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    final Path wrapped = provider.wrapPath(path, fs);
     if (Constants.WINDOWS) {
       // no exception, we early return and do not even try to open the directory
       IOUtils.fsync(wrapped, true);

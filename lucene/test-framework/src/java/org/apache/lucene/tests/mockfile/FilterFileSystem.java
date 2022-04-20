@@ -36,7 +36,7 @@ import java.util.Set;
 public class FilterFileSystem extends FileSystem {
 
   /** FileSystemProvider that created this FilterFileSystem */
-  protected final FilterFileSystemProvider parent;
+  public final FilterFileSystemProvider parent;
 
   /** The underlying {@code FileSystem} instance. */
   protected final FileSystem delegate;
@@ -100,7 +100,7 @@ public class FilterFileSystem extends FileSystem {
 
         @Override
         public Path next() {
-          return new FilterPath(iterator.next(), FilterFileSystem.this);
+          return parent.wrapPath(iterator.next(), FilterFileSystem.this);
         }
 
         @Override
@@ -142,7 +142,7 @@ public class FilterFileSystem extends FileSystem {
 
   @Override
   public Path getPath(String first, String... more) {
-    return new FilterPath(delegate.getPath(first, more), this);
+    return parent.wrapPath(delegate.getPath(first, more), this);
   }
 
   @Override

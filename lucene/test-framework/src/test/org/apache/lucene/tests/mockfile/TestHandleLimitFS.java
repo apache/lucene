@@ -35,9 +35,9 @@ public class TestHandleLimitFS extends MockFileSystemTestCase {
   }
 
   Path wrap(Path path, int limit) {
-    FileSystem fs =
-        new HandleLimitFS(path.getFileSystem(), limit).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    HandleLimitFS provider = new HandleLimitFS(path.getFileSystem(), limit);
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    return provider.wrapPath(path, fs);
   }
 
   /** set a limit at n files, then open more than that and ensure we hit exception */

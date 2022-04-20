@@ -42,8 +42,9 @@ public class TestWindowsFS extends MockFileSystemTestCase {
 
   @Override
   protected Path wrap(Path path) {
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    return provider.wrapPath(path, fs);
   }
 
   /** Test Files.delete fails if a file has an open inputstream against it */

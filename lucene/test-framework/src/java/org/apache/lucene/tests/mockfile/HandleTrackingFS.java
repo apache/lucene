@@ -293,7 +293,7 @@ public abstract class HandleTrackingFS extends FilterFileSystemProvider {
         new Filter<Path>() {
           @Override
           public boolean accept(Path entry) throws IOException {
-            return filter.accept(new FilterPath(entry, fileSystem));
+            return filter.accept(wrapPath(entry, fileSystem));
           }
         };
     DirectoryStream<Path> stream = delegate.newDirectoryStream(toDelegate(dir), wrappedFilter);

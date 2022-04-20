@@ -34,10 +34,9 @@ public class TestExtrasFS extends MockFileSystemTestCase {
   }
 
   Path wrap(Path path, boolean active, boolean createDirectory) {
-    FileSystem fs =
-        new ExtrasFS(path.getFileSystem(), active, createDirectory)
-            .getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    ExtrasFS provider = new ExtrasFS(path.getFileSystem(), active, createDirectory);
+    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
+    return provider.wrapPath(path, fs);
   }
 
   /** test where extra file is created */
