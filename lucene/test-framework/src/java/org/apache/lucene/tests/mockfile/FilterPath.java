@@ -41,7 +41,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
   protected final Path delegate;
 
   /** The parent {@code FileSystem} for this path. */
-  protected final FileSystem fileSystem;
+  protected final FilterFileSystem fileSystem;
 
   /**
    * Construct a {@code FilterPath} with parent {@code fileSystem}, based on the specified base
@@ -50,7 +50,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
    * @param delegate specified base path.
    * @param fileSystem parent fileSystem.
    */
-  public FilterPath(Path delegate, FileSystem fileSystem) {
+  public FilterPath(Path delegate, FilterFileSystem fileSystem) {
     this.delegate = delegate;
     this.fileSystem = fileSystem;
   }
@@ -270,9 +270,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
     return Unwrappable.unwrapAll(path);
   }
 
-  /** Override this to customize the return wrapped path from various operations */
-  protected Path wrap(Path other) {
-    return new FilterPath(other, fileSystem);
+  private final Path wrap(Path other) {
+    return fileSystem.parent.wrapPath(other);
   }
 
   /** Override this to customize the unboxing of Path from various operations */
