@@ -57,7 +57,7 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
   }
 
   public void testNeverCacheDocValuesFieldExistsFilter() throws IOException {
-    Query q = new DocValuesFieldExistsQuery("foo");
+    Query q = new FieldExistsQuery("foo");
     UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
     for (int i = 0; i < 1000; ++i) {
       policy.onUse(q);

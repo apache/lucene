@@ -210,6 +210,31 @@ public class TestFSTCompletion extends LuceneTestCase {
     assertMatchEquals(completion.lookup(stringToCharSequence(""), 10));
   }
 
+  public void testLookupsDuringReBuild() throws Exception {
+    Directory tempDir = getDirectory();
+    FSTCompletionLookup lookup = new FSTCompletionLookup(tempDir, "fst");
+    SuggestRebuildTestUtil.testLookupsDuringReBuild(
+        lookup,
+        Arrays.asList(tf("wit", 42), tf("ham", 3), tf("with", 7)),
+        s -> {
+          assertEquals(3, s.getCount());
+          List<LookupResult> result = s.lookup(stringToCharSequence("wit"), true, 5);
+          assertEquals(2, result.size());
+          assertEquals("wit", result.get(0).key.toString());
+          assertEquals("with", result.get(1).key.toString());
+        },
+        Arrays.asList(tf("witch", 30)),
+        s -> {
+          assertEquals(4, s.getCount());
+          List<LookupResult> result = s.lookup(stringToCharSequence("wit"), true, 5);
+          assertEquals(3, result.size());
+          assertEquals("wit", result.get(0).key.toString());
+          assertEquals("witch", result.get(1).key.toString());
+          assertEquals("with", result.get(2).key.toString());
+        });
+    tempDir.close();
+  }
+
   public void testRandom() throws Exception {
     List<Input> freqs = new ArrayList<>();
     Random rnd = random();

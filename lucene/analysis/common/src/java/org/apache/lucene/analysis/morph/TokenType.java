@@ -14,20 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.dict;
 
-import java.io.IOException;
-import org.apache.lucene.util.fst.FST;
+package org.apache.lucene.analysis.morph;
 
-/** Thin wrapper around an FST with root-arc caching for Hangul syllables (11,172 arcs). */
-public final class TokenInfoFST extends org.apache.lucene.analysis.morph.TokenInfoFST {
-
-  public TokenInfoFST(FST<Long> fst) throws IOException {
-    super(fst, 0xD7A3, 0xAC00);
-  }
-
-  /** @lucene.internal for testing only */
-  FST<Long> getInternalFST() {
-    return fst;
-  }
+/** Token type reflecting the original source of this token */
+public enum TokenType {
+  /** Known words from the system dictionary. */
+  KNOWN,
+  /** Unknown words (heuristically segmented). */
+  UNKNOWN,
+  /** Known words from the user dictionary. */
+  USER
 }

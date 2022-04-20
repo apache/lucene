@@ -20,6 +20,7 @@ import static org.apache.lucene.search.SortField.FIELD_SCORE;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -423,44 +424,57 @@ public class TestTopFieldCollector extends LuceneTestCase {
             .add(bar, Occur.SHOULD)
             .add(baz, Occur.SHOULD)
             .build();
-    final IndexSearcher searcher = new IndexSearcher(reader);
+    final IndexSearcher searcher = newSearcher(reader);
     for (Sort sort :
         new Sort[] {new Sort(FIELD_SCORE), new Sort(new SortField("f", SortField.Type.SCORE))}) {
-      final TopFieldCollector topCollector =
-          TopFieldCollector.create(sort, TestUtil.nextInt(random(), 1, 2), Integer.MAX_VALUE);
-      final Collector assertingCollector =
-          new Collector() {
+      int numHits = TestUtil.nextInt(random(), 1, 2);
+      searcher.search(
+          query,
+          new CollectorManager<Collector, Void>() {
             @Override
-            public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-              final LeafCollector in = topCollector.getLeafCollector(context);
-              return new FilterLeafCollector(in) {
+            public Collector newCollector() {
+              return new Collector() {
+                final TopFieldCollector topCollector =
+                    TopFieldCollector.create(sort, numHits, Integer.MAX_VALUE);
+
                 @Override
-                public void setScorer(final Scorable scorer) throws IOException {
-                  Scorable s =
-                      new FilterScorable(scorer) {
+                public LeafCollector getLeafCollector(LeafReaderContext context)
+                    throws IOException {
+                  final LeafCollector in = topCollector.getLeafCollector(context);
+                  return new FilterLeafCollector(in) {
+                    @Override
+                    public void setScorer(final Scorable scorer) throws IOException {
+                      Scorable s =
+                          new FilterScorable(scorer) {
 
-                        int lastComputedDoc = -1;
+                            int lastComputedDoc = -1;
 
-                        @Override
-                        public float score() throws IOException {
-                          if (lastComputedDoc == docID()) {
-                            throw new AssertionError("Score computed twice on " + docID());
-                          }
-                          lastComputedDoc = docID();
-                          return scorer.score();
-                        }
-                      };
-                  super.setScorer(s);
+                            @Override
+                            public float score() throws IOException {
+                              if (lastComputedDoc == docID()) {
+                                throw new AssertionError("Score computed twice on " + docID());
+                              }
+                              lastComputedDoc = docID();
+                              return scorer.score();
+                            }
+                          };
+                      super.setScorer(s);
+                    }
+                  };
+                }
+
+                @Override
+                public ScoreMode scoreMode() {
+                  return ScoreMode.COMPLETE;
                 }
               };
             }
 
             @Override
-            public ScoreMode scoreMode() {
-              return topCollector.scoreMode();
+            public Void reduce(Collection<Collector> collectors) {
+              return null;
             }
-          };
-      searcher.search(query, assertingCollector);
+          });
     }
     reader.close();
     w.close();

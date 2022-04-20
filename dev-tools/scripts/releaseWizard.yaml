@@ -281,6 +281,13 @@ groups:
     title: Select JIRA issues to be included
     description: Set the appropriate "Fix Version" in JIRA for the issues that should be included in the release.
   - !Todo
+    id: fix_build_failures
+    title: Look into common build failures
+    description: |
+      Look over recent build results sent to the builds@lucene.apache.org list and try to address any recurring
+      failures. It's best to fix common failures now, so they don't pop up later and interfere with release smoke
+      testing. Build email archives are available at https://lists.apache.org/list.html?builds@lucene.apache.org.
+  - !Todo
     id: decide_branch_date
     title: Decide the date for branching
     types:
@@ -291,7 +298,7 @@ groups:
       name: branch_date
   - !Todo
     id: decide_freeze_length
-    title: Decide the lenght of feature freeze
+    title: Decide the length of feature freeze
     types:
     - major
     - minor

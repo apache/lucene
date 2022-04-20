@@ -35,6 +35,7 @@ import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.apache.lucene.analysis.ja.tokenattributes.*;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.morph.TokenType;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
@@ -93,16 +94,6 @@ public final class JapaneseTokenizer extends Tokenizer {
   /** Default tokenization mode. Currently this is {@link Mode#SEARCH}. */
   public static final Mode DEFAULT_MODE = Mode.SEARCH;
 
-  /** Token type reflecting the original source of this token */
-  public enum Type {
-    /** Known words from the system dictionary. */
-    KNOWN,
-    /** Unknown words (heuristically segmented). */
-    UNKNOWN,
-    /** Known words from the user dictionary. */
-    USER
-  }
-
   private static final boolean VERBOSE = false;
 
   private static final int SEARCH_MODE_KANJI_LENGTH = 2;
@@ -117,8 +108,8 @@ public final class JapaneseTokenizer extends Tokenizer {
   private static final int MAX_UNKNOWN_WORD_LENGTH = 1024;
   private static final int MAX_BACKTRACE_GAP = 1024;
 
-  private final EnumMap<Type, Dictionary<? extends JaMorphData>> dictionaryMap =
-      new EnumMap<>(Type.class);
+  private final EnumMap<TokenType, Dictionary<? extends JaMorphData>> dictionaryMap =
+      new EnumMap<>(TokenType.class);
 
   private final TokenInfoFST fst;
   private final TokenInfoDictionary dictionary;
@@ -326,9 +317,9 @@ public final class JapaneseTokenizer extends Tokenizer {
 
     resetState();
 
-    dictionaryMap.put(Type.KNOWN, dictionary);
-    dictionaryMap.put(Type.UNKNOWN, unkDictionary);
-    dictionaryMap.put(Type.USER, userDictionary);
+    dictionaryMap.put(TokenType.KNOWN, dictionary);
+    dictionaryMap.put(TokenType.UNKNOWN, unkDictionary);
+    dictionaryMap.put(TokenType.USER, userDictionary);
   }
 
   private GraphvizFormatter dotOut;
@@ -360,7 +351,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     pending.clear();
 
     // Add BOS:
-    positions.get(0).add(0, 0, -1, -1, -1, Type.KNOWN);
+    positions.get(0).add(0, 0, -1, -1, -1, -1, TokenType.KNOWN);
   }
 
   @Override
@@ -415,9 +406,10 @@ public final class JapaneseTokenizer extends Tokenizer {
     int[] costs = new int[8];
     int[] lastRightID = new int[8];
     int[] backPos = new int[8];
+    int[] backWordPos = new int[8];
     int[] backIndex = new int[8];
     int[] backID = new int[8];
-    Type[] backType = new Type[8];
+    TokenType[] backType = new TokenType[8];
 
     // Only used when finding 2nd best segmentation under a
     // too-long token:
@@ -425,19 +417,20 @@ public final class JapaneseTokenizer extends Tokenizer {
     int[] forwardPos = new int[8];
     int[] forwardID = new int[8];
     int[] forwardIndex = new int[8];
-    Type[] forwardType = new Type[8];
+    TokenType[] forwardType = new TokenType[8];
 
     public void grow() {
       costs = ArrayUtil.grow(costs, 1 + count);
       lastRightID = ArrayUtil.grow(lastRightID, 1 + count);
       backPos = ArrayUtil.grow(backPos, 1 + count);
+      backWordPos = ArrayUtil.grow(backWordPos, 1 + count);
       backIndex = ArrayUtil.grow(backIndex, 1 + count);
       backID = ArrayUtil.grow(backID, 1 + count);
 
       // NOTE: sneaky: grow separately because
       // ArrayUtil.grow will otherwise pick a different
       // length than the int[]s we just grew:
-      final Type[] newBackType = new Type[backID.length];
+      final TokenType[] newBackType = new TokenType[backID.length];
       System.arraycopy(backType, 0, newBackType, 0, backType.length);
       backType = newBackType;
     }
@@ -450,13 +443,19 @@ public final class JapaneseTokenizer extends Tokenizer {
       // NOTE: sneaky: grow separately because
       // ArrayUtil.grow will otherwise pick a different
       // length than the int[]s we just grew:
-      final Type[] newForwardType = new Type[forwardPos.length];
+      final TokenType[] newForwardType = new TokenType[forwardPos.length];
       System.arraycopy(forwardType, 0, newForwardType, 0, forwardType.length);
       forwardType = newForwardType;
     }
 
     public void add(
-        int cost, int lastRightID, int backPos, int backIndex, int backID, Type backType) {
+        int cost,
+        int lastRightID,
+        int backPos,
+        int backRPos,
+        int backIndex,
+        int backID,
+        TokenType backType) {
       // NOTE: this isn't quite a true Viterbi search,
       // because we should check if lastRightID is
       // already present here, and only update if the new
@@ -471,13 +470,14 @@ public final class JapaneseTokenizer extends Tokenizer {
       this.costs[count] = cost;
       this.lastRightID[count] = lastRightID;
       this.backPos[count] = backPos;
+      this.backWordPos[count] = backRPos;
       this.backIndex[count] = backIndex;
       this.backID[count] = backID;
       this.backType[count] = backType;
       count++;
     }
 
-    public void addForward(int forwardPos, int forwardIndex, int forwardID, Type forwardType) {
+    public void addForward(int forwardPos, int forwardIndex, int forwardID, TokenType forwardType) {
       if (forwardCount == this.forwardID.length) {
         growForward();
       }
@@ -498,9 +498,10 @@ public final class JapaneseTokenizer extends Tokenizer {
   private void add(
       JaMorphData morphAtts,
       Position fromPosData,
+      int wordPos,
       int endPos,
       int wordID,
-      Type type,
+      TokenType type,
       boolean addPenalty)
       throws IOException {
     final int wordCost = morphAtts.getWordCost(wordID);
@@ -555,7 +556,7 @@ public final class JapaneseTokenizer extends Tokenizer {
               + positions.get(endPos).count);
     }
 
-    if (addPenalty && type != Type.USER) {
+    if (addPenalty && type != TokenType.USER) {
       final int penalty = computePenalty(fromPosData.pos, endPos - fromPosData.pos);
       if (VERBOSE) {
         if (penalty > 0) {
@@ -568,7 +569,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     // positions.get(endPos).add(leastCost, dict.getRightId(wordID), fromPosData.pos, leastIDX,
     // wordID, type);
     assert leftID == morphAtts.getRightId(wordID);
-    positions.get(endPos).add(leastCost, leftID, fromPosData.pos, leastIDX, wordID, type);
+    positions.get(endPos).add(leastCost, leftID, fromPosData.pos, wordPos, leastIDX, wordID, type);
   }
 
   @Override
@@ -903,9 +904,10 @@ public final class JapaneseTokenizer extends Tokenizer {
             add(
                 userDictionary.getMorphAttributes(),
                 posData,
+                pos,
                 posAhead + 1,
                 output + arc.nextFinalOutput().intValue(),
-                Type.USER,
+                TokenType.USER,
                 false);
             anyMatches = true;
           }
@@ -956,9 +958,10 @@ public final class JapaneseTokenizer extends Tokenizer {
               add(
                   dictionary.getMorphAttributes(),
                   posData,
+                  pos,
                   posAhead + 1,
                   wordIdRef.ints[wordIdRef.offset + ofs],
-                  Type.KNOWN,
+                  TokenType.KNOWN,
                   false);
               anyMatches = true;
             }
@@ -1012,9 +1015,10 @@ public final class JapaneseTokenizer extends Tokenizer {
           add(
               unkDictionary.getMorphAttributes(),
               posData,
+              pos,
               posData.pos + unknownWordLength,
               wordIdRef.ints[wordIdRef.offset + ofs],
-              Type.UNKNOWN,
+              TokenType.UNKNOWN,
               false);
         }
 
@@ -1131,7 +1135,7 @@ public final class JapaneseTokenizer extends Tokenizer {
         }
         final int pathCost = posData.costs[bestStartIDX];
         for (int forwardArcIDX = 0; forwardArcIDX < posData.forwardCount; forwardArcIDX++) {
-          final Type forwardType = posData.forwardType[forwardArcIDX];
+          final TokenType forwardType = posData.forwardType[forwardArcIDX];
           final Dictionary<? extends JaMorphData> dict2 = getDict(forwardType);
           final int wordID = posData.forwardID[forwardArcIDX];
           final int toPos = posData.forwardPos[forwardArcIDX];
@@ -1157,13 +1161,13 @@ public final class JapaneseTokenizer extends Tokenizer {
           }
           positions
               .get(toPos)
-              .add(newCost, dict2.getRightId(wordID), pos, bestStartIDX, wordID, forwardType);
+              .add(newCost, dict2.getRightId(wordID), pos, -1, bestStartIDX, wordID, forwardType);
         }
       } else {
         // On non-initial positions, we maximize score
         // across all arriving lastRightIDs:
         for (int forwardArcIDX = 0; forwardArcIDX < posData.forwardCount; forwardArcIDX++) {
-          final Type forwardType = posData.forwardType[forwardArcIDX];
+          final TokenType forwardType = posData.forwardType[forwardArcIDX];
           final int toPos = posData.forwardPos[forwardArcIDX];
           if (VERBOSE) {
             System.out.println(
@@ -1177,6 +1181,7 @@ public final class JapaneseTokenizer extends Tokenizer {
           add(
               getDict(forwardType).getMorphAttributes(),
               posData,
+              pos,
               toPos,
               posData.forwardID[forwardArcIDX],
               forwardType,
@@ -1190,7 +1195,7 @@ public final class JapaneseTokenizer extends Tokenizer {
   // yet another lattice data structure
   private static final class Lattice {
     char[] fragment;
-    EnumMap<Type, Dictionary<? extends JaMorphData>> dictionaryMap;
+    EnumMap<TokenType, Dictionary<? extends JaMorphData>> dictionaryMap;
     boolean useEOS;
 
     int rootCapacity = 0;
@@ -1206,7 +1211,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     int nodeCount = 0;
 
     // The variables below are elements of lattice node that indexed by node number.
-    Type[] nodeDicType;
+    TokenType[] nodeDicType;
     int[] nodeWordID;
     // nodeMark - -1:excluded, 0:unused, 1:bestpath, 2:2-best-path, ... N:N-best-path
     int[] nodeMark;
@@ -1243,7 +1248,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     private void reserve(int n) {
       if (capacity < n) {
         int oversize = ArrayUtil.oversize(n, Integer.BYTES);
-        nodeDicType = new Type[oversize];
+        nodeDicType = new TokenType[oversize];
         nodeWordID = new int[oversize];
         nodeMark = new int[oversize];
         nodeLeftID = new int[oversize];
@@ -1270,7 +1275,7 @@ public final class JapaneseTokenizer extends Tokenizer {
       }
     }
 
-    private int addNode(Type dicType, int wordID, int left, int right) {
+    private int addNode(TokenType dicType, int wordID, int left, int right) {
       if (VERBOSE) {
         System.out.printf(
             "DEBUG: addNode: dicType=%s, wordID=%d, left=%d, right=%d, str=%s\n",
@@ -1344,7 +1349,7 @@ public final class JapaneseTokenizer extends Tokenizer {
 
     void setup(
         char[] fragment,
-        EnumMap<Type, Dictionary<? extends JaMorphData>> dictionaryMap,
+        EnumMap<TokenType, Dictionary<? extends JaMorphData>> dictionaryMap,
         WrappedPositionArray positions,
         int prevOffset,
         int endOffset,
@@ -1371,7 +1376,7 @@ public final class JapaneseTokenizer extends Tokenizer {
       }
 
       // EOS = 1
-      if (addNode(Type.KNOWN, -1, endOffset - rootBase, -1) != 1) {
+      if (addNode(TokenType.KNOWN, -1, endOffset - rootBase, -1) != 1) {
         assert false;
       }
 
@@ -1555,9 +1560,9 @@ public final class JapaneseTokenizer extends Tokenizer {
   private void registerNode(int node, char[] fragment) {
     int left = lattice.nodeLeft[node];
     int right = lattice.nodeRight[node];
-    Type type = lattice.nodeDicType[node];
+    TokenType type = lattice.nodeDicType[node];
     if (!discardPunctuation || !isPunctuation(fragment[left])) {
-      if (type == Type.USER) {
+      if (type == TokenType.USER) {
         // The code below are based on backtrace().
         //
         // Expand the phraseID we recorded into the actual segmentation:
@@ -1571,7 +1576,7 @@ public final class JapaneseTokenizer extends Tokenizer {
                 lattice.rootBase + left,
                 lattice.rootBase + right,
                 wordID,
-                Type.USER,
+                TokenType.USER,
                 userDictionary.getMorphAttributes()));
         // Output compound
         int current = 0;
@@ -1587,7 +1592,7 @@ public final class JapaneseTokenizer extends Tokenizer {
                     startOffset,
                     startOffset + len,
                     wordID + j - 1,
-                    Type.USER,
+                    TokenType.USER,
                     userDictionary.getMorphAttributes()));
           }
           current += len;
@@ -1833,11 +1838,11 @@ public final class JapaneseTokenizer extends Tokenizer {
       assert backPos >= lastBackTracePos
           : "backPos=" + backPos + " vs lastBackTracePos=" + lastBackTracePos;
       int length = pos - backPos;
-      Type backType = posData.backType[bestIDX];
+      TokenType backType = posData.backType[bestIDX];
       int backID = posData.backID[bestIDX];
       int nextBestIDX = posData.backIndex[bestIDX];
 
-      if (searchMode && altToken == null && backType != Type.USER) {
+      if (searchMode && altToken == null && backType != TokenType.USER) {
 
         // In searchMode, if best path had picked a too-long
         // token, we use the "penalty" to compute the allowed
@@ -1994,7 +1999,7 @@ public final class JapaneseTokenizer extends Tokenizer {
 
       final Dictionary<? extends JaMorphData> dict = getDict(backType);
 
-      if (backType == Type.USER) {
+      if (backType == TokenType.USER) {
 
         // Expand the phraseID we recorded into the actual
         // segmentation:
@@ -2013,7 +2018,7 @@ public final class JapaneseTokenizer extends Tokenizer {
                   startOffset,
                   startOffset + len,
                   wordID + j - 1,
-                  Type.USER,
+                  TokenType.USER,
                   dict.getMorphAttributes()));
           if (VERBOSE) {
             System.out.println("    add USER token=" + pending.get(pending.size() - 1));
@@ -2030,7 +2035,7 @@ public final class JapaneseTokenizer extends Tokenizer {
         backCount += wordIDAndLength.length - 1;
       } else {
 
-        if (extendedMode && backType == Type.UNKNOWN) {
+        if (extendedMode && backType == TokenType.UNKNOWN) {
           // In EXTENDED mode we convert unknown word into
           // unigrams:
           int unigramTokenCount = 0;
@@ -2052,7 +2057,7 @@ public final class JapaneseTokenizer extends Tokenizer {
                       startOffset,
                       startOffset + charLen,
                       CharacterDefinition.NGRAM,
-                      Type.UNKNOWN,
+                      TokenType.UNKNOWN,
                       unkDictionary.getMorphAttributes()));
               unigramTokenCount++;
             }
@@ -2098,7 +2103,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     positions.freeBefore(endPos);
   }
 
-  Dictionary<? extends JaMorphData> getDict(Type type) {
+  Dictionary<? extends JaMorphData> getDict(TokenType type) {
     return dictionaryMap.get(type);
   }
 

@@ -68,7 +68,7 @@ public class WFSTCompletionLookup extends Lookup {
   private final boolean exactFirst;
 
   /** Number of entries the lookup was built with */
-  private long count = 0;
+  private volatile long count = 0;
 
   private final Directory tempDir;
   private final String tempFileNamePrefix;
@@ -102,7 +102,7 @@ public class WFSTCompletionLookup extends Lookup {
     if (iterator.hasContexts()) {
       throw new IllegalArgumentException("this suggester doesn't support contexts");
     }
-    count = 0;
+    long newCount = 0;
     BytesRef scratch = new BytesRef();
     InputIterator iter = new WFSTInputIterator(tempDir, tempFileNamePrefix, iterator);
     IntsRefBuilder scratchInts = new IntsRefBuilder();
@@ -121,9 +121,10 @@ public class WFSTCompletionLookup extends Lookup {
       Util.toIntsRef(scratch, scratchInts);
       fstCompiler.add(scratchInts.get(), cost);
       previous.copyBytes(scratch);
-      count++;
+      newCount++;
     }
     fst = fstCompiler.compile();
+    count = newCount;
   }
 
   @Override
