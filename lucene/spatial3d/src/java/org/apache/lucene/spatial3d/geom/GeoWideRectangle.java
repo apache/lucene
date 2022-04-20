@@ -26,10 +26,10 @@ import java.io.OutputStream;
  * @lucene.internal
  */
 class GeoWideRectangle extends GeoBaseBBox {
-  
+
   /** Minimum extent for a rectangle of this type */
   public static final double MIN_WIDE_EXTENT = Math.PI - Vector.MINIMUM_ANGULAR_RESOLUTION;
-  
+
   /** The top latitude */
   protected final double topLat;
   /** The bottom latitude */
