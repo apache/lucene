@@ -338,7 +338,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
                 + in);
       } else if (Thread.interrupted()) {
         throw new ExitingReaderException(
-            "Interrupted while iterating over point values. PointValues=" + in);
+            "Interrupted while iterating over doc values. DocValues=" + in);
       }
     }
   }
