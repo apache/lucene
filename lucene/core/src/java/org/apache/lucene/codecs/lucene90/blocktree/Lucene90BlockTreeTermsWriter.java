@@ -113,8 +113,8 @@ import org.apache.lucene.util.fst.Util;
  * Metadata sections.
  *
  * <ul>
- *   <li>TermsDict (.tim) --&gt; Header, <i>PostingsHeader</i>, NodeBlock<sup>NumBlocks</sup>,
- *       Footer
+ *   <li>TermsDict (.tim) --&gt; Header, FieldDict<sup>NumFields</sup>, Footer
+ *   <li>FieldDict --&gt; <i>PostingsHeader</i>, NodeBlock<sup>NumBlocks</sup>
  *   <li>NodeBlock --&gt; (OuterNode | InnerNode)
  *   <li>OuterNode --&gt; EntryCount, SuffixLength, Byte<sup>SuffixLength</sup>, StatsLength, &lt;
  *       TermStats &gt;<sup>EntryCount</sup>, MetaLength,
