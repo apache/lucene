@@ -429,25 +429,20 @@ public final class Tessellator {
                 p.getX(), p.getY(), hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy)) {
           tan = Math.abs(hy - p.getY()) / (hx - p.getX()); // tangential
           if (isVertexEquals(p, connection) && isLocallyInside(p, holeNode)) {
-            // make sure we are building a CW polygon. This might happen when one or more holes have
+            // make sure we are building a non-crossing CW polygon. This might happen when one or more holes have
             // a bridge to a polygon vertex which contains more than one possibility (is a point
             // with a touching hole).
-            if (area(
-                        p.previous.getX(),
-                        p.previous.getY(),
-                        p.getX(),
-                        p.getY(),
-                        holeNode.getX(),
-                        holeNode.getY())
-                    <= 0
-                && area(
-                        holeNode.previous.getX(),
-                        holeNode.previous.getY(),
-                        holeNode.getX(),
-                        holeNode.getY(),
-                        p.getX(),
-                        p.getY())
-                    <= 0) {
+            boolean crosses =
+                    GeoUtils.lineCrossesLine(
+                            p.getX(),
+                            p.getY(),
+                            holeNode.getX(),
+                            holeNode.getY(),
+                            connection.next.getX(),
+                            connection.next.getY(),
+                            connection.previous.getX(),
+                            connection.previous.getY());
+            if (crosses == false) {
               connection = p;
               tanMin = tan;
             }
