@@ -429,20 +429,25 @@ public final class Tessellator {
                 p.getX(), p.getY(), hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy)) {
           tan = Math.abs(hy - p.getY()) / (hx - p.getX()); // tangential
           if (isVertexEquals(p, connection) && isLocallyInside(p, holeNode)) {
-            // make sure we are not crossing the polygon. This might happen when several holes have
-            // a bridge to the same polygon vertex
-            // and this vertex has different vertex.
-            boolean crosses =
-                GeoUtils.lineCrossesLine(
-                    p.getX(),
-                    p.getY(),
-                    holeNode.getX(),
-                    holeNode.getY(),
-                    connection.next.getX(),
-                    connection.next.getY(),
-                    connection.previous.getX(),
-                    connection.previous.getY());
-            if (crosses == false) {
+            // make sure we are building a CW polygon. This might happen when one or more holes have
+            // a bridge to a polygon vertex which contains more than one possibility (is a point
+            // with a touching hole).
+            if (area(
+                        p.previous.getX(),
+                        p.previous.getY(),
+                        p.getX(),
+                        p.getY(),
+                        holeNode.getX(),
+                        holeNode.getY())
+                    <= 0
+                && area(
+                        holeNode.previous.getX(),
+                        holeNode.previous.getY(),
+                        holeNode.getX(),
+                        holeNode.getY(),
+                        p.getX(),
+                        p.getY())
+                    <= 0) {
               connection = p;
               tanMin = tan;
             }
@@ -1118,7 +1123,6 @@ public final class Tessellator {
               next.getX(), next.getY(), next.next.getX(), next.next.getY(), end.getX(), end.getY());
       next = next.next;
     } while (next.next != end);
-    // The polygon must be CW
     return windingSum;
   }
 
