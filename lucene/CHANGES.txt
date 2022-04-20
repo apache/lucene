@@ -142,7 +142,8 @@ Build
 
 Other
 ---------------------
-(No changes)
+* LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems
+  to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
 
 ======================= Lucene 9.1.0 =======================
 
