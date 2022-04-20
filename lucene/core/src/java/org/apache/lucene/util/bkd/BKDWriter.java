@@ -27,8 +27,6 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
@@ -203,7 +201,7 @@ public class BKDWriter implements Closeable {
     }
   }
 
-  public void add(byte[] packedValue, int docID) throws IOException {
+  public void add(int docID, byte[] packedValue) throws IOException {
     if (packedValue.length != config.packedBytesLength) {
       throw new IllegalArgumentException(
           "packedValue should be length="
@@ -243,7 +241,7 @@ public class BKDWriter implements Closeable {
     private final PointValues.PointTree pointTree;
     private final int packedBytesLength;
     private final MergeState.DocMap docMap;
-    private final MergeIntersectsVisitor mergeIntersectsVisitor;
+    private final MergeDocValueVisitor mergeDocValueVisitor;
     /** Which doc in this block we are up to */
     private int docBlockUpto;
     /** Current doc ID */
@@ -254,10 +252,11 @@ public class BKDWriter implements Closeable {
     public MergeReader(PointValues pointValues, MergeState.DocMap docMap) throws IOException {
       this.packedBytesLength = pointValues.getBytesPerDimension() * pointValues.getNumDimensions();
       this.pointTree = pointValues.getPointTree();
-      this.mergeIntersectsVisitor = new MergeIntersectsVisitor(packedBytesLength);
+      this.mergeDocValueVisitor = new MergeDocValueVisitor(packedBytesLength);
       // move to first child of the tree and collect docs
       while (pointTree.moveToChild()) {}
-      pointTree.visitDocValues(mergeIntersectsVisitor);
+      mergeDocValueVisitor.grow(Math.toIntExact(pointTree.size()));
+      pointTree.visitDocValues(mergeDocValueVisitor);
       this.docMap = docMap;
       this.packedValue = new byte[packedBytesLength];
     }
@@ -265,17 +264,17 @@ public class BKDWriter implements Closeable {
     public boolean next() throws IOException {
       // System.out.println("MR.next this=" + this);
       while (true) {
-        if (docBlockUpto == mergeIntersectsVisitor.docsInBlock) {
+        if (docBlockUpto == mergeDocValueVisitor.docsInBlock) {
           if (collectNextLeaf() == false) {
-            assert mergeIntersectsVisitor.docsInBlock == 0;
+            assert mergeDocValueVisitor.docsInBlock == 0;
             return false;
           }
-          assert mergeIntersectsVisitor.docsInBlock > 0;
+          assert mergeDocValueVisitor.docsInBlock > 0;
           docBlockUpto = 0;
         }
 
         final int index = docBlockUpto++;
-        int oldDocID = mergeIntersectsVisitor.docIDs[index];
+        int oldDocID = mergeDocValueVisitor.docIDs[index];
 
         int mappedDocID;
         if (docMap == null) {
@@ -288,7 +287,7 @@ public class BKDWriter implements Closeable {
           // Not deleted!
           docID = mappedDocID;
           System.arraycopy(
-              mergeIntersectsVisitor.packedValues,
+              mergeDocValueVisitor.packedValues,
               index * packedBytesLength,
               packedValue,
               0,
@@ -300,12 +299,13 @@ public class BKDWriter implements Closeable {
 
     private boolean collectNextLeaf() throws IOException {
       assert pointTree.moveToChild() == false;
-      mergeIntersectsVisitor.reset();
+      mergeDocValueVisitor.reset();
       do {
         if (pointTree.moveToSibling()) {
           // move to first child of this node and collect docs
           while (pointTree.moveToChild()) {}
-          pointTree.visitDocValues(mergeIntersectsVisitor);
+          mergeDocValueVisitor.grow(Math.toIntExact(pointTree.size()));
+          pointTree.visitDocValues(mergeDocValueVisitor);
           return true;
         }
       } while (pointTree.moveToParent());
@@ -313,14 +313,14 @@ public class BKDWriter implements Closeable {
     }
   }
 
-  private static class MergeIntersectsVisitor implements IntersectVisitor {
+  private static class MergeDocValueVisitor implements PointValues.DocValuesVisitor {
 
     int docsInBlock = 0;
     byte[] packedValues;
     int[] docIDs;
     private final int packedBytesLength;
 
-    MergeIntersectsVisitor(int packedBytesLength) {
+    MergeDocValueVisitor(int packedBytesLength) {
       this.docIDs = new int[0];
       this.packedValues = new byte[0];
       this.packedBytesLength = packedBytesLength;
@@ -330,7 +330,6 @@ public class BKDWriter implements Closeable {
       docsInBlock = 0;
     }
 
-    @Override
     public void grow(int count) {
       assert docsInBlock == 0;
       if (docIDs.length < count) {
@@ -348,20 +347,10 @@ public class BKDWriter implements Closeable {
     }
 
     @Override
-    public void visit(int docID) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void visit(int docID, byte[] packedValue) {
       System.arraycopy(
           packedValue, 0, packedValues, docsInBlock * packedBytesLength, packedBytesLength);
       docIDs[docsInBlock++] = docID;
-    }
-
-    @Override
-    public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-      return Relation.CELL_CROSSES_QUERY;
     }
   }
 
@@ -593,24 +582,7 @@ public class BKDWriter implements Closeable {
     final OneDimensionBKDWriter oneDimWriter =
         new OneDimensionBKDWriter(metaOut, indexOut, dataOut);
 
-    reader.visitDocValues(
-        new IntersectVisitor() {
-
-          @Override
-          public void visit(int docID, byte[] packedValue) throws IOException {
-            oneDimWriter.add(packedValue, docID);
-          }
-
-          @Override
-          public void visit(int docID) {
-            throw new IllegalStateException();
-          }
-
-          @Override
-          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-            return Relation.CELL_CROSSES_QUERY;
-          }
-        });
+    reader.visitDocValues((docID, packedValue) -> oneDimWriter.add(packedValue, docID));
 
     return oneDimWriter.finish();
   }

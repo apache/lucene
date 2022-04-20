@@ -332,18 +332,7 @@ final class SimpleTextBKDReader extends PointValues {
     }
 
     @Override
-    public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
-      addAll(visitor, false);
-    }
-
-    public void addAll(PointValues.IntersectVisitor visitor, boolean grown) throws IOException {
-      if (grown == false) {
-        final long size = size();
-        if (size <= Integer.MAX_VALUE) {
-          visitor.grow((int) size);
-          grown = true;
-        }
-      }
+    public void visitDocIDs(DocIdsVisitor docIdsVisitor) throws IOException {
       if (isLeafNode()) {
         // Leaf node
         BytesRefBuilder scratch = new BytesRefBuilder();
@@ -352,20 +341,24 @@ final class SimpleTextBKDReader extends PointValues {
         int count = parseInt(scratch, BLOCK_COUNT);
         for (int i = 0; i < count; i++) {
           readLine(in, scratch);
-          visitor.visit(parseInt(scratch, BLOCK_DOC_ID));
+          docIdsVisitor.visit(parseInt(scratch, BLOCK_DOC_ID));
         }
       } else {
         pushLeft();
-        addAll(visitor, grown);
+        visitDocIDs(docIdsVisitor);
         pop(true);
         pushRight();
-        addAll(visitor, grown);
+        visitDocIDs(docIdsVisitor);
         pop(false);
       }
     }
 
     @Override
-    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+    public void visitDocValues(
+        NodeComparator nodeComparator,
+        DocIdsVisitor docIdsVisitor,
+        DocValuesVisitor docValuesVisitor)
+        throws IOException {
       if (isLeafNode()) {
         // Leaf node
         int leafID = nodeID - leafNodeOffset;
@@ -374,7 +367,6 @@ final class SimpleTextBKDReader extends PointValues {
         int count = readDocIDs(in, leafBlockFPs[leafID], scratchDocIDs);
 
         // Again, this time reading values and checking with the visitor
-        visitor.grow(count);
         // NOTE: we don't do prefix coding, so we ignore commonPrefixLengths
         assert scratchPackedValue.length == config.packedBytesLength;
         BytesRefBuilder scratch = new BytesRefBuilder();
@@ -384,14 +376,14 @@ final class SimpleTextBKDReader extends PointValues {
           BytesRef br = SimpleTextUtil.fromBytesRefString(stripPrefix(scratch, BLOCK_VALUE));
           assert br.length == config.packedBytesLength;
           System.arraycopy(br.bytes, br.offset, scratchPackedValue, 0, config.packedBytesLength);
-          visitor.visit(scratchDocIDs[i], scratchPackedValue);
+          docValuesVisitor.visit(scratchDocIDs[i], scratchPackedValue);
         }
       } else {
         pushLeft();
-        visitDocValues(visitor);
+        visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor);
         pop(true);
         pushRight();
-        visitDocValues(visitor);
+        visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor);
         pop(false);
       }
     }

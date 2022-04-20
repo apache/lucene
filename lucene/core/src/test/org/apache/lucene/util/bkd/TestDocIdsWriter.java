@@ -16,12 +16,9 @@
  */
 package org.apache.lucene.util.bkd;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -108,27 +105,8 @@ public class TestDocIdsWriter extends LuceneTestCase {
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      DocIdsWriter.readInts(
-          in,
-          ints.length,
-          new IntersectVisitor() {
-            int i = 0;
-
-            @Override
-            public void visit(int docID) throws IOException {
-              read[i++] = docID;
-            }
-
-            @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
-              throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              throw new UnsupportedOperationException();
-            }
-          });
+      int[] pos = new int[] {0};
+      DocIdsWriter.readInts(in, ints.length, docID -> read[pos[0]++] = docID);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }

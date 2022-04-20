@@ -357,7 +357,10 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
     }
 
     @Override
-    public void visitDocValues(PointValues.IntersectVisitor visitor) {
+    public void visitDocValues(
+        PointValues.NodeComparator nodeComparator,
+        PointValues.DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor) {
       throw new UnsupportedOperationException();
     }
   }

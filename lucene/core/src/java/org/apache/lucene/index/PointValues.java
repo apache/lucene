@@ -269,22 +269,50 @@ public abstract class PointValues {
     long size();
 
     /** Visit all the docs below the current node. */
-    void visitDocIDs(IntersectVisitor visitor) throws IOException;
+    void visitDocIDs(DocIdsVisitor docIdsVisitor) throws IOException;
 
     /** Visit all the docs and values below the current node. */
-    void visitDocValues(IntersectVisitor visitor) throws IOException;
+    default void visitDocValues(DocValuesVisitor docValuesVisitor) throws IOException {
+      visitDocValues(
+          (min, max) -> Relation.CELL_CROSSES_QUERY,
+          docID -> {
+            throw new AssertionError("DocIdsVisitor illegally called");
+          },
+          docValuesVisitor);
+    }
+
+    /**
+     * Similar to {@link #visitDocValues(DocValuesVisitor)} but in this case it allows adding a
+     * filter like {@link NodeComparator}.
+     */
+    void visitDocValues(
+        NodeComparator nodeComparator,
+        DocIdsVisitor docIdsVisitor,
+        DocValuesVisitor docValuesVisitor)
+        throws IOException;
   }
 
   /**
-   * We recurse the {@link PointTree}, using a provided instance of this to guide the recursion.
+   * Check how a node, defined by its {@link PointTree#getMinPackedValue()} and {@link
+   * PointTree#getMaxPackedValue()}, compare to the query.
    *
    * @lucene.experimental
    */
-  public interface IntersectVisitor {
-    /**
-     * Called for all documents in a leaf cell that's fully contained by the query. The consumer
-     * should blindly accept the docID.
-     */
+  @FunctionalInterface
+  public interface NodeComparator {
+    /** Computes the {@link Relation} of the provided node. */
+    Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
+  }
+
+  /**
+   * Collects all documents below a tree node by calling {@link
+   * PointTree#visitDocIDs(DocIdsVisitor)}
+   *
+   * @lucene.experimental
+   */
+  @FunctionalInterface
+  public interface DocIdsVisitor {
+    /** Called for all documents below a tree node. */
     void visit(int docID) throws IOException;
 
     /**
@@ -297,18 +325,23 @@ public abstract class PointValues {
         visit(docID);
       }
     }
+  }
 
-    /**
-     * Called for all documents in a leaf cell that crosses the query. The consumer should
-     * scrutinize the packedValue to decide whether to accept it. In the 1D case, values are visited
-     * in increasing order, and in the case of ties, in increasing docID order.
-     */
+  /**
+   * Collects all documents and values below a tree node by calling {@link
+   * PointTree#visitDocValues(DocValuesVisitor)}
+   *
+   * @lucene.experimental
+   */
+  @FunctionalInterface
+  public interface DocValuesVisitor {
+    /** Called for all documents and values below a tree node. */
     void visit(int docID, byte[] packedValue) throws IOException;
 
     /**
-     * Similar to {@link IntersectVisitor#visit(int, byte[])} but in this case the packedValue can
+     * Similar to {@link DocValuesVisitor#visit(int, byte[])} but in this case the packedValue can
      * have more than one docID associated to it. The provided iterator should not escape the scope
-     * of this method so that implementations of PointValues are free to reuse it,
+     * of this method so that implementations of PointValues are free to reuse it.
      */
     default void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
       int docID;
@@ -316,23 +349,38 @@ public abstract class PointValues {
         visit(docID, packedValue);
       }
     }
+  }
 
-    /**
-     * Called for non-leaf cells to test how the cell relates to the query, to determine how to
-     * further recurse down the tree.
-     */
-    Relation compare(byte[] minPackedValue, byte[] maxPackedValue);
+  /**
+   * We recurse the {@link PointTree}, using a provided instance of this to guide the recursion.
+   *
+   * <p>{@link NodeComparator} is called to test how a node relates to the query, to determine how
+   * to further recurse down the tree:
+   *
+   * <ul>
+   *   <li>{@link Relation#CELL_OUTSIDE_QUERY}: Stop recursing down the current branch of the tree.
+   *   <li>{@link Relation#CELL_INSIDE_QUERY}: All nodes below the current node are visited using
+   *       the underlying {@link DocIdsVisitor}. The consumer should generally blindly accept the
+   *       docID.
+   *   <li>{@link Relation#CELL_CROSSES_QUERY}: Keep recursing down the current branch of the tree.
+   *       If the current node is a leaf, visit all docs and values using the underlying {@link
+   *       DocValuesVisitor}. The consumer should scrutinize the packedValue to decide whether to
+   *       accept it.
+   * </ul>
+   *
+   * @lucene.experimental
+   */
+  public interface IntersectVisitor extends NodeComparator, DocValuesVisitor, DocIdsVisitor {
 
     /** Notifies the caller that this many documents are about to be visited */
     default void grow(int count) {}
-    ;
   }
 
   /**
    * Finds all documents and points matching the provided visitor. This method does not enforce live
    * documents, so it's up to the caller to test whether each document is deleted, if necessary.
    */
-  public final void intersect(IntersectVisitor visitor) throws IOException {
+  public void intersect(IntersectVisitor visitor) throws IOException {
     final PointTree pointTree = getPointTree();
     intersect(visitor, pointTree);
     assert pointTree.moveToParent() == false;
@@ -347,6 +395,7 @@ public abstract class PointValues {
       case CELL_INSIDE_QUERY:
         // This cell is fully inside the query shape: recursively add all points in this cell
         // without filtering
+        visitor.grow((int) Math.min(getDocCount(), size()));
         pointTree.visitDocIDs(visitor);
         break;
       case CELL_CROSSES_QUERY:
@@ -358,10 +407,10 @@ public abstract class PointValues {
           } while (pointTree.moveToSibling());
           pointTree.moveToParent();
         } else {
-          // TODO: we can assert that the first value here in fact matches what the pointTree
-          // claimed?
           // Leaf node; scan and filter all points in this block:
-          pointTree.visitDocValues(visitor);
+          // We cannot have more than Integer.MAX_VALUE points in a leaf
+          visitor.grow((int) Math.min(getDocCount(), size()));
+          pointTree.visitDocValues(visitor, visitor, visitor);
         }
         break;
       default:

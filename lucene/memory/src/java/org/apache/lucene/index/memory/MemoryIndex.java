@@ -1714,20 +1714,21 @@ public class MemoryIndex {
           }
 
           @Override
-          public void visitDocIDs(IntersectVisitor visitor) throws IOException {
-            visitor.grow(info.pointValuesCount);
+          public void visitDocIDs(DocIdsVisitor docIdsVisitor) throws IOException {
             for (int i = 0; i < info.pointValuesCount; i++) {
-              visitor.visit(0);
+              docIdsVisitor.visit(0);
             }
           }
 
           @Override
-          public void visitDocValues(IntersectVisitor visitor) throws IOException {
+          public void visitDocValues(
+              NodeComparator nodeComparator,
+              DocIdsVisitor docIdsVisitor,
+              DocValuesVisitor docValuesVisitor)
+              throws IOException {
             BytesRef[] values = info.pointValues;
-
-            visitor.grow(info.pointValuesCount);
             for (int i = 0; i < info.pointValuesCount; i++) {
-              visitor.visit(0, values[i].bytes);
+              docValuesVisitor.visit(0, values[i].bytes);
             }
           }
         };

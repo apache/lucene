@@ -162,22 +162,26 @@ class CrankyPointsFormat extends PointsFormat {
             }
 
             @Override
-            public void visitDocIDs(IntersectVisitor visitor) throws IOException {
+            public void visitDocIDs(DocIdsVisitor docIdsVisitor) throws IOException {
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
-              pointTree.visitDocIDs(visitor);
+              pointTree.visitDocIDs(docIdsVisitor);
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
             }
 
             @Override
-            public void visitDocValues(IntersectVisitor visitor) throws IOException {
+            public void visitDocValues(
+                NodeComparator nodeComparator,
+                DocIdsVisitor docIdsVisitor,
+                DocValuesVisitor docValuesVisitor)
+                throws IOException {
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }
-              pointTree.visitDocValues(visitor);
+              pointTree.visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor);
               if (random.nextInt(100) == 0) {
                 throw new IOException("Fake IOException");
               }

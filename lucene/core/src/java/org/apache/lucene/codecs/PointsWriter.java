@@ -109,12 +109,17 @@ public abstract class PointsWriter implements Closeable {
                   }
 
                   @Override
-                  public void visitDocIDs(IntersectVisitor visitor) {
+                  public void visitDocIDs(DocIdsVisitor docIdsVisitor) {
                     throw new UnsupportedOperationException();
                   }
 
                   @Override
-                  public void visitDocValues(IntersectVisitor mergedVisitor) throws IOException {
+                  public void visitDocValues(
+                      NodeComparator nodeComparator,
+                      DocIdsVisitor docIdsVisitor,
+                      DocValuesVisitor mergedVisitor)
+                      throws IOException {
+
                     for (int i = 0; i < mergeState.pointsReaders.length; i++) {
                       PointsReader pointsReader = mergeState.pointsReaders[i];
                       if (pointsReader == null) {
@@ -140,29 +145,13 @@ public abstract class PointsWriter implements Closeable {
                       values
                           .getPointTree()
                           .visitDocValues(
-                              new IntersectVisitor() {
-                                @Override
-                                public void visit(int docID) {
-                                  // Should never be called during #visitDocValues()
-                                  throw new IllegalStateException();
-                                }
-
-                                @Override
-                                public void visit(int docID, byte[] packedValue)
-                                    throws IOException {
-                                  int newDocID = docMap.get(docID);
-                                  if (newDocID != -1) {
-                                    // Not deleted:
-                                    mergedVisitor.visit(newDocID, packedValue);
-                                  }
-                                }
-
-                                @Override
-                                public Relation compare(
-                                    byte[] minPackedValue, byte[] maxPackedValue) {
-                                  // Forces this segment's PointsReader to always visit all docs +
-                                  // values:
-                                  return Relation.CELL_CROSSES_QUERY;
+                              nodeComparator,
+                              docIdsVisitor,
+                              (docID, packedValue) -> {
+                                int newDocID = docMap.get(docID);
+                                if (newDocID != -1) {
+                                  // Not deleted:
+                                  mergedVisitor.visit(newDocID, packedValue);
                                 }
                               });
                     }

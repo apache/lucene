@@ -183,7 +183,7 @@ final class SimpleTextBKDWriter implements Closeable {
     }
   }
 
-  public void add(byte[] packedValue, int docID) throws IOException {
+  public void add(int docID, byte[] packedValue) throws IOException {
     if (packedValue.length != config.packedBytesLength) {
       throw new IllegalArgumentException(
           "packedValue should be length="

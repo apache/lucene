@@ -1121,6 +1121,14 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public void intersect(IntersectVisitor visitor) throws IOException {
+      assertThread("Points", creationThread);
+      in.intersect(
+          new AssertingIntersectVisitor(
+              getNumDimensions(), getNumIndexDimensions(), getBytesPerDimension(), visitor));
+    }
+
+    @Override
     public byte[] getMinPackedValue() throws IOException {
       assertThread("Points", creationThread);
       return Objects.requireNonNull(in.getMinPackedValue());
@@ -1211,23 +1219,17 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public void visitDocIDs(IntersectVisitor visitor) throws IOException {
-      in.visitDocIDs(
-          new AssertingIntersectVisitor(
-              pointValues.getNumDimensions(),
-              pointValues.getNumIndexDimensions(),
-              pointValues.getBytesPerDimension(),
-              visitor));
+    public void visitDocIDs(PointValues.DocIdsVisitor docIdsVisitor) throws IOException {
+      in.visitDocIDs(docIdsVisitor);
     }
 
     @Override
-    public void visitDocValues(IntersectVisitor visitor) throws IOException {
-      in.visitDocValues(
-          new AssertingIntersectVisitor(
-              pointValues.getNumDimensions(),
-              pointValues.getNumIndexDimensions(),
-              pointValues.getBytesPerDimension(),
-              visitor));
+    public void visitDocValues(
+        PointValues.NodeComparator nodeComparator,
+        PointValues.DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor)
+        throws IOException {
+      in.visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor);
     }
   }
 

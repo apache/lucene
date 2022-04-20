@@ -551,57 +551,63 @@ public class BKDReader extends PointValues {
     }
 
     @Override
-    public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
+    public void visitDocIDs(DocIdsVisitor docIDVisitor) throws IOException {
       resetNodeDataPosition();
-      addAll(visitor, false);
+      addAll(docIDVisitor);
     }
 
-    public void addAll(PointValues.IntersectVisitor visitor, boolean grown) throws IOException {
-      if (grown == false) {
-        final long size = size();
-        if (size <= Integer.MAX_VALUE) {
-          visitor.grow((int) size);
-          grown = true;
-        }
-      }
+    public void addAll(DocIdsVisitor docIdsVisitor) throws IOException {
       if (isLeafNode()) {
         // Leaf node
         leafNodes.seek(getLeafBlockFP());
         // How many points are stored in this leaf cell:
         int count = leafNodes.readVInt();
-        // No need to call grow(), it has been called up-front
-        DocIdsWriter.readInts(leafNodes, count, visitor);
+        // read docs and feed them directly to the DocIdsVisitor
+        DocIdsWriter.readInts(leafNodes, count, docIdsVisitor);
       } else {
         pushLeft();
-        addAll(visitor, grown);
+        addAll(docIdsVisitor);
         pop();
         pushRight();
-        addAll(visitor, grown);
+        addAll(docIdsVisitor);
         pop();
       }
     }
 
     @Override
-    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+    public void visitDocValues(
+        NodeComparator nodeComparator,
+        DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor)
+        throws IOException {
       resetNodeDataPosition();
-      visitLeavesOneByOne(visitor);
+      visitLeavesOneByOne(nodeComparator, docIdsVisitor, docValuesVisitor);
     }
 
-    private void visitLeavesOneByOne(PointValues.IntersectVisitor visitor) throws IOException {
+    private void visitLeavesOneByOne(
+        NodeComparator nodeComparator,
+        DocIdsVisitor docIdsVisitor,
+        DocValuesVisitor docValuesVisitor)
+        throws IOException {
       if (isLeafNode()) {
         // Leaf node
-        visitDocValues(visitor, getLeafBlockFP());
+        visitDocValues(nodeComparator, docIdsVisitor, docValuesVisitor, getLeafBlockFP());
       } else {
         pushLeft();
-        visitLeavesOneByOne(visitor);
+        visitLeavesOneByOne(nodeComparator, docIdsVisitor, docValuesVisitor);
         pop();
         pushRight();
-        visitLeavesOneByOne(visitor);
+        visitLeavesOneByOne(nodeComparator, docIdsVisitor, docValuesVisitor);
         pop();
       }
     }
 
-    private void visitDocValues(PointValues.IntersectVisitor visitor, long fp) throws IOException {
+    private void visitDocValues(
+        NodeComparator nodeComparator,
+        DocIdsVisitor docIdsVisitor,
+        DocValuesVisitor docValuesVisitor,
+        long fp)
+        throws IOException {
       // Leaf node; scan and filter all points in this block:
       int count = readDocIDs(leafNodes, fp, scratchIterator);
       if (version >= BKDWriter.VERSION_LOW_CARDINALITY_LEAVES) {
@@ -613,7 +619,9 @@ public class BKDReader extends PointValues {
             leafNodes,
             scratchIterator,
             count,
-            visitor);
+            nodeComparator,
+            docIdsVisitor,
+            docValuesVisitor);
       } else {
         visitDocValuesNoCardinality(
             commonPrefixLengths,
@@ -623,7 +631,9 @@ public class BKDReader extends PointValues {
             leafNodes,
             scratchIterator,
             count,
-            visitor);
+            nodeComparator,
+            docIdsVisitor,
+            docValuesVisitor);
       }
     }
 
@@ -731,7 +741,9 @@ public class BKDReader extends PointValues {
         IndexInput in,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        PointValues.IntersectVisitor visitor)
+        NodeComparator nodeComparator,
+        DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
       readCommonPrefixes(commonPrefixLengths, scratchDataPackedValue, in);
       if (config.numIndexDims != 1 && version >= BKDWriter.VERSION_LEAF_STORES_BOUNDS) {
@@ -749,25 +761,22 @@ public class BKDReader extends PointValues {
         // or does not match at all. This is especially more likely in the case that there are
         // multiple dimensions that have correlation, ie. splitting on one dimension also
         // significantly changes the range of values in another dimension.
-        PointValues.Relation r = visitor.compare(minPackedValue, maxPackedValue);
+        PointValues.Relation r = nodeComparator.compare(minPackedValue, maxPackedValue);
         if (r == PointValues.Relation.CELL_OUTSIDE_QUERY) {
           return;
         }
-        visitor.grow(count);
         if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
           for (int i = 0; i < count; ++i) {
-            visitor.visit(scratchIterator.docIDs[i]);
+            docIdsVisitor.visit(scratchIterator.docIDs[i]);
           }
           return;
         }
-      } else {
-        visitor.grow(count);
       }
 
       int compressedDim = readCompressedDim(in);
 
       if (compressedDim == -1) {
-        visitUniqueRawDocValues(scratchDataPackedValue, scratchIterator, count, visitor);
+        visitUniqueRawDocValues(scratchDataPackedValue, scratchIterator, count, docValuesVisitor);
       } else {
         visitCompressedDocValues(
             commonPrefixLengths,
@@ -775,7 +784,7 @@ public class BKDReader extends PointValues {
             in,
             scratchIterator,
             count,
-            visitor,
+            docValuesVisitor,
             compressedDim);
       }
     }
@@ -788,15 +797,16 @@ public class BKDReader extends PointValues {
         IndexInput in,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        PointValues.IntersectVisitor visitor)
+        NodeComparator nodeComparator,
+        DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor)
         throws IOException {
 
       readCommonPrefixes(commonPrefixLengths, scratchDataPackedValue, in);
       int compressedDim = readCompressedDim(in);
       if (compressedDim == -1) {
         // all values are the same
-        visitor.grow(count);
-        visitUniqueRawDocValues(scratchDataPackedValue, scratchIterator, count, visitor);
+        visitUniqueRawDocValues(scratchDataPackedValue, scratchIterator, count, docValuesVisitor);
       } else {
         if (config.numIndexDims != 1) {
           byte[] minPackedValue = scratchMinIndexPackedValue;
@@ -813,26 +823,28 @@ public class BKDReader extends PointValues {
           // or does not match at all. This is especially more likely in the case that there are
           // multiple dimensions that have correlation, ie. splitting on one dimension also
           // significantly changes the range of values in another dimension.
-          PointValues.Relation r = visitor.compare(minPackedValue, maxPackedValue);
+          PointValues.Relation r = nodeComparator.compare(minPackedValue, maxPackedValue);
           if (r == PointValues.Relation.CELL_OUTSIDE_QUERY) {
             return;
           }
-          visitor.grow(count);
 
           if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
             for (int i = 0; i < count; ++i) {
-              visitor.visit(scratchIterator.docIDs[i]);
+              docIdsVisitor.visit(scratchIterator.docIDs[i]);
             }
             return;
           }
-        } else {
-          visitor.grow(count);
         }
 
         if (compressedDim == -2) {
           // low cardinality values
           visitSparseRawDocValues(
-              commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
+              commonPrefixLengths,
+              scratchDataPackedValue,
+              in,
+              scratchIterator,
+              count,
+              docValuesVisitor);
         } else {
           // high cardinality
           visitCompressedDocValues(
@@ -841,7 +853,7 @@ public class BKDReader extends PointValues {
               in,
               scratchIterator,
               count,
-              visitor,
+              docValuesVisitor,
               compressedDim);
         }
       }
@@ -866,7 +878,7 @@ public class BKDReader extends PointValues {
         IndexInput in,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        PointValues.IntersectVisitor visitor)
+        PointValues.DocValuesVisitor visitor)
         throws IOException {
       int i;
       for (i = 0; i < count; ) {
@@ -891,7 +903,7 @@ public class BKDReader extends PointValues {
         byte[] scratchPackedValue,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        PointValues.IntersectVisitor visitor)
+        PointValues.DocValuesVisitor visitor)
         throws IOException {
       scratchIterator.reset(0, count);
       visitor.visit(scratchIterator, scratchPackedValue);
@@ -903,7 +915,7 @@ public class BKDReader extends PointValues {
         IndexInput in,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        PointValues.IntersectVisitor visitor,
+        PointValues.DocValuesVisitor visitor,
         int compressedDim)
         throws IOException {
       // the byte at `compressedByteOffset` is compressed using run-length compression,

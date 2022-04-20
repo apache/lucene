@@ -109,14 +109,19 @@ class PointValuesWriter {
           }
 
           @Override
-          public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+          public void visitDocValues(
+              PointValues.NodeComparator nodeComparator,
+              PointValues.DocIdsVisitor docIdsVisitor,
+              PointValues.DocValuesVisitor docValuesVisitor)
+              throws IOException {
+
             final BytesRef scratch = new BytesRef();
             final byte[] packedValue = new byte[packedBytesLength];
             for (int i = 0; i < numPoints; i++) {
               getValue(i, scratch);
               assert scratch.length == packedValue.length;
               System.arraycopy(scratch.bytes, scratch.offset, packedValue, 0, packedBytesLength);
-              visitor.visit(getDocID(i), packedValue);
+              docValuesVisitor.visit(getDocID(i), packedValue);
             }
           }
 
@@ -243,24 +248,15 @@ class PointValuesWriter {
     }
 
     @Override
-    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+    public void visitDocValues(
+        PointValues.NodeComparator nodeComparator,
+        PointValues.DocIdsVisitor docIdsVisitor,
+        PointValues.DocValuesVisitor docValuesVisitor)
+        throws IOException {
       in.visitDocValues(
-          new PointValues.IntersectVisitor() {
-            @Override
-            public void visit(int docID) throws IOException {
-              visitor.visit(docMap.oldToNew(docID));
-            }
-
-            @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
-              visitor.visit(docMap.oldToNew(docID), packedValue);
-            }
-
-            @Override
-            public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              return visitor.compare(minPackedValue, maxPackedValue);
-            }
-          });
+          nodeComparator,
+          docIdsVisitor,
+          (docID, packedValue) -> docValuesVisitor.visit(docMap.oldToNew(docID), packedValue));
     }
 
     @Override

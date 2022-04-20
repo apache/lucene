@@ -343,6 +343,7 @@ public class BKDWriter60 implements Closeable {
       this.mergeIntersectsVisitor = new MergeIntersectsVisitor(packedBytesLength);
       // move to first child of the tree and collect docs
       while (pointTree.moveToChild()) {}
+      mergeIntersectsVisitor.grow(Math.toIntExact(pointTree.size()));
       pointTree.visitDocValues(mergeIntersectsVisitor);
       this.docMap = docMap;
       this.packedValue = new byte[packedBytesLength];
@@ -391,6 +392,7 @@ public class BKDWriter60 implements Closeable {
         if (pointTree.moveToSibling()) {
           // move to first child of this node and collect docs
           while (pointTree.moveToChild()) {}
+          mergeIntersectsVisitor.grow(Math.toIntExact(pointTree.size()));
           pointTree.visitDocValues(mergeIntersectsVisitor);
           return true;
         }
