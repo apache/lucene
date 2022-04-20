@@ -61,10 +61,15 @@ Other
   (Tomoko Uchida)
 
 ======================= Lucene 9.2.0 =======================
+
 API Changes
 ---------------------
 
 * LUCENE-10325: Facets API extended to support getTopFacets. (Yuting Gan)
+
+* LUCENE-10482: Allow users to create their own DirectoryTaxonomyReaders with empty taxoArrays instead of letting the
+  taxoEpoch decide. Add a test case that demonstrates the inconsistencies caused when you reuse taxoArrays on older
+  checkpoints. (Gautam Worah)
 
 New Features
 ---------------------
@@ -111,6 +116,9 @@ Optimizations
 
 * LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
+* LUCENE-10503: Potential speedup for pure disjunctions whose clauses produce
+  scores that are very close to each other. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
@@ -126,6 +134,10 @@ Bug Fixes
   existing lookup() results during concurrent build().  Fix other FST based suggesters so that
   getCount() returned results consistent with lookup() during concurrent build().  (hossman)
 
+* LUCENE-10508: Fixes some edge cases where GeoArea were built in a way that vertical planes
+  could not evaluate their sign, either because the planes where the same or the center between those
+  planes was lying in one of the planes. (Ignacio Vera)
+  
 Build
 ---------------------
 
