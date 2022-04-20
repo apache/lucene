@@ -18,11 +18,9 @@ package org.apache.lucene.tests.mockfile;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -45,8 +43,7 @@ public class TestVerboseFS extends MockFileSystemTestCase {
 
   Path wrap(Path path, InfoStream stream) {
     VerboseFS provider = new VerboseFS(path.getFileSystem(), stream);
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    return provider.wrapPath(path, fs);
+    return provider.wrapPath(path);
   }
 
   /** InfoStream that looks for a substring and indicates if it saw it */

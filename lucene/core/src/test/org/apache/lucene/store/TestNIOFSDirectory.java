@@ -17,9 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.channels.FileChannel;
-import java.nio.file.FileSystem;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
@@ -52,8 +50,7 @@ public class TestNIOFSDirectory extends BaseDirectoryTestCase {
             };
           }
         };
-    FileSystem fs = leakFS.getFileSystem(URI.create("file:///"));
-    Path wrapped = leakFS.wrapPath(path, fs);
+    Path wrapped = leakFS.wrapPath(path);
     try (Directory dir = new NIOFSDirectory(wrapped)) {
       try (IndexOutput out = dir.createOutput("test.bin", IOContext.DEFAULT)) {
         out.writeString("hello");

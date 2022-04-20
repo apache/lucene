@@ -18,8 +18,6 @@
 package org.apache.lucene.misc.store;
 
 import java.io.IOException;
-import java.net.URI;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -111,9 +109,8 @@ public class TestHardLinkCopyDirectoryWrapper extends BaseDirectoryTestCase {
     assumeFalse("windows is not supported", Constants.WINDOWS);
     Path path = createTempDir();
     WindowsFS provider = new WindowsFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    Directory dir1 = new NIOFSDirectory(provider.wrapPath(path, fs));
-    Directory dir2 = new NIOFSDirectory(provider.wrapPath(path.resolve("link"), fs));
+    Directory dir1 = new NIOFSDirectory(provider.wrapPath(path));
+    Directory dir2 = new NIOFSDirectory(provider.wrapPath(path.resolve("link")));
 
     IndexOutput target = dir1.createOutput("target.txt", IOContext.DEFAULT);
     target.writeInt(1);

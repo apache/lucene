@@ -63,7 +63,7 @@ public class FilterDirectoryStream implements DirectoryStream<Path> {
 
       @Override
       public Path next() {
-        return fileSystem.parent.wrapPath(delegateIterator.next(), fileSystem);
+        return fileSystem.parent.wrapPath(delegateIterator.next());
       }
 
       @Override

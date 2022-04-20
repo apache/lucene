@@ -27,8 +27,6 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.net.URI;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -1272,8 +1270,7 @@ public class TestIndexWriter extends LuceneTestCase {
       // relies on windows semantics
       Path path = createTempDir();
       WindowsFS provider = new WindowsFS(path.getFileSystem());
-      FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-      Path indexPath = provider.wrapPath(path, fs);
+      Path indexPath = provider.wrapPath(path);
 
       // NOTE: on Unix, we cannot use MMapDir, because WindowsFS doesn't see/think it keeps file
       // handles open.  Yet, on Windows, we MUST use
@@ -2808,8 +2805,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
     // Use WindowsFS to prevent open files from being deleted:
     WindowsFS provider = new WindowsFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    Path root = provider.wrapPath(path, fs);
+    Path root = provider.wrapPath(path);
 
     // MMapDirectory doesn't work because it closes its file handles after mapping!
     List<Closeable> toClose = new ArrayList<>();
@@ -2881,8 +2877,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
     // Use WindowsFS to prevent open files from being deleted:
     WindowsFS provider = new WindowsFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    Path root = provider.wrapPath(path, fs);
+    Path root = provider.wrapPath(path);
     try (FSDirectory _dir = new NIOFSDirectory(root)) {
       Directory dir = new FilterDirectory(_dir) {};
 
@@ -2921,8 +2916,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
     // Use WindowsFS to prevent open files from being deleted:
     WindowsFS provider = new WindowsFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    Path root = provider.wrapPath(path, fs);
+    Path root = provider.wrapPath(path);
     IndexCommit indexCommit;
     DirectoryReader reader;
     // MMapDirectory doesn't work because it closes its file handles after mapping!
@@ -2977,8 +2971,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
     // Use WindowsFS to prevent open files from being deleted:
     WindowsFS provider = new WindowsFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    Path root = provider.wrapPath(path, fs);
+    Path root = provider.wrapPath(path);
     // MMapDirectory doesn't work because it closes its file handles after mapping!
     try (FSDirectory dir = new NIOFSDirectory(root)) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));

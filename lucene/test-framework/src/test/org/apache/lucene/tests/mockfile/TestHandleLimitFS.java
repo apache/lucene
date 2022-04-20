@@ -18,8 +18,6 @@ package org.apache.lucene.tests.mockfile;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.URI;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -36,8 +34,7 @@ public class TestHandleLimitFS extends MockFileSystemTestCase {
 
   Path wrap(Path path, int limit) {
     HandleLimitFS provider = new HandleLimitFS(path.getFileSystem(), limit);
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    return provider.wrapPath(path, fs);
+    return provider.wrapPath(path);
   }
 
   /** set a limit at n files, then open more than that and ensure we hit exception */

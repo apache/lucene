@@ -61,10 +61,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -1397,8 +1395,7 @@ public abstract class LuceneTestCase extends Assert {
   public static Path addVirusChecker(Path path) {
     if (TestUtil.hasVirusChecker(path) == false) {
       VirusCheckingFS fs = new VirusCheckingFS(path.getFileSystem(), random().nextLong());
-      FileSystem filesystem = fs.getFileSystem(URI.create("file:///"));
-      path = fs.wrapPath(path, filesystem);
+      path = fs.wrapPath(path);
     }
     return path;
   }

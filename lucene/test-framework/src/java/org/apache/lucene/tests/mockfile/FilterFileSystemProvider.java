@@ -116,11 +116,11 @@ public abstract class FilterFileSystemProvider extends FileSystemProvider {
     if (fileSystem == null) {
       throw new IllegalStateException("subclass did not initialize singleton filesystem");
     }
-    return wrapPath(delegate.getPath(uri), fileSystem);
+    return wrapPath(delegate.getPath(uri));
   }
 
   /** wraps a Path with provider-specific behavior */
-  public FilterPath wrapPath(Path path, FileSystem filesystem) {
+  public FilterPath wrapPath(Path path) {
     return new FilterPath(path, fileSystem);
   }
 
@@ -227,7 +227,7 @@ public abstract class FilterFileSystemProvider extends FileSystemProvider {
         new Filter<Path>() {
           @Override
           public boolean accept(Path entry) throws IOException {
-            return filter.accept(wrapPath(entry, fileSystem));
+            return filter.accept(wrapPath(entry));
           }
         };
     return new FilterDirectoryStream(

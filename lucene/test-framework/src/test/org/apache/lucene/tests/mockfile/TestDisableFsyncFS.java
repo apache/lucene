@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.tests.mockfile;
 
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
@@ -29,8 +27,7 @@ public class TestDisableFsyncFS extends MockFileSystemTestCase {
   @Override
   protected Path wrap(Path path) {
     DisableFsyncFS provider = new DisableFsyncFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    return provider.wrapPath(path, fs);
+    return provider.wrapPath(path);
   }
 
   /** Test that we don't corrumpt fsync: it just doesnt happen */

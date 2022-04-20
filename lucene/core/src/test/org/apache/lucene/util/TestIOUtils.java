@@ -18,7 +18,6 @@ package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
@@ -127,8 +126,7 @@ public class TestIOUtils extends LuceneTestCase {
     final Path path = createTempDir().toRealPath();
     final FilterFileSystemProvider provider =
         new AccessDeniedWhileOpeningDirectoryFileSystem(path.getFileSystem());
-    final FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    final Path wrapped = provider.wrapPath(path, fs);
+    final Path wrapped = provider.wrapPath(path);
     if (Constants.WINDOWS) {
       // no exception, we early return and do not even try to open the directory
       IOUtils.fsync(wrapped, true);

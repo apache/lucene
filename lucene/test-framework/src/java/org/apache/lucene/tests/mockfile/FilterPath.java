@@ -271,7 +271,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   private final Path wrap(Path other) {
-    return fileSystem.parent.wrapPath(other, fileSystem);
+    return fileSystem.parent.wrapPath(other);
   }
 
   /** Override this to customize the unboxing of Path from various operations */

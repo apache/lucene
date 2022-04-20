@@ -19,10 +19,8 @@ package org.apache.lucene.tests.mockfile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -32,8 +30,7 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
   @Override
   protected Path wrap(Path path) {
     LeakFS provider = new LeakFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    return provider.wrapPath(path, fs);
+    return provider.wrapPath(path);
   }
 
   /** Test that the delegate gets closed on exception in HandleTrackingFS#onClose */
@@ -53,8 +50,7 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
             //
           }
         };
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    Path dir = provider.wrapPath(path, fs);
+    Path dir = provider.wrapPath(path);
 
     OutputStream file = Files.newOutputStream(dir.resolve("somefile"));
     file.write(5);
@@ -65,7 +61,6 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
 
     InputStream stream = Files.newInputStream(dir.resolve("somefile"));
     expectThrows(IOException.class, stream::close);
-    fs.close();
 
     DirectoryStream<Path> dirStream = Files.newDirectoryStream(dir);
     expectThrows(IOException.class, dirStream::close);
@@ -86,17 +81,14 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
             throw new IOException("boom");
           }
         };
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    Path dir = provider.wrapPath(path, fs);
+    Path dir = provider.wrapPath(path);
 
     expectThrows(IOException.class, () -> Files.newOutputStream(dir.resolve("somefile")));
 
     expectThrows(IOException.class, () -> Files.newByteChannel(dir.resolve("somefile")));
 
     expectThrows(IOException.class, () -> Files.newInputStream(dir.resolve("somefile")));
-    fs.close();
 
     expectThrows(IOException.class, () -> Files.newDirectoryStream(dir));
-    fs.close();
   }
 }

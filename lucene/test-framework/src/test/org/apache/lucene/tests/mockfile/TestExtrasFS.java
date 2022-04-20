@@ -16,9 +16,7 @@
  */
 package org.apache.lucene.tests.mockfile;
 
-import java.net.URI;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -35,8 +33,7 @@ public class TestExtrasFS extends MockFileSystemTestCase {
 
   Path wrap(Path path, boolean active, boolean createDirectory) {
     ExtrasFS provider = new ExtrasFS(path.getFileSystem(), active, createDirectory);
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    return provider.wrapPath(path, fs);
+    return provider.wrapPath(path);
   }
 
   /** test where extra file is created */

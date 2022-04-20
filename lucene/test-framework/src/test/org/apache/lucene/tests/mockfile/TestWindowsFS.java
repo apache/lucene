@@ -20,8 +20,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -43,8 +41,7 @@ public class TestWindowsFS extends MockFileSystemTestCase {
   @Override
   protected Path wrap(Path path) {
     WindowsFS provider = new WindowsFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    return provider.wrapPath(path, fs);
+    return provider.wrapPath(path);
   }
 
   /** Test Files.delete fails if a file has an open inputstream against it */

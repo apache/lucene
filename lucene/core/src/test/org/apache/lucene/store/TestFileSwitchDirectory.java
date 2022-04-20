@@ -17,9 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -180,8 +178,7 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
     Path path = createTempDir();
     assumeFalse("Irony we seem to not emulate windows well enough", Constants.WINDOWS);
     WindowsFS provider = new WindowsFS(path.getFileSystem());
-    FileSystem fs = provider.getFileSystem(URI.create("file:///"));
-    Path indexPath = provider.wrapPath(path, fs);
+    Path indexPath = provider.wrapPath(path);
     try (final FileSwitchDirectory dir =
         new FileSwitchDirectory(
             Collections.singleton("tim"),
