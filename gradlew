@@ -124,7 +124,7 @@ GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
 "$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
 WRAPPER_STATUS=$?
 if [ "$WRAPPER_STATUS" -eq 1 ]; then
-    echo "ERROR: Something went wrong. Make sure you're using Java 11 or later."
+    echo "ERROR: Something went wrong. Make sure you're using Java 17."
     exit $WRAPPER_STATUS
 elif [ "$WRAPPER_STATUS" -ne 0 ]; then
     exit $WRAPPER_STATUS

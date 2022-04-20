@@ -56,8 +56,8 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.getRuntime().version().feature();
-    if (major > 17) {
-      throw new IllegalStateException("java version must not be newer than 17 (unsupported by gradle), your version: " + major);
+    if (major != 17) {
+      throw new IllegalStateException("java version be exactly 17, your version: " + major);
     }
   }
 
