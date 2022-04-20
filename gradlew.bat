@@ -78,8 +78,6 @@ goto fail
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 "%JAVA_EXE%" %JAVA_OPTS% --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
 IF %ERRORLEVEL% NEQ 0 goto fail
-"%JAVA_EXE%" %JAVA_OPTS% --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/VersionTester.java"
-IF %ERRORLEVEL% NEQ 0 goto fail
 
 @rem Setup the command line
 set CLASSPATH=%GRADLE_WRAPPER_JAR%

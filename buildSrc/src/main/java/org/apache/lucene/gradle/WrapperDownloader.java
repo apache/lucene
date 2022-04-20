@@ -42,14 +42,22 @@ public class WrapperDownloader {
   public static void main(String[] args) {
     if (args.length != 1) {
       System.err.println("Usage: java WrapperDownloader.java <destination>");
-      System.exit(1);
+      System.exit(2);
     }
 
     try {
+      checkVersion();
       new WrapperDownloader().run(Paths.get(args[0]));
     } catch (Exception e) {
       System.err.println("ERROR: " + e.getMessage());
-      System.exit(1);
+      System.exit(3);
+    }
+  }
+
+  public static void checkVersion() {
+    int major = Runtime.getRuntime().version().feature();
+    if (major > 17) {
+      throw new IllegalStateException("java version must not be newer than 17 (unsupported by gradle), your version: " + major);
     }
   }
 
