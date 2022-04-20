@@ -18,7 +18,6 @@ package org.apache.lucene.tests.mockfile;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Objects;
@@ -34,7 +33,7 @@ public class FilterDirectoryStream implements DirectoryStream<Path> {
   protected final DirectoryStream<Path> delegate;
 
   /** The underlying {@code FileSystem} instance. */
-  protected final FileSystem fileSystem;
+  protected final FilterFileSystem fileSystem;
 
   /**
    * Construct a {@code FilterDirectoryStream} based on the specified base stream.
@@ -43,7 +42,7 @@ public class FilterDirectoryStream implements DirectoryStream<Path> {
    *
    * @param delegate specified base stream.
    */
-  public FilterDirectoryStream(DirectoryStream<Path> delegate, FileSystem fileSystem) {
+  public FilterDirectoryStream(DirectoryStream<Path> delegate, FilterFileSystem fileSystem) {
     this.delegate = Objects.requireNonNull(delegate);
     this.fileSystem = Objects.requireNonNull(fileSystem);
   }
@@ -64,7 +63,7 @@ public class FilterDirectoryStream implements DirectoryStream<Path> {
 
       @Override
       public Path next() {
-        return new FilterPath(delegateIterator.next(), fileSystem);
+        return fileSystem.parent.wrapPath(delegateIterator.next());
       }
 
       @Override
