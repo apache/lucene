@@ -118,7 +118,7 @@ public abstract class TaxonomyFacets extends Facets {
    * @lucene.experimental
    */
   public boolean siblingsLoaded() {
-    return children != null;
+    return siblings != null;
   }
 
   /**
