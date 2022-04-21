@@ -3115,13 +3115,10 @@ public class IndexWriter
    *
    * <p><b>NOTE:</b> empty segments are dropped by this method and not added to this index.
    *
-   * <p><b>NOTE:</b> this merges all given {@link LeafReader}s in one merge. If you intend to merge
-   * a large number of readers, it may be better to call this method multiple times, each time with
-   * a small set of readers. In principle, if you use a merge policy with a {@code mergeFactor} or
-   * {@code maxMergeAtOnce} parameter, you should pass that many readers in one call.
-   *
-   * <p><b>NOTE:</b> this method does not call or make use of the {@link MergeScheduler}, so any
-   * custom bandwidth throttling is at the moment ignored.
+   * <p><b>NOTE:</b> provided {@link LeafReader}s are merged as specified by the
+   * {@link MergePolicy#findMerges(List<CodecReader>)} API. Default behavior is to merge
+   * all provided readers into a single segment. You can modify this by overriding the
+   * <code>findMerge</code> API in your custom merge policy.
    *
    * @return The <a href="#sequence_number">sequence number</a> for this operation
    * @throws CorruptIndexException if the index is corrupt
