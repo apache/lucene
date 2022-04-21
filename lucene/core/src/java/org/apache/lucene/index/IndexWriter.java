@@ -3151,8 +3151,7 @@ public class IndexWriter
         ensureOpen();
         if (merges.areEnabled() == false) {
           throw new AlreadyClosedException(
-              "Merges are disabled on current writer. "
-                  + "Cannot execute addIndexes(CodecReaders...) API");
+              "this IndexWriter is closed. Cannot execute addIndexes(CodecReaders...) API");
         }
       }
 
