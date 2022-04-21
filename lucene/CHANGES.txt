@@ -119,6 +119,9 @@ Optimizations
 * LUCENE-10503: Potential speedup for pure disjunctions whose clauses produce
   scores that are very close to each other. (Adrien Grand)
 
+* LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on sequences of increasing ords.
+  (Bruno Roustant, Adrien Grand)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
