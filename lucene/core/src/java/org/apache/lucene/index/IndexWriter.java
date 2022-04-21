@@ -3352,8 +3352,6 @@ public class IndexWriter
         new IOContext(
             new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
 
-    // TODO: somehow we should fix this merge so it's
-    // abortable so that IW.close(false) is able to stop it
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(mergeDirectory);
     Codec codec = config.getCodec();
     // We set the min version to null for now, it will be set later by SegmentMerger

@@ -803,8 +803,7 @@ public class TestAddIndexes extends LuceneTestCase {
     assertThrows(RuntimeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
     c.destWriter.commit();
 
-    // verify no docs got added and all interim files from successful merges have been deleted from
-    // dir
+    // verify no docs got added and all interim files from successful merges have been deleted
     try (IndexReader reader = DirectoryReader.open(c.destDir)) {
       assertEquals(c.INIT_DOCS, reader.numDocs());
     }
