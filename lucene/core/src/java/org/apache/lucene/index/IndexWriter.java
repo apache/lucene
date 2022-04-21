@@ -3115,10 +3115,10 @@ public class IndexWriter
    *
    * <p><b>NOTE:</b> empty segments are dropped by this method and not added to this index.
    *
-   * <p><b>NOTE:</b> provided {@link LeafReader}s are merged as specified by the
-   * {@link MergePolicy#findMerges(List)} API. Default behavior is to merge
-   * all provided readers into a single segment. You can modify this by overriding the
-   * <code>findMerge</code> API in your custom merge policy.
+   * <p><b>NOTE:</b> provided {@link LeafReader}s are merged as specified by the {@link
+   * MergePolicy#findMerges(List)} API. Default behavior is to merge all provided readers into a
+   * single segment. You can modify this by overriding the <code>findMerge</code> API in your custom
+   * merge policy.
    *
    * @return The <a href="#sequence_number">sequence number</a> for this operation
    * @throws CorruptIndexException if the index is corrupt
