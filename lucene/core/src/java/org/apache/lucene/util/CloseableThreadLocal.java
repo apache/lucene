@@ -17,7 +17,6 @@
 package org.apache.lucene.util;
 
 import java.io.Closeable;
-import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
