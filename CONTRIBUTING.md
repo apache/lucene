@@ -33,7 +33,8 @@ Be sure that you are using an appropriate version of the JDK. Please check [READ
 
 Lucene uses [Gradle](https://gradle.org/) for build control. Gradle is itself Java-based and may be incompatible with newer Java versions; you can still build and test Lucene with these Java releases, see [jvms.txt](./help/jvms.txt) for more information.
 
-Run "./gradlew help", this will show the main tasks that can be executed to show help sub-topics.
+Run `./gradlew help`, this will print a list of help guides that introduce and explain
+  various parts of the build system, including typical workflow tasks.
 
 If you want to build Lucene, type:
 
@@ -45,23 +46,17 @@ NOTE: DO NOT use the `gradle` command that is perhaps installed on your machine.
 
 The first time you run gradlew, it will create a file "gradle.properties" that contains machine-specific settings. Normally you can use this file as-is, but it can be modified if necessary.
 
-`./gradlew check` will assemble Lucene and run all validation
-  tasks (including tests).
-
-`./gradlew help` will print a list of help guides that introduce and explain
-  various parts of the build system, including typical workflow tasks.
-
 If you want to just build the documentation, type:
 
 ```
 ./gradlew documentation
 ```
 
-### Checks
+### Code formatting and checks
 
-Please make sure that all unit tests and validations succeed before constructing your patch: `./gradlew check`.
+If you've modified any sources, run `./gradlew tidy` to apply code formatting conventions automatically (see [help/formatting.txt](https://github.com/apache/lucene/blob/main/help/formatting.txt)).
 
-To run a single test case from the lucene/core directory in your working copy:  `./gradlew -p lucene/core test --tests NameOfYourUnitTest`. Run `./gradlew helpTests` to get more information about running tests.
+Please make sure that all unit tests and validations succeed before constructing your patch: `./gradlew check`. This will assemble Lucene and run all validation tasks (including tests). There are various commands to check the code; type `./gradlew helpWorkflow` to show typical workflow tasks ([help/workflow.txt](./help/workflow.txt)).
 
 In case your contribution fixes a bug, please create a new test case that fails before your fix, to show the presence of the bug and ensure it never re-occurs. A test case showing the presence of a bug is also a good contribution by itself.
 

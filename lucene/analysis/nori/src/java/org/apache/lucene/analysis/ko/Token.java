@@ -17,12 +17,14 @@
 package org.apache.lucene.analysis.ko;
 
 import org.apache.lucene.analysis.ko.dict.KoMorphData;
+import org.apache.lucene.analysis.morph.TokenType;
 
 /** Analyzed token with morphological data. */
 public abstract class Token extends org.apache.lucene.analysis.morph.Token {
 
-  protected Token(char[] surfaceForm, int offset, int length, int startOffset, int endOffset) {
-    super(surfaceForm, offset, length, startOffset, endOffset);
+  protected Token(
+      char[] surfaceForm, int offset, int length, int startOffset, int endOffset, TokenType type) {
+    super(surfaceForm, offset, length, startOffset, endOffset, type);
   }
 
   /** Get the {@link POS.Type} of the token. */

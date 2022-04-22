@@ -15,19 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.search;
+package org.apache.lucene.analysis.morph;
 
-/**
- * A {@link Query} that matches documents that contain a {@link
- * org.apache.lucene.document.KnnVectorField}.
- *
- * @deprecated Use {@link org.apache.lucene.search.FieldExistsQuery} instead.
- */
-@Deprecated
-public class KnnVectorFieldExistsQuery extends FieldExistsQuery {
-
-  /** Create a query that will match documents which have a value for the given {@code field}. */
-  public KnnVectorFieldExistsQuery(String field) {
-    super(field);
-  }
+/** Token type reflecting the original source of this token */
+public enum TokenType {
+  /** Known words from the system dictionary. */
+  KNOWN,
+  /** Unknown words (heuristically segmented). */
+  UNKNOWN,
+  /** Known words from the user dictionary. */
+  USER
 }

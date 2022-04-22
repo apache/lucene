@@ -1682,7 +1682,7 @@ public final class TestUtil {
       FileSystem fs = path.getFileSystem();
       while (fs instanceof FilterFileSystem) {
         FilterFileSystem ffs = (FilterFileSystem) fs;
-        if (ffs.getParent() instanceof WindowsFS) {
+        if (ffs.provider() instanceof WindowsFS) {
           return true;
         }
         fs = ffs.getDelegate();
@@ -1696,7 +1696,7 @@ public final class TestUtil {
     FileSystem fs = path.getFileSystem();
     while (fs instanceof FilterFileSystem) {
       FilterFileSystem ffs = (FilterFileSystem) fs;
-      if (ffs.getParent() instanceof WindowsFS) {
+      if (ffs.provider() instanceof WindowsFS) {
         return true;
       }
       fs = ffs.getDelegate();
@@ -1718,7 +1718,7 @@ public final class TestUtil {
     FileSystem fs = path.getFileSystem();
     while (fs instanceof FilterFileSystem) {
       FilterFileSystem ffs = (FilterFileSystem) fs;
-      if (ffs.getParent() instanceof VirusCheckingFS) {
+      if (ffs.provider() instanceof VirusCheckingFS) {
         return true;
       }
       fs = ffs.getDelegate();
@@ -1735,8 +1735,8 @@ public final class TestUtil {
       FileSystem fs = ((FSDirectory) dir).getDirectory().getFileSystem();
       while (fs instanceof FilterFileSystem) {
         FilterFileSystem ffs = (FilterFileSystem) fs;
-        if (ffs.getParent() instanceof VirusCheckingFS) {
-          VirusCheckingFS vfs = (VirusCheckingFS) ffs.getParent();
+        if (ffs.provider() instanceof VirusCheckingFS) {
+          VirusCheckingFS vfs = (VirusCheckingFS) ffs.provider();
           boolean isEnabled = vfs.isEnabled();
           vfs.disable();
           return isEnabled;
@@ -1755,8 +1755,8 @@ public final class TestUtil {
       FileSystem fs = ((FSDirectory) dir).getDirectory().getFileSystem();
       while (fs instanceof FilterFileSystem) {
         FilterFileSystem ffs = (FilterFileSystem) fs;
-        if (ffs.getParent() instanceof VirusCheckingFS) {
-          VirusCheckingFS vfs = (VirusCheckingFS) ffs.getParent();
+        if (ffs.provider() instanceof VirusCheckingFS) {
+          VirusCheckingFS vfs = (VirusCheckingFS) ffs.provider();
           vfs.enable();
           return;
         }

@@ -31,6 +31,9 @@ import org.apache.lucene.facet.TopOrdAndIntQueue;
 /** Base class for all taxonomy-based facets that aggregate to a per-ords int[]. */
 abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
+  /** Aggregation function used for combining values. */
+  final AssociationAggregationFunction aggregationFunction;
+
   /** Dense ordinal values. */
   final int[] values;
 
@@ -39,9 +42,14 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   /** Sole constructor. */
   IntTaxonomyFacets(
-      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
+      String indexFieldName,
+      TaxonomyReader taxoReader,
+      FacetsConfig config,
+      AssociationAggregationFunction aggregationFunction,
+      FacetsCollector fc)
       throws IOException {
     super(indexFieldName, taxoReader, config);
+    this.aggregationFunction = aggregationFunction;
 
     if (useHashTable(fc, taxoReader)) {
       sparseValues = new IntIntHashMap();
@@ -52,12 +60,12 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
   }
 
-  /** Increment the count for this ordinal by {@code amount}.. */
-  void increment(int ordinal, int amount) {
+  /** Set the count for this ordinal to {@code newValue}. */
+  void setValue(int ordinal, int newValue) {
     if (sparseValues != null) {
-      sparseValues.addTo(ordinal, amount);
+      sparseValues.put(ordinal, newValue);
     } else {
-      values[ordinal] += amount;
+      values[ordinal] = newValue;
     }
   }
 
@@ -86,7 +94,9 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             // lazy init
             children = getChildren();
           }
-          increment(dimRootOrd, rollup(children[dimRootOrd]));
+          int currentValue = getValue(dimRootOrd);
+          int newValue = aggregationFunction.aggregate(currentValue, rollup(children[dimRootOrd]));
+          setValue(dimRootOrd, newValue);
         }
       }
     }
@@ -95,13 +105,15 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   private int rollup(int ord) throws IOException {
     int[] children = getChildren();
     int[] siblings = getSiblings();
-    int sum = 0;
+    int aggregatedValue = 0;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      increment(ord, rollup(children[ord]));
-      sum += getValue(ord);
+      int currentValue = getValue(ord);
+      int newValue = aggregationFunction.aggregate(currentValue, rollup(children[ord]));
+      setValue(ord, newValue);
+      aggregatedValue = aggregationFunction.aggregate(aggregatedValue, getValue(ord));
       ord = siblings[ord];
     }
-    return sum;
+    return aggregatedValue;
   }
 
   /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
@@ -161,7 +173,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     int bottomValue = 0;
 
-    int totValue = 0;
+    int aggregatedValue = 0;
     int childCount = 0;
 
     TopOrdAndIntQueue.OrdAndValue reuse = null;
@@ -171,17 +183,17 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     if (sparseValues != null) {
       for (IntIntCursor c : sparseValues) {
-        int count = c.value;
+        int value = c.value;
         int ord = c.key;
-        if (parents[ord] == dimOrd && count > 0) {
-          totValue += count;
+        if (parents[ord] == dimOrd && value > 0) {
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
-          if (count > bottomValue) {
+          if (value > bottomValue) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
             reuse.ord = ord;
-            reuse.value = count;
+            reuse.value = value;
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomValue = q.top().value;
@@ -196,7 +208,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       while (ord != TaxonomyReader.INVALID_ORDINAL) {
         int value = values[ord];
         if (value > 0) {
-          totValue += value;
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
           if (value > bottomValue) {
             if (reuse == null) {
@@ -215,16 +227,16 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       }
     }
 
-    if (totValue == 0) {
+    if (aggregatedValue == 0) {
       return null;
     }
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        totValue = getValue(dimOrd);
+        aggregatedValue = getValue(dimOrd);
       } else {
         // Our sum'd value is not correct, in general:
-        totValue = -1;
+        aggregatedValue = -1;
       }
     } else {
       // Our sum'd dim value is accurate, so we keep it
@@ -245,6 +257,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], values[i]);
     }
 
-    return new FacetResult(dim, path, totValue, labelValues, childCount);
+    return new FacetResult(dim, path, aggregatedValue, labelValues, childCount);
   }
 }
