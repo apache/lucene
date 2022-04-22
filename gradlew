@@ -217,8 +217,4 @@ if [ "$(uname)" = "Darwin" ] && [ "$HOME" = "$PWD" ]; then
   cd "$(dirname "$0")"
 fi
 
-if command -v xvfb-run > /dev/null 2>&1; then
-  exec xvfb-run -w 0 "$JAVACMD" "$@"
-else
-  exec "$JAVACMD" "$@"
-fi
+exec "$JAVACMD" "$@"
