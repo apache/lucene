@@ -15,18 +15,30 @@
  * limitations under the License.
  */
 
+plugins {
+    id 'java-platform'
+}
 
-// Configure on-demand maven publishing into ~/.m2 for developers' convenience.
+description = 'Lucene BOM (Bill of Materials)'
 
-configure(rootProject) {
-  task mavenToLocal() {
-    group "Distribution"
-    description "Publish Lucene Maven artifacts to ~/.m2 repository."
-
-    dependsOn rootProject.ext.mavenProjects.collect {
-      it.tasks.matching {
-        it.name == "publishJarsPublicationToMavenLocal" || it.name == "publishBomPublicationToMavenLocal"
-      }
+dependencies {
+    constraints {
+        rootProject.ext.mavenProjects.each {
+            if (it.path != ':lucene:bom') {
+                api(group: it.group, name: it.archivesBaseName, version: it.version.toString())
+            }
+        }
     }
-  }
+}
+
+publishing {
+    publications {
+        bom(MavenPublication) {
+            from components.javaPlatform
+
+            pom {
+                artifactId = project.archivesBaseName
+            }
+        }
+    }
 }

@@ -56,7 +56,6 @@ configure(rootProject.ext.mavenProjects) { Project project ->
         publications.each { publication ->
           configure(publication) {
             from components.java
-            groupId = project.group
             artifactId = project.archivesBaseName
 
             artifact sourcesJar
@@ -82,59 +81,7 @@ configure(rootProject.ext.mavenProjects) { Project project ->
     publishing {
       publications.each { publication ->
         configure(publication) {
-          pom {
-            name = provider { -> "Apache Lucene (module: ${project.name})" }
-            description = provider { -> "Apache Lucene (module: ${project.name})" }
-            url = "https://lucene.apache.org/"
-
-            licenses {
-              license {
-                name = 'Apache 2'
-                url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-              }
-            }
-
-            inceptionYear = "2000"
-
-            issueManagement {
-              system = "JIRA"
-              url = "https://issues.apache.org/jira/browse/LUCENE"
-            }
-
-            ciManagement {
-              system = "Jenkins"
-              url = "https://builds.apache.org/job/Lucene/"
-            }
-
-            mailingLists {
-              mailingList {
-                name = "Java User List"
-                subscribe = "java-user-subscribe@lucene.apache.org"
-                unsubscribe = "java-user-unsubscribe@lucene.apache.org"
-                archive = "https://mail-archives.apache.org/mod_mbox/lucene-java-user/"
-              }
-
-              mailingList {
-                name = "Java Developer List"
-                subscribe = "dev-subscribe@lucene.apache.org"
-                unsubscribe = "dev-unsubscribe@lucene.apache.org"
-                archive = "https://mail-archives.apache.org/mod_mbox/lucene-dev/"
-              }
-
-              mailingList {
-                name = "Java Commits List"
-                subscribe = "commits-subscribe@lucene.apache.org"
-                unsubscribe = "commits-unsubscribe@lucene.apache.org"
-                archive = "https://mail-archives.apache.org/mod_mbox/lucene-java-commits/"
-              }
-            }
-
-            scm {
-              connection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene.git'
-              developerConnection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene.git'
-              url = 'https://gitbox.apache.org/repos/asf?p=lucene.git'
-            }
-          }
+          configurePublicationMetadata(it)
         }
       }
     }
@@ -160,3 +107,71 @@ configure(rootProject.ext.mavenProjects) { Project project ->
   }
 }
 
+configure(project(":lucene:bom")) {
+  gradle.projectsEvaluated {
+    publishing {
+      publications.each { publication ->
+        configure(publication) {
+          configurePublicationMetadata(it)
+        }
+      }
+    }
+  }
+}
+
+def configurePublicationMetadata(MavenPublication publication) {
+  publication.pom {
+    name = provider { -> "Apache Lucene (module: ${project.name})" }
+    description = provider { -> project.description }
+
+    url = "https://lucene.apache.org/"
+
+    licenses {
+      license {
+        name = 'Apache 2'
+        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+      }
+    }
+
+    inceptionYear = "2000"
+
+    issueManagement {
+      system = "JIRA"
+      url = "https://issues.apache.org/jira/browse/LUCENE"
+    }
+
+    ciManagement {
+      system = "Jenkins"
+      url = "https://builds.apache.org/job/Lucene/"
+    }
+
+    mailingLists {
+      mailingList {
+        name = "Java User List"
+        subscribe = "java-user-subscribe@lucene.apache.org"
+        unsubscribe = "java-user-unsubscribe@lucene.apache.org"
+        archive = "https://mail-archives.apache.org/mod_mbox/lucene-java-user/"
+      }
+
+      mailingList {
+        name = "Java Developer List"
+        subscribe = "dev-subscribe@lucene.apache.org"
+        unsubscribe = "dev-unsubscribe@lucene.apache.org"
+        archive = "https://mail-archives.apache.org/mod_mbox/lucene-dev/"
+      }
+
+      mailingList {
+        name = "Java Commits List"
+        subscribe = "commits-subscribe@lucene.apache.org"
+        unsubscribe = "commits-unsubscribe@lucene.apache.org"
+        archive = "https://mail-archives.apache.org/mod_mbox/lucene-java-commits/"
+      }
+    }
+
+    scm {
+      connection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene.git'
+      developerConnection = 'scm:git:https://gitbox.apache.org/repos/asf/lucene.git'
+      url = 'https://gitbox.apache.org/repos/asf?p=lucene.git'
+    }
+  }
+}

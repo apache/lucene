@@ -33,7 +33,10 @@ configure(rootProject) {
     description "Publish Lucene Maven artifacts to Apache Releases repository: ${apacheNexusReleasesRepository}"
 
     dependsOn rootProject.ext.mavenProjects.collect {
-      it.tasks.matching { it.name == "publishSignedJarsPublicationToApacheReleasesRepository" }
+      it.tasks.matching {
+        it.name == "publishSignedJarsPublicationToApacheReleasesRepository"
+            || it.name == "publishBomPublicationToApacheReleasesRepository"
+      }
     }
   }
 

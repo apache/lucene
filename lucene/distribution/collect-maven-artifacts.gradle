@@ -35,7 +35,7 @@ configure(project(":lucene:distribution")) {
         "publishJarsPublicationToBuildRepository"
 
     dependsOn rootProject.ext.mavenProjects.collect {
-      it.tasks.matching { it.name == mavenConventionTask }
+      it.tasks.matching { it.name == mavenConventionTask || it.name == "publishBomPublicationToBuildRepository" }
     }
   }
 
