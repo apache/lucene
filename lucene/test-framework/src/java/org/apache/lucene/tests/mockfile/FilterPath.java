@@ -270,7 +270,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
     return Unwrappable.unwrapAll(path);
   }
 
-  private final Path wrap(Path other) {
+  final Path wrap(Path other) {
     return fileSystem.parent.wrapPath(other);
   }
 
