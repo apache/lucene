@@ -50,7 +50,6 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
    * <p>It does not check whether the private taxoArrays were actually recreated or no. We are
    * (correctly) hiding away that complexity away from the user.
    */
-  @Ignore("LUCENE-10482: need to make this work on Windows too")
   private <T extends Throwable> void testAlwaysRefreshDirectoryTaxonomyReader(
       Function<Directory, DirectoryTaxonomyReader> dtrProducer, Class<T> exceptionType)
       throws IOException {
@@ -125,6 +124,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     IOUtils.close(commit1, dir1);
   }
 
+  @Ignore("LUCENE-10482: need to make this work on Windows too")
   public void testAlwaysRefreshDirectoryTaxonomyReader() throws IOException {
     testAlwaysRefreshDirectoryTaxonomyReader(
         (dir) -> {

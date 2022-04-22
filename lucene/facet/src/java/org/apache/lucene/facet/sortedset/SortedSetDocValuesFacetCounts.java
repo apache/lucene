@@ -278,6 +278,83 @@ public class SortedSetDocValuesFacetCounts extends Facets {
     return childOrdsResult.dimCount;
   }
 
+  // Variant of countOneSegment, that has No Hits or Live Docs
+  private void countOneSegmentNHLD(OrdinalMap ordinalMap, LeafReader reader, int segOrd)
+      throws IOException {
+    SortedSetDocValues multiValues = DocValues.getSortedSet(reader, field);
+    if (multiValues == null) {
+      // nothing to count
+      return;
+    }
+
+    // It's slightly more efficient to work against SortedDocValues if the field is actually
+    // single-valued (see: LUCENE-5309)
+    SortedDocValues singleValues = DocValues.unwrapSingleton(multiValues);
+
+    // TODO: yet another option is to count all segs
+    // first, only in seg-ord space, and then do a
+    // merge-sort-PQ in the end to only "resolve to
+    // global" those seg ords that can compete, if we know
+    // we just want top K?  ie, this is the same algo
+    // that'd be used for merging facets across shards
+    // (distributed faceting).  but this has much higher
+    // temp ram req'ts (sum of number of ords across all
+    // segs)
+    if (ordinalMap != null) {
+      final LongValues ordMap = ordinalMap.getGlobalOrds(segOrd);
+      int numSegOrds = (int) multiValues.getValueCount();
+
+      // First count in seg-ord space:
+      final int[] segCounts = new int[numSegOrds];
+      if (singleValues != null) {
+        for (int doc = singleValues.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = singleValues.nextDoc()) {
+          segCounts[singleValues.ordValue()]++;
+        }
+      } else {
+        for (int doc = multiValues.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = multiValues.nextDoc()) {
+          int term = (int) multiValues.nextOrd();
+          while (term != SortedSetDocValues.NO_MORE_ORDS) {
+            segCounts[term]++;
+            term = (int) multiValues.nextOrd();
+          }
+        }
+      }
+
+      // Then, migrate to global ords:
+      for (int ord = 0; ord < numSegOrds; ord++) {
+        int count = segCounts[ord];
+        if (count != 0) {
+          // ordinalMap.getGlobalOrd(segOrd, ord));
+          counts[(int) ordMap.get(ord)] += count;
+        }
+      }
+    } else {
+      // No ord mapping (e.g., single segment index):
+      // just aggregate directly into counts:
+      if (singleValues != null) {
+        for (int doc = singleValues.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = singleValues.nextDoc()) {
+          counts[singleValues.ordValue()]++;
+        }
+      } else {
+        for (int doc = multiValues.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = multiValues.nextDoc()) {
+          int term = (int) multiValues.nextOrd();
+          while (term != SortedSetDocValues.NO_MORE_ORDS) {
+            counts[term]++;
+            term = (int) multiValues.nextOrd();
+          }
+        }
+      }
+    }
+  }
+
   private void countOneSegment(
       OrdinalMap ordinalMap, LeafReader reader, int segOrd, MatchingDocs hits, Bits liveDocs)
       throws IOException {
@@ -294,7 +371,8 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
     DocIdSetIterator it;
     if (hits == null) {
-      it = (liveDocs != null) ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
+      assert liveDocs != null;
+      it = FacetUtils.liveDocsDISI(valuesIt, liveDocs);
     } else {
       it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
     }
@@ -420,8 +498,13 @@ public class SortedSetDocValuesFacetCounts extends Facets {
 
     for (LeafReaderContext context : state.getReader().leaves()) {
 
-      countOneSegment(
-          ordinalMap, context.reader(), context.ord, null, context.reader().getLiveDocs());
+      Bits liveDocs = context.reader().getLiveDocs();
+      if (liveDocs == null) {
+        countOneSegmentNHLD(ordinalMap, context.reader(), context.ord);
+      } else {
+        countOneSegment(
+            ordinalMap, context.reader(), context.ord, null, context.reader().getLiveDocs());
+      }
     }
   }
 

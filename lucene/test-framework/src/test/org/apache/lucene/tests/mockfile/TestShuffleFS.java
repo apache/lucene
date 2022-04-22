@@ -17,9 +17,7 @@
 package org.apache.lucene.tests.mockfile;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.DirectoryStream;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -35,8 +33,8 @@ public class TestShuffleFS extends MockFileSystemTestCase {
   }
 
   Path wrap(Path path, long seed) {
-    FileSystem fs = new ShuffleFS(path.getFileSystem(), seed).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    ShuffleFS provider = new ShuffleFS(path.getFileSystem(), seed);
+    return provider.wrapPath(path);
   }
 
   /** test that we return directory listings correctly */
