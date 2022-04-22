@@ -157,7 +157,8 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
         fs = new HandleLimitFS(fs, limit).getFileSystem(null);
       }
       // windows is currently slow
-      if (random.nextInt(10) == 0) {
+      // TEMPORARY HACK: will revert :)
+      if (random.nextInt(10) >= 0) {
         // don't try to emulate windows on windows: they don't get along
         if (!Constants.WINDOWS && allowed(avoid, WindowsFS.class)) {
           fs = new WindowsFS(fs).getFileSystem(null);
