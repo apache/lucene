@@ -55,8 +55,8 @@ public class TestCloseableThreadLocal extends LuceneTestCase {
   public void testSetGetValueWithMultiThreads() {
     final int CONCURRENT_THREADS = 5;
     final int LOOPS = 10000;
-    final CloseableThreadLocal<String> ctl1 = new CloseableThreadLocal();
-    final CloseableThreadLocal<Integer> ctl2 = new CloseableThreadLocal();
+    final CloseableThreadLocal<String> ctl1 = new CloseableThreadLocal<>();
+    final CloseableThreadLocal<Integer> ctl2 = new CloseableThreadLocal<>();
 
     final Thread[] threads = new Thread[CONCURRENT_THREADS];
     final AtomicBoolean[] results = new AtomicBoolean[CONCURRENT_THREADS];
