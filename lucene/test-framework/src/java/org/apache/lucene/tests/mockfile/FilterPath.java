@@ -127,8 +127,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   @Override
-  public boolean startsWith(String other) {
-    return delegate.startsWith(other);
+  public final boolean startsWith(String other) {
+    return Path.super.startsWith(other);
   }
 
   @Override
@@ -137,8 +137,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   @Override
-  public boolean endsWith(String other) {
-    return delegate.startsWith(other);
+  public final boolean endsWith(String other) {
+    return Path.super.endsWith(other);
   }
 
   @Override
@@ -152,8 +152,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   @Override
-  public Path resolve(String other) {
-    return wrap(delegate.resolve(other));
+  public final Path resolve(String other) {
+    return Path.super.resolve(other);
   }
 
   @Override
@@ -162,8 +162,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   @Override
-  public Path resolveSibling(String other) {
-    return wrap(delegate.resolveSibling(other));
+  public final Path resolveSibling(String other) {
+    return Path.super.resolveSibling(other);
   }
 
   @Override

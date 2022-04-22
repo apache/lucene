@@ -43,24 +43,6 @@ class WindowsPath extends FilterPath {
     return wrap(delegate.resolve(toDelegate(other)));
   }
 
-  @Override
-  public Path resolve(String other) {
-    checkInvalidPath(other);
-    return wrap(delegate.resolve(other));
-  }
-
-  @Override
-  public Path resolveSibling(Path other) {
-    checkInvalidPath(other.getFileName().toString());
-    return wrap(delegate.resolveSibling(toDelegate(other)));
-  }
-
-  @Override
-  public Path resolveSibling(String other) {
-    checkInvalidPath(other);
-    return wrap(delegate.resolveSibling(other));
-  }
-
   private void checkInvalidPath(String fileName) {
     // TODO 1: how "complete" do we want to make these tests? Spec:
     // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
