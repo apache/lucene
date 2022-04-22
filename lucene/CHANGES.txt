@@ -132,6 +132,9 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-10216: Use MergePolicy to define and MergeScheduler to trigger the reader merges
+  required by addIndexes(CodecReader[]) API. (Vigya Sharma, Michael McCandless)
+
 * LUCENE-10229: return -1 for unknown offsets in ExtendedIntervalsSource. Modify highlighting to
   work properly with or without offsets. (Dawid Weiss)
 
