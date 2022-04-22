@@ -62,7 +62,7 @@ public class TestWANDScorer extends LuceneTestCase {
     assertEquals(
         1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1),
         WANDScorer.scaleMaxScore(32f, WANDScorer.scalingFactor(32f)));
-    assertEquals(1, WANDScorer.scaleMaxScore(32f, WANDScorer.scalingFactor(1L << 60)));
+    assertEquals(1, WANDScorer.scaleMaxScore(32f, WANDScorer.scalingFactor(Math.scalb(1f, 60))));
     assertEquals(
         1, WANDScorer.scaleMaxScore(32f, WANDScorer.scalingFactor(Float.POSITIVE_INFINITY)));
   }

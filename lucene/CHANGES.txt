@@ -138,6 +138,8 @@ Bug Fixes
   could not evaluate their sign, either because the planes where the same or the center between those
   planes was lying in one of the planes. (Ignacio Vera)
 
+* LUCENE-10495: Fix return statement of siblingsLoaded() in TaxonomyFacets. (Yuting Gan)
+
 * LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
   tessellations), allow filtering edges that fold on top of the previous one and fix edge cases when hole is 
   connected to a vertex that contain more than one point. (Ignacio Vera)  
@@ -149,7 +151,8 @@ Build
 
 Other
 ---------------------
-(No changes)
+* LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems
+  to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
 
 ======================= Lucene 9.1.0 =======================
 

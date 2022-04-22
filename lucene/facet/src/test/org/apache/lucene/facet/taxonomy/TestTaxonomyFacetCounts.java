@@ -731,6 +731,116 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
 
+  public void testMultiValuedFieldCountAll() throws Exception {
+
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Publish Date", true);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new FacetField("Author", "Bob"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "15"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(new FacetField("Author", "Lisa"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "20"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    IndexSearcher searcher1 = newSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+    Facets facets =
+        new FastTaxonomyFacetCounts(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher1.getIndexReader(), taxoReader, config);
+
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)",
+        facets.getTopChildren(10, "Author").toString().trim());
+
+    // -- delete to trigger liveDocs != null
+    writer.deleteDocuments(new Term("id", "0"));
+    IndexSearcher searcher2 = newSearcher(writer.getReader());
+    facets =
+        new FastTaxonomyFacetCounts(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher2.getIndexReader(), taxoReader, config);
+
+    assertEquals(
+        "dim=Author path=[] value=1 childCount=1\n  Lisa (1)",
+        facets.getTopChildren(10, "Author").toString().trim());
+
+    IOUtils.close(
+        writer,
+        taxoWriter,
+        searcher1.getIndexReader(),
+        searcher2.getIndexReader(),
+        taxoReader,
+        taxoDir,
+        dir);
+  }
+
+  public void testCountAllSingleValuedField() throws Exception {
+
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Author", true);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new FacetField("Author", "Bob"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(new FacetField("Author", "Lisa"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    IndexSearcher searcher1 = newSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+    Facets facets =
+        new FastTaxonomyFacetCounts(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher1.getIndexReader(), taxoReader, config);
+
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)",
+        facets.getTopChildren(10, "Author").toString().trim());
+
+    // -- delete to trigger liveDocs != null
+    writer.deleteDocuments(new Term("id", "0"));
+    IndexSearcher searcher2 = newSearcher(writer.getReader());
+    facets =
+        new FastTaxonomyFacetCounts(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher2.getIndexReader(), taxoReader, config);
+
+    assertEquals(
+        "dim=Author path=[] value=1 childCount=1\n  Lisa (1)",
+        facets.getTopChildren(10, "Author").toString().trim());
+
+    IOUtils.close(
+        writer,
+        taxoWriter,
+        searcher1.getIndexReader(),
+        searcher2.getIndexReader(),
+        taxoReader,
+        taxoDir,
+        dir);
+  }
+
   private void indexTwoDocs(
       TaxonomyWriter taxoWriter, IndexWriter indexWriter, FacetsConfig config, boolean withContent)
       throws Exception {
