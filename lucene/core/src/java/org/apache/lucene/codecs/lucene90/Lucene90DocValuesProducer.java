@@ -1112,12 +1112,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         throw new IndexOutOfBoundsException();
       }
       final long blockIndex = ord >>> TERMS_DICT_BLOCK_LZ4_SHIFT;
-      final long currentBlockIndex = this.ord >>> TERMS_DICT_BLOCK_LZ4_SHIFT;
-      if (ord < this.ord || blockIndex != currentBlockIndex) {
-        // The looked up ord is before the current ord or belongs to a different block, seek again
+      final long blockFirstOrd = blockIndex << TERMS_DICT_BLOCK_LZ4_SHIFT;
+      if (this.ord < blockFirstOrd || this.ord > ord) {
+        // The current ord belong to a previous block, or is after the looked up ord: seek again
         final long blockAddress = blockAddresses.get(blockIndex);
         bytes.seek(blockAddress);
-        this.ord = (blockIndex << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1;
+        this.ord = blockFirstOrd - 1;
       }
       // Scan to the looked up ord
       while (this.ord < ord) {
