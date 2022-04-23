@@ -137,7 +137,7 @@ you can install Xvfb (X Virtual Frame Buffer) so that the test runs on the
 virtual display and does not open a real window.
 
 # redhat-type OS
-$ sudo yum install Xvfb
+$ sudo dnf install Xvfb
 
 # ubuntu/debian-type OS
 $ sudo apt install xvfb
