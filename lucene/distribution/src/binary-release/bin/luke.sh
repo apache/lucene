@@ -26,6 +26,11 @@ if [ -z "$LAUNCH_CMD" ]; then
 else
   # We are integration-testing. Force UTF-8 as the encoding.
   LAUNCH_OPTS=-Dfile.encoding=UTF-8
+  # check if Xvfb is available
+  if command -v xvfb-run > /dev/null 2>&1; then
+    LAUNCH_OPTS="$LAUNCH_CMD $LAUNCH_OPTS"
+    LAUNCH_CMD="xvfb-run"
+  fi
 fi
 
 "$LAUNCH_CMD" $LAUNCH_OPTS --module-path "$MODULES/modules:$MODULES/modules-thirdparty" --module org.apache.lucene.luke "$@"
