@@ -733,7 +733,6 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
 
   private static char SEP = '\u001F';
 
-  @Slow
   public void testRandom() throws Exception {
 
     int numQueries = atLeast(200);

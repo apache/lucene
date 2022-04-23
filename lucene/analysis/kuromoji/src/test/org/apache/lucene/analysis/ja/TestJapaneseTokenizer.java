@@ -339,7 +339,6 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
   }
 
   /** blast some random large strings through the analyzer */
-  @Slow
   public void testRandomHugeStrings() throws Exception {
     Random random = random();
     checkRandomData(random, analyzer, RANDOM_MULTIPLIER, 4096);

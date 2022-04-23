@@ -85,7 +85,6 @@ allprojects {
           [propName: 'tests.timezone', value: "random", description: "Sets the default time zone tests should run with."],
           // filtering
           [propName: 'tests.filter', value: null, description: "Applies a test filter (see :helpTests)."],
-          [propName: 'tests.slow', value: true, description: "Enables or disables @Slow tests."],
           [propName: 'tests.nightly', value: false, description: "Enables or disables @Nightly tests."],
           [propName: 'tests.weekly', value: false, description: "Enables or disables @Weekly tests."],
           [propName: 'tests.monster', value: false, description: "Enables or disables @Monster tests."],
