@@ -20,6 +20,8 @@ import java.io.IOException;
 import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -323,6 +325,35 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
           : sortedSetDocValues;
     }
 
+    @Override
+    public VectorValues getVectorValues(String field) throws IOException {
+      final VectorValues vectorValues = in.getVectorValues(field);
+      if (vectorValues == null) {
+        return null;
+      }
+      return (queryTimeout.isTimeoutEnabled())
+          ? new ExitableVectorValues(vectorValues)
+          : vectorValues;
+    }
+
+    @Override
+    public TopDocs searchNearestVectors(
+        String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+      // nocommit - sampling needed?
+      if (queryTimeout.shouldExit()) {
+        throw new ExitingReaderException(
+            "The request took too long to search nearest vectors. Timeout: "
+                + queryTimeout.toString()
+                + ", Reader="
+                + in);
+      } else if (Thread.interrupted()) {
+        throw new ExitingReaderException(
+            "Interrupted while searching nearest vectors. Reader=" + in);
+      }
+
+      return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+    }
+
     /**
      * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
      * if {@link Thread#interrupted()} returns true.
@@ -339,6 +370,64 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       } else if (Thread.interrupted()) {
         throw new ExitingReaderException(
             "Interrupted while iterating over doc values. DocValues=" + in);
+      }
+    }
+
+    private class ExitableVectorValues extends FilterVectorValues {
+      private int docToCheck;
+
+      public ExitableVectorValues(VectorValues vectorValues) {
+        super(vectorValues);
+        docToCheck = 0;
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        final int advance = super.advance(target);
+        if (advance >= docToCheck) {
+          checkAndThrow();
+          docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return advance;
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        final int nextDoc = super.nextDoc();
+        if (nextDoc >= docToCheck) {
+          checkAndThrow();
+          docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return nextDoc;
+      }
+
+      @Override
+      public float[] vectorValue() throws IOException {
+        checkAndThrow();
+        return in.vectorValue();
+      }
+
+      @Override
+      public BytesRef binaryValue() throws IOException {
+        checkAndThrow();
+        return in.binaryValue();
+      }
+
+      /**
+       * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
+       * if {@link Thread#interrupted()} returns true.
+       */
+      private void checkAndThrow() {
+        if (queryTimeout.shouldExit()) {
+          throw new ExitingReaderException(
+              "The request took too long to iterate over vector values. Timeout: "
+                  + queryTimeout.toString()
+                  + ", VectorValues="
+                  + in);
+        } else if (Thread.interrupted()) {
+          throw new ExitingReaderException(
+              "Interrupted while iterating over vector values. VectorValues=" + in);
+        }
       }
     }
   }
