@@ -41,7 +41,7 @@ public final class NoMergePolicy extends MergePolicy {
   }
 
   @Override
-  public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+  public MergeSpecification findMerges(CodecReader... readers) throws IOException {
     // addIndexes(CodecReader...) now uses MergePolicy and MergeScheduler to add
     // provided readers (LUCENE-10216). We retain the default behavior here to enable
     // addIndexes for consumers like IndexRearranger.

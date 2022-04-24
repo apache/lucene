@@ -49,7 +49,7 @@ public class FilterMergePolicy extends MergePolicy implements Unwrappable<MergeP
   }
 
   @Override
-  public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+  public MergeSpecification findMerges(CodecReader... readers) throws IOException {
     return in.findMerges(readers);
   }
 
