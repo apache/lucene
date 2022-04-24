@@ -688,12 +688,11 @@ public class TestAddIndexes extends LuceneTestCase {
   private class ConcurrentAddIndexesMergePolicy extends TieredMergePolicy {
 
     @Override
-    public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+    public MergeSpecification findMerges(CodecReader... readers) throws IOException {
       // create a oneMerge for each reader to let them get concurrently processed by addIndexes()
       MergeSpecification mergeSpec = new MergeSpecification();
       for (CodecReader reader : readers) {
-        mergeSpec.add(
-            new OneMerge(List.of(reader), leaf -> new MergeReader(leaf, leaf.getLiveDocs())));
+        mergeSpec.add(new OneMerge(reader));
       }
       if (VERBOSE) {
         System.out.println(
@@ -793,7 +792,7 @@ public class TestAddIndexes extends LuceneTestCase {
     ConcurrentAddIndexesMergePolicy mp =
         new ConcurrentAddIndexesMergePolicy() {
           @Override
-          public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
             MergeSpecification spec = super.findMerges(readers);
             merges.addAll(spec.merges);
             return spec;
@@ -822,7 +821,7 @@ public class TestAddIndexes extends LuceneTestCase {
     MergePolicy mp =
         new TieredMergePolicy() {
           @Override
-          public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
             return null;
           }
         };
@@ -840,7 +839,7 @@ public class TestAddIndexes extends LuceneTestCase {
     MergePolicy mp =
         new TieredMergePolicy() {
           @Override
-          public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
             return new MergeSpecification();
           }
         };
@@ -1275,7 +1274,6 @@ public class TestAddIndexes extends LuceneTestCase {
       System.out.println("TEST: done join threads");
     }
     c.closeDir();
-
     assertTrue(c.failures.size() == 0);
   }
 
@@ -1304,6 +1302,7 @@ public class TestAddIndexes extends LuceneTestCase {
     }
 
     c.closeDir();
+    assertTrue(c.failures.size() == 0);
   }
 
   // LUCENE-2996: tests that addIndexes(IndexReader) applies existing deletes correctly.

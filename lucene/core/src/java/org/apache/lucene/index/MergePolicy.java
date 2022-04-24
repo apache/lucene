@@ -33,9 +33,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
 import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MergeInfo;
@@ -241,15 +241,17 @@ public abstract class MergePolicy {
      * empty segments list.
      *
      * @param codecReaders Codec readers to merge
-     * @param readerFactory Function to create a MergeReader from a CodecReader.
      */
-    public OneMerge(
-        List<CodecReader> codecReaders, Function<CodecReader, MergeReader> readerFactory) {
-      List<MergeReader> readers = new ArrayList<>(codecReaders.size());
-      codecReaders.forEach(r -> readers.add(readerFactory.apply(r)));
+    public OneMerge(CodecReader... codecReaders) {
+      List<MergeReader> readers = new ArrayList<>(codecReaders.length);
+      int totalDocs = 0;
+      for (CodecReader r: codecReaders) {
+        readers.add(new MergeReader(r, r.getLiveDocs()));
+        totalDocs += r.numDocs();
+      }
       mergeReaders = List.copyOf(readers);
       segments = List.of();
-      totalMaxDoc = codecReaders.stream().mapToInt(IndexReader::numDocs).sum();
+      totalMaxDoc = totalDocs;
       mergeProgress = new OneMergeProgress();
       usesPooledReaders = false;
     }
@@ -618,12 +620,11 @@ public abstract class MergePolicy {
    * readers (lowest concurrency). Creating a merge for each reader, would provide the highest level
    * of concurrency possible with the configured merge scheduler.
    *
-   * @param readers set of readers to merge into the main index
+   * @param readers CodecReader(s) to merge into the main index
    */
-  public MergeSpecification findMerges(List<CodecReader> readers) throws IOException {
-    OneMerge merge = new OneMerge(readers, leaf -> new MergeReader(leaf, leaf.getLiveDocs()));
+  public MergeSpecification findMerges(CodecReader... readers) throws IOException {
     MergeSpecification mergeSpec = new MergeSpecification();
-    mergeSpec.add(merge);
+    mergeSpec.add(new OneMerge(readers));
     return mergeSpec;
   }
 
