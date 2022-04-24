@@ -35,7 +35,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
 import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MergeInfo;
@@ -245,7 +244,7 @@ public abstract class MergePolicy {
     public OneMerge(CodecReader... codecReaders) {
       List<MergeReader> readers = new ArrayList<>(codecReaders.length);
       int totalDocs = 0;
-      for (CodecReader r: codecReaders) {
+      for (CodecReader r : codecReaders) {
         readers.add(new MergeReader(r, r.getLiveDocs()));
         totalDocs += r.numDocs();
       }
