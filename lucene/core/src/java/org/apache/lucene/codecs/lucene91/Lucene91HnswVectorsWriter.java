@@ -229,22 +229,23 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeLong(vectorData.getFilePointer() - offset); // docsWithFieldLength
       meta.writeShort(jumpTableEntryCount);
       meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-    }
 
-    // write ordToDoc mapping
-    long start = vectorData.getFilePointer();
-    meta.writeLong(start);
-    meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
-    final DirectMonotonicWriter ordToDocWriter =
-        DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
-    DocIdSetIterator iterator = docsWithField.iterator();
-    for (int doc = iterator.nextDoc();
-        doc != DocIdSetIterator.NO_MORE_DOCS;
-        doc = iterator.nextDoc()) {
-      ordToDocWriter.add(doc);
+      // write ordToDoc mapping
+      long start = vectorData.getFilePointer();
+      meta.writeLong(start);
+      meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
+      // dense case and empty case do not need to store ordToMap mapping
+      final DirectMonotonicWriter ordToDocWriter =
+          DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
+      DocIdSetIterator iterator = docsWithField.iterator();
+      for (int doc = iterator.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = iterator.nextDoc()) {
+        ordToDocWriter.add(doc);
+      }
+      ordToDocWriter.finish();
+      meta.writeLong(vectorData.getFilePointer() - start);
     }
-    ordToDocWriter.finish();
-    meta.writeLong(vectorData.getFilePointer() - start);
 
     meta.writeInt(maxConn);
     // write graph nodes on each level

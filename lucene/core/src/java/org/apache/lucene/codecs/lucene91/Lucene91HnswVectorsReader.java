@@ -330,10 +330,10 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final long docsWithFieldLength;
     final short jumpTableEntryCount;
     final byte denseRankPower;
-    final long addressesOffset;
-    final int blockShift;
-    final DirectMonotonicReader.Meta meta;
-    final long addressesLength;
+    long addressesOffset;
+    int blockShift;
+    DirectMonotonicReader.Meta meta;
+    long addressesLength;
 
     FieldEntry(IndexInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
@@ -349,10 +349,13 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       jumpTableEntryCount = input.readShort();
       denseRankPower = input.readByte();
 
-      addressesOffset = input.readLong();
-      blockShift = input.readVInt();
-      meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
-      addressesLength = input.readLong();
+      // sparse
+      if (docsWithFieldOffset != -1 && docsWithFieldOffset != -2) {
+        addressesOffset = input.readLong();
+        blockShift = input.readVInt();
+        meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
+        addressesLength = input.readLong();
+      }
 
       // read nodes by level
       maxConn = input.readInt();
