@@ -94,6 +94,7 @@ public class TestCloseableThreadLocal extends LuceneTestCase {
       try {
         t.join();
       } catch (InterruptedException e) {
+        fail("Got interrupted due to " + e.getMessage());
       }
     }
     for (AtomicBoolean r : results) {
