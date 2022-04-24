@@ -62,6 +62,8 @@ Optimizations
 * LUCENE-10503: Potential speedup for pure disjunctions whose clauses produce
   scores that are very close to each other. (Adrien Grand)
 
+* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
