@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.mockfile;
 
-import java.io.File;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -46,23 +45,6 @@ class WindowsPath extends FilterPath {
 
   private void checkInvalidPath(Path other) {
     String fileName = other.toString();
-
-    // windows is case-insensitive by default
-    File folder = delegate.toFile(); // folder is always not null
-    String[] siblingFiles = folder.list();
-    if (siblingFiles != null) {
-      for (String siblingFile : siblingFiles) {
-        // this can be slow if there are a lot of files in the parent dir
-        if (siblingFile.equalsIgnoreCase(fileName)) {
-          throw new InvalidPathException(
-              other.toString(),
-              "Case insensitive file name: "
-                  + siblingFile
-                  + " already exists in the parent directory: "
-                  + delegate);
-        }
-      }
-    }
 
     if (RESERVED_NAMES.contains(fileName)) {
       throw new InvalidPathException(
