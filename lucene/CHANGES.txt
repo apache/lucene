@@ -121,6 +121,9 @@ Optimizations
 
 * LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
 
+* LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
+  and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
