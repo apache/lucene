@@ -33,13 +33,22 @@ public class MinFloatFunction extends MultiFloatFunction {
 
   @Override
   protected float func(int doc, FunctionValues[] valsArr) throws IOException {
-    if (!exists(doc, valsArr)) return 0.0f;
-
+    boolean noneFound = true;
     float val = Float.POSITIVE_INFINITY;
     for (FunctionValues vals : valsArr) {
-      if (vals.exists(doc)) {
-        val = Math.min(vals.floatVal(doc), val);
+      final float v = vals.floatVal(doc);
+      // If value is not found, floatVal returns 0.0f
+      // It is expensive to check vals.exists upfront,
+      // we only check when floatVal returns 0.0f to
+      // determine if 0.0f is due to not found or is
+      // the real value of the field in that doc.
+      if (v != 0.0f || vals.exists(doc)) {
+        noneFound = false;
+        val = Math.min(v, val);
       }
+    }
+    if (noneFound) {
+      return 0.0f;
     }
     return val;
   }

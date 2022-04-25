@@ -103,6 +103,8 @@ Improvements
 * LUCENE-10467: Throws IllegalArgumentException for Facets#getAllDims and Facets#getTopChildren
   if topN <= 0. (Yuting Gan)
 
+* LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
+
 Optimizations
 ---------------------
 
