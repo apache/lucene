@@ -22,7 +22,7 @@ if (rootProject.usesAltJvm && rootProject.runtimeJavaVersion > JavaVersion.VERSI
 }
 
 if (!Boolean.parseBoolean(propertyOrDefault("tests.nightly", "false"))) {
-  skipReason = "skipped on non-nightly runs, pass -Dtests.nightly=true to run"
+  skipReason = "skipped on non-nightly runs, pass -Ptests.nightly=true to run"
 }
 
 if (skipReason) {
@@ -58,6 +58,8 @@ allprojects { prj ->
       }
 
       tasks.withType(JavaCompile) { task ->
+        task.dependsOn ":checkJdkInternalsExportedToGradle"
+
         options.errorprone.disableWarningsInGeneratedCode = true
         options.errorprone.errorproneArgs = [
             '-Xep:InlineMeSuggester:OFF', // We don't use this annotation
