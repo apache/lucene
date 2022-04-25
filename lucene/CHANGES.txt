@@ -88,6 +88,8 @@ Bug Fixes
 
 * LUCENE-10495: Fix return statement of siblingsLoaded() in TaxonomyFacets. (Yuting Gan)
 
+* LUCENE-10533: SpellChecker.formGrams is missing bounds check (Kevin Risden)
+
 Build
 ---------------------
 
