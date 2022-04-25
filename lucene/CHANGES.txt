@@ -60,6 +60,8 @@ Other
   All classes in `org.apache.lucene.analysis.[ja|ko].util` was moved to `org.apache.lucene.analysis.[ja|ko].dict`.
   (Tomoko Uchida)
 
+* LUCENE-10493: Factor out Viterbi algorithm to analyzers-common from Kuromoji and Nori. (Tomoko Uchida)
+
 ======================= Lucene 9.2.0 =======================
 
 API Changes
