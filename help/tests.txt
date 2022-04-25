@@ -128,6 +128,24 @@ specifying the project and test task or a fully qualified task path. Example:
 gradlew -p lucene/core test -Ptests.verbose=true --tests "TestDemo"
 
 
+Run GUI tests headlessly with Xvfb (Linux only)
+-----------------------------------------------
+
+GUI test for Luke application launches a window, this might mess up your
+monitor depending on the display manager you are using. In that case,
+you can install Xvfb (X Virtual Frame Buffer) so that the test runs on the
+virtual display and does not open a real window.
+
+# redhat-type OS
+$ sudo yum install Xvfb
+
+# ubuntu/debian-type OS
+$ sudo apt install xvfb
+
+# arch
+$ sudo pacman -S xorg-server-xvfb
+
+
 Profiling slow tests
 --------------------
 
