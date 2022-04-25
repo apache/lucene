@@ -110,10 +110,8 @@ configure(project(":lucene").subprojects) { prj ->
     check.dependsOn v
     v.dependsOn ":checkJdkInternalsExportedToGradle"
   }
-}
 
-gradle.taskGraph.afterTask { Task task, TaskState state ->
-  if (task.name == 'spotlessJavaCheck' && state.failure) {
-    throw new GradleException("\n****************************\n*PLEASE RUN ./gradlew tidy!*\n****************************");
+  tasks.matching { task -> task.name == "spotlessJavaCheck" }.configureEach {
+    runToFixMessage.set("\nIMPORTANT: run the top-level './gradlew tidy' to format code automatically (see help/formatting.txt for more info).")
   }
 }
