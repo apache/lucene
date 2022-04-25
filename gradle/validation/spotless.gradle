@@ -94,6 +94,11 @@ configure(project(":lucene").subprojects) { prj ->
     }
   }
 
+  // Emit a custom message about how to fix formatting errors.
+  tasks.matching { task -> task.name == "spotlessJavaCheck" }.configureEach {
+    runToFixMessage.set("\nIMPORTANT: run the top-level './gradlew tidy' to format code automatically (see help/formatting.txt for more info).")
+  }
+
   // Add an alias to 'spotlessApply' simply called 'tidy' and wire up
   // spotlessCheck to convention's check.
   task tidy() {
@@ -109,9 +114,5 @@ configure(project(":lucene").subprojects) { prj ->
   tasks.matching { task -> task.name == "spotlessCheck" }.configureEach { v ->
     check.dependsOn v
     v.dependsOn ":checkJdkInternalsExportedToGradle"
-  }
-
-  tasks.matching { task -> task.name == "spotlessJavaCheck" }.configureEach {
-    runToFixMessage.set("\nIMPORTANT: run the top-level './gradlew tidy' to format code automatically (see help/formatting.txt for more info).")
   }
 }
