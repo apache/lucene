@@ -86,7 +86,6 @@ public class CloseableThreadLocal<T> implements Closeable {
       perThreadValues.put(Thread.currentThread(), object);
       maybePurge();
     }
-
   }
 
   private void maybePurge() {
@@ -132,13 +131,12 @@ public class CloseableThreadLocal<T> implements Closeable {
     }
   }
 
-
   /**
    * Visible to test.
    *
    * @return per-thread values map.
    */
-  Map<String,T> getValuesAfterPurge() {
+  Map<String, T> getValuesAfterPurge() {
     Map<String, T> values = new HashMap<>();
     synchronized (lock) {
       purge();

@@ -16,9 +16,8 @@
  */
 package org.apache.lucene.util;
 
-import org.apache.lucene.tests.util.LuceneTestCase;
-
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCloseableThreadLocal extends LuceneTestCase {
   public static final String TEST_VALUE = "initvaluetest";
@@ -51,7 +50,6 @@ public class TestCloseableThreadLocal extends LuceneTestCase {
     }
   }
 
-
   public void testSetGetValueWithMultiThreads() {
     final int CONCURRENT_THREADS = 5;
     final int LOOPS = 10000;
@@ -66,27 +64,28 @@ public class TestCloseableThreadLocal extends LuceneTestCase {
       AtomicBoolean result = new AtomicBoolean(true);
       results[i] = result;
 
-      threads[i] = new Thread(() -> {
-        String lastValue1 = null;
-        int lastValue2 = -1;
-        for (int j = 0; j < LOOPS; j++) {
-          if (j > 0) {
-            if (!lastValue1.equals(ctl1.get()) || ctl2.get() != lastValue2) {
-              result.set(false);
-              break;
-            }
-          }
+      threads[i] =
+          new Thread(
+              () -> {
+                String lastValue1 = null;
+                int lastValue2 = -1;
+                for (int j = 0; j < LOOPS; j++) {
+                  if (j > 0) {
+                    if (!lastValue1.equals(ctl1.get()) || ctl2.get() != lastValue2) {
+                      result.set(false);
+                      break;
+                    }
+                  }
 
-          String value1 = TNAME + "-" + j;
-          int value2 = BASE + j;
-          ctl1.set(value1);
-          ctl2.set(value2);
+                  String value1 = TNAME + "-" + j;
+                  int value2 = BASE + j;
+                  ctl1.set(value1);
+                  ctl2.set(value2);
 
-          lastValue1 = value1;
-          lastValue2 = value2;
-        }
-
-      });
+                  lastValue1 = value1;
+                  lastValue2 = value2;
+                }
+              });
       threads[i].setName(TNAME);
       threads[i].start();
     }
@@ -105,7 +104,8 @@ public class TestCloseableThreadLocal extends LuceneTestCase {
     ctl1.set("Value-FromCurrentThread");
     ctl2.set(123456789);
 
-    // Check values after force purge. Expecting all the dead threads values get cleared except current thread.
+    // Check values after force purge. Expecting all the dead threads values get cleared except
+    // current thread.
     assertEquals(1, ctl1.getValuesAfterPurge().size());
     assertEquals(1, ctl2.getValuesAfterPurge().size());
 
