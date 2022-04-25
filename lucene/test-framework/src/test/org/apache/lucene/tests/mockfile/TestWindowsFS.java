@@ -187,7 +187,7 @@ public class TestWindowsFS extends MockFileSystemTestCase {
     }
   }
 
-  public void testFileName() {
+  public void testFileName() throws IOException {
     Character[] reservedCharacters = WindowsPath.RESERVED_CHARACTERS.toArray(new Character[0]);
     String[] reservedNames = WindowsPath.RESERVED_NAMES.toArray(new String[0]);
     String fileName;
@@ -195,13 +195,46 @@ public class TestWindowsFS extends MockFileSystemTestCase {
     Path dir = wrap(createTempDir());
 
     if (r.nextBoolean()) {
+      // We need at least one char after the special char
+      // For example, in case of '/' we interpret `foo/` to just be a file `foo` which is valid
       fileName =
           RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(10))
               + reservedCharacters[r.nextInt(reservedCharacters.length)]
-              + RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(10));
+              + RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(1, 10));
     } else {
       fileName = reservedNames[r.nextInt(reservedNames.length)];
     }
     expectThrows(InvalidPathException.class, () -> dir.resolve(fileName));
+
+    // some other basic tests
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar:tar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo?bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo\\bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo*bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo|bar"));
+
+    // test on edge cases with explicit "/" in them
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo/bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo/bar/tar"));
+
+    // test for case insensitivity
+    Files.createFile(dir.resolve("file")); // a simple file should pass successfully
+
+    expectThrows(
+        InvalidPathException.class,
+        () -> Files.createFile(dir.resolve("File"))); // duplicates should fail
+    expectThrows(InvalidPathException.class, () -> Files.createFile(dir.resolve("fIle")));
+
+    Path childDir1 =
+        Files.createDirectory(dir.resolve("childDir1")); // a child dir should pass successfully
+    // duplicate child directories should fail
+    expectThrows(InvalidPathException.class, () -> Files.createDirectory(dir.resolve("ChildDir1")));
+    expectThrows(InvalidPathException.class, () -> Files.createDirectory(dir.resolve("cHildDir1")));
+
+    Files.createFile(childDir1.resolve("file")); // file within a child dir should pass
+    // duplicate file within a child dir should fail
+    expectThrows(InvalidPathException.class, () -> Files.createFile(childDir1.resolve("fIle")));
+    Files.createFile(childDir1.resolve("completelyDifferentFoobarName")); // again this should pass
   }
 }

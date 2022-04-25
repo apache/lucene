@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.mockfile;
 
+import java.io.File;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -38,17 +39,31 @@ class WindowsPath extends FilterPath {
   }
 
   @Override
-  public Path resolve(Path other) throws InvalidPathException {
-    checkInvalidPath(other.getFileName().toString());
+  public Path resolve(Path other) {
+    checkInvalidPath(other);
     return wrap(delegate.resolve(toDelegate(other)));
   }
 
-  private void checkInvalidPath(String fileName) {
-    // TODO 1: how "complete" do we want to make these tests? Spec:
-    // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-    // or do we make our best attempt at doing this and keep adding checks as we go?
+  private void checkInvalidPath(Path other) {
+    String fileName = other.toString();
 
-    // TODO 2: Add a check for case insensitivity in the same directory
+    // windows is case-insensitive by default
+    File folder = delegate.toFile(); // folder is always not null
+    String[] siblingFiles = folder.list();
+    if (siblingFiles != null) {
+      for (String siblingFile : siblingFiles) {
+        // this can be slow if there are a lot of files in the parent dir
+        if (siblingFile.equalsIgnoreCase(fileName)) {
+          throw new InvalidPathException(
+              other.toString(),
+              "Case insensitive file name: "
+                  + siblingFile
+                  + " already exists in the parent directory: "
+                  + delegate);
+        }
+      }
+    }
+
     if (RESERVED_NAMES.contains(fileName)) {
       throw new InvalidPathException(
           fileName, "File name: " + fileName + " is one of the reserved file names");
