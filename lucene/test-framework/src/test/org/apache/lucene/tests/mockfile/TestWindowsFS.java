@@ -210,12 +210,9 @@ public class TestWindowsFS extends MockFileSystemTestCase {
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar:tar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo?bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo<bar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo\\bar"));
-    expectThrows(InvalidPathException.class, () -> dir.resolve("foo*bar"));
-    expectThrows(InvalidPathException.class, () -> dir.resolve("foo|bar"));
-
-    // test on edge cases with explicit "/" in them
-    expectThrows(InvalidPathException.class, () -> dir.resolve("foo/bar"));
-    expectThrows(InvalidPathException.class, () -> dir.resolve("foo/bar/tar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo*bar|tar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo|bar?tar"));
   }
 }

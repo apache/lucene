@@ -24,7 +24,7 @@ import java.util.HashSet;
 class WindowsPath extends FilterPath {
 
   static HashSet<Character> RESERVED_CHARACTERS =
-      new HashSet<>(Arrays.asList('<', '>', ':', '\"', '/', '\\', '|', '?', '*'));
+      new HashSet<>(Arrays.asList('<', '>', ':', '\"', '\\', '|', '?', '*'));
 
   static HashSet<String> RESERVED_NAMES =
       new HashSet<>(
@@ -44,7 +44,7 @@ class WindowsPath extends FilterPath {
   }
 
   private void checkInvalidPath(Path other) {
-    String fileName = other.toString();
+    String fileName = other.getFileName().toString();
 
     if (RESERVED_NAMES.contains(fileName)) {
       throw new InvalidPathException(
