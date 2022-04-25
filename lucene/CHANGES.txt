@@ -60,6 +60,8 @@ Other
   All classes in `org.apache.lucene.analysis.[ja|ko].util` was moved to `org.apache.lucene.analysis.[ja|ko].dict`.
   (Tomoko Uchida)
 
+* LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
+
 ======================= Lucene 9.2.0 =======================
 
 API Changes
@@ -118,6 +120,11 @@ Optimizations
 
 * LUCENE-10503: Potential speedup for pure disjunctions whose clauses produce
   scores that are very close to each other. (Adrien Grand)
+
+* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
+* LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
+  and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
 
 Bug Fixes
 ---------------------

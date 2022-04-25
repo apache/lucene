@@ -31,8 +31,10 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
 import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
+import org.apache.lucene.analysis.ja.dict.JaMorphData;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.apache.lucene.analysis.ja.tokenattributes.*;
+import org.apache.lucene.analysis.morph.GraphvizFormatter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
@@ -518,7 +520,8 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testLatticeToDot() throws Exception {
-    final GraphvizFormatter gv2 = new GraphvizFormatter(ConnectionCosts.getInstance());
+    final GraphvizFormatter<JaMorphData> gv2 =
+        new GraphvizFormatter<>(ConnectionCosts.getInstance());
     final Analyzer analyzer =
         new Analyzer() {
           @Override
