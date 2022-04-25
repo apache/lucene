@@ -810,19 +810,6 @@ public class TestTessellator extends LuceneTestCase {
     }
   }
 
-  public void testComplexPolygon49() throws Exception {
-    String geoJson = GeoTestUtil.readShape("lucene-10470-4.geojson.gz");
-    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (int i = 0; i < polygons.length; i++) {
-      List<Tessellator.Triangle> tessellation =
-          Tessellator.tessellate(polygons[i], random().nextBoolean());
-      assertEquals(area(polygons[i]), area(tessellation), 1e-11);
-      for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygons[i], t);
-      }
-    }
-  }
-
   private void checkPolygon(String wkt) throws Exception {
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
     List<Tessellator.Triangle> tessellation =
