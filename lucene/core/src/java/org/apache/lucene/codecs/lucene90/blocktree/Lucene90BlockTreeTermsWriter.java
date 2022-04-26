@@ -969,7 +969,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       // Write suffix lengths
       final int numSuffixBytes = Math.toIntExact(suffixLengthsWriter.size());
-      spareBytes = ArrayUtil.grow(spareBytes, numSuffixBytes);
+      spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
       suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
       suffixLengthsWriter.reset();
       if (allEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {
