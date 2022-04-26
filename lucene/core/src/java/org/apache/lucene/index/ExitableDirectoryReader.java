@@ -339,7 +339,36 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     @Override
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-      // nocommit - sampling needed?
+
+      if (acceptDocs == null) {
+        checkAndThrowForSearchVectors();
+        return in.searchNearestVectors(field, target, k, null, visitedLimit);
+      }
+
+      Bits timeoutCheckingAcceptDocs =
+          new Bits() {
+            private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 10;
+            private int calls;
+
+            @Override
+            public boolean get(int index) {
+              if (calls++ % MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
+                checkAndThrowForSearchVectors();
+              }
+
+              return acceptDocs.get(index);
+            }
+
+            @Override
+            public int length() {
+              return acceptDocs.length();
+            }
+          };
+
+      return in.searchNearestVectors(field, target, k, timeoutCheckingAcceptDocs, visitedLimit);
+    }
+
+    private void checkAndThrowForSearchVectors() {
       if (queryTimeout.shouldExit()) {
         throw new ExitingReaderException(
             "The request took too long to search nearest vectors. Timeout: "
@@ -350,8 +379,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
         throw new ExitingReaderException(
             "Interrupted while searching nearest vectors. Reader=" + in);
       }
-
-      return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
     }
 
     /**

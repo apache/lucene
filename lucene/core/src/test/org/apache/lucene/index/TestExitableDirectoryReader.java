@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.atMost;
+
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.document.*;
@@ -433,7 +435,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     IndexWriter writer =
         new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
 
-    int numDoc = atLeast(10);
+    int numDoc = atLeast(20);
+    int deletedDoc = atMost(5);
     int dimension = atLeast(3);
     boolean vectorIndexed = false;
 
@@ -451,12 +454,17 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
         doc.add(new KnnVectorField("vector", value, fieldType));
       }
 
-      doc.add(new StringField("id", i + "", Field.Store.YES));
+      doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
       writer.addDocument(doc);
     }
 
     writer.forceMerge(1);
     writer.commit();
+
+    for (int i = 0; i < deletedDoc; i++) {
+      writer.deleteDocuments(new Term("id", Integer.toString(i)));
+    }
+
     writer.close();
 
     QueryTimeout randomQueryTimeout;
