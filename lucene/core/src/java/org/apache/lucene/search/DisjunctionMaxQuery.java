@@ -196,7 +196,16 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    return new DisjunctionMaxWeight(searcher, scoreMode, boost);
+    if (scoreMode.needsScores()) {
+      return new DisjunctionMaxWeight(searcher, scoreMode, boost);
+    } else {
+      // if scores are not needed, let BooleanWeight deal with optimizing that case.
+      BooleanQuery.Builder bq = new BooleanQuery.Builder();
+      for (Query query : disjuncts) {
+        bq.add(query, BooleanClause.Occur.SHOULD);
+      }
+      return searcher.rewrite(bq.build()).createWeight(searcher, scoreMode, boost);
+    }
   }
 
   /**
