@@ -45,35 +45,33 @@ public class BytesRefFieldSource extends FieldCacheSource {
     // To be sorted or not to be sorted, that is the question
     // TODO: do it cleaner?
     if (fieldInfo != null && fieldInfo.getDocValuesType() == DocValuesType.BINARY) {
-      final BinaryDocValues binaryValues = DocValues.getBinary(readerContext.reader(), field);
+      final BinaryDocValues arr = DocValues.getBinary(readerContext.reader(), field);
       return new FunctionValues() {
         int lastDocID = -1;
 
-        private BytesRef getValueForDoc(int doc) throws IOException {
+        @Override
+        public boolean exists(int doc) throws IOException {
           if (doc < lastDocID) {
             throw new IllegalArgumentException(
                 "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
           }
           lastDocID = doc;
-          int curDocID = binaryValues.docID();
+          int curDocID = arr.docID();
           if (doc > curDocID) {
-            curDocID = binaryValues.advance(doc);
+            curDocID = arr.advance(doc);
           }
-          if (doc == curDocID) {
-            return binaryValues.binaryValue();
-          } else {
-            return null;
-          }
-        }
-
-        @Override
-        public boolean exists(int doc) throws IOException {
-          return getValueForDoc(doc) != null;
+          return doc == curDocID;
         }
 
         @Override
         public boolean bytesVal(int doc, BytesRefBuilder target) throws IOException {
-          BytesRef value = getValueForDoc(doc);
+          BytesRef value;
+          if (exists(doc)) {
+            value = arr.binaryValue();
+          } else {
+            value = null;
+          }
+
           if (value == null || value.length == 0) {
             return false;
           } else {
@@ -110,12 +108,9 @@ public class BytesRefFieldSource extends FieldCacheSource {
 
             @Override
             public void fillValue(int doc) throws IOException {
-              BytesRef value = getValueForDoc(doc);
-              mval.exists = value != null;
+              mval.exists = exists(doc);
               mval.value.clear();
-              if (value != null) {
-                mval.value.copyBytes(value);
-              }
+              bytesVal(doc, mval.value);
             }
           };
         }
