@@ -1076,8 +1076,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       indexBytes = data.slice("terms-index", entry.termsIndexOffset, entry.termsIndexLength);
       term = new BytesRef(entry.maxTermLength);
 
+      // add the max term length for the dictionary
       // add 7 padding bytes can help decompression run faster.
-      int bufferSize = entry.maxBlockLength + LZ4_DECOMPRESSOR_PADDING;
+      int bufferSize = entry.maxBlockLength + entry.maxTermLength + LZ4_DECOMPRESSOR_PADDING;
       blockBuffer = new BytesRef(new byte[bufferSize], 0, bufferSize);
     }
 
@@ -1236,8 +1237,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         // Avoid decompress again if we are reading a same block.
         if (currentCompressedBlockStart != offset) {
           int decompressLength = bytes.readVInt();
-          // Decompress the remaining of current block
-          LZ4.decompress(bytes, decompressLength, blockBuffer.bytes, 0);
+          // Decompress the remaining of current block, using the first term as a dictionary
+          System.arraycopy(term.bytes, 0, blockBuffer.bytes, 0, term.length);
+          LZ4.decompress(bytes, decompressLength, blockBuffer.bytes, term.length);
           currentCompressedBlockStart = offset;
           currentCompressedBlockEnd = bytes.getFilePointer();
         } else {
@@ -1246,7 +1248,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         // Reset the buffer.
-        blockInput = new ByteArrayDataInput(blockBuffer.bytes, 0, blockBuffer.length);
+        blockInput = new ByteArrayDataInput(blockBuffer.bytes, term.length, blockBuffer.length);
       }
     }
 

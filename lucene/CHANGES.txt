@@ -126,6 +126,10 @@ Optimizations
 * LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
   and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
 
+* LUCENE-10536: Doc values terms dictionaries now use the first (uncompressed)
+  term of each block as a dictionary when compressing suffixes of the other 63
+  terms of the block. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
