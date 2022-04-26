@@ -36,15 +36,9 @@ public class MinFloatFunction extends MultiFloatFunction {
     boolean noneFound = true;
     float val = Float.POSITIVE_INFINITY;
     for (FunctionValues vals : valsArr) {
-      final float v = vals.floatVal(doc);
-      // If value is not found, floatVal returns 0.0f
-      // It is expensive to check vals.exists upfront,
-      // we only check when floatVal returns 0.0f to
-      // determine if 0.0f is due to not found or is
-      // the real value of the field in that doc.
-      if (v != 0.0f || vals.exists(doc)) {
+      if (vals.exists(doc)) {
         noneFound = false;
-        val = Math.min(v, val);
+        val = Math.min(vals.floatVal(doc), val);
       }
     }
     if (noneFound) {
