@@ -118,6 +118,25 @@ public final class LongPoint extends Field {
   }
 
   /**
+   * Unpack a BytesRef into a long point
+   *
+   * @param bytesRef BytesRef Value
+   * @throws IllegalArgumentException the value is null
+   */
+  public static long[] unpack(BytesRef bytesRef) {
+    if (bytesRef == null) {
+      throw new IllegalArgumentException("bytesRef must not be null");
+    }
+    long[] point = new long[bytesRef.length / Long.BYTES];
+
+    for (int dim = 0; dim < point.length; dim++) {
+      point[dim] = decodeDimension(bytesRef.bytes, dim * Long.BYTES);
+    }
+
+    return point;
+  }
+
+  /**
    * Creates a new LongPoint, indexing the provided N-dimensional long point.
    *
    * @param name field name

@@ -14,18 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.facet.hyperrectangle;
 
-/** Faceted indexing and search capabilities */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.facet {
-  requires com.carrotsearch.hppc;
-  requires org.apache.lucene.core;
+import org.apache.lucene.document.BinaryDocValuesField;
+import org.apache.lucene.document.LongPoint;
 
-  exports org.apache.lucene.facet;
-  exports org.apache.lucene.facet.range;
-  exports org.apache.lucene.facet.sortedset;
-  exports org.apache.lucene.facet.taxonomy;
-  exports org.apache.lucene.facet.taxonomy.directory;
-  exports org.apache.lucene.facet.taxonomy.writercache;
-  exports org.apache.lucene.facet.hyperrectangle;
+/** Packs an array of longs into a {@link BinaryDocValuesField} */
+public class LongPointFacetField extends BinaryDocValuesField {
+
+  /**
+   * Creates a new LongPointFacetField, indexing the provided N-dimensional long point.
+   *
+   * @param name field name
+   * @param point long[] value
+   * @throws IllegalArgumentException if the field name or value is null.
+   */
+  public LongPointFacetField(String name, long... point) {
+    super(name, LongPoint.pack(point));
+  }
 }

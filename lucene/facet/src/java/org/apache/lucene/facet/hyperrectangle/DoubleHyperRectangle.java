@@ -1,0 +1,81 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.facet.hyperrectangle;
+
+import org.apache.lucene.util.NumericUtils;
+
+/** Stores a hyper rectangle as an array of DoubleRangePairs */
+public class DoubleHyperRectangle extends HyperRectangle {
+
+  /** Stores pair as LongRangePair */
+  private final DoubleRangePair[] pairs;
+
+  /** Created DoubleHyperRectangle */
+  public DoubleHyperRectangle(String label, DoubleRangePair... pairs) {
+    super(label, pairs.length);
+    this.pairs = pairs;
+  }
+
+  @Override
+  public LongHyperRectangle.LongRangePair getComparableDimRange(int dim) {
+    long longMin = NumericUtils.doubleToSortableLong(pairs[dim].min);
+    long longMax = NumericUtils.doubleToSortableLong(pairs[dim].max);
+    return new LongHyperRectangle.LongRangePair(longMin, true, longMax, true);
+  }
+
+  /** Defines a single range in a DoubleHyperRectangle */
+  public static class DoubleRangePair {
+    /** Inclusive min */
+    public final double min;
+
+    /** Inclusive max */
+    public final double max;
+
+    /**
+     * Creates a LongRangePair, very similar to the constructor of {@link
+     * org.apache.lucene.facet.range.DoubleRange}
+     *
+     * @param minIn Min value of pair
+     * @param minInclusive If minIn is inclusive
+     * @param maxIn Max value of pair
+     * @param maxInclusive If maxIn is inclusive
+     */
+    public DoubleRangePair(double minIn, boolean minInclusive, double maxIn, boolean maxInclusive) {
+      if (Double.isNaN(minIn)) {
+        throw new IllegalArgumentException("min cannot be NaN");
+      }
+      if (!minInclusive) {
+        minIn = Math.nextUp(minIn);
+      }
+
+      if (Double.isNaN(maxIn)) {
+        throw new IllegalArgumentException("max cannot be NaN");
+      }
+      if (!maxInclusive) {
+        // Why no Math.nextDown?
+        maxIn = Math.nextAfter(maxIn, Double.NEGATIVE_INFINITY);
+      }
+
+      if (minIn > maxIn) {
+        throw new IllegalArgumentException("Minimum cannot be greater than maximum");
+      }
+
+      this.min = minIn;
+      this.max = maxIn;
+    }
+  }
+}
