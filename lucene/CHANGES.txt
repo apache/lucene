@@ -149,6 +149,9 @@ Bug Fixes
 
 * LUCENE-10533: SpellChecker.formGrams is missing bounds check (Kevin Risden)
 
+* LUCENE-10529: Properly handle when TestTaxonomyFacetAssociations test case randomly indexes
+  no documents instead of throwing an NPE. (Greg Miller)
+
 Build
 ---------------------
 
