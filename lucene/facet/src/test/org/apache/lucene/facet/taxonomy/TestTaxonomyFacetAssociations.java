@@ -524,10 +524,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       assertNull(facetResult);
     } else {
       assertEquals(dim, facetResult.dim);
-      // We can expect the floats to be exactly equal here since we're ensuring that we sum them
-      // in the same order when determining expected values and when computing facets. See
-      // LUCENE-10530:
-      assertEquals(aggregatedValue, facetResult.value.floatValue(), 0f);
+      assertEquals(aggregatedValue, facetResult.value.floatValue(), 1f);
       assertEquals(expected.size(), facetResult.childCount);
     }
   }
