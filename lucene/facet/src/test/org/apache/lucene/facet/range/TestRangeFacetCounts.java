@@ -159,8 +159,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     // test fewer topChildren
     FacetResult result2 = facets.getTopChildren(2, "field");
     assertEquals(
-            "dim=field path=[] value=22 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
-            result2.toString());
+        "dim=field path=[] value=22 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
+        result2.toString());
 
     r.close();
     d.close();
@@ -215,8 +215,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     // test fewer topChildren
     FacetResult result2 = facets.getTopChildren(2, "field");
     assertEquals(
-            "dim=field path=[] value=21 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
-            result2.toString());
+        "dim=field path=[] value=21 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
+        result2.toString());
 
     r.close();
     d.close();
@@ -270,8 +270,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     List<FacetResult> test2Child = facets.getAllDims(2);
     assertEquals(1, test2Child.size());
     assertEquals(
-            "dim=field path=[] value=22 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
-            test2Child.get(0).toString());
+        "dim=field path=[] value=22 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
+        test2Child.get(0).toString());
 
     // test default implementation of getTopDims
     List<FacetResult> topNDimsResult = facets.getTopDims(1, 1);
@@ -354,8 +354,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
     // test fewer topChildren
     FacetResult result2 = facets.getTopChildren(2, "field");
     assertEquals(
-            "dim=field path=[] value=3 childCount=2\n  min (1)\n  max (1)\n",
-            result2.toString());
+        "dim=field path=[] value=3 childCount=2\n  min (1)\n  max (1)\n", result2.toString());
 
     r.close();
     d.close();
@@ -397,8 +396,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
     // test fewer topChildren
     FacetResult result2 = facets.getTopChildren(2, "field");
     assertEquals(
-            "dim=field path=[] value=41 childCount=2\n  0-10 (11)\n  10-20 (11)\n",
-            result.toString());
+        "dim=field path=[] value=41 childCount=2\n  0-10 (11)\n  10-20 (11)\n", result2.toString());
 
     r.close();
     d.close();
@@ -610,8 +608,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     // test fewer topChildren
     assertEquals(
-            "dim=field path=[] value=21 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
-            facets.getTopChildren(2, "field").toString());
+        "dim=field path=[] value=21 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
+        facets.getTopChildren(2, "field").toString());
 
     w.close();
     IOUtils.close(r, d);
@@ -652,8 +650,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     // test fewer topChildren
     assertEquals(
-            "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
-            facets.getTopChildren(2, "field").toString());
+        "dim=field path=[] value=21 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
+        facets.getTopChildren(2, "field").toString());
 
     w.close();
     IOUtils.close(r, d);
@@ -708,8 +706,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     // test fewer topChildren
     FacetResult result2 = facets.getTopChildren(2, "field");
     assertEquals(
-            "dim=field path=[] value=21 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
-            result2.toString());
+        "dim=field path=[] value=21 childCount=2\n  less than 10 (10)\n  less than or equal to 10 (11)\n",
+        result2.toString());
 
     r.close();
     d.close();
