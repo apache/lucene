@@ -34,7 +34,7 @@ import org.apache.lucene.index.Terms;
  * org.apache.lucene.document.KnnVectorField}, or a field that indexes norms or doc values.
  */
 public class FieldExistsQuery extends Query {
-  private final String field;
+  private String field;
 
   /** Create a query that will match that have a value for the given {@code field}. */
   public FieldExistsQuery(String field) {
@@ -203,8 +203,9 @@ public class FieldExistsQuery extends Query {
               return reader.terms(field).getDocCount();
             }
           }
-        }
 
+          return super.count(context);
+        }
         if (hasStrictlyConsistentFieldInfos(context)) {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
         } else {
