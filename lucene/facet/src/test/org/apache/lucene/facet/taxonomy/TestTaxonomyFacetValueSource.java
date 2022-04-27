@@ -549,6 +549,56 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
 
+  // LUCENE-10495
+  public void testSiblingsLoaded() throws Exception {
+    Directory indexDir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
+    IndexWriter iw = new IndexWriter(indexDir, newIndexWriterConfig(new MockAnalyzer(random())));
+    FacetsConfig config = new FacetsConfig();
+
+    config.setHierarchical("a", true);
+    config.setMultiValued("a", true);
+    config.setRequireDimCount("a", true);
+
+    Document doc = new Document();
+    doc.add(new FacetField("a", Integer.toString(2), "1"));
+    iw.addDocument(config.build(taxoWriter, doc));
+
+    DirectoryReader r = DirectoryReader.open(iw);
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    FacetsCollector sfc =
+        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    // Test MAX:
+    Facets facets =
+        new TaxonomyFacetFloatAssociations(
+            taxoReader,
+            config,
+            sfc,
+            AssociationAggregationFunction.MAX,
+            DoubleValuesSource.fromLongField("price"));
+
+    assertTrue(((TaxonomyFacets) facets).childrenLoaded());
+    assertFalse(((TaxonomyFacets) facets).siblingsLoaded());
+
+    // Test SUM:
+    facets =
+        new TaxonomyFacetFloatAssociations(
+            taxoReader,
+            config,
+            sfc,
+            AssociationAggregationFunction.SUM,
+            DoubleValuesSource.fromLongField("price"));
+    assertTrue(((TaxonomyFacets) facets).childrenLoaded());
+    assertFalse(((TaxonomyFacets) facets).siblingsLoaded());
+
+    iw.close();
+    IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
+  }
+
   public void testCountAndSumScore() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();

@@ -1111,13 +1111,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (ord < 0 || ord >= entry.termsDictSize) {
         throw new IndexOutOfBoundsException();
       }
-      final long blockIndex = ord >>> TERMS_DICT_BLOCK_LZ4_SHIFT;
-      final long blockAddress = blockAddresses.get(blockIndex);
-      bytes.seek(blockAddress);
-      this.ord = (blockIndex << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1;
-      do {
+      // Signed shift since ord is -1 when the terms enum is not positioned
+      final long currentBlockIndex = this.ord >> TERMS_DICT_BLOCK_LZ4_SHIFT;
+      final long blockIndex = ord >> TERMS_DICT_BLOCK_LZ4_SHIFT;
+      if (ord < this.ord || blockIndex != currentBlockIndex) {
+        // The looked up ord is before the current ord or belongs to a different block, seek again
+        final long blockAddress = blockAddresses.get(blockIndex);
+        bytes.seek(blockAddress);
+        this.ord = (blockIndex << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1;
+      }
+      // Scan to the looked up ord
+      while (this.ord < ord) {
         next();
-      } while (this.ord < ord);
+      }
     }
 
     private BytesRef getTermFromIndex(long index) throws IOException {

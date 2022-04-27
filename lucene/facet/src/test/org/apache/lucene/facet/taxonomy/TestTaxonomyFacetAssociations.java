@@ -451,9 +451,16 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
 
     FacetResult facetResult = facets.getTopChildren(10, dim);
-    assertEquals(dim, facetResult.dim);
-    assertEquals(aggregatedValue, facetResult.value.intValue());
-    assertEquals(expected.size(), facetResult.childCount);
+
+    if (expected.isEmpty()) {
+      // If we hit the rare random case where nothing is indexed for the dim, we expect a null
+      // facetResult (see: LUCENE-10529)
+      assertNull(facetResult);
+    } else {
+      assertEquals(dim, facetResult.dim);
+      assertEquals(aggregatedValue, facetResult.value.intValue());
+      assertEquals(expected.size(), facetResult.childCount);
+    }
   }
 
   private void validateFloats(
@@ -475,8 +482,15 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
 
     FacetResult facetResult = facets.getTopChildren(10, dim);
-    assertEquals(dim, facetResult.dim);
-    assertEquals(aggregatedValue, facetResult.value.floatValue(), 1);
-    assertEquals(expected.size(), facetResult.childCount);
+
+    if (expected.isEmpty()) {
+      // If we hit the rare random case where nothing is indexed for the dim, we expect a null
+      // facetResult (see: LUCENE-10529)
+      assertNull(facetResult);
+    } else {
+      assertEquals(dim, facetResult.dim);
+      assertEquals(aggregatedValue, facetResult.value.floatValue(), 1);
+      assertEquals(expected.size(), facetResult.childCount);
+    }
   }
 }

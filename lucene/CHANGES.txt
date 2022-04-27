@@ -62,6 +62,11 @@ Optimizations
 * LUCENE-10503: Potential speedup for pure disjunctions whose clauses produce
   scores that are very close to each other. (Adrien Grand)
 
+* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
+* LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
+  and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
@@ -81,6 +86,16 @@ Bug Fixes
   could not evaluate their sign, either because the planes where the same or the center between those
   planes was lying in one of the planes. (Ignacio Vera)
 
+* LUCENE-10495: Fix return statement of siblingsLoaded() in TaxonomyFacets. (Yuting Gan)
+
+* LUCENE-10533: SpellChecker.formGrams is missing bounds check (Kevin Risden)
+
+* LUCENE-10529: Properly handle when TestTaxonomyFacetAssociations test case randomly indexes
+  no documents instead of throwing an NPE. (Greg Miller)
+
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+
 * LUCENE-10518: Relax field consistency check for old indices (Nhat Nguyen)
 
 Build
@@ -90,7 +105,10 @@ Build
 
 Other
 ---------------------
-(No changes)
+* LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems
+  to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
+
+* LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
 
 ======================= Lucene 9.1.0 =======================
 
