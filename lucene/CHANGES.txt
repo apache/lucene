@@ -150,6 +150,8 @@ Other
 * LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems
   to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
 
+* LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
+
 ======================= Lucene 9.1.0 =======================
 
 API Changes
