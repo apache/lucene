@@ -34,7 +34,7 @@ import org.apache.lucene.index.Terms;
  * org.apache.lucene.document.KnnVectorField}, or a field that indexes norms or doc values.
  */
 public class FieldExistsQuery extends Query {
-  private String field;
+  private final String field;
 
   /** Create a query that will match that have a value for the given {@code field}. */
   public FieldExistsQuery(String field) {
@@ -103,7 +103,7 @@ public class FieldExistsQuery extends Query {
         // rewritten to MatchAllDocsQuery for doc values field, when that same field also indexes
         // terms or point values which do have index statistics, and those statistics confirm that
         // all documents in this segment have values terms or point values.
-        if (leaf.getMetaData() == null || leaf.getMetaData().getCreatedVersionMajor() < 9) {
+        if (hasStrictlyConsistentFieldInfos(context) == false) {
           allReadersRewritable = false;
           break;
         }
@@ -116,7 +116,7 @@ public class FieldExistsQuery extends Query {
           allReadersRewritable = false;
           break;
         }
-      } else {
+      } else if (hasStrictlyConsistentFieldInfos(context)) {
         throw new IllegalStateException(buildErrorMsg(fieldInfo));
       }
     }
@@ -161,11 +161,10 @@ public class FieldExistsQuery extends Query {
             case SORTED_SET:
               iterator = context.reader().getSortedSetDocValues(field);
               break;
-            case NONE:
             default:
               throw new AssertionError();
           }
-        } else {
+        } else if (hasStrictlyConsistentFieldInfos(context)) {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
 
@@ -203,10 +202,12 @@ public class FieldExistsQuery extends Query {
               return reader.terms(field).getDocCount();
             }
           }
+        }
 
-          return super.count(context);
-        } else {
+        if (hasStrictlyConsistentFieldInfos(context)) {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
+        } else {
+          return super.count(context);
         }
       }
 
@@ -222,6 +223,11 @@ public class FieldExistsQuery extends Query {
         return true;
       }
     };
+  }
+
+  private boolean hasStrictlyConsistentFieldInfos(LeafReaderContext context) {
+    return context.reader().getMetaData() != null
+        && context.reader().getMetaData().getCreatedVersionMajor() >= 9;
   }
 
   private String buildErrorMsg(FieldInfo fieldInfo) {

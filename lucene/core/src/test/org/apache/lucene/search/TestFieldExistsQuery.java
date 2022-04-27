@@ -691,7 +691,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     }
   }
 
-  public void testDisableShortcutForOldIndices() throws Exception {
+  public void testOldIndices() throws Exception {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config =
           new IndexWriterConfig()
@@ -699,12 +699,19 @@ public class TestFieldExistsQuery extends LuceneTestCase {
               .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
       try (IndexWriter writer = new IndexWriter(dir, config)) {
         Document d1 = new Document();
+        d1.add(new StringField("my_field", "text", Store.YES));
         d1.add(new BinaryDocValuesField("my_field", new BytesRef("first")));
         writer.addDocument(d1);
         writer.flush();
+
+        Document d2 = new Document();
+        d2.add(new StringField("my_field", "text", Store.YES));
+        writer.addDocument(d2);
+        writer.flush();
+
         try (IndexReader reader = DirectoryReader.open(writer)) {
-          Query rewrite = new FieldExistsQuery("my_field").rewrite(reader);
-          assertNotEquals(MatchAllDocsQuery.class, rewrite.getClass());
+          IndexSearcher searcher = new IndexSearcher(reader);
+          assertEquals(1, searcher.count(new FieldExistsQuery("my_field")));
         }
       }
     }
