@@ -58,7 +58,7 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
   }
 
   @Override
-  protected void backtraceNBest(final Position endPosData, final boolean useEOS)
+  protected final void backtraceNBest(final Position endPosData, final boolean useEOS)
       throws IOException {
     if (lattice == null) {
       lattice = new Lattice<U>();
@@ -104,7 +104,7 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
   protected abstract void registerNode(int node, char[] fragment);
 
   @Override
-  protected void fixupPendingList() {
+  protected final void fixupPendingList() {
     // Sort for removing same tokens.
     // USER token should be ahead from normal one.
     Collections.sort(
@@ -183,7 +183,7 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
   /**
    * {@link Viterbi.Position} extension; this holds all forward pointers to calculate n-best path.
    */
-  public static class PositionNBest extends Viterbi.Position {
+  public static final class PositionNBest extends Viterbi.Position {
     // Only used when finding 2nd best segmentation under a
     // too-long token:
     int forwardCount;
