@@ -210,15 +210,15 @@ public final class FieldInfo {
    * @param o – other FieldInfo whose schema is verified against this FieldInfo's schema
    * @throws IllegalArgumentException if the field schemas are not the same
    */
-  void verifySameSchema(FieldInfo o, boolean strictConsistency) {
+  void verifySameSchema(FieldInfo o, boolean strictlyConsistent) {
     String fieldName = this.name;
-    verifySameIndexOptions(fieldName, this.indexOptions, o.getIndexOptions(), strictConsistency);
+    verifySameIndexOptions(fieldName, this.indexOptions, o.getIndexOptions(), strictlyConsistent);
     if (this.indexOptions != IndexOptions.NONE) {
-      verifySameOmitNorms(fieldName, this.omitNorms, o.omitNorms, strictConsistency);
+      verifySameOmitNorms(fieldName, this.omitNorms, o.omitNorms, strictlyConsistent);
       verifySameStoreTermVectors(
-          fieldName, this.storeTermVector, o.storeTermVector, strictConsistency);
+          fieldName, this.storeTermVector, o.storeTermVector, strictlyConsistent);
     }
-    verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType, strictConsistency);
+    verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType, strictlyConsistent);
     verifySamePointsOptions(
         fieldName,
         this.pointDimensionCount,
@@ -227,7 +227,7 @@ public final class FieldInfo {
         o.pointDimensionCount,
         o.pointIndexDimensionCount,
         o.pointNumBytes,
-        strictConsistency);
+        strictlyConsistent);
     verifySameVectorOptions(
         fieldName,
         this.vectorDimension,
@@ -245,8 +245,8 @@ public final class FieldInfo {
       String fieldName,
       IndexOptions indexOptions1,
       IndexOptions indexOptions2,
-      boolean strictConsistency) {
-    if (strictConsistency == false
+      boolean strictlyConsistent) {
+    if (strictlyConsistent == false
         && (indexOptions1 == IndexOptions.NONE || indexOptions2 == IndexOptions.NONE)) {
       return;
     }
@@ -270,8 +270,8 @@ public final class FieldInfo {
       String fieldName,
       DocValuesType docValuesType1,
       DocValuesType docValuesType2,
-      boolean strictConsistency) {
-    if (strictConsistency == false
+      boolean strictlyConsistent) {
+    if (strictlyConsistent == false
         && (docValuesType1 == DocValuesType.NONE || docValuesType2 == DocValuesType.NONE)) {
       return;
     }
@@ -295,8 +295,8 @@ public final class FieldInfo {
       String fieldName,
       boolean storeTermVector1,
       boolean storeTermVector2,
-      boolean strictConsistency) {
-    if (strictConsistency && storeTermVector1 != storeTermVector2) {
+      boolean strictlyConsistent) {
+    if (strictlyConsistent && storeTermVector1 != storeTermVector2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -313,8 +313,8 @@ public final class FieldInfo {
    * @throws IllegalArgumentException if they are not the same
    */
   static void verifySameOmitNorms(
-      String fieldName, boolean omitNorms1, boolean omitNorms2, boolean strictConsistency) {
-    if (strictConsistency && omitNorms1 != omitNorms2) {
+      String fieldName, boolean omitNorms1, boolean omitNorms2, boolean strictlyConsistent) {
+    if (strictlyConsistent && omitNorms1 != omitNorms2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -338,8 +338,8 @@ public final class FieldInfo {
       int pointDimensionCount2,
       int indexDimensionCount2,
       int numBytes2,
-      boolean strictConsistency) {
-    if (strictConsistency == false && (pointDimensionCount1 == 0 || pointDimensionCount2 == 0)) {
+      boolean strictlyConsistent) {
+    if (strictlyConsistent == false && (pointDimensionCount1 == 0 || pointDimensionCount2 == 0)) {
       return;
     }
     if (pointDimensionCount1 != pointDimensionCount2

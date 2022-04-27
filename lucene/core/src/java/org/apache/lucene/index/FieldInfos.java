@@ -348,7 +348,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
     // The soft-deletes field from IWC to enforce a single soft-deletes field
     private final String softDeletesFieldName;
-    private final boolean strictConsistency;
+    private final boolean strictlyConsistent;
 
     FieldNumbers(String softDeletesFieldName, int indexCreatedVersionMajor) {
       this.nameToNumber = new HashMap<>();
@@ -360,7 +360,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.omitNorms = new HashMap<>();
       this.storeTermVectors = new HashMap<>();
       this.softDeletesFieldName = softDeletesFieldName;
-      this.strictConsistency = indexCreatedVersionMajor >= 9;
+      this.strictlyConsistent = indexCreatedVersionMajor >= 9;
     }
 
     FieldNumbers(String softDeletesFieldName) {
@@ -441,17 +441,17 @@ public class FieldInfos implements Iterable<FieldInfo> {
     private void verifySameSchema(FieldInfo fi) {
       String fieldName = fi.getName();
       IndexOptions currentOpts = this.indexOptions.get(fieldName);
-      verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions(), strictConsistency);
+      verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions(), strictlyConsistent);
       if (currentOpts != IndexOptions.NONE) {
         boolean curStoreTermVector = this.storeTermVectors.get(fieldName);
         verifySameStoreTermVectors(
-            fieldName, curStoreTermVector, fi.hasVectors(), strictConsistency);
+            fieldName, curStoreTermVector, fi.hasVectors(), strictlyConsistent);
         boolean curOmitNorms = this.omitNorms.get(fieldName);
-        verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms(), strictConsistency);
+        verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms(), strictlyConsistent);
       }
 
       DocValuesType currentDVType = docValuesType.get(fieldName);
-      verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType(), strictConsistency);
+      verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType(), strictlyConsistent);
 
       FieldDimensions dims = dimensions.get(fieldName);
       verifySamePointsOptions(
@@ -462,7 +462,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fi.getPointDimensionCount(),
           fi.getPointIndexDimensionCount(),
           fi.getPointNumBytes(),
-          strictConsistency);
+              strictlyConsistent);
 
       FieldVectorProperties props = vectorProps.get(fieldName);
       verifySameVectorOptions(
@@ -676,7 +676,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     FieldInfo add(FieldInfo fi, long dvGen) {
       final FieldInfo curFi = fieldInfo(fi.getName());
       if (curFi != null) {
-        curFi.verifySameSchema(fi, globalFieldNumbers.strictConsistency);
+        curFi.verifySameSchema(fi, globalFieldNumbers.strictlyConsistent);
         if (fi.attributes() != null) {
           fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
         }
