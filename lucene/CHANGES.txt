@@ -147,10 +147,15 @@ Bug Fixes
 
 * LUCENE-10495: Fix return statement of siblingsLoaded() in TaxonomyFacets. (Yuting Gan)
 
+* LUCENE-10533: SpellChecker.formGrams is missing bounds check (Kevin Risden)
+
+* LUCENE-10529: Properly handle when TestTaxonomyFacetAssociations test case randomly indexes
+  no documents instead of throwing an NPE. (Greg Miller)
+
 * LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
   tessellations), allow filtering edges that fold on top of the previous one and fix edge cases when hole is 
-  connected to a vertex that contain more than one point. (Ignacio Vera)  
-
+  connected to a vertex that contain more than one point. (Ignacio Vera)
+  
 Build
 ---------------------
 
