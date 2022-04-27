@@ -80,7 +80,7 @@ New Features
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
 * LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
-  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to
   have readonly `Monitor` instances. (Niko Usai)
 
 * LUCENE-10456: Implement rewrite and Weight#count for MultiRangeQuery
@@ -153,8 +153,11 @@ Bug Fixes
   no documents instead of throwing an NPE. (Greg Miller)
 
 * LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
-  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)  
-  
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+
+* LUCENE-10530: Avoid floating point precision test case bug in TestTaxonomyFacetAssociations.
+  (Greg Miller)
+
 Build
 ---------------------
 
