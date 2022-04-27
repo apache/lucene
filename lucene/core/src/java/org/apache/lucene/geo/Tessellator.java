@@ -1118,7 +1118,6 @@ public final class Tessellator {
               next.getX(), next.getY(), next.next.getX(), next.next.getY(), end.getX(), end.getY());
       next = next.next;
     } while (next.next != end);
-    // The polygon must be CW
     return windingSum;
   }
 
