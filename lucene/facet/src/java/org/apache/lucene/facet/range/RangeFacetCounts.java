@@ -226,8 +226,9 @@ abstract class RangeFacetCounts extends Facets {
     if (path.length != 0) {
       throw new IllegalArgumentException("path.length should be 0");
     }
-    LabelAndValue[] labelValues = new LabelAndValue[counts.length];
-    for (int i = 0; i < counts.length; i++) {
+    int resultSize = Math.min(topN, counts.length);
+    LabelAndValue[] labelValues = new LabelAndValue[resultSize];
+    for (int i = 0; i < resultSize; i++) {
       labelValues[i] = new LabelAndValue(ranges[i].label, counts[i]);
     }
     return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
