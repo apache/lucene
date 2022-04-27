@@ -161,6 +161,7 @@ public class FieldExistsQuery extends Query {
             case SORTED_SET:
               iterator = context.reader().getSortedSetDocValues(field);
               break;
+            case NONE:
             default:
               throw new AssertionError();
           }
