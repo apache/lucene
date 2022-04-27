@@ -103,6 +103,10 @@ public class FieldExistsQuery extends Query {
         // rewritten to MatchAllDocsQuery for doc values field, when that same field also indexes
         // terms or point values which do have index statistics, and those statistics confirm that
         // all documents in this segment have values terms or point values.
+        if (leaf.getMetaData() == null || leaf.getMetaData().getCreatedVersionMajor() < 9) {
+          allReadersRewritable = false;
+          break;
+        }
 
         Terms terms = leaf.terms(field);
         PointValues pointValues = leaf.getPointValues(field);

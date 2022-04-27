@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Version;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -178,7 +179,15 @@ public class FieldInfos implements Iterable<FieldInfo> {
               .filter(Objects::nonNull)
               .findAny()
               .orElse(null);
-      final Builder builder = new Builder(new FieldNumbers(softDeletesField));
+      final int indexCreatedVersionMajor =
+          leaves.stream()
+              .map(l -> l.reader().getMetaData())
+              .filter(Objects::nonNull)
+              .mapToInt(r -> r.getCreatedVersionMajor())
+              .min()
+              .orElse(Version.LATEST.major);
+      final Builder builder =
+          new Builder(new FieldNumbers(softDeletesField, indexCreatedVersionMajor));
       for (final LeafReaderContext ctx : leaves) {
         for (FieldInfo fieldInfo : ctx.reader().getFieldInfos()) {
           builder.add(fieldInfo);
@@ -339,8 +348,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
     // The soft-deletes field from IWC to enforce a single soft-deletes field
     private final String softDeletesFieldName;
+    private final boolean strictConsistency;
 
-    FieldNumbers(String softDeletesFieldName) {
+    FieldNumbers(String softDeletesFieldName, int indexCreatedVersionMajor) {
       this.nameToNumber = new HashMap<>();
       this.numberToName = new HashMap<>();
       this.indexOptions = new HashMap<>();
@@ -350,6 +360,11 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.omitNorms = new HashMap<>();
       this.storeTermVectors = new HashMap<>();
       this.softDeletesFieldName = softDeletesFieldName;
+      this.strictConsistency = indexCreatedVersionMajor >= 9;
+    }
+
+    FieldNumbers(String softDeletesFieldName) {
+      this(softDeletesFieldName, Version.LATEST.major);
     }
 
     /**
@@ -426,16 +441,17 @@ public class FieldInfos implements Iterable<FieldInfo> {
     private void verifySameSchema(FieldInfo fi) {
       String fieldName = fi.getName();
       IndexOptions currentOpts = this.indexOptions.get(fieldName);
-      verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions());
+      verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions(), strictConsistency);
       if (currentOpts != IndexOptions.NONE) {
         boolean curStoreTermVector = this.storeTermVectors.get(fieldName);
-        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasVectors());
+        verifySameStoreTermVectors(
+            fieldName, curStoreTermVector, fi.hasVectors(), strictConsistency);
         boolean curOmitNorms = this.omitNorms.get(fieldName);
-        verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms());
+        verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms(), strictConsistency);
       }
 
       DocValuesType currentDVType = docValuesType.get(fieldName);
-      verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType());
+      verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType(), strictConsistency);
 
       FieldDimensions dims = dimensions.get(fieldName);
       verifySamePointsOptions(
@@ -445,7 +461,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
           dims.dimensionNumBytes,
           fi.getPointDimensionCount(),
           fi.getPointIndexDimensionCount(),
-          fi.getPointNumBytes());
+          fi.getPointNumBytes(),
+          strictConsistency);
 
       FieldVectorProperties props = vectorProps.get(fieldName);
       verifySameVectorOptions(
@@ -659,7 +676,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     FieldInfo add(FieldInfo fi, long dvGen) {
       final FieldInfo curFi = fieldInfo(fi.getName());
       if (curFi != null) {
-        curFi.verifySameSchema(fi);
+        curFi.verifySameSchema(fi, globalFieldNumbers.strictConsistency);
         if (fi.attributes() != null) {
           fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
         }
