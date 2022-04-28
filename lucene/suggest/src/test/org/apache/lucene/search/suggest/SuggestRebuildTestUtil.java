@@ -71,15 +71,22 @@ public final class SuggestRebuildTestUtil {
                         readyToCheck, readyToAdvance, new InputArrayIterator(data.iterator())));
               } catch (Throwable t) {
                 buildError.set(t);
+                readyToCheck.release(data.size() * 100); // flood the semaphore so we don't block
               }
             });
     rebuilder.start();
     // at every stage of the slow rebuild, we should still be able to get our original suggestions
     // (+1 iteration to ensure final next() call can return null)
     for (int i = 0; i < data.size() + 1; i++) {
-      readyToCheck.acquire();
-      initialChecks.check(suggester);
-      readyToAdvance.release();
+      try {
+        assertNull(buildError.get());
+        readyToCheck.acquire();
+        initialChecks.check(suggester);
+        readyToAdvance.release();
+      } catch (Throwable t) {
+        readyToAdvance.release(data.size() * 100); // flood the semaphore so we don't block
+        throw t;
+      }
     }
     // once all the data is released from the iterator, the background rebuild should finish, and
     // suggest results
@@ -119,7 +126,11 @@ public final class SuggestRebuildTestUtil {
     @Override
     public BytesRef next() throws IOException {
       releaseOnNext.release();
-      acquireOnNext.acquireUninterruptibly();
+      try {
+        acquireOnNext.acquire();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
       return inner.next();
     }
 
