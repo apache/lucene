@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
@@ -33,6 +34,8 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -684,6 +687,32 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = newSearcher(reader);
         assertEquals(1, searcher.count(new FieldExistsQuery("vector")));
+      }
+    }
+  }
+
+  public void testOldIndices() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config =
+          new IndexWriterConfig()
+              .setIndexCreatedVersionMajor(8)
+              .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        Document d1 = new Document();
+        d1.add(new StringField("my_field", "text", Store.YES));
+        d1.add(new BinaryDocValuesField("my_field", new BytesRef("first")));
+        writer.addDocument(d1);
+        writer.flush();
+
+        Document d2 = new Document();
+        d2.add(new StringField("my_field", "text", Store.YES));
+        writer.addDocument(d2);
+        writer.flush();
+
+        try (IndexReader reader = DirectoryReader.open(writer)) {
+          IndexSearcher searcher = new IndexSearcher(reader);
+          assertEquals(1, searcher.count(new FieldExistsQuery("my_field")));
+        }
       }
     }
   }

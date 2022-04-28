@@ -31,11 +31,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Version;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -172,13 +172,39 @@ public class FieldInfos implements Iterable<FieldInfo> {
     } else if (leaves.size() == 1) {
       return leaves.get(0).reader().getFieldInfos();
     } else {
-      final String softDeletesField =
-          leaves.stream()
-              .map(l -> l.reader().getFieldInfos().getSoftDeletesField())
-              .filter(Objects::nonNull)
-              .findAny()
-              .orElse(null);
-      final Builder builder = new Builder(new FieldNumbers(softDeletesField));
+      String softDeletesField = null;
+      int indexCreatedVersionMajor = -1;
+      for (LeafReaderContext leaf : reader.leaves()) {
+        final String leafSoftDeletesField = leaf.reader().getFieldInfos().softDeletesField;
+        if (leafSoftDeletesField != null) {
+          if (softDeletesField != null && softDeletesField.equals(leafSoftDeletesField) == false) {
+            throw new IllegalArgumentException(
+                "Cannot merge segments that have been created with different soft-deletes fields; found ["
+                    + softDeletesField
+                    + " and "
+                    + leafSoftDeletesField
+                    + "]");
+          }
+          softDeletesField = leafSoftDeletesField;
+        }
+        if (leaf.reader().getMetaData() != null) {
+          final int leafVersionMajor = leaf.reader().getMetaData().getCreatedVersionMajor();
+          if (indexCreatedVersionMajor != -1 && indexCreatedVersionMajor != leafVersionMajor) {
+            throw new IllegalArgumentException(
+                "Cannot merge segments that have been created in different major versions; found ["
+                    + indexCreatedVersionMajor
+                    + " and "
+                    + leafVersionMajor
+                    + "]");
+          }
+          indexCreatedVersionMajor = leafVersionMajor;
+        }
+      }
+      if (indexCreatedVersionMajor == -1) {
+        indexCreatedVersionMajor = Version.LATEST.major;
+      }
+      final Builder builder =
+          new Builder(new FieldNumbers(softDeletesField, indexCreatedVersionMajor));
       for (final LeafReaderContext ctx : leaves) {
         for (FieldInfo fieldInfo : ctx.reader().getFieldInfos()) {
           builder.add(fieldInfo);
@@ -339,8 +365,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
     // The soft-deletes field from IWC to enforce a single soft-deletes field
     private final String softDeletesFieldName;
+    private final boolean strictlyConsistent;
 
-    FieldNumbers(String softDeletesFieldName) {
+    FieldNumbers(String softDeletesFieldName, int indexCreatedVersionMajor) {
       this.nameToNumber = new HashMap<>();
       this.numberToName = new HashMap<>();
       this.indexOptions = new HashMap<>();
@@ -350,6 +377,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.omitNorms = new HashMap<>();
       this.storeTermVectors = new HashMap<>();
       this.softDeletesFieldName = softDeletesFieldName;
+      this.strictlyConsistent = indexCreatedVersionMajor >= 9;
     }
 
     /**
@@ -426,16 +454,17 @@ public class FieldInfos implements Iterable<FieldInfo> {
     private void verifySameSchema(FieldInfo fi) {
       String fieldName = fi.getName();
       IndexOptions currentOpts = this.indexOptions.get(fieldName);
-      verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions());
+      verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions(), strictlyConsistent);
       if (currentOpts != IndexOptions.NONE) {
         boolean curStoreTermVector = this.storeTermVectors.get(fieldName);
-        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasVectors());
+        verifySameStoreTermVectors(
+            fieldName, curStoreTermVector, fi.hasVectors(), strictlyConsistent);
         boolean curOmitNorms = this.omitNorms.get(fieldName);
-        verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms());
+        verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms(), strictlyConsistent);
       }
 
       DocValuesType currentDVType = docValuesType.get(fieldName);
-      verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType());
+      verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType(), strictlyConsistent);
 
       FieldDimensions dims = dimensions.get(fieldName);
       verifySamePointsOptions(
@@ -445,7 +474,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
           dims.dimensionNumBytes,
           fi.getPointDimensionCount(),
           fi.getPointIndexDimensionCount(),
-          fi.getPointNumBytes());
+          fi.getPointNumBytes(),
+          strictlyConsistent);
 
       FieldVectorProperties props = vectorProps.get(fieldName);
       verifySameVectorOptions(
@@ -659,7 +689,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     FieldInfo add(FieldInfo fi, long dvGen) {
       final FieldInfo curFi = fieldInfo(fi.getName());
       if (curFi != null) {
-        curFi.verifySameSchema(fi);
+        curFi.verifySameSchema(fi, globalFieldNumbers.strictlyConsistent);
         if (fi.attributes() != null) {
           fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
         }
