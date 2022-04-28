@@ -17,15 +17,37 @@
 package org.apache.lucene.tests.mockfile;
 
 import java.io.IOException;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemException;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** FileSystem that throws exception if file handles in use exceeds a specified limit */
+/**
+ * FileSystem that throws exception if file handles in use exceeds a specified limit.
+ *
+ * @see MaxOpenHandles
+ */
 public class HandleLimitFS extends HandleTrackingFS {
   final int limit;
   final AtomicInteger count = new AtomicInteger();
+
+  /** An annotation */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  public static @interface MaxOpenHandles {
+    // TODO: can we make the default even lower?
+    public static final int MAX_OPEN_FILES = 2048;
+
+    int limit();
+  }
 
   /**
    * Create a new instance, limiting the maximum number of open files to {@code limit}
