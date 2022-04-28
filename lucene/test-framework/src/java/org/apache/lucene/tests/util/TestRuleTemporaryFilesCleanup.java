@@ -102,10 +102,6 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
     javaTempDir = initializeJavaTempDir();
   }
 
-  // os/config-independent limit for too many open files
-  // TODO: can we make this lower?
-  private static final int MAX_OPEN_FILES = 2048;
-
   private boolean allowed(Set<String> avoid, Class<? extends FileSystemProvider> clazz) {
     if (avoid.contains("*") || avoid.contains(clazz.getSimpleName())) {
       return false;
@@ -154,7 +150,11 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
         fs = new LeakFS(fs).getFileSystem(null);
       }
       if (allowed(avoid, HandleLimitFS.class)) {
-        fs = new HandleLimitFS(fs, MAX_OPEN_FILES).getFileSystem(null);
+        int limit = HandleLimitFS.MaxOpenHandles.MAX_OPEN_FILES;
+        if (targetClass.isAnnotationPresent(HandleLimitFS.MaxOpenHandles.class)) {
+          limit = targetClass.getAnnotation(HandleLimitFS.MaxOpenHandles.class).limit();
+        }
+        fs = new HandleLimitFS(fs, limit).getFileSystem(null);
       }
       // windows is currently slow
       if (random.nextInt(10) == 0) {
