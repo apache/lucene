@@ -17,15 +17,19 @@
 package org.apache.lucene.queryparser.surround.query;
 
 import java.io.IOException;
+import java.util.Collection;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queryparser.surround.parser.QueryParser;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.util.SetOnce;
 import org.junit.Assert;
 
 public class BooleanQueryTestFacade {
@@ -121,14 +125,24 @@ public class BooleanQueryTestFacade {
     Query query = lq.makeLuceneQueryField(fieldName, qf);
     /* if (verbose) System.out.println("Lucene: " + query.toString()); */
 
-    TestCollector tc = new TestCollector();
-    IndexReader reader = DirectoryReader.open(dBase.getDb());
-    IndexSearcher searcher = new IndexSearcher(reader);
-    try {
-      searcher.search(query, tc);
-    } finally {
-      reader.close();
+    SetOnce<TestCollector> collector = new SetOnce<>();
+    try (IndexReader reader = DirectoryReader.open(dBase.getDb())) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      searcher.search(
+          query,
+          new CollectorManager<Collector, Void>() {
+            @Override
+            public Collector newCollector() {
+              collector.set(new TestCollector());
+              return collector.get();
+            }
+
+            @Override
+            public Void reduce(Collection<Collector> collectors) {
+              return null;
+            }
+          });
     }
-    tc.checkNrHits();
+    collector.get().checkNrHits();
   }
 }

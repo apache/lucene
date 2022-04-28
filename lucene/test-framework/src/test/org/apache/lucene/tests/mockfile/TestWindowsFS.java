@@ -16,16 +16,17 @@
  */
 package org.apache.lucene.tests.mockfile;
 
+import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Random;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.util.Constants;
@@ -37,13 +38,16 @@ public class TestWindowsFS extends MockFileSystemTestCase {
   public void setUp() throws Exception {
     super.setUp();
     // irony: currently we don't emulate windows well enough to work on windows!
+    // TODO: Can we fork this class and create a new class with only those tests that can run on
+    // Windows and then check if
+    // the Lucene WindowsFS error is same as the one OG Windows throws
     assumeFalse("windows is not supported", Constants.WINDOWS);
   }
 
   @Override
   protected Path wrap(Path path) {
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    return provider.wrapPath(path);
   }
 
   /** Test Files.delete fails if a file has an open inputstream against it */
@@ -181,5 +185,34 @@ public class TestWindowsFS extends MockFileSystemTestCase {
     try (InputStream stream = Files.newInputStream(dir.resolve("target"))) {
       assertEquals(2, stream.read());
     }
+  }
+
+  public void testFileName() {
+    Character[] reservedCharacters = WindowsPath.RESERVED_CHARACTERS.toArray(new Character[0]);
+    String[] reservedNames = WindowsPath.RESERVED_NAMES.toArray(new String[0]);
+    String fileName;
+    Random r = random();
+    Path dir = wrap(createTempDir());
+
+    if (r.nextBoolean()) {
+      // We need at least one char after the special char
+      // For example, in case of '/' we interpret `foo/` to just be a file `foo` which is valid
+      fileName =
+          RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(10))
+              + reservedCharacters[r.nextInt(reservedCharacters.length)]
+              + RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(1, 10));
+    } else {
+      fileName = reservedNames[r.nextInt(reservedNames.length)];
+    }
+    expectThrows(InvalidPathException.class, () -> dir.resolve(fileName));
+
+    // some other basic tests
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar:tar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo?bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo<bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo\\bar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo*bar|tar"));
+    expectThrows(InvalidPathException.class, () -> dir.resolve("foo|bar?tar"));
   }
 }

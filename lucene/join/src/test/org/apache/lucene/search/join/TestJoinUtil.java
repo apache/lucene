@@ -559,7 +559,7 @@ public class TestJoinUtil extends LuceneTestCase {
   static Query numericDocValuesScoreQuery(final String field) {
     return new Query() {
 
-      private final Query fieldQuery = new DocValuesFieldExistsQuery(field);
+      private final Query fieldQuery = new FieldExistsQuery(field);
 
       @Override
       public Weight createWeight(

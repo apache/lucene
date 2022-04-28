@@ -111,8 +111,11 @@ class GeoDegenerateHorizontalLine extends GeoBaseBBox {
 
     this.centerPoint =
         new GeoPoint(planetModel, sinLatitude, sinMiddleLon, cosLatitude, cosMiddleLon);
-    this.leftPlane = new SidedPlane(centerPoint, cosLeftLon, sinLeftLon);
-    this.rightPlane = new SidedPlane(centerPoint, cosRightLon, sinRightLon);
+    this.leftPlane = new SidedPlane(RHC, cosLeftLon, sinLeftLon);
+    this.rightPlane = new SidedPlane(LHC, cosRightLon, sinRightLon);
+
+    assert (leftPlane.isWithin(centerPoint));
+    assert (rightPlane.isWithin(centerPoint));
 
     this.planePoints = new GeoPoint[] {LHC, RHC};
 

@@ -59,4 +59,16 @@ public abstract class Facets {
     List<FacetResult> allResults = getAllDims(topNChildren);
     return allResults.subList(0, Math.min(topNDims, allResults.size()));
   }
+
+  /**
+   * This helper method checks if topN is valid for getTopChildren and getAllDims. Throws
+   * IllegalArgumentException if topN is invalid.
+   *
+   * @lucene.experimental it may not exist in future versions of Lucene
+   */
+  protected static void validateTopN(int topN) {
+    if (topN <= 0) {
+      throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
+    }
+  }
 }

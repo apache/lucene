@@ -61,10 +61,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -140,7 +138,6 @@ import org.apache.lucene.tests.index.MismatchedDirectoryReader;
 import org.apache.lucene.tests.index.MismatchedLeafReader;
 import org.apache.lucene.tests.index.MockIndexWriterEventListener;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
-import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.VirusCheckingFS;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
@@ -1398,8 +1395,7 @@ public abstract class LuceneTestCase extends Assert {
   public static Path addVirusChecker(Path path) {
     if (TestUtil.hasVirusChecker(path) == false) {
       VirusCheckingFS fs = new VirusCheckingFS(path.getFileSystem(), random().nextLong());
-      FileSystem filesystem = fs.getFileSystem(URI.create("file:///"));
-      path = new FilterPath(path, filesystem);
+      path = fs.wrapPath(path);
     }
     return path;
   }
@@ -3134,9 +3130,8 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Compares two strings with a collator, also looking to see if the the strings are impacted by
-   * jdk bugs. may not avoid all jdk bugs in tests. see
-   * https://bugs.openjdk.java.net/browse/JDK-8071862
+   * Compares two strings with a collator, also looking to see if the strings are impacted by jdk
+   * bugs. may not avoid all jdk bugs in tests. see https://bugs.openjdk.java.net/browse/JDK-8071862
    */
   @SuppressForbidden(reason = "dodges JDK-8071862")
   public static int collate(Collator collator, String s1, String s2) {

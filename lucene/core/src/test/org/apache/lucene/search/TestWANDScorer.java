@@ -54,8 +54,17 @@ public class TestWANDScorer extends LuceneTestCase {
   private void doTestScalingFactor(float f) {
     int scalingFactor = WANDScorer.scalingFactor(f);
     float scaled = Math.scalb(f, scalingFactor);
-    assertTrue("" + scaled, scaled > 1 << 15);
-    assertTrue("" + scaled, scaled <= 1 << 16);
+    assertTrue("" + scaled, scaled >= 1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1));
+    assertTrue("" + scaled, scaled < 1 << WANDScorer.FLOAT_MANTISSA_BITS);
+  }
+
+  public void testScaleMaxScore() {
+    assertEquals(
+        1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1),
+        WANDScorer.scaleMaxScore(32f, WANDScorer.scalingFactor(32f)));
+    assertEquals(1, WANDScorer.scaleMaxScore(32f, WANDScorer.scalingFactor(Math.scalb(1f, 60))));
+    assertEquals(
+        1, WANDScorer.scaleMaxScore(32f, WANDScorer.scalingFactor(Float.POSITIVE_INFINITY)));
   }
 
   private Query maybeWrap(Query query) {

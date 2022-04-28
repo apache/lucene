@@ -39,6 +39,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.IndexReader;
@@ -138,6 +139,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(
               "dim=b path=[] value=2 childCount=2\n  buzz (2)\n",
               topDimsResults1.get(0).toString());
+
+          // test getTopDims(0)
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> {
+                facets.getAllDims(0);
+              });
 
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
@@ -350,7 +358,6 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(
               "dim=c path=[buzz, bif] value=2 childCount=1\n  baf (2)\n",
               facets.getTopChildren(10, "c", "buzz", "bif").toString());
-
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("a", "foo");
@@ -405,6 +412,14 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         assertEquals(
             "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
             facets.getTopChildren(10, "a").toString());
+
+        // test topNChildren = 0
+        Facets finalFacets = facets;
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              finalFacets.getTopChildren(0, "a");
+            });
 
         ExecutorService exec =
             new ThreadPoolExecutor(
@@ -463,7 +478,6 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         assertEquals(
             "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
             facets.getTopChildren(10, "b", "buzz").toString());
-
         ExecutorService exec =
             new ThreadPoolExecutor(
                 1,
@@ -838,9 +852,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         try (IndexReader r2 = writer.getReader()) {
           IndexSearcher searcher = newSearcher(r2);
 
-          FacetsCollector c = new FacetsCollector();
-
-          searcher.search(new MatchAllDocsQuery(), c);
+          FacetsCollector c =
+              searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
           expectThrows(
               IllegalStateException.class,
@@ -1231,7 +1244,6 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               sortFacetResults(expected);
 
               List<FacetResult> actual = facets.getAllDims(10);
-
               // Messy: fixup ties
               // sortTies(actual);
 
@@ -1629,8 +1641,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       IndexSearcher searcher, SortedSetDocValuesReaderState state, ExecutorService exec)
       throws IOException, InterruptedException {
     if (random().nextBoolean()) {
-      FacetsCollector c = new FacetsCollector();
-      searcher.search(new MatchAllDocsQuery(), c);
+      FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
       if (exec != null) {
         return new ConcurrentSortedSetDocValuesFacetCounts(state, c, exec);
       } else {
