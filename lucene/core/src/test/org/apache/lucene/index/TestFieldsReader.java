@@ -46,7 +46,9 @@ public class TestFieldsReader extends LuceneTestCase {
   public static void beforeClass() throws Exception {
     testDoc = new Document();
     final String softDeletesFieldName = null;
-    fieldInfos = new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName, Version.LATEST.major));
+    fieldInfos =
+        new FieldInfos.Builder(
+            new FieldInfos.FieldNumbers(softDeletesFieldName, Version.LATEST.major));
     DocHelper.setupDoc(testDoc);
     for (IndexableField field : testDoc.getFields()) {
       IndexableFieldType ift = field.fieldType();

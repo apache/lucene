@@ -248,7 +248,8 @@ public class TestFieldInfos extends LuceneTestCase {
   }
 
   public void testFieldNumbersAutoIncrement() {
-    FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes", Version.LATEST.major);
+    FieldInfos.FieldNumbers fieldNumbers =
+        new FieldInfos.FieldNumbers("softDeletes", Version.LATEST.major);
     for (int i = 0; i < 10; i++) {
       fieldNumbers.addOrGet(
           new FieldInfo(

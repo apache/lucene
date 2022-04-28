@@ -6335,7 +6335,8 @@ public class IndexWriter
           public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
             return new FieldInfosBuilder() {
               private FieldInfos.Builder builder =
-                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName, Version.LATEST.major));
+                  new FieldInfos.Builder(
+                      new FieldInfos.FieldNumbers(softDeletesFieldName, Version.LATEST.major));
 
               @Override
               public FieldInfosBuilder add(FieldInfo fi) {
