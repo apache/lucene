@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -173,19 +172,37 @@ public class FieldInfos implements Iterable<FieldInfo> {
     } else if (leaves.size() == 1) {
       return leaves.get(0).reader().getFieldInfos();
     } else {
-      final String softDeletesField =
-          leaves.stream()
-              .map(l -> l.reader().getFieldInfos().getSoftDeletesField())
-              .filter(Objects::nonNull)
-              .findAny()
-              .orElse(null);
-      final int indexCreatedVersionMajor =
-          leaves.stream()
-              .map(l -> l.reader().getMetaData())
-              .filter(Objects::nonNull)
-              .mapToInt(r -> r.getCreatedVersionMajor())
-              .min()
-              .orElse(Version.LATEST.major);
+      String softDeletesField = null;
+      int indexCreatedVersionMajor = -1;
+      for (LeafReaderContext leaf : reader.leaves()) {
+        final String leafSoftDeletesField = leaf.reader().getFieldInfos().softDeletesField;
+        if (leafSoftDeletesField != null) {
+          if (softDeletesField != null && softDeletesField.equals(leafSoftDeletesField) == false) {
+            throw new IllegalArgumentException(
+                "Cannot merge segments that have been created with different soft-deletes fields; found ["
+                    + softDeletesField
+                    + " and "
+                    + leafSoftDeletesField
+                    + "]");
+          }
+          softDeletesField = leafSoftDeletesField;
+        }
+        if (leaf.reader().getMetaData() != null) {
+          final int leafVersionMajor = leaf.reader().getMetaData().getCreatedVersionMajor();
+          if (indexCreatedVersionMajor != -1 && indexCreatedVersionMajor != leafVersionMajor) {
+            throw new IllegalArgumentException(
+                "Cannot merge segments that have been created in different major versions; found ["
+                    + indexCreatedVersionMajor
+                    + " and "
+                    + leafVersionMajor
+                    + "]");
+          }
+          indexCreatedVersionMajor = leafVersionMajor;
+        }
+      }
+      if (indexCreatedVersionMajor == -1) {
+        indexCreatedVersionMajor = Version.LATEST.major;
+      }
       final Builder builder =
           new Builder(new FieldNumbers(softDeletesField, indexCreatedVersionMajor));
       for (final LeafReaderContext ctx : leaves) {
