@@ -170,7 +170,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     @Override
     public void setBottom(int slot) throws IOException {
       queueFull = true; // if we are setting bottom, it means that we have collected enough hits
-      if (topValueSet == false && disableSegmentInternalSkip) {
+      if (disableSegmentInternalSkip) {
         return;
       }
       updateCompetitiveIterator(); // update an iterator if we set a new bottom
@@ -193,7 +193,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     @Override
     public void setHitsThresholdReached() throws IOException {
       hitsThresholdReached = true;
-      if (topValueSet == false && disableSegmentInternalSkip) {
+      if (disableSegmentInternalSkip) {
         return;
       }
       updateCompetitiveIterator();
