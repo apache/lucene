@@ -235,7 +235,7 @@ public class TestDoc extends LuceneTestCase {
             si,
             InfoStream.getDefault(),
             trackingDir,
-            new FieldInfos.FieldNumbers(null),
+            new FieldInfos.FieldNumbers(null, Version.LATEST.major),
             context);
 
     merger.merge();

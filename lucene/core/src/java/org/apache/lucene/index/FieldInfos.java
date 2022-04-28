@@ -363,10 +363,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.strictlyConsistent = indexCreatedVersionMajor >= 9;
     }
 
-    FieldNumbers(String softDeletesFieldName) {
-      this(softDeletesFieldName, Version.LATEST.major);
-    }
-
     /**
      * Returns the global field number for the given field name. If the name does not exist yet it
      * tries to add it with the given preferred field number assigned if possible otherwise the
