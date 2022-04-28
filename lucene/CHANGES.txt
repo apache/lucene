@@ -94,7 +94,7 @@ Bug Fixes
   no documents instead of throwing an NPE. (Greg Miller)
 
 * LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
-  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)  
 
 * LUCENE-10518: Relax field consistency check for old indices (Nhat Nguyen)
 
