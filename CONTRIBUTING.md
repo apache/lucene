@@ -66,6 +66,16 @@ In case your contribution fixes a bug, please create a new test case that fails 
 - *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
 - *Netbeans* - Not tested.
 
+## Benchmarking 
+
+Use the tool suite at [luceneutil](https://github.com/mikemccand/luceneutil) to benchmark your code changes
+if you think that your change may have measurably changed the performance of a task.
+
+The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/master/README.md).
+
+The Lucene community is also interested in other implementations of these benchmark tasks.
+Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html).
+
 ## Contributing your work
 
 You have two options to contribute your work: you can either create a patch and attach it to an issue on [Jira](https://issues.apache.org/jira/browse/LUCENE), or open a pull request at https://github.com/apache/lucene - whichever works best for you.
