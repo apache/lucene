@@ -218,8 +218,7 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(
-                new MockTokenizer(MockTokenizer.KEYWORD, false, Short.MAX_VALUE));
+            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.KEYWORD, false));
           }
 
           @Override

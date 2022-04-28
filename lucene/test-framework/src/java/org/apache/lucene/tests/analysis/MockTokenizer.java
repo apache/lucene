@@ -23,6 +23,7 @@ import java.util.Random;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
@@ -66,11 +67,11 @@ public class MockTokenizer extends Tokenizer {
    * Limit the default token length to a size that doesn't cause random analyzer failures on
    * unpredictable data like the enwiki data set.
    *
-   * <p>This value defaults to {@code CharTokenizer.DEFAULT_MAX_WORD_LEN}.
+   * <p>This value defaults to {@link IndexWriter#MAX_TERM_LENGTH}.
    *
    * @see "https://issues.apache.org/jira/browse/LUCENE-10541"
    */
-  public static final int DEFAULT_MAX_TOKEN_LENGTH = 255;
+  public static final int DEFAULT_MAX_TOKEN_LENGTH = IndexWriter.MAX_TERM_LENGTH;
 
   private final CharacterRunAutomaton runAutomaton;
   private final boolean lowerCase;
