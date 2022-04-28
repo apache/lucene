@@ -154,6 +154,9 @@ Bug Fixes
 * LUCENE-10529: Properly handle when TestTaxonomyFacetAssociations test case randomly indexes
   no documents instead of throwing an NPE. (Greg Miller)
 
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)  
+  
 Build
 ---------------------
 
@@ -163,6 +166,8 @@ Other
 ---------------------
 * LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems
   to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
+
+* LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
 
 ======================= Lucene 9.1.0 =======================
 
