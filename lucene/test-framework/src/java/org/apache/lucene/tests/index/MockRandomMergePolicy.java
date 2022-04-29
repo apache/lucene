@@ -88,7 +88,7 @@ public class MockRandomMergePolicy extends MergePolicy {
 
   @Override
   public MergeSpecification findMerges(CodecReader... readers) throws IOException {
-    if (true || random.nextBoolean() == true) {
+    if (random.nextBoolean() == true) {
       return super.findMerges(readers);
     } else {
       // create a oneMerge for each reader to let them get concurrently processed by addIndexes()
