@@ -17,6 +17,8 @@ API Changes
 New Features
 ---------------------
 
+* LUCENE-10539: Return a stream of completions from FSTCompletion. (Dawid Weiss)
+
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
