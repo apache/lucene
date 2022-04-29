@@ -1793,7 +1793,10 @@ public class TestAddIndexes extends LuceneTestCase {
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().numDocs);
     assertEquals(maxDoc, writer.getDocStats().maxDoc);
     writer.commit();
-    int softDeleteCount = writer.cloneSegmentInfos().asList().stream().mapToInt(SegmentCommitInfo::getSoftDelCount).sum();
+    int softDeleteCount =
+        writer.cloneSegmentInfos().asList().stream()
+            .mapToInt(SegmentCommitInfo::getSoftDelCount)
+            .sum();
     assertEquals(maxDoc - wrappedReader.numDocs(), softDeleteCount);
     writer.close();
 
