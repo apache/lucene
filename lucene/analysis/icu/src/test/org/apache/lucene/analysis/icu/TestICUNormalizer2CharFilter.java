@@ -328,7 +328,9 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override
@@ -348,7 +350,9 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override
@@ -368,7 +372,9 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override
@@ -388,7 +394,9 @@ public class TestICUNormalizer2CharFilter extends BaseTokenStreamTestCase {
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
-            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+            return new TokenStreamComponents(
+                new MockTokenizer(
+                    MockTokenizer.WHITESPACE, false, IndexWriter.MAX_TERM_LENGTH / 2));
           }
 
           @Override
