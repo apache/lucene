@@ -1775,7 +1775,9 @@ public class TestAddIndexes extends LuceneTestCase {
     }
     writer.commit();
     writer.close();
+
     DirectoryReader reader = DirectoryReader.open(dir1);
+    // wrappedReader filters out soft deleted docs
     DirectoryReader wrappedReader = new SoftDeletesDirectoryReaderWrapper(reader, "soft_delete");
     Directory dir2 = newDirectory();
     int numDocs = reader.numDocs();
@@ -1791,9 +1793,10 @@ public class TestAddIndexes extends LuceneTestCase {
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().numDocs);
     assertEquals(maxDoc, writer.getDocStats().maxDoc);
     writer.commit();
-    SegmentCommitInfo commitInfo = writer.cloneSegmentInfos().info(0);
-    assertEquals(maxDoc - wrappedReader.numDocs(), commitInfo.getSoftDelCount());
+    int softDeleteCount = writer.cloneSegmentInfos().asList().stream().mapToInt(SegmentCommitInfo::getSoftDelCount).sum();
+    assertEquals(maxDoc - wrappedReader.numDocs(), softDeleteCount);
     writer.close();
+
     Directory dir3 = newDirectory();
     iwc1 = newIndexWriterConfig(new MockAnalyzer(random())).setSoftDeletesField("soft_delete");
     writer = new IndexWriter(dir3, iwc1);
@@ -1804,6 +1807,7 @@ public class TestAddIndexes extends LuceneTestCase {
     }
     writer.addIndexes(readers);
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().numDocs);
+    // soft deletes got filtered out when wrappedReader(s) were added.
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().maxDoc);
     IOUtils.close(reader, writer, dir3, dir2, dir1);
   }
