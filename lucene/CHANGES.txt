@@ -116,6 +116,8 @@ Optimizations
 
 * LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
+* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader. (Zach Chen, Adrien Grand)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
