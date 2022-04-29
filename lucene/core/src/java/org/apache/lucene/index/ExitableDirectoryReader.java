@@ -340,10 +340,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
 
-      if (acceptDocs == null) {
-        checkAndThrowForSearchVectors();
-        return in.searchNearestVectors(field, target, k, null, visitedLimit);
-      }
+      // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
+      // match all docs to allow timeout checking.
+      final Bits updatedAcceptDocs =
+          acceptDocs == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs;
 
       Bits timeoutCheckingAcceptDocs =
           new Bits() {
@@ -356,12 +356,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
                 checkAndThrowForSearchVectors();
               }
 
-              return acceptDocs.get(index);
+              return updatedAcceptDocs.get(index);
             }
 
             @Override
             public int length() {
-              return acceptDocs.length();
+              return updatedAcceptDocs.length();
             }
           };
 
