@@ -83,7 +83,6 @@ public class KnnGraphTester {
   private int numDocs;
   private int dim;
   private int topK;
-  private int warmCount;
   private int numIters;
   private int fanout;
   private Path indexPath;
@@ -102,7 +101,6 @@ public class KnnGraphTester {
     numIters = 1000;
     dim = 256;
     topK = 100;
-    warmCount = 1000;
     fanout = topK;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
   }
@@ -181,9 +179,6 @@ public class KnnGraphTester {
           break;
         case "-out":
           outputPath = Paths.get(args[++iarg]);
-          break;
-        case "-warm":
-          warmCount = Integer.parseInt(args[++iarg]);
           break;
         case "-docs":
           docVectorsPath = Paths.get(args[++iarg]);
@@ -353,7 +348,7 @@ public class KnnGraphTester {
     TopDocs[] results = new TopDocs[numIters];
     long elapsed, totalCpuTime, totalVisited = 0;
     try (FileChannel q = FileChannel.open(queryPath)) {
-      int bufferSize = Math.max(numIters, warmCount) * dim * Float.BYTES;
+      int bufferSize = numIters * dim * Float.BYTES;
       FloatBuffer targets =
           q.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize)
               .order(ByteOrder.LITTLE_ENDIAN)
@@ -369,7 +364,7 @@ public class KnnGraphTester {
           DirectoryReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         numDocs = reader.maxDoc();
-        for (int i = 0; i < warmCount; i++) {
+        for (int i = 0; i < numIters; i++) {
           // warm up
           targets.get(target);
           doKnnSearch(reader, KNN_FIELD, target, topK, fanout);
