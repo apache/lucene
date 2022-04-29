@@ -99,6 +99,8 @@ Bug Fixes
 * LUCENE-10530: Avoid floating point precision test case bug in TestTaxonomyFacetAssociations.
   (Greg Miller)
 
+* LUCENE-10518: Relax field consistency check for old indices (Nhat Nguyen)
+
 Build
 ---------------------
 
@@ -110,6 +112,9 @@ Other
   to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
 
 * LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
+
+* LUCENE-10541: Test-framework: limit the default length of MockTokenizer tokens to 255.
+  (Robert Muir, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
 
 ======================= Lucene 9.1.0 =======================
 

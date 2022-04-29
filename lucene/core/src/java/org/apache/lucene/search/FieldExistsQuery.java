@@ -103,6 +103,10 @@ public class FieldExistsQuery extends Query {
         // rewritten to MatchAllDocsQuery for doc values field, when that same field also indexes
         // terms or point values which do have index statistics, and those statistics confirm that
         // all documents in this segment have values terms or point values.
+        if (hasStrictlyConsistentFieldInfos(context) == false) {
+          allReadersRewritable = false;
+          break;
+        }
 
         Terms terms = leaf.terms(field);
         PointValues pointValues = leaf.getPointValues(field);
@@ -112,7 +116,7 @@ public class FieldExistsQuery extends Query {
           allReadersRewritable = false;
           break;
         }
-      } else {
+      } else if (hasStrictlyConsistentFieldInfos(context)) {
         throw new IllegalStateException(buildErrorMsg(fieldInfo));
       }
     }
@@ -161,7 +165,7 @@ public class FieldExistsQuery extends Query {
             default:
               throw new AssertionError();
           }
-        } else {
+        } else if (hasStrictlyConsistentFieldInfos(context)) {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
 
@@ -201,8 +205,11 @@ public class FieldExistsQuery extends Query {
           }
 
           return super.count(context);
-        } else {
+        }
+        if (hasStrictlyConsistentFieldInfos(context)) {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
+        } else {
+          return super.count(context);
         }
       }
 
@@ -218,6 +225,11 @@ public class FieldExistsQuery extends Query {
         return true;
       }
     };
+  }
+
+  private boolean hasStrictlyConsistentFieldInfos(LeafReaderContext context) {
+    return context.reader().getMetaData() != null
+        && context.reader().getMetaData().getCreatedVersionMajor() >= 9;
   }
 
   private String buildErrorMsg(FieldInfo fieldInfo) {

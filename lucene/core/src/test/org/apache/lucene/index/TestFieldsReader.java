@@ -33,6 +33,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.DocHelper;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -45,7 +46,9 @@ public class TestFieldsReader extends LuceneTestCase {
   public static void beforeClass() throws Exception {
     testDoc = new Document();
     final String softDeletesFieldName = null;
-    fieldInfos = new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+    fieldInfos =
+        new FieldInfos.Builder(
+            new FieldInfos.FieldNumbers(softDeletesFieldName, Version.LATEST.major));
     DocHelper.setupDoc(testDoc);
     for (IndexableField field : testDoc.getFields()) {
       IndexableFieldType ift = field.fieldType();
