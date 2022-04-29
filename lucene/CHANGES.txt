@@ -9,6 +9,9 @@ Bug Fixes
 ---------------------
 * LUCENE-10518: Relax field consistency check for old indices (Nhat Nguyen)
 
+* LUCENE-10541: Test-framework: limit the default length of MockTokenizer tokens to 255.
+  (Robert Muir, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
+
 ======================= Lucene 9.1.0 =======================
 
 API Changes

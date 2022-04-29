@@ -54,10 +54,19 @@ public class MockTokenizer extends Tokenizer {
   public static final CharacterRunAutomaton SIMPLE =
       new CharacterRunAutomaton(new RegExp("[A-Za-zªµºÀ-ÖØ-öø-ˁ一-鿌]+").toAutomaton());
 
+  /**
+   * Limit the default token length to a size that doesn't cause random analyzer failures on
+   * unpredictable data like the enwiki data set.
+   *
+   * <p>This value defaults to {@code CharTokenizer.DEFAULT_MAX_WORD_LEN} (255).
+   *
+   * @see "https://issues.apache.org/jira/browse/LUCENE-10541"
+   */
+  public static final int DEFAULT_MAX_TOKEN_LENGTH = 255;
+
   private final CharacterRunAutomaton runAutomaton;
   private final boolean lowerCase;
   private final int maxTokenLength;
-  public static final int DEFAULT_MAX_TOKEN_LENGTH = Integer.MAX_VALUE;
   private int state;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
