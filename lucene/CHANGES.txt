@@ -53,7 +53,7 @@ Other
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
-* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+* GITHUB-740: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
   (Tomoko Uchida, Robert Muir)
 
 * LUCENE-10475: Merge dictionary builders in `util` package into `dict` package in Kuromoji and Nori.
