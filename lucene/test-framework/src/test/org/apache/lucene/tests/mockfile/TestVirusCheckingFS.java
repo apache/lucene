@@ -19,9 +19,7 @@ package org.apache.lucene.tests.mockfile;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.file.AccessDeniedException;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -30,10 +28,8 @@ public class TestVirusCheckingFS extends MockFileSystemTestCase {
 
   @Override
   protected Path wrap(Path path) {
-    FileSystem fs =
-        new VirusCheckingFS(path.getFileSystem(), random().nextLong())
-            .getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    VirusCheckingFS provider = new VirusCheckingFS(path.getFileSystem(), random().nextLong());
+    return provider.wrapPath(path);
   }
 
   /** Test Files.delete fails if a file has an open inputstream against it */

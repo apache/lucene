@@ -60,6 +60,8 @@ Other
   All classes in `org.apache.lucene.analysis.[ja|ko].util` was moved to `org.apache.lucene.analysis.[ja|ko].dict`.
   (Tomoko Uchida)
 
+* LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
+
 ======================= Lucene 9.2.0 =======================
 
 API Changes
@@ -116,6 +118,14 @@ Optimizations
 
 * LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
+* LUCENE-10503: Potential speedup for pure disjunctions whose clauses produce
+  scores that are very close to each other. (Adrien Grand)
+
+* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
+* LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
+  and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
+
 * LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader. (Zach Chen, Adrien Grand)
 
 Bug Fixes
@@ -136,6 +146,16 @@ Bug Fixes
 * LUCENE-10508: Fixes some edge cases where GeoArea were built in a way that vertical planes
   could not evaluate their sign, either because the planes where the same or the center between those
   planes was lying in one of the planes. (Ignacio Vera)
+
+* LUCENE-10495: Fix return statement of siblingsLoaded() in TaxonomyFacets. (Yuting Gan)
+
+* LUCENE-10533: SpellChecker.formGrams is missing bounds check (Kevin Risden)
+
+* LUCENE-10529: Properly handle when TestTaxonomyFacetAssociations test case randomly indexes
+  no documents instead of throwing an NPE. (Greg Miller)
+
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)  
   
 Build
 ---------------------
@@ -144,7 +164,10 @@ Build
 
 Other
 ---------------------
-(No changes)
+* LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems
+  to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
+
+* LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
 
 ======================= Lucene 9.1.0 =======================
 

@@ -187,7 +187,9 @@ public class TestLuceneDictionary extends LuceneTestCase {
     indexReader = DirectoryReader.open(store);
     sc.indexDictionary(
         new LuceneDictionary(indexReader, "contents"), newIndexWriterConfig(null), false);
-    String[] suggestions = sc.suggestSimilar("Tam", 1);
+    String[] suggestions = sc.suggestSimilar("", 1);
+    assertEquals(0, suggestions.length);
+    suggestions = sc.suggestSimilar("Tam", 1);
     assertEquals(1, suggestions.length);
     assertEquals("Tom", suggestions[0]);
     suggestions = sc.suggestSimilar("Jarry", 1);
