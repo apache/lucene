@@ -53,7 +53,7 @@ Other
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
 
-* GITHUB-740: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
   (Tomoko Uchida, Robert Muir)
 
 * LUCENE-10475: Merge dictionary builders in `util` package into `dict` package in Kuromoji and Nori.
@@ -166,6 +166,8 @@ Other
   to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
 
 * LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
+
+* GITHUB#854: Allow to link to GitHub pull request from CHANGES (Tomoko Uchida)
 
 ======================= Lucene 9.1.0 =======================
 

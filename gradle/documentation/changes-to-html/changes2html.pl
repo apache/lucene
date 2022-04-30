@@ -572,7 +572,7 @@ for my $rel (@releases) {
       $item =~ s{((LUCENE|SOLR|INFRA)\s+(\d{3,}))}
                 {<a href="${jira_url_prefix}\U$2\E-$3">$1</a>}gi;
       # Link "[ github | gh ] pull request [ # ] X+" to Github pull request
-      $item =~ s{((?:(?:(?:github|gh)\s+)?pull\s+request\s*(?:\#?\s*)?|gh-|github-)(\d+))}
+      $item =~ s{((?:(?:(?:github|gh)\s+)?pull\s+request\s*(?:\#?\s*)?|gh-|github#)(\d+))}
                 {<a href="${github_pull_request_prefix}$2">$1</a>}gi;
       # Link "LUCENE_CHANGES.txt" to Lucene's same-release Changes.html
       if ($product eq 'SOLR') {
