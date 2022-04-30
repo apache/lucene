@@ -76,11 +76,13 @@ API Changes
 New Features
 ---------------------
 
+* LUCENE-10539: Return a stream of completions from FSTCompletion. (Dawid Weiss)
+
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
 * LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
-  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to
   have readonly `Monitor` instances. (Niko Usai)
 
 * LUCENE-10456: Implement rewrite and Weight#count for MultiRangeQuery
@@ -153,8 +155,11 @@ Bug Fixes
   no documents instead of throwing an NPE. (Greg Miller)
 
 * LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
-  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)  
-  
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+
+* LUCENE-10530: Avoid floating point precision test case bug in TestTaxonomyFacetAssociations.
+  (Greg Miller)
+
 Build
 ---------------------
 
@@ -166,6 +171,9 @@ Other
   to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
 
 * LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
+
+* LUCENE-10541: Test-framework: limit the default length of MockTokenizer tokens to 255.
+  (Robert Muir, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
 
 * GITHUB#854: Allow to link to GitHub pull request from CHANGES (Tomoko Uchida)
 
