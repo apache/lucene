@@ -252,7 +252,6 @@ public final class JapaneseTokenizer extends Tokenizer {
             userFSTReader,
             userDictionary,
             connectionCosts,
-            ViterbiNBest.PositionNBest.class,
             unkDictionary,
             characterDefinition,
             discardPunctuation,
@@ -354,10 +353,9 @@ public final class JapaneseTokenizer extends Tokenizer {
       setNBestCost(1);
       int prevRootBase = -1;
       while (incrementToken()) {
-        if (viterbi.lattice.rootBase != prevRootBase) {
-          prevRootBase = viterbi.lattice.rootBase;
-          delta =
-              Math.min(delta, viterbi.lattice.probeDelta(start, start + requiredToken.length()));
+        if (viterbi.getLatticeRootBase() != prevRootBase) {
+          prevRootBase = viterbi.getLatticeRootBase();
+          delta = Math.min(delta, viterbi.probeDelta(start, start + requiredToken.length()));
         }
       }
     } finally {

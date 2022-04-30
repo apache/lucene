@@ -76,11 +76,13 @@ API Changes
 New Features
 ---------------------
 
+* LUCENE-10539: Return a stream of completions from FSTCompletion. (Dawid Weiss)
+
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
 * LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
-  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to 
+  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to
   have readonly `Monitor` instances. (Niko Usai)
 
 * LUCENE-10456: Implement rewrite and Weight#count for MultiRangeQuery
@@ -128,6 +130,8 @@ Optimizations
 * LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
   and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
 
+* LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
@@ -151,6 +155,15 @@ Bug Fixes
 
 * LUCENE-10533: SpellChecker.formGrams is missing bounds check (Kevin Risden)
 
+* LUCENE-10529: Properly handle when TestTaxonomyFacetAssociations test case randomly indexes
+  no documents instead of throwing an NPE. (Greg Miller)
+
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+
+* LUCENE-10530: Avoid floating point precision test case bug in TestTaxonomyFacetAssociations.
+  (Greg Miller)
+
 Build
 ---------------------
 
@@ -160,6 +173,11 @@ Other
 ---------------------
 * LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems
   to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
+
+* LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
+
+* LUCENE-10541: Test-framework: limit the default length of MockTokenizer tokens to 255.
+  (Robert Muir, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
 
 ======================= Lucene 9.1.0 =======================
 
