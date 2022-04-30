@@ -128,6 +128,8 @@ Optimizations
 * LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
   and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
 
+* LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
