@@ -105,8 +105,6 @@ Improvements
 * LUCENE-10467: Throws IllegalArgumentException for Facets#getAllDims and Facets#getTopChildren
   if topN <= 0. (Yuting Gan)
 
-* LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
-
 Optimizations
 ---------------------
 
@@ -131,6 +129,8 @@ Optimizations
   and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
 
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
+
+* LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
 
 Bug Fixes
 ---------------------
