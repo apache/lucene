@@ -136,7 +136,8 @@ public class TestLowercaseAsciiCompression extends LuceneTestCase {
   }
 
   public void testAsciiCompressionRandom2() throws IOException {
-    for (int iter = 0; iter < 1000000; ++iter) {
+    int iters = atLeast(1000);
+    for (int iter = 0; iter < iters; ++iter) {
       doTestCompress(
           TestUtil.randomSubString(random(), atLeast(400), random().nextBoolean())
               .getBytes(StandardCharsets.UTF_8));
