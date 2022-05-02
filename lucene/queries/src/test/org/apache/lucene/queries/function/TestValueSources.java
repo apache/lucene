@@ -112,50 +112,6 @@ public class TestValueSources extends LuceneTestCase {
   static final ValueSource BOGUS_DOUBLE_VS = new DoubleFieldSource("bogus_field");
   static final ValueSource BOGUS_INT_VS = new IntFieldSource("bogus_field");
   static final ValueSource BOGUS_LONG_VS = new LongFieldSource("bogus_field");
-  static final ValueSource DOESNT_EXIST_CONSTANT_VS = new ConstValueSource(2.0f) {
-    @Override
-    public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext) {
-      return new FloatDocValues(this) {
-        public boolean exists(int doc) {
-          return false;
-        }
-        @Override
-        public float floatVal(int doc) {
-          return getFloat();
-        }
-
-        @Override
-        public int intVal(int doc) {
-          return getInt();
-        }
-
-        @Override
-        public long longVal(int doc) {
-          return getLong();
-        }
-
-        @Override
-        public double doubleVal(int doc) {
-          return getDouble();
-        }
-
-        @Override
-        public String toString(int doc) {
-          return description();
-        }
-
-        @Override
-        public Object objectVal(int doc) {
-          return getFloat();
-        }
-
-        @Override
-        public boolean boolVal(int doc) {
-          return getFloat() != 0.0f;
-        }
-      };
-    }
-  };
 
   static final List<String[]> documents =
       Arrays.asList(
@@ -424,7 +380,6 @@ public class TestValueSources extends LuceneTestCase {
     ValueSource vs =
         new MaxFloatFunction(
             new ValueSource[] {new ConstValueSource(1f), new ConstValueSource(2f)});
-
     assertAllExist(vs);
     assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
 
@@ -432,6 +387,7 @@ public class TestValueSources extends LuceneTestCase {
     vs = new MaxFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f)});
     assertAllExist(vs);
     assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
+
     vs =
         new MaxFloatFunction(
             new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f), BOGUS_DOUBLE_VS});
@@ -443,9 +399,12 @@ public class TestValueSources extends LuceneTestCase {
     assertNoneExist(vs);
     assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
 
-    // if no values exist should return 0f even if value
-    // returned is non zero
-    vs = new MaxFloatFunction(new ValueSource[] {DOESNT_EXIST_CONSTANT_VS, DOESNT_EXIST_CONSTANT_VS});
+    // if no values exist should return 0f even if value returned is non zero
+    vs =
+        new MaxFloatFunction(
+            new ValueSource[] {
+              new SumFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(42)})
+            });
     assertNoneExist(vs);
     assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
   }
@@ -454,7 +413,6 @@ public class TestValueSources extends LuceneTestCase {
     ValueSource vs =
         new MinFloatFunction(
             new ValueSource[] {new ConstValueSource(1f), new ConstValueSource(2f)});
-
     assertAllExist(vs);
     assertHits(new FunctionQuery(vs), new float[] {1f, 1f});
 
@@ -462,6 +420,7 @@ public class TestValueSources extends LuceneTestCase {
     vs = new MinFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f)});
     assertAllExist(vs);
     assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
+
     vs =
         new MinFloatFunction(
             new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f), BOGUS_DOUBLE_VS});
@@ -473,9 +432,12 @@ public class TestValueSources extends LuceneTestCase {
     assertNoneExist(vs);
     assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
 
-    // if no values exist should return 0f even if value
-    // returned is non zero
-    vs = new MinFloatFunction(new ValueSource[] {DOESNT_EXIST_CONSTANT_VS, DOESNT_EXIST_CONSTANT_VS});
+    // if no values exist should return 0f even if value returned is non zero
+    vs =
+        new MinFloatFunction(
+            new ValueSource[] {
+              new SumFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(42)})
+            });
     assertNoneExist(vs);
     assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
   }
