@@ -179,6 +179,8 @@ Other
 * LUCENE-10541: Test-framework: limit the default length of MockTokenizer tokens to 255.
   (Robert Muir, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
 
+* GITHUB#854: Allow to link to GitHub pull request from CHANGES. (Tomoko Uchida, Jan Høydahl)
+
 ======================= Lucene 9.1.0 =======================
 
 API Changes

@@ -1065,6 +1065,11 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public long docValueCount() {
+      return in.docValueCount();
+    }
+
+    @Override
     public BytesRef lookupOrd(long ord) throws IOException {
       assertThread("Sorted set doc values", creationThread);
       assert ord >= 0 && ord < valueCount;

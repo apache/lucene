@@ -948,6 +948,11 @@ public abstract class DocValuesConsumer implements Closeable {
               }
 
               @Override
+              public long docValueCount() {
+                return currentSub.values.docValueCount();
+              }
+
+              @Override
               public long cost() {
                 return finalCost;
               }

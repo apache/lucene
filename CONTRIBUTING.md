@@ -72,13 +72,11 @@ You have two options to contribute your work: you can either create a patch and 
 
 Please be patient. Committers are busy people too. If no one responds to your patch after a few days, please make friendly reminders. Please incorporate others' suggestions into into your patch if you think they're reasonable. Finally, remember that even a patch that is not committed is useful to the community.
 
-### Opening a Jira issue
-
-You may want to open a Jira issue before opening a pull request or creating a patch. This is especially required when adding a [CHANGES](./lucene/CHANGES.txt) entry. If your contribution is a small one (such as fixing typo in documentation) this can be optional.
-
 ### Opening a pull request
 
-Please refer to [GitHub's documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests) for an explanation of how to create a pull request. The pull request title should start with the Jira issue number that your work is related to, this way your pull request will get automatically linked from the Jira issue.
+Please refer to [GitHub's documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests) for an explanation of how to create a pull request.
+
+You can open a pull request with or without Jira issue. If there is an associated Jira issue, the pull request title should start with the Jira issue number that your work is related to, this way your pull request will get automatically linked from the Jira issue.
 
 ### Creating a patch
 
@@ -99,6 +97,10 @@ If some of your changes are committed to the current (feature) branch but you ha
 Patches should be attached to an issue in Jira.
 
 To enable automatic validation of Jira patches, switch the issue's status to "Patch Available" by clicking on the "Enable Patch Review" button near the top of the page. This will enqueue an ASF Jenkins job PreCommit-LUCENE-Build to run various quality checks on the patch and post a validation report as a comment (by "Lucene/Solr QA") on the issue. Expect a delay of 12 hours or so before the patch validation job actually runs. Note that in order for a patch file to trigger validation, its name must conform to the naming rules outlined here: https://yetus.apache.org/documentation/in-progress/precommit-patchnames/
+
+### Add a CHANGES entry
+
+You may want to add a CHANGES entry to [CHANGES.txt](./lucene/CHANGES.txt). A CHANGES entry should start with the Jira issue key `LUCENE-XXXXX` or pull request number `GITHUB#XXX` that is followed by the description of the change and contributors' name. Please see the existing entries for reference.
 
 ## Stay involved
 
