@@ -112,12 +112,13 @@ public final class LowercaseAsciiCompression {
         }
       }
 
-      // TODO: shouldn't this really be an assert instead?  but then this real "if" triggered
-      // LUCENE-10551 so maybe it should remain a real "if":
-
       if (numExceptions != numExceptions2) {
-        throw new IllegalStateException(
-            "" + numExceptions + " <> " + numExceptions2 + " " + new BytesRef(in, 0, len));
+        // This is a PUAFIF (paranoid upgraded assert flavored if): it means there is a bug
+        // somewhere (our code here, the JVM, etc.).  This
+        // could in theory be an assert instead, but because of high risk of possible bugs, we
+        // upgrae to PUAFIF:
+        throw new AssertionError(
+            numExceptions + " <> " + numExceptions2 + " " + new BytesRef(in, 0, len));
       }
     }
 
