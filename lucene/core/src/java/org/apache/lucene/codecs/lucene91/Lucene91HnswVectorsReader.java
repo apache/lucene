@@ -330,10 +330,10 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final long docsWithFieldLength;
     final short jumpTableEntryCount;
     final byte denseRankPower;
-    long addressesOffset;
-    int blockShift;
-    DirectMonotonicReader.Meta meta;
-    long addressesLength;
+    final long addressesOffset;
+    final int blockShift;
+    final DirectMonotonicReader.Meta meta;
+    final long addressesLength;
 
     FieldEntry(IndexInput input, VectorSimilarityFunction similarityFunction) throws IOException {
       this.similarityFunction = similarityFunction;
@@ -355,6 +355,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         blockShift = input.readVInt();
         meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
         addressesLength = input.readLong();
+      } else {
+        addressesOffset = 0;
+        blockShift = 0;
+        meta = null;
+        addressesLength = 0;
       }
 
       // read nodes by level
@@ -432,6 +437,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       if (fieldEntry == null || fieldEntry.docsWithFieldOffset == -1) {
         ordToDoc = null;
       } else {
+        assert fieldEntry.meta != null;
         final RandomAccessInput addressesData =
             dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
         ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
