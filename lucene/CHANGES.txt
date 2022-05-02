@@ -130,6 +130,8 @@ Optimizations
 
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
 
+* LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
