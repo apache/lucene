@@ -292,11 +292,9 @@ public class KnnVectorQuery extends Query {
       return false;
     }
     return ((KnnVectorQuery) obj).k == k
-            && ((KnnVectorQuery) obj).field.equals(field)
-            && Arrays.equals(((KnnVectorQuery) obj).target, target)
-            && ((KnnVectorQuery) obj).filter == null
-        ? filter == null
-        : filter != null && ((KnnVectorQuery) obj).filter.equals(filter);
+        && ((KnnVectorQuery) obj).field.equals(field)
+        && Arrays.equals(((KnnVectorQuery) obj).target, target)
+        && Objects.equals(filter, ((KnnVectorQuery) obj).filter);
   }
 
   @Override
