@@ -69,12 +69,14 @@ In case your contribution fixes a bug, please create a new test case that fails 
 ## Benchmarking 
 
 Use the tool suite at [luceneutil](https://github.com/mikemccand/luceneutil) to benchmark your code changes
-if you think that your change may have measurably changed the performance of a task.
+if you think that your change may have measurably changed the performance of a task. Apache Lucene also contains an off the shelf benchmark [module](https://github.com/apache/lucene/tree/main/lucene/benchmark).
+
+This is the same suite that is run in the [nightly benchmarks](https://home.apache.org/~mikemccand/lucenebench/).
 
 The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/master/README.md).
 
 The Lucene community is also interested in other implementations of these benchmark tasks.
-Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html).
+Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html) or open [PRs](https://github.com/mikemccand/luceneutil/pulls), [issues](https://github.com/mikemccand/luceneutil/issues) on the luceneutil project directly.
 
 ## Contributing your work
 
