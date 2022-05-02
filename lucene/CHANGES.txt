@@ -164,6 +164,8 @@ Bug Fixes
 * LUCENE-10530: Avoid floating point precision test case bug in TestTaxonomyFacetAssociations.
   (Greg Miller)
 
+* LUCENE-10552: KnnVectorQuery has incorrect equals/ hashCode. (Lu Xugang)
+
 Build
 ---------------------
 
