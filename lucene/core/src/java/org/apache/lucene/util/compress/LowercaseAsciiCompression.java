@@ -116,7 +116,7 @@ public final class LowercaseAsciiCompression {
         // This is a PUAFIF (paranoid upgraded assert flavored if): it means there is a bug
         // somewhere (our code here, the JVM, etc.).  This
         // could in theory be an assert instead, but because of high risk of possible bugs, we
-        // upgrae to PUAFIF:
+        // upgrade to PUAFIF:
         throw new AssertionError(
             numExceptions + " <> " + numExceptions2 + " " + new BytesRef(in, 0, len));
       }
