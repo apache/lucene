@@ -94,6 +94,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private long iteratorCost;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
+    private boolean hasSetScorer = false;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);
@@ -165,10 +166,11 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      if (scorer instanceof Scorer) {
+      if (hasSetScorer == false && scorer instanceof Scorer) {
         iteratorCost =
             ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
         updateCompetitiveIterator(); // update an iterator when we have a new segment
+        hasSetScorer = true;
       }
     }
 
