@@ -1674,6 +1674,7 @@ public class TestBKD extends LuceneTestCase {
     final int numValues = 10;
     final int numBytesPerDim = TestUtil.nextInt(random(), 1, 4);
     final byte[][] pointValue = new byte[11][numBytesPerDim];
+    final int[] docId = new int[11];
     BKDWriter w =
         new BKDWriter(
             numValues + 1,
@@ -1684,6 +1685,7 @@ public class TestBKD extends LuceneTestCase {
             numValues);
     for (int i = 0; i < numValues + 1; i++) {
       random().nextBytes(pointValue[i]);
+      docId[i] = i;
     }
     MutablePointTree val =
         new MutablePointTree() {
@@ -1701,7 +1703,7 @@ public class TestBKD extends LuceneTestCase {
 
           @Override
           public int getDocID(int i) {
-            return i;
+            return docId[i];
           }
 
           @Override
@@ -1709,6 +1711,9 @@ public class TestBKD extends LuceneTestCase {
             byte[] temp = pointValue[i];
             pointValue[i] = pointValue[j];
             pointValue[j] = temp;
+            int tempDocId = docId[i];
+            docId[i] = docId[j];
+            docId[j] = tempDocId;
           }
 
           @Override
@@ -1729,7 +1734,7 @@ public class TestBKD extends LuceneTestCase {
           @Override
           public void visitDocValues(IntersectVisitor visitor) throws IOException {
             for (int i = 0; i < size(); i++) {
-              visitor.visit(i, pointValue[i]);
+              visitor.visit(docId[i], pointValue[i]);
             }
           }
         };
