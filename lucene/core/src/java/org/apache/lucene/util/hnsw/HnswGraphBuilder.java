@@ -194,7 +194,7 @@ public final class HnswGraphBuilder {
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node[i];
       NeighborArray nbrNbr = hnsw.getNeighbors(level, nbr);
-      nbrNbr.addAndSort(node, neighbors.score[i]);
+      nbrNbr.insertSorted(node, neighbors.score[i]);
       if (nbrNbr.size() > maxConn) {
         int indexToRemove = findWorstNonDiverse(nbrNbr);
         nbrNbr.removeIndex(indexToRemove);

@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util.hnsw;
 
+import java.util.Arrays;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -61,7 +62,7 @@ public class NeighborArray {
   }
 
   /** Add a new node to the NeighborArray into a correct sort position according to its score. */
-  public void addAndSort(int newNode, float newScore) {
+  public void insertSorted(int newNode, float newScore) {
     if (size == node.length - 1) {
       node = ArrayUtil.grow(node, (size + 1) * 3 / 2);
       score = ArrayUtil.growExact(score, node.length);
@@ -70,10 +71,8 @@ public class NeighborArray {
         scoresDescOrder
             ? descSortFindRightMostInsertionPoint(newScore)
             : ascSortFindRightMostInsertionPoint(newScore);
-    for (int i = size; i > insertionPoint; i--) {
-      node[i] = node[i - 1];
-      score[i] = score[i - 1];
-    }
+    System.arraycopy(node, insertionPoint, node, insertionPoint + 1, size - insertionPoint);
+    System.arraycopy(score, insertionPoint, score, insertionPoint + 1, size - insertionPoint);
     node[insertionPoint] = newNode;
     score[insertionPoint] = newScore;
     ++size;
@@ -105,10 +104,8 @@ public class NeighborArray {
   }
 
   public void removeIndex(int idx) {
-    for (int i = idx; i < (size - 1); i++) {
-      node[i] = node[i + 1];
-      score[i] = score[i + 1];
-    }
+    System.arraycopy(node, idx + 1, node, idx, size - idx);
+    System.arraycopy(score, idx + 1, score, idx, size - idx);
     size--;
   }
 
@@ -118,14 +115,17 @@ public class NeighborArray {
   }
 
   private int ascSortFindRightMostInsertionPoint(float newScore) {
-    int start = 0;
-    int end = size - 1;
-    while (start <= end) {
-      int mid = (start + end) / 2;
-      if (score[mid] > newScore) end = mid - 1;
-      else start = mid + 1;
+    int insertionPoint = Arrays.binarySearch(score, 0, size, newScore);
+    if (insertionPoint >= 0) {
+      // find the right most position with the same score
+      while ((insertionPoint < size - 1) && (score[insertionPoint + 1] == score[insertionPoint])) {
+        insertionPoint++;
+      }
+      insertionPoint++;
+    } else {
+      insertionPoint = -insertionPoint - 1;
     }
-    return start;
+    return insertionPoint;
   }
 
   private int descSortFindRightMostInsertionPoint(float newScore) {
