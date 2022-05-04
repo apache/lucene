@@ -349,17 +349,18 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       jumpTableEntryCount = input.readShort();
       denseRankPower = input.readByte();
 
-      // sparse
-      if (docsWithFieldOffset != -1 && docsWithFieldOffset != -2) {
-        addressesOffset = input.readLong();
-        blockShift = input.readVInt();
-        meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
-        addressesLength = input.readLong();
-      } else {
+      // dense or empty
+      if (docsWithFieldOffset == -1 || docsWithFieldOffset == -2) {
         addressesOffset = 0;
         blockShift = 0;
         meta = null;
         addressesLength = 0;
+      } else {
+        // sparse
+        addressesOffset = input.readLong();
+        blockShift = input.readVInt();
+        meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
+        addressesLength = input.readLong();
       }
 
       // read nodes by level
