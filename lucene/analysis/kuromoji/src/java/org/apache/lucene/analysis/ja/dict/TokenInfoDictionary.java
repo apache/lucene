@@ -66,7 +66,16 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
         () -> getClassResource(FST_FILENAME_SUFFIX));
   }
 
-  private TokenInfoDictionary(
+  /**
+   * Create a {@link ConnectionCosts} from an input stream supplier.
+   *
+   * @param targetMapResource supplies a stream where the target map can be read
+   * @param posResource supplies a stream where the pos resource can be read
+   * @param dictResource supplies a stream where the dictionary can be read
+   * @param fstResource supplies a stream where the FST can be read
+   * @throws IOException if the supplied stream could not be read
+   */
+  public TokenInfoDictionary(
       IOSupplier<InputStream> targetMapResource,
       IOSupplier<InputStream> posResource,
       IOSupplier<InputStream> dictResource,

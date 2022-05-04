@@ -40,7 +40,13 @@ public final class ConnectionCosts extends org.apache.lucene.analysis.morph.Conn
     this(ConnectionCosts::getClassResource);
   }
 
-  private ConnectionCosts(IOSupplier<InputStream> connectionCostResource) throws IOException {
+  /**
+   * Create a {@link ConnectionCosts} from an input stream supplier.
+   *
+   * @param connectionCostResource supplies a stream where connection costs resource can be read
+   * @throws IOException if the supplied stream could not be read
+   */
+  public ConnectionCosts(IOSupplier<InputStream> connectionCostResource) throws IOException {
     super(
         connectionCostResource, DictionaryConstants.CONN_COSTS_HEADER, DictionaryConstants.VERSION);
   }

@@ -52,18 +52,26 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> 
         () -> getClassResource(DICT_FILENAME_SUFFIX));
   }
 
-  private UnknownDictionary(
-      IOSupplier<InputStream> targetMapResource,
-      IOSupplier<InputStream> posResource,
-      IOSupplier<InputStream> dictResource)
+  /**
+   * Create a {@link UnknownDictionary} from an external resource path.
+   *
+   * @param targetMap supplier for stream containing target map
+   * @param posDict supplier for stream containing POS dictionary
+   * @param dict supplier for stream containing dictionary entries
+   * @throws IOException if a stream could not be read
+   */
+  public UnknownDictionary(
+      IOSupplier<InputStream> targetMap,
+      IOSupplier<InputStream> posDict,
+      IOSupplier<InputStream> dict)
       throws IOException {
     super(
-        targetMapResource,
-        dictResource,
+        targetMap,
+        dict,
         DictionaryConstants.TARGETMAP_HEADER,
         DictionaryConstants.DICT_HEADER,
         DictionaryConstants.VERSION);
-    this.morphAtts = new UnknownMorphData(buffer, posResource);
+    this.morphAtts = new UnknownMorphData(buffer, posDict);
   }
 
   private static InputStream getClassResource(String suffix) throws IOException {
