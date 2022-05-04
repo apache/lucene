@@ -86,6 +86,8 @@ Note that you do not need to create a patch if you already opened a pull request
 
 Patches should be attached to an issue in [Apache Jira](https://issues.apache.org/jira/projects/LUCENE/issues/), so first you'll need to create an account for it (if you don't have one).
 
+Please refer to [git diff documentation](https://git-scm.com/docs/git-diff) for information of how to create a patch.
+
 Before creating your patch, you may want to get 'main' up to date with the latest from upstream. This will help avoid the possibility of others finding merge conflicts when applying your patch. This can be done with git pull if main is the current branch.
 
 ### Add a CHANGES entry
