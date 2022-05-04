@@ -143,11 +143,12 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
-      // we pass null for ordToDoc mapping, for the graph construction doesn't need to know docIds
+      // we use Lucene91HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
+      // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
       Lucene91HnswVectorsReader.OffHeapVectorValues offHeapVectors =
-          new Lucene91HnswVectorsReader.OffHeapVectorValues(
-              vectors.dimension(), docsWithField.cardinality(), null, null, vectorDataInput);
+          new Lucene91HnswVectorsReader.DenseOffHeapVectorValues(
+              vectors.dimension(), docsWithField.cardinality(), vectorDataInput);
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
