@@ -728,6 +728,11 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       }
 
       @Override
+      public long docValueCount() {
+        return currentOrds.length;
+      }
+
+      @Override
       public BytesRef lookupOrd(long ord) throws IOException {
         if (ord < 0 || ord >= field.numValues) {
           throw new IndexOutOfBoundsException(

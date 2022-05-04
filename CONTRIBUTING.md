@@ -66,19 +66,29 @@ In case your contribution fixes a bug, please create a new test case that fails 
 - *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
 - *Netbeans* - Not tested.
 
+## Benchmarking 
+
+Use the tool suite at [luceneutil](https://github.com/mikemccand/luceneutil) to benchmark your code changes
+if you think that your change may have measurably changed the performance of a task. Apache Lucene also contains an off the shelf benchmark [module](https://github.com/apache/lucene/tree/main/lucene/benchmark).
+
+This is the same suite that is run in the [nightly benchmarks](https://home.apache.org/~mikemccand/lucenebench/).
+
+The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/master/README.md).
+
+The Lucene community is also interested in other implementations of these benchmark tasks.
+Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html) or open [PRs](https://github.com/mikemccand/luceneutil/pulls), [issues](https://github.com/mikemccand/luceneutil/issues) on the luceneutil project directly.
+
 ## Contributing your work
 
 You have two options to contribute your work: you can either create a patch and attach it to an issue on [Jira](https://issues.apache.org/jira/browse/LUCENE), or open a pull request at https://github.com/apache/lucene - whichever works best for you.
 
 Please be patient. Committers are busy people too. If no one responds to your patch after a few days, please make friendly reminders. Please incorporate others' suggestions into into your patch if you think they're reasonable. Finally, remember that even a patch that is not committed is useful to the community.
 
-### Opening a Jira issue
-
-You may want to open a Jira issue before opening a pull request or creating a patch. This is especially required when adding a [CHANGES](./lucene/CHANGES.txt) entry. If your contribution is a small one (such as fixing typo in documentation) this can be optional.
-
 ### Opening a pull request
 
-Please refer to [GitHub's documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests) for an explanation of how to create a pull request. The pull request title should start with the Jira issue number that your work is related to, this way your pull request will get automatically linked from the Jira issue.
+Please refer to [GitHub's documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests) for an explanation of how to create a pull request.
+
+You can open a pull request with or without Jira issue. If there is an associated Jira issue, the pull request title should start with the Jira issue number that your work is related to, this way your pull request will get automatically linked from the Jira issue.
 
 ### Creating a patch
 
@@ -99,6 +109,10 @@ If some of your changes are committed to the current (feature) branch but you ha
 Patches should be attached to an issue in Jira.
 
 To enable automatic validation of Jira patches, switch the issue's status to "Patch Available" by clicking on the "Enable Patch Review" button near the top of the page. This will enqueue an ASF Jenkins job PreCommit-LUCENE-Build to run various quality checks on the patch and post a validation report as a comment (by "Lucene/Solr QA") on the issue. Expect a delay of 12 hours or so before the patch validation job actually runs. Note that in order for a patch file to trigger validation, its name must conform to the naming rules outlined here: https://yetus.apache.org/documentation/in-progress/precommit-patchnames/
+
+### Add a CHANGES entry
+
+You may want to add a CHANGES entry to [CHANGES.txt](./lucene/CHANGES.txt). A CHANGES entry should start with the Jira issue key `LUCENE-XXXXX` or pull request number `GITHUB#XXX` that is followed by the description of the change and contributors' name. Please see the existing entries for reference.
 
 ## Stay involved
 
