@@ -29,7 +29,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.hnsw.BoundsChecker;
 import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -43,17 +42,17 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
   // Each entry lists the top maxConn neighbors of a node. The nodes correspond to vectors added to
   // HnswBuilder, and the
   // node values are the ordinals of those vectors.
-  private final List<NeighborArray> graph;
+  private final List<Lucene90NeighborArray> graph;
 
   // KnnGraphValues iterator members
   private int upto;
-  private NeighborArray cur;
+  private Lucene90NeighborArray cur;
 
   Lucene90OnHeapHnswGraph(int maxConn) {
     graph = new ArrayList<>();
     // Typically with diversity criteria we see nodes not fully occupied; average fanout seems to be
     // about 1/2 maxConn. There is some indexing time penalty for under-allocating, but saves RAM
-    graph.add(new NeighborArray(Math.max(32, maxConn / 4)));
+    graph.add(new Lucene90NeighborArray(Math.max(32, maxConn / 4)));
     this.maxConn = maxConn;
   }
 
@@ -162,7 +161,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
    *
    * @param node the node whose neighbors are returned
    */
-  public NeighborArray getNeighbors(int node) {
+  public Lucene90NeighborArray getNeighbors(int node) {
     return graph.get(node);
   }
 
@@ -172,7 +171,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
   }
 
   int addNode() {
-    graph.add(new NeighborArray(maxConn + 1));
+    graph.add(new Lucene90NeighborArray(maxConn + 1));
     return graph.size() - 1;
   }
 
