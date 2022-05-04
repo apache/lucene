@@ -3231,7 +3231,8 @@ public class IndexWriter
             IOUtils.rethrowAlways(t);
           }
         }
-        // If no merge hit an exception, and merge was not aborted, but we still failed to add indexes, fail the API
+        // If no merge hit an exception, and merge was not aborted, but we still failed to add
+        // indexes, fail the API
         throw new RuntimeException(
             "failed to successfully merge all provided readers in addIndexes(CodecReader...)");
       }
