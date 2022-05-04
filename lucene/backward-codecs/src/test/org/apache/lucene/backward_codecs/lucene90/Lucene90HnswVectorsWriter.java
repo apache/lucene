@@ -35,7 +35,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.NeighborArray;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -247,7 +246,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
       // write graph
       offsets[ord] = graphData.getFilePointer() - graphDataOffset;
 
-      NeighborArray neighbors = graph.getNeighbors(ord);
+      Lucene90NeighborArray neighbors = graph.getNeighbors(ord);
       int size = neighbors.size();
 
       // Destructively modify; it's ok we are discarding it after this
