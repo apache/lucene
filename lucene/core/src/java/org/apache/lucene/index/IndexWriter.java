@@ -3223,12 +3223,15 @@ public class IndexWriter
               "addIndexes(CodecReaders...)", "failed to successfully merge all provided readers.");
         }
         for (MergePolicy.OneMerge merge : spec.merges) {
+          if (merge.isAborted()) {
+            throw new MergePolicy.MergeAbortedException("merge was aborted.");
+          }
           Throwable t = merge.getException();
           if (t != null) {
             IOUtils.rethrowAlways(t);
           }
         }
-        // If no merge hit an exception but we still failed to add indexes, fail the API
+        // If no merge hit an exception, and merge was not aborted, but we still failed to add indexes, fail the API
         throw new RuntimeException(
             "failed to successfully merge all provided readers in addIndexes(CodecReader...)");
       }
@@ -3295,8 +3298,6 @@ public class IndexWriter
         writer.addIndexesReaderMerge(merge);
         success = true;
       } catch (Throwable t) {
-        // handle as aborted merge failure is merge was aborted
-        merge.checkAborted();
         handleMergeException(t, merge);
       } finally {
         synchronized (this) {
