@@ -438,21 +438,17 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     int numDoc = atLeast(20);
     int deletedDoc = atMost(5);
     int dimension = atLeast(3);
-    boolean vectorIndexed = false;
 
     for (int i = 0; i < numDoc; i++) {
       Document doc = new Document();
 
-      if (random().nextBoolean()) {
-        vectorIndexed = true;
-        float[] value = new float[dimension];
-        for (int j = 0; j < dimension; j++) {
-          value[j] = random().nextFloat();
-        }
-        FieldType fieldType =
-            KnnVectorField.createFieldType(dimension, VectorSimilarityFunction.COSINE);
-        doc.add(new KnnVectorField("vector", value, fieldType));
+      float[] value = new float[dimension];
+      for (int j = 0; j < dimension; j++) {
+        value[j] = random().nextFloat();
       }
+      FieldType fieldType =
+          KnnVectorField.createFieldType(dimension, VectorSimilarityFunction.COSINE);
+      doc.add(new KnnVectorField("vector", value, fieldType));
 
       doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
       writer.addDocument(doc);
@@ -467,46 +463,44 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
 
     writer.close();
 
-    QueryTimeout randomQueryTimeout;
+    QueryTimeout queryTimeout;
     if (random().nextBoolean()) {
       if (random().nextBoolean()) {
-        randomQueryTimeout = immediateQueryTimeout();
+        queryTimeout = immediateQueryTimeout();
       } else {
-        randomQueryTimeout = infiniteQueryTimeout();
+        queryTimeout = infiniteQueryTimeout();
       }
     } else {
-      randomQueryTimeout = disabledQueryTimeout();
+      queryTimeout = disabledQueryTimeout();
     }
 
     DirectoryReader directoryReader = DirectoryReader.open(directory);
     DirectoryReader exitableDirectoryReader =
-        new ExitableDirectoryReader(directoryReader, randomQueryTimeout);
+        new ExitableDirectoryReader(directoryReader, queryTimeout);
     IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
 
-    if (vectorIndexed) {
-      LeafReaderContext context = reader.leaves().get(0);
-      LeafReader leaf = context.reader();
+    LeafReaderContext context = reader.leaves().get(0);
+    LeafReader leaf = context.reader();
 
-      if (randomQueryTimeout.shouldExit()) {
-        expectThrows(
-            ExitingReaderException.class,
-            () -> {
-              DocIdSetIterator iter = leaf.getVectorValues("vector");
-              scanAndRetrieve(leaf, iter);
-            });
+    if (queryTimeout.shouldExit()) {
+      expectThrows(
+          ExitingReaderException.class,
+          () -> {
+            DocIdSetIterator iter = leaf.getVectorValues("vector");
+            scanAndRetrieve(leaf, iter);
+          });
 
-        expectThrows(
-            ExitingReaderException.class,
-            () ->
-                leaf.searchNearestVectors(
-                    "vector", new float[dimension], 5, leaf.getLiveDocs(), Integer.MAX_VALUE));
-      } else {
-        DocIdSetIterator iter = leaf.getVectorValues("vector");
-        scanAndRetrieve(leaf, iter);
+      expectThrows(
+          ExitingReaderException.class,
+          () ->
+              leaf.searchNearestVectors(
+                  "vector", new float[dimension], 5, leaf.getLiveDocs(), Integer.MAX_VALUE));
+    } else {
+      DocIdSetIterator iter = leaf.getVectorValues("vector");
+      scanAndRetrieve(leaf, iter);
 
-        leaf.searchNearestVectors(
-            "vector", new float[dimension], 5, leaf.getLiveDocs(), Integer.MAX_VALUE);
-      }
+      leaf.searchNearestVectors(
+          "vector", new float[dimension], 5, leaf.getLiveDocs(), Integer.MAX_VALUE);
     }
 
     reader.close();
