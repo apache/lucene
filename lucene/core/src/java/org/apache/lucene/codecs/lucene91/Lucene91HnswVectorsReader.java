@@ -404,7 +404,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
   static class DenseOffHeapVectorValues extends OffHeapVectorValues {
 
-    protected int ord = -1;
+    private int ord = -1;
+    private int doc = -1;
 
     public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice) {
       super(dimension, size, slice);
@@ -497,12 +498,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public int docID() {
-      return disi == null ? doc : disi.docID();
+      return disi.docID();
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return disi == null ? advance(doc + 1) : disi.nextDoc();
+      return disi.nextDoc();
     }
 
     @Override
@@ -602,8 +603,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     protected final ByteBuffer byteBuffer;
     protected final int byteSize;
     protected final float[] value;
-
-    protected int doc = -1;
 
     OffHeapVectorValues(int dimension, int size, IndexInput slice) {
       this.dimension = dimension;
