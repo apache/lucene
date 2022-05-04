@@ -34,6 +34,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
+import org.junit.Ignore;
 
 // Nefarious FS will delay/stop deletion of index files and this test specifically does that
 @LuceneTestCase.SuppressFileSystems({"WindowsFS", "VirusCheckingFS"})
@@ -123,6 +124,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     IOUtils.close(commit1, dir1);
   }
 
+  @Ignore("LUCENE-10482: need to make this work on Windows too")
   public void testAlwaysRefreshDirectoryTaxonomyReader() throws IOException {
     testAlwaysRefreshDirectoryTaxonomyReader(
         (dir) -> {

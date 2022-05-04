@@ -19,11 +19,9 @@ package org.apache.lucene.tests.mockfile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -37,8 +35,8 @@ public class TestLeakFS extends MockFileSystemTestCase {
 
   @Override
   protected Path wrap(Path path) {
-    FileSystem fs = new LeakFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    return new FilterPath(path, fs);
+    LeakFS provider = new LeakFS(path.getFileSystem());
+    return provider.wrapPath(path);
   }
 
   /** Test leaks via Files.newInputStream */

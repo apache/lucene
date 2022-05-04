@@ -485,8 +485,11 @@ final class LatLonShapeBoundingBoxQuery extends SpatialQuery {
     }
 
     /** Returns the Within relation to the provided triangle */
-    Component2D.WithinRelation withinLine(int ax, int ay, boolean ab, int bx, int by) {
-      if (ab == true && edgeIntersectsBox(ax, ay, bx, by, minX, maxX, minY, maxY) == true) {
+    Component2D.WithinRelation withinLine(int aX, int aY, boolean ab, int bX, int bY) {
+      if (contains(aX, aY) || contains(bX, bY)) {
+        return Component2D.WithinRelation.NOTWITHIN;
+      }
+      if (ab == true && edgeIntersectsBox(aX, aY, bX, bY, minX, maxX, minY, maxY) == true) {
         return Component2D.WithinRelation.NOTWITHIN;
       }
       return Component2D.WithinRelation.DISJOINT;
