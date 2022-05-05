@@ -126,7 +126,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
   }
 
   static LeafReader wrap(LeafReader reader, String field) throws IOException {
-    DocIdSetIterator iterator = DocValuesIterator.getDocValuesDocIdSetIterator(field, reader);
+    DocIdSetIterator iterator = DocValues.getDocValuesDocIdSetIterator(field, reader);
     if (iterator == null) {
       return reader;
     }

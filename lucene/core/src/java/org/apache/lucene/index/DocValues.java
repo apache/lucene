@@ -18,6 +18,8 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
+
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /** This class contains utility methods and constants for DocValues */
@@ -335,5 +337,41 @@ public final class DocValues {
       if (fi != null && fi.getDocValuesGen() > -1) return false;
     }
     return true;
+  }
+
+  /**
+   * Returns a {@link DocIdSetIterator} from the given field or null if the field doesn't exist in
+   * the reader or if the reader has no doc values for the field.
+   */
+  public static DocIdSetIterator getDocValuesDocIdSetIterator(String field, LeafReader reader)
+      throws IOException {
+    FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+    final DocIdSetIterator iterator;
+    if (fieldInfo != null) {
+      switch (fieldInfo.getDocValuesType()) {
+        case NONE:
+          iterator = null;
+          break;
+        case NUMERIC:
+          iterator = reader.getNumericDocValues(field);
+          break;
+        case BINARY:
+          iterator = reader.getBinaryDocValues(field);
+          break;
+        case SORTED:
+          iterator = reader.getSortedDocValues(field);
+          break;
+        case SORTED_NUMERIC:
+          iterator = reader.getSortedNumericDocValues(field);
+          break;
+        case SORTED_SET:
+          iterator = reader.getSortedSetDocValues(field);
+          break;
+        default:
+          throw new AssertionError();
+      }
+      return iterator;
+    }
+    return null;
   }
 }

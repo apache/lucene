@@ -4145,7 +4145,7 @@ public final class CheckIndex implements Closeable {
     try {
       int softDeletes =
           PendingSoftDeletes.countSoftDeletes(
-              DocValuesIterator.getDocValuesDocIdSetIterator(softDeletesField, reader),
+              DocValues.getDocValuesDocIdSetIterator(softDeletesField, reader),
               reader.getLiveDocs());
       if (softDeletes != info.getSoftDelCount()) {
         throw new CheckIndexException(

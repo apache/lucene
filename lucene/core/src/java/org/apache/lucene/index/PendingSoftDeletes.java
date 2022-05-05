@@ -77,7 +77,7 @@ final class PendingSoftDeletes extends PendingDeletes {
     // only re-calculate this if we haven't seen this generation
     if (dvGeneration < info.getDocValuesGen()) {
       final DocIdSetIterator iterator =
-          DocValuesIterator.getDocValuesDocIdSetIterator(field, reader);
+          DocValues.getDocValuesDocIdSetIterator(field, reader);
       int newDelCount;
       if (iterator
           != null) { // nothing is deleted we don't have a soft deletes field in this segment

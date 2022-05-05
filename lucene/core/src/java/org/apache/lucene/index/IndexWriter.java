@@ -3141,7 +3141,7 @@ public class IndexWriter
           Bits liveDocs = leaf.getLiveDocs();
           numSoftDeleted +=
               PendingSoftDeletes.countSoftDeletes(
-                  DocValuesIterator.getDocValuesDocIdSetIterator(
+                  DocValues.getDocValuesDocIdSetIterator(
                       config.getSoftDeletesField(), leaf),
                   liveDocs);
         }
@@ -4847,7 +4847,7 @@ public class IndexWriter
     int hardDeleteCount = 0;
     int softDeletesCount = 0;
     DocIdSetIterator softDeletedDocs =
-        DocValuesIterator.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), reader);
+        DocValues.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), reader);
     if (softDeletedDocs != null) {
       int docId;
       while ((docId = softDeletedDocs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
