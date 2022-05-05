@@ -237,7 +237,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             vectorValues,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
-            getAcceptOrds(acceptDocs, vectorValues),
+            vectorValues.getAcceptOrds(acceptDocs),
             visitedLimit);
 
     int i = 0;
@@ -254,26 +254,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
-  }
-
-  private Bits getAcceptOrds(Bits acceptDocs, OffHeapVectorValues vectorValues) {
-    if (vectorValues instanceof DenseOffHeapVectorValues) {
-      return acceptDocs;
-    }
-    if (acceptDocs == null) {
-      return null;
-    }
-    return new Bits() {
-      @Override
-      public boolean get(int index) {
-        return acceptDocs.get(vectorValues.ordToDoc(index));
-      }
-
-      @Override
-      public int length() {
-        return vectorValues.size;
-      }
-    };
   }
 
   /** Get knn graph values; used for testing */
@@ -439,6 +419,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     public int ordToDoc(int ord) {
       return ord;
     }
+
+    @Override
+    Bits getAcceptOrds(Bits acceptDocs) {
+      return acceptDocs;
+    }
   }
 
   static class SparseOffHeapVectorValues extends OffHeapVectorValues {
@@ -505,6 +490,24 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     @Override
     public int ordToDoc(int ord) {
       return (int) ordToDoc.get(ord);
+    }
+
+    @Override
+    Bits getAcceptOrds(Bits acceptDocs) {
+      if (acceptDocs == null) {
+        return null;
+      }
+      return new Bits() {
+        @Override
+        public boolean get(int index) {
+          return acceptDocs.get(ordToDoc(index));
+        }
+
+        @Override
+        public int length() {
+          return size;
+        }
+      };
     }
   }
 
@@ -574,6 +577,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     @Override
     public int ordToDoc(int ord) {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    Bits getAcceptOrds(Bits acceptDocs) {
+      return null;
     }
   }
 
@@ -647,6 +655,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice);
       }
     }
+
+    abstract Bits getAcceptOrds(Bits acceptDocs);
   }
 
   /** Read the nearest-neighbors graph from the index input */
