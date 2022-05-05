@@ -42,7 +42,7 @@ public final class ConnectionCosts {
 
   /**
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param path - where to load resources from, without the ".dat" suffix
+   * @param resourcePath - where to load resources from, without the ".dat" suffix
    * @deprecated replaced by {@link #ConnectionCosts(Path)} for files and {@link
    *     #ConnectionCosts(URL)} for classpath/module resources.
    */
