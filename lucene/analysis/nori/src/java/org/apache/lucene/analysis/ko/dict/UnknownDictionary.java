@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
@@ -39,15 +38,9 @@ public final class UnknownDictionary extends BinaryDictionary {
   @SuppressWarnings("removal")
   public UnknownDictionary(ResourceScheme scheme, String resourcePath) throws IOException {
     super(
-        scheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX))
-            : () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
-        scheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX))
-            : () -> getClassResource(POSDICT_FILENAME_SUFFIX),
-        scheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX))
-            : () -> getClassResource(DICT_FILENAME_SUFFIX));
+        () -> BinaryDictionary.getResource(scheme, resourcePath + TARGETMAP_FILENAME_SUFFIX),
+        () -> BinaryDictionary.getResource(scheme, resourcePath + POSDICT_FILENAME_SUFFIX),
+        () -> BinaryDictionary.getResource(scheme, resourcePath + DICT_FILENAME_SUFFIX));
   }
 
   /**
