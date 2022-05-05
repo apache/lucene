@@ -59,6 +59,7 @@ import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -3141,7 +3142,7 @@ public class IndexWriter
           Bits liveDocs = leaf.getLiveDocs();
           numSoftDeleted +=
               PendingSoftDeletes.countSoftDeletes(
-                  DocValues.getDocValuesDocIdSetIterator(
+                  FieldExistsQuery.getDocValuesDocIdSetIterator(
                       config.getSoftDeletesField(), leaf),
                   liveDocs);
         }
@@ -4847,7 +4848,7 @@ public class IndexWriter
     int hardDeleteCount = 0;
     int softDeletesCount = 0;
     DocIdSetIterator softDeletedDocs =
-        DocValues.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), reader);
+        FieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), reader);
     if (softDeletedDocs != null) {
       int docId;
       while ((docId = softDeletedDocs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {

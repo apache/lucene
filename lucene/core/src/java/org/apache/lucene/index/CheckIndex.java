@@ -56,6 +56,7 @@ import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -4145,7 +4146,7 @@ public final class CheckIndex implements Closeable {
     try {
       int softDeletes =
           PendingSoftDeletes.countSoftDeletes(
-              DocValues.getDocValuesDocIdSetIterator(softDeletesField, reader),
+              FieldExistsQuery.getDocValuesDocIdSetIterator(softDeletesField, reader),
               reader.getLiveDocs());
       if (softDeletes != info.getSoftDelCount()) {
         throw new CheckIndexException(

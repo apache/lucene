@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -126,7 +127,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
   }
 
   static LeafReader wrap(LeafReader reader, String field) throws IOException {
-    DocIdSetIterator iterator = DocValues.getDocValuesDocIdSetIterator(field, reader);
+    DocIdSetIterator iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
     if (iterator == null) {
       return reader;
     }
