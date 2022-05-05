@@ -214,7 +214,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    return getOffHeapVectorValues(fieldEntry);
+    return OffHeapVectorValues.load(fieldEntry, vectorData);
   }
 
   @Override
@@ -228,7 +228,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
-    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+    OffHeapVectorValues vectorValues = OffHeapVectorValues.load(fieldEntry, vectorData);
 
     NeighborQueue results =
         HnswGraphSearcher.search(
@@ -254,19 +254,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
-  }
-
-  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2) {
-      return new EmptyOffHeapVectorValues(fieldEntry.dimension);
-    }
-    IndexInput bytesSlice =
-        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    if (fieldEntry.docsWithFieldOffset == -1) {
-      return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice);
-    } else {
-      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice);
-    }
   }
 
   private Bits getAcceptOrds(Bits acceptDocs, OffHeapVectorValues vectorValues) {
@@ -646,6 +633,20 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     public abstract int ordToDoc(int ord);
+
+    private static OffHeapVectorValues load(FieldEntry fieldEntry, IndexInput vectorData)
+        throws IOException {
+      if (fieldEntry.docsWithFieldOffset == -2) {
+        return new EmptyOffHeapVectorValues(fieldEntry.dimension);
+      }
+      IndexInput bytesSlice =
+          vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
+      if (fieldEntry.docsWithFieldOffset == -1) {
+        return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice);
+      } else {
+        return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice);
+      }
+    }
   }
 
   /** Read the nearest-neighbors graph from the index input */
