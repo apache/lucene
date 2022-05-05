@@ -56,7 +56,6 @@ import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -506,6 +505,12 @@ public final class CheckIndex implements Closeable {
     setInfoStream(out, false);
   }
 
+  private static void msg(PrintStream out, ByteArrayOutputStream msg) {
+    if (out != null) {
+      out.println(msg.toString(StandardCharsets.UTF_8));
+    }
+  }
+
   private static void msg(PrintStream out, String msg) {
     if (out != null) {
       out.println(msg);
@@ -778,21 +783,21 @@ public final class CheckIndex implements Closeable {
         } catch (InterruptedException e) {
           // the segment test output should come before interrupted exception message that follows,
           // hence it's not emitted from finally clause
-          infoStream.println(output.toString(StandardCharsets.UTF_8));
+          msg(infoStream, output);
           msg(
               infoStream,
               "ERROR: Interrupted exception occurred when getting segment check result for segment "
                   + info.info.name);
           if (infoStream != null) e.printStackTrace(infoStream);
         } catch (ExecutionException e) {
-          infoStream.println(output.toString(StandardCharsets.UTF_8));
+          msg(infoStream, output.toString(StandardCharsets.UTF_8));
 
           assert failFast;
           throw new CheckIndexException(
               "Segment " + info.info.name + " check failed.", e.getCause());
         }
 
-        infoStream.print(output.toString(StandardCharsets.UTF_8));
+        msg(infoStream, output);
 
         processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
@@ -1107,7 +1112,7 @@ public final class CheckIndex implements Closeable {
 
       for (int i = 0; i < fields.length; i++) {
         reverseMul[i] = fields[i].getReverse() ? -1 : 1;
-        comparators[i] = fields[i].getComparator(1, i).getLeafComparator(readerContext);
+        comparators[i] = fields[i].getComparator(1, false).getLeafComparator(readerContext);
       }
 
       int maxDoc = reader.maxDoc();
@@ -4140,7 +4145,7 @@ public final class CheckIndex implements Closeable {
     try {
       int softDeletes =
           PendingSoftDeletes.countSoftDeletes(
-              DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(softDeletesField, reader),
+              DocValuesIterator.getDocValuesDocIdSetIterator(softDeletesField, reader),
               reader.getLiveDocs());
       if (softDeletes != info.getSoftDelCount()) {
         throw new CheckIndexException(

@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Stack;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.DocValues;
@@ -71,25 +72,12 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME, config);
   }
 
-  /**
-   * Creates this without a config, pulling doc values from the default {@link
-   * FacetsConfig#DEFAULT_INDEX_FIELD_NAME}.
-   */
-  public DefaultSortedSetDocValuesReaderState(IndexReader reader) throws IOException {
-    this(reader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME, null);
-  }
-
-  /** Creates this without a config, pulling doc values from the specified field. */
-  public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field) throws IOException {
-    this(reader, field, null);
-  }
-
   /** Creates this, pulling doc values from the specified field. */
   public DefaultSortedSetDocValuesReaderState(IndexReader reader, String field, FacetsConfig config)
       throws IOException {
-    this.field = field;
-    this.reader = reader;
-    this.config = config;
+    this.field = Objects.requireNonNull(field);
+    this.reader = Objects.requireNonNull(reader);
+    this.config = Objects.requireNonNull(config);
 
     // We need this to create thread-safe MultiSortedSetDV
     // per collector:
@@ -109,7 +97,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
       BytesRef term = dv.lookupOrd(ord);
       String[] components = FacetsConfig.stringToPath(term.utf8ToString());
       String dim = components[0];
-      if (config != null && config.getDimConfig(dim).hierarchical) {
+      if (config.getDimConfig(dim).hierarchical) {
         ord = createOneHierarchicalFacetDimState(dv, ord) + 1;
       } else {
         ord = createOneFlatFacetDimState(dv, ord) + 1;
@@ -201,7 +189,9 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
     BytesRef nextTerm = dv.lookupOrd(dimEndOrd);
     String[] nextComponents = FacetsConfig.stringToPath(nextTerm.utf8ToString());
-    if (nextComponents.length != 2) {
+    // The first entry should always be length 1 or 2 (either just the dim itself if we explicitly
+    // indexed it, or the first child):
+    if (nextComponents.length > 2) {
       throw new IllegalArgumentException(
           "dimension not configured to handle hierarchical field; got: "
               + Arrays.toString(nextComponents)
@@ -224,6 +214,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
         break;
       }
 
+      // Each entry should have a length of exactly 2 since the dim is non-hierarchical:
       if (nextComponents.length != 2) {
         throw new IllegalArgumentException(
             "dimension not configured to handle hierarchical field; got: "
@@ -377,7 +368,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
   @Override
   public OrdRange getOrdRange(String dim) {
-    if (config != null && config.getDimConfig(dim).hierarchical) {
+    if (config.getDimConfig(dim).hierarchical) {
       throw new UnsupportedOperationException(
           "This operation is only supported for flat dimensions");
     }
@@ -388,7 +379,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
   @Override
   public DimTree getDimTree(String dim) {
-    if (config == null || config.getDimConfig(dim).hierarchical == false) {
+    if (config.getDimConfig(dim).hierarchical == false) {
       throw new UnsupportedOperationException(
           "This opperation is only supported for hierarchical facets");
     }

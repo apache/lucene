@@ -191,38 +191,41 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     return clauses.iterator();
   }
 
-  private BooleanQuery rewriteNoScoring() {
-    boolean keepShould =
+  // Utility method for rewriting BooleanQuery when scores are not needed.
+  // This is called from ConstantScoreQuery#rewrite
+  BooleanQuery rewriteNoScoring(IndexReader reader) throws IOException {
+    boolean actuallyRewritten = false;
+    BooleanQuery.Builder newQuery =
+        new BooleanQuery.Builder().setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
+
+    final boolean keepShould =
         getMinimumNumberShouldMatch() > 0
             || (clauseSets.get(Occur.MUST).size() + clauseSets.get(Occur.FILTER).size() == 0);
 
-    if (clauseSets.get(Occur.MUST).size() == 0 && keepShould) {
-      return this;
-    }
-    BooleanQuery.Builder newQuery = new BooleanQuery.Builder();
-
-    newQuery.setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
     for (BooleanClause clause : clauses) {
-      switch (clause.getOccur()) {
-        case MUST:
-          {
-            newQuery.add(clause.getQuery(), Occur.FILTER);
-            break;
-          }
-        case SHOULD:
-          {
-            if (keepShould) {
-              newQuery.add(clause);
-            }
-            break;
-          }
-        case FILTER:
-        case MUST_NOT:
-        default:
-          {
-            newQuery.add(clause);
-          }
+      Query query = clause.getQuery();
+      Query rewritten = new ConstantScoreQuery(query).rewrite(reader);
+      if (rewritten instanceof ConstantScoreQuery) {
+        rewritten = ((ConstantScoreQuery) rewritten).getQuery();
       }
+      BooleanClause.Occur occur = clause.getOccur();
+      if (occur == Occur.SHOULD && keepShould == false) {
+        // ignore clause
+        actuallyRewritten = true;
+      } else if (occur == Occur.MUST) {
+        // replace MUST clauses with FILTER clauses
+        newQuery.add(rewritten, Occur.FILTER);
+        actuallyRewritten = true;
+      } else if (query != rewritten) {
+        newQuery.add(rewritten, occur);
+        actuallyRewritten = true;
+      } else {
+        newQuery.add(clause);
+      }
+    }
+
+    if (actuallyRewritten == false) {
+      return this;
     }
 
     return newQuery.build();
@@ -231,11 +234,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    BooleanQuery query = this;
-    if (scoreMode.needsScores() == false) {
-      query = rewriteNoScoring();
-    }
-    return new BooleanWeight(query, searcher, scoreMode, boost);
+    return new BooleanWeight(this, searcher, scoreMode, boost);
   }
 
   @Override
@@ -274,11 +273,33 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       boolean actuallyRewritten = false;
       for (BooleanClause clause : this) {
         Query query = clause.getQuery();
-        Query rewritten = query.rewrite(reader);
-        if (rewritten != query) {
+        BooleanClause.Occur occur = clause.getOccur();
+        Query rewritten;
+        if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
+          // Clauses that are not involved in scoring can get some extra simplifications
+          rewritten = new ConstantScoreQuery(query).rewrite(reader);
+          if (rewritten instanceof ConstantScoreQuery) {
+            rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+          }
+        } else {
+          rewritten = query.rewrite(reader);
+        }
+        if (rewritten != query || query.getClass() == MatchNoDocsQuery.class) {
           // rewrite clause
           actuallyRewritten = true;
-          builder.add(rewritten, clause.getOccur());
+          if (rewritten.getClass() == MatchNoDocsQuery.class) {
+            switch (occur) {
+              case SHOULD:
+              case MUST_NOT:
+                // the clause can be safely ignored
+                break;
+              case MUST:
+              case FILTER:
+                return rewritten;
+            }
+          } else {
+            builder.add(rewritten, occur);
+          }
         } else {
           // leave as-is
           builder.add(clause);

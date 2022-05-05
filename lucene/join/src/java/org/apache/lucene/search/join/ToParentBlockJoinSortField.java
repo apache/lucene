@@ -23,7 +23,6 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FilterNumericDocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -112,18 +111,18 @@ public class ToParentBlockJoinSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, int sortPos) {
+  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
     switch (getType()) {
       case STRING:
         return getStringComparator(numHits);
       case DOUBLE:
-        return getDoubleComparator(numHits, sortPos);
+        return getDoubleComparator(numHits);
       case FLOAT:
-        return getFloatComparator(numHits, sortPos);
+        return getFloatComparator(numHits);
       case LONG:
-        return getLongComparator(numHits, sortPos);
+        return getLongComparator(numHits);
       case INT:
-        return getIntComparator(numHits, sortPos);
+        return getIntComparator(numHits);
       case CUSTOM:
       case DOC:
       case REWRITEABLE:
@@ -154,8 +153,8 @@ public class ToParentBlockJoinSortField extends SortField {
     };
   }
 
-  private FieldComparator<?> getIntComparator(int numHits, int sortPos) {
-    return new IntComparator(numHits, getField(), (Integer) missingValue, getReverse(), sortPos) {
+  private FieldComparator<?> getIntComparator(int numHits) {
+    return new IntComparator(numHits, getField(), (Integer) missingValue, getReverse(), false) {
       @Override
       public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
         return new IntLeafComparator(context) {
@@ -173,18 +172,13 @@ public class ToParentBlockJoinSortField extends SortField {
             }
             return BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children));
           }
-          // no sort optimization with points
-          @Override
-          protected PointValues getPointValues(LeafReaderContext context, String field) {
-            return null;
-          }
         };
       }
     };
   }
 
-  private FieldComparator<?> getLongComparator(int numHits, int sortPos) {
-    return new LongComparator(numHits, getField(), (Long) missingValue, getReverse(), sortPos) {
+  private FieldComparator<?> getLongComparator(int numHits) {
+    return new LongComparator(numHits, getField(), (Long) missingValue, getReverse(), false) {
       @Override
       public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
         return new LongLeafComparator(context) {
@@ -202,18 +196,13 @@ public class ToParentBlockJoinSortField extends SortField {
             }
             return BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children));
           }
-          // no sort optimization with points
-          @Override
-          protected PointValues getPointValues(LeafReaderContext context, String field) {
-            return null;
-          }
         };
       }
     };
   }
 
-  private FieldComparator<?> getFloatComparator(int numHits, int sortPos) {
-    return new FloatComparator(numHits, getField(), (Float) missingValue, getReverse(), sortPos) {
+  private FieldComparator<?> getFloatComparator(int numHits) {
+    return new FloatComparator(numHits, getField(), (Float) missingValue, getReverse(), false) {
       @Override
       public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
         return new FloatLeafComparator(context) {
@@ -238,20 +227,14 @@ public class ToParentBlockJoinSortField extends SortField {
               }
             };
           }
-          // no sort optimization with points
-          @Override
-          protected PointValues getPointValues(LeafReaderContext context, String field) {
-            return null;
-          }
         };
       }
       ;
     };
   }
 
-  private FieldComparator<?> getDoubleComparator(int numHits, int sortPost) {
-    return new DoubleComparator(
-        numHits, getField(), (Double) missingValue, getReverse(), sortPost) {
+  private FieldComparator<?> getDoubleComparator(int numHits) {
+    return new DoubleComparator(numHits, getField(), (Double) missingValue, getReverse(), false) {
       @Override
       public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
         return new DoubleLeafComparator(context) {
@@ -275,11 +258,6 @@ public class ToParentBlockJoinSortField extends SortField {
                 return NumericUtils.sortableDoubleBits(super.longValue());
               }
             };
-          }
-          // no sort optimization with points
-          @Override
-          protected PointValues getPointValues(LeafReaderContext context, String field) {
-            return null;
           }
         };
       }

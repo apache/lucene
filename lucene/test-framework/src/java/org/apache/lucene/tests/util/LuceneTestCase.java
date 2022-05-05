@@ -61,10 +61,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -140,7 +138,6 @@ import org.apache.lucene.tests.index.MismatchedDirectoryReader;
 import org.apache.lucene.tests.index.MismatchedLeafReader;
 import org.apache.lucene.tests.index.MockIndexWriterEventListener;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
-import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.VirusCheckingFS;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
@@ -382,12 +379,6 @@ public abstract class LuceneTestCase extends Assert {
   /** Enables or disables dumping of {@link InfoStream} messages. */
   public static final boolean INFOSTREAM = systemPropertyAsBoolean("tests.infostream", VERBOSE);
 
-  /**
-   * A random multiplier which you should use when writing random tests: multiply it by the number
-   * of iterations to scale your tests (for nightly builds).
-   */
-  public static final int RANDOM_MULTIPLIER = systemPropertyAsInt("tests.multiplier", 1);
-
   public static final boolean TEST_ASSERTS_ENABLED = systemPropertyAsBoolean("tests.asserts", true);
 
   /**
@@ -448,6 +439,13 @@ public abstract class LuceneTestCase extends Assert {
   /** Throttling, see {@link MockDirectoryWrapper#setThrottling(Throttling)}. */
   public static final Throttling TEST_THROTTLING =
       TEST_NIGHTLY ? Throttling.SOMETIMES : Throttling.NEVER;
+
+  /**
+   * A random multiplier which you should use when writing random tests: multiply it by the number
+   * of iterations to scale your tests (for nightly builds).
+   */
+  public static final int RANDOM_MULTIPLIER =
+      systemPropertyAsInt("tests.multiplier", TEST_NIGHTLY ? 2 : 1);
 
   /** Leave temporary files on disk, even on successful runs. */
   public static final boolean LEAVE_TEMPORARY;
@@ -848,7 +846,7 @@ public abstract class LuceneTestCase extends Assert {
    * {@link #RANDOM_MULTIPLIER}, but also with some random fudge.
    */
   public static int atLeast(Random random, int i) {
-    int min = (TEST_NIGHTLY ? 2 * i : i) * RANDOM_MULTIPLIER;
+    int min = i * RANDOM_MULTIPLIER;
     int max = min + (min / 2);
     return TestUtil.nextInt(random, min, max);
   }
@@ -864,9 +862,9 @@ public abstract class LuceneTestCase extends Assert {
    * {@link #RANDOM_MULTIPLIER}.
    */
   public static boolean rarely(Random random) {
-    int p = TEST_NIGHTLY ? 10 : 1;
+    int p = TEST_NIGHTLY ? 5 : 1;
     p += (p * Math.log(RANDOM_MULTIPLIER));
-    int min = 100 - Math.min(p, 50); // never more than 50
+    int min = 100 - Math.min(p, 20); // never more than 20
     return random.nextInt(100) >= min;
   }
 
@@ -1397,8 +1395,7 @@ public abstract class LuceneTestCase extends Assert {
   public static Path addVirusChecker(Path path) {
     if (TestUtil.hasVirusChecker(path) == false) {
       VirusCheckingFS fs = new VirusCheckingFS(path.getFileSystem(), random().nextLong());
-      FileSystem filesystem = fs.getFileSystem(URI.create("file:///"));
-      path = new FilterPath(path, filesystem);
+      path = fs.wrapPath(path);
     }
     return path;
   }
@@ -3133,9 +3130,8 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Compares two strings with a collator, also looking to see if the the strings are impacted by
-   * jdk bugs. may not avoid all jdk bugs in tests. see
-   * https://bugs.openjdk.java.net/browse/JDK-8071862
+   * Compares two strings with a collator, also looking to see if the strings are impacted by jdk
+   * bugs. may not avoid all jdk bugs in tests. see https://bugs.openjdk.java.net/browse/JDK-8071862
    */
   @SuppressForbidden(reason = "dodges JDK-8071862")
   public static int collate(Collator collator, String s1, String s2) {

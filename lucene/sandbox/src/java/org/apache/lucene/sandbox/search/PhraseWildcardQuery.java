@@ -1034,8 +1034,8 @@ public class PhraseWildcardQuery extends Query {
     }
 
     private long getTermsSize(LeafReaderContext leafReaderContext) throws IOException {
-      Terms terms = leafReaderContext.reader().terms(field);
-      return terms == null ? 0 : terms.size();
+      Terms terms = Terms.getTerms(leafReaderContext.reader(), field);
+      return terms.size();
     }
   }
 

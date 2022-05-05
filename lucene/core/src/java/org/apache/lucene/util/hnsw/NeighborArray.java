@@ -17,33 +17,64 @@
 
 package org.apache.lucene.util.hnsw;
 
+import java.util.Arrays;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
  * NeighborArray encodes the neighbors of a node and their mutual scores in the HNSW graph as a pair
- * of growable arrays.
+ * of growable arrays. Nodes are arranged in the sorted order of their scores in descending order
+ * (if scoresDescOrder is true), or in the ascending order of their scores (if scoresDescOrder is
+ * false)
  *
  * @lucene.internal
  */
 public class NeighborArray {
-
+  private final boolean scoresDescOrder;
   private int size;
 
   float[] score;
   int[] node;
 
-  NeighborArray(int maxSize) {
+  public NeighborArray(int maxSize, boolean descOrder) {
     node = new int[maxSize];
     score = new float[maxSize];
+    this.scoresDescOrder = descOrder;
   }
 
+  /**
+   * Add a new node to the NeighborArray. The new node must be worse than all previously stored
+   * nodes.
+   */
   public void add(int newNode, float newScore) {
     if (size == node.length - 1) {
       node = ArrayUtil.grow(node, (size + 1) * 3 / 2);
       score = ArrayUtil.growExact(score, node.length);
     }
+    if (size > 0) {
+      float previousScore = score[size - 1];
+      assert ((scoresDescOrder && (previousScore >= newScore))
+              || (scoresDescOrder == false && (previousScore <= newScore)))
+          : "Nodes are added in the incorrect order!";
+    }
     node[size] = newNode;
     score[size] = newScore;
+    ++size;
+  }
+
+  /** Add a new node to the NeighborArray into a correct sort position according to its score. */
+  public void insertSorted(int newNode, float newScore) {
+    if (size == node.length - 1) {
+      node = ArrayUtil.grow(node, (size + 1) * 3 / 2);
+      score = ArrayUtil.growExact(score, node.length);
+    }
+    int insertionPoint =
+        scoresDescOrder
+            ? descSortFindRightMostInsertionPoint(newScore)
+            : ascSortFindRightMostInsertionPoint(newScore);
+    System.arraycopy(node, insertionPoint, node, insertionPoint + 1, size - insertionPoint);
+    System.arraycopy(score, insertionPoint, score, insertionPoint + 1, size - insertionPoint);
+    node[insertionPoint] = newNode;
+    score[insertionPoint] = newScore;
     ++size;
   }
 
@@ -60,16 +91,51 @@ public class NeighborArray {
     return node;
   }
 
+  public float[] score() {
+    return score;
+  }
+
   public void clear() {
     size = 0;
   }
 
-  void removeLast() {
+  public void removeLast() {
+    size--;
+  }
+
+  public void removeIndex(int idx) {
+    System.arraycopy(node, idx + 1, node, idx, size - idx);
+    System.arraycopy(score, idx + 1, score, idx, size - idx);
     size--;
   }
 
   @Override
   public String toString() {
     return "NeighborArray[" + size + "]";
+  }
+
+  private int ascSortFindRightMostInsertionPoint(float newScore) {
+    int insertionPoint = Arrays.binarySearch(score, 0, size, newScore);
+    if (insertionPoint >= 0) {
+      // find the right most position with the same score
+      while ((insertionPoint < size - 1) && (score[insertionPoint + 1] == score[insertionPoint])) {
+        insertionPoint++;
+      }
+      insertionPoint++;
+    } else {
+      insertionPoint = -insertionPoint - 1;
+    }
+    return insertionPoint;
+  }
+
+  private int descSortFindRightMostInsertionPoint(float newScore) {
+    int start = 0;
+    int end = size - 1;
+    while (start <= end) {
+      int mid = (start + end) / 2;
+      if (score[mid] < newScore) end = mid - 1;
+      else start = mid + 1;
+    }
+    return start;
   }
 }

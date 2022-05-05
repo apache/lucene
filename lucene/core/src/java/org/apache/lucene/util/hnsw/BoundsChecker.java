@@ -17,22 +17,26 @@
 
 package org.apache.lucene.util.hnsw;
 
-abstract class BoundsChecker {
+/**
+ * A helper class for an hnsw graph that serves as a comparator of the currently set bound value
+ * with a new value.
+ */
+public abstract class BoundsChecker {
 
   float bound;
 
   /** Update the bound if sample is better */
-  abstract void update(float sample);
+  public abstract void update(float sample);
 
   /** Update the bound unconditionally */
-  void set(float sample) {
+  public void set(float sample) {
     bound = sample;
   }
 
   /** @return whether the sample exceeds (is worse than) the bound */
-  abstract boolean check(float sample);
+  public abstract boolean check(float sample);
 
-  static BoundsChecker create(boolean reversed) {
+  public static BoundsChecker create(boolean reversed) {
     if (reversed) {
       return new Min();
     } else {
@@ -40,39 +44,47 @@ abstract class BoundsChecker {
     }
   }
 
-  static class Max extends BoundsChecker {
+  /**
+   * A helper class for an hnsw graph that serves as a comparator of the currently set maximum value
+   * with a new value.
+   */
+  public static class Max extends BoundsChecker {
     Max() {
       bound = Float.NEGATIVE_INFINITY;
     }
 
     @Override
-    void update(float sample) {
+    public void update(float sample) {
       if (sample > bound) {
         bound = sample;
       }
     }
 
     @Override
-    boolean check(float sample) {
+    public boolean check(float sample) {
       return sample < bound;
     }
   }
 
-  static class Min extends BoundsChecker {
+  /**
+   * A helper class for an hnsw graph that serves as a comparator of the currently set minimum value
+   * with a new value.
+   */
+  public static class Min extends BoundsChecker {
 
     Min() {
       bound = Float.POSITIVE_INFINITY;
     }
 
     @Override
-    void update(float sample) {
+    public void update(float sample) {
       if (sample < bound) {
         bound = sample;
       }
     }
 
     @Override
-    boolean check(float sample) {
+    public boolean check(float sample) {
       return sample > bound;
     }
   }

@@ -1,5 +1,6 @@
 com.carrotsearch.randomizedtesting:*=2.7.6
 com.carrotsearch:hppc=0.9.0
+com.carrotsearch:procfork=1.0.6
 com.google.errorprone:*=2.10.0
 com.ibm.icu:icu4j=70.1
 commons-codec:commons-codec=1.13

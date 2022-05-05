@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.comparators.LongComparator;
 
 /**
@@ -157,7 +156,12 @@ public abstract class LongValuesSource implements SegmentCacheable {
     return new ConstantLongValuesSource(value);
   }
 
-  private static class ConstantLongValuesSource extends LongValuesSource {
+  /**
+   * A ConstantLongValuesSource that always returns a constant value
+   *
+   * @lucene.internal
+   */
+  public static class ConstantLongValuesSource extends LongValuesSource {
 
     private final long value;
 
@@ -211,6 +215,11 @@ public abstract class LongValuesSource implements SegmentCacheable {
     @Override
     public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
       return this;
+    }
+
+    /** Get the constant value. */
+    public long getValue() {
+      return value;
     }
   }
 
@@ -328,8 +337,8 @@ public abstract class LongValuesSource implements SegmentCacheable {
 
     @Override
     public FieldComparator<Long> newComparator(
-        String fieldname, int numHits, int sortPos, boolean reversed) {
-      return new LongComparator(numHits, fieldname, missingValue, reversed, sortPos) {
+        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
+      return new LongComparator(numHits, fieldname, missingValue, reversed, false) {
         @Override
         public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
           LongValuesHolder holder = new LongValuesHolder();
@@ -342,11 +351,6 @@ public abstract class LongValuesSource implements SegmentCacheable {
                 LeafReaderContext context, String field) {
               ctx = context;
               return asNumericDocValues(holder);
-            }
-
-            @Override
-            protected PointValues getPointValues(LeafReaderContext context, String field) {
-              return null;
             }
 
             @Override

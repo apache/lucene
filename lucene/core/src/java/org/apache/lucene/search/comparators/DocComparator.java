@@ -35,10 +35,10 @@ public class DocComparator extends FieldComparator<Integer> {
   private boolean hitsThresholdReached;
 
   /** Creates a new comparator based on document ids for {@code numHits} */
-  public DocComparator(int numHits, boolean reverse, int sortPost) {
+  public DocComparator(int numHits, boolean reverse, boolean enableSkipping) {
     this.docIDs = new int[numHits];
     // skipping functionality is enabled if we are sorting by _doc in asc order as a primary sort
-    this.enableSkipping = (reverse == false && sortPost == 0);
+    this.enableSkipping = (reverse == false && enableSkipping);
   }
 
   @Override

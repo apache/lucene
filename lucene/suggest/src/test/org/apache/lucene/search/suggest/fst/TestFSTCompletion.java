@@ -17,14 +17,23 @@
 package org.apache.lucene.search.suggest.fst;
 
 import java.nio.charset.StandardCharsets;
-import java.util.*;
-import org.apache.lucene.search.suggest.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Random;
+import java.util.stream.Collectors;
+import org.apache.lucene.search.suggest.Input;
+import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
+import org.apache.lucene.search.suggest.SuggestRebuildTestUtil;
+import org.apache.lucene.search.suggest.TestLookupBenchmark;
 import org.apache.lucene.search.suggest.fst.FSTCompletion.Completion;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.BytesRef;
 
 /** Unit tests for {@link FSTCompletion}. */
 public class TestFSTCompletion extends LuceneTestCase {
@@ -81,6 +90,20 @@ public class TestFSTCompletion extends LuceneTestCase {
     assertMatchEquals(completion.lookup(stringToCharSequence("one"), 2), "one/0.0", "oneness/1.0");
   }
 
+  public void testCompletionStream() throws Exception {
+    var completions =
+        completion
+            .lookup("fo")
+            .filter(completion -> !completion.utf8.utf8ToString().contains("fourteen"))
+            .sorted(
+                Comparator.comparing(
+                    completion -> completion.utf8.utf8ToString().toLowerCase(Locale.ROOT)))
+            .collect(Collectors.toList());
+
+    assertMatchEquals(
+        completions, "foundation/1", "four/0", "fourblah/1", "fourier/0", "fourty/1.0");
+  }
+
   public void testExactMatchReordering() throws Exception {
     // Check reordering of exact matches.
     assertMatchEquals(
@@ -130,8 +153,17 @@ public class TestFSTCompletion extends LuceneTestCase {
   }
 
   public void testFullMatchList() throws Exception {
+    // one/0.0 is returned first because it's an exact match.
     assertMatchEquals(
         completion.lookup(stringToCharSequence("one"), Integer.MAX_VALUE),
+        "one/0.0",
+        "oneness/1.0",
+        "onerous/1.0",
+        "onesimus/1.0");
+
+    // full sorted order by weight+alphabetical.
+    assertMatchEquals(
+        completion.lookup(stringToCharSequence("on"), Integer.MAX_VALUE),
         "oneness/1.0",
         "onerous/1.0",
         "onesimus/1.0",
@@ -208,6 +240,31 @@ public class TestFSTCompletion extends LuceneTestCase {
   public void testEmptyInput() throws Exception {
     completion = new FSTCompletionBuilder().build();
     assertMatchEquals(completion.lookup(stringToCharSequence(""), 10));
+  }
+
+  public void testLookupsDuringReBuild() throws Exception {
+    Directory tempDir = getDirectory();
+    FSTCompletionLookup lookup = new FSTCompletionLookup(tempDir, "fst");
+    SuggestRebuildTestUtil.testLookupsDuringReBuild(
+        lookup,
+        Arrays.asList(tf("wit", 42), tf("ham", 3), tf("with", 7)),
+        s -> {
+          assertEquals(3, s.getCount());
+          List<LookupResult> result = s.lookup(stringToCharSequence("wit"), true, 5);
+          assertEquals(2, result.size());
+          assertEquals("wit", result.get(0).key.toString());
+          assertEquals("with", result.get(1).key.toString());
+        },
+        Arrays.asList(tf("witch", 30)),
+        s -> {
+          assertEquals(4, s.getCount());
+          List<LookupResult> result = s.lookup(stringToCharSequence("wit"), true, 5);
+          assertEquals(3, result.size());
+          assertEquals("wit", result.get(0).key.toString());
+          assertEquals("witch", result.get(1).key.toString());
+          assertEquals("with", result.get(2).key.toString());
+        });
+    tempDir.close();
   }
 
   public void testRandom() throws Exception {

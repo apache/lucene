@@ -865,4 +865,69 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       ireader.close();
     }
   }
+
+  public void testSortedTermsDictLookupOrd() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    SortedDocValuesField field = new SortedDocValuesField("foo", new BytesRef());
+    doc.add(field);
+    final int numDocs = atLeast(Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE + 1);
+    for (int i = 0; i < numDocs; ++i) {
+      field.setBytesValue(new BytesRef("" + i));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(writer);
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    doTestTermsDictLookupOrd(leafReader.getSortedDocValues("foo").termsEnum());
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  public void testSortedSetTermsDictLookupOrd() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    SortedSetDocValuesField field = new SortedSetDocValuesField("foo", new BytesRef());
+    doc.add(field);
+    final int numDocs = atLeast(2 * Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE + 1);
+    for (int i = 0; i < numDocs; ++i) {
+      field.setBytesValue(new BytesRef("" + i));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(writer);
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    doTestTermsDictLookupOrd(leafReader.getSortedSetDocValues("foo").termsEnum());
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  private void doTestTermsDictLookupOrd(TermsEnum te) throws IOException {
+    List<BytesRef> terms = new ArrayList<>();
+    for (BytesRef term = te.next(); term != null; term = te.next()) {
+      terms.add(BytesRef.deepCopyOf(term));
+    }
+
+    // iterate in order
+    for (int i = 0; i < terms.size(); ++i) {
+      te.seekExact(i);
+      assertEquals(terms.get(i), te.term());
+    }
+
+    // iterate in reverse order
+    for (int i = terms.size() - 1; i >= 0; --i) {
+      te.seekExact(i);
+      assertEquals(terms.get(i), te.term());
+    }
+
+    // iterate in forward order with random gaps
+    for (int i = random().nextInt(5); i < terms.size(); i += random().nextInt(5)) {
+      te.seekExact(i);
+      assertEquals(terms.get(i), te.term());
+    }
+  }
 }

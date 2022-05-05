@@ -29,6 +29,7 @@ configurations {
 dependencies {
   binaryDistribution project(path: ":lucene:distribution", configuration: "binaryDirForTests")
 
+  moduleTestImplementation "com.carrotsearch:procfork"
   moduleTestImplementation("com.carrotsearch.randomizedtesting:randomizedtesting-runner", {
     exclude group: "junit"
   })

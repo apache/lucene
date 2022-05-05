@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -85,7 +84,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
       throws IOException, InterruptedException {
     this.state = state;
     this.field = state.getField();
-    this.stateConfig = Objects.requireNonNullElse(state.getFacetsConfig(), new FacetsConfig());
+    this.stateConfig = state.getFacetsConfig();
     this.exec = exec;
     dv = state.getDocValues();
     counts = new AtomicIntegerArray(state.getSize());
@@ -99,18 +98,17 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
-    if (topN <= 0) {
-      throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
-    }
+    validateTopN(topN);
+    FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
 
-    if (stateConfig.getDimConfig(dim).hierarchical) {
+    if (dimConfig.hierarchical) {
       int pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
       if (pathOrd < 0) {
         // path was never indexed
         return null;
       }
       SortedSetDocValuesReaderState.DimTree dimTree = state.getDimTree(dim);
-      return getDim(dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
+      return getPathResult(dimConfig, dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
     } else {
       if (path.length > 0) {
         throw new IllegalArgumentException(
@@ -121,12 +119,25 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
         // means dimension was never indexed
         return null;
       }
-      return getDim(dim, null, -1, ordRange.iterator(), topN);
+      int dimOrd = ordRange.start;
+      PrimitiveIterator.OfInt childIt = ordRange.iterator();
+      if (dimConfig.multiValued && dimConfig.requireDimCount) {
+        // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
+        // the dimension and we need to skip past it so the iterator is positioned on the first
+        // child:
+        childIt.next();
+      }
+      return getPathResult(dimConfig, dim, null, dimOrd, childIt, topN);
     }
   }
 
-  private FacetResult getDim(
-      String dim, String[] path, int pathOrd, PrimitiveIterator.OfInt childOrds, int topN)
+  private FacetResult getPathResult(
+      FacetsConfig.DimConfig dimConfig,
+      String dim,
+      String[] path,
+      int pathOrd,
+      PrimitiveIterator.OfInt childOrds,
+      int topN)
       throws IOException {
 
     TopOrdAndIntQueue q = null;
@@ -175,11 +186,17 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
       labelValues[i] = new LabelAndValue(parts[parts.length - 1], ordAndValue.value);
     }
 
-    if (pathOrd == -1) {
-      // not hierarchical facet
+    if (dimConfig.hierarchical == false) {
+      // see if dimCount is actually reliable or needs to be reset
+      if (dimConfig.multiValued) {
+        if (dimConfig.requireDimCount) {
+          dimCount = counts.get(pathOrd);
+        } else {
+          dimCount = -1; // dimCount is in accurate at this point, so set it to -1
+        }
+      }
       return new FacetResult(dim, emptyPath, dimCount, labelValues, childCount);
     } else {
-      // hierarchical facet
       return new FacetResult(dim, path, counts.get(pathOrd), labelValues, childCount);
     }
   }
@@ -241,15 +258,39 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
         if (hits != null && hits.totalHits < numSegOrds / 10) {
           // Remap every ord to global ord as we iterate:
           if (singleValues != null) {
-            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-              counts.incrementAndGet((int) ordMap.get(singleValues.ordValue()));
+            if (singleValues == it) {
+              for (int doc = singleValues.nextDoc();
+                  doc != DocIdSetIterator.NO_MORE_DOCS;
+                  doc = singleValues.nextDoc()) {
+                counts.incrementAndGet((int) ordMap.get(singleValues.ordValue()));
+              }
+            } else {
+              for (int doc = it.nextDoc();
+                  doc != DocIdSetIterator.NO_MORE_DOCS;
+                  doc = it.nextDoc()) {
+                counts.incrementAndGet((int) ordMap.get(singleValues.ordValue()));
+              }
             }
           } else {
-            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-              int term = (int) multiValues.nextOrd();
-              while (term != SortedSetDocValues.NO_MORE_ORDS) {
-                counts.incrementAndGet((int) ordMap.get(term));
-                term = (int) multiValues.nextOrd();
+            if (multiValues == it) {
+              for (int doc = multiValues.nextDoc();
+                  doc != DocIdSetIterator.NO_MORE_DOCS;
+                  doc = multiValues.nextDoc()) {
+                for (int term = (int) multiValues.nextOrd();
+                    term != SortedSetDocValues.NO_MORE_ORDS;
+                    term = (int) multiValues.nextOrd()) {
+                  counts.incrementAndGet((int) ordMap.get(term));
+                }
+              }
+            } else {
+              for (int doc = it.nextDoc();
+                  doc != DocIdSetIterator.NO_MORE_DOCS;
+                  doc = it.nextDoc()) {
+                for (int term = (int) multiValues.nextOrd();
+                    term != SortedSetDocValues.NO_MORE_ORDS;
+                    term = (int) multiValues.nextOrd()) {
+                  counts.incrementAndGet((int) ordMap.get(term));
+                }
               }
             }
           }
@@ -258,15 +299,39 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
           // First count in seg-ord space:
           final int[] segCounts = new int[numSegOrds];
           if (singleValues != null) {
-            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-              segCounts[singleValues.ordValue()]++;
+            if (singleValues == it) {
+              for (int doc = singleValues.nextDoc();
+                  doc != DocIdSetIterator.NO_MORE_DOCS;
+                  doc = singleValues.nextDoc()) {
+                segCounts[singleValues.ordValue()]++;
+              }
+            } else {
+              for (int doc = it.nextDoc();
+                  doc != DocIdSetIterator.NO_MORE_DOCS;
+                  doc = it.nextDoc()) {
+                segCounts[singleValues.ordValue()]++;
+              }
             }
           } else {
-            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-              int term = (int) multiValues.nextOrd();
-              while (term != SortedSetDocValues.NO_MORE_ORDS) {
-                segCounts[term]++;
-                term = (int) multiValues.nextOrd();
+            if (multiValues == it) {
+              for (int doc = multiValues.nextDoc();
+                  doc != DocIdSetIterator.NO_MORE_DOCS;
+                  doc = multiValues.nextDoc()) {
+                for (int term = (int) multiValues.nextOrd();
+                    term != SortedSetDocValues.NO_MORE_ORDS;
+                    term = (int) multiValues.nextOrd()) {
+                  segCounts[term]++;
+                }
+              }
+            } else {
+              for (int doc = it.nextDoc();
+                  doc != DocIdSetIterator.NO_MORE_DOCS;
+                  doc = it.nextDoc()) {
+                for (int term = (int) multiValues.nextOrd();
+                    term != SortedSetDocValues.NO_MORE_ORDS;
+                    term = (int) multiValues.nextOrd()) {
+                  segCounts[term]++;
+                }
               }
             }
           }
@@ -283,15 +348,35 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
         // No ord mapping (e.g., single segment index):
         // just aggregate directly into counts:
         if (singleValues != null) {
-          for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            counts.incrementAndGet(singleValues.ordValue());
+          if (singleValues == it) {
+            for (int doc = singleValues.nextDoc();
+                doc != DocIdSetIterator.NO_MORE_DOCS;
+                doc = singleValues.nextDoc()) {
+              counts.incrementAndGet(singleValues.ordValue());
+            }
+          } else {
+            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+              counts.incrementAndGet(singleValues.ordValue());
+            }
           }
         } else {
-          for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
-              counts.incrementAndGet(term);
-              term = (int) multiValues.nextOrd();
+          if (multiValues == it) {
+            for (int doc = multiValues.nextDoc();
+                doc != DocIdSetIterator.NO_MORE_DOCS;
+                doc = multiValues.nextDoc()) {
+              for (int term = (int) multiValues.nextOrd();
+                  term != SortedSetDocValues.NO_MORE_ORDS;
+                  term = (int) multiValues.nextOrd()) {
+                counts.incrementAndGet(term);
+              }
+            }
+          } else {
+            for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+              for (int term = (int) multiValues.nextOrd();
+                  term != SortedSetDocValues.NO_MORE_ORDS;
+                  term = (int) multiValues.nextOrd()) {
+                counts.incrementAndGet(term);
+              }
             }
           }
         }
@@ -391,18 +476,28 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
-
+    validateTopN(topN);
     List<FacetResult> results = new ArrayList<>();
     for (String dim : state.getDims()) {
-      if (stateConfig.getDimConfig(dim).hierarchical) {
+      FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
+      if (dimConfig.hierarchical) {
         SortedSetDocValuesReaderState.DimTree dimTree = state.getDimTree(dim);
-        FacetResult fr = getDim(dim, emptyPath, dimTree.dimStartOrd, dimTree.iterator(), topN);
+        int dimOrd = dimTree.dimStartOrd;
+        FacetResult fr = getPathResult(dimConfig, dim, emptyPath, dimOrd, dimTree.iterator(), topN);
         if (fr != null) {
           results.add(fr);
         }
       } else {
         OrdRange ordRange = state.getOrdRange(dim);
-        FacetResult fr = getDim(dim, emptyPath, -1, ordRange.iterator(), topN);
+        int dimOrd = ordRange.start;
+        PrimitiveIterator.OfInt childIt = ordRange.iterator();
+        if (dimConfig.multiValued && dimConfig.requireDimCount) {
+          // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
+          // the dimension and we need to skip past it so the iterator is positioned on the first
+          // child:
+          childIt.next();
+        }
+        FacetResult fr = getPathResult(dimConfig, dim, emptyPath, dimOrd, childIt, topN);
         if (fr != null) {
           results.add(fr);
         }

@@ -21,7 +21,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 
@@ -58,6 +60,12 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * true k closest neighbors. For large values of k (for example when k is close to the total
    * number of documents), the search may also retrieve fewer than k documents.
    *
+   * <p>The returned {@link TopDocs} will contain a {@link ScoreDoc} for each nearest neighbor, in
+   * order of their similarity to the query vector (decreasing scores). The {@link TotalHits}
+   * contains the number of documents visited during the search. If the search stopped early because
+   * it hit {@code visitedLimit}, it is indicated through the relation {@code
+   * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
+   *
    * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
    * FieldInfo}. The return value is never {@code null}.
    *
@@ -66,10 +74,11 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @param k the number of docs to return
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    */
-  public abstract TopDocs search(String field, float[] target, int k, Bits acceptDocs)
-      throws IOException;
+  public abstract TopDocs search(
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

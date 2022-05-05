@@ -18,10 +18,12 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.util.BitDocIdSet;
@@ -254,5 +256,41 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
   /** Returns the sampling rate that was used. */
   public double getSamplingRate() {
     return samplingRate;
+  }
+
+  /**
+   * Creates a {@link CollectorManager} for concurrent random sampling through {@link
+   * RandomSamplingFacetsCollector}
+   */
+  public static CollectorManager<RandomSamplingFacetsCollector, RandomSamplingFacetsCollector>
+      createManager(int sampleSize, long seed) {
+    return new CollectorManager<>() {
+      @Override
+      public RandomSamplingFacetsCollector newCollector() {
+        return new RandomSamplingFacetsCollector(sampleSize, seed);
+      }
+
+      @Override
+      public RandomSamplingFacetsCollector reduce(
+          Collection<RandomSamplingFacetsCollector> collectors) {
+        if (collectors == null || collectors.size() == 0) {
+          return new RandomSamplingFacetsCollector(sampleSize, seed);
+        }
+        if (collectors.size() == 1) {
+          return collectors.iterator().next();
+        }
+        return new ReducedRandomSamplingFacetsCollector(sampleSize, seed, collectors);
+      }
+    };
+  }
+
+  private static class ReducedRandomSamplingFacetsCollector extends RandomSamplingFacetsCollector {
+    ReducedRandomSamplingFacetsCollector(
+        int sampleSize, long seed, Collection<RandomSamplingFacetsCollector> facetsCollectors) {
+      super(sampleSize, seed);
+      facetsCollectors.forEach(
+          facetsCollector ->
+              getOriginalMatchingDocs().addAll(facetsCollector.getOriginalMatchingDocs()));
+    }
   }
 }

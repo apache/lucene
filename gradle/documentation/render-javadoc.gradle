@@ -416,7 +416,7 @@ class RenderJavadocTask extends DefaultTask {
       opts << [ '-linkoffline', url, dir ]
     }
 
-    opts << [ '--release', 11 ]
+    opts << [ '--release', 17 ]
     opts << '-Xdoclint:all,-missing'
 
     // Increase Javadoc's heap.

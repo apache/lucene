@@ -164,10 +164,13 @@ final class Rectangle2D implements Component2D {
       boolean ab,
       double bX,
       double bY) {
-    if (ab == true
-        && Component2D.disjoint(this.minX, this.maxX, this.minY, this.maxY, minX, maxX, minY, maxY)
-            == false
-        && edgesIntersect(aX, aY, bX, bY)) {
+    if (Component2D.disjoint(this.minX, this.maxX, this.minY, this.maxY, minX, maxX, minY, maxY)) {
+      return WithinRelation.DISJOINT;
+    }
+    if (contains(aX, aY) || contains(bX, bY)) {
+      return WithinRelation.NOTWITHIN;
+    }
+    if (ab == true && edgesIntersect(aX, aY, bX, bY)) {
       return WithinRelation.NOTWITHIN;
     }
     return WithinRelation.DISJOINT;

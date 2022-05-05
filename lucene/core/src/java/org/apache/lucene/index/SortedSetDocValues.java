@@ -44,7 +44,11 @@ public abstract class SortedSetDocValues extends DocValuesIterator {
    */
   public abstract long nextOrd() throws IOException;
 
-  // TODO: should we have a docValueCount, like SortedNumeric?
+  /**
+   * Retrieves the number of values for the current document. This must always be greater than zero.
+   * It is illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
+   */
+  public abstract long docValueCount();
 
   /**
    * Retrieves the value for the specified ordinal. The returned {@link BytesRef} may be re-used

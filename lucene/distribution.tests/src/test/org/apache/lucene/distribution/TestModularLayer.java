@@ -18,6 +18,7 @@ package org.apache.lucene.distribution;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.module.Configuration;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
@@ -51,28 +52,15 @@ import org.junit.Test;
  * default {@code LuceneTestCase} configuration setup is not used (you have to annotate test for
  * JUnit, for example).
  */
-public class TestModularLayer {
-  /** A path to a directory with an expanded Lucene distribution. */
-  private static final String DISTRIBUTION_PROPERTY = "lucene.distribution.dir";
+public class TestModularLayer extends AbstractLuceneDistributionTest {
+  /** All Lucene modules (including the test framework), no third party modules. */
+  private static Set<ModuleReference> allLuceneModules;
 
-  /** The expected distribution version of Lucene modules. */
-  private static final String VERSION_PROPERTY = "lucene.distribution.version";
+  /** {@link ModuleFinder} resolving only the core Lucene modules. */
+  private static ModuleFinder allLuceneModulesFinder;
 
-  /** Only core Lucene modules, no third party modules. */
-  private static Set<ModuleReference> allCoreModules;
-
-  /** {@link ModuleFinder} resolving only the Lucene modules. */
-  private static ModuleFinder coreModulesFinder;
-
-  /** Ensure Lucene classes are not directly visible. */
-  @BeforeClass
-  public static void checkLuceneNotInClasspath() {
-    Assertions.assertThatThrownBy(
-            () -> {
-              Class.forName("org.apache.lucene.index.IndexWriter");
-            })
-        .isInstanceOf(ClassNotFoundException.class);
-  }
+  /** {@link ModuleFinder} resolving Lucene core and third party dependencies. */
+  private static ModuleFinder luceneCoreAndThirdPartyModulesFinder;
 
   /**
    * We accept external properties that point to the assembled set of distribution modules and to
@@ -86,7 +74,7 @@ public class TestModularLayer {
       throw new AssertionError(DISTRIBUTION_PROPERTY + " property is required for this test.");
     }
 
-    Path modulesPath = Paths.get(modulesPropertyValue).resolve("modules");
+    Path modulesPath = getDistributionPath().resolve("modules");
     if (!Files.isDirectory(modulesPath)) {
       throw new AssertionError(
           DISTRIBUTION_PROPERTY
@@ -110,21 +98,24 @@ public class TestModularLayer {
               + thirdPartyModulesPath.toAbsolutePath());
     }
 
-    coreModulesFinder = ModuleFinder.of(modulesPath, testModulesPath);
-    allCoreModules = coreModulesFinder.findAll();
+    allLuceneModulesFinder = ModuleFinder.of(modulesPath, testModulesPath);
+    allLuceneModules = allLuceneModulesFinder.findAll();
+
+    luceneCoreAndThirdPartyModulesFinder = ModuleFinder.of(modulesPath, thirdPartyModulesPath);
   }
 
   @AfterClass
   public static void cleanup() {
-    allCoreModules = null;
-    coreModulesFinder = null;
+    allLuceneModules = null;
+    luceneCoreAndThirdPartyModulesFinder = null;
+    allLuceneModulesFinder = null;
   }
 
   /** Make sure all published module names remain constant, even if we reorganize the build. */
   @Test
   public void testExpectedDistributionModuleNames() {
     Assertions.assertThat(
-            allCoreModules.stream().map(module -> module.descriptor().name()).sorted())
+            allLuceneModules.stream().map(module -> module.descriptor().name()).sorted())
         .containsExactly(
             "org.apache.lucene.analysis.common",
             "org.apache.lucene.analysis.icu",
@@ -160,10 +151,42 @@ public class TestModularLayer {
             "org.apache.lucene.test_framework");
   }
 
+  /** Try to instantiate the demo classes so that we make sure their module layer is complete. */
+  @Test
+  public void testDemoClassesCanBeLoaded() {
+    ModuleLayer bootLayer = ModuleLayer.boot();
+    Assertions.assertThatNoException()
+        .isThrownBy(
+            () -> {
+              String demoModuleId = "org.apache.lucene.demo";
+
+              Configuration configuration =
+                  bootLayer
+                      .configuration()
+                      .resolve(
+                          luceneCoreAndThirdPartyModulesFinder,
+                          ModuleFinder.of(),
+                          List.of(demoModuleId));
+
+              ModuleLayer layer =
+                  bootLayer.defineModulesWithOneLoader(
+                      configuration, ClassLoader.getSystemClassLoader());
+
+              for (String className :
+                  List.of(
+                      "org.apache.lucene.demo.IndexFiles",
+                      "org.apache.lucene.demo.SearchFiles",
+                      "org.apache.lucene.index.CheckIndex")) {
+                Assertions.assertThat(layer.findLoader(demoModuleId).loadClass(className))
+                    .isNotNull();
+              }
+            });
+  }
+
   /** Make sure we don't publish automatic modules. */
   @Test
   public void testAllCoreModulesAreNamedModules() {
-    Assertions.assertThat(allCoreModules)
+    Assertions.assertThat(allLuceneModules)
         .allSatisfy(
             module -> {
               Assertions.assertThat(module.descriptor().isAutomatic())
@@ -177,7 +200,7 @@ public class TestModularLayer {
   public void testAllModulesHaveExpectedVersion() {
     String luceneBuildVersion = System.getProperty(VERSION_PROPERTY);
     Assumptions.assumeThat(luceneBuildVersion).isNotNull();
-    for (var module : allCoreModules) {
+    for (var module : allLuceneModules) {
       Assertions.assertThat(module.descriptor().rawVersion().orElse(null))
           .as("Version of module: " + module.descriptor().name())
           .isEqualTo(luceneBuildVersion);
@@ -187,7 +210,7 @@ public class TestModularLayer {
   /** Ensure SPIs are equal for the module and classpath layer. */
   @Test
   public void testModularAndClasspathProvidersAreConsistent() throws IOException {
-    for (var module : allCoreModules) {
+    for (var module : allLuceneModules) {
       TreeMap<String, TreeSet<String>> modularProviders = getModularServiceProviders(module);
       TreeMap<String, TreeSet<String>> classpathProviders = getClasspathServiceProviders(module);
 
@@ -264,7 +287,7 @@ public class TestModularLayer {
    */
   @Test
   public void testAllExportedPackagesInSync() throws IOException {
-    for (var module : allCoreModules) {
+    for (var module : allLuceneModules) {
       Set<String> jarPackages = getJarPackages(module, entry -> true);
       Set<ModuleDescriptor.Exports> moduleExports = new HashSet<>(module.descriptor().exports());
 
@@ -311,7 +334,7 @@ public class TestModularLayer {
   /** This test ensures that all analysis modules open their resources files to core. */
   @Test
   public void testAllOpenAnalysisPackagesInSync() throws IOException {
-    for (var module : allCoreModules) {
+    for (var module : allLuceneModules) {
       if (false == module.descriptor().name().startsWith("org.apache.lucene.analysis.")) {
         continue; // at moment we only want to open resources inside analysis packages
       }

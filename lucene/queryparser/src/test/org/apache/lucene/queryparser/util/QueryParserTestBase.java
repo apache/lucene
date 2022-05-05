@@ -66,6 +66,7 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -1035,16 +1036,6 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertEquals(q, getQuery("/[a-z][123]/", qp));
     assertEquals(q, getQuery("/[A-Z][123]/", qp));
     assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
-    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    q.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);
-    assertTrue(((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery() instanceof RegexpQuery);
-    assertEquals(
-        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
-        ((RegexpQuery) ((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery())
-            .getRewriteMethod());
-    assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
-    qp.setMultiTermRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
 
     Query escaped = new RegexpQuery(new Term("field", "[a-z]\\/[123]"));
     assertEquals(escaped, getQuery("/[a-z]\\/[123]/", qp));
@@ -1080,6 +1071,23 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     two.add(new RegexpQuery(new Term("field", "bar")), Occur.SHOULD);
     assertEquals(two.build(), getQuery("field:/foo/ field:/bar/", qp));
     assertEquals(two.build(), getQuery("/foo/ /bar/", qp));
+
+    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    q =
+        new RegexpQuery(
+            new Term("field", "[a-z][123]"),
+            RegExp.ALL,
+            0,
+            name -> null,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);
+    assertTrue(((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery() instanceof RegexpQuery);
+    assertEquals(
+        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
+        ((RegexpQuery) ((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery())
+            .getRewriteMethod());
+    assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
   }
 
   public void testStopwords() throws Exception {

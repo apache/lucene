@@ -381,7 +381,7 @@ public abstract class ValueSource {
 
     @Override
     public FieldComparator<Double> newComparator(
-        String fieldname, int numHits, int sortPos, boolean reversed) {
+        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
       return new ValueSourceComparator(context, numHits);
     }
   }

@@ -111,10 +111,7 @@ final class FeatureQuery extends Query {
 
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        Terms terms = context.reader().terms(fieldName);
-        if (terms == null) {
-          return null;
-        }
+        Terms terms = Terms.getTerms(context.reader(), fieldName);
         TermsEnum termsEnum = terms.iterator();
         if (termsEnum.seekExact(new BytesRef(featureName)) == false) {
           return null;

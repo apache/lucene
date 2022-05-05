@@ -19,13 +19,13 @@ package org.apache.lucene.luke.app.desktop;
 
 import static org.apache.lucene.luke.app.desktop.util.ExceptionHandler.handle;
 
-import java.awt.GraphicsEnvironment;
+import java.awt.*;
 import java.lang.invoke.MethodHandles;
+import java.util.Arrays;
 import java.util.concurrent.SynchronousQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JFrame;
-import javax.swing.UIManager;
+import javax.swing.*;
 import org.apache.lucene.luke.app.desktop.components.LukeWindowProvider;
 import org.apache.lucene.luke.app.desktop.components.dialog.menubar.OpenIndexDialogFactory;
 import org.apache.lucene.luke.app.desktop.util.DialogOpener;
@@ -49,7 +49,7 @@ public class LukeMain {
   }
 
   /** @return Returns {@code true} if GUI startup and initialization was successful. */
-  private static boolean createAndShowGUI() {
+  private static boolean createGUI() {
     // uncaught error handler
     MessageBroker messageBroker = MessageBroker.getInstance();
     try {
@@ -61,14 +61,6 @@ public class LukeMain {
       frame.pack();
       frame.setVisible(true);
 
-      OpenIndexDialogFactory openIndexDialogFactory = OpenIndexDialogFactory.getInstance();
-      new DialogOpener<>(openIndexDialogFactory)
-          .open(
-              MessageUtils.getLocalizedMessage("openindex.dialog.title"),
-              600,
-              420,
-              (factory) -> {});
-
       return true;
     } catch (Throwable e) {
       messageBroker.showUnknownErrorMessage();
@@ -78,6 +70,13 @@ public class LukeMain {
   }
 
   public static void main(String[] args) throws Exception {
+    boolean sanityCheck = Arrays.asList(args).contains("--sanity-check");
+
+    if (sanityCheck && GraphicsEnvironment.isHeadless()) {
+      Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke. Can't do much in headless mode.");
+      Runtime.getRuntime().exit(0);
+    }
+
     String lookAndFeelClassName = UIManager.getSystemLookAndFeelClassName();
     if (!lookAndFeelClassName.contains("AquaLookAndFeel")
         && !lookAndFeelClassName.contains("PlasticXPLookAndFeel")) {
@@ -93,8 +92,17 @@ public class LukeMain {
     javax.swing.SwingUtilities.invokeLater(
         () -> {
           try {
-            guiThreadResult.put(createAndShowGUI());
-          } catch (InterruptedException e) {
+            guiThreadResult.put(createGUI());
+
+            // Show the initial dialog.
+            OpenIndexDialogFactory openIndexDialogFactory = OpenIndexDialogFactory.getInstance();
+            new DialogOpener<>(openIndexDialogFactory)
+                .open(
+                    MessageUtils.getLocalizedMessage("openindex.dialog.title"),
+                    600,
+                    420,
+                    (factory) -> {});
+          } catch (Exception e) {
             throw new RuntimeException(e);
           }
         });
@@ -102,6 +110,12 @@ public class LukeMain {
     if (Boolean.FALSE.equals(guiThreadResult.take())) {
       Logger.getGlobal().log(Level.SEVERE, "Luke could not start.");
       Runtime.getRuntime().exit(1);
+    }
+
+    if (sanityCheck) {
+      // In sanity-check mode on non-headless displays, return success.
+      Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke. We seem to be fine.");
+      Runtime.getRuntime().exit(0);
     }
   }
 }

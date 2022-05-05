@@ -20,9 +20,9 @@
 # This alg will process the Reuters documents feed to produce a
 # single file that contains all documents, one per line.
 #
-# To use this, first cd to benchmark and then run:
+# To use this run:
 #
-#   ant run-task -Dtask.alg=conf/createLineFile.alg
+#   gradlew :lucene:benchmark:run -Ptask.alg=conf/createLineFile.alg
 #
 # Then, to index the documents in the line file, see
 # indexLineFile.alg.

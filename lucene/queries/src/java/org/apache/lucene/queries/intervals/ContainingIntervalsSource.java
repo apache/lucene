@@ -51,8 +51,10 @@ class ContainingIntervalsSource extends ConjunctionIntervalsSource {
         }
         while (a.nextInterval() != IntervalIterator.NO_MORE_INTERVALS) {
           while (b.start() < a.start() && b.end() < a.end()) {
-            if (b.nextInterval() == IntervalIterator.NO_MORE_INTERVALS)
+            if (b.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+              bpos = false;
               return IntervalIterator.NO_MORE_INTERVALS;
+            }
           }
           if (a.start() <= b.start() && a.end() >= b.end()) {
             return a.start();

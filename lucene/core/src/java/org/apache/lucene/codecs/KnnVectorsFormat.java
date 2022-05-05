@@ -85,7 +85,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
         @Override
         public KnnVectorsWriter fieldsWriter(SegmentWriteState state) {
           throw new UnsupportedOperationException(
-              "Attempt to write EMPTY VectorValues: maybe you forgot to use codec=Lucene90");
+              "Attempt to write EMPTY VectorValues: maybe you forgot to use codec=Lucene91");
         }
 
         @Override
@@ -100,7 +100,8 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             }
 
             @Override
-            public TopDocs search(String field, float[] target, int k, Bits acceptDocs) {
+            public TopDocs search(
+                String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
               return TopDocsCollector.EMPTY_TOPDOCS;
             }
 

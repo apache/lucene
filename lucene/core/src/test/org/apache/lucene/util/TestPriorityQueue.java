@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -163,6 +164,55 @@ public class TestPriorityQueue extends LuceneTestCase {
     assertEquals((Integer) 2, pq.top());
   }
 
+  public void testAddAllToEmptyQueue() {
+    Random random = random();
+    int size = 10;
+    List<Integer> list = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      list.add(random.nextInt());
+    }
+    IntegerQueue pq = new IntegerQueue(size);
+    pq.addAll(list);
+
+    pq.checkValidity();
+    assertOrderedWhenDrained(pq, list);
+  }
+
+  public void testAddAllToPartiallyFilledQueue() {
+    IntegerQueue pq = new IntegerQueue(20);
+    List<Integer> oneByOne = new ArrayList<>();
+    List<Integer> bulkAdded = new ArrayList<>();
+    Random random = random();
+    for (int i = 0; i < 10; i++) {
+      bulkAdded.add(random.nextInt());
+
+      int x = random.nextInt();
+      pq.add(x);
+      oneByOne.add(x);
+    }
+
+    pq.addAll(bulkAdded);
+    pq.checkValidity();
+
+    oneByOne.addAll(bulkAdded); // Gather all "reference" data.
+    assertOrderedWhenDrained(pq, oneByOne);
+  }
+
+  public void testAddAllDoesNotFitIntoQueue() {
+    IntegerQueue pq = new IntegerQueue(20);
+    List<Integer> list = new ArrayList<>();
+    Random random = random();
+    for (int i = 0; i < 11; i++) {
+      list.add(random.nextInt());
+      pq.add(random.nextInt());
+    }
+
+    assertThrows(
+        "Cannot add 11 elements to a queue with remaining capacity: 9",
+        ArrayIndexOutOfBoundsException.class,
+        () -> pq.addAll(list));
+  }
+
   public void testRemovalsAndInsertions() {
     Random random = random();
     int numDocsInPQ = TestUtil.nextInt(random, 1, 100);
@@ -296,5 +346,14 @@ public class TestPriorityQueue extends LuceneTestCase {
             }
           };
         });
+  }
+
+  private void assertOrderedWhenDrained(IntegerQueue pq, List<Integer> referenceDataList) {
+    Collections.sort(referenceDataList);
+    int i = 0;
+    while (pq.size() > 0) {
+      assertEquals(pq.pop(), referenceDataList.get(i));
+      i++;
+    }
   }
 }

@@ -43,6 +43,21 @@ public final class ConstantScoreQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     Query rewritten = query.rewrite(reader);
 
+    // Do some extra simplifications that are legal since scores are not needed on the wrapped
+    // query.
+    if (rewritten instanceof BoostQuery) {
+      rewritten = ((BoostQuery) rewritten).getQuery();
+    } else if (rewritten instanceof ConstantScoreQuery) {
+      rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+    } else if (rewritten instanceof BooleanQuery) {
+      rewritten = ((BooleanQuery) rewritten).rewriteNoScoring(reader);
+    }
+
+    if (rewritten.getClass() == MatchNoDocsQuery.class) {
+      // bubble up MatchNoDocsQuery
+      return rewritten;
+    }
+
     if (rewritten != query) {
       return new ConstantScoreQuery(rewritten);
     }
@@ -109,7 +124,16 @@ public final class ConstantScoreQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    // If the score mode is exhaustive then pass COMPLETE_NO_SCORES, otherwise pass TOP_DOCS to make
+    // sure to not disable any of the dynamic pruning optimizations for queries sorted by field or
+    // top scores.
+    final ScoreMode innerScoreMode;
+    if (scoreMode.isExhaustive()) {
+      innerScoreMode = ScoreMode.COMPLETE_NO_SCORES;
+    } else {
+      innerScoreMode = ScoreMode.TOP_DOCS;
+    }
+    final Weight innerWeight = searcher.createWeight(query, innerScoreMode, 1f);
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost) {
         @Override

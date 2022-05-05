@@ -20,22 +20,28 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortField.Type;
+import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -48,6 +54,7 @@ import org.apache.lucene.search.Weight;
  * <ul>
  *   <li>The index is sorted, and its primary sort is on the same field as the query.
  *   <li>The query field has either {@link SortedNumericDocValues} or {@link NumericDocValues}.
+ *   <li>The sort field is of type {@code SortField.Type.LONG} or {@code SortField.Type.INT}.
  *   <li>The segments must have at most one field value per document (otherwise we cannot easily
  *       determine the matching document IDs through a binary search).
  * </ul>
@@ -136,10 +143,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
     if (lowerValue == Long.MIN_VALUE && upperValue == Long.MAX_VALUE) {
-      return new DocValuesFieldExistsQuery(field);
+      return new FieldExistsQuery(field);
     }
 
     Query rewrittenFallback = fallbackQuery.rewrite(reader);
+    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
+      return new MatchAllDocsQuery();
+    }
     if (rewrittenFallback == fallbackQuery) {
       return this;
     } else {
@@ -154,24 +164,34 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     Weight fallbackWeight = fallbackQuery.createWeight(searcher, scoreMode, boost);
 
     return new ConstantScoreWeight(this, boost) {
+
+      @Override
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final Weight weight = this;
+        DocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+        if (disi != null) {
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return new ConstantScoreScorer(weight, score(), scoreMode, disi);
+            }
+
+            @Override
+            public long cost() {
+              return disi.cost();
+            }
+          };
+        }
+        return fallbackWeight.scorerSupplier(context);
+      }
+
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        SortedNumericDocValues sortedNumericValues =
-            DocValues.getSortedNumeric(context.reader(), field);
-        NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
-
-        if (numericValues != null) {
-          Sort indexSort = context.reader().getMetaData().getSort();
-          if (indexSort != null
-              && indexSort.getSort().length > 0
-              && indexSort.getSort()[0].getField().equals(field)) {
-
-            SortField sortField = indexSort.getSort()[0];
-            DocIdSetIterator disi = getDocIdSetIterator(sortField, context, numericValues);
-            return new ConstantScoreScorer(this, score(), scoreMode, disi);
-          }
+        ScorerSupplier scorerSupplier = scorerSupplier(context);
+        if (scorerSupplier == null) {
+          return null;
         }
-        return fallbackWeight.scorer(context);
+        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override
@@ -180,7 +200,40 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         // if the fallback query is cacheable.
         return fallbackWeight.isCacheable(ctx);
       }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        if (context.reader().hasDeletions() == false) {
+          BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+          if (disi != null && disi.delegate == null) {
+            return disi.lastDoc - disi.firstDoc;
+          }
+        }
+        return fallbackWeight.count(context);
+      }
     };
+  }
+
+  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
+      throws IOException {
+    SortedNumericDocValues sortedNumericValues =
+        DocValues.getSortedNumeric(context.reader(), field);
+    NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
+    if (numericValues != null) {
+      Sort indexSort = context.reader().getMetaData().getSort();
+      if (indexSort != null
+          && indexSort.getSort().length > 0
+          && indexSort.getSort()[0].getField().equals(field)) {
+
+        final SortField sortField = indexSort.getSort()[0];
+        final SortField.Type sortFieldType = getSortFieldType(sortField);
+        // The index sort optimization is only supported for Type.INT and Type.LONG
+        if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
+          return getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
+        }
+      }
+    }
+    return null;
   }
 
   /**
@@ -195,15 +248,18 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * {@link DocIdSetIterator} makes sure to wrap the original docvalues to skip over documents with
    * no value.
    */
-  private DocIdSetIterator getDocIdSetIterator(
-      SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
+  private BoundedDocIdSetIterator getDocIdSetIterator(
+      SortField sortField,
+      SortField.Type sortFieldType,
+      LeafReaderContext context,
+      DocIdSetIterator delegate)
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
     long upper = sortField.getReverse() ? lowerValue : upperValue;
     int maxDoc = context.reader().maxDoc();
 
     // Perform a binary search to find the first document with value >= lower.
-    ValueComparator comparator = loadComparator(sortField, lower, context);
+    ValueComparator comparator = loadComparator(sortField, sortFieldType, lower, context);
     int low = 0;
     int high = maxDoc - 1;
 
@@ -211,7 +267,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       int mid = (low + high) >>> 1;
       if (comparator.compare(mid) <= 0) {
         high = mid - 1;
-        comparator = loadComparator(sortField, lower, context);
+        comparator = loadComparator(sortField, sortFieldType, lower, context);
       } else {
         low = mid + 1;
       }
@@ -221,7 +277,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     // Perform a binary search to find the first document with value > upper.
     // Since we know that upper >= lower, we can initialize the lower bound
     // of the binary search to the result of the previous search.
-    comparator = loadComparator(sortField, upper, context);
+    comparator = loadComparator(sortField, sortFieldType, upper, context);
     low = firstDocIdInclusive;
     high = maxDoc - 1;
 
@@ -229,14 +285,26 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       int mid = (low + high) >>> 1;
       if (comparator.compare(mid) < 0) {
         high = mid - 1;
-        comparator = loadComparator(sortField, upper, context);
+        comparator = loadComparator(sortField, sortFieldType, upper, context);
       } else {
         low = mid + 1;
       }
     }
 
     int lastDocIdExclusive = high + 1;
-    return new BoundedDocSetIdIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
+    Object missingValue = sortField.getMissingValue();
+    BoundedDocIdSetIterator disi;
+    LeafReader reader = context.reader();
+    PointValues pointValues = reader.getPointValues(field);
+    final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+    // all documents have docValues or missing value falls outside the range
+    if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
+        || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
+      disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, null);
+    } else {
+      disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
+    }
+    return disi;
   }
 
   /** Compares the given document's value with a stored reference value. */
@@ -245,10 +313,17 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   private static ValueComparator loadComparator(
-      SortField sortField, long topValue, LeafReaderContext context) throws IOException {
+      SortField sortField, SortField.Type type, long topValue, LeafReaderContext context)
+      throws IOException {
     @SuppressWarnings("unchecked")
-    FieldComparator<Long> fieldComparator = (FieldComparator<Long>) sortField.getComparator(1, 0);
-    fieldComparator.setTopValue(topValue);
+    FieldComparator<Number> fieldComparator =
+        (FieldComparator<Number>) sortField.getComparator(1, false);
+    if (type == Type.INT) {
+      fieldComparator.setTopValue((int) topValue);
+    } else {
+      // Since we support only Type.INT and Type.LONG, assuming LONG for all other cases
+      fieldComparator.setTopValue(topValue);
+    }
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);
     int direction = sortField.getReverse() ? -1 : 1;
@@ -259,18 +334,27 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     };
   }
 
+  private static SortField.Type getSortFieldType(SortField sortField) {
+    // We expect the sortField to be SortedNumericSortField
+    if (sortField instanceof SortedNumericSortField) {
+      return ((SortedNumericSortField) sortField).getNumericType();
+    } else {
+      return sortField.getType();
+    }
+  }
+
   /**
    * A doc ID set iterator that wraps a delegate iterator and only returns doc IDs in the range
    * [firstDocInclusive, lastDoc).
    */
-  private static class BoundedDocSetIdIterator extends DocIdSetIterator {
+  private static class BoundedDocIdSetIterator extends DocIdSetIterator {
     private final int firstDoc;
     private final int lastDoc;
     private final DocIdSetIterator delegate;
 
     private int docID = -1;
 
-    BoundedDocSetIdIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
+    BoundedDocIdSetIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
       this.firstDoc = firstDoc;
       this.lastDoc = lastDoc;
       this.delegate = delegate;
@@ -292,7 +376,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         target = firstDoc;
       }
 
-      int result = delegate.advance(target);
+      int result;
+      if (delegate != null) {
+        result = delegate.advance(target);
+      } else {
+        result = target;
+      }
       if (result < lastDoc) {
         docID = result;
       } else {

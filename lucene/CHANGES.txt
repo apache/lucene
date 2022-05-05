@@ -12,6 +12,19 @@ API Changes
   classes no longer determinize NFAs. Instead it is the responsibility
   of the caller to determinize.  (Robert Muir)
 
+* LUCENE-10368: IntTaxonomyFacets has been make pkg-private and serves only as an internal
+  implementation detail of taxonomy-faceting. (Greg Miller)
+
+* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji and Nori (Tomoko Uchida)
+
+* LUCENE-10440: TaxonomyFacets and FloatTaxonomyFacets have been made pkg-private and only serve
+  as internal implementation details of taxonomy-faceting. (Greg Miller)
+
+* LUCENE-10431: MultiTermQuery.setRewriteMethod() has been removed. (Alan Woodward)
+
+* LUCENE-10436: Remove deprecated DocValuesFieldExistsQuery, NormsFieldExistsQuery and
+  KnnVectorFieldExistsQuery. (Zach Chen, Adrien Grand)
+
 New Features
 ---------------------
 
@@ -19,7 +32,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
+  (Uihyun Kim)
 
 Optimizations
 ---------------------
@@ -27,16 +42,149 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
 (No changes)
 
 Other
 ---------------------
-
 * LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
   (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
 
 * LUCENE-10253: The @BadApple annotation has been removed from the test
   framework. (Adrien Grand)
+
+* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+  (Tomoko Uchida, Robert Muir)
+
+* LUCENE-10475: Merge dictionary builders in `util` package into `dict` package in Kuromoji and Nori.
+  All classes in `org.apache.lucene.analysis.[ja|ko].util` was moved to `org.apache.lucene.analysis.[ja|ko].dict`.
+  (Tomoko Uchida)
+
+* LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
+
+======================= Lucene 9.2.0 =======================
+
+API Changes
+---------------------
+
+* LUCENE-10325: Facets API extended to support getTopFacets. (Yuting Gan)
+
+* LUCENE-10482: Allow users to create their own DirectoryTaxonomyReaders with empty taxoArrays instead of letting the
+  taxoEpoch decide. Add a test case that demonstrates the inconsistencies caused when you reuse taxoArrays on older
+  checkpoints. (Gautam Worah)
+
+New Features
+---------------------
+
+* LUCENE-10539: Return a stream of completions from FSTCompletion. (Dawid Weiss)
+
+* LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
+  to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
+
+* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
+  implementation. `Monitor` can be created with a readonly `QueryIndex` in order to
+  have readonly `Monitor` instances. (Niko Usai)
+
+* LUCENE-10456: Implement rewrite and Weight#count for MultiRangeQuery
+  by merging overlapping ranges . (Jianping Weng)
+
+* LUCENE-10444: Support alternate aggregation functions in association facets. (Greg Miller)
+
+Improvements
+---------------------
+
+* LUCENE-10229: return -1 for unknown offsets in ExtendedIntervalsSource. Modify highlighting to
+  work properly with or without offsets. (Dawid Weiss)
+
+* LUCENE-10494: Implement method to bulk add all collection elements to a PriorityQueue.
+  (Bauyrzhan Sakhariyev)
+
+* LUCENE-10484: Add support for concurrent random sampling by calling
+  RandomSamplingFacetsCollector#createManager. (Luca Cavanna)
+
+* LUCENE-10467: Throws IllegalArgumentException for Facets#getAllDims and Facets#getTopChildren
+  if topN <= 0. (Yuting Gan)
+
+* LUCENE-9848: Correctly sort HNSW graph neighbors when applying diversity criterion (Mayya
+  Sharipova, Michael Sokolov)
+
+Optimizations
+---------------------
+
+* LUCENE-10452: Hunspell: call checkCanceled less frequently to reduce the overhead (Peter Gromov)
+
+* LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
+
+* LUCENE-10418: More `Query#rewrite` optimizations for the non-scoring case.
+  (Adrien Grand)
+
+* LUCENE-10436: Deprecate DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery
+  with FieldExistsQuery. (Zach Chen, Michael McCandless, Adrien Grand)
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
+
+* LUCENE-10503: Potential speedup for pure disjunctions whose clauses produce
+  scores that are very close to each other. (Adrien Grand)
+
+* LUCENE-10315: Use SIMD instructions to decode BKD doc IDs. (Guo Feng, Adrien Grand, Ignacio Vera)
+
+* LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
+  and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
+
+* LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
+
+* LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
+
+Bug Fixes
+---------------------
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
+
+* LUCENE-10491: A correctness bug in the way scores are provided within TaxonomyFacetSumValueSource
+  was fixed. (Michael McCandless, Greg Miller)
+
+* LUCENE-10466: Ensure IndexSortSortedNumericDocValuesRangeQuery handles sort field
+  types besides LONG (Andriy Redko)
+
+* LUCENE-10292: Suggest: Fix AnalyzingInfixSuggester / BlendedInfixSuggester to correctly return
+  existing lookup() results during concurrent build().  Fix other FST based suggesters so that
+  getCount() returned results consistent with lookup() during concurrent build().  (hossman)
+
+* LUCENE-10508: Fixes some edge cases where GeoArea were built in a way that vertical planes
+  could not evaluate their sign, either because the planes where the same or the center between those
+  planes was lying in one of the planes. (Ignacio Vera)
+
+* LUCENE-10495: Fix return statement of siblingsLoaded() in TaxonomyFacets. (Yuting Gan)
+
+* LUCENE-10533: SpellChecker.formGrams is missing bounds check (Kevin Risden)
+
+* LUCENE-10529: Properly handle when TestTaxonomyFacetAssociations test case randomly indexes
+  no documents instead of throwing an NPE. (Greg Miller)
+
+* LUCENE-10470: Check if polygon has been successfully tessellated before we fail (we are failing some valid
+  tessellations) and allow filtering edges that fold on top of the previous one. (Ignacio Vera)
+
+* LUCENE-10530: Avoid floating point precision test case bug in TestTaxonomyFacetAssociations.
+  (Greg Miller)
+
+* LUCENE-10552: KnnVectorQuery has incorrect equals/ hashCode. (Lu Xugang)
+
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
+
+Other
+---------------------
+* LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems
+  to override if they need to extend the Path implementation. (Gautam Worah, Robert Muir)
+
+* LUCENE-10525: Test-framework: Add detection of illegal windows filenames to WindowsFS. (Gautam Worah)
+
+* LUCENE-10541: Test-framework: limit the default length of MockTokenizer tokens to 255.
+  (Robert Muir, Uwe Schindler, Tomoko Uchida, Dawid Weiss)
+
+* GITHUB#854: Allow to link to GitHub pull request from CHANGES. (Tomoko Uchida, Jan Høydahl)
 
 ======================= Lucene 9.1.0 =======================
 
@@ -62,6 +210,39 @@ API Changes
   to test existence of resource based on null return value.  (Uwe Schindler, Dawid Weiss)
 
 * LUCENE-10349: WordListLoader methods now return unmodifiable CharArraySets.  (Uwe Schindler)
+
+* LUCENE-10377: SortField.getComparator() has changed signature. The second parameter is now
+  a boolean indicating whether or not skipping should be enabled on the comparator.
+  (Alan Woodward)
+
+* LUCENE-10381: Require users to provide FacetsConfig for SSDV faceting. (Greg Miller)
+
+* LUCENE-10368: IntTaxonomyFacets has been deprecated and is no longer a supported extension point
+  for user-created faceting implementations. (Greg Miller)
+
+* LUCENE-10400: Add constructors that take external resource Paths to dictionary classes in Kuromoji and Nori:
+  ConnectionCosts, TokenInfoDictionary, and UnknownDictionary. Old constructors that take resource scheme and
+  resource path in those classes are deprecated; These are replaced with the new constructors and planned to be
+  removed in a future release. (Tomoko Uchida, Uwe Schindler, Mike Sokolov)
+
+* LUCENE-10050: Deprecate DrillSideways#search(Query, Collector) in favor of
+  DrillSideways#search(Query, CollectorManager). This reflects the change (LUCENE-10002) being made in
+  IndexSearcher#search that trends towards using CollectorManagers over Collectors. (Gautam Worah)
+
+* LUCENE-10420: Move functional interfaces in IOUtils to top-level interfaces.
+  (David Smiley, Uwe Schindler, Dawid Weiss, Tomoko Uchida)
+
+* LUCENE-10398: Add static method for getting Terms from LeafReader. (Spike Liu)
+
+* LUCENE-10440: TaxonomyFacets and FloatTaxonomyFacets have been deprecated and are no longer
+  supported extension points for user-created faceting implementations. (Greg Miller)
+
+* LUCENE-10431: MultiTermQuery.setRewriteMethod() has been deprecated, and constructor
+  parameters for the various implementations added. (Alan Woodward)
+
+* LUCENE-10171: OpenNLPOpsFactory.getLemmatizerDictionary(String, ResourceLoader) now returns a
+  DictionaryLemmatizer object instead of a raw String serialization of the dictionary.
+  (Spyros Kapnissis via Michael Gibney, Alessandro Benedetti)
 
 New Features
 ---------------------
@@ -112,6 +293,27 @@ New Features
 
 * LUCENE-10250: Add support for arbitrary length hierarchical SSDV facets. (Marc D'mello)
 
+* LUCENE-10395: Add support for TotalHitCountCollectorManager, a collector manager
+  based on TotalHitCountCollector that allows users to parallelize counting the
+  number of hits. (Luca Cavanna, Adrien Grand)
+
+* LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
+
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
+  Alan Woodward)
+  
+* LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
+  the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
+  (Gautam Worah, Ignacio Vera, Adrien Grand)
+
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
+
+* LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
+  nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
+
+* LUCENE-10237: Add MergeOnFlushMergePolicy to sandbox.
+  (Michael Froh, Anand Kotriwal)
+
 Improvements
 ---------------------
 
@@ -133,6 +335,12 @@ Improvements
 
 * LUCENE-10229: Unify behaviour of match offsets for interval queries on fields
   with or without offsets enabled. (Patrick Zhai)
+
+* LUCENE-10054 Make HnswGraph hierarchical (Mayya Sharipova, Julie Tibshirani, Mike Sokolov,
+  Adrien Grand)
+
+* LUCENE-10371: Make IndexRearranger able to arrange segment in a determined order.
+  (Patrick Zhai)
 
 Optimizations
 ---------------------
@@ -159,11 +367,43 @@ Optimizations
 * LUCENE-10379: Count directly into the dense values array in FastTaxonomyFacetCounts#countAll.
   (Guo Feng, Greg Miller)
 
+* LUCENE-10375: Speed up HNSW vectors merge by first writing combined vector
+  data to a file. (Julie Tibshirani, Adrien Grand)
+
+* LUCENE-10388: Remove MultiLevelSkipListReader#SkipBuffer to make JVM less confused. (Guo Feng)
+
+* LUCENE-10367: Optimize CoveringQuery for the case when the minimum number of
+  matching clauses is a constant. (LuYunCheng via Adrien Grand)
+
+* LUCENE-10412: More `Query#rewrite` optimizations for MatchNoDocsQuery.
+  (Adrien Grand)
+
+* LUCENE-10408 Better encoding of doc Ids in vectors. (Mayya Sharipova, Julie Tibshirani, Adrien Grand)
+
+* LUCENE-10424, LUCENE-10439: Optimize the "everything matches" case for count query in PointRangeQuery. (Ignacio Vera, Lu Xugang)
+
+* LUCENE-10084, LUCENE-10435: Rewrite DocValuesFieldExistsQuery to MatchAllDocsQuery whenever
+  terms or points have a docCount that is equal to maxDoc. (Vigya Sharma, Lu Xugang)
+
+* LUCENE-10442: When indexQuery or/and dvQuery be a MatchAllDocsQuery
+  then IndexOrDocValuesQuery should be rewrite to MatchAllDocsQuery. (Lu Xugang)
+
+* LUCENE-10450: IndexSortSortedNumericDocValuesRangeQuery could be rewrite to MatchAllDocsQuery. (Lu Xugang)
+
+* LUCENE-10453: Indexing and search speedup with KNN vectors when using
+  euclidean distance. (Adrien Grand)
+
+* LUCENE-10455: IndexSortSortedNumericDocValuesRangeQuery now implements the scorerSupplier API. (Lu Xugang)
+
 Changes in runtime behavior
 ---------------------
 
 * LUCENE-10291: Lucene now only writes files for terms and postings if at least
   one field is indexed with postings. (Yannick Welsch)
+
+* LUCENE-10311: FixedBitSet#approximateCardinality now trades accuracy for
+  speed instead of delegating to FixedBitSet#cardinality.
+  (Robert Muir, Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -171,9 +411,6 @@ Bug Fixes
 * LUCENE-10316: fix TestLRUQueryCache.testCachingAccountableQuery failure. (Patrick Zhai)
 
 * LUCENE-10279: Fix equals in MultiRangeQuery. (Ignacio Vera)
-
-* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
-  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
 
 * LUCENE-10349: Fix all analyzers to behave according to their documentation:
   getDefaultStopSet() methods now return unmodifiable CharArraySets.  (Uwe Schindler)
@@ -184,8 +421,39 @@ Bug Fixes
 * LUCENE-10352: Fixed ctor argument checks: JapaneseKatakanaStemFilter,
   DoubleMetaphoneFilter (Uwe Schindler, Robert Muir)
 
-* LLUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
+* LUCENE-10236: Stop duplicating norms when scoring in CombinedFieldQuery.
+  (Zach Chen, Jim Ferenczi, Julie Tibshirani)
+
+* LUCENE-10353: Add random null injection to TestRandomChains. (Robert Muir,
   Uwe Schindler)
+
+* LUCENE-10377: CheckIndex could incorrectly throw an error when checking index sorts
+  defined on older indexes. (Alan Woodward)
+
+* LUCENE-9952: Address inaccurate dim counts for SSDV faceting in cases where a dim is configured
+  as multi-valued. (Greg Miller)
+
+* LUCENE-10401: Fix lookups on empty doc-value terms dictionaries to no longer
+  throw an ArrayIndexOutOfBoundsException. (Adrien Grand)
+
+* LUCENE-10402: Prefix intervals should declare their automaton as binary, otherwise prefixes
+  containing multibyte characters will not correctly match. (Alan Woodward)
+
+* LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
+  in a disjunction. (Alan Woodward, Dawid Weiss)
+  
+* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
+   as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
+
+* LUCENE-10428: Queries with a misbehaving score function may no longer cause
+  infinite loops in their parent BooleanQuery.
+  (Ankit Jain, Daniel Doubrovkine, Adrien Grand)
+
+* LUCENE-10431: MultiTermQuery no longer includes its rewrite method in its hashcode
+  calculation, as this could cause problems with wrapper queries like BooleanQuery which
+  expect their child queries hashcodes to be stable. (Alan Woodward)
+
+* LUCENE-10469: Fix ScoreMode propagation by ConstantScoreQuery. (Adrien Grand)
 
 Other
 ---------------------
@@ -203,6 +471,11 @@ Other
 * LUCENE-10352: Convert TestAllAnalyzersHaveFactories and TestRandomChains to a global integration test
   and discover classes to check from module system. The test now checks all analyzer modules,
   so it may discover new bugs outside of analysis:common module.  (Uwe Schindler, Robert Muir)
+
+* LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
+
+* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon 
+  does not contain enough no-collinear points. (Ignacio Vera)
 
 ======================= Lucene 9.0.0 =======================
 
@@ -533,7 +806,7 @@ Improvements
   (David Smiley)
 
 * LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. (Greg Miller)
+  with its own custom encoding. (Greg Miller) 
 
 Bug fixes
 ---------------------

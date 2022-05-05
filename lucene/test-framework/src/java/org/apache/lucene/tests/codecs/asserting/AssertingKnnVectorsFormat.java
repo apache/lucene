@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
@@ -70,6 +71,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public void merge(MergeState mergeState) throws IOException {
+      delegate.merge(mergeState);
+    }
+
+    @Override
     public void finish() throws IOException {
       delegate.finish();
     }
@@ -108,10 +114,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+    public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+        throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null && fi.getVectorDimension() > 0;
-      TopDocs hits = delegate.search(field, target, k, acceptDocs);
+      TopDocs hits = delegate.search(field, target, k, acceptDocs, visitedLimit);
       assert hits != null;
       assert hits.scoreDocs.length <= k;
       return hits;

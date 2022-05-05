@@ -223,8 +223,8 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
-      throws IOException {
+  public final TopDocs searchNearestVectors(
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
@@ -232,7 +232,7 @@ public abstract class CodecReader extends LeafReader {
       return null;
     }
 
-    return getVectorReader().search(field, target, k, acceptDocs);
+    return getVectorReader().search(field, target, k, acceptDocs, visitedLimit);
   }
 
   @Override

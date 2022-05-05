@@ -166,4 +166,9 @@ public class WindowsFS extends HandleTrackingFS {
       return super.deleteIfExists(path);
     }
   }
+
+  @Override
+  public FilterPath wrapPath(Path path) {
+    return new WindowsPath(path, fileSystem);
+  }
 }

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.perfield;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -103,11 +105,13 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       try (IndexReader ireader = DirectoryReader.open(directory)) {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
-            reader.searchNearestVectors("field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs());
+            reader.searchNearestVectors(
+                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
-            reader.searchNearestVectors("field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs());
+            reader.searchNearestVectors(
+                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }
@@ -151,8 +155,8 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       }
 
       // Check that the new format was used while merging
-      MatcherAssert.assertThat(format1.fieldsWritten, equalTo(Set.of("field1")));
-      MatcherAssert.assertThat(format2.fieldsWritten, equalTo(Set.of("field2")));
+      MatcherAssert.assertThat(format1.fieldsWritten, contains("field1"));
+      MatcherAssert.assertThat(format2.fieldsWritten, contains("field2"));
     }
   }
 
@@ -175,6 +179,14 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
             throws IOException {
           fieldsWritten.add(fieldInfo.name);
           writer.writeField(fieldInfo, knnVectorsReader);
+        }
+
+        @Override
+        public void merge(MergeState mergeState) throws IOException {
+          for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
+            fieldsWritten.add(fieldInfo.name);
+          }
+          writer.merge(mergeState);
         }
 
         @Override
