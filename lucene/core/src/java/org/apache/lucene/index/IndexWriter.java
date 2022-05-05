@@ -3142,8 +3142,7 @@ public class IndexWriter
           Bits liveDocs = leaf.getLiveDocs();
           numSoftDeleted +=
               PendingSoftDeletes.countSoftDeletes(
-                  FieldExistsQuery.getDocValuesDocIdSetIterator(
-                      config.getSoftDeletesField(), leaf),
+                  FieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), leaf),
                   liveDocs);
         }
       }

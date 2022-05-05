@@ -28,5 +28,4 @@ abstract class DocValuesIterator extends DocIdSetIterator {
    * returns {@code target}.
    */
   public abstract boolean advanceExact(int target) throws IOException;
-
 }
