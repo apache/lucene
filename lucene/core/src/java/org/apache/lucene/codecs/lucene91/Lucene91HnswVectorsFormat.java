@@ -101,6 +101,8 @@ public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
    */
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
+  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
    * {@link Lucene91HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
