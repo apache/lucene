@@ -150,11 +150,8 @@ public abstract class BinaryDictionary implements Dictionary {
 
   @Deprecated(forRemoval = true, since = "9.1")
   private static InputStream getClassResource(String path) throws IOException {
-    // we prefix the path with a "/" to ensure we have the same pre-9.1 behaviour (where we used
-    // ClassLoader#getResourceAsStream):
-    var prefixedPath = path.startsWith("/") ? path : "/".concat(path);
     return IOUtils.requireResourceNonNull(
-        BinaryDictionary.class.getResourceAsStream(prefixedPath), path);
+        BinaryDictionary.class.getClassLoader().getResourceAsStream(path), path);
   }
 
   public void lookupWordIds(int sourceId, IntsRef ref) {
