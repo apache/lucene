@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.ja.dict;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,7 +43,8 @@ public final class ConnectionCosts {
   /**
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
    * @param path - where to load resources from, without the ".dat" suffix
-   * @deprecated replaced by {@link #ConnectionCosts(Path)}
+   * @deprecated replaced by {@link #ConnectionCosts(Path)} for files and {@link
+   *     #ConnectionCosts(URL)} for classpath/module resources.
    */
   @Deprecated(forRemoval = true, since = "9.1")
   @SuppressWarnings("removal")
@@ -61,6 +63,17 @@ public final class ConnectionCosts {
    */
   public ConnectionCosts(Path connectionCostsFile) throws IOException {
     this(() -> Files.newInputStream(connectionCostsFile));
+  }
+
+  /**
+   * Create a {@link ConnectionCosts} from an external resource URL (e.g. from Classpath with {@link
+   * ClassLoader#getResource(String)}).
+   *
+   * @param connectionCostsUrl where to load connection costs resource
+   * @throws IOException if resource was not found or broken
+   */
+  public ConnectionCosts(URL connectionCostsUrl) throws IOException {
+    this(() -> connectionCostsUrl.openStream());
   }
 
   private ConnectionCosts() throws IOException {

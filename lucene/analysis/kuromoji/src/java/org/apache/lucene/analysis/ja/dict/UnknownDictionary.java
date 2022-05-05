@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.ja.dict;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,7 +33,8 @@ public final class UnknownDictionary extends BinaryDictionary {
    * @param scheme scheme for loading resources (FILE or CLASSPATH).
    * @param path where to load resources from; a path, including the file base name without
    *     extension; this is used to match multiple files with the same base name.
-   * @deprecated replaced by {@link #UnknownDictionary(Path, Path, Path)}
+   * @deprecated replaced by {@link #UnknownDictionary(Path, Path, Path)} for files and {@link
+   *     #UnknownDictionary(URL, URL, URL)} for classpath/module resources
    */
   @Deprecated(forRemoval = true, since = "9.1")
   @SuppressWarnings("removal")
@@ -62,6 +64,20 @@ public final class UnknownDictionary extends BinaryDictionary {
         () -> Files.newInputStream(targetMapFile),
         () -> Files.newInputStream(posDictFile),
         () -> Files.newInputStream(dictFile));
+  }
+
+  /**
+   * Create a {@link UnknownDictionary} from an external resource URL (e.g. from Classpath with
+   * {@link ClassLoader#getResource(String)}).
+   *
+   * @param targetMapUrl where to load target map resource
+   * @param posDictUrl where to load POS dictionary resource
+   * @param dictUrl where to load dictionary entries resource
+   * @throws IOException if resource was not found or broken
+   */
+  public UnknownDictionary(URL targetMapUrl, URL posDictUrl, URL dictUrl) throws IOException {
+    super(
+        () -> targetMapUrl.openStream(), () -> posDictUrl.openStream(), () -> dictUrl.openStream());
   }
 
   private UnknownDictionary() throws IOException {
