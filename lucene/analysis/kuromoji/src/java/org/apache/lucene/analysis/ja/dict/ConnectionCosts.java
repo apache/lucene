@@ -23,7 +23,6 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -49,10 +48,7 @@ public final class ConnectionCosts {
   @Deprecated(forRemoval = true, since = "9.1")
   @SuppressWarnings("removal")
   public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
-    this(
-        scheme == BinaryDictionary.ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(path + FILENAME_SUFFIX))
-            : ConnectionCosts::getClassResource);
+    this(() -> BinaryDictionary.getResource(scheme, path + FILENAME_SUFFIX));
   }
 
   /**

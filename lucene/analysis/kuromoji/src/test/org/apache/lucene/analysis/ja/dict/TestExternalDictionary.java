@@ -127,4 +127,12 @@ public class TestExternalDictionary extends LuceneTestCase {
         new ConnectionCosts(loader.getResource(dictionaryPath + ConnectionCosts.FILENAME_SUFFIX));
     assertEquals(1, cc.get(0, 1));
   }
+
+  @Deprecated(forRemoval = true, since = "9.1")
+  public void testDeprecatedLoadExternalTokenInfoDictionary() throws Exception {
+    String dictionaryPath = TokenInfoDictionary.class.getName().replace('.', '/');
+    TokenInfoDictionary dict =
+        new TokenInfoDictionary(BinaryDictionary.ResourceScheme.CLASSPATH, dictionaryPath);
+    assertNotNull(dict.getFST());
+  }
 }
