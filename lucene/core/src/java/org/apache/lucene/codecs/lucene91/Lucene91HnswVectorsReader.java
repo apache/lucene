@@ -25,12 +25,10 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -40,9 +38,7 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -364,222 +360,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     int size() {
       return size;
-    }
-  }
-
-  static class DenseOffHeapVectorValues extends OffHeapVectorValues {
-
-    private int doc = -1;
-
-    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice) {
-      super(dimension, size, slice);
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readFloats(value, 0, value.length);
-      return value;
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      if (target >= size) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
-      return new DenseOffHeapVectorValues(dimension, size, slice.clone());
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return ord;
-    }
-
-    @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
-    }
-  }
-
-  static class SparseOffHeapVectorValues extends OffHeapVectorValues {
-    private final DirectMonotonicReader ordToDoc;
-    private final IndexedDISI disi;
-    // dataIn was used to init a new IndexedDIS for #randomAccess()
-    private final IndexInput dataIn;
-    private final FieldEntry fieldEntry;
-
-    public SparseOffHeapVectorValues(FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
-        throws IOException {
-
-      super(fieldEntry.dimension, fieldEntry.size, slice);
-      this.fieldEntry = fieldEntry;
-      final RandomAccessInput addressesData =
-          dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
-      this.dataIn = dataIn;
-      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
-      this.disi =
-          new IndexedDISI(
-              dataIn,
-              fieldEntry.docsWithFieldOffset,
-              fieldEntry.docsWithFieldLength,
-              fieldEntry.jumpTableEntryCount,
-              fieldEntry.denseRankPower,
-              fieldEntry.size);
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readFloats(value, 0, value.length);
-      return value;
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      return disi.advance(target);
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
-      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone());
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return (int) ordToDoc.get(ord);
-    }
-
-    @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
-      if (acceptDocs == null) {
-        return null;
-      }
-      return new Bits() {
-        @Override
-        public boolean get(int index) {
-          return acceptDocs.get(ordToDoc(index));
-        }
-
-        @Override
-        public int length() {
-          return size;
-        }
-      };
-    }
-  }
-
-  static class EmptyOffHeapVectorValues extends OffHeapVectorValues {
-
-    public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, null);
-    }
-
-    private int doc = -1;
-
-    @Override
-    public int dimension() {
-      return super.dimension();
-    }
-
-    @Override
-    public int size() {
-      return 0;
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return doc = NO_MORE_DOCS;
-    }
-
-    @Override
-    public long cost() {
-      return 0;
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public BytesRef binaryValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    Bits getAcceptOrds(Bits acceptDocs) {
-      return null;
     }
   }
 
