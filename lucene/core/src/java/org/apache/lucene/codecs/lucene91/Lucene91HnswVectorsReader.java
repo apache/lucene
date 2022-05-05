@@ -289,10 +289,19 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final int[][] nodesByLevel;
     // for each level the start offsets in vectorIndex file from where to read neighbours
     final long[] graphOffsetsByLevel;
+
+    // the following four variables used to read docIds encoded by IndexDISI
+    // special values of docsWithFieldOffset are -1 and -2
+    // -1 : dense
+    // -2 : empty
+    // other: sparse
     final long docsWithFieldOffset;
     final long docsWithFieldLength;
     final short jumpTableEntryCount;
     final byte denseRankPower;
+
+    // the following four variables used to read ordToDoc encoded by DirectMonotonicWriter
+    // note that only spare case needs to store ordToDoc
     final long addressesOffset;
     final int blockShift;
     final DirectMonotonicReader.Meta meta;
