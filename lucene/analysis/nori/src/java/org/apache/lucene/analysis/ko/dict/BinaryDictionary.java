@@ -118,21 +118,17 @@ public abstract class BinaryDictionary implements Dictionary {
   }
 
   @Deprecated(forRemoval = true, since = "9.1")
-  static final InputStream getResource(ResourceScheme scheme, String path) throws IOException {
+  public static final InputStream getResource(ResourceScheme scheme, String path)
+      throws IOException {
     switch (scheme) {
       case CLASSPATH:
-        return getClassResource(path);
+        return IOUtils.requireResourceNonNull(
+            BinaryDictionary.class.getClassLoader().getResourceAsStream(path), path);
       case FILE:
         return Files.newInputStream(Paths.get(path));
       default:
         throw new IllegalStateException("unknown resource scheme " + scheme);
     }
-  }
-
-  @Deprecated(forRemoval = true, since = "9.1")
-  private static InputStream getClassResource(String path) throws IOException {
-    return IOUtils.requireResourceNonNull(
-        BinaryDictionary.class.getClassLoader().getResourceAsStream(path), path);
   }
 
   public void lookupWordIds(int sourceId, IntsRef ref) {
