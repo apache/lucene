@@ -25,6 +25,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Objects;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
@@ -122,6 +123,9 @@ public abstract class BinaryDictionary implements Dictionary {
       throws IOException {
     switch (scheme) {
       case CLASSPATH:
+        Objects.requireNonNull(
+            path,
+            "Deprecated API no longer works with null paths, to load default resources use specialized APIs.");
         return IOUtils.requireResourceNonNull(
             BinaryDictionary.class.getClassLoader().getResourceAsStream(path), path);
       case FILE:

@@ -49,8 +49,7 @@ public final class TokenInfoDictionary extends BinaryDictionary {
 
   /**
    * @param resourceScheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
-   *     scheme only, use this class's name as the path.
+   * @param resourcePath - where to load resources (dictionaries) from.
    * @deprecated replaced by {@link #TokenInfoDictionary(Path, Path, Path, Path)} for files and
    *     {@link #TokenInfoDictionary(URL, URL, URL, URL)} for classpath/module resources
    */
