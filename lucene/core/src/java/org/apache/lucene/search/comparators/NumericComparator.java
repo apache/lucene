@@ -191,9 +191,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
 
       updateCounter++;
+      // Start sampling if we get called too much
       if (updateCounter > 256
-          && (updateCounter & (currentSkipInterval - 1))
-              != currentSkipInterval - 1) { // Start sampling if we get called too much
+          && (updateCounter & (currentSkipInterval - 1)) != currentSkipInterval - 1) {
         return;
       }
       if (reverse == false) {
