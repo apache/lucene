@@ -41,15 +41,14 @@ public final class ConnectionCosts {
 
   /**
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param resourcePath - where to load resources from, without the ".dat" suffix
+   * @param path - where to load resources from, without the ".dat" suffix
    * @deprecated replaced by {@link #ConnectionCosts(Path)} for files and {@link
    *     #ConnectionCosts(URL)} for classpath/module resources.
    */
   @Deprecated(forRemoval = true, since = "9.1")
   @SuppressWarnings("removal")
-  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String resourcePath)
-      throws IOException {
-    this(() -> BinaryDictionary.getResource(scheme, resourcePath + FILENAME_SUFFIX));
+  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
+    this(() -> BinaryDictionary.getResource(scheme, path.replace('.', '/') + FILENAME_SUFFIX));
   }
 
   /**

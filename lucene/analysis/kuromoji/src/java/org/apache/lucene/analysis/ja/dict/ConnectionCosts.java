@@ -48,7 +48,7 @@ public final class ConnectionCosts {
   @Deprecated(forRemoval = true, since = "9.1")
   @SuppressWarnings("removal")
   public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
-    this(() -> BinaryDictionary.getResource(scheme, path + FILENAME_SUFFIX));
+    this(() -> BinaryDictionary.getResource(scheme, path.replace('.', '/') + FILENAME_SUFFIX));
   }
 
   /**
