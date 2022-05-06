@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.analysis.fa;
 
-import java.util.Arrays;
-
 import static org.apache.lucene.analysis.util.StemmerUtil.*;
+
+import java.util.Arrays;
 
 /**
  * Stemmer for Persian.
@@ -80,7 +80,7 @@ public class PersianStemmer {
     }
 
     return len;
-    }
+  }
 
   /**
    * Returns true if the suffix matches and can be stemmed
@@ -90,11 +90,11 @@ public class PersianStemmer {
    * @param suffix suffix to check
    * @return true if the suffix matches and can be stemmed
    */
- private boolean endsWithCheckLength(char[] s, int len, char[] suffix) {
+  private boolean endsWithCheckLength(char[] s, int len, char[] suffix) {
     if (len < suffix.length + 2) { // all suffixes require at least 2 characters after stemming
       return false;
     }
 
-    return Arrays.equals(s,len-suffix.length,len,suffix,0,suffix.length);
+    return Arrays.equals(s, len - suffix.length, len, suffix, 0, suffix.length);
   }
 }
