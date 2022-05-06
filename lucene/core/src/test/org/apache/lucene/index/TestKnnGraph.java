@@ -65,6 +65,7 @@ public class TestKnnGraph extends LuceneTestCase {
   private static final String KNN_GRAPH_FIELD = "vector";
 
   private static int maxConn = Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
+  private static int maxConn0 = maxConn * 2;
 
   private Codec codec;
   private VectorSimilarityFunction similarityFunction;
@@ -74,6 +75,7 @@ public class TestKnnGraph extends LuceneTestCase {
     randSeed = random().nextLong();
     if (random().nextBoolean()) {
       maxConn = random().nextInt(256) + 3;
+      maxConn0 = maxConn * 2;
     }
 
     codec =
@@ -92,6 +94,7 @@ public class TestKnnGraph extends LuceneTestCase {
   @After
   public void cleanup() {
     maxConn = Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
+    maxConn0 = maxConn * 2;
   }
 
   /** Basic test of creating documents in a graph */
@@ -263,7 +266,7 @@ public class TestKnnGraph extends LuceneTestCase {
   int[][][] copyGraph(HnswGraph graphValues) throws IOException {
     int[][][] graph = new int[graphValues.numLevels()][][];
     int size = graphValues.size();
-    int[] scratch = new int[maxConn];
+    int[] scratch = new int[maxConn0];
 
     for (int level = 0; level < graphValues.numLevels(); level++) {
       NodesIterator nodesItr = graphValues.getNodesOnLevel(level);
@@ -481,6 +484,7 @@ public class TestKnnGraph extends LuceneTestCase {
         //   fully connected, i.e. any node is reachable from any other node.
         // 4. If the number of nodes on the level exceeds maxConn, assert that maxConn is respected.
         for (int level = 0; level < graphValues.numLevels(); level++) {
+          int maxConnOnLevel = level == 0 ? maxConn0 : maxConn;
           int[][] graphOnLevel = new int[graphValues.size()][];
           int countOnLevel = 0;
           boolean foundOrphan = false;
@@ -511,13 +515,13 @@ public class TestKnnGraph extends LuceneTestCase {
           } else {
             assertFalse(
                 "Graph has orphan nodes with no friends on level [" + level + "]", foundOrphan);
-            if (maxConn > countOnLevel) {
+            if (maxConnOnLevel > countOnLevel) {
               // assert that the graph is fully connected,
               // i.e. any node can be reached from any other node
               assertConnected(graphOnLevel);
             } else {
               // assert that max-connections was respected
-              assertMaxConn(graphOnLevel, maxConn);
+              assertMaxConn(graphOnLevel, maxConnOnLevel);
             }
           }
         }

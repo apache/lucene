@@ -259,7 +259,7 @@ public class KnnGraphTester {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
       HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0);
+          new HnswGraphBuilder(vectors, similarityFunction, maxConn, maxConn * 2, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
         builder.addGraphNode(i, values.vectorValue(i));

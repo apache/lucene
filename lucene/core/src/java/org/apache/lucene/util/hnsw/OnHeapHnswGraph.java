@@ -31,6 +31,7 @@ import org.apache.lucene.util.ArrayUtil;
 public final class OnHeapHnswGraph extends HnswGraph {
 
   private final int maxConn;
+  private final int maxConn0;
   private final boolean similarityReversed;
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
@@ -41,7 +42,8 @@ public final class OnHeapHnswGraph extends HnswGraph {
 
   // graph is a list of graph levels.
   // Each level is represented as List<NeighborArray> – nodes' connections on this level.
-  // Each entry in the list has the top maxConn neighbors of a node. The nodes correspond to vectors
+  // Each entry in the list has the top maxConn/maxConn0 neighbors of a node. The nodes correspond
+  // to vectors
   // added to HnswBuilder, and the node values are the ordinals of those vectors.
   // Thus, on all levels, neighbors expressed as the level 0's nodes' ordinals.
   private final List<List<NeighborArray>> graph;
@@ -50,18 +52,16 @@ public final class OnHeapHnswGraph extends HnswGraph {
   private int upto;
   private NeighborArray cur;
 
-  OnHeapHnswGraph(int maxConn, int levelOfFirstNode, boolean similarityReversed) {
+  OnHeapHnswGraph(int maxConn, int maxConn0, int levelOfFirstNode, boolean similarityReversed) {
     this.maxConn = maxConn;
+    this.maxConn0 = maxConn0;
     this.similarityReversed = similarityReversed;
     this.numLevels = levelOfFirstNode + 1;
     this.graph = new ArrayList<>(numLevels);
     this.entryNode = 0;
-    for (int i = 0; i < numLevels; i++) {
+    for (int l = 0; l < numLevels; l++) {
       graph.add(new ArrayList<>());
-      // Typically with diversity criteria we see nodes not fully occupied;
-      // average fanout seems to be about 1/2 maxConn.
-      // There is some indexing time penalty for under-allocating, but saves RAM
-      graph.get(i).add(new NeighborArray(Math.max(32, maxConn / 4), similarityReversed == false));
+      graph.get(l).add(new NeighborArray(l == 0 ? maxConn0 : maxConn, similarityReversed == false));
     }
 
     this.nodesByLevel = new ArrayList<>(numLevels);
@@ -122,7 +122,11 @@ public final class OnHeapHnswGraph extends HnswGraph {
       }
     }
 
-    graph.get(level).add(new NeighborArray(maxConn + 1, similarityReversed == false));
+    graph
+        .get(level)
+        .add(
+            new NeighborArray(
+                level == 0 ? maxConn0 + 1 : maxConn + 1, similarityReversed == false));
   }
 
   @Override

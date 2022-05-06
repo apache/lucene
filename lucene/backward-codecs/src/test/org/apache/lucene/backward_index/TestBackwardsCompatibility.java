@@ -133,6 +133,7 @@ import org.junit.BeforeClass;
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
 // machines occasionally
 @SuppressWarnings("deprecation")
+@LuceneTestCase.AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-10527")
 public class TestBackwardsCompatibility extends LuceneTestCase {
 
   // Backcompat index generation, described below, is mostly automated in:

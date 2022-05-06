@@ -43,7 +43,8 @@ public final class HnswGraphBuilder {
   /** Random seed for level generation; public to expose for testing * */
   public static long randSeed = DEFAULT_RAND_SEED;
 
-  private final int maxConn;
+  private final int maxConn; // max number of connections on upper layers
+  private final int maxConn0; // max number of connections on the 0th (last) layer
   private final int beamWidth;
   private final double ml;
   private final NeighborArray scratch;
@@ -78,6 +79,7 @@ public final class HnswGraphBuilder {
       RandomAccessVectorValuesProducer vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
+      int maxConn0,
       int beamWidth,
       long seed) {
     vectorValues = vectors.randomAccess();
@@ -90,12 +92,14 @@ public final class HnswGraphBuilder {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
     this.maxConn = maxConn;
+    this.maxConn0 = maxConn0;
     this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
     this.ml = 1 / Math.log(1.0 * maxConn);
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw = new OnHeapHnswGraph(maxConn, levelOfFirstNode, similarityFunction.reversed);
+    this.hnsw =
+        new OnHeapHnswGraph(maxConn, maxConn0, levelOfFirstNode, similarityFunction.reversed);
     this.graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
@@ -186,7 +190,8 @@ public final class HnswGraphBuilder {
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
     assert neighbors.size() == 0; // new node
     popToScratch(candidates);
-    selectAndLinkDiverse(neighbors, scratch);
+    int maxConnOnLevel = level == 0 ? maxConn0 : maxConn;
+    selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -195,17 +200,17 @@ public final class HnswGraphBuilder {
       int nbr = neighbors.node[i];
       NeighborArray nbrNbr = hnsw.getNeighbors(level, nbr);
       nbrNbr.insertSorted(node, neighbors.score[i]);
-      if (nbrNbr.size() > maxConn) {
+      if (nbrNbr.size() > maxConnOnLevel) {
         int indexToRemove = findWorstNonDiverse(nbrNbr);
         nbrNbr.removeIndex(indexToRemove);
       }
     }
   }
 
-  private void selectAndLinkDiverse(NeighborArray neighbors, NeighborArray candidates)
-      throws IOException {
-    // Select the best maxConn neighbors of the new node, applying the diversity heuristic
-    for (int i = candidates.size() - 1; neighbors.size() < maxConn && i >= 0; i--) {
+  private void selectAndLinkDiverse(
+      NeighborArray neighbors, NeighborArray candidates, int maxConnOnLevel) throws IOException {
+    // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
+    for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.node[i];

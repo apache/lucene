@@ -317,6 +317,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final long vectorIndexOffset;
     final long vectorIndexLength;
     final int maxConn;
+    final int maxConn0;
     final int numLevels;
     final int dimension;
     private final int size;
@@ -355,6 +356,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
       // read nodes by level
       maxConn = input.readInt();
+      maxConn0 = input.readInt();
       numLevels = input.readInt();
       nodesByLevel = new int[numLevels][];
       for (int level = 0; level < numLevels; level++) {
@@ -377,8 +379,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       for (int level = 0; level < numLevels; level++) {
         if (level == 0) {
           graphOffsetsByLevel[level] = 0;
+        } else if (level == 1) {
+          int numNodesOn0Level = size;
+          graphOffsetsByLevel[level] = (1 + maxConn0) * Integer.BYTES * numNodesOn0Level;
         } else {
-          int numNodesOnPrevLevel = level == 1 ? size : nodesByLevel[level - 1].length;
+          int numNodesOnPrevLevel = nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
               graphOffsetsByLevel[level - 1] + (1 + maxConn) * Integer.BYTES * numNodesOnPrevLevel;
         }
@@ -522,6 +527,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final int entryNode;
     final int size;
     final long bytesForConns;
+    final long bytesForConns0;
 
     int arcCount;
     int arcUpTo;
@@ -535,6 +541,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
       this.bytesForConns = ((long) entry.maxConn + 1) * Integer.BYTES;
+      this.bytesForConns0 = ((long) entry.maxConn0 + 1) * Integer.BYTES;
     }
 
     @Override
@@ -544,7 +551,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
               ? targetOrd
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
       assert targetIndex >= 0;
-      long graphDataOffset = graphOffsetsByLevel[level] + targetIndex * bytesForConns;
+      long graphDataOffset =
+          graphOffsetsByLevel[level] + targetIndex * (level == 0 ? bytesForConns0 : bytesForConns);
       // unsafe; no bounds checking
       dataIn.seek(graphDataOffset);
       arcCount = dataIn.readInt();
