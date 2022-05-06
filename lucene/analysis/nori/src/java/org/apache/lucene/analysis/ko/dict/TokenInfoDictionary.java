@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.ko.dict;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.lucene.analysis.morph.BinaryDictionary;
@@ -64,6 +65,25 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
         () -> Files.newInputStream(posDictFile),
         () -> Files.newInputStream(dictFile),
         () -> Files.newInputStream(fstFile));
+  }
+
+  /**
+   * Create a {@link TokenInfoDictionary} from an external resource URL (e.g. from Classpath with
+   * {@link ClassLoader#getResource(String)}).
+   *
+   * @param targetMapUrl where to load target map resource
+   * @param posDictUrl where to load POS dictionary resource
+   * @param dictUrl where to load dictionary entries resource
+   * @param fstUrl where to load encoded FST data resource
+   * @throws IOException if resource was not found or broken
+   */
+  public TokenInfoDictionary(URL targetMapUrl, URL posDictUrl, URL dictUrl, URL fstUrl)
+      throws IOException {
+    this(
+        () -> targetMapUrl.openStream(),
+        () -> posDictUrl.openStream(),
+        () -> dictUrl.openStream(),
+        () -> fstUrl.openStream());
   }
 
   private TokenInfoDictionary(

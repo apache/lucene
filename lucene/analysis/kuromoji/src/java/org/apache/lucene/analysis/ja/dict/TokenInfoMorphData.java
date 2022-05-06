@@ -20,6 +20,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
