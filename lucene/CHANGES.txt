@@ -73,6 +73,11 @@ API Changes
   taxoEpoch decide. Add a test case that demonstrates the inconsistencies caused when you reuse taxoArrays on older
   checkpoints. (Gautam Worah)
 
+* LUCENE-10558: Add new constructors to Kuromoji and Nori dictionary classes to support classpath /
+  module system usage. It is now possible to use JDK's Class/ClassLoader/Module#getResource(...) apis
+  and pass their returned URL to dictionary constructors to load resources from Classpath or Module
+  resources. (Uwe Schindler, Tomoko Uchida, Mike Sokolov)
+
 New Features
 ---------------------
 
@@ -168,6 +173,10 @@ Bug Fixes
   (Greg Miller)
 
 * LUCENE-10552: KnnVectorQuery has incorrect equals/ hashCode. (Lu Xugang)
+
+* LUCENE-10558: Restore behaviour of deprecated Kuromoji and Nori dictionary constructors for
+  custom dictionary support. Please also use new URL-based constructors for classpath/module
+  system ressources.  (Uwe Schindler, Tomoko Uchida, Mike Sokolov)
 
 Build
 ---------------------
