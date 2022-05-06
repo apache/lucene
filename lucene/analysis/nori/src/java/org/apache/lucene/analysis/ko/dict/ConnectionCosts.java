@@ -19,10 +19,10 @@ package org.apache.lucene.analysis.ko.dict;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -41,16 +41,14 @@ public final class ConnectionCosts {
 
   /**
    * @param scheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param resourcePath - where to load resources from, without the ".dat" suffix
+   * @param path - where to load resources from, without the ".dat" suffix
+   * @deprecated replaced by {@link #ConnectionCosts(Path)} for files and {@link
+   *     #ConnectionCosts(URL)} for classpath/module resources.
    */
   @Deprecated(forRemoval = true, since = "9.1")
   @SuppressWarnings("removal")
-  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String resourcePath)
-      throws IOException {
-    this(
-        scheme == BinaryDictionary.ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + FILENAME_SUFFIX))
-            : ConnectionCosts::getClassResource);
+  public ConnectionCosts(BinaryDictionary.ResourceScheme scheme, String path) throws IOException {
+    this(() -> BinaryDictionary.getResource(scheme, path.replace('.', '/') + FILENAME_SUFFIX));
   }
 
   /**
@@ -61,6 +59,17 @@ public final class ConnectionCosts {
    */
   public ConnectionCosts(Path connectionCostsFile) throws IOException {
     this(() -> Files.newInputStream(connectionCostsFile));
+  }
+
+  /**
+   * Create a {@link ConnectionCosts} from an external resource URL (e.g. from Classpath with {@link
+   * ClassLoader#getResource(String)}).
+   *
+   * @param connectionCostsUrl where to load connection costs resource
+   * @throws IOException if resource was not found or broken
+   */
+  public ConnectionCosts(URL connectionCostsUrl) throws IOException {
+    this(() -> connectionCostsUrl.openStream());
   }
 
   private ConnectionCosts() throws IOException {

@@ -19,9 +19,9 @@ package org.apache.lucene.analysis.ko.dict;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
@@ -49,26 +49,20 @@ public final class TokenInfoDictionary extends BinaryDictionary {
 
   /**
    * @param resourceScheme - scheme for loading resources (FILE or CLASSPATH).
-   * @param resourcePath - where to load resources (dictionaries) from. If null, with CLASSPATH
-   *     scheme only, use this class's name as the path.
+   * @param resourcePath - where to load resources (dictionaries) from.
+   * @deprecated replaced by {@link #TokenInfoDictionary(Path, Path, Path, Path)} for files and
+   *     {@link #TokenInfoDictionary(URL, URL, URL, URL)} for classpath/module resources
    */
   @Deprecated(forRemoval = true, since = "9.1")
   @SuppressWarnings("removal")
   public TokenInfoDictionary(ResourceScheme resourceScheme, String resourcePath)
       throws IOException {
     this(
-        resourceScheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + TARGETMAP_FILENAME_SUFFIX))
-            : () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
-        resourceScheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + POSDICT_FILENAME_SUFFIX))
-            : () -> getClassResource(POSDICT_FILENAME_SUFFIX),
-        resourceScheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + DICT_FILENAME_SUFFIX))
-            : () -> getClassResource(DICT_FILENAME_SUFFIX),
-        resourceScheme == ResourceScheme.FILE
-            ? () -> Files.newInputStream(Paths.get(resourcePath + FST_FILENAME_SUFFIX))
-            : () -> getClassResource(FST_FILENAME_SUFFIX));
+        () ->
+            BinaryDictionary.getResource(resourceScheme, resourcePath + TARGETMAP_FILENAME_SUFFIX),
+        () -> BinaryDictionary.getResource(resourceScheme, resourcePath + POSDICT_FILENAME_SUFFIX),
+        () -> BinaryDictionary.getResource(resourceScheme, resourcePath + DICT_FILENAME_SUFFIX),
+        () -> BinaryDictionary.getResource(resourceScheme, resourcePath + FST_FILENAME_SUFFIX));
   }
 
   /**
@@ -87,6 +81,25 @@ public final class TokenInfoDictionary extends BinaryDictionary {
         () -> Files.newInputStream(posDictFile),
         () -> Files.newInputStream(dictFile),
         () -> Files.newInputStream(fstFile));
+  }
+
+  /**
+   * Create a {@link TokenInfoDictionary} from an external resource URL (e.g. from Classpath with
+   * {@link ClassLoader#getResource(String)}).
+   *
+   * @param targetMapUrl where to load target map resource
+   * @param posDictUrl where to load POS dictionary resource
+   * @param dictUrl where to load dictionary entries resource
+   * @param fstUrl where to load encoded FST data resource
+   * @throws IOException if resource was not found or broken
+   */
+  public TokenInfoDictionary(URL targetMapUrl, URL posDictUrl, URL dictUrl, URL fstUrl)
+      throws IOException {
+    this(
+        () -> targetMapUrl.openStream(),
+        () -> posDictUrl.openStream(),
+        () -> dictUrl.openStream(),
+        () -> fstUrl.openStream());
   }
 
   private TokenInfoDictionary(

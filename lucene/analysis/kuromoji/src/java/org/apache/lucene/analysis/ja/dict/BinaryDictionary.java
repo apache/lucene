@@ -25,6 +25,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
@@ -140,17 +141,16 @@ public abstract class BinaryDictionary implements Dictionary {
       throws IOException {
     switch (scheme) {
       case CLASSPATH:
-        return getClassResource(path);
+        Objects.requireNonNull(
+            path,
+            "Deprecated API no longer works with null paths, to load default resources use default ctors.");
+        return IOUtils.requireResourceNonNull(
+            BinaryDictionary.class.getClassLoader().getResourceAsStream(path), path);
       case FILE:
         return Files.newInputStream(Paths.get(path));
       default:
         throw new IllegalStateException("unknown resource scheme " + scheme);
     }
-  }
-
-  @Deprecated(forRemoval = true, since = "9.1")
-  private static InputStream getClassResource(String path) throws IOException {
-    return IOUtils.requireResourceNonNull(BinaryDictionary.class.getResourceAsStream(path), path);
   }
 
   public void lookupWordIds(int sourceId, IntsRef ref) {

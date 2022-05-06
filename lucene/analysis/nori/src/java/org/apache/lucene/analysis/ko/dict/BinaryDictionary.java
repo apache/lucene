@@ -23,11 +23,15 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Objects;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRef;
 
 /** Base class for a binary-encoded in-memory dictionary. */
@@ -112,6 +116,23 @@ public abstract class BinaryDictionary implements Dictionary {
               + ", sourceId="
               + sourceId);
     targetMapOffsets[sourceId] = targetMap.length;
+  }
+
+  @Deprecated(forRemoval = true, since = "9.1")
+  public static final InputStream getResource(ResourceScheme scheme, String path)
+      throws IOException {
+    switch (scheme) {
+      case CLASSPATH:
+        Objects.requireNonNull(
+            path,
+            "Deprecated API no longer works with null paths, to load default resources use default ctors.");
+        return IOUtils.requireResourceNonNull(
+            BinaryDictionary.class.getClassLoader().getResourceAsStream(path), path);
+      case FILE:
+        return Files.newInputStream(Paths.get(path));
+      default:
+        throw new IllegalStateException("unknown resource scheme " + scheme);
+    }
   }
 
   public void lookupWordIds(int sourceId, IntsRef ref) {
