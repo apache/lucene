@@ -27,41 +27,54 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Test the Persian Normalization Filter */
 public class TestPersianStemFilter extends BaseTokenStreamTestCase {
+  Analyzer a;
+
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    a = new PersianAnalyzer();
+  }
+
+  @Override
+  public void tearDown() throws Exception {
+    a.close();
+    super.tearDown();
+  }
 
   public void testAnSuffix() throws IOException {
-    check("دوستان", "دوست");
+    checkOneTerm(a,"دوستان", "دوست");
   }
 
   public void testHaSuffix() throws IOException {
-    check("کتابها", "کتاب");
+    checkOneTerm(a,"کتابها", "کتاب");
   }
 
   public void testAtSuffix() throws IOException {
-    check("جامدات", "جامد");
+    checkOneTerm(a,"جامدات", "جامد");
   }
 
   public void testYeeSuffix() throws IOException {
-    check("عليرضايي", "عليرضا");
+    checkOneTerm(a,"عليرضايي", "عليرضا");
   }
 
   public void testYeSuffix() throws IOException {
-    check("شادماني", "شادمان");
+    checkOneTerm(a,"شادماني", "شادمان");
   }
 
   public void testTarSuffix() throws IOException {
-    check("باحالتر", "باحال");
+    checkOneTerm(a,"باحالتر", "باحال");
   }
 
   public void testTarinSuffix() throws IOException {
-    check("خوبترين", "خوب");
+    checkOneTerm(a,"خوبترين", "خوب");
   }
 
   public void testShouldntStem() throws IOException {
-    check("کباب", "کباب");
+    checkOneTerm(a,"کباب", "کباب");
   }
 
   public void testNonArabic() throws IOException {
-    check("English", "English");
+    checkOneTerm(a,"English", "English");
   }
 
   public void testWithKeywordAttribute() throws IOException {
@@ -71,12 +84,6 @@ public class TestPersianStemFilter extends BaseTokenStreamTestCase {
 
     PersianStemFilter filter = new PersianStemFilter(new SetKeywordMarkerFilter(tokenStream, set));
     assertTokenStreamContents(filter, new String[] {"ساهدهات"});
-  }
-
-  private void check(final String input, final String expected) throws IOException {
-    MockTokenizer tokenStream = whitespaceMockTokenizer(input);
-    PersianStemFilter filter = new PersianStemFilter(tokenStream);
-    assertTokenStreamContents(filter, new String[] {expected});
   }
 
   public void testEmptyTerm() throws IOException {

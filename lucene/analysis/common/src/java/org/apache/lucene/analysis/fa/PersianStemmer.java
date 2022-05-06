@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.fa;
 
+import java.util.Arrays;
+
 import static org.apache.lucene.analysis.util.StemmerUtil.*;
 
 /**
@@ -31,13 +33,13 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * </ul>
  */
 public class PersianStemmer {
-  public static final char ALEF = '\u0627';
-  public static final char HEH = '\u0647';
-  public static final char TEH = '\u062A';
-  public static final char REH = '\u0631';
-  public static final char NOON = '\u0646';
-  public static final char YEH = '\u064A';
-  public static final char ZWNJ = '\u200c';
+  private static final char ALEF = '\u0627';
+  private static final char HEH = '\u0647';
+  private static final char TEH = '\u062A';
+  private static final char REH = '\u0631';
+  private static final char NOON = '\u0646';
+  private static final char YEH = '\u064A';
+  private static final char ZWNJ = '\u200c'; // ZERO WIDTH NON-JOINER character
 
   public static final char[][] suffixes = {
     ("" + ALEF + TEH).toCharArray(),
@@ -64,18 +66,21 @@ public class PersianStemmer {
   }
 
   /**
-   * Stem suffix(es) off an Persian word.
+   * Stem suffix(es) off a Persian word.
    *
    * @param s input buffer
    * @param len length of input buffer
    * @return new length of input buffer after stemming
    */
-  public int stemSuffix(char[] s, int len) {
-    for (int i = 0; i < suffixes.length; i++)
-      if (endsWithCheckLength(s, len, suffixes[i]))
-        len = deleteN(s, len - suffixes[i].length, len, suffixes[i].length);
+  private int stemSuffix(char[] s, int len) {
+    for (char[] suffix : suffixes) {
+      if (endsWithCheckLength(s, len, suffix)) {
+        len = deleteN(s, len - suffix.length, len, suffix.length);
+      }
+    }
+
     return len;
-  }
+    }
 
   /**
    * Returns true if the suffix matches and can be stemmed
@@ -85,17 +90,11 @@ public class PersianStemmer {
    * @param suffix suffix to check
    * @return true if the suffix matches and can be stemmed
    */
-  boolean endsWithCheckLength(char[] s, int len, char[] suffix) {
+ private boolean endsWithCheckLength(char[] s, int len, char[] suffix) {
     if (len < suffix.length + 2) { // all suffixes require at least 2 characters after stemming
       return false;
-    } else {
-      for (int i = 0; i < suffix.length; i++) {
-        if (s[len - suffix.length + i] != suffix[i]) {
-          return false;
-        }
-      }
-
-      return true;
     }
+
+    return Arrays.equals(s,len-suffix.length,len,suffix,0,suffix.length);
   }
 }

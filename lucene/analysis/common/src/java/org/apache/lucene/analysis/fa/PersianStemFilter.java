@@ -24,7 +24,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 
 /**
- * A {@link TokenFilter} that applies {@link PersianStemmer} to stem Arabic words..
+ * A {@link TokenFilter} that applies {@link PersianStemmer} to stem Persian words.
  *
  * <p>To prevent terms from being stemmed use an instance of {@link SetKeywordMarkerFilter} or a
  * custom {@link TokenFilter} that sets the {@link KeywordAttribute} before this {@link

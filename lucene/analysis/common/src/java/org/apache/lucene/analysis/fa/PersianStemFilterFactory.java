@@ -23,16 +23,7 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link PersianStemFilter}.
  *
- * <pre class="prettyprint">
- * &lt;fieldType name="text_arstem" class="solr.TextField" positionIncrementGap="100"&gt;
- *   &lt;analyzer&gt;
- *     &lt;tokenizer class="solr.StandardTokenizerFactory"/&gt;
- *     &lt;filter class="solr.PersianNormalizationFilterFactory"/&gt;
- *     &lt;filter class="solr.PersianStemFilterFactory"/&gt;
- *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
- *
- * @since 3.1
+ * @since 9.2
  * @lucene.spi {@value #NAME}
  */
 public class PersianStemFilterFactory extends TokenFilterFactory {
