@@ -125,7 +125,7 @@ public abstract class BinaryDictionary implements Dictionary {
       case CLASSPATH:
         Objects.requireNonNull(
             path,
-            "Deprecated API no longer works with null paths, to load default resources use specialized APIs.");
+            "Deprecated API no longer works with null paths, to load default resources use default ctors.");
         return IOUtils.requireResourceNonNull(
             BinaryDictionary.class.getClassLoader().getResourceAsStream(path), path);
       case FILE:
