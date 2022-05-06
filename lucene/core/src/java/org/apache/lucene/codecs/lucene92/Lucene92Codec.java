@@ -45,7 +45,7 @@ import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
 /**
- * Implements the Lucene 9.1 index format
+ * Implements the Lucene 9.2 index format
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *

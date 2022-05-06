@@ -21,19 +21,22 @@ import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.1 vector format, which encodes numeric vector values and an optional associated graph
+ * Lucene 9.2 vector format, which encodes numeric vector values and an optional associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
  * consists of three files:
  *
  * <h2>.vec (vector data) file</h2>
  *
- * <p>This file stores all the floating-point vector data ordered by field, document ordinal, and
- * vector dimension. The floats are stored in little-endian byte order.
+ * <p>This file stores all the floating-point vector data ordered by field, docIds, ordinal to doc
+ * mapping, and vector dimension. The floats are stored in little-endian byte order.
  *
  * <h2>.vex (vector index)</h2>
  *
@@ -69,7 +72,11 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int]</b> the number of documents having values for this field
  *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
  *       0, sparse – some documents missing values.
- *   <li><b>array[int]</b> for sparse case, the docids of documents having vectors, in order
+ *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
+ *       <ul>
+ *         <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter},
+ *             note that only in sparse case
+ *       </ul>
  *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
  *   <li><b>[int]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level

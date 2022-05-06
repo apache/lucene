@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 9.1 file format.
+ * Lucene 9.2 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *
@@ -403,6 +403,8 @@
  *       smaller stored fields.
  *   <li>In version 9.0, vector-valued fields were added.
  *   <li>In version 9.1, vector-valued fields were modified to add a graph hierarchy.
+ *   <li>In version 9.2, docs of vector-valued fields were moved from .vem to .vec and encoded by
+ *       IndexDISI. ordToDoc mappings was added to .vem.
  * </ul>
  *
  * <a id="Limitations"></a>
