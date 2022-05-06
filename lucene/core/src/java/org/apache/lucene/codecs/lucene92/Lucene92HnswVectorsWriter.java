@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene91;
+package org.apache.lucene.codecs.lucene92;
 
-import static org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -49,7 +49,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  *
  * @lucene.experimental
  */
-public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
+public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
@@ -59,7 +59,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
   private final int beamWidth;
   private boolean finished;
 
-  Lucene91HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth)
+  Lucene92HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth)
       throws IOException {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
@@ -69,19 +69,19 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene91HnswVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene92HnswVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene91HnswVectorsFormat.VECTOR_DATA_EXTENSION);
+            Lucene92HnswVectorsFormat.VECTOR_DATA_EXTENSION);
 
     String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene91HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
+            Lucene92HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
 
     boolean success = false;
     try {
@@ -91,20 +91,20 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene91HnswVectorsFormat.META_CODEC_NAME,
-          Lucene91HnswVectorsFormat.VERSION_CURRENT,
+          Lucene92HnswVectorsFormat.META_CODEC_NAME,
+          Lucene92HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene91HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene91HnswVectorsFormat.VERSION_CURRENT,
+          Lucene92HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene92HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
-          Lucene91HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene91HnswVectorsFormat.VERSION_CURRENT,
+          Lucene92HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+          Lucene92HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       maxDoc = state.segmentInfo.maxDoc();
@@ -143,7 +143,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
-      // we use Lucene91HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
+      // we use Lucene92HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
       OffHeapVectorValues offHeapVectors =
