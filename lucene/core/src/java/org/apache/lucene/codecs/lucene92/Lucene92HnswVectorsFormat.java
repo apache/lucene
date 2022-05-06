@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene91;
+package org.apache.lucene.codecs.lucene92;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -82,7 +82,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
+public final class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
 
   static final String META_CODEC_NAME = "lucene92HnswVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "lucene92HnswVectorsFormatData";
@@ -105,22 +105,22 @@ public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
-   * {@link Lucene91HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
+   * {@link Lucene92HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
   private final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene91HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
+   * node. Defaults to to {@link Lucene92HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
   private final int beamWidth;
 
-  public Lucene91HnswVectorsFormat() {
+  public Lucene92HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
-  public Lucene91HnswVectorsFormat(int maxConn, int beamWidth) {
+  public Lucene92HnswVectorsFormat(int maxConn, int beamWidth) {
     super("lucene92HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
@@ -128,12 +128,12 @@ public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene91HnswVectorsWriter(state, maxConn, beamWidth);
+    return new Lucene92HnswVectorsWriter(state, maxConn, beamWidth);
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene91HnswVectorsReader(state);
+    return new Lucene92HnswVectorsReader(state);
   }
 
   @Override
