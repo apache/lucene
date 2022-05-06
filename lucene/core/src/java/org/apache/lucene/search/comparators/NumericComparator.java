@@ -28,7 +28,6 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.DocIdSetBuilder;
@@ -43,6 +42,8 @@ import org.apache.lucene.util.DocIdSetBuilder;
  * but in this case you must override both of these methods.
  */
 public abstract class NumericComparator<T extends Number> extends FieldComparator<T> {
+  private final int minSkipInterval = 32;
+  private final int maxSkipInterval = 8192;
   protected final T missingValue;
   protected final String field;
   protected final boolean reverse;
@@ -95,7 +96,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private long iteratorCost;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
-    private boolean disableSegmentInternalSkip = false;
+    private int currentSkipInterval = minSkipInterval;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);
@@ -129,25 +130,12 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             reverse ? new byte[bytesCount] : topValueSet ? new byte[bytesCount] : null;
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
         this.iteratorCost = maxDoc;
-        this.disableSegmentInternalSkip = checkIfDisableSegmentInternalSkip(context);
       } else {
         this.enableSkipping = false;
         this.maxDoc = 0;
         this.maxValueAsBytes = null;
         this.minValueAsBytes = null;
       }
-    }
-
-    private boolean checkIfDisableSegmentInternalSkip(LeafReaderContext context) {
-      Sort indexSort = context.reader().getMetaData().getSort();
-      if (indexSort != null
-          && indexSort.getSort().length > 0
-          && indexSort.getSort()[0].getField().equals(field)) {
-        if (indexSort.getSort()[0].getReverse() != reverse) {
-          return true;
-        }
-      }
-      return false;
     }
 
     /**
@@ -170,9 +158,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     @Override
     public void setBottom(int slot) throws IOException {
       queueFull = true; // if we are setting bottom, it means that we have collected enough hits
-      if (disableSegmentInternalSkip) {
-        return;
-      }
       updateCompetitiveIterator(); // update an iterator if we set a new bottom
     }
 
@@ -193,9 +178,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     @Override
     public void setHitsThresholdReached() throws IOException {
       hitsThresholdReached = true;
-      if (disableSegmentInternalSkip) {
-        return;
-      }
       updateCompetitiveIterator();
     }
 
@@ -210,7 +192,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
       updateCounter++;
       if (updateCounter > 256
-          && (updateCounter & 0x1f) != 0x1f) { // Start sampling if we get called too much
+          && (updateCounter & (currentSkipInterval - 1))
+              != currentSkipInterval - 1) { // Start sampling if we get called too much
         return;
       }
       if (reverse == false) {
@@ -290,11 +273,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (estimatedNumberOfMatches >= threshold) {
         // the new range is not selective enough to be worth materializing, it doesn't reduce number
         // of docs at least 8x
+        currentSkipInterval = Math.min(currentSkipInterval * 2, maxSkipInterval);
         return;
       }
       pointValues.intersect(visitor);
       competitiveIterator = result.build().iterator();
       iteratorCost = competitiveIterator.cost();
+      currentSkipInterval = Math.max(currentSkipInterval / 2, minSkipInterval);
     }
 
     @Override
