@@ -55,7 +55,7 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> 
    * @throws IOException if resource was not found or broken
    */
   public UnknownDictionary(URL targetMapUrl, URL posDictUrl, URL dictUrl) throws IOException {
-    super(
+    this(
         () -> targetMapUrl.openStream(), () -> posDictUrl.openStream(), () -> dictUrl.openStream());
   }
 

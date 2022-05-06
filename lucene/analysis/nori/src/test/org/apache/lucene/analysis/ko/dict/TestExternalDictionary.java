@@ -126,31 +126,4 @@ public class TestExternalDictionary extends LuceneTestCase {
         new ConnectionCosts(loader.getResource(dictionaryPath + ConnectionCosts.FILENAME_SUFFIX));
     assertEquals(0, cc.get(1, 1));
   }
-
-  @Deprecated(forRemoval = true, since = "9.1")
-  @SuppressWarnings("removal")
-  public void testDeprecatedLoadExternalTokenInfoDictionary() throws Exception {
-    String dictionaryPath = TokenInfoDictionary.class.getName().replace('.', '/');
-    TokenInfoDictionary dict =
-        new TokenInfoDictionary(BinaryDictionary.ResourceScheme.CLASSPATH, dictionaryPath);
-    assertNotNull(dict.getFST());
-  }
-
-  @Deprecated(forRemoval = true, since = "9.1")
-  @SuppressWarnings("removal")
-  public void testDeprecatedLoadExternalUnknownDictionary() throws Exception {
-    String dictionaryPath = UnknownDictionary.class.getName().replace('.', '/');
-    UnknownDictionary dict =
-        new UnknownDictionary(BinaryDictionary.ResourceScheme.CLASSPATH, dictionaryPath);
-    assertNotNull(dict.getCharacterDefinition());
-  }
-
-  @Deprecated(forRemoval = true, since = "9.1")
-  @SuppressWarnings("removal")
-  public void testDeprecatedLoadExternalConnectionCosts() throws Exception {
-    String dictionaryPath = ConnectionCosts.class.getName().replace('.', '/');
-    ConnectionCosts cc =
-        new ConnectionCosts(BinaryDictionary.ResourceScheme.CLASSPATH, dictionaryPath);
-    assertEquals(0, cc.get(1, 1));
-  }
 }
