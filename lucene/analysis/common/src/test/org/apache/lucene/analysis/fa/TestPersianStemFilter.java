@@ -46,7 +46,7 @@ public class TestPersianStemFilter extends BaseTokenStreamTestCase {
   }
 
   public void testHaSuffix() throws IOException {
-    checkOneTerm(a, "کتابها", "کتاب");
+    checkOneTerm(a, "كتابها", "كتاب");
   }
 
   public void testAtSuffix() throws IOException {
@@ -70,11 +70,11 @@ public class TestPersianStemFilter extends BaseTokenStreamTestCase {
   }
 
   public void testShouldntStem() throws IOException {
-    checkOneTerm(a, "کباب", "کباب");
+    checkOneTerm(a, "كباب", "كباب");
   }
 
   public void testNonArabic() throws IOException {
-    checkOneTerm(a, "English", "English");
+    checkOneTerm(a, "English", "english");
   }
 
   public void testWithKeywordAttribute() throws IOException {
