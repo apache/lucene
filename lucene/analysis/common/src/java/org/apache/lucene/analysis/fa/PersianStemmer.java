@@ -41,7 +41,7 @@ public class PersianStemmer {
   private static final char YEH = '\u064A';
   private static final char ZWNJ = '\u200c'; // ZERO WIDTH NON-JOINER character
 
-  public static final char[][] suffixes = {
+  private static final char[][] suffixes = {
     ("" + ALEF + TEH).toCharArray(),
     ("" + ALEF + NOON).toCharArray(),
     ("" + TEH + REH + YEH + NOON).toCharArray(),
