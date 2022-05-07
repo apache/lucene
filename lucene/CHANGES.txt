@@ -76,6 +76,8 @@ API Changes
 New Features
 ---------------------
 
+* LUCENE-10312: Add PersianStemmer based on the Arabic stemmer. (Ramin Alirezaee)
+
 * LUCENE-10539: Return a stream of completions from FSTCompletion. (Dawid Weiss)
 
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
