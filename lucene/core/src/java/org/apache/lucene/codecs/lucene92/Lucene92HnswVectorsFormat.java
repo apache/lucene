@@ -35,8 +35,10 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * <h2>.vec (vector data) file</h2>
  *
- * <p>This file stores all the floating-point vector data ordered by field, docIds, ordinal to doc
- * mapping, and vector dimension. The floats are stored in little-endian byte order.
+ * <p>This file stores all the floating-point vector data ordered by field, docIds encoded by {@link
+ * IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}, ordinal to doc mapping encoded
+ * {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, and vector dimension. The floats are
+ * stored in little-endian byte order.
  *
  * <h2>.vex (vector index)</h2>
  *
