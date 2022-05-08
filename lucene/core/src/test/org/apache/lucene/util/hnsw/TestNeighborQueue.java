@@ -21,6 +21,42 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestNeighborQueue extends LuceneTestCase {
 
+  public void testSameScoreNATURAL() {
+    NeighborQueue nn = new NeighborQueue(2, false);
+    nn.add(1, 0.1f);
+    nn.add(2, 0.5f);
+    nn.add(3, 0.5f);
+    nn.add(4, 0.1f);
+    // higher scores are better; lowest score on top
+    // same score then lower node means lower doc no matter REVERSED OR NATURAL
+    assertEquals(4, nn.topNode());
+    nn.pop();
+    assertEquals(1, nn.topNode());
+    nn.pop();
+    assertEquals(3, nn.topNode());
+    nn.pop();
+    assertEquals(2, nn.topNode());
+    nn.pop();
+  }
+
+  public void testSameScoreREVERSED() {
+    NeighborQueue nn = new NeighborQueue(2, true);
+    nn.add(1, 0.1f);
+    nn.add(2, 0.5f);
+    nn.add(3, 0.5f);
+    nn.add(4, 0.1f);
+    // lower scores are better; highest score on top
+    // same score then lower node means lower doc no matter REVERSED OR NATURAL
+    assertEquals(3, nn.topNode());
+    nn.pop();
+    assertEquals(2, nn.topNode());
+    nn.pop();
+    assertEquals(4, nn.topNode());
+    nn.pop();
+    assertEquals(1, nn.topNode());
+    nn.pop();
+  }
+
   public void testNeighborsProduct() {
     // make sure we have the sign correct
     NeighborQueue nn = new NeighborQueue(2, false);

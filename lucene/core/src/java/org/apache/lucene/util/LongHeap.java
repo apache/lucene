@@ -26,7 +26,7 @@ package org.apache.lucene.util;
  *
  * @lucene.internal
  */
-public final class LongHeap {
+public class LongHeap {
 
   private final int maxSize;
 
@@ -68,15 +68,22 @@ public final class LongHeap {
   }
 
   /**
+   * @return <code>true</code> iff parameter <code>a</code> is less than parameter <code>b</code>.
+   */
+  protected boolean lessThan(long a, long b) {
+    return a < b;
+  }
+
+  /**
    * Adds a value to an LongHeap in log(size) time. If the number of values would exceed the heap's
    * maxSize, the least value is discarded.
    *
    * @return whether the value was added (unless the heap is full, or the new value is less than the
    *     top value)
    */
-  public boolean insertWithOverflow(long value) {
+  public final boolean insertWithOverflow(long value) {
     if (size >= maxSize) {
-      if (value < heap[1]) {
+      if (lessThan(value, heap[1])) {
         return false;
       }
       updateTop(value);
@@ -152,7 +159,7 @@ public final class LongHeap {
     int i = origPos;
     long value = heap[i]; // save bottom value
     int j = i >>> 1;
-    while (j > 0 && value < heap[j]) {
+    while (j > 0 && lessThan(value, heap[j])) {
       heap[i] = heap[j]; // shift parents down
       i = j;
       j = j >>> 1;
@@ -164,22 +171,22 @@ public final class LongHeap {
     long value = heap[i]; // save top value
     int j = i << 1; // find smaller child
     int k = j + 1;
-    if (k <= size && heap[k] < heap[j]) {
+    if (k <= size && lessThan(heap[k], heap[j])) {
       j = k;
     }
-    while (j <= size && heap[j] < value) {
+    while (j <= size && lessThan(heap[j], value)) {
       heap[i] = heap[j]; // shift up child
       i = j;
       j = i << 1;
       k = j + 1;
-      if (k <= size && heap[k] < heap[j]) {
+      if (k <= size && lessThan(heap[k], heap[j])) {
         j = k;
       }
     }
     heap[i] = value; // install saved value
   }
 
-  public void pushAll(LongHeap other) {
+  public final void pushAll(LongHeap other) {
     for (int i = 1; i <= other.size; i++) {
       push(other.heap[i]);
     }
@@ -189,7 +196,7 @@ public final class LongHeap {
    * Return the element at the ith location in the heap array. Use for iterating over elements when
    * the order doesn't matter. Note that the valid arguments range from [1, size].
    */
-  public long get(int i) {
+  public final long get(int i) {
     return heap[i];
   }
 

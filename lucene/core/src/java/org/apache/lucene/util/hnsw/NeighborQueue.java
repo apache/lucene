@@ -57,8 +57,19 @@ public class NeighborQueue {
   private boolean incomplete;
 
   public NeighborQueue(int initialSize, boolean reversed) {
-    this.heap = new LongHeap(initialSize);
     this.order = reversed ? Order.REVERSED : Order.NATURAL;
+    this.heap =
+        new LongHeap(initialSize) {
+          @Override
+          protected boolean lessThan(long a, long b) {
+            final float aScore = NumericUtils.sortableIntToFloat((int) (order.apply(a) >> 32));
+            final float bScore = NumericUtils.sortableIntToFloat((int) (order.apply(b) >> 32));
+            if (aScore == bScore) {
+              return (int) order.apply(a) > (int) order.apply(b);
+            }
+            return reversed == false ? aScore < bScore : bScore < aScore;
+          }
+        };
   }
 
   /** @return the number of elements in the heap */

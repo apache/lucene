@@ -80,6 +80,29 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     assertEquals("KnnVectorQuery:f1[0.0,...][10]", q1.toString("ignored"));
   }
 
+  public void testTieBreak() throws IOException {
+    for (VectorSimilarityFunction value : VectorSimilarityFunction.values()) {
+      try (Directory d = newDirectory()) {
+        try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+          for (int j = 0; j < 5; j++) {
+            Document doc = new Document();
+            doc.add(new KnnVectorField("field", new float[] {0, 1}, value));
+            w.addDocument(doc);
+          }
+        }
+        try (IndexReader reader = DirectoryReader.open(d)) {
+          assertEquals(1, reader.leaves().size());
+          IndexSearcher searcher = new IndexSearcher(reader);
+          KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
+          TopDocs topHits = searcher.search(query, 3);
+          assertEquals(0, topHits.scoreDocs[0].doc);
+          assertEquals(1, topHits.scoreDocs[1].doc);
+          assertEquals(2, topHits.scoreDocs[2].doc);
+        }
+      }
+    }
+  }
+
   /**
    * Tests if a KnnVectorQuery is rewritten to a MatchNoDocsQuery when there are no documents to
    * match.
