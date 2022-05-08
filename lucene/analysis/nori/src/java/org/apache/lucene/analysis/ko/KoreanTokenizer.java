@@ -967,6 +967,15 @@ public final class KoreanTokenizer extends Tokenizer {
   private void backtrace(final Position endPosData, final int fromIDX) {
     final int endPos = endPosData.pos;
 
+    /**
+     * LUCENE-10059: If the endPos is the same as lastBackTracePos, we don't want to backtrace to
+     * avoid an assertion error {@link RollingCharBuffer#get(int)} when it tries to generate an
+     * empty buffer
+     */
+    if (endPos == lastBackTracePos) {
+      return;
+    }
+
     if (VERBOSE) {
       System.out.println(
           "\n  backtrace: endPos="
