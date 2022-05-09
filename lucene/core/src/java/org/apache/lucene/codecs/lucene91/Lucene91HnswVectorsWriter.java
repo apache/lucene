@@ -52,15 +52,12 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
   private final IndexOutput meta, vectorData, vectorIndex;
   private final int maxDoc;
 
-  private final int maxConn;
-  private final int maxConn0;
+  private final int M;
   private final int beamWidth;
   private boolean finished;
 
-  Lucene91HnswVectorsWriter(SegmentWriteState state, int maxConn, int maxConn0, int beamWidth)
-      throws IOException {
-    this.maxConn = maxConn;
-    this.maxConn0 = maxConn0;
+  Lucene91HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth) throws IOException {
+    this.M = M;
     this.beamWidth = beamWidth;
 
     assert state.fieldInfos.hasVectorValues();
@@ -219,8 +216,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-    meta.writeInt(maxConn);
-    meta.writeInt(maxConn0);
+    meta.writeInt(M);
     // write graph nodes on each level
     if (graph == null) {
       meta.writeInt(0);
@@ -246,19 +242,14 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     // build graph
     HnswGraphBuilder hnswGraphBuilder =
         new HnswGraphBuilder(
-            vectorValues,
-            similarityFunction,
-            maxConn,
-            maxConn0,
-            beamWidth,
-            HnswGraphBuilder.randSeed);
+            vectorValues, similarityFunction, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
-      int maxConnOnLevel = level == 0 ? maxConn0 : maxConn;
+      int maxConnOnLevel = level == 0 ? (M * 2) : M;
       NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
       while (nodesOnLevel.hasNext()) {
         int node = nodesOnLevel.nextInt();

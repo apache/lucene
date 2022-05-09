@@ -316,8 +316,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final long vectorDataLength;
     final long vectorIndexOffset;
     final long vectorIndexLength;
-    final int maxConn;
-    final int maxConn0;
+    final int M;
     final int numLevels;
     final int dimension;
     private final int size;
@@ -355,8 +354,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
 
       // read nodes by level
-      maxConn = input.readInt();
-      maxConn0 = input.readInt();
+      M = input.readInt();
       numLevels = input.readInt();
       nodesByLevel = new int[numLevels][];
       for (int level = 0; level < numLevels; level++) {
@@ -381,11 +379,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
           graphOffsetsByLevel[level] = 0;
         } else if (level == 1) {
           int numNodesOn0Level = size;
-          graphOffsetsByLevel[level] = (1 + maxConn0) * Integer.BYTES * numNodesOn0Level;
+          graphOffsetsByLevel[level] = (1 + (M * 2)) * Integer.BYTES * numNodesOn0Level;
         } else {
           int numNodesOnPrevLevel = nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              graphOffsetsByLevel[level - 1] + (1 + maxConn) * Integer.BYTES * numNodesOnPrevLevel;
+              graphOffsetsByLevel[level - 1] + (1 + M) * Integer.BYTES * numNodesOnPrevLevel;
         }
       }
     }
@@ -540,8 +538,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = ((long) entry.maxConn + 1) * Integer.BYTES;
-      this.bytesForConns0 = ((long) entry.maxConn0 + 1) * Integer.BYTES;
+      this.bytesForConns = ((long) entry.M + 1) * Integer.BYTES;
+      this.bytesForConns0 = ((long) (entry.M * 2) + 1) * Integer.BYTES;
     }
 
     @Override

@@ -70,10 +70,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
  *       0, sparse – some documents missing values.
  *   <li><b>array[int]</b> for sparse case, the docids of documents having vectors, in order
- *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have on upper
- *       levels
- *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have on 0th
- *       level
+ *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
  *   <li><b>[int]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level
  *       <ul>
@@ -109,9 +106,6 @@ public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
    * {@link Lucene91HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
   private final int maxConn;
-  // controls how many of the nearest neighbor candidates are connected to the new node on the 0th
-  // level.
-  private final int maxConn0;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
@@ -127,13 +121,12 @@ public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
   public Lucene91HnswVectorsFormat(int maxConn, int beamWidth) {
     super("Lucene91HnswVectorsFormat");
     this.maxConn = maxConn;
-    this.maxConn0 = maxConn * 2;
     this.beamWidth = beamWidth;
   }
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene91HnswVectorsWriter(state, maxConn, maxConn0, beamWidth);
+    return new Lucene91HnswVectorsWriter(state, maxConn, beamWidth);
   }
 
   @Override

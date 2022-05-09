@@ -52,9 +52,9 @@ public final class OnHeapHnswGraph extends HnswGraph {
   private int upto;
   private NeighborArray cur;
 
-  OnHeapHnswGraph(int maxConn, int maxConn0, int levelOfFirstNode, boolean similarityReversed) {
-    this.maxConn = maxConn;
-    this.maxConn0 = maxConn0;
+  OnHeapHnswGraph(int M, int levelOfFirstNode, boolean similarityReversed) {
+    this.maxConn = M;
+    this.maxConn0 = M * 2;
     this.similarityReversed = similarityReversed;
     this.numLevels = levelOfFirstNode + 1;
     this.graph = new ArrayList<>(numLevels);

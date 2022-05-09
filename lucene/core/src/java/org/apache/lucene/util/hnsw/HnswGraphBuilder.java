@@ -43,7 +43,7 @@ public final class HnswGraphBuilder {
   /** Random seed for level generation; public to expose for testing * */
   public static long randSeed = DEFAULT_RAND_SEED;
 
-  private final int maxConn; // max number of connections on upper layers
+  private final int M; // max number of connections on upper layers
   private final int maxConn0; // max number of connections on the 0th (last) layer
   private final int beamWidth;
   private final double ml;
@@ -69,8 +69,8 @@ public final class HnswGraphBuilder {
    *
    * @param vectors the vectors whose relations are represented by the graph - must provide a
    *     different view over those vectors than the one used to add via addGraphNode.
-   * @param maxConn the number of connections to make when adding a new graph node; roughly speaking
-   *     the graph fanout.
+   * @param M the number of connections to make when adding a new graph node; roughly speaking the
+   *     graph fanout.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
@@ -78,28 +78,26 @@ public final class HnswGraphBuilder {
   public HnswGraphBuilder(
       RandomAccessVectorValuesProducer vectors,
       VectorSimilarityFunction similarityFunction,
-      int maxConn,
-      int maxConn0,
+      int M,
       int beamWidth,
       long seed) {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
-    if (maxConn <= 0) {
+    if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
     if (beamWidth <= 0) {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
-    this.maxConn = maxConn;
-    this.maxConn0 = maxConn0;
+    this.M = M;
+    this.maxConn0 = M * 2;
     this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
-    this.ml = 1 / Math.log(1.0 * maxConn);
+    this.ml = 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw =
-        new OnHeapHnswGraph(maxConn, maxConn0, levelOfFirstNode, similarityFunction.reversed);
+    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode, similarityFunction.reversed);
     this.graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
@@ -107,7 +105,7 @@ public final class HnswGraphBuilder {
             new FixedBitSet(vectorValues.size()));
     bound = BoundsChecker.create(similarityFunction.reversed);
     // in scratch we store candidates in reverse order: worse candidates are first
-    scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1), similarityFunction.reversed);
+    scratch = new NeighborArray(Math.max(beamWidth, M + 1), similarityFunction.reversed);
   }
 
   /**
@@ -190,7 +188,7 @@ public final class HnswGraphBuilder {
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
     assert neighbors.size() == 0; // new node
     popToScratch(candidates);
-    int maxConnOnLevel = level == 0 ? maxConn0 : maxConn;
+    int maxConnOnLevel = level == 0 ? maxConn0 : M;
     selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
