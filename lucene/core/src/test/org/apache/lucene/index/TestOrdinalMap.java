@@ -156,4 +156,95 @@ public class TestOrdinalMap extends LuceneTestCase {
     r.close();
     dir.close();
   }
+
+  public void testPrefix8ToComparableUnsignedLong() {
+    assertTrue(
+        Long.compareUnsigned(
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("")),
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("a")))
+            < 0);
+    assertTrue(
+        Long.compareUnsigned(
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abc")),
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abd")))
+            < 0);
+    assertTrue(
+        Long.compareUnsigned(
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abc")),
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abca")))
+            < 0);
+    assertTrue(
+        Long.compareUnsigned(
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abcdef")),
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abcdefgh")))
+            < 0);
+    assertTrue(
+        Long.compareUnsigned(
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abcdef")),
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abcdeg")))
+            < 0);
+    assertTrue(
+        Long.compareUnsigned(
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abcdefgh")),
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef("abcdefgi")))
+            < 0);
+    assertTrue(
+        Long.compareUnsigned(
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(new byte[] {(byte) 0x0f})),
+                OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(new byte[] {(byte) 0xf0})))
+            < 0);
+  }
+
+  public void testPrefix8ToComparableLongAssumesZeroForMissingBytes() {
+    byte[] b1 = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    byte[] b2 = b1.clone();
+    b2[9] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 9)));
+
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 8)));
+
+    b2[8] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 7)));
+
+    b2[7] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 6)));
+
+    b2[6] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 5)));
+
+    b2[5] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 4)));
+
+    b2[4] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 3)));
+
+    b2[3] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 2)));
+
+    b2[2] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 1)));
+
+    b2[1] = 0;
+    assertEquals(
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b2, 1, 8)),
+        OrdinalMap.prefix8ToComparableUnsignedLong(new BytesRef(b1, 1, 0)));
+  }
 }

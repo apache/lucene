@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.List;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -48,10 +49,69 @@ public class OrdinalMap implements Accountable {
   // need it
   // TODO: use more efficient packed ints structures?
 
+  /**
+   * Copy the first 8 bytes of the given term as a comparable unsigned long. In case the term has
+   * less than 8 bytes, missing bytes will be replaced with zeroes. Note that two terms that produce
+   * the same long could still be different due to the fact that missing bytes are replaced with
+   * zeroes, e.g. {@code [1, 0]} and {@code [1]} get mapped to the same long.
+   */
+  static long prefix8ToComparableUnsignedLong(BytesRef term) {
+    // Use Big Endian so that longs are comparable
+    if (term.length >= Long.BYTES) {
+      return (long) BitUtil.VH_BE_LONG.get(term.bytes, term.offset);
+    } else {
+      long l;
+      int offset;
+      if (term.length >= Integer.BYTES) {
+        l = (int) BitUtil.VH_BE_INT.get(term.bytes, term.offset);
+        offset = Integer.BYTES;
+      } else {
+        l = 0;
+        offset = 0;
+      }
+      while (offset < term.length) {
+        l = (l << 8) | Byte.toUnsignedLong(term.bytes[term.offset + offset]);
+        offset++;
+      }
+      l <<= (Long.BYTES - term.length) << 3;
+      return l;
+    }
+  }
+
+  private static int compare(BytesRef termA, long prefix8A, BytesRef termB, long prefix8B) {
+    assert prefix8A == prefix8ToComparableUnsignedLong(termA);
+    assert prefix8B == prefix8ToComparableUnsignedLong(termB);
+    if (prefix8A != prefix8B) {
+      // Terms differ in their first 8 bytes, compare prefixes
+      int cmp = Long.compareUnsigned(prefix8A, prefix8B);
+      assert Integer.signum(cmp)
+              == Integer.signum(
+                  Arrays.compareUnsigned(
+                      termA.bytes,
+                      termA.offset,
+                      termA.offset + termA.length,
+                      termB.bytes,
+                      termB.offset,
+                      termB.offset + termB.length))
+          : termA + " " + termB + " " + cmp;
+      return cmp;
+    } else {
+      // Compare terms
+      return Arrays.compareUnsigned(
+          termA.bytes,
+          termA.offset,
+          termA.offset + termA.length,
+          termB.bytes,
+          termB.offset,
+          termB.offset + termB.length);
+    }
+  }
+
   private static class TermsEnumIndex {
     final int subIndex;
     final TermsEnum termsEnum;
     BytesRef currentTerm;
+    long currentTermPrefix8;
 
     public TermsEnumIndex(TermsEnum termsEnum, int subIndex) {
       this.termsEnum = termsEnum;
@@ -60,6 +120,9 @@ public class OrdinalMap implements Accountable {
 
     public BytesRef next() throws IOException {
       currentTerm = termsEnum.next();
+      if (currentTerm != null) {
+        currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm);
+      }
       return currentTerm;
     }
   }
@@ -230,7 +293,8 @@ public class OrdinalMap implements Accountable {
         new PriorityQueue<TermsEnumIndex>(subs.length) {
           @Override
           protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
-            return a.currentTerm.compareTo(b.currentTerm) < 0;
+            return compare(a.currentTerm, a.currentTermPrefix8, b.currentTerm, b.currentTermPrefix8)
+                < 0;
           }
         };
 
@@ -242,11 +306,13 @@ public class OrdinalMap implements Accountable {
     }
 
     BytesRefBuilder scratch = new BytesRefBuilder();
+    long scratchPrefix8 = -1L;
 
     long globalOrd = 0;
     while (queue.size() != 0) {
       TermsEnumIndex top = queue.top();
       scratch.copyBytes(top.currentTerm);
+      scratchPrefix8 = top.currentTermPrefix8;
 
       int firstSegmentIndex = Integer.MAX_VALUE;
       long globalOrdDelta = Long.MAX_VALUE;
@@ -283,10 +349,11 @@ public class OrdinalMap implements Accountable {
           if (queue.size() == 0) {
             break;
           }
+          top = queue.top();
         } else {
-          queue.updateTop();
+          top = queue.updateTop();
         }
-        if (queue.top().currentTerm.equals(scratch.get()) == false) {
+        if (compare(top.currentTerm, top.currentTermPrefix8, scratch.get(), scratchPrefix8) != 0) {
           break;
         }
       }
