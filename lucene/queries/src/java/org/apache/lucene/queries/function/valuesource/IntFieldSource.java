@@ -25,8 +25,6 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.docvalues.IntDocValues;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
-import org.apache.lucene.util.mutable.MutableValue;
-import org.apache.lucene.util.mutable.MutableValueInt;
 
 /**
  * Obtains int field values from {@link org.apache.lucene.index.LeafReader#getNumericDocValues} and
@@ -57,26 +55,13 @@ public class IntFieldSource extends FieldCacheSource {
     return new IntDocValues(this) {
       int lastDocID;
 
-      private int getValueForDoc(int doc) throws IOException {
-        if (doc < lastDocID) {
-          throw new IllegalArgumentException(
-              "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
-        }
-        lastDocID = doc;
-        int curDocID = arr.docID();
-        if (doc > curDocID) {
-          curDocID = arr.advance(doc);
-        }
-        if (doc == curDocID) {
+      @Override
+      public int intVal(int doc) throws IOException {
+        if (exists(doc)) {
           return (int) arr.longValue();
         } else {
           return 0;
         }
-      }
-
-      @Override
-      public int intVal(int doc) throws IOException {
-        return getValueForDoc(doc);
       }
 
       @Override
@@ -86,26 +71,16 @@ public class IntFieldSource extends FieldCacheSource {
 
       @Override
       public boolean exists(int doc) throws IOException {
-        getValueForDoc(doc);
-        return arr.docID() == doc;
-      }
-
-      @Override
-      public ValueFiller getValueFiller() {
-        return new ValueFiller() {
-          private final MutableValueInt mval = new MutableValueInt();
-
-          @Override
-          public MutableValue getValue() {
-            return mval;
-          }
-
-          @Override
-          public void fillValue(int doc) throws IOException {
-            mval.value = getValueForDoc(doc);
-            mval.exists = arr.docID() == doc;
-          }
-        };
+        if (doc < lastDocID) {
+          throw new IllegalArgumentException(
+              "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
+        }
+        lastDocID = doc;
+        int curDocID = arr.docID();
+        if (doc > curDocID) {
+          curDocID = arr.advance(doc);
+        }
+        return doc == curDocID;
       }
     };
   }

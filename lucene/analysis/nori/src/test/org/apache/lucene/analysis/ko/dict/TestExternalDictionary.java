@@ -31,6 +31,7 @@ import org.junit.Before;
 public class TestExternalDictionary extends LuceneTestCase {
 
   private Path dir;
+  private ClassLoader loader = getClass().getClassLoader();
 
   @Override
   @Before
@@ -95,6 +96,34 @@ public class TestExternalDictionary extends LuceneTestCase {
     String dictionaryPath = ConnectionCosts.class.getName().replace('.', '/');
     ConnectionCosts cc =
         new ConnectionCosts(dir.resolve(dictionaryPath + ConnectionCosts.FILENAME_SUFFIX));
+    assertEquals(0, cc.get(1, 1));
+  }
+
+  public void testLoadExternalUrlTokenInfoDictionary() throws Exception {
+    String dictionaryPath = TokenInfoDictionary.class.getName().replace('.', '/');
+    TokenInfoDictionary dict =
+        new TokenInfoDictionary(
+            loader.getResource(dictionaryPath + TARGETMAP_FILENAME_SUFFIX),
+            loader.getResource(dictionaryPath + POSDICT_FILENAME_SUFFIX),
+            loader.getResource(dictionaryPath + DICT_FILENAME_SUFFIX),
+            loader.getResource(dictionaryPath + FST_FILENAME_SUFFIX));
+    assertNotNull(dict.getFST());
+  }
+
+  public void testLoadExternalUrlUnknownDictionary() throws Exception {
+    String dictionaryPath = UnknownDictionary.class.getName().replace('.', '/');
+    UnknownDictionary dict =
+        new UnknownDictionary(
+            loader.getResource(dictionaryPath + TARGETMAP_FILENAME_SUFFIX),
+            loader.getResource(dictionaryPath + POSDICT_FILENAME_SUFFIX),
+            loader.getResource(dictionaryPath + DICT_FILENAME_SUFFIX));
+    assertNotNull(dict.getCharacterDefinition());
+  }
+
+  public void testLoadExternalUrlConnectionCosts() throws Exception {
+    String dictionaryPath = ConnectionCosts.class.getName().replace('.', '/');
+    ConnectionCosts cc =
+        new ConnectionCosts(loader.getResource(dictionaryPath + ConnectionCosts.FILENAME_SUFFIX));
     assertEquals(0, cc.get(1, 1));
   }
 }

@@ -53,6 +53,15 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   public void testEquals() {
     KnnVectorQuery q1 = new KnnVectorQuery("f1", new float[] {0, 1}, 10);
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    KnnVectorQuery q2 = new KnnVectorQuery("f1", new float[] {0, 1}, 10, filter1);
+
+    assertNotEquals(q2, q1);
+    assertNotEquals(q1, q2);
+    assertEquals(q2, new KnnVectorQuery("f1", new float[] {0, 1}, 10, filter1));
+
+    Query filter2 = new TermQuery(new Term("id", "id2"));
+    assertNotEquals(q2, new KnnVectorQuery("f1", new float[] {0, 1}, 10, filter2));
 
     assertEquals(q1, new KnnVectorQuery("f1", new float[] {0, 1}, 10));
 
