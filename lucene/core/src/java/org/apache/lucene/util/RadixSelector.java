@@ -56,7 +56,7 @@ public abstract class RadixSelector extends Selector {
 
   /**
    * Return the k-th byte of the entry at index {@code i}, or {@code -1} if its length is less than
-   * or equal to {@code k}. This may only be called with a value of {@code i} between {@code 0}
+   * or equal to {@code k}. This may only be called with a value of {@code k} between {@code 0}
    * included and {@code maxLength} excluded.
    */
   protected abstract int byteAt(int i, int k);
