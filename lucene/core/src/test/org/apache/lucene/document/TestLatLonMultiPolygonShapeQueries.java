@@ -141,7 +141,6 @@ public class TestLatLonMultiPolygonShapeQueries extends BaseLatLonShapeTestCase 
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

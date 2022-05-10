@@ -93,6 +93,6 @@ jobs:
       run: cat gradle.properties
 
     - name: Run gradle tests
-      run: ./gradlew test "-Ptask.times=true" "-Ptests.slow=false" --max-workers 2
+      run: ./gradlew test "-Ptask.times=true" --max-workers 2
 
     # - uses: gradle/wrapper-validation-action@v1

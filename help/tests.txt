@@ -68,17 +68,17 @@ Test groups
 -----------
 
 Tests can be filtered by an annotation they're marked with.
-Some test group annotations include: @AwaitsFix, @Nightly, @Slow
+Some test group annotations include: @AwaitsFix, @Nightly
 
 This uses filtering infrastructure on the *runner* (randomizedtesting), 
 not gradle's built-in mechanisms (but it can be combined with "--tests").
-For example, run all lucene-core tests annotated as @Slow:
+For example, run all lucene-core tests annotated as @Nightly:
 
-gradlew -p lucene/core test -Ptests.filter=@Slow
+gradlew -p lucene/core test -Ptests.filter=@Nightly
 
 Test group filters can be combined into Boolean expressions:
 
-gradlew -p lucene/core test "default and not(@awaitsfix or @slow)"
+gradlew -p lucene/core test "default and not(@awaitsfix or @nightly)"
 
 
 Reiteration ("beasting")

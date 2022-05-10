@@ -232,7 +232,6 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_WEEKLY = "tests.weekly";
   public static final String SYSPROP_MONSTER = "tests.monster";
   public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
-  public static final String SYSPROP_SLOW = "tests.slow";
   public static final String SYSPROP_BADAPPLES = "tests.badapples";
 
   /** @see #ignoreAfterMaxFailures */
@@ -273,16 +272,6 @@ public abstract class LuceneTestCase extends Assert {
     /** Point to JIRA entry. */
     public String bugUrl();
   }
-
-  /**
-   * Annotation for tests that are slow. Slow tests do run by default but can be disabled if a quick
-   * run is needed.
-   */
-  @Documented
-  @Inherited
-  @Retention(RetentionPolicy.RUNTIME)
-  @TestGroup(enabled = true, sysProperty = SYSPROP_SLOW)
-  public @interface Slow {}
 
   /**
    * Annotation for tests that fail frequently and are not executed in Jenkins builds to not spam
@@ -456,10 +445,6 @@ public abstract class LuceneTestCase extends Assert {
   public static final boolean TEST_BADAPPLES =
       systemPropertyAsBoolean(
           SYSPROP_BADAPPLES, BadApple.class.getAnnotation(TestGroup.class).enabled());
-
-  /** Whether or not {@link Slow} tests should run. */
-  public static final boolean TEST_SLOW =
-      systemPropertyAsBoolean(SYSPROP_SLOW, Slow.class.getAnnotation(TestGroup.class).enabled());
 
   /** Throttling, see {@link MockDirectoryWrapper#setThrottling(Throttling)}. */
   public static final Throttling TEST_THROTTLING =

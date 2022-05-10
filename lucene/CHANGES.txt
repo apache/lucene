@@ -126,6 +126,8 @@ Build
 
 * Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
 
+* LUCENE-10532: Remove LuceneTestCase.Slow annotation. ALl tests can be fast. (Robert Muir)
+
 Other
 ---------------------
 * LUCENE-10526: Test-framework: Add FilterFileSystemProvider.wrapPath(Path) method for mock filesystems

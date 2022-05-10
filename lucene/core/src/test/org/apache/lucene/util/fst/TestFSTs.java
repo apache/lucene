@@ -310,7 +310,6 @@ public class TestFSTs extends LuceneTestCase {
 
   // Build FST for all unique terms in the test line docs
   // file, up until a doc limit
-  @Slow
   public void testRealTerms() throws Exception {
 
     final LineFileDocs docs = new LineFileDocs(random());

@@ -355,7 +355,6 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     dir.close();
   }
 
-  @Slow
   public void testNoWaitClose() throws Throwable {
     Directory directory = newDirectory();
 
