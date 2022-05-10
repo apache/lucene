@@ -40,11 +40,10 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  * <ul>
  *   <li>Floating-point vector data ordered by field, document ordinal, and vector dimension. The
  *       floats are stored in little-endian byte order
- *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
- *       <ul>
- *         <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter},
- *             note that only in sparse case
- *       </ul>
+ *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
+ *       note that only in sparse case
+ *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
+ *       that only in sparse case
  * </ul>
  *
  * <h2>.vex (vector index)</h2>
@@ -82,10 +81,8 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
  *       0, sparse – some documents missing values.
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
- *       <ul>
- *         <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter},
- *             note that only in sparse case
- *       </ul>
+ *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
+ *       that only in sparse case
  *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
  *   <li><b>[int]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level
