@@ -95,7 +95,6 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
   }
 
   /** enumerates the entire FST/lookup data and just does basic sanity checks */
-  @Slow
   public void testEnumerateAll() throws Exception {
     // just for debugging
     int numTerms = 0;

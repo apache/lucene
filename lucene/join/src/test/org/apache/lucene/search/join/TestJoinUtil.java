@@ -1420,7 +1420,6 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   @Test
-  @Slow
   public void testSingleValueRandomJoin() throws Exception {
     int maxIndexIter = atLeast(1);
     int maxSearchIter = atLeast(1);
@@ -1428,7 +1427,6 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   @Test
-  @Slow
   // This test really takes more time, that is why the number of iterations are smaller.
   public void testMultiValueRandomJoin() throws Exception {
     int maxIndexIter = atLeast(1);

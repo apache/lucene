@@ -95,7 +95,6 @@ public class TestXYMultiPointShapeQueries extends BaseXYShapeTestCase {
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {
