@@ -42,8 +42,10 @@ import org.apache.lucene.util.DocIdSetBuilder;
  * but in this case you must override both of these methods.
  */
 public abstract class NumericComparator<T extends Number> extends FieldComparator<T> {
-  private final int minSkipInterval = 32;
-  private final int maxSkipInterval = 8192;
+
+  // MIN_SKIP_INTERVAL and MAX_SKIP_INTERVAL both should be powers of 2
+  private static final int MIN_SKIP_INTERVAL = 32;
+  private static final int MAX_SKIP_INTERVAL = 8192;
   protected final T missingValue;
   protected final String field;
   protected final boolean reverse;
@@ -96,7 +98,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private long iteratorCost;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
-    private int currentSkipInterval = minSkipInterval;
+    private int currentSkipInterval = MIN_SKIP_INTERVAL;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);
@@ -273,13 +275,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (estimatedNumberOfMatches >= threshold) {
         // the new range is not selective enough to be worth materializing, it doesn't reduce number
         // of docs at least 8x
-        currentSkipInterval = Math.min(currentSkipInterval * 2, maxSkipInterval);
+        currentSkipInterval = Math.min(currentSkipInterval * 2, MAX_SKIP_INTERVAL);
         return;
       }
       pointValues.intersect(visitor);
       competitiveIterator = result.build().iterator();
       iteratorCost = competitiveIterator.cost();
-      currentSkipInterval = Math.max(currentSkipInterval / 2, minSkipInterval);
+      currentSkipInterval = Math.max(currentSkipInterval / 2, MIN_SKIP_INTERVAL);
     }
 
     @Override
