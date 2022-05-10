@@ -60,17 +60,17 @@ final class WANDScorer extends Scorer {
    * {@code [2^23, 2^24[}. Special cases:
    *
    * <pre>
-   *    scalingFactor(0) = scalingFactor(MIN_VALUE) - 1
-   *    scalingFactor(+Infty) = scalingFactor(MAX_VALUE) + 1
-   *  </pre>
+   *    scalingFactor(0) = scalingFactor(MIN_VALUE) + 1
+   *    scalingFactor(+Infty) = scalingFactor(MAX_VALUE) - 1
+   * </pre>
    */
   static int scalingFactor(float f) {
     if (f < 0) {
       throw new IllegalArgumentException("Scores must be positive or null");
     } else if (f == 0) {
-      return scalingFactor(Float.MIN_VALUE) - 1;
+      return scalingFactor(Float.MIN_VALUE) + 1;
     } else if (Float.isInfinite(f)) {
-      return scalingFactor(Float.MAX_VALUE) + 1;
+      return scalingFactor(Float.MAX_VALUE) - 1;
     } else {
       double d = f;
       // Since doubles have more amplitude than floats for the
@@ -86,7 +86,6 @@ final class WANDScorer extends Scorer {
    * sure we do not miss any matches.
    */
   static long scaleMaxScore(float maxScore, int scalingFactor) {
-    assert scalingFactor(maxScore) >= scalingFactor;
     assert Float.isNaN(maxScore) == false;
     assert maxScore >= 0;
 
@@ -95,7 +94,8 @@ final class WANDScorer extends Scorer {
     final double scaled = Math.scalb((double) maxScore, scalingFactor);
 
     if (scaled > MAX_SCALED_SCORE) {
-      // This happens if one scorer returns +Infty as a max score
+      // This happens if one scorer returns +Infty as a max score, or if the scorer returns greater
+      // max scores locally than globally - which shouldn't happen with well-behaved scorers
       return MAX_SCALED_SCORE;
     }
 

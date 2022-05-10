@@ -98,7 +98,7 @@ public class GeoBBoxFactory {
       return new GeoDegenerateVerticalLine(planetModel, topLat, bottomLat, leftLon);
     }
     // System.err.println(" not vertical line");
-    if (extent >= Math.PI) {
+    if (extent >= GeoWideRectangle.MIN_WIDE_EXTENT) {
       if (latitudesEquals(topLat, bottomLat)) {
         if (isNorthPole(topLat)) {
           return new GeoDegeneratePoint(planetModel, topLat, 0.0);

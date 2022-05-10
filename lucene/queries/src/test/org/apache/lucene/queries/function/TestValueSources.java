@@ -380,42 +380,66 @@ public class TestValueSources extends LuceneTestCase {
     ValueSource vs =
         new MaxFloatFunction(
             new ValueSource[] {new ConstValueSource(1f), new ConstValueSource(2f)});
-
-    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
 
     // as long as one value exists, then max exists
-    vs = new MaxFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2F)});
+    vs = new MaxFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f)});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
+
     vs =
         new MaxFloatFunction(
-            new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2F), BOGUS_DOUBLE_VS});
+            new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f), BOGUS_DOUBLE_VS});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
+
     // if none exist, then max doesn't exist
     vs = new MaxFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, BOGUS_INT_VS, BOGUS_DOUBLE_VS});
     assertNoneExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
+
+    // if no values exist should return 0f even if value returned is non zero
+    vs =
+        new MaxFloatFunction(
+            new ValueSource[] {
+              new SumFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(42)})
+            });
+    assertNoneExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
   }
 
   public void testMinFloat() throws Exception {
     ValueSource vs =
         new MinFloatFunction(
             new ValueSource[] {new ConstValueSource(1f), new ConstValueSource(2f)});
-
-    assertHits(new FunctionQuery(vs), new float[] {1f, 1f});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {1f, 1f});
 
     // as long as one value exists, then min exists
-    vs = new MinFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2F)});
-    assertHits(new FunctionQuery(vs), new float[] {2F, 2F});
+    vs = new MinFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f)});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
+
     vs =
         new MinFloatFunction(
-            new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2F), BOGUS_DOUBLE_VS});
+            new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f), BOGUS_DOUBLE_VS});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
 
     // if none exist, then min doesn't exist
     vs = new MinFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, BOGUS_INT_VS, BOGUS_DOUBLE_VS});
     assertNoneExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
+
+    // if no values exist should return 0f even if value returned is non zero
+    vs =
+        new MinFloatFunction(
+            new ValueSource[] {
+              new SumFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(42)})
+            });
+    assertNoneExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
   }
 
   public void testNorm() throws Exception {

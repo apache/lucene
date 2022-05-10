@@ -94,6 +94,11 @@ interface GenericTermsCollector extends Collector {
         }
 
         @Override
+        public long docValueCount() {
+          return target.docValueCount();
+        }
+
+        @Override
         public BytesRef lookupOrd(long ord) throws IOException {
           final BytesRef val = target.lookupOrd(ord);
           out.println(val.toString() + ", ");

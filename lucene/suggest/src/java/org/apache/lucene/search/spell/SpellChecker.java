@@ -426,6 +426,9 @@ public class SpellChecker implements java.io.Closeable {
    */
   private static String[] formGrams(String text, int ng) {
     int len = text.length();
+    if (len < ng) {
+      return new String[] {};
+    }
     String[] res = new String[len - ng + 1];
     for (int i = 0; i < len - ng + 1; i++) {
       res[i] = text.substring(i, i + ng);
@@ -559,7 +562,7 @@ public class SpellChecker implements java.io.Closeable {
     if (l == 5) {
       return 3;
     }
-    return 2;
+    return Math.min(l, 2);
   }
 
   private static Document createDocument(String text, int ng1, int ng2) {
