@@ -165,7 +165,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      if (iteratorCost != -1 && scorer instanceof Scorer) {
+      if (iteratorCost == -1 && scorer instanceof Scorer) {
         iteratorCost =
             ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
         updateCompetitiveIterator(); // update an iterator when we have a new segment
