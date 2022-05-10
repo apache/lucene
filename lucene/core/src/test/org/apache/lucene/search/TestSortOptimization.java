@@ -43,6 +43,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 
 public class TestSortOptimization extends LuceneTestCase {
@@ -50,7 +51,12 @@ public class TestSortOptimization extends LuceneTestCase {
   public void testLongSortOptimization() throws IOException {
 
     final Directory dir = newDirectory();
-    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    IndexWriterConfig config =
+        new IndexWriterConfig()
+            // Make sure to use the default codec, otherwise some random points formats that have
+            // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+            .setCodec(TestUtil.getDefaultCodec());
+    final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
@@ -170,7 +176,12 @@ public class TestSortOptimization extends LuceneTestCase {
 
   public void testSortOptimizationWithMissingValues() throws IOException {
     final Directory dir = newDirectory();
-    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    IndexWriterConfig config =
+        new IndexWriterConfig()
+            // Make sure to use the default codec, otherwise some random points formats that have
+            // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+            .setCodec(TestUtil.getDefaultCodec());
+    final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
@@ -218,7 +229,12 @@ public class TestSortOptimization extends LuceneTestCase {
 
   public void testSortOptimizationEqualValues() throws IOException {
     final Directory dir = newDirectory();
-    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    IndexWriterConfig config =
+        new IndexWriterConfig()
+            // Make sure to use the default codec, otherwise some random points formats that have
+            // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+            .setCodec(TestUtil.getDefaultCodec());
+    final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(TEST_NIGHTLY ? 50_000 : 10_000);
     for (int i = 1; i <= numDocs; ++i) {
       final Document doc = new Document();
@@ -345,7 +361,12 @@ public class TestSortOptimization extends LuceneTestCase {
     IndexReader[] readers = new IndexReader[numIndices];
     for (int i = 0; i < numIndices; i++) {
       dirs[i] = newDirectory();
-      try (IndexWriter writer = new IndexWriter(dirs[i], new IndexWriterConfig())) {
+      IndexWriterConfig config =
+          new IndexWriterConfig()
+              // Make sure to use the default codec, otherwise some random points formats that have
+              // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+              .setCodec(TestUtil.getDefaultCodec());
+      try (IndexWriter writer = new IndexWriter(dirs[i], config)) {
         for (int docID = 0; docID < numDocsInIndex; docID++) {
           final Document doc = new Document();
           doc.add(new NumericDocValuesField("my_field", docID * numIndices + i));
