@@ -145,6 +145,9 @@ Optimizations
 
 * LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
 
+* LUCENE-10502: Use IndexedDISI to store docIds and DirectMonotonicWriter/Reader to handle ordToDoc in HNSW vectors (Lu Xugang)
+
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
