@@ -119,26 +119,34 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, state.context);
-    int versionVectorData =
-        CodecUtil.checkIndexHeader(
-            in,
-            codecName,
-            Lucene91HnswVectorsFormat.VERSION_START,
-            Lucene91HnswVectorsFormat.VERSION_CURRENT,
-            state.segmentInfo.getId(),
-            state.segmentSuffix);
-    if (versionMeta != versionVectorData) {
-      throw new CorruptIndexException(
-          "Format versions mismatch: meta="
-              + versionMeta
-              + ", "
-              + codecName
-              + "="
-              + versionVectorData,
-          in);
+    boolean success = false;
+    try {
+      int versionVectorData =
+          CodecUtil.checkIndexHeader(
+              in,
+              codecName,
+              Lucene91HnswVectorsFormat.VERSION_START,
+              Lucene91HnswVectorsFormat.VERSION_CURRENT,
+              state.segmentInfo.getId(),
+              state.segmentSuffix);
+      if (versionMeta != versionVectorData) {
+        throw new CorruptIndexException(
+            "Format versions mismatch: meta="
+                + versionMeta
+                + ", "
+                + codecName
+                + "="
+                + versionVectorData,
+            in);
+      }
+      CodecUtil.retrieveChecksum(in);
+      success = true;
+      return in;
+    } finally {
+      if (success == false) {
+        IOUtils.closeWhileHandlingException(in);
+      }
     }
-    CodecUtil.retrieveChecksum(in);
-    return in;
   }
 
   private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
