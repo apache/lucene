@@ -182,16 +182,13 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       return null;
     }
 
-    LabelAndValue[] labelValues = getLabelValues(childOrdsResult.q, cp.length);
+    LabelAndValue[] labelValues = getLabelValues(childOrdsResult.q, cp);
     return new FacetResult(
         dim, path, childOrdsResult.aggregatedValue, labelValues, childOrdsResult.childCount);
   }
 
-  /**
-   * Returns label values for dims This portion of code is moved from getTopChildren because
-   * getTopDims needs to reuse it
-   */
-  private LabelAndValue[] getLabelValues(TopOrdAndIntQueue q, int facetLabelLength)
+  /** Returns label and values for dims */
+  private LabelAndValue[] getLabelValues(TopOrdAndIntQueue q, FacetLabel facetLabel)
       throws IOException {
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     int[] ordinals = new int[labelValues.length];
@@ -205,7 +202,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
     for (int i = 0; i < labelValues.length; i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[facetLabelLength], values[i]);
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[facetLabel.length], values[i]);
     }
     return labelValues;
   }
@@ -278,7 +275,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       }
     }
 
-    return new ChildOrdsResult (aggregatedValue, childCount, q);
+    return new ChildOrdsResult(aggregatedValue, childCount, q);
   }
 
   /** Returns value/count of a dimension. */
@@ -311,11 +308,11 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       throw new IllegalArgumentException("topN must be > 0");
     }
 
-    // get existing children and siblings ordinal array from TaxonomyFacets
-    int[] children = getExistingChildren();
-    int[] siblings = getExistingSiblings();
+    // get children and siblings ordinal array from TaxonomyFacets
+    int[] children = getChildren();
+    int[] siblings = getSiblings();
 
-    // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
+    // Create priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
     PriorityQueue<DimValueResult> pq =
         new PriorityQueue<>(topNDims) {
@@ -342,10 +339,9 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       if (dimConfig.indexFieldName.equals(indexFieldName)) {
         FacetLabel cp = new FacetLabel(dim, emptyPath);
         int dimOrd = taxoReader.getOrdinal(cp);
-        int dimCount = 0;
         // if dimOrd = -1, we skip this dim, else call getDimValue
         if (dimOrd != -1) {
-          dimCount = getDimValue(dimConfig, dim, dimOrd, topNChildren, dimToChildOrdsResult);
+          int dimCount = getDimValue(dimConfig, dim, dimOrd, topNChildren, dimToChildOrdsResult);
           if (dimCount != 0) {
             // use priority queue to store DimValueResult for topNDims
             if (pq.size() < topNDims) {
@@ -380,16 +376,14 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         childOrdsResult = getChildOrdsResult(dimConfig, dimValueResult.dimOrd, topNChildren);
       }
       // FacetResult requires String[] path, and path is always empty for getTopDims.
-      // FacetLabelLength
-      // is always equal to 1 when FacetLabel is constructed with FacetLabel(dim, emptyPath), and
-      // therefore,
-      // 1 is passed in when calling getLabelValues
+      // FacetLabelLength is always equal to 1 when FacetLabel is constructed with
+      // FacetLabel(dim, emptyPath), and therefore, 1 is passed in when calling getLabelValues
       FacetResult facetResult =
           new FacetResult(
               dimValueResult.dim,
               emptyPath,
               dimValueResult.value,
-              getLabelValues(childOrdsResult.q, 1),
+              getLabelValues(childOrdsResult.q, new FacetLabel(dim, emptyPath)),
               childOrdsResult.childCount);
       results[pq.size()] = facetResult;
     }
