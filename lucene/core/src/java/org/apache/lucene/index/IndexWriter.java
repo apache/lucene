@@ -6199,13 +6199,14 @@ public class IndexWriter
   public static final class DocStats {
     /**
      * The total number of docs in this index, including docs not yet flushed (still in the RAM
-     * buffer), not counting deletions.
-     */
-    public final int maxDoc;
-    /**
-     * The total number of docs in this index, including docs not yet flushed (still in the RAM
      * buffer), and including deletions. <b>NOTE:</b> buffered deletions are not counted. If you
      * really need these to be counted you should call {@link IndexWriter#commit()} first.
+     */
+    public final int maxDoc;
+
+    /**
+     * The total number of docs in this index, including docs not yet flushed (still in the RAM
+     * buffer), not counting deletions.
      */
     public final int numDocs;
 
