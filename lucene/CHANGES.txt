@@ -145,6 +145,10 @@ Optimizations
 
 * LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
 
+* LUCENE-10496: Queries sorted by field now better handle the degenerate case
+  when the search order and the index order are in opposite directions.
+  (Jianping Weng)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
