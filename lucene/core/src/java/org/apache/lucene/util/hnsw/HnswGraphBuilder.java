@@ -44,7 +44,6 @@ public final class HnswGraphBuilder {
   public static long randSeed = DEFAULT_RAND_SEED;
 
   private final int M; // max number of connections on upper layers
-  private final int maxConn0; // max number of connections on the 0th (last) layer
   private final int beamWidth;
   private final double ml;
   private final NeighborArray scratch;
@@ -69,8 +68,8 @@ public final class HnswGraphBuilder {
    *
    * @param vectors the vectors whose relations are represented by the graph - must provide a
    *     different view over those vectors than the one used to add via addGraphNode.
-   * @param M the number of connections to make when adding a new graph node; roughly speaking the
-   *     graph fanout.
+   * @param M – graph fanout parameter used to calculate the maximum number of connections a node
+   *     can have – M on upper layers, and M * 2 on the lowest level.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
@@ -91,7 +90,6 @@ public final class HnswGraphBuilder {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
     this.M = M;
-    this.maxConn0 = M * 2;
     this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
     this.ml = 1 / Math.log(1.0 * M);
@@ -188,7 +186,7 @@ public final class HnswGraphBuilder {
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
     assert neighbors.size() == 0; // new node
     popToScratch(candidates);
-    int maxConnOnLevel = level == 0 ? maxConn0 : M;
+    int maxConnOnLevel = level == 0 ? M * 2 : M;
     selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again

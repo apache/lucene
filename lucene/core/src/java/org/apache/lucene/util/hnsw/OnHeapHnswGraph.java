@@ -30,8 +30,7 @@ import org.apache.lucene.util.ArrayUtil;
  */
 public final class OnHeapHnswGraph extends HnswGraph {
 
-  private final int maxConn;
-  private final int maxConn0;
+  private final int M;
   private final boolean similarityReversed;
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
@@ -53,15 +52,14 @@ public final class OnHeapHnswGraph extends HnswGraph {
   private NeighborArray cur;
 
   OnHeapHnswGraph(int M, int levelOfFirstNode, boolean similarityReversed) {
-    this.maxConn = M;
-    this.maxConn0 = M * 2;
+    this.M = M;
     this.similarityReversed = similarityReversed;
     this.numLevels = levelOfFirstNode + 1;
     this.graph = new ArrayList<>(numLevels);
     this.entryNode = 0;
     for (int l = 0; l < numLevels; l++) {
       graph.add(new ArrayList<>());
-      graph.get(l).add(new NeighborArray(l == 0 ? maxConn0 : maxConn, similarityReversed == false));
+      graph.get(l).add(new NeighborArray(l == 0 ? M * 2 : M, similarityReversed == false));
     }
 
     this.nodesByLevel = new ArrayList<>(numLevels);
@@ -98,7 +96,9 @@ public final class OnHeapHnswGraph extends HnswGraph {
    * @param node the node to add, represented as an ordinal on the level 0.
    */
   public void addNode(int level, int node) {
+    int maxConnOnLevel;
     if (level > 0) {
+      maxConnOnLevel = M;
       // if the new node introduces a new level, add more levels to the graph,
       // and make this node the graph's new entry point
       if (level >= numLevels) {
@@ -120,13 +120,11 @@ public final class OnHeapHnswGraph extends HnswGraph {
           nodesByLevel.set(level, nodes);
         }
       }
+    } else {
+      maxConnOnLevel = M * 2;
     }
-
-    graph
-        .get(level)
-        .add(
-            new NeighborArray(
-                level == 0 ? maxConn0 + 1 : maxConn + 1, similarityReversed == false));
+    // we allocate more spaces for neighbours, but then prune them to have only maxConnOnLevel
+    graph.get(level).add(new NeighborArray(maxConnOnLevel + 1, similarityReversed == false));
   }
 
   @Override
