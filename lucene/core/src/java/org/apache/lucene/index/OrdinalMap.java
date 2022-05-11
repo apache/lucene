@@ -107,6 +107,23 @@ public class OrdinalMap implements Accountable {
     }
   }
 
+  private static boolean equals(BytesRef termA, long prefix8A, BytesRef termB, long prefix8B) {
+    assert prefix8A == prefix8ToComparableUnsignedLong(termA);
+    assert prefix8B == prefix8ToComparableUnsignedLong(termB);
+    if (prefix8A != prefix8B) {
+      return false;
+    } else {
+      // Compare terms
+      return Arrays.equals(
+          termA.bytes,
+          termA.offset,
+          termA.offset + termA.length,
+          termB.bytes,
+          termB.offset,
+          termB.offset + termB.length);
+    }
+  }
+
   private static class TermsEnumIndex {
     final int subIndex;
     final TermsEnum termsEnum;
@@ -353,7 +370,7 @@ public class OrdinalMap implements Accountable {
         } else {
           top = queue.updateTop();
         }
-        if (compare(top.currentTerm, top.currentTermPrefix8, scratch.get(), scratchPrefix8) != 0) {
+        if (equals(top.currentTerm, top.currentTermPrefix8, scratch.get(), scratchPrefix8) == false) {
           break;
         }
       }
