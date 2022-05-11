@@ -99,6 +99,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private int maxDocVisited = -1;
     private int updateCounter = 0;
     private int currentSkipInterval = MIN_SKIP_INTERVAL;
+    // helps to be conservative about increasing the sampling interval
     private int tryUpdateFailCount = 0;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
@@ -279,7 +280,21 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (estimatedNumberOfMatches >= threshold) {
         // the new range is not selective enough to be worth materializing, it doesn't reduce number
         // of docs at least 8x
-        if (updateCounter > 256) {
+        updateSkipInterval(false);
+        return;
+      }
+      pointValues.intersect(visitor);
+      competitiveIterator = result.build().iterator();
+      iteratorCost = competitiveIterator.cost();
+      updateSkipInterval(true);
+    }
+
+    private void updateSkipInterval(boolean success) {
+      if (updateCounter > 256) {
+        if (success) {
+          currentSkipInterval = Math.max(currentSkipInterval / 2, MIN_SKIP_INTERVAL);
+          tryUpdateFailCount = 0;
+        } else {
           if (tryUpdateFailCount >= 3) {
             currentSkipInterval = Math.min(currentSkipInterval * 2, MAX_SKIP_INTERVAL);
             tryUpdateFailCount = 0;
@@ -287,14 +302,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             tryUpdateFailCount++;
           }
         }
-        return;
-      }
-      pointValues.intersect(visitor);
-      competitiveIterator = result.build().iterator();
-      iteratorCost = competitiveIterator.cost();
-      if (updateCounter > 256) {
-        currentSkipInterval = Math.max(currentSkipInterval / 2, MIN_SKIP_INTERVAL);
-        tryUpdateFailCount = 0;
       }
     }
 
