@@ -800,9 +800,8 @@ public final class Tessellator {
       final boolean mortonOptimized) {
     // Search for a valid diagonal that divides the polygon into two.
     Node searchNode = start;
-    Node nextNode;
     do {
-      nextNode = searchNode.next;
+      Node nextNode = searchNode.next;
       Node diagonal = nextNode.next;
       while (diagonal != searchNode.previous) {
         if (searchNode.idx != diagonal.idx && isValidDiagonal(searchNode, diagonal)) {
@@ -1093,6 +1092,8 @@ public final class Tessellator {
         && isIntersectingPolygon(a, a.getX(), a.getY(), b.getX(), b.getY()) == false
         && isLocallyInside(a, b)
         && isLocallyInside(b, a)
+        && isLocallyInside(a.previous, b)
+        && isLocallyInside(b.next, a)
         && middleInsert(a, a.getX(), a.getY(), b.getX(), b.getY())
         // make sure we don't introduce collinear lines
         && area(a.previous.getX(), a.previous.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
