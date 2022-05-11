@@ -150,7 +150,7 @@ Optimizations
   (Jianping Weng)
 
 * LUCENE-10502: Use IndexedDISI to store docIds and DirectMonotonicWriter/Reader to handle
-  ordToDoc in HNSW vectors (Mayya Sharipova, Julie Tibshirani, Lu Xugang)
+  ordToDoc in HNSW vectors (Lu Xugang)
 
 Bug Fixes
 ---------------------
