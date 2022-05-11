@@ -90,7 +90,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     }
   }
 
-  @Slow
   public void testSortedVariableLengthBigVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -153,7 +152,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     }
   }
 
-  @Slow
   public void testSparseDocValuesVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {

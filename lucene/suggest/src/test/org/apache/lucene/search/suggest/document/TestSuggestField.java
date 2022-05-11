@@ -190,7 +190,6 @@ public class TestSuggestField extends LuceneTestCase {
   }
 
   @Test
-  @Slow
   public void testDupSuggestFieldValues() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -282,7 +281,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Slow
   public void testExtremeDeduplication() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =

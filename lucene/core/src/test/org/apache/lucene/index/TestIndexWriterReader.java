@@ -386,7 +386,6 @@ public class TestIndexWriterReader extends LuceneTestCase {
     dir1.close();
   }
 
-  @Slow
   public void testAddIndexesAndDoDeletesThreads() throws Throwable {
     final int numIter = TEST_NIGHTLY ? 2 : 1;
     int numDirs = TEST_NIGHTLY ? 3 : 2;

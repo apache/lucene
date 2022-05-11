@@ -82,7 +82,6 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
   }
 
   // Force low cardinality leaves
-  @Slow
   public void testLowCardinalityShapeManyTimes() throws Exception {
     int numShapes = atLeast(20);
     int cardinality = TestUtil.nextInt(random(), 2, 20);
@@ -105,12 +104,10 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     doTestRandom(10);
   }
 
-  @Slow
   public void testRandomMedium() throws Exception {
     doTestRandom(atLeast(20));
   }
 
-  @Slow
   @Nightly
   public void testRandomBig() throws Exception {
     doTestRandom(20000);
