@@ -126,7 +126,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         this.minValueAsBytes =
             reverse ? new byte[bytesCount] : topValueSet ? new byte[bytesCount] : null;
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
-        this.iteratorCost = maxDoc;
       } else {
         this.enableSkipping = false;
         this.maxDoc = 0;
@@ -165,9 +164,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      if (iteratorCost == -1 && scorer instanceof Scorer) {
-        iteratorCost =
-            ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
+      if (iteratorCost == -1) {
+        if (scorer instanceof Scorer) {
+          iteratorCost =
+              ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
+        } else {
+          iteratorCost = maxDoc;
+        }
         updateCompetitiveIterator(); // update an iterator when we have a new segment
       }
     }
