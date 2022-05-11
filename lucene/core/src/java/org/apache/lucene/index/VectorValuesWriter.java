@@ -225,7 +225,7 @@ class VectorValuesWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues randomAccess() throws IOException {
 
       // Must make a new delegate randomAccess so that we have our own distinct float[]
       final RandomAccessVectorValues delegateRA =
