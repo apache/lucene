@@ -78,55 +78,6 @@ public class OrdinalMap implements Accountable {
     }
   }
 
-  // TODO: Can we take advantage of shared prefixes? E.g. in a dataset of IPv4-mapped IPv6
-  // addresses, all values would share the same 12-bytes prefix. Likewise, in a dataset of URL, most
-  // values might share the `https://www.` prefix.
-  private static int compare(BytesRef termA, long prefix8A, BytesRef termB, long prefix8B) {
-    assert prefix8A == prefix8ToComparableUnsignedLong(termA);
-    assert prefix8B == prefix8ToComparableUnsignedLong(termB);
-    if (prefix8A != prefix8B) {
-      // Terms differ in their first 8 bytes, compare prefixes
-      int cmp = Long.compareUnsigned(prefix8A, prefix8B);
-      assert Integer.signum(cmp)
-              == Integer.signum(
-                  Arrays.compareUnsigned(
-                      termA.bytes,
-                      termA.offset,
-                      termA.offset + termA.length,
-                      termB.bytes,
-                      termB.offset,
-                      termB.offset + termB.length))
-          : termA + " " + termB + " " + cmp;
-      return cmp;
-    } else {
-      // Compare terms
-      return Arrays.compareUnsigned(
-          termA.bytes,
-          termA.offset,
-          termA.offset + termA.length,
-          termB.bytes,
-          termB.offset,
-          termB.offset + termB.length);
-    }
-  }
-
-  private static boolean equals(BytesRef termA, long prefix8A, BytesRef termB, long prefix8B) {
-    assert prefix8A == prefix8ToComparableUnsignedLong(termA);
-    assert prefix8B == prefix8ToComparableUnsignedLong(termB);
-    if (prefix8A != prefix8B) {
-      return false;
-    } else {
-      // Compare terms
-      return Arrays.equals(
-          termA.bytes,
-          termA.offset,
-          termA.offset + termA.length,
-          termB.bytes,
-          termB.offset,
-          termB.offset + termB.length);
-    }
-  }
-
   private static class TermsEnumIndex {
     final int subIndex;
     final TermsEnum termsEnum;
@@ -144,6 +95,33 @@ public class OrdinalMap implements Accountable {
         currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm);
       }
       return currentTerm;
+    }
+
+    // TODO: Can we take advantage of shared prefixes? E.g. in a dataset of IPv4-mapped IPv6
+    // addresses, all values would share the same 12-bytes prefix. Likewise, in a dataset of URL,
+    // most values might share the `https://www.` prefix.
+    public int compareTo(TermsEnumIndex that) {
+      if (currentTermPrefix8 != that.currentTermPrefix8) {
+        int cmp = Long.compareUnsigned(currentTermPrefix8, that.currentTermPrefix8);
+        assert Integer.signum(cmp)
+                == Integer.signum(
+                    Arrays.compareUnsigned(
+                        currentTerm.bytes,
+                        currentTerm.offset,
+                        currentTerm.offset + currentTerm.length,
+                        that.currentTerm.bytes,
+                        that.currentTerm.offset,
+                        that.currentTerm.offset + that.currentTerm.length))
+            : currentTerm + " " + that.currentTerm + " " + cmp;
+        return cmp;
+      }
+      return Arrays.compareUnsigned(
+          currentTerm.bytes,
+          currentTerm.offset,
+          currentTerm.offset + currentTerm.length,
+          that.currentTerm.bytes,
+          that.currentTerm.offset,
+          that.currentTerm.offset + that.currentTerm.length);
     }
   }
 
@@ -313,8 +291,7 @@ public class OrdinalMap implements Accountable {
         new PriorityQueue<TermsEnumIndex>(subs.length) {
           @Override
           protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
-            return compare(a.currentTerm, a.currentTermPrefix8, b.currentTerm, b.currentTermPrefix8)
-                < 0;
+            return a.compareTo(b) < 0;
           }
         };
 
@@ -373,8 +350,8 @@ public class OrdinalMap implements Accountable {
         } else {
           top = queue.updateTop();
         }
-        if (equals(top.currentTerm, top.currentTermPrefix8, scratch.get(), scratchPrefix8)
-            == false) {
+        if (top.currentTermPrefix8 != scratchPrefix8
+            || top.currentTerm.equals(scratch.get()) == false) {
           break;
         }
       }
