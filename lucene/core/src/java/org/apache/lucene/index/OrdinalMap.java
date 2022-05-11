@@ -370,7 +370,8 @@ public class OrdinalMap implements Accountable {
         } else {
           top = queue.updateTop();
         }
-        if (equals(top.currentTerm, top.currentTermPrefix8, scratch.get(), scratchPrefix8) == false) {
+        if (equals(top.currentTerm, top.currentTermPrefix8, scratch.get(), scratchPrefix8)
+            == false) {
           break;
         }
       }
