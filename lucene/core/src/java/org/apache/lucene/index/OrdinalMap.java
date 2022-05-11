@@ -78,6 +78,7 @@ public class OrdinalMap implements Accountable {
     }
   }
 
+  // TODO: Can we take advantage of shared prefixes? E.g. in a dataset of IPv4-mapped IPv6 addresses, all values would share the same 12-bytes prefix. Likewise, in a dataset of URL, most values might share the `https://www.` prefix.
   private static int compare(BytesRef termA, long prefix8A, BytesRef termB, long prefix8B) {
     assert prefix8A == prefix8ToComparableUnsignedLong(termA);
     assert prefix8B == prefix8ToComparableUnsignedLong(termB);
