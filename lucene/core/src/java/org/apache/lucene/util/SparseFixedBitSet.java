@@ -408,7 +408,11 @@ public class SparseFixedBitSet extends BitSet {
       // fast path: if we currently have nothing in the block, just copy the data
       // this especially happens all the time if you call OR on an empty set
       indices[i4096] = index;
-      this.bits[i4096] = ArrayUtil.copyOfSubArray(bits, 0, nonZeroLongCount);
+
+      long[] newBits = ArrayUtil.copyOfSubArray(bits, 0, nonZeroLongCount);
+      this.bits[i4096] = newBits;
+      // we may slightly overestimate size here, but keep it cheap
+      this.ramBytesUsed += SINGLE_ELEMENT_ARRAY_BYTES_USED + (newBits.length - 1) << 3;
       this.nonZeroLongCount += nonZeroLongCount;
       return;
     }
@@ -420,6 +424,8 @@ public class SparseFixedBitSet extends BitSet {
       newBits = currentBits;
     } else {
       newBits = new long[oversize(requiredCapacity)];
+      // we may slightly overestimate size here, but keep it cheap
+      this.ramBytesUsed += (long) (newBits.length - currentBits.length) << 3;
     }
     // we iterate backwards in order to not override data we might need on the next iteration if the
     // array is reused

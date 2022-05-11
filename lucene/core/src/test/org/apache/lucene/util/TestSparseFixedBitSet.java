@@ -71,4 +71,27 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     }
     assertEquals(numDocs, set.approximateCardinality());
   }
+
+  public void testRamBytesUsed() throws IOException {
+    int size = 1000 + random().nextInt(10000);
+    BitSet original = new SparseFixedBitSet(size);
+    for (int i = 0; i < 3; i++) {
+      original.set(random().nextInt(size));
+    }
+    assertTrue(original.ramBytesUsed() > 0);
+
+    BitSet copy = copyOf(original, size);
+    BitSet otherBitSet = new SparseFixedBitSet(size);
+    int interval = 10 + random().nextInt(100);
+    for (int i = 0; i < size; i += interval) {
+      otherBitSet.set(i);
+    }
+    copy.or(new BitSetIterator(otherBitSet, size));
+    assertTrue(copy.ramBytesUsed() > original.ramBytesUsed());
+
+    copy = copyOf(original, size);
+    copy.or(DocIdSetIterator.all(size));
+    assertTrue(copy.ramBytesUsed() > original.ramBytesUsed());
+    assertTrue(copy.ramBytesUsed() > size / Byte.SIZE);
+  }
 }
