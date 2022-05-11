@@ -119,7 +119,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       return null;
     }
 
-    LabelAndValue[] labelValues = getLabelValues(childOrdsResult.q, cp.length);
+    LabelAndValue[] labelValues = getLabelValues(childOrdsResult.q, cp);
     return new FacetResult(
         dim, path, childOrdsResult.aggregatedValue, labelValues, childOrdsResult.childCount);
   }
@@ -174,11 +174,8 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     return new ChildOrdsResult(aggregatedValue, childCount, q);
   }
 
-  /**
-   * Returns label values for dims This portion of code is moved from getTopChildren because
-   * getTopDims needs to reuse it
-   */
-  private LabelAndValue[] getLabelValues(TopOrdAndFloatQueue q, int facetLabelLength)
+  /** Returns label values for dims */
+  private LabelAndValue[] getLabelValues(TopOrdAndFloatQueue q, FacetLabel facetLabel)
       throws IOException {
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     int[] ordinals = new int[labelValues.length];
@@ -192,7 +189,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
     for (int i = 0; i < labelValues.length; i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[facetLabelLength], values[i]);
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[facetLabel.length], values[i]);
     }
     return labelValues;
   }
@@ -227,8 +224,8 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     validateTopN(topNChildren);
 
     // get existing children and siblings ordinal array from TaxonomyFacets
-    int[] children = getExistingChildren();
-    int[] siblings = getExistingSiblings();
+    int[] children = getChildren();
+    int[] siblings = getSiblings();
 
     // Create priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
@@ -302,7 +299,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
               dimValueResult.dim,
               emptyPath,
               dimValueResult.value,
-              getLabelValues(childOrdsResult.q, 1),
+              getLabelValues(childOrdsResult.q, new FacetLabel(dim, emptyPath)),
               childOrdsResult.childCount);
       results[pq.size()] = facetResult;
     }
