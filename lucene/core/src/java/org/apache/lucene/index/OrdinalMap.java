@@ -22,8 +22,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -55,6 +57,8 @@ public class OrdinalMap implements Accountable {
     final int subIndex;
     final TermsEnum termsEnum;
     BytesRef currentTerm;
+    int prefixLength;
+    long currentTermPrefix8;
 
     public TermsEnumIndex(TermsEnum termsEnum, int subIndex) {
       this.termsEnum = termsEnum;
@@ -63,27 +67,86 @@ public class OrdinalMap implements Accountable {
 
     public BytesRef next() throws IOException {
       currentTerm = termsEnum.next();
+      if (currentTerm != null) {
+        currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm, prefixLength);
+      }
       return currentTerm;
     }
 
+    void setPrefixLength(int prefixLength) {
+      this.prefixLength = prefixLength;
+      currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm, prefixLength);
+    }
+
+    // TODO: Can we take advantage of shared prefixes? E.g. in a dataset of IPv4-mapped IPv6
+    // addresses, all values would share the same 12-bytes prefix. Likewise, in a dataset of URL,
+    // most values might share the `https://www.` prefix.
+    public int compareTo(TermsEnumIndex that) {
+      assert new BytesRef(currentTerm.bytes, currentTerm.offset, prefixLength).equals(new BytesRef(that.currentTerm.bytes, that.currentTerm.offset + prefixLength, prefixLength));
+      if (currentTermPrefix8 != that.currentTermPrefix8) {
+        int cmp = Long.compareUnsigned(currentTermPrefix8, that.currentTermPrefix8);
+        assert Integer.signum(cmp)
+                == Integer.signum(
+                    Arrays.compareUnsigned(
+                        currentTerm.bytes,
+                        currentTerm.offset + prefixLength,
+                        currentTerm.offset + currentTerm.length,
+                        that.currentTerm.bytes,
+                        that.currentTerm.offset + prefixLength,
+                        that.currentTerm.offset + that.currentTerm.length))
+            : currentTerm + " " + that.currentTerm + " " + cmp;
+        return cmp;
+      }
+      return Arrays.compareUnsigned(
+          currentTerm.bytes,
+          currentTerm.offset + prefixLength,
+          currentTerm.offset + currentTerm.length,
+          that.currentTerm.bytes,
+          that.currentTerm.offset + prefixLength,
+          that.currentTerm.offset + that.currentTerm.length);
+    }
+  }
+
+  /**
+   * Copy the first 8 bytes of the given term as a comparable unsigned long. In case the term has
+   * less than 8 bytes, missing bytes will be replaced with zeroes. Note that two terms that produce
+   * the same long could still be different due to the fact that missing bytes are replaced with
+   * zeroes, e.g. {@code [1, 0]} and {@code [1]} get mapped to the same long.
+   */
+  static long prefix8ToComparableUnsignedLong(BytesRef term, int prefixLength) {
+    // Use Big Endian so that longs are comparable
+    int offset = term.offset + prefixLength;
+    int length = term.length - prefixLength;
+    if (length >= Long.BYTES) {
+      return (long) BitUtil.VH_BE_LONG.get(term.bytes, offset);
+    } else {
+      long l;
+      int o;
+      if (length >= Integer.BYTES) {
+        l = (int) BitUtil.VH_BE_INT.get(term.bytes, offset);
+        o = Integer.BYTES;
+      } else {
+        l = 0;
+        o = 0;
+      }
+      while (o < length) {
+        l = (l << 8) | Byte.toUnsignedLong(term.bytes[offset + o]);
+        o++;
+      }
+      l <<= (Long.BYTES - length) << 3;
+      return l;
+    }
   }
 
   private static class TermsEnumPriorityQueue extends PriorityQueue<TermsEnumIndex> {
 
-    private final int sharedPrefix;
-
-    TermsEnumPriorityQueue(int size, int sharedPrefix) {
+    TermsEnumPriorityQueue(int size) {
       super(size);
-      this.sharedPrefix = sharedPrefix;
     }
 
     @Override
     protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
-      BytesRef aTerm = a.currentTerm;
-      BytesRef bTerm = b.currentTerm;
-      assert StringHelper.startsWith(bTerm, new BytesRef(aTerm.bytes, aTerm.offset, sharedPrefix));
-      return Arrays.compareUnsigned(aTerm.bytes, aTerm.offset + sharedPrefix, aTerm.offset + aTerm.length,
-          bTerm.bytes, bTerm.offset + sharedPrefix, bTerm.offset + bTerm.length) < 0;
+      return a.compareTo(b) < 0;
     }
 
   }
@@ -250,7 +313,7 @@ public class OrdinalMap implements Accountable {
     long[] segmentOrds = new long[subs.length];
 
     // Just merge-sorts by term:
-    TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length, 0);
+    TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
 
     for (int i = 0; i < subs.length; i++) {
       TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);
@@ -281,10 +344,11 @@ public class OrdinalMap implements Accountable {
 
       BytesRef windowPrefix = top.currentTerm.clone();
       windowPrefix.length = windowSharedPrefix;
-      TermsEnumPriorityQueue newQueue = new TermsEnumPriorityQueue(subs.length, windowSharedPrefix);
+      TermsEnumPriorityQueue newQueue = new TermsEnumPriorityQueue(subs.length);
       List<TermsEnumIndex> other = new ArrayList<>();
       for (TermsEnumIndex tei : queue) {
         if (StringHelper.startsWith(tei.currentTerm, windowPrefix)) {
+          tei.setPrefixLength(windowSharedPrefix);
           newQueue.add(tei);
         } else {
           other.add(tei);
@@ -346,11 +410,13 @@ public class OrdinalMap implements Accountable {
         globalOrd++;
       }
 
-      newQueue = new TermsEnumPriorityQueue(subs.length, 0);
+      newQueue = new TermsEnumPriorityQueue(subs.length);
       for (TermsEnumIndex tei : queue) {
+        tei.setPrefixLength(0);
         newQueue.add(tei);
       }
       for (TermsEnumIndex tei : other) {
+        tei.setPrefixLength(0);
         newQueue.add(tei);
       }
       queue = newQueue;
