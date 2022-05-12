@@ -15,25 +15,36 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene91;
+package org.apache.lucene.codecs.lucene92;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.1 vector format, which encodes numeric vector values and an optional associated graph
+ * Lucene 9.2 vector format, which encodes numeric vector values and an optional associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
  * consists of three files:
  *
  * <h2>.vec (vector data) file</h2>
  *
- * <p>This file stores all the floating-point vector data ordered by field, document ordinal, and
- * vector dimension. The floats are stored in little-endian byte order.
+ * <p>For each field:
+ *
+ * <ul>
+ *   <li>Floating-point vector data ordered by field, document ordinal, and vector dimension. The
+ *       floats are stored in little-endian byte order
+ *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
+ *       note that only in sparse case
+ *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
+ *       that only in sparse case
+ * </ul>
  *
  * <h2>.vex (vector index)</h2>
  *
@@ -69,7 +80,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *   <li><b>[int]</b> the number of documents having values for this field
  *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
  *       0, sparse – some documents missing values.
- *   <li><b>array[int]</b> for sparse case, the docids of documents having vectors, in order
+ *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
+ *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
+ *       that only in sparse case
  *   <li><b>[int]</b> the maximum number of connections (neigbours) that each node can have
  *   <li><b>[int]</b> number of levels in the graph
  *   <li>Graph nodes by level. For each level
@@ -82,11 +95,11 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
+public final class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
 
-  static final String META_CODEC_NAME = "Lucene91HnswVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene91HnswVectorsFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "Lucene91HnswVectorsFormatIndex";
+  static final String META_CODEC_NAME = "lucene92HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "lucene92HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "lucene92HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -101,42 +114,44 @@ public final class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
    */
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
+  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
-   * {@link Lucene91HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
+   * {@link Lucene92HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
   private final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene91HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
+   * node. Defaults to to {@link Lucene92HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
   private final int beamWidth;
 
-  public Lucene91HnswVectorsFormat() {
+  public Lucene92HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
-  public Lucene91HnswVectorsFormat(int maxConn, int beamWidth) {
-    super("Lucene91HnswVectorsFormat");
+  public Lucene92HnswVectorsFormat(int maxConn, int beamWidth) {
+    super("lucene92HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
   }
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene91HnswVectorsWriter(state, maxConn, beamWidth);
+    return new Lucene92HnswVectorsWriter(state, maxConn, beamWidth);
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene91HnswVectorsReader(state);
+    return new Lucene92HnswVectorsReader(state);
   }
 
   @Override
   public String toString() {
-    return "Lucene91HnswVectorsFormat(name = Lucene91HnswVectorsFormat, maxConn = "
+    return "lucene92HnswVectorsFormat(name = lucene92HnswVectorsFormat, maxConn = "
         + maxConn
         + ", beamWidth="
         + beamWidth
