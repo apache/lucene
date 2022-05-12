@@ -565,18 +565,26 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
     LZ4.FastCompressionHashTable ht = new LZ4.FastCompressionHashTable();
     ByteArrayDataOutput bufferedOutput = new ByteArrayDataOutput(termsDictBuffer);
+    int dictLength = 0;
 
     for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
       if ((ord & blockMask) == 0) {
-        if (bufferedOutput.getPosition() > 0) {
-          maxBlockLength =
-              Math.max(maxBlockLength, compressAndGetTermsDictBlockLength(bufferedOutput, ht));
+        if (ord != 0) {
+          // flush the previous block
+          final int uncompressedLength =
+              compressAndGetTermsDictBlockLength(bufferedOutput, dictLength, ht);
+          maxBlockLength = Math.max(maxBlockLength, uncompressedLength);
           bufferedOutput.reset(termsDictBuffer);
         }
 
         writer.add(data.getFilePointer() - start);
+        // Write the first term both to the index output, and to the buffer where we'll use it as a
+        // dictionary for compression
         data.writeVInt(term.length);
         data.writeBytes(term.bytes, term.offset, term.length);
+        bufferedOutput = maybeGrowBuffer(bufferedOutput, term.length);
+        bufferedOutput.writeBytes(term.bytes, term.offset, term.length);
+        dictLength = term.length;
       } else {
         final int prefixLength = StringHelper.bytesDifference(previous.get(), term);
         final int suffixLength = term.length - prefixLength;
@@ -598,9 +606,10 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       ++ord;
     }
     // Compress and write out the last block
-    if (bufferedOutput.getPosition() > 0) {
-      maxBlockLength =
-          Math.max(maxBlockLength, compressAndGetTermsDictBlockLength(bufferedOutput, ht));
+    if (bufferedOutput.getPosition() > dictLength) {
+      final int uncompressedLength =
+          compressAndGetTermsDictBlockLength(bufferedOutput, dictLength, ht);
+      maxBlockLength = Math.max(maxBlockLength, uncompressedLength);
     }
 
     writer.finish();
@@ -619,15 +628,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
   }
 
   private int compressAndGetTermsDictBlockLength(
-      ByteArrayDataOutput bufferedOutput, LZ4.FastCompressionHashTable ht) throws IOException {
-    int uncompressedLength = bufferedOutput.getPosition();
+      ByteArrayDataOutput bufferedOutput, int dictLength, LZ4.FastCompressionHashTable ht)
+      throws IOException {
+    int uncompressedLength = bufferedOutput.getPosition() - dictLength;
     data.writeVInt(uncompressedLength);
-    long before = data.getFilePointer();
-    LZ4.compress(termsDictBuffer, 0, uncompressedLength, data, ht);
-    int compressedLength = (int) (data.getFilePointer() - before);
-    // Block length will be used for creating buffer for decompression, one corner case is that
-    // compressed length might be bigger than un-compressed length, so just return the bigger one.
-    return Math.max(uncompressedLength, compressedLength);
+    LZ4.compressWithDictionary(termsDictBuffer, 0, dictLength, uncompressedLength, data, ht);
+    return uncompressedLength;
   }
 
   private ByteArrayDataOutput maybeGrowBuffer(ByteArrayDataOutput bufferedOutput, int termLength) {
