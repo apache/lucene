@@ -15,21 +15,29 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.index;
+package org.apache.lucene.backward_codecs.lucene91;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.SegmentWriteState;
 
-/**
- * Something (generally a {@link VectorValues}) that provides a {@link RandomAccessVectorValues}.
- *
- * @lucene.experimental
- */
-public interface RandomAccessVectorValuesProducer {
-  /**
-   * Return a random access interface over this iterator's vectors. Calling the RandomAccess methods
-   * will have no effect on the progress of the iteration or the values returned by this iterator.
-   * Successive calls will retrieve independent copies that do not overwrite each others' returned
-   * values.
-   */
-  RandomAccessVectorValues randomAccess() throws IOException;
+public class Lucene91RWHnswVectorsFormat extends Lucene91HnswVectorsFormat {
+
+  public Lucene91RWHnswVectorsFormat(int maxConn, int beamWidth) {
+    super(maxConn, beamWidth);
+  }
+
+  @Override
+  public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene91HnswVectorsWriter(state, maxConn, beamWidth);
+  }
+
+  @Override
+  public String toString() {
+    return "Lucene91RWHnswVectorsFormat(name = Lucene91RWHnswVectorsFormat, maxConn = "
+        + maxConn
+        + ", beamWidth="
+        + beamWidth
+        + ")";
+  }
 }
