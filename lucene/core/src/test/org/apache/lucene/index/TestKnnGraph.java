@@ -64,7 +64,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int maxConn = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
+  private static int M = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
   private VectorSimilarityFunction similarityFunction;
@@ -73,15 +73,14 @@ public class TestKnnGraph extends LuceneTestCase {
   public void setup() {
     randSeed = random().nextLong();
     if (random().nextBoolean()) {
-      maxConn = random().nextInt(256) + 3;
+      M = random().nextInt(256) + 3;
     }
 
     codec =
         new Lucene92Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene92HnswVectorsFormat(
-                maxConn, Lucene92HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            return new Lucene92HnswVectorsFormat(M, Lucene92HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
           }
         };
 
@@ -91,7 +90,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   @After
   public void cleanup() {
-    maxConn = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
+    M = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */
@@ -263,7 +262,7 @@ public class TestKnnGraph extends LuceneTestCase {
   int[][][] copyGraph(HnswGraph graphValues) throws IOException {
     int[][][] graph = new int[graphValues.numLevels()][][];
     int size = graphValues.size();
-    int[] scratch = new int[maxConn * 2];
+    int[] scratch = new int[M * 2];
 
     for (int level = 0; level < graphValues.numLevels(); level++) {
       NodesIterator nodesItr = graphValues.getNodesOnLevel(level);
@@ -489,7 +488,7 @@ public class TestKnnGraph extends LuceneTestCase {
         // 4. If the number of nodes on the level exceeds maxConnOnLevel, assert that maxConnOnLevel
         // is respected.
         for (int level = 0; level < graphValues.numLevels(); level++) {
-          int maxConnOnLevel = level == 0 ? maxConn * 2 : maxConn;
+          int maxConnOnLevel = level == 0 ? M * 2 : M;
           int[][] graphOnLevel = new int[graphValues.size()][];
           int countOnLevel = 0;
           boolean foundOrphan = false;
