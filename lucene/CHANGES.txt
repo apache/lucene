@@ -149,6 +149,9 @@ Optimizations
   when the search order and the index order are in opposite directions.
   (Jianping Weng)
 
+* LUCENE-10502: Use IndexedDISI to store docIds and DirectMonotonicWriter/Reader to handle
+  ordToDoc in HNSW vectors (Lu Xugang)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
