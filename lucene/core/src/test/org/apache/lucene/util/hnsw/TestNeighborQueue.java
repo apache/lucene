@@ -22,16 +22,22 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestNeighborQueue extends LuceneTestCase {
 
   public void testSameScoreNATURAL() {
-    NeighborQueue nn = new NeighborQueue(2, false);
+    NeighborQueue nn = new NeighborQueue(5, false);
+    nn.add(0, 0.1f);
     nn.add(1, 0.1f);
     nn.add(2, 0.5f);
     nn.add(3, 0.5f);
     nn.add(4, 0.1f);
+    nn.add(Integer.MAX_VALUE, 0.1f);
     // higher scores are better; lowest score on top
     // same score then lower node means lower doc no matter REVERSED OR NATURAL
+    assertEquals(Integer.MAX_VALUE, nn.topNode());
+    nn.pop();
     assertEquals(4, nn.topNode());
     nn.pop();
     assertEquals(1, nn.topNode());
+    nn.pop();
+    assertEquals(0, nn.topNode());
     nn.pop();
     assertEquals(3, nn.topNode());
     nn.pop();
@@ -40,7 +46,8 @@ public class TestNeighborQueue extends LuceneTestCase {
   }
 
   public void testSameScoreREVERSED() {
-    NeighborQueue nn = new NeighborQueue(2, true);
+    NeighborQueue nn = new NeighborQueue(5, true);
+    nn.add(0, 0.1f);
     nn.add(1, 0.1f);
     nn.add(2, 0.5f);
     nn.add(3, 0.5f);
@@ -54,6 +61,8 @@ public class TestNeighborQueue extends LuceneTestCase {
     assertEquals(4, nn.topNode());
     nn.pop();
     assertEquals(1, nn.topNode());
+    nn.pop();
+    assertEquals(0, nn.topNode());
     nn.pop();
   }
 

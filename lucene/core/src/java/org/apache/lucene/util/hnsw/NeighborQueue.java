@@ -50,6 +50,7 @@ public class NeighborQueue {
 
   private final LongHeap heap;
   private final Order order;
+  private final boolean reversed;
 
   // Used to track the number of neighbors visited during a single graph traversal
   private int visitedCount;
@@ -57,19 +58,9 @@ public class NeighborQueue {
   private boolean incomplete;
 
   public NeighborQueue(int initialSize, boolean reversed) {
+    this.reversed = reversed;
+    this.heap = new LongHeap(initialSize);
     this.order = reversed ? Order.REVERSED : Order.NATURAL;
-    this.heap =
-        new LongHeap(initialSize) {
-          @Override
-          protected boolean lessThan(long a, long b) {
-            final float aScore = NumericUtils.sortableIntToFloat((int) (order.apply(a) >> 32));
-            final float bScore = NumericUtils.sortableIntToFloat((int) (order.apply(b) >> 32));
-            if (aScore == bScore) {
-              return (int) order.apply(a) > (int) order.apply(b);
-            }
-            return reversed == false ? aScore < bScore : bScore < aScore;
-          }
-        };
   }
 
   /** @return the number of elements in the heap */
@@ -101,26 +92,30 @@ public class NeighborQueue {
   }
 
   private long encode(int node, float score) {
-    return order.apply((((long) NumericUtils.floatToSortableInt(score)) << 32) | node);
+    long nodeReverse = reversed ? node : (-1 - node);
+    // make sure all high 32 bits were 0 by unsigned right shift
+    nodeReverse = nodeReverse << 32 >>> 32;
+    return order.apply((((long) NumericUtils.floatToSortableInt(score)) << 32) | nodeReverse);
   }
 
   /** Removes the top element and returns its node id. */
   public int pop() {
-    return (int) order.apply(heap.pop());
+    return reversed ? (int) order.apply(heap.pop()) : -1 - (int) order.apply(heap.pop());
   }
 
   int[] nodes() {
     int size = size();
     int[] nodes = new int[size];
     for (int i = 0; i < size; i++) {
-      nodes[i] = (int) order.apply(heap.get(i + 1));
+      nodes[i] =
+          reversed ? (int) order.apply(heap.get(i + 1)) : -1 - (int) order.apply(heap.get(i + 1));
     }
     return nodes;
   }
 
   /** Returns the top element's node id. */
   public int topNode() {
-    return (int) order.apply(heap.top());
+    return reversed ? (int) (order.apply(heap.top())) : -1 - (int) (order.apply(heap.top()));
   }
 
   /** Returns the top element's node score. */

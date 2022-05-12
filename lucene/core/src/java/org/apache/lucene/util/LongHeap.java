@@ -26,7 +26,7 @@ package org.apache.lucene.util;
  *
  * @lucene.internal
  */
-public class LongHeap {
+public final class LongHeap {
 
   private final int maxSize;
 
@@ -68,13 +68,6 @@ public class LongHeap {
   }
 
   /**
-   * @return <code>true</code> iff parameter <code>a</code> is less than parameter <code>b</code>.
-   */
-  protected boolean lessThan(long a, long b) {
-    return a < b;
-  }
-
-  /**
    * Adds a value to an LongHeap in log(size) time. If the number of values would exceed the heap's
    * maxSize, the least value is discarded.
    *
@@ -83,7 +76,7 @@ public class LongHeap {
    */
   public final boolean insertWithOverflow(long value) {
     if (size >= maxSize) {
-      if (lessThan(value, heap[1])) {
+      if ((value < heap[1])) {
         return false;
       }
       updateTop(value);
@@ -159,7 +152,7 @@ public class LongHeap {
     int i = origPos;
     long value = heap[i]; // save bottom value
     int j = i >>> 1;
-    while (j > 0 && lessThan(value, heap[j])) {
+    while (j > 0 && value < heap[j]) {
       heap[i] = heap[j]; // shift parents down
       i = j;
       j = j >>> 1;
@@ -171,15 +164,15 @@ public class LongHeap {
     long value = heap[i]; // save top value
     int j = i << 1; // find smaller child
     int k = j + 1;
-    if (k <= size && lessThan(heap[k], heap[j])) {
+    if (k <= size && heap[k] < heap[j]) {
       j = k;
     }
-    while (j <= size && lessThan(heap[j], value)) {
+    while (j <= size && heap[j] < value) {
       heap[i] = heap[j]; // shift up child
       i = j;
       j = i << 1;
       k = j + 1;
-      if (k <= size && lessThan(heap[k], heap[j])) {
+      if (k <= size && heap[k] < heap[j]) {
         j = k;
       }
     }
