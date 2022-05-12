@@ -111,7 +111,6 @@ public class TestXYMultiPolygonShapeQueries extends BaseXYShapeTestCase {
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

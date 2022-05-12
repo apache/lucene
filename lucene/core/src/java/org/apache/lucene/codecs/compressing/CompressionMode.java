@@ -204,7 +204,7 @@ public abstract class CompressionMode {
       // pad with extra "dummy byte": see javadocs for using Inflater(true)
       // we do it for compliance, but it's unnecessary for years in zlib.
       final int paddedLength = compressedLength + 1;
-      compressed = ArrayUtil.grow(compressed, paddedLength);
+      compressed = ArrayUtil.growNoCopy(compressed, paddedLength);
       in.readBytes(compressed, 0, compressedLength);
       compressed[compressedLength] = 0; // explicitly set dummy byte to 0
 
@@ -214,7 +214,7 @@ public abstract class CompressionMode {
         decompressor.setInput(compressed, 0, paddedLength);
 
         bytes.offset = bytes.length = 0;
-        bytes.bytes = ArrayUtil.grow(bytes.bytes, originalLength);
+        bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, originalLength);
         try {
           bytes.length = decompressor.inflate(bytes.bytes, bytes.length, originalLength);
         } catch (DataFormatException e) {

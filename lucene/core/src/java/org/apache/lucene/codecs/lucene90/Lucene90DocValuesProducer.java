@@ -1451,6 +1451,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
 
       @Override
+      public long docValueCount() {
+        return count;
+      }
+
+      @Override
       public boolean advanceExact(int target) throws IOException {
         set = false;
         return ords.advanceExact(target);

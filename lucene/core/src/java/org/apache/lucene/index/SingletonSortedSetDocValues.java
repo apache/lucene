@@ -58,6 +58,11 @@ final class SingletonSortedSetDocValues extends SortedSetDocValues {
   }
 
   @Override
+  public long docValueCount() {
+    return 1;
+  }
+
+  @Override
   public int nextDoc() throws IOException {
     int docID = in.nextDoc();
     if (docID != NO_MORE_DOCS) {

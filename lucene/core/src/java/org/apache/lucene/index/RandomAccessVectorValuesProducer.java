@@ -17,6 +17,8 @@
 
 package org.apache.lucene.index;
 
+import java.io.IOException;
+
 /**
  * Something (generally a {@link VectorValues}) that provides a {@link RandomAccessVectorValues}.
  *
@@ -29,5 +31,5 @@ public interface RandomAccessVectorValuesProducer {
    * Successive calls will retrieve independent copies that do not overwrite each others' returned
    * values.
    */
-  RandomAccessVectorValues randomAccess();
+  RandomAccessVectorValues randomAccess() throws IOException;
 }

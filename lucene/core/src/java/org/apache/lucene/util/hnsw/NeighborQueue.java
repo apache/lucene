@@ -29,7 +29,7 @@ import org.apache.lucene.util.NumericUtils;
  */
 public class NeighborQueue {
 
-  private static enum Order {
+  private enum Order {
     NATURAL {
       @Override
       long apply(long v) {

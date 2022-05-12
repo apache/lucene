@@ -337,6 +337,17 @@ public final class ArrayUtil {
     } else return array;
   }
 
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static int[] growNoCopy(int[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new int[oversize(minSize, Integer.BYTES)];
+    } else return array;
+  }
+
   /** Returns a larger array, generally over-allocating exponentially */
   public static int[] grow(int[] array) {
     return grow(array, 1 + array.length);
@@ -362,6 +373,17 @@ public final class ArrayUtil {
     } else return array;
   }
 
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static long[] growNoCopy(long[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new long[oversize(minSize, Long.BYTES)];
+    } else return array;
+  }
+
   /** Returns a larger array, generally over-allocating exponentially */
   public static long[] grow(long[] array) {
     return grow(array, 1 + array.length);
@@ -384,6 +406,17 @@ public final class ArrayUtil {
     assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
     if (array.length < minSize) {
       return growExact(array, oversize(minSize, Byte.BYTES));
+    } else return array;
+  }
+
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static byte[] growNoCopy(byte[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new byte[oversize(minSize, Byte.BYTES)];
     } else return array;
   }
 

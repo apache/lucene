@@ -311,6 +311,11 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     }
 
     @Override
+    public long docValueCount() {
+      return ordCount;
+    }
+
+    @Override
     public long cost() {
       return docsWithField.cost();
     }
@@ -389,6 +394,11 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       } else {
         return ord - 1;
       }
+    }
+
+    @Override
+    public long docValueCount() {
+      return ords.ords.size();
     }
 
     @Override

@@ -61,7 +61,8 @@ import org.apache.lucene.util.RoaringDocIdSet;
  * <p>Each int-pair entry consists of 2 logical parts:
  *
  * <p>The first 32 bit int holds the index (number of set bits in the blocks) up to just before the
- * wanted block. The maximum number of set bits is the maximum number of documents, which is < 2^31.
+ * wanted block. The maximum number of set bits is the maximum number of documents, which is less
+ * than 2^31.
  *
  * <p>The next int holds the offset in bytes into the underlying slice. As there is a maximum of
  * 2^16 blocks, it follows that the maximum size of any block must not exceed 2^15 bytes to avoid
@@ -89,7 +90,7 @@ import org.apache.lucene.util.RoaringDocIdSet;
  *
  * @lucene.internal
  */
-final class IndexedDISI extends DocIdSetIterator {
+public final class IndexedDISI extends DocIdSetIterator {
 
   // jump-table time/space trade-offs to consider:
   // The block offsets and the block indexes could be stored in more compressed form with
@@ -185,7 +186,7 @@ final class IndexedDISI extends DocIdSetIterator {
    * @return the number of jump-table entries following the blocks, -1 for no entries. This should
    *     be stored in meta and used when creating an instance of IndexedDISI.
    */
-  static short writeBitSet(DocIdSetIterator it, IndexOutput out, byte denseRankPower)
+  public static short writeBitSet(DocIdSetIterator it, IndexOutput out, byte denseRankPower)
       throws IOException {
     final long origo = out.getFilePointer(); // All jumps are relative to the origo
     if ((denseRankPower < 7 || denseRankPower > 15) && denseRankPower != -1) {
@@ -309,7 +310,7 @@ final class IndexedDISI extends DocIdSetIterator {
    *     #writeBitSet(DocIdSetIterator, IndexOutput, byte)}
    * @param cost normally the number of logical docIDs.
    */
-  IndexedDISI(
+  public IndexedDISI(
       IndexInput in,
       long offset,
       long length,
