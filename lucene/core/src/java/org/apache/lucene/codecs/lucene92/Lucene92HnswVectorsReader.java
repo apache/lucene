@@ -136,6 +136,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
             in);
       }
       CodecUtil.retrieveChecksum(in);
+      success = true;
       return in;
     } finally {
       if (success == false) {
