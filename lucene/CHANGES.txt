@@ -141,6 +141,9 @@ Optimizations
 * LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
   and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
 
+* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader. 
+  (Zach Chen, Adrien Grand, Julie Tibshirani, Tomoko Uchida)
+
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
 
 * LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
