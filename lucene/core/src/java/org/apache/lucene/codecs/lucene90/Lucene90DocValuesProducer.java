@@ -1236,10 +1236,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (offset < entry.termsDataLength - 1) {
         // Avoid decompress again if we are reading a same block.
         if (currentCompressedBlockStart != offset) {
-          int decompressLength = bytes.readVInt();
+          blockBuffer.offset = term.length;
+          blockBuffer.length = bytes.readVInt();
           // Decompress the remaining of current block, using the first term as a dictionary
-          System.arraycopy(term.bytes, 0, blockBuffer.bytes, 0, term.length);
-          LZ4.decompress(bytes, decompressLength, blockBuffer.bytes, term.length);
+          System.arraycopy(term.bytes, 0, blockBuffer.bytes, 0, blockBuffer.offset);
+          LZ4.decompress(bytes, blockBuffer.length, blockBuffer.bytes, blockBuffer.offset);
           currentCompressedBlockStart = offset;
           currentCompressedBlockEnd = bytes.getFilePointer();
         } else {
@@ -1248,7 +1249,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         // Reset the buffer.
-        blockInput = new ByteArrayDataInput(blockBuffer.bytes, term.length, blockBuffer.length);
+        blockInput = new ByteArrayDataInput(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
       }
     }
 
