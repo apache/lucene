@@ -80,6 +80,7 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     }
     assertTrue(original.ramBytesUsed() > 0);
 
+    // Take union with a random sparse iterator, then check memory usage
     BitSet copy = copyOf(original, size);
     BitSet otherBitSet = new SparseFixedBitSet(size);
     int interval = 10 + random().nextInt(100);
@@ -89,9 +90,19 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     copy.or(new BitSetIterator(otherBitSet, size));
     assertTrue(copy.ramBytesUsed() > original.ramBytesUsed());
 
+    // Take union with a dense iterator, then check memory usage
     copy = copyOf(original, size);
     copy.or(DocIdSetIterator.all(size));
     assertTrue(copy.ramBytesUsed() > original.ramBytesUsed());
     assertTrue(copy.ramBytesUsed() > size / Byte.SIZE);
+
+    // Check that both "copy" strategies result in bit sets with
+    // (roughly) same memory usage as original
+    BitSet setCopy = copyOf(original, size);
+    assertEquals(setCopy.ramBytesUsed(), original.ramBytesUsed());
+
+    BitSet orCopy = new SparseFixedBitSet(size);
+    orCopy.or(new BitSetIterator(original, size));
+    assertEquals(orCopy.ramBytesUsed(), original.ramBytesUsed(), 64L);
   }
 }
