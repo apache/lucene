@@ -929,7 +929,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     }
   }
 
-  // Exercise the logic that leverages the first term of a block as a dictionary for suffixes of other terms
+  // Exercise the logic that leverages the first term of a block as a dictionary for suffixes of
+  // other terms
   public void testTermsEnumDictionary() throws IOException {
     Directory directory = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig();
