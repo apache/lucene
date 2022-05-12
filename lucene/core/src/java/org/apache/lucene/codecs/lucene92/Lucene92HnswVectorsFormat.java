@@ -58,9 +58,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *             <ul>
  *               <li><b>[int32]</b> the number of neighbor nodes
  *               <li><b>array[int32]</b> the neighbor ordinals
- *               <li><b>array[int32]</b> padding from empty integers if the number of neighbors less
- *                   than the maximum number of connections (maxConn). Padding is equal to
- *                   ((maxConn-the number of neighbours) * 4) bytes.
+ *               <li><b>array[int32]</b> padding if the number of the node's neighbors is less than
+ *                   the maximum number of connections allowed on this level. Padding is equal to
+ *                   ((maxConnOnLevel – the number of neighbours) * 4) bytes.
  *             </ul>
  *       </ul>
  * </ul>

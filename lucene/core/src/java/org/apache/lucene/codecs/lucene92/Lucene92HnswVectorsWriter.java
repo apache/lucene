@@ -55,13 +55,12 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
   private final IndexOutput meta, vectorData, vectorIndex;
   private final int maxDoc;
 
-  private final int maxConn;
+  private final int M;
   private final int beamWidth;
   private boolean finished;
 
-  Lucene92HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth)
-      throws IOException {
-    this.maxConn = maxConn;
+  Lucene92HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth) throws IOException {
+    this.M = M;
     this.beamWidth = beamWidth;
 
     assert state.fieldInfos.hasVectorValues();
@@ -248,7 +247,7 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeLong(vectorData.getFilePointer() - start);
     }
 
-    meta.writeInt(maxConn);
+    meta.writeInt(M);
     // write graph nodes on each level
     if (graph == null) {
       meta.writeInt(0);
@@ -274,13 +273,14 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
     // build graph
     HnswGraphBuilder hnswGraphBuilder =
         new HnswGraphBuilder(
-            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+            vectorValues, similarityFunction, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
+      int maxConnOnLevel = level == 0 ? (M * 2) : M;
       NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
       while (nodesOnLevel.hasNext()) {
         int node = nodesOnLevel.nextInt();
@@ -297,7 +297,7 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
         }
         // if number of connections < maxConn, add bogus values up to maxConn to have predictable
         // offsets
-        for (int i = size; i < maxConn; i++) {
+        for (int i = size; i < maxConnOnLevel; i++) {
           vectorIndex.writeInt(0);
         }
       }
