@@ -1265,6 +1265,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
+    public long size() {
+      return entry.termsDictSize;
+    }
+
+    @Override
     public long totalTermFreq() throws IOException {
       return -1L;
     }
