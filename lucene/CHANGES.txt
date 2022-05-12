@@ -137,6 +137,8 @@ Bug Fixes
   custom dictionary support. Please also use new URL-based constructors for classpath/module
   system ressources.  (Uwe Schindler, Tomoko Uchida, Mike Sokolov)
 
+* LUCENE-10564: Make sure SparseFixedBitSet#or updates ramBytesUsed. (Julie Tibshirani)
+
 Build
 ---------------------
 
