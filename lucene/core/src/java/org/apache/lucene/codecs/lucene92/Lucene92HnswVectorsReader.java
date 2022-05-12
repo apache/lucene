@@ -282,7 +282,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     final long vectorDataLength;
     final long vectorIndexOffset;
     final long vectorIndexLength;
-    final int maxConn;
+    final int M;
     final int numLevels;
     final int dimension;
     final int size;
@@ -336,7 +336,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       }
 
       // read nodes by level
-      maxConn = input.readInt();
+      M = input.readInt();
       numLevels = input.readInt();
       nodesByLevel = new int[numLevels][];
       for (int level = 0; level < numLevels; level++) {
@@ -359,10 +359,13 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       for (int level = 0; level < numLevels; level++) {
         if (level == 0) {
           graphOffsetsByLevel[level] = 0;
+        } else if (level == 1) {
+          int numNodesOnLevel0 = size;
+          graphOffsetsByLevel[level] = (1 + (M * 2)) * Integer.BYTES * numNodesOnLevel0;
         } else {
-          int numNodesOnPrevLevel = level == 1 ? size : nodesByLevel[level - 1].length;
+          int numNodesOnPrevLevel = nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              graphOffsetsByLevel[level - 1] + (1 + maxConn) * Integer.BYTES * numNodesOnPrevLevel;
+              graphOffsetsByLevel[level - 1] + (1 + M) * Integer.BYTES * numNodesOnPrevLevel;
         }
       }
     }
@@ -382,6 +385,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     final int entryNode;
     final int size;
     final long bytesForConns;
+    final long bytesForConns0;
 
     int arcCount;
     int arcUpTo;
@@ -394,7 +398,8 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = ((long) entry.maxConn + 1) * Integer.BYTES;
+      this.bytesForConns = ((long) entry.M + 1) * Integer.BYTES;
+      this.bytesForConns0 = ((long) (entry.M * 2) + 1) * Integer.BYTES;
     }
 
     @Override
@@ -404,7 +409,8 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
               ? targetOrd
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
       assert targetIndex >= 0;
-      long graphDataOffset = graphOffsetsByLevel[level] + targetIndex * bytesForConns;
+      long graphDataOffset =
+          graphOffsetsByLevel[level] + targetIndex * (level == 0 ? bytesForConns0 : bytesForConns);
       // unsafe; no bounds checking
       dataIn.seek(graphDataOffset);
       arcCount = dataIn.readInt();
