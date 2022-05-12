@@ -636,7 +636,6 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
     }
   }
 
-  @Slow
   public void testRandomNRT() throws Exception {
     final Path tempDir = createTempDir("AnalyzingInfixSuggesterTest");
     Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);

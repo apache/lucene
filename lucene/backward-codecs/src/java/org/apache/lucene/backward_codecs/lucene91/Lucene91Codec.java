@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene91;
+package org.apache.lucene.backward_codecs.lucene91;
 
 import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
@@ -48,9 +48,6 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
  * Implements the Lucene 9.1 index format
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
- *
- * @see org.apache.lucene.codecs.lucene91 package documentation for file format details.
- * @lucene.experimental
  */
 public class Lucene91Codec extends Codec {
 
@@ -164,7 +161,7 @@ public class Lucene91Codec extends Codec {
   }
 
   @Override
-  public final KnnVectorsFormat knnVectorsFormat() {
+  public KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
   }
 

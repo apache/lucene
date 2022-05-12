@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene91;
+package org.apache.lucene.backward_codecs.lucene91;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -52,12 +52,13 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
   private final IndexOutput meta, vectorData, vectorIndex;
   private final int maxDoc;
 
-  private final int M;
+  private final int maxConn;
   private final int beamWidth;
   private boolean finished;
 
-  Lucene91HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth) throws IOException {
-    this.M = M;
+  Lucene91HnswVectorsWriter(SegmentWriteState state, int maxConn, int beamWidth)
+      throws IOException {
+    this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
     assert state.fieldInfos.hasVectorValues();
@@ -216,7 +217,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-    meta.writeInt(M);
+    meta.writeInt(maxConn);
     // write graph nodes on each level
     if (graph == null) {
       meta.writeInt(0);
@@ -242,14 +243,14 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     // build graph
     HnswGraphBuilder hnswGraphBuilder =
         new HnswGraphBuilder(
-            vectorValues, similarityFunction, M, beamWidth, HnswGraphBuilder.randSeed);
+            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
-      int maxConnOnLevel = level == 0 ? (M * 2) : M;
+
       NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
       while (nodesOnLevel.hasNext()) {
         int node = nodesOnLevel.nextInt();
@@ -266,7 +267,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
         }
         // if number of connections < maxConn, add bogus values up to maxConn to have predictable
         // offsets
-        for (int i = size; i < maxConnOnLevel; i++) {
+        for (int i = size; i < maxConn; i++) {
           vectorIndex.writeInt(0);
         }
       }

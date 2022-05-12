@@ -73,8 +73,15 @@ API Changes
   taxoEpoch decide. Add a test case that demonstrates the inconsistencies caused when you reuse taxoArrays on older
   checkpoints. (Gautam Worah)
 
+* LUCENE-10558: Add new constructors to Kuromoji and Nori dictionary classes to support classpath /
+  module system usage. It is now possible to use JDK's Class/ClassLoader/Module#getResource(...) apis
+  and pass their returned URL to dictionary constructors to load resources from Classpath or Module
+  resources. (Uwe Schindler, Tomoko Uchida, Mike Sokolov)
+
 New Features
 ---------------------
+
+* LUCENE-10312: Add PersianStemmer based on the Arabic stemmer. (Ramin Alirezaee)
 
 * LUCENE-10539: Return a stream of completions from FSTCompletion. (Dawid Weiss)
 
@@ -111,6 +118,9 @@ Improvements
 Optimizations
 ---------------------
 
+* LUCENE-10555: avoid NumericLeafComparator#iteratorCost repeated initialization
+  when NumericLeafComparator#setScorer is called. (Jianping Weng)
+
 * LUCENE-10452: Hunspell: call checkCanceled less frequently to reduce the overhead (Peter Gromov)
 
 * LUCENE-10451: Hunspell: don't perform potentially expensive spellchecking after timeout (Peter Gromov)
@@ -131,9 +141,23 @@ Optimizations
 * LUCENE-8836: Speed up calls to TermsEnum#lookupOrd on doc values terms enums
   and sequences of increasing ords. (Bruno Roustant, Adrien Grand)
 
+* LUCENE-10536: Doc values terms dictionaries now use the first (uncompressed)
+  term of each block as a dictionary when compressing suffixes of the other 63
+  terms of the block. (Adrien Grand)
+
+* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader. 
+  (Zach Chen, Adrien Grand, Julie Tibshirani, Tomoko Uchida)
+
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
 
 * LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
+
+* LUCENE-10496: Queries sorted by field now better handle the degenerate case
+  when the search order and the index order are in opposite directions.
+  (Jianping Weng)
+
+* LUCENE-10502: Use IndexedDISI to store docIds and DirectMonotonicWriter/Reader to handle
+  ordToDoc in HNSW vectors (Lu Xugang)
 
 Bug Fixes
 ---------------------
@@ -169,10 +193,16 @@ Bug Fixes
 
 * LUCENE-10552: KnnVectorQuery has incorrect equals/ hashCode. (Lu Xugang)
 
+* LUCENE-10558: Restore behaviour of deprecated Kuromoji and Nori dictionary constructors for
+  custom dictionary support. Please also use new URL-based constructors for classpath/module
+  system ressources.  (Uwe Schindler, Tomoko Uchida, Mike Sokolov)
+
 Build
 ---------------------
 
 * Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
+
+* LUCENE-10532: Remove LuceneTestCase.Slow annotation. ALl tests can be fast. (Robert Muir)
 
 Other
 ---------------------

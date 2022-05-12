@@ -79,7 +79,8 @@ public final class HnswGraphBuilder {
       VectorSimilarityFunction similarityFunction,
       int M,
       int beamWidth,
-      long seed) {
+      long seed)
+      throws IOException {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
