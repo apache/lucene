@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.backward_codecs.lucene91;
 
 import static java.lang.Math.log;
 
@@ -28,12 +28,16 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.hnsw.BoundsChecker;
+import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
  * hyperparameters.
  */
-public final class HnswGraphBuilder {
+public final class Lucene91HnswGraphBuilder {
 
   /** Default random seed for level generation * */
   private static final long DEFAULT_RAND_SEED = 42;
@@ -43,10 +47,10 @@ public final class HnswGraphBuilder {
   /** Random seed for level generation; public to expose for testing * */
   public static long randSeed = DEFAULT_RAND_SEED;
 
-  private final int M; // max number of connections on upper layers
+  private final int maxConn;
   private final int beamWidth;
   private final double ml;
-  private final NeighborArray scratch;
+  private final Lucene91NeighborArray scratch;
 
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
@@ -54,7 +58,7 @@ public final class HnswGraphBuilder {
   private final BoundsChecker bound;
   private final HnswGraphSearcher graphSearcher;
 
-  final OnHeapHnswGraph hnsw;
+  final Lucene91OnHeapHnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
 
@@ -68,43 +72,42 @@ public final class HnswGraphBuilder {
    *
    * @param vectors the vectors whose relations are represented by the graph - must provide a
    *     different view over those vectors than the one used to add via addGraphNode.
-   * @param M – graph fanout parameter used to calculate the maximum number of connections a node
-   *     can have – M on upper layers, and M * 2 on the lowest level.
+   * @param maxConn the number of connections to make when adding a new graph node; roughly speaking
+   *     the graph fanout.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
    */
-  public HnswGraphBuilder(
+  public Lucene91HnswGraphBuilder(
       RandomAccessVectorValuesProducer vectors,
       VectorSimilarityFunction similarityFunction,
-      int M,
+      int maxConn,
       int beamWidth,
       long seed)
       throws IOException {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
-    if (M <= 0) {
+    if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
     if (beamWidth <= 0) {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
-    this.M = M;
+    this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
-    this.ml = 1 / Math.log(1.0 * M);
+    this.ml = 1 / Math.log(1.0 * maxConn);
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode, similarityFunction.reversed);
+    this.hnsw = new Lucene91OnHeapHnswGraph(maxConn, levelOfFirstNode);
     this.graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
             new NeighborQueue(beamWidth, similarityFunction.reversed == false),
             new FixedBitSet(vectorValues.size()));
     bound = BoundsChecker.create(similarityFunction.reversed);
-    // in scratch we store candidates in reverse order: worse candidates are first
-    scratch = new NeighborArray(Math.max(beamWidth, M + 1), similarityFunction.reversed);
+    scratch = new Lucene91NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
 
   /**
@@ -115,7 +118,7 @@ public final class HnswGraphBuilder {
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
+  public Lucene91OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
     if (vectors == vectorValues) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -178,36 +181,39 @@ public final class HnswGraphBuilder {
     return now;
   }
 
+  /* TODO: we are not maintaining nodes in strict score order; the forward links
+   * are added in sorted order, but the reverse implicit ones are not. Diversity heuristic should
+   * work better if we keep the neighbor arrays sorted. Possibly we should switch back to a heap?
+   * But first we should just see if sorting makes a significant difference.
+   */
   private void addDiverseNeighbors(int level, int node, NeighborQueue candidates)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
      */
-    NeighborArray neighbors = hnsw.getNeighbors(level, node);
+    Lucene91NeighborArray neighbors = hnsw.getNeighbors(level, node);
     assert neighbors.size() == 0; // new node
     popToScratch(candidates);
-    int maxConnOnLevel = level == 0 ? M * 2 : M;
-    selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
+    selectDiverse(neighbors, scratch);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
     int size = neighbors.size();
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node[i];
-      NeighborArray nbrNbr = hnsw.getNeighbors(level, nbr);
-      nbrNbr.insertSorted(node, neighbors.score[i]);
-      if (nbrNbr.size() > maxConnOnLevel) {
-        int indexToRemove = findWorstNonDiverse(nbrNbr);
-        nbrNbr.removeIndex(indexToRemove);
+      Lucene91NeighborArray nbrNbr = hnsw.getNeighbors(level, nbr);
+      nbrNbr.add(node, neighbors.score[i]);
+      if (nbrNbr.size() > maxConn) {
+        diversityUpdate(nbrNbr);
       }
     }
   }
 
-  private void selectAndLinkDiverse(
-      NeighborArray neighbors, NeighborArray candidates, int maxConnOnLevel) throws IOException {
-    // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
-    for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
+  private void selectDiverse(Lucene91NeighborArray neighbors, Lucene91NeighborArray candidates)
+      throws IOException {
+    // Select the best maxConn neighbors of the new node, applying the diversity heuristic
+    for (int i = candidates.size() - 1; neighbors.size() < maxConn && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.node[i];
@@ -242,7 +248,7 @@ public final class HnswGraphBuilder {
   private boolean diversityCheck(
       float[] candidate,
       float score,
-      NeighborArray neighbors,
+      Lucene91NeighborArray neighbors,
       RandomAccessVectorValues vectorValues)
       throws IOException {
     bound.set(score);
@@ -256,26 +262,44 @@ public final class HnswGraphBuilder {
     return true;
   }
 
-  /**
-   * Find first non-diverse neighbour among the list of neighbors starting from the most distant
-   * neighbours
-   */
-  private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
-    for (int i = neighbors.size() - 1; i > 0; i--) {
-      int cNode = neighbors.node[i];
-      float[] cVector = vectorValues.vectorValue(cNode);
+  private void diversityUpdate(Lucene91NeighborArray neighbors) throws IOException {
+    assert neighbors.size() == maxConn + 1;
+    int replacePoint = findNonDiverse(neighbors);
+    if (replacePoint == -1) {
+      // none found; check score against worst existing neighbor
+      bound.set(neighbors.score[0]);
+      if (bound.check(neighbors.score[maxConn])) {
+        // drop the new neighbor; it is not competitive and there were no diversity failures
+        neighbors.removeLast();
+        return;
+      } else {
+        replacePoint = 0;
+      }
+    }
+    neighbors.node[replacePoint] = neighbors.node[maxConn];
+    neighbors.score[replacePoint] = neighbors.score[maxConn];
+    neighbors.removeLast();
+  }
+
+  // scan neighbors looking for diversity violations
+  private int findNonDiverse(Lucene91NeighborArray neighbors) throws IOException {
+    for (int i = neighbors.size() - 1; i >= 0; i--) {
+      // check each neighbor against its better-scoring neighbors. If it fails diversity check with
+      // them, drop it
+      int nbrNode = neighbors.node[i];
       bound.set(neighbors.score[i]);
-      // check the candidate against its better-scoring neighbors
-      for (int j = i - 1; j >= 0; j--) {
+      float[] nbrVector = vectorValues.vectorValue(nbrNode);
+      for (int j = maxConn; j > i; j--) {
         float diversityCheck =
-            similarityFunction.compare(cVector, buildVectors.vectorValue(neighbors.node[j]));
-        // node i is too similar to node j given its score relative to the base node
+            similarityFunction.compare(nbrVector, buildVectors.vectorValue(neighbors.node[j]));
         if (bound.check(diversityCheck) == false) {
+          // node j is too similar to node i given its score relative to the base node
+          // replace it with the new node, which is at [maxConn]
           return i;
         }
       }
     }
-    return neighbors.size() - 1;
+    return -1;
   }
 
   private static int getRandomGraphLevel(double ml, SplittableRandom random) {

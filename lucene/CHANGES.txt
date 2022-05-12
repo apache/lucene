@@ -115,6 +115,8 @@ Improvements
 * LUCENE-9848: Correctly sort HNSW graph neighbors when applying diversity criterion (Mayya
   Sharipova, Michael Sokolov)
 
+* LUCENE-10527: Use 2*maxConn for the last layer in HNSW (Mayya Sharipova)
+
 Optimizations
 ---------------------
 

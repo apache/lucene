@@ -37,9 +37,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
-import org.apache.lucene.util.hnsw.NeighborArray;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -145,7 +142,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       Lucene91HnswVectorsReader.OffHeapVectorValues offHeapVectors =
           new Lucene91HnswVectorsReader.OffHeapVectorValues(
               vectors.dimension(), docsWithField.cardinality(), null, vectorDataInput);
-      OnHeapHnswGraph graph =
+      Lucene91OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
               : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarityFunction());
@@ -194,7 +191,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       long vectorIndexOffset,
       long vectorIndexLength,
       DocsWithFieldSet docsWithField,
-      OnHeapHnswGraph graph)
+      Lucene91OnHeapHnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
@@ -236,16 +233,20 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private OnHeapHnswGraph writeGraph(
+  private Lucene91OnHeapHnswGraph writeGraph(
       RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph
-    HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(
-            vectorValues, similarityFunction, maxConn, beamWidth, HnswGraphBuilder.randSeed);
+    Lucene91HnswGraphBuilder hnswGraphBuilder =
+        new Lucene91HnswGraphBuilder(
+            vectorValues,
+            similarityFunction,
+            maxConn,
+            beamWidth,
+            Lucene91HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
+    Lucene91OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
@@ -253,7 +254,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
       while (nodesOnLevel.hasNext()) {
         int node = nodesOnLevel.nextInt();
-        NeighborArray neighbors = graph.getNeighbors(level, node);
+        Lucene91NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
