@@ -32,11 +32,13 @@ public class Lucene91NeighborArray {
   float[] score;
   int[] node;
 
+  /** Create a neighbour array with the given initial size */
   public Lucene91NeighborArray(int maxSize) {
     node = new int[maxSize];
     score = new float[maxSize];
   }
 
+  /** Add a new node with a score */
   public void add(int newNode, float newScore) {
     if (size == node.length - 1) {
       node = ArrayUtil.grow(node, (size + 1) * 3 / 2);
@@ -47,6 +49,7 @@ public class Lucene91NeighborArray {
     ++size;
   }
 
+  /** Get the size, the number of nodes added so far */
   public int size() {
     return size;
   }
@@ -60,14 +63,21 @@ public class Lucene91NeighborArray {
     return node;
   }
 
+  /**
+   * Direct access to the internal list of scores
+   *
+   * @lucene.internal
+   */
   public float[] score() {
     return score;
   }
 
+  /** Clear all the nodes in the array */
   public void clear() {
     size = 0;
   }
 
+  /** Remove the last nodes from the array */
   public void removeLast() {
     size--;
   }
