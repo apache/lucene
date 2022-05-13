@@ -103,6 +103,6 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
 
     BitSet orCopy = new SparseFixedBitSet(size);
     orCopy.or(new BitSetIterator(original, size));
-    assertEquals(orCopy.ramBytesUsed(), original.ramBytesUsed(), 64L);
+    assertTrue(Math.abs(original.ramBytesUsed() - orCopy.ramBytesUsed()) <= 64L);
   }
 }
