@@ -61,7 +61,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 class SwedishLightStemmer {
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     if (len > 4 && s[len - 1] == 's') len--;
 
     if (len > 7 && (endsWith(s, len, "elser") || endsWith(s, len, "heten"))) return len - 5;

@@ -74,7 +74,7 @@ class NorwegianLightStemmer {
    *
    * @param flags set to {@link #BOKMAAL}, {@link #NYNORSK}, or both.
    */
-  public NorwegianLightStemmer(int flags) {
+  NorwegianLightStemmer(int flags) {
     if (flags <= 0 || flags > BOKMAAL + NYNORSK) {
       throw new IllegalArgumentException("invalid flags");
     }
@@ -82,7 +82,7 @@ class NorwegianLightStemmer {
     useNynorsk = (flags & NYNORSK) != 0;
   }
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     // Remove posessive -s (bilens -> bilen) and continue checking
     if (len > 4 && s[len - 1] == 's') len--;
 

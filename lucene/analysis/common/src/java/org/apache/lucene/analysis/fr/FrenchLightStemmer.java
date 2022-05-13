@@ -61,7 +61,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 class FrenchLightStemmer {
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     if (len > 5 && s[len - 1] == 'x') {
       if (s[len - 3] == 'a' && s[len - 2] == 'u' && s[len - 4] != 'e') s[len - 2] = 'l';
       len--;

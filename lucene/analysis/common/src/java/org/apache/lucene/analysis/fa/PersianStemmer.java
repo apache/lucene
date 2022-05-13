@@ -59,7 +59,7 @@ class PersianStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     len = stemSuffix(s, len);
 
     return len;

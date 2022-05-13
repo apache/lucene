@@ -34,7 +34,7 @@ class CzechStemmer {
    * @return length of input buffer after normalization
    *     <p><b>NOTE</b>: Input is expected to be in lowercase, but with diacritical marks
    */
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     len = removeCase(s, len);
     len = removePossessives(s, len);
     if (len > 0) {

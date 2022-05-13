@@ -243,7 +243,7 @@ class IndicNormalizer {
    * @param len valid length
    * @return normalized length
    */
-  public int normalize(char[] text, int len) {
+  int normalize(char[] text, int len) {
     for (int i = 0; i < len; i++) {
       final Character.UnicodeBlock block = Character.UnicodeBlock.of(text[i]);
       final ScriptData sd = scripts.get(block);

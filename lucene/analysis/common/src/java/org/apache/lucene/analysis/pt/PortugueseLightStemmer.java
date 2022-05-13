@@ -61,7 +61,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 class PortugueseLightStemmer {
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     if (len < 4) return len;
 
     len = removeSuffix(s, len);

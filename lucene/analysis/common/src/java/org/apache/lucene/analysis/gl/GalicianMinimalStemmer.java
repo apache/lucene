@@ -31,7 +31,7 @@ class GalicianMinimalStemmer extends RSLPStemmerBase {
   private static final Step pluralStep =
       parse(GalicianMinimalStemmer.class, "galician.rslp").get("Plural");
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     return pluralStep.apply(s, len);
   }
 }

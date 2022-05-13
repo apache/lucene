@@ -39,7 +39,7 @@ class GreekStemmer {
    * @param len The length of the char[] array.
    * @return The new length of the stemmed word.
    */
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     if (len < 4) // too short
     return len;
 

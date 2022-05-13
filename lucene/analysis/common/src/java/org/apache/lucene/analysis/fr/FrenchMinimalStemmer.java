@@ -58,7 +58,7 @@ package org.apache.lucene.analysis.fr;
  * general French corpora.</i> Jacques Savoy.
  */
 class FrenchMinimalStemmer {
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     if (len < 6) return len;
 
     if (s[len - 1] == 'x') {

@@ -73,7 +73,7 @@ class ArabicStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     len = stemPrefix(s, len);
     len = stemSuffix(s, len);
 
@@ -87,7 +87,7 @@ class ArabicStemmer {
    * @param len length of input buffer
    * @return new length of input buffer after stemming.
    */
-  public int stemPrefix(char[] s, int len) {
+  int stemPrefix(char[] s, int len) {
     for (int i = 0; i < prefixes.length; i++)
       if (startsWithCheckLength(s, len, prefixes[i])) return deleteN(s, 0, len, prefixes[i].length);
     return len;
@@ -100,7 +100,7 @@ class ArabicStemmer {
    * @param len length of input buffer
    * @return new length of input buffer after stemming
    */
-  public int stemSuffix(char[] s, int len) {
+  int stemSuffix(char[] s, int len) {
     for (int i = 0; i < suffixes.length; i++)
       if (endsWithCheckLength(s, len, suffixes[i]))
         len = deleteN(s, len - suffixes[i].length, len, suffixes[i].length);

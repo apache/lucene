@@ -31,7 +31,7 @@ class PortugueseMinimalStemmer extends RSLPStemmerBase {
   private static final Step pluralStep =
       parse(PortugueseMinimalStemmer.class, "portuguese.rslp").get("Plural");
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     return pluralStep.apply(s, len);
   }
 }

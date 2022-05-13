@@ -33,7 +33,7 @@ class BulgarianStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int stem(final char[] s, int len) {
+  int stem(final char[] s, int len) {
     if (len < 4) // do not stem
     return len;
 

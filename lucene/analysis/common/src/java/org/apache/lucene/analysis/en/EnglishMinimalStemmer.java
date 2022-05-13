@@ -23,7 +23,7 @@ package org.apache.lucene.analysis.en;
  */
 class EnglishMinimalStemmer {
   @SuppressWarnings("fallthrough")
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     if (len < 3 || s[len - 1] != 's') return len;
 
     switch (s[len - 2]) {

@@ -166,7 +166,7 @@ class SpanishPluralStemmer {
     specialCases = CharArraySet.unmodifiableSet(sepecialSet);
   }
 
-  public int stem(char s[], int len) {
+  int stem(char s[], int len) {
     if (len < 4) return len; // plural have at least 4 letters (ases,eses,etc.)
     removeAccents(s, len);
     if (invariant(s, len)) return len;

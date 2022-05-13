@@ -34,7 +34,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 class LatvianStemmer {
   /** Stem a latvian word. returns the new adjusted length. */
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     int numVowels = numVowels(s, len);
 
     for (int i = 0; i < affixes.length; i++) {

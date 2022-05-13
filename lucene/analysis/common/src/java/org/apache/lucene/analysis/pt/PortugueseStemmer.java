@@ -43,7 +43,7 @@ class PortugueseStemmer extends RSLPStemmerBase {
    * @param len initial valid length of buffer
    * @return new valid length, stemmed
    */
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     assert s.length >= len + 1 : "this stemmer requires an oversized array of at least 1";
 
     len = plural.apply(s, len);

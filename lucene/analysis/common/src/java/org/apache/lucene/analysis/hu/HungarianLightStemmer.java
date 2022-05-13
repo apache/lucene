@@ -60,7 +60,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * Portuguese, German and Hungarian Languages</i> Jacques Savoy
  */
 class HungarianLightStemmer {
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     for (int i = 0; i < len; i++)
       switch (s[i]) {
         case 'á':

@@ -1124,7 +1124,7 @@ class BrazilianStemmer {
    *
    * @return TERM, CT, RV, R1 and R2
    */
-  public String log() {
+  String log() {
     return " (TERM = "
         + TERM
         + ")"

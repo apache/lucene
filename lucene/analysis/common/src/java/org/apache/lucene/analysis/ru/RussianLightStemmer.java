@@ -61,7 +61,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  */
 class RussianLightStemmer {
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     len = removeCase(s, len);
     return normalize(s, len);
   }
