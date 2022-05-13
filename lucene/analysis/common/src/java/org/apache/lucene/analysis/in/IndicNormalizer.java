@@ -28,7 +28,7 @@ import java.util.IdentityHashMap;
  * <p>Follows guidelines from Unicode 5.2, chapter 6, South Asian Scripts I and graphical
  * decompositions from http://ldc.upenn.edu/myl/IndianScriptsUnicode.html
  */
-public class IndicNormalizer {
+class IndicNormalizer {
 
   private static class ScriptData {
     final int flag;

@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.br;
 import java.util.Locale;
 
 /** A stemmer for Brazilian Portuguese words. */
-public class BrazilianStemmer {
+class BrazilianStemmer {
   private static final Locale locale = new Locale("pt", "BR");
 
   /** Changed term */

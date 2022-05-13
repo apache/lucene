@@ -25,7 +25,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * Information Retrieval in Bahasa Indonesia</i>, Fadillah Z Tala.
  * http://www.illc.uva.nl/Publications/ResearchReports/MoL-2003-02.text.pdf
  */
-public class IndonesianStemmer {
+class IndonesianStemmer {
   private int numSyllables;
   private int flags;
   private static final int REMOVED_KE = 1;

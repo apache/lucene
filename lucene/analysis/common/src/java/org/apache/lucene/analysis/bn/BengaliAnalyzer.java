@@ -46,7 +46,7 @@ public final class BengaliAnalyzer extends StopwordAnalyzerBase {
    * <p>Default stopword list is from http://members.unine.ch/jacques.savoy/clef/bengaliST.txt The
    * stopword list is BSD-Licensed.
    */
-  public static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
+  static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
 
   private static final String STOPWORDS_COMMENT = "#";
 

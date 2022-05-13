@@ -33,7 +33,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.delete;
  *   <li>Harakat, tatweel, and formatting characters such as directional controls are removed.
  * </ul>
  */
-public class SoraniNormalizer {
+class SoraniNormalizer {
 
   static final char YEH = '\u064A';
   static final char DOTLESS_YEH = '\u0649';

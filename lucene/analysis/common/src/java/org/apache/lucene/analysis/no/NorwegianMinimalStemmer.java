@@ -60,7 +60,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  *
  * <p>Stems known plural forms for Norwegian nouns only, together with genitiv -s
  */
-public class NorwegianMinimalStemmer {
+class NorwegianMinimalStemmer {
   final boolean useBokmaal;
   final boolean useNynorsk;
 

@@ -32,7 +32,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  *   <li>Palatalization is only handled when a declension II,V,VI noun suffix is removed.
  * </ul>
  */
-public class LatvianStemmer {
+class LatvianStemmer {
   /** Stem a latvian word. returns the new adjusted length. */
   public int stem(char[] s, int len) {
     int numVowels = numVowels(s, len);

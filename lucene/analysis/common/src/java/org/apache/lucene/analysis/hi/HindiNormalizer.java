@@ -35,7 +35,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  *   <li>In addition to chandrabindu, NA+halant is normalized to anusvara
  * </ul>
  */
-public class HindiNormalizer {
+class HindiNormalizer {
   /**
    * Normalize an input buffer of Hindi text
    *

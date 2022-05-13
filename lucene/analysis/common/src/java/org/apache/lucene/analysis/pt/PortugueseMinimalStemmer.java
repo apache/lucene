@@ -26,7 +26,7 @@ package org.apache.lucene.analysis.pt;
  *
  * @see RSLPStemmerBase
  */
-public class PortugueseMinimalStemmer extends RSLPStemmerBase {
+class PortugueseMinimalStemmer extends RSLPStemmerBase {
 
   private static final Step pluralStep =
       parse(PortugueseMinimalStemmer.class, "portuguese.rslp").get("Plural");

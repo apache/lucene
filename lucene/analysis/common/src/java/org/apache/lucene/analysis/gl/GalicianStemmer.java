@@ -25,7 +25,7 @@ import org.apache.lucene.analysis.pt.RSLPStemmerBase;
  * @see RSLPStemmerBase
  * @see <a href="http://bvg.udc.es/recursos_lingua/stemming.jsp">Description of rules</a>
  */
-public class GalicianStemmer extends RSLPStemmerBase {
+class GalicianStemmer extends RSLPStemmerBase {
   private static final Step plural, unification, adverb, augmentative, noun, verb, vowel;
 
   static {

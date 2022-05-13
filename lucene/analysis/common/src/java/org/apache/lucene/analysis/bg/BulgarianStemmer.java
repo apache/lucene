@@ -24,7 +24,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>Implements the algorithm described in: <i> Searching Strategies for the Bulgarian Language
  * </i> http://members.unine.ch/jacques.savoy/Papers/BUIR.pdf
  */
-public class BulgarianStemmer {
+class BulgarianStemmer {
 
   /**
    * Stem an input buffer of Bulgarian text.

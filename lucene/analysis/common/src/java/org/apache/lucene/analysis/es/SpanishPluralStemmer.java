@@ -26,7 +26,7 @@ import org.apache.lucene.analysis.CharArraySet;
  * <p>This stemmer implements the rules described in:
  * <i>http://www.wikilengua.org/index.php/Plural_(formación)</i>
  */
-public class SpanishPluralStemmer {
+class SpanishPluralStemmer {
 
   private static final CharArraySet invariants;
   private static final CharArraySet specialCases;

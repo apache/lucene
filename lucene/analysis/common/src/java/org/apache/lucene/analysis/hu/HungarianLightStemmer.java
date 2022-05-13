@@ -59,7 +59,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>This stemmer implements the "UniNE" algorithm in: <i>Light Stemming Approaches for the French,
  * Portuguese, German and Hungarian Languages</i> Jacques Savoy
  */
-public class HungarianLightStemmer {
+class HungarianLightStemmer {
   public int stem(char[] s, int len) {
     for (int i = 0; i < len; i++)
       switch (s[i]) {

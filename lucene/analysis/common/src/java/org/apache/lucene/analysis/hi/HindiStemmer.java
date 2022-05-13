@@ -25,7 +25,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * Ramanathan and Durgesh D Rao.
  * http://computing.open.ac.uk/Sites/EACLSouthAsia/Papers/p6-Ramanathan.pdf
  */
-public class HindiStemmer {
+class HindiStemmer {
   public int stem(char[] buffer, int len) {
     // 5
     if ((len > 6)

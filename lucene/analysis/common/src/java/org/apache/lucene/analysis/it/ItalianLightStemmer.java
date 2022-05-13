@@ -57,7 +57,7 @@ package org.apache.lucene.analysis.it;
  * <p>This stemmer implements the algorithm described in: <i>Report on CLEF-2001 Experiments</i>
  * Jacques Savoy
  */
-public class ItalianLightStemmer {
+class ItalianLightStemmer {
 
   public int stem(char[] s, int len) {
     if (len < 6) return len;

@@ -24,7 +24,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>Implements the algorithm described in: <i> Indexing and stemming approaches for the Czech
  * language </i> http://portal.acm.org/citation.cfm?id=1598600
  */
-public class CzechStemmer {
+class CzechStemmer {
 
   /**
    * Stem an input buffer of Czech text.

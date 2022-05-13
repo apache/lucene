@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ckb;
 import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 /** Light stemmer for Sorani */
-public class SoraniStemmer {
+class SoraniStemmer {
 
   /**
    * Stem an input buffer of Sorani text.

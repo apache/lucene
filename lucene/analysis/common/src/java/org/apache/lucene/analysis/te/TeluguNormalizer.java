@@ -25,7 +25,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.delete;
  *
  * @since 9.0.0
  */
-public class TeluguNormalizer {
+class TeluguNormalizer {
 
   /**
    * Normalize an input buffer of Telugu text

@@ -23,7 +23,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
  *
  * @since 9.0.0
  */
-public class TeluguStemmer {
+class TeluguStemmer {
   public int stem(char buffer[], int len) {
     // 4
     if ((len > 5) && (endsWith(buffer, len, "ళ్ళు") || endsWith(buffer, len, "డ్లు")))

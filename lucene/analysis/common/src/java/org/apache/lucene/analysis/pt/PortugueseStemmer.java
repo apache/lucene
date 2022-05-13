@@ -24,7 +24,7 @@ import java.util.Map;
  *
  * @see RSLPStemmerBase
  */
-public class PortugueseStemmer extends RSLPStemmerBase {
+class PortugueseStemmer extends RSLPStemmerBase {
   private static final Step plural, feminine, adverb, augmentative, noun, verb, vowel;
 
   static {

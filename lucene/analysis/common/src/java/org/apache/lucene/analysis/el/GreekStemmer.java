@@ -29,7 +29,7 @@ import org.apache.lucene.analysis.CharArraySet;
  *
  * @lucene.experimental
  */
-public class GreekStemmer {
+class GreekStemmer {
 
   /**
    * Stems a word contained in a leading portion of a char[] array. The word is passed through a

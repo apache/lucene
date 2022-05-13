@@ -33,7 +33,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  *   <li>Removal of tatweel (stretching character).
  * </ul>
  */
-public class ArabicNormalizer {
+class ArabicNormalizer {
   public static final char ALEF = '\u0627';
   public static final char ALEF_MADDA = '\u0622';
   public static final char ALEF_HAMZA_ABOVE = '\u0623';

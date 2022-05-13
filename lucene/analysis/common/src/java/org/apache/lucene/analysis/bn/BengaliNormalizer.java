@@ -25,7 +25,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.delete;
  * encoding for Bangla and its application in spelling checker</i> Naushad UzZaman and Mumit Khan.
  * http://www.panl10n.net/english/final%20reports/pdf%20files/Bangladesh/BAN16.pdf
  */
-public class BengaliNormalizer {
+class BengaliNormalizer {
   /**
    * Normalize an input buffer of Bengali text
    *

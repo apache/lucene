@@ -60,11 +60,11 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * one has a pre-defined rule set and a corresponding corpus to validate against whereas the
  * Norwegian one is hand crafted.
  */
-public class NorwegianLightStemmer {
+class NorwegianLightStemmer {
   /** Constant to remove Bokmål-specific endings */
-  public static final int BOKMAAL = 1;
+  static final int BOKMAAL = 1;
   /** Constant to remove Nynorsk-specific endings */
-  public static final int NYNORSK = 2;
+  static final int NYNORSK = 2;
 
   final boolean useBokmaal;
   final boolean useNynorsk;
