@@ -119,15 +119,14 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       return null;
     }
 
-    LabelAndValue[] labelValues = getLabelValues(childOrdsResult.q, cp);
+    LabelAndValue[] labelValues = getLabelValues(childOrdsResult.q, cp.length);
     return new FacetResult(
         dim, path, childOrdsResult.aggregatedValue, labelValues, childOrdsResult.childCount);
   }
 
   /**
    * Return ChildOrdsResult that contains results of aggregatedValue, childCount, and the queue for
-   * the dimension's top children to populate FacetResult in getPathResult. This portion of code is
-   * moved from getTopChildren because getTopDims needs to reuse it
+   * the dimension's top children to populate FacetResult in getPathResult.
    */
   private ChildOrdsResult getChildOrdsResult(DimConfig dimConfig, int dimOrd, int topN)
       throws IOException {
@@ -174,9 +173,13 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     return new ChildOrdsResult(aggregatedValue, childCount, q);
   }
 
-  /** Returns label values for dims */
-  private LabelAndValue[] getLabelValues(TopOrdAndFloatQueue q, FacetLabel facetLabel)
-      throws IOException {
+  /**
+   * Return label and values for top dimensions and children
+   *
+   * @param q the queue for the dimension's top children
+   * @param pathLength the length of a dimension's children paths
+   */
+  private LabelAndValue[] getLabelValues(TopOrdAndFloatQueue q, int pathLength) throws IOException {
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     int[] ordinals = new int[labelValues.length];
     float[] values = new float[labelValues.length];
@@ -189,12 +192,12 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
     for (int i = 0; i < labelValues.length; i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[facetLabel.length], values[i]);
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[pathLength], values[i]);
     }
     return labelValues;
   }
 
-  /** Returns value of a dimension. */
+  /** Return value of a dimension. */
   private float getDimValue(
       FacetsConfig.DimConfig dimConfig,
       String dim,
@@ -292,14 +295,14 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
         childOrdsResult = getChildOrdsResult(dimConfig, dimValueResult.dimOrd, topNChildren);
       }
       // FacetResult requires String[] path, and path is always empty for getTopDims.
-      // FacetLabelLength is always equal to 1 when FacetLabel is constructed with
+      // pathLength is always equal to 1 when FacetLabel is constructed with
       // FacetLabel(dim, emptyPath), and therefore, 1 is passed in when calling getLabelValues
       FacetResult facetResult =
           new FacetResult(
               dimValueResult.dim,
               emptyPath,
               dimValueResult.value,
-              getLabelValues(childOrdsResult.q, new FacetLabel(dim, emptyPath)),
+              getLabelValues(childOrdsResult.q, 1),
               childOrdsResult.childCount);
       results[pq.size()] = facetResult;
     }
