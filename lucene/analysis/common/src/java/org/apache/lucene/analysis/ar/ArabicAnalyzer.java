@@ -56,7 +56,7 @@ public final class ArabicAnalyzer extends StopwordAnalyzerBase {
    * <p>Default stopword list is from http://members.unine.ch/jacques.savoy/clef/index.html The
    * stopword list is BSD-Licensed.
    */
-  static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
+  public static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
 
   /**
    * Returns an unmodifiable instance of the default stop-words set.
