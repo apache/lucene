@@ -250,8 +250,11 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     assertEquals(results, allDimsResults);
 
     // test getTopDims(0, 1)
-    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
-    assertEquals(0, topDimsResults2.size());
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(0, 1);
+        });
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(

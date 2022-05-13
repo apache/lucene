@@ -99,6 +99,9 @@ Optimizations
 * LUCENE-10502: Use IndexedDISI to store docIds and DirectMonotonicWriter/Reader to handle
   ordToDoc in HNSW vectors (Lu Xugang)
 
+* LUCENE-10488: Facets#getTopDims optimized for taxonomy faceting and
+  ConcurrentSortedSetDocValuesFacetCounts. (Yuting Gan)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
