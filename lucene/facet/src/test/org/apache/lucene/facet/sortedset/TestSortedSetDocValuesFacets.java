@@ -435,6 +435,19 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(
               "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
               facets.getTopChildren(10, "a").toString());
+
+          // test getTopDims in ConcurrentSortedSetDocValuesFacetCounts
+          List<FacetResult> results = facets.getAllDims(10);
+          // test getTopDims(10, 10) and expect same results from getAllDims(10)
+          List<FacetResult> allTopDimsResults = facets.getTopDims(10, 10);
+
+          // test getTopDims(n, 10)
+          if (allTopDimsResults.size() > 0) {
+            for (int i = 1; i < results.size(); i++) {
+              assertEquals(results.subList(0, i), facets.getTopDims(i, 10));
+            }
+          }
+
         } finally {
           exec.shutdownNow();
         }
@@ -495,6 +508,18 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(
               "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
               facets.getTopChildren(10, "b", "buzz").toString());
+
+          // test getTopDims in ConcurrentSortedSetDocValuesFacetCounts
+          List<FacetResult> results = facets.getAllDims(10);
+          // test getTopDims(10, 10) and expect same results from getAllDims(10)
+          List<FacetResult> allTopDimsResults = facets.getTopDims(10, 10);
+
+          // test getTopDims(n, 10)
+          if (allTopDimsResults.size() > 0) {
+            for (int i = 1; i < results.size(); i++) {
+              assertEquals(results.subList(0, i), facets.getTopDims(i, 10));
+            }
+          }
         } finally {
           exec.shutdownNow();
         }
