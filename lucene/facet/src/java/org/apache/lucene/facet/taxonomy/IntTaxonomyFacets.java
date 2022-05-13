@@ -224,6 +224,8 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     int childCount = 0;
     TopOrdAndIntQueue.OrdAndValue reuse = null;
 
+    // TODO: would be faster if we had a "get the following children" API?  then we
+    // can make a single pass over the hashmap
     if (sparseValues != null) {
       for (IntIntCursor c : sparseValues) {
         int value = c.value;
