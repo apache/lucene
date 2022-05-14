@@ -76,7 +76,7 @@ public final class LongHeap {
    */
   public final boolean insertWithOverflow(long value) {
     if (size >= maxSize) {
-      if ((value < heap[1])) {
+      if (value < heap[1]) {
         return false;
       }
       updateTop(value);
