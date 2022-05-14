@@ -26,7 +26,7 @@ import org.apache.lucene.analysis.CharArraySet;
  * <p>This stemmer implements the rules described in:
  * <i>http://www.wikilengua.org/index.php/Plural_(formación)</i>
  */
-public class SpanishPluralStemmer {
+class SpanishPluralStemmer {
 
   private static final CharArraySet invariants;
   private static final CharArraySet specialCases;
@@ -166,7 +166,7 @@ public class SpanishPluralStemmer {
     specialCases = CharArraySet.unmodifiableSet(sepecialSet);
   }
 
-  public int stem(char s[], int len) {
+  int stem(char s[], int len) {
     if (len < 4) return len; // plural have at least 4 letters (ases,eses,etc.)
     removeAccents(s, len);
     if (invariant(s, len)) return len;

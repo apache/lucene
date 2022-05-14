@@ -26,7 +26,7 @@ import java.util.Locale;
  * <p>The algorithm is based on the report "A Fast and Simple Stemming Algorithm for German Words"
  * by J&ouml;rg Caumanns (joerg.caumanns at isst.fhg.de).
  */
-public class GermanStemmer {
+class GermanStemmer {
   /** Buffer for the terms while stemming them. */
   private StringBuilder sb = new StringBuilder();
 

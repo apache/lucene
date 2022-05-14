@@ -30,6 +30,11 @@ behind the scenes. It is the responsibility of the caller to to call
 These classes have been removed and consolidated into `FieldExistsQuery`. To migrate, caller simply replace those classes
 with the new one during object instantiation. 
 
+### Normalizer and stemmer classes are now package private (LUCENE-10561)
+
+Except for a few exceptions, almost all normalizer and stemmer classes are now package private. If your code depends on
+constants defined in them, copy the constant values and re-define them in your code.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
