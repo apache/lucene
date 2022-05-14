@@ -21,8 +21,8 @@ if (rootProject.usesAltJvm && rootProject.runtimeJavaVersion > JavaVersion.VERSI
   skipReason = "won't work with JDK ${rootProject.runtimeJavaVersion} if used as alternative java toolchain"
 }
 
-if (!Boolean.parseBoolean(propertyOrDefault("errorprone.enabled", isCIBuild as String))) {
-  skipReason = "skipped on non-CI (Jenkins/Github) runs, pass -Perrorprone.enabled=true to run"
+if (!propertyOrDefault("validation.errorprone", isCIBuild).asBoolean()) {
+  skipReason = "skipped on builds not running inside CI environments, pass -Pvalidation.errorprone=true to enable"
 }
 
 if (skipReason) {
