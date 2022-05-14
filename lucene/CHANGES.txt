@@ -149,7 +149,9 @@ Build
 
 * Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
 
-* LUCENE-10532: Remove LuceneTestCase.Slow annotation. ALl tests can be fast. (Robert Muir)
+* Detect CI builds on Github or Jenkins and enable errorprone.  (Uwe Schindler, Dawid Weiss)
+
+* LUCENE-10532: Remove LuceneTestCase.Slow annotation. All tests can be fast. (Robert Muir)
 
 Other
 ---------------------
