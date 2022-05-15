@@ -209,9 +209,9 @@ Bug Fixes
 Build
 ---------------------
 
-* GITHUB#854: Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
+* GITHUB#768: Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
 
-* GITHUB#768: Detect CI builds on Github or Jenkins and enable errorprone.  (Uwe Schindler, Dawid Weiss)
+* GITHUB#854: Detect CI builds on Github or Jenkins and enable errorprone.  (Uwe Schindler, Dawid Weiss)
 
 * LUCENE-10532: Remove LuceneTestCase.Slow annotation. All tests can be fast. (Robert Muir)
 
