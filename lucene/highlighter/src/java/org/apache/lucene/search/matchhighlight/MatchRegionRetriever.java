@@ -70,8 +70,8 @@ public class MatchRegionRetriever {
   }
 
   /**
-   * An abstraction that provides document values for a given field. Default implementation in
-   * {@link DocumentFieldValueProvider} just reaches to a preloaded {@link Document}. It is possible
+   * An abstraction that provides document values for a given field.
+   * The default implementation just reaches to a preloaded {@link Document}. It is possible
    * to write a more efficient implementation on top of a reusable character buffer (that reuses the
    * buffer while retrieving hit regions for documents).
    */
