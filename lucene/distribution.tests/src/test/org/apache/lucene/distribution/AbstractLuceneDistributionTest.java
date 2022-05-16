@@ -17,7 +17,12 @@
 package org.apache.lucene.distribution;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.annotations.TestGroup;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
+import java.lang.annotation.Documented;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -46,6 +51,19 @@ public abstract class AbstractLuceneDistributionTest extends RandomizedTest {
 
   /** Resolved and validated {@link #DISTRIBUTION_PROPERTY}. */
   private static Path distributionPath;
+
+  // --------------------------------------------------------------------
+  // Test groups, system properties and other annotations modifying tests
+  // --------------------------------------------------------------------
+
+  public static final String SYSPROP_NIGHTLY = "tests.nightly";
+
+  /** Annotation for tests that should only be run during nightly builds. */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @TestGroup(enabled = false, sysProperty = SYSPROP_NIGHTLY)
+  public @interface Nightly {}
 
   /** Ensure Lucene classes are not directly visible. */
   @BeforeClass
