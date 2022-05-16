@@ -88,6 +88,9 @@ Optimizations
   term of each block as a dictionary when compressing suffixes of the other 63
   terms of the block. (Adrien Grand)
 
+* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader.
+  (Zach Chen, Adrien Grand, Julie Tibshirani, Tomoko Uchida)
+
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
 
 * LUCENE-10534: MinFloatFunction / MaxFloatFunction exists check can be slow (Kevin Risden)
