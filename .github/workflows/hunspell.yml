@@ -22,8 +22,6 @@ jobs:
         distribution: 'temurin'
         java-version: 17
         java-package: jdk
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
     - uses: actions/cache@v2
       with:
         path: |
