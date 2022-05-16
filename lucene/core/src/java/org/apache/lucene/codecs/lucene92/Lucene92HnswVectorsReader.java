@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene92;
 
+import static org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat.SCALE8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -29,6 +30,8 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.RandomAccessVectorValues;
+import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -169,7 +172,10 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
               + fieldEntry.dimension);
     }
 
-    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
+    long numBytes = (long) fieldEntry.size() * dimension;
+    if (info.getVectorSimilarityFunction() != VectorSimilarityFunction.DOT_PRODUCT) {
+      numBytes *= Float.BYTES;
+    }
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "Vector data length "
@@ -216,8 +222,49 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    return OffHeapVectorValues.load(fieldEntry, vectorData);
+    VectorValues values = OffHeapVectorValues.load(fieldEntry, vectorData);
+    if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+      // TODO: move scaling computation somewhere shared (in the format??)
+      return new ExpandingVectorValues(values, 1 / (SCALE8 * 128));
+    } else {
+      return values;
+    }
   }
+
+  private RandomAccessVectorValues maybeWrap(OffHeapVectorValues values, FieldEntry fieldEntry) throws IOException {
+    if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+      // TODO: move scaling computation somewhere shared (in the format??)
+      return new ExpandingRandomAccessVectorValues(values, 1 / (SCALE8 * 128))
+              .randomAccess();
+    } else {
+      return values;
+    }
+  }
+
+  /**
+   * Compute a scale factor that, when multiplied times the vectors, maps all or almost all of the
+   * samples into [-1, 1] in preparation for quantization to byte.
+   */
+  /*
+  private double computeScale(List<float[]> vectors) {
+    // TODO: sample the vectors? trim the outliers? compute the std.dev?
+    double max = Double.MIN_VALUE, min = Double.MAX_VALUE;
+    for (float[] v : vectors) {
+      for (float value : v) {
+        max = Math.max(max, value);
+        min = Math.min(min, value);
+      }
+    }
+    if (max == min) {
+      return 0;
+    }
+    return 1 / Math.max(Math.abs(max), Math.abs(min));
+    / *
+      if (min < 0 && max > 0) {
+      }
+      // otherwise all the values are either positive or negative and we could use bits better
+      * /
+  }*/
 
   @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
@@ -231,12 +278,12 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
     OffHeapVectorValues vectorValues = OffHeapVectorValues.load(fieldEntry, vectorData);
-
+    RandomAccessVectorValues wrapped = maybeWrap(vectorValues, fieldEntry);
     NeighborQueue results =
         HnswGraphSearcher.search(
             target,
             k,
-            vectorValues,
+            wrapped,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),

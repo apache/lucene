@@ -89,7 +89,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *       <ul>
  *         <li><b>[int]</b> the number of nodes on this level
  *         <li><b>array[int]</b> for levels greater than 0 list of nodes on this level, stored as
- *             the the level 0th nodes ordinals.
+ *             the level 0th nodes' ordinals.
  *       </ul>
  * </ul>
  *
@@ -107,6 +107,12 @@ public final class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
+  // Tihs denotes the maximum range of the absolute value of the vector components and is used to
+  // scale the values into (-128, 127) so they can be written as single bytes.
+  static final float SCALE8 = 1; // TODO: compute offset and scale dynamically and store in the index
+  // note that we expect values to be unit vectors, thus the range of values will be in [-1,1], but in general
+  // more like [-1, 1]/sqrt(dim), and perhaps we should really compute a mean and std.dev to get an affine transform?
+
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
   /**
@@ -115,6 +121,7 @@ public final class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
