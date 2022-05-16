@@ -12,8 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        #os: [ubuntu-latest, macos-latest]
-        os: [windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
     - uses: actions/checkout@v2
@@ -23,19 +22,35 @@ jobs:
         distribution: 'temurin'
         java-version: 17
         java-package: jdk
-    - uses: actions/cache@v2
+    - name: Save/Restore gradle cache (${{ matrix.os }})
+      uses: actions/cache@v2
+      if: ${{ startsWith(matrix.os, 'windows') }}
       with:
-        #path: |
-        #  ~/.gradle/caches
         path: |
            %HOMEDRIVE%%HOMEPATH%\.gradle\caches
         key: ${{ runner.os }}-gradle-distribution-${{ hashFiles('versions.lock') }}
         restore-keys: |
           ${{ runner.os }}-gradle-distribution-
           ${{ runner.os }}-gradle-
-    - name: Initialize gradle settings
-      #run: ./gradlew localSettings
+    - name: Save/Restore gradle cache (${{ matrix.os }})
+      uses: actions/cache@v2
+      if: ${{ ! startsWith(matrix.os, 'windows') }}
+      with:
+        path: |
+          ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-distribution-${{ hashFiles('versions.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-distribution-
+          ${{ runner.os }}-gradle-
+    - name: Initialize gradle settings (${{ matrix.os }})
+      if: ${{ startsWith(matrix.os, 'windows') }}
       run: .\gradlew localSettings
-    - name: Run all distribution tests (including Nightly)
-      #run: ./gradlew -p lucene/distribution.tests/ test -Dtests.nightly=true
+    - name: Initialize gradle settings (${{ matrix.os }})
+      if: ${{ ! startsWith(matrix.os, 'windows') }}
+      run: ./gradlew localSettings
+    - name: Run all distribution tests including Nightly (${{ matrix.os }})
+      if: ${{ startsWith(matrix.os, 'windows') }}
       run: .\gradlew -p "lucene\distribution.tests" test "-Dtests.nightly=true"
+    - name: Run all distribution tests including Nightly (${{ matrix.os }})
+      if: ${{ ! startsWith(matrix.os, 'windows') }}
+      run: ./gradlew -p lucene/distribution.tests/ test -Dtests.nightly=true
