@@ -528,14 +528,15 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       final MergeState mergeState,
       final CompressingStoredFieldsMergeSub sub,
       final int fromDocID,
-      final int toDocID)
+      final int toDocID,
+      final boolean copyDirtyChunks)
       throws IOException {
     final Lucene90CompressingStoredFieldsReader reader =
         (Lucene90CompressingStoredFieldsReader) mergeState.storedFieldsReaders[sub.readerIndex];
     assert reader.getVersion() == VERSION_CURRENT;
     assert reader.getChunkSize() == chunkSize;
     assert reader.getCompressionMode() == compressionMode;
-    assert !tooDirty(reader);
+    assert copyDirtyChunks == !tooDirty(reader);
     assert mergeState.liveDocs[sub.readerIndex] == null;
 
     int docID = fromDocID;
@@ -553,14 +554,20 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     final long toPointer =
         toDocID == sub.maxDoc ? reader.getMaxPointer() : index.getStartPointer(toDocID);
     if (fromPointer < toPointer) {
-      if (numBufferedDocs > 0) {
-        flush(true);
-      }
       final IndexInput rawDocs = reader.getFieldsStream();
       rawDocs.seek(fromPointer);
       do {
         final int base = rawDocs.readVInt();
         final int code = rawDocs.readVInt();
+        final boolean dirtyChunk = (code & 2) != 0;
+        if (copyDirtyChunks) {
+          if (numBufferedDocs > 0) {
+            flush(true);
+          }
+        } else if (dirtyChunk || numBufferedDocs > 0) {
+          // Don't copy a dirty chunk or force a flush, which would create a dirty chunk
+          break;
+        }
         final int bufferedDocs = code >>> 2;
         if (base != docID) {
           throw new CorruptIndexException(
@@ -588,7 +595,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
         fieldsStream.copyBytes(rawDocs, endChunkPointer - rawDocs.getFilePointer());
         ++numChunks;
-        final boolean dirtyChunk = (code & 2) != 0;
         if (dirtyChunk) {
           assert bufferedDocs < maxDocsPerChunk;
           ++numDirtyChunks;
@@ -627,7 +633,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     while (sub != null) {
       assert sub.mappedDocID == docCount : sub.mappedDocID + " != " + docCount;
       final StoredFieldsReader reader = mergeState.storedFieldsReaders[sub.readerIndex];
-      if (sub.mergeStrategy == MergeStrategy.BULK) {
+      if (sub.mergeStrategy == MergeStrategy.DIRTY_BULK
+          || sub.mergeStrategy == MergeStrategy.CLEAN_BULK) {
+        final boolean copyDirtyChunks = sub.mergeStrategy == MergeStrategy.DIRTY_BULK;
         final int fromDocID = sub.docID;
         int toDocID = fromDocID;
         final CompressingStoredFieldsMergeSub current = sub;
@@ -636,7 +644,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
           assert sub.docID == toDocID;
         }
         ++toDocID; // exclusive bound
-        copyChunks(mergeState, current, fromDocID, toDocID);
+        copyChunks(mergeState, current, fromDocID, toDocID, copyDirtyChunks);
         docCount += (toDocID - fromDocID);
       } else if (sub.mergeStrategy == MergeStrategy.DOC) {
         copyOneDoc((Lucene90CompressingStoredFieldsReader) reader, sub.docID);
@@ -673,8 +681,11 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   private enum MergeStrategy {
-    /** Copy chunk by chunk in a compressed format */
-    BULK,
+    /** Copy chunk by chunk in a compressed format, including dirty chunks */
+    DIRTY_BULK,
+
+    /** Copy only clean chunks (dirty=false) that would not require flushing */
+    CLEAN_BULK,
 
     /** Copy document by document in a decompressed format */
     DOC,
@@ -697,9 +708,12 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         && reader.getCompressionMode() == compressionMode
         && reader.getChunkSize() == chunkSize
         // its not worth fine-graining this if there are deletions.
-        && mergeState.liveDocs[readerIndex] == null
-        && !tooDirty(reader)) {
-      return MergeStrategy.BULK;
+        && mergeState.liveDocs[readerIndex] == null) {
+      if (tooDirty(reader)) {
+        return MergeStrategy.CLEAN_BULK;
+      } else {
+        return MergeStrategy.DIRTY_BULK;
+      }
     } else {
       return MergeStrategy.DOC;
     }
