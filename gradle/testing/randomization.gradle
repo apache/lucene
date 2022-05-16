@@ -90,6 +90,7 @@ allprojects {
           [propName: 'tests.monster', value: false, description: "Enables or disables @Monster tests."],
           [propName: 'tests.awaitsfix', value: null, description: "Enables or disables @AwaitsFix tests."],
           [propName: 'tests.badapples', value: null, description: "Enables or disables @BadApple tests."],
+          [propName: 'tests.gui', value: false, description: "Enables or disables @RequiresGUI tests."],
           [propName: 'tests.file.encoding',
            value: { ->
              RandomPicks.randomFrom(new Random(projectSeedLong), ["US-ASCII", "ISO-8859-1", "UTF-8"])

@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.distribution;
 
-import static org.apache.lucene.distribution.AbstractLuceneDistributionTest.Nightly;
-
 import com.carrotsearch.procfork.ForkedProcess;
 import com.carrotsearch.procfork.Launcher;
 import com.carrotsearch.procfork.ProcessBuilderLauncher;
@@ -38,9 +36,9 @@ import org.assertj.core.api.ThrowingConsumer;
 import org.junit.Test;
 
 /** Verify that scripts included in the distribution work. */
-@Nightly
 public class TestScripts extends AbstractLuceneDistributionTest {
   @Test
+  @RequiresGUI
   public void testLukeCanBeLaunched() throws Exception {
     Path distributionPath;
     if (randomBoolean()) {

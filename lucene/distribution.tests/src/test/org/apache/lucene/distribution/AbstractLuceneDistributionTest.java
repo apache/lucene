@@ -56,14 +56,14 @@ public abstract class AbstractLuceneDistributionTest extends RandomizedTest {
   // Test groups, system properties and other annotations modifying tests
   // --------------------------------------------------------------------
 
-  public static final String SYSPROP_NIGHTLY = "tests.nightly";
+  public static final String SYSPROP_REQUIRES_GUI = "tests.gui";
 
   /** Annotation for tests that should only be run during nightly builds. */
   @Documented
   @Inherited
   @Retention(RetentionPolicy.RUNTIME)
-  @TestGroup(enabled = false, sysProperty = SYSPROP_NIGHTLY)
-  public @interface Nightly {}
+  @TestGroup(enabled = false, sysProperty = SYSPROP_REQUIRES_GUI)
+  public @interface RequiresGUI {}
 
   /** Ensure Lucene classes are not directly visible. */
   @BeforeClass
