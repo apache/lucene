@@ -89,7 +89,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *       <ul>
  *         <li><b>[int]</b> the number of nodes on this level
  *         <li><b>array[int]</b> for levels greater than 0 list of nodes on this level, stored as
- *             the the level 0th nodes ordinals.
+ *             the level 0th nodes' ordinals.
  *       </ul>
  * </ul>
  *

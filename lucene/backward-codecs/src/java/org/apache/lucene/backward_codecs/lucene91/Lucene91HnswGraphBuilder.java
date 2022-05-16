@@ -56,7 +56,7 @@ public final class Lucene91HnswGraphBuilder {
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
   private final BoundsChecker bound;
-  private final HnswGraphSearcher graphSearcher;
+  private final HnswGraphSearcher<float[]> graphSearcher;
 
   final Lucene91OnHeapHnswGraph hnsw;
 
@@ -102,7 +102,7 @@ public final class Lucene91HnswGraphBuilder {
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
     this.hnsw = new Lucene91OnHeapHnswGraph(maxConn, levelOfFirstNode);
     this.graphSearcher =
-        new HnswGraphSearcher(
+        new HnswGraphSearcher<>(
             similarityFunction,
             new NeighborQueue(beamWidth, similarityFunction.reversed == false),
             new FixedBitSet(vectorValues.size()));

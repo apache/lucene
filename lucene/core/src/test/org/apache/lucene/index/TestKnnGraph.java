@@ -102,10 +102,7 @@ public class TestKnnGraph extends LuceneTestCase {
       float[][] values = new float[numDoc][];
       for (int i = 0; i < numDoc; i++) {
         if (random().nextBoolean()) {
-          values[i] = new float[dimension];
-          for (int j = 0; j < dimension; j++) {
-            values[i][j] = random().nextFloat();
-          }
+          values[i] = randomVector(dimension);
         }
         add(iw, i, values[i]);
       }
@@ -117,6 +114,9 @@ public class TestKnnGraph extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
+      if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+        VectorUtil.l2normalize(values[0]);
+      }
       add(iw, 0, values[0]);
       assertConsistentGraph(iw, values);
       iw.commit();
@@ -133,11 +133,7 @@ public class TestKnnGraph extends LuceneTestCase {
       float[][] values = randomVectors(numDoc, dimension);
       for (int i = 0; i < numDoc; i++) {
         if (random().nextBoolean()) {
-          values[i] = new float[dimension];
-          for (int j = 0; j < dimension; j++) {
-            values[i][j] = random().nextFloat();
-          }
-          VectorUtil.l2normalize(values[i]);
+          values[i] = randomVector(dimension);
         }
         add(iw, i, values[i]);
         if (random().nextInt(10) == 3) {
@@ -249,14 +245,24 @@ public class TestKnnGraph extends LuceneTestCase {
     float[][] values = new float[numDoc][];
     for (int i = 0; i < numDoc; i++) {
       if (random().nextBoolean()) {
-        values[i] = new float[dimension];
-        for (int j = 0; j < dimension; j++) {
-          values[i][j] = random().nextFloat();
-        }
-        VectorUtil.l2normalize(values[i]);
+        values[i] = randomVector(dimension);
       }
     }
     return values;
+  }
+
+  private float[] randomVector(int dimension) {
+    float[] value = new float[dimension];
+    for (int j = 0; j < dimension; j++) {
+      value[j] = random().nextFloat();
+    }
+    VectorUtil.l2normalize(value);
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+      for (int j = 0; j < dimension; j++) {
+        value[j] = (byte) (value[j] * 127);
+      }
+    }
+    return value;
   }
 
   int[][][] copyGraph(HnswGraph graphValues) throws IOException {
@@ -468,7 +474,7 @@ public class TestKnnGraph extends LuceneTestCase {
               "vector did not match for doc " + i + ", id=" + id + ": " + Arrays.toString(scratch),
               values[id],
               scratch,
-              0f);
+              0);
           numDocsWithVectors++;
         }
         // if IndexDisi.doc == NO_MORE_DOCS, we should not call IndexDisi.nextDoc()

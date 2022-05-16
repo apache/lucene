@@ -183,10 +183,18 @@ public class KnnGraphTester {
           break;
         case "-metric":
           String metric = args[++iarg];
-          if (metric.equals("euclidean")) {
-            similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-          } else if (metric.equals("angular") == false) {
-            throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
+          switch (metric) {
+            case "euclidean":
+              similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+              break;
+            case "angular":
+              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+              break;
+            case "angular8":
+              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT8;
+              break;
+            default:
+              throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
           }
           break;
         case "-forceMerge":
@@ -255,14 +263,16 @@ public class KnnGraphTester {
     }
   }
 
+  @SuppressWarnings("unchecked")
   private void dumpGraph(Path docsPath) throws IOException {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
-      HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0);
+      HnswGraphBuilder<float[]> builder =
+          (HnswGraphBuilder<float[]>)
+              HnswGraphBuilder.create(vectors, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
-        builder.addGraphNode(i, values.vectorValue(i));
+        builder.addGraphNode(i, values);
         System.out.println("\nITERATION " + i);
         dumpGraph(builder.hnsw);
       }
@@ -588,6 +598,7 @@ public class KnnGraphTester {
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setRAMBufferSizeMB(1994d);
+    iwc.setUseCompoundFile(false);
     // iwc.setMaxBufferedDocs(10000);
 
     FieldType fieldType = KnnVectorField.createFieldType(dim, similarityFunction);
