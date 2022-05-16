@@ -284,7 +284,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
          */
         float maxAtZero =
             (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
-        assertEquals(maxAtZero, scorer.getMaxScore(0), 0.001);
+        assertEquals(maxAtZero, scorer.getMaxScore(0), 0.01);
 
         /* max at 2 is actually the score for doc 1 which is the highest (since doc 1 vector (2, 4)
          * is the closest to (2, 3)). This is ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
@@ -292,16 +292,16 @@ public class TestKnnVectorQuery extends LuceneTestCase {
          */
         float expected =
             (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
-        assertEquals(expected, scorer.getMaxScore(2), 0);
-        assertEquals(expected, scorer.getMaxScore(Integer.MAX_VALUE), 0);
+        assertEquals(expected, scorer.getMaxScore(2), 0.01);
+        assertEquals(expected, scorer.getMaxScore(Integer.MAX_VALUE), 0.01);
 
         DocIdSetIterator it = scorer.iterator();
         assertEquals(3, it.cost());
         assertEquals(0, it.nextDoc());
         // doc 0 has (1, 1)
-        assertEquals(maxAtZero, scorer.score(), 0.0001);
+        assertEquals(maxAtZero, scorer.score(), 0.01);
         assertEquals(1, it.advance(1));
-        assertEquals(expected, scorer.score(), 0);
+        assertEquals(expected, scorer.score(), 0.01);
         assertEquals(2, it.nextDoc());
         // since topK was 3
         assertEquals(NO_MORE_DOCS, it.advance(4));
@@ -388,7 +388,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         assertEquals(0, it.nextDoc());
         assertEquals(0, scorer.score(), 0);
         assertEquals(1, it.advance(1));
-        assertEquals(1, scorer.score(), 0);
+        assertEquals(1, scorer.score(), 0.1);
       }
     }
   }

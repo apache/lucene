@@ -286,10 +286,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertEquals(0, vectorValues.nextDoc());
           // The merge order is randomized, we might get 0 first, or 1
           float value = vectorValues.vectorValue()[0];
-          assertTrue(value == 0 || value == 1);
+          // 0.984375 is the result of compressing 1f to a (byte) 127 and back again.
+          assertTrue("unexpected value " + value, value == 0 || value == 0.984375);
           assertEquals(1, vectorValues.nextDoc());
           value += vectorValues.vectorValue()[0];
-          assertEquals(1, value, 0);
+          assertEquals(0.984375, value, 0);
         }
       }
     }
@@ -596,10 +597,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     int[] fieldDocCounts = new int[numFields];
     double[] fieldTotals = new double[numFields];
     int[] fieldDims = new int[numFields];
-    VectorSimilarityFunction[] fieldSearchStrategies = new VectorSimilarityFunction[numFields];
+    VectorSimilarityFunction[] fieldSimilarityFunctions = new VectorSimilarityFunction[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
-      fieldSearchStrategies[i] =
+      fieldSimilarityFunctions[i] =
           VectorSimilarityFunction.values()[
               random().nextInt(VectorSimilarityFunction.values().length)];
     }
@@ -611,14 +612,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           String fieldName = "int" + field;
           if (random().nextInt(100) == 17) {
             float[] v = randomVector(fieldDims[field]);
-            doc.add(new KnnVectorField(fieldName, v, fieldSearchStrategies[field]));
+            doc.add(new KnnVectorField(fieldName, v, fieldSimilarityFunctions[field]));
             fieldDocCounts[field]++;
             fieldTotals[field] += v[0];
           }
         }
         w.addDocument(doc);
       }
-
       try (IndexReader r = w.getReader()) {
         for (int field = 0; field < numFields; field++) {
           int docCount = 0;
@@ -634,7 +634,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             }
           }
           assertEquals(fieldDocCounts[field], docCount);
-          assertEquals(fieldTotals[field], checksum, 1e-5);
+          // Account for quantization done when indexing fields w/DOT_PRODUCT
+          double delta = fieldSimilarityFunctions[field] == VectorSimilarityFunction.DOT_PRODUCT ? numDocs * 0.001 : 1e-5;
+          assertEquals(fieldTotals[field], checksum, delta);
         }
       }
     }
@@ -742,7 +744,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(3, vectorValues3.dimension());
         assertEquals(1, vectorValues3.size());
         vectorValues3.nextDoc();
-        assertEquals(1f, vectorValues3.vectorValue()[0], 0);
+        assertEquals(1f, vectorValues3.vectorValue()[0], 0.1);
         assertEquals(NO_MORE_DOCS, vectorValues3.nextDoc());
       }
     }
@@ -1134,7 +1136,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             }
           }
         }
-        assertEquals(fieldValuesCheckSum, checksum, 1e-3);
+        double delta;
+        if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+          delta = 0.1;
+        } else {
+          delta = 0.001;
+        }
+        assertEquals(fieldValuesCheckSum, checksum, delta);
         assertEquals(fieldDocCount, docCount);
         assertEquals(fieldSumDocIDs, sumDocIds);
       }
