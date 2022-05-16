@@ -12,7 +12,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        #os: [ubuntu-latest, macos-latest]
+        os: [windows-latest]
 
     steps:
     - uses: actions/checkout@v2
@@ -24,13 +25,17 @@ jobs:
         java-package: jdk
     - uses: actions/cache@v2
       with:
+        #path: |
+        #  ~/.gradle/caches
         path: |
-          ~/.gradle/caches
+           %HOMEDRIVE%%HOMEPATH%\.gradle\caches
         key: ${{ runner.os }}-gradle-distribution-${{ hashFiles('versions.lock') }}
         restore-keys: |
           ${{ runner.os }}-gradle-distribution-
           ${{ runner.os }}-gradle-
     - name: Initialize gradle settings
-      run: ./gradlew localSettings
+      #run: ./gradlew localSettings
+      run: gradlew localSettings
     - name: Run all distribution tests (including Nightly)
-      run: ./gradlew -p lucene/distribution.tests/ test -Dtests.nightly=true
+      #run: ./gradlew -p lucene/distribution.tests/ test -Dtests.nightly=true
+      run: gradlew -p lucene/distribution.tests/ test -Dtests.nightly=true
