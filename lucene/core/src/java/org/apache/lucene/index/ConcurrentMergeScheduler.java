@@ -174,7 +174,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
           Throwable ignored) {
       }
 
-      maxThreadCount = Math.max(1, Math.min(4, coreCount / 2));
+      maxThreadCount = Math.max(4, coreCount / 2);
       maxMergeCount = maxThreadCount + 5;
     }
   }

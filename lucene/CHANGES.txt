@@ -206,6 +206,8 @@ Bug Fixes
 
 * LUCENE-10564: Make sure SparseFixedBitSet#or updates ramBytesUsed. (Julie Tibshirani)
 
+* LUCENE-10576: ConcurrentMergeScheduler maxThreadCount calculation is artificially low (Kevin Risden)
+
 Build
 ---------------------
 
