@@ -55,7 +55,7 @@ jobs:
 
     - name: Run all distribution tests including GUI tests (${{ matrix.os }})
       if: ${{ startsWith(matrix.os, 'windows') }}
-      run: .\gradlew -p "lucene\distribution.tests"
+      run: .\gradlew -p "lucene\distribution.tests" test
     - name: Run all distribution tests including GUI tests (${{ matrix.os }})
       if: ${{ ! startsWith(matrix.os, 'windows') }}
       run: ./gradlew -p lucene/distribution.tests/ test
