@@ -58,7 +58,7 @@ public abstract class AbstractLuceneDistributionTest extends RandomizedTest {
 
   public static final String SYSPROP_REQUIRES_GUI = "tests.gui";
 
-  /** Annotation for tests that should only be run during nightly builds. */
+  /** Annotation for tests that requires GUI (physical or virtual display). */
   @Documented
   @Inherited
   @Retention(RetentionPolicy.RUNTIME)
