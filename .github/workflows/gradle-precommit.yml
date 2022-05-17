@@ -34,7 +34,7 @@ jobs:
         java-package: jdk
 
     - name: Prepare caches
-      uses: ./.github/actions/yarn-caches
+      uses: ./.github/actions/gradle-caches
 
     - name: Initialize gradle settings
       run: ./gradlew localSettings --max-workers 2
@@ -69,7 +69,7 @@ jobs:
         java-package: jdk
 
     - name: Prepare caches
-      uses: ./.github/actions/yarn-caches
+      uses: ./.github/actions/gradle-caches
 
     - name: Initialize gradle settings
       run: ./gradlew localSettings --max-workers 2
