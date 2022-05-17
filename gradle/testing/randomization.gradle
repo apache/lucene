@@ -186,6 +186,11 @@ allprojects {
           systemProperty 'gradle.user.home', gradleUserHome.toPath().toAbsolutePath().toString()
         }
 
+        if (isCIBuild) {
+          // force to run GUI tests on CI builds
+          systemProperty 'tests.gui', true
+        }
+
         doFirst {
           logger.debug("Will use test opts:\n" + testOptionsResolved.collect {k,v -> "${k}: ${v}"}.sort().join("\n"))
         }

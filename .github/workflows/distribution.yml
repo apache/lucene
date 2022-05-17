@@ -24,14 +24,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-
     - name: Set up JDK
       uses: actions/setup-java@v2
       with:
         distribution: 'temurin'
         java-version: 17
         java-package: jdk
-
     - name: Prepare caches
       uses: ./.github/actions/yarn-caches
 
