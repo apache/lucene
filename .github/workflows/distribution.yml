@@ -25,19 +25,19 @@ jobs:
         java-version: 17
         java-package: jdk
 
+    #- name: Save/Restore gradle cache (${{ matrix.os }})
+    #  uses: actions/cache@v2
+    #  if: ${{ startsWith(matrix.os, 'windows') }}
+    #  with:
+    #    path: |
+    #       %HOMEDRIVE%%HOMEPATH%\.gradle\caches
+    #    key: ${{ runner.os }}-gradle-distribution-${{ hashFiles('versions.lock') }}
+    #    restore-keys: |
+    #      ${{ runner.os }}-gradle-distribution-
+    #      ${{ runner.os }}-gradle-
     - name: Save/Restore gradle cache (${{ matrix.os }})
       uses: actions/cache@v2
-      if: ${{ startsWith(matrix.os, 'windows') }}
-      with:
-        path: |
-           %HOMEDRIVE%%HOMEPATH%\.gradle\caches
-        key: ${{ runner.os }}-gradle-distribution-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-distribution-
-          ${{ runner.os }}-gradle-
-    - name: Save/Restore gradle cache (${{ matrix.os }})
-      uses: actions/cache@v2
-      if: ${{ ! startsWith(matrix.os, 'windows') }}
+      #if: ${{ ! startsWith(matrix.os, 'windows') }}
       with:
         path: |
           ~/.gradle/caches
@@ -46,16 +46,16 @@ jobs:
           ${{ runner.os }}-gradle-distribution-
           ${{ runner.os }}-gradle-
 
+    #- name: Initialize gradle settings (${{ matrix.os }})
+    #  if: ${{ startsWith(matrix.os, 'windows') }}
+    #  run: .\gradlew localSettings
     - name: Initialize gradle settings (${{ matrix.os }})
-      if: ${{ startsWith(matrix.os, 'windows') }}
-      run: .\gradlew localSettings
-    - name: Initialize gradle settings (${{ matrix.os }})
-      if: ${{ ! startsWith(matrix.os, 'windows') }}
+      #if: ${{ ! startsWith(matrix.os, 'windows') }}
       run: ./gradlew localSettings
 
+    #- name: Run all distribution tests including GUI tests (${{ matrix.os }})
+    #  if: ${{ startsWith(matrix.os, 'windows') }}
+    #  run: .\gradlew -p "lucene\distribution.tests" test
     - name: Run all distribution tests including GUI tests (${{ matrix.os }})
-      if: ${{ startsWith(matrix.os, 'windows') }}
-      run: .\gradlew -p "lucene\distribution.tests" test
-    - name: Run all distribution tests including GUI tests (${{ matrix.os }})
-      if: ${{ ! startsWith(matrix.os, 'windows') }}
+      #if: ${{ ! startsWith(matrix.os, 'windows') }}
       run: ./gradlew -p lucene/distribution.tests/ test
