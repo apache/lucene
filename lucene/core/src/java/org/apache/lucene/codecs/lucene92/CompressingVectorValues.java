@@ -29,8 +29,8 @@ public class CompressingVectorValues extends FilterVectorValues {
     float[] floats = vectorValue();
     byte[] bytes = binaryValue.bytes;
     for (int i = 0; i < dimension(); i++) {
-      // TODO: how does under/overflow work? We want to clip
-      bytes[i] = (byte) Math.floor(floats[i] * scale);
+      // scale and clip to [-128,127]
+      bytes[i] = (byte) Math.max(-128, Math.min(127, Math.floor(floats[i] * scale)));
     }
     return binaryValue;
   }

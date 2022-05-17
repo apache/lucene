@@ -109,7 +109,7 @@ public final class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
 
   // Tihs denotes the maximum range of the absolute value of the vector components and is used to
   // scale the values into (-128, 127) so they can be written as single bytes.
-  static final float SCALE8 = 1; // TODO: compute offset and scale dynamically and store in the index
+  static final float SCALE8 = 8f; // TODO: compute offset and scale dynamically and store in the index
   // note that we expect values to be unit vectors, thus the range of values will be in [-1,1], but in general
   // more like [-1, 1]/sqrt(dim), and perhaps we should really compute a mean and std.dev to get an affine transform?
 
