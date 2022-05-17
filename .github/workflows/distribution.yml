@@ -1,9 +1,16 @@
 name: Distribution tests
 
 on:
+  # Allow manual triggers for testing the action.
+  workflow_dispatch:
+
   pull_request:
     branches:
       - 'main'
+
+  push:
+    branches:
+      - 'run-scripts-test-nightly'
 
 jobs:
   test:
@@ -23,13 +30,11 @@ jobs:
         distribution: 'temurin'
         java-version: 17
         java-package: jdk
-    - name: Save/Restore gradle cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-${{ hashFiles('versions.lock') }}
-    - name: Initialize gradle settings
+    - name: Prepare caches
+      uses: ./.github/actions/yarn-caches
+
+    - name: Initialize gradle settings (${{ matrix.os }})
       run: ./gradlew localSettings
+
     - name: Run all distribution tests including GUI tests (${{ matrix.os }})
-      run: ./gradlew -p lucene/distribution.tests/ test
+      run: ./gradlew -p lucene/distribution.tests test
