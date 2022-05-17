@@ -1,6 +1,9 @@
 name: Distribution tests
 
 on:
+  # Allow manual triggers for testing the action.
+  workflow_dispatch:
+
   pull_request:
     branches:
       - 'main'
