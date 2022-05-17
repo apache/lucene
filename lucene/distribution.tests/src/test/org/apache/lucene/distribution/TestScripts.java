@@ -70,7 +70,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
     execute(
         launcher,
         0,
-        60,
+        120,
         (outputBytes) -> {
           // We know it's UTF-8 because we set file.encoding explicitly.
           var output = Files.readString(outputBytes, StandardCharsets.UTF_8);
