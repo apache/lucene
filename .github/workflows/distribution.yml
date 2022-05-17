@@ -8,6 +8,10 @@ on:
     branches:
       - 'main'
 
+  push:
+    branches:
+      - 'run-scripts-test-nightly'
+
 jobs:
   test:
     name: Run distribution tests
