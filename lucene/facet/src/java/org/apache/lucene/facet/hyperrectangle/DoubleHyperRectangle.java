@@ -22,19 +22,29 @@ import org.apache.lucene.util.NumericUtils;
 public class DoubleHyperRectangle extends HyperRectangle {
 
   /** Stores pair as LongRangePair */
-  private final DoubleRangePair[] pairs;
+  private final LongHyperRectangle.LongRangePair[] pairs;
 
   /** Created DoubleHyperRectangle */
   public DoubleHyperRectangle(String label, DoubleRangePair... pairs) {
-    super(label, pairs.length);
-    this.pairs = pairs;
+    super(label, checkPairsAndGetDim(pairs));
+    this.pairs = new LongHyperRectangle.LongRangePair[pairs.length];
+    for (int dim = 0; dim < pairs.length; dim++) {
+      long longMin = NumericUtils.doubleToSortableLong(pairs[dim].min);
+      long longMax = NumericUtils.doubleToSortableLong(pairs[dim].max);
+      this.pairs[dim] = new LongHyperRectangle.LongRangePair(longMin, true, longMax, true);
+    }
   }
 
   @Override
   public LongHyperRectangle.LongRangePair getComparableDimRange(int dim) {
-    long longMin = NumericUtils.doubleToSortableLong(pairs[dim].min);
-    long longMax = NumericUtils.doubleToSortableLong(pairs[dim].max);
-    return new LongHyperRectangle.LongRangePair(longMin, true, longMax, true);
+    return pairs[dim];
+  }
+
+  private static int checkPairsAndGetDim(DoubleRangePair... pairs) {
+    if (pairs == null || pairs.length == 0) {
+      throw new IllegalArgumentException("Pairs cannot be null or empty");
+    }
+    return pairs.length;
   }
 
   /** Defines a single range in a DoubleHyperRectangle */
@@ -46,7 +56,7 @@ public class DoubleHyperRectangle extends HyperRectangle {
     public final double max;
 
     /**
-     * Creates a LongRangePair, very similar to the constructor of {@link
+     * Creates a DoubleRangePair, very similar to the constructor of {@link
      * org.apache.lucene.facet.range.DoubleRange}
      *
      * @param minIn Min value of pair
@@ -55,16 +65,15 @@ public class DoubleHyperRectangle extends HyperRectangle {
      * @param maxInclusive If maxIn is inclusive
      */
     public DoubleRangePair(double minIn, boolean minInclusive, double maxIn, boolean maxInclusive) {
-      if (Double.isNaN(minIn)) {
-        throw new IllegalArgumentException("min cannot be NaN");
+      if (Double.isNaN(minIn) || Double.isNaN(maxIn)) {
+        throw new IllegalArgumentException(
+            "min and max cannot be NaN: min=" + minIn + ", max=" + maxIn);
       }
+
       if (!minInclusive) {
         minIn = Math.nextUp(minIn);
       }
 
-      if (Double.isNaN(maxIn)) {
-        throw new IllegalArgumentException("max cannot be NaN");
-      }
       if (!maxInclusive) {
         // Why no Math.nextDown?
         maxIn = Math.nextAfter(maxIn, Double.NEGATIVE_INFINITY);

@@ -27,7 +27,10 @@ public abstract class HyperRectangle {
   /** Sole constructor. */
   protected HyperRectangle(String label, int dims) {
     if (label == null) {
-      throw new NullPointerException("label must not be null");
+      throw new IllegalArgumentException("label must not be null");
+    }
+    if (dims <= 0) {
+      throw new IllegalArgumentException("Dims must be greater than 0. Dims=" + dims);
     }
     this.label = label;
     this.dims = dims;

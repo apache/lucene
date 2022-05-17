@@ -16,12 +16,14 @@
  */
 package org.apache.lucene.facet.hyperrectangle;
 
+import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -85,23 +87,18 @@ public class TestHyperRectangleFacetCounts extends FacetTestCase {
                 new LongHyperRectangle.LongRangePair(1000L, false, Long.MAX_VALUE, true)));
 
     FacetResult result = facets.getTopChildren(10, "field");
-    assertEquals(
-        """
-                        dim=field path=[] value=22 childCount=5
-                          less than (10, 11, 12) (10)
-                          less than or equal to (10, 11, 12) (11)
-                          over (90, 91, 92) (9)
-                          (90, 91, 92) or above (10)
-                          over (1000, 1000, 1000) (1)
-                        """,
-        result.toString());
 
-    // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    assertEquals("field", result.dim);
+    assertEquals(0, result.path.length);
+    assertEquals(22, result.value);
+    assertEquals(5, result.childCount);
+
+    LabelAndValue[] expectedLabelsAndValues = new LabelAndValue[5];
+    expectedLabelsAndValues[0] = new LabelAndValue("less than (10, 11, 12)", 10);
+    expectedLabelsAndValues[1] = new LabelAndValue("less than or equal to (10, 11, 12)", 11);
+    expectedLabelsAndValues[2] = new LabelAndValue("over (90, 91, 92)", 9);
+    expectedLabelsAndValues[3] = new LabelAndValue("(90, 91, 92) or above", 10);
+    expectedLabelsAndValues[4] = new LabelAndValue("over (1000, 1000, 1000)", 1);
 
     r.close();
     d.close();
@@ -165,16 +162,46 @@ public class TestHyperRectangleFacetCounts extends FacetTestCase {
                 new DoubleHyperRectangle.DoubleRangePair(1000.0, false, Double.MAX_VALUE, true)));
 
     FacetResult result = facets.getTopChildren(10, "field");
-    assertEquals(
-        """
-                        dim=field path=[] value=22 childCount=5
-                          less than (10, 11, 12) (10)
-                          less than or equal to (10, 11, 12) (11)
-                          over (90, 91, 92) (9)
-                          (90, 91, 92) or above (10)
-                          over (1000, 1000, 1000) (1)
-                        """,
-        result.toString());
+
+    assertEquals("field", result.dim);
+    assertEquals(0, result.path.length);
+    assertEquals(22, result.value);
+    assertEquals(5, result.childCount);
+
+    LabelAndValue[] expectedLabelsAndValues = new LabelAndValue[5];
+    expectedLabelsAndValues[0] = new LabelAndValue("less than (10, 11, 12)", 10);
+    expectedLabelsAndValues[1] = new LabelAndValue("less than or equal to (10, 11, 12)", 11);
+    expectedLabelsAndValues[2] = new LabelAndValue("over (90, 91, 92)", 9);
+    expectedLabelsAndValues[3] = new LabelAndValue("(90, 91, 92) or above", 10);
+    expectedLabelsAndValues[4] = new LabelAndValue("over (1000, 1000, 1000)", 1);
+
+    assertArrayEquals(expectedLabelsAndValues, result.labelValues);
+
+    r.close();
+    d.close();
+  }
+
+  public void testGetTopChildren() throws IOException {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+
+    Document doc = new Document();
+    LongPointFacetField field = new LongPointFacetField("field", 0L);
+    doc.add(field);
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    Facets facets =
+        new HyperRectangleFacetCounts(
+            "field",
+            fc,
+            new LongHyperRectangle(
+                "test", new LongHyperRectangle.LongRangePair(1, false, 10, false)));
 
     // test getTopChildren(0, dim)
     expectThrows(

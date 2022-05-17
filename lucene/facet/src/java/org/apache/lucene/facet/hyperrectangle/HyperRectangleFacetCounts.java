@@ -33,7 +33,7 @@ public class HyperRectangleFacetCounts extends Facets {
   /** Hypper rectangles passed to constructor. */
   protected final HyperRectangle[] hyperRectangles;
 
-  /** Counts, initialized in by subclass. */
+  /** Counts, initialized in subclass. */
   protected final int[] counts;
 
   /** Our field name. */
@@ -80,12 +80,19 @@ public class HyperRectangleFacetCounts extends Facets {
     this.field = field;
     this.hyperRectangles = hyperRectangles;
     this.dims = hyperRectangles[0].dims;
-    for (HyperRectangle hyperRectangle : hyperRectangles) {
-      assert hyperRectangle.dims == this.dims
-          : "All hyper rectangles must be the same dimensionality";
-    }
+    assert isHyperRectangleDimsConsistent()
+        : "All hyper rectangles must be the same dimensionality";
     this.counts = new int[hyperRectangles.length];
     count(field, hits.getMatchingDocs());
+  }
+
+  private boolean isHyperRectangleDimsConsistent() {
+    for (HyperRectangle hyperRectangle : hyperRectangles) {
+      if (hyperRectangle.dims != this.dims) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /** Counts from the provided field. */
@@ -106,8 +113,13 @@ public class HyperRectangleFacetCounts extends Facets {
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         if (binaryDocValues.advanceExact(doc)) {
           long[] point = LongPoint.unpack(binaryDocValues.binaryValue());
-          assert point.length == dims : "Point dimension is incompatible with hyper rectangle";
-          // linear scan, change this to use bkd trees
+          assert point.length == dims
+              : "Point dimension (dim="
+                  + point.length
+                  + ") is incompatible with hyper rectangle dimension (dim="
+                  + dims
+                  + ")";
+          // linear scan, change this to use R trees
           boolean docIsValid = false;
           for (int j = 0; j < hyperRectangles.length; j++) {
             boolean validPoint = true;

@@ -54,7 +54,7 @@ public class LongHyperRectangle extends HyperRectangle {
         if (minIn != Long.MAX_VALUE) {
           minIn++;
         } else {
-          throw new IllegalArgumentException("Invalid min input");
+          throw new IllegalArgumentException("Invalid min input, min=" + minIn);
         }
       }
 
@@ -62,7 +62,7 @@ public class LongHyperRectangle extends HyperRectangle {
         if (maxIn != Long.MIN_VALUE) {
           maxIn--;
         } else {
-          throw new IllegalArgumentException("Invalid max input");
+          throw new IllegalArgumentException("Invalid max input, max=" + maxIn);
         }
       }
 
