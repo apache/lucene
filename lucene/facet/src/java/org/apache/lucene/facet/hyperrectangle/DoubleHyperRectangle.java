@@ -16,35 +16,22 @@
  */
 package org.apache.lucene.facet.hyperrectangle;
 
+import java.util.Arrays;
 import org.apache.lucene.util.NumericUtils;
 
 /** Stores a hyper rectangle as an array of DoubleRangePairs */
 public class DoubleHyperRectangle extends HyperRectangle {
 
-  /** Stores pair as LongRangePair */
-  private final LongHyperRectangle.LongRangePair[] pairs;
-
-  /** Created DoubleHyperRectangle */
+  /** Creates DoubleHyperRectangle */
   public DoubleHyperRectangle(String label, DoubleRangePair... pairs) {
-    super(label, checkPairsAndGetDim(pairs));
-    this.pairs = new LongHyperRectangle.LongRangePair[pairs.length];
-    for (int dim = 0; dim < pairs.length; dim++) {
-      long longMin = NumericUtils.doubleToSortableLong(pairs[dim].min);
-      long longMax = NumericUtils.doubleToSortableLong(pairs[dim].max);
-      this.pairs[dim] = new LongHyperRectangle.LongRangePair(longMin, true, longMax, true);
-    }
+    super(label, convertToLongRangePairArray(pairs));
   }
 
-  @Override
-  public LongHyperRectangle.LongRangePair getComparableDimRange(int dim) {
-    return pairs[dim];
-  }
-
-  private static int checkPairsAndGetDim(DoubleRangePair... pairs) {
+  private static LongRangePair[] convertToLongRangePairArray(DoubleRangePair... pairs) {
     if (pairs == null || pairs.length == 0) {
       throw new IllegalArgumentException("Pairs cannot be null or empty");
     }
-    return pairs.length;
+    return Arrays.stream(pairs).map(DoubleRangePair::toLongRangePair).toArray(LongRangePair[]::new);
   }
 
   /** Defines a single range in a DoubleHyperRectangle */
@@ -85,6 +72,17 @@ public class DoubleHyperRectangle extends HyperRectangle {
 
       this.min = minIn;
       this.max = maxIn;
+    }
+
+    /**
+     * Converts this to a LongRangePair with sortable long equivalents
+     *
+     * @return A LongRangePair equivalent of this object
+     */
+    public LongRangePair toLongRangePair() {
+      long longMin = NumericUtils.doubleToSortableLong(min);
+      long longMax = NumericUtils.doubleToSortableLong(max);
+      return new LongRangePair(longMin, true, longMax, true);
     }
   }
 }

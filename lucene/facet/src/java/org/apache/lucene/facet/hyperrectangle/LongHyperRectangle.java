@@ -19,64 +19,8 @@ package org.apache.lucene.facet.hyperrectangle;
 /** Stores a hyper rectangle as an array of LongRangePairs */
 public class LongHyperRectangle extends HyperRectangle {
 
-  private final LongRangePair[] pairs;
-
   /** Created LongHyperRectangle */
   public LongHyperRectangle(String label, LongRangePair... pairs) {
-    super(label, pairs.length);
-    this.pairs = pairs;
-  }
-
-  @Override
-  public LongRangePair getComparableDimRange(int dim) {
-    return pairs[dim];
-  }
-
-  /** Defines a single range in a LongHyperRectangle */
-  public static class LongRangePair {
-    /** Inclusive min */
-    public final long min;
-
-    /** Inclusive max */
-    public final long max;
-
-    /**
-     * Creates a LongRangePair, very similar to the constructor of {@link
-     * org.apache.lucene.facet.range.LongRange}
-     *
-     * @param minIn Min value of pair
-     * @param minInclusive If minIn is inclusive
-     * @param maxIn Max value of pair
-     * @param maxInclusive If maxIn is inclusive
-     */
-    public LongRangePair(long minIn, boolean minInclusive, long maxIn, boolean maxInclusive) {
-      if (!minInclusive) {
-        if (minIn != Long.MAX_VALUE) {
-          minIn++;
-        } else {
-          throw new IllegalArgumentException("Invalid min input, min=" + minIn);
-        }
-      }
-
-      if (!maxInclusive) {
-        if (maxIn != Long.MIN_VALUE) {
-          maxIn--;
-        } else {
-          throw new IllegalArgumentException("Invalid max input, max=" + maxIn);
-        }
-      }
-
-      if (minIn > maxIn) {
-        throw new IllegalArgumentException("Minimum cannot be greater than maximum");
-      }
-
-      this.min = minIn;
-      this.max = maxIn;
-    }
-
-    /** True if this range accepts the provided value. */
-    public boolean accept(long value) {
-      return value >= min && value <= max;
-    }
+    super(label, pairs);
   }
 }

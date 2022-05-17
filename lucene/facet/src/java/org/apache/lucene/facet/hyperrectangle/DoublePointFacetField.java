@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.facet.hyperrectangle;
 
+import java.util.Arrays;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.util.NumericUtils;
@@ -38,10 +39,6 @@ public class DoublePointFacetField extends BinaryDocValuesField {
   }
 
   private static long[] convertToSortableLongPoint(double[] point) {
-    long[] ret = new long[point.length];
-    for (int i = 0; i < point.length; i++) {
-      ret[i] = NumericUtils.doubleToSortableLong(point[i]);
-    }
-    return ret;
+    return Arrays.stream(point).mapToLong(NumericUtils::doubleToSortableLong).toArray();
   }
 }

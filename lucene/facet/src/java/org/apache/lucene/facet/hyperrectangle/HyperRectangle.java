@@ -24,23 +24,77 @@ public abstract class HyperRectangle {
   /** How many dimensions this hyper rectangle has (IE: a regular rectangle would have dims=2) */
   public final int dims;
 
+  /** All subclasses should store pairs as comparable longs */
+  protected final LongRangePair[] pairs;
+
   /** Sole constructor. */
-  protected HyperRectangle(String label, int dims) {
+  protected HyperRectangle(String label, LongRangePair... pairs) {
     if (label == null) {
       throw new IllegalArgumentException("label must not be null");
     }
-    if (dims <= 0) {
-      throw new IllegalArgumentException("Dims must be greater than 0. Dims=" + dims);
+    if (pairs == null || pairs.length == 0) {
+      throw new IllegalArgumentException("Pairs cannot be null or empty");
     }
     this.label = label;
-    this.dims = dims;
+    this.dims = pairs.length;
+    this.pairs = pairs;
   }
 
   /**
-   * Converts hyper rectangles ranges into a comparable long from whatever type it is in
+   * Returns comparable long range for a provided dim
    *
    * @param dim dimension of the request range
    * @return The comparable long version of the requested range
    */
-  public abstract LongHyperRectangle.LongRangePair getComparableDimRange(int dim);
+  public LongRangePair getComparableDimRange(int dim) {
+    return pairs[dim];
+  }
+
+  /** Defines a single range in a HyperRectangle */
+  public static class LongRangePair {
+    /** Inclusive min */
+    public final long min;
+
+    /** Inclusive max */
+    public final long max;
+
+    /**
+     * Creates a LongRangePair, very similar to the constructor of {@link
+     * org.apache.lucene.facet.range.LongRange}
+     *
+     * @param minIn Min value of pair
+     * @param minInclusive If minIn is inclusive
+     * @param maxIn Max value of pair
+     * @param maxInclusive If maxIn is inclusive
+     */
+    public LongRangePair(long minIn, boolean minInclusive, long maxIn, boolean maxInclusive) {
+      if (!minInclusive) {
+        if (minIn != Long.MAX_VALUE) {
+          minIn++;
+        } else {
+          throw new IllegalArgumentException("Invalid min input, min=" + minIn);
+        }
+      }
+
+      if (!maxInclusive) {
+        if (maxIn != Long.MIN_VALUE) {
+          maxIn--;
+        } else {
+          throw new IllegalArgumentException("Invalid max input, max=" + maxIn);
+        }
+      }
+
+      if (minIn > maxIn) {
+        throw new IllegalArgumentException("Minimum cannot be greater than maximum");
+      }
+
+      this.min = minIn;
+      this.max = maxIn;
+    }
+
+    /** True if this range accepts the provided value. */
+    public boolean accept(long value) {
+      return value >= min && value <= max;
+    }
+  }
 }

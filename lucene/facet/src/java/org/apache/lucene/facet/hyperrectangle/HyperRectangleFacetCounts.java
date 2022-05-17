@@ -17,6 +17,7 @@
 package org.apache.lucene.facet.hyperrectangle;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.LongPoint;
@@ -77,22 +78,18 @@ public class HyperRectangleFacetCounts extends Facets {
       boolean discarded, String field, FacetsCollector hits, HyperRectangle... hyperRectangles)
       throws IOException {
     assert hyperRectangles.length > 0 : "Hyper rectangle ranges cannot be empty";
+    assert isHyperRectangleDimsConsistent(hyperRectangles)
+        : "All hyper rectangles must be the same dimensionality";
     this.field = field;
     this.hyperRectangles = hyperRectangles;
     this.dims = hyperRectangles[0].dims;
-    assert isHyperRectangleDimsConsistent()
-        : "All hyper rectangles must be the same dimensionality";
     this.counts = new int[hyperRectangles.length];
     count(field, hits.getMatchingDocs());
   }
 
-  private boolean isHyperRectangleDimsConsistent() {
-    for (HyperRectangle hyperRectangle : hyperRectangles) {
-      if (hyperRectangle.dims != this.dims) {
-        return false;
-      }
-    }
-    return true;
+  private boolean isHyperRectangleDimsConsistent(HyperRectangle[] hyperRectangles) {
+    int dims = hyperRectangles[0].dims;
+    return Arrays.stream(hyperRectangles).allMatch(hyperRectangle -> hyperRectangle.dims == dims);
   }
 
   /** Counts from the provided field. */
@@ -124,8 +121,7 @@ public class HyperRectangleFacetCounts extends Facets {
           for (int j = 0; j < hyperRectangles.length; j++) {
             boolean validPoint = true;
             for (int dim = 0; dim < dims; dim++) {
-              LongHyperRectangle.LongRangePair range =
-                  hyperRectangles[j].getComparableDimRange(dim);
+              HyperRectangle.LongRangePair range = hyperRectangles[j].getComparableDimRange(dim);
               if (!range.accept(point[dim])) {
                 validPoint = false;
                 break;
@@ -148,7 +144,7 @@ public class HyperRectangleFacetCounts extends Facets {
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
-    if (dim.equals(field) == false) {
+    if (field.equals(dim) == false) {
       throw new IllegalArgumentException(
           "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
     }

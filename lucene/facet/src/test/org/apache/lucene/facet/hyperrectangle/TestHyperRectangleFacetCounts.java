@@ -62,29 +62,29 @@ public class TestHyperRectangleFacetCounts extends FacetTestCase {
             fc,
             new LongHyperRectangle(
                 "less than (10, 11, 12)",
-                new LongHyperRectangle.LongRangePair(0L, true, 10L, false),
-                new LongHyperRectangle.LongRangePair(0L, true, 11L, false),
-                new LongHyperRectangle.LongRangePair(0L, true, 12L, false)),
+                new HyperRectangle.LongRangePair(0L, true, 10L, false),
+                new HyperRectangle.LongRangePair(0L, true, 11L, false),
+                new HyperRectangle.LongRangePair(0L, true, 12L, false)),
             new LongHyperRectangle(
                 "less than or equal to (10, 11, 12)",
-                new LongHyperRectangle.LongRangePair(0L, true, 10L, true),
-                new LongHyperRectangle.LongRangePair(0L, true, 11L, true),
-                new LongHyperRectangle.LongRangePair(0L, true, 12L, true)),
+                new HyperRectangle.LongRangePair(0L, true, 10L, true),
+                new HyperRectangle.LongRangePair(0L, true, 11L, true),
+                new HyperRectangle.LongRangePair(0L, true, 12L, true)),
             new LongHyperRectangle(
                 "over (90, 91, 92)",
-                new LongHyperRectangle.LongRangePair(90L, false, 100L, false),
-                new LongHyperRectangle.LongRangePair(91L, false, 101L, false),
-                new LongHyperRectangle.LongRangePair(92L, false, 102L, false)),
+                new HyperRectangle.LongRangePair(90L, false, 100L, false),
+                new HyperRectangle.LongRangePair(91L, false, 101L, false),
+                new HyperRectangle.LongRangePair(92L, false, 102L, false)),
             new LongHyperRectangle(
                 "(90, 91, 92) or above",
-                new LongHyperRectangle.LongRangePair(90L, true, 100L, false),
-                new LongHyperRectangle.LongRangePair(91L, true, 101L, false),
-                new LongHyperRectangle.LongRangePair(92L, true, 102L, false)),
+                new HyperRectangle.LongRangePair(90L, true, 100L, false),
+                new HyperRectangle.LongRangePair(91L, true, 101L, false),
+                new HyperRectangle.LongRangePair(92L, true, 102L, false)),
             new LongHyperRectangle(
                 "over (1000, 1000, 1000)",
-                new LongHyperRectangle.LongRangePair(1000L, false, Long.MAX_VALUE - 2L, true),
-                new LongHyperRectangle.LongRangePair(1000L, false, Long.MAX_VALUE - 1L, true),
-                new LongHyperRectangle.LongRangePair(1000L, false, Long.MAX_VALUE, true)));
+                new HyperRectangle.LongRangePair(1000L, false, Long.MAX_VALUE - 2L, true),
+                new HyperRectangle.LongRangePair(1000L, false, Long.MAX_VALUE - 1L, true),
+                new HyperRectangle.LongRangePair(1000L, false, Long.MAX_VALUE, true)));
 
     FacetResult result = facets.getTopChildren(10, "field");
 
@@ -200,8 +200,7 @@ public class TestHyperRectangleFacetCounts extends FacetTestCase {
         new HyperRectangleFacetCounts(
             "field",
             fc,
-            new LongHyperRectangle(
-                "test", new LongHyperRectangle.LongRangePair(1, false, 10, false)));
+            new LongHyperRectangle("test", new HyperRectangle.LongRangePair(1, false, 10, false)));
 
     // test getTopChildren(0, dim)
     expectThrows(
