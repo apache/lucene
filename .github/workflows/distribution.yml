@@ -28,10 +28,7 @@ jobs:
       with:
         path: |
           ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-distribution-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-distribution-
-          ${{ runner.os }}-gradle-
+        key: ${{ runner.os }}-gradle-${{ hashFiles('versions.lock') }}
     - name: Initialize gradle settings
       run: ./gradlew localSettings
     - name: Run all distribution tests including GUI tests (${{ matrix.os }})
