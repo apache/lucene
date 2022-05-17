@@ -50,15 +50,10 @@ test {
   jvmArgumentProviders.add(new CommandLineArgumentProvider() {
     @Override
     Iterable<String> asArguments() {
-      var args = [
+      return [
           "-Dlucene.distribution.dir=${configurations.binaryDistribution.singleFile.absolutePath }",
           "-Dlucene.distribution.version=${project.version}"
       ]
-      if (isCIBuild) {
-        // force to run GUI tests
-        args += ["-Dtests.gui=true"]
-      }
-      return args
     }
   })
 
