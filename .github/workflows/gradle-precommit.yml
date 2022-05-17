@@ -33,14 +33,8 @@ jobs:
         java-version: ${{ matrix.java }}
         java-package: jdk
 
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-precommit-
-          ${{ runner.os }}-gradle-
+    - name: Prepare caches
+      uses: ./.github/actions/yarn-caches
 
     - name: Initialize gradle settings
       run: ./gradlew localSettings --max-workers 2
@@ -74,14 +68,8 @@ jobs:
         java-version: ${{ matrix.java }}
         java-package: jdk
 
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-precommit-
-          ${{ runner.os }}-gradle-
+    - name: Prepare caches
+      uses: ./.github/actions/yarn-caches
 
     - name: Initialize gradle settings
       run: ./gradlew localSettings --max-workers 2
@@ -91,5 +79,3 @@ jobs:
 
     - name: Run gradle tests
       run: ./gradlew test "-Ptask.times=true" --max-workers 2
-
-    # - uses: gradle/wrapper-validation-action@v1
