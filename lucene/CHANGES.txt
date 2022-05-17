@@ -38,11 +38,9 @@ Improvements
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
 
-* LUCENE-8519 MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
-
 Optimizations
 ---------------------
-(No changes)
+* LUCENE-8519 MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
 
 Bug Fixes
 ---------------------
