@@ -20,6 +20,7 @@ import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.LatLonPoint;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -28,7 +29,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.sandbox.search.LatLonPointPrototypeQueries;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
@@ -66,7 +66,7 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
     s = newSearcher(r, false);
-    hit = (FieldDoc) LatLonPointPrototypeQueries.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
+    hit = (FieldDoc) LatLonPoint.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
     assertEquals("1", r.document(hit.doc).getField("id").stringValue());
     r.close();
     w.close();
