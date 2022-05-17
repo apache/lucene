@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.backward_codecs.lucene91;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -23,14 +23,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
  * construct the HNSW graph before it's written to the index.
  */
-public final class OnHeapHnswGraph extends HnswGraph {
+public final class Lucene91OnHeapHnswGraph extends HnswGraph {
 
-  private final boolean similarityReversed;
+  private final int maxConn;
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
 
@@ -40,30 +42,26 @@ public final class OnHeapHnswGraph extends HnswGraph {
 
   // graph is a list of graph levels.
   // Each level is represented as List<NeighborArray> – nodes' connections on this level.
-  // Each entry in the list has the top maxConn/maxConn0 neighbors of a node. The nodes correspond
-  // to vectors
+  // Each entry in the list has the top maxConn neighbors of a node. The nodes correspond to vectors
   // added to HnswBuilder, and the node values are the ordinals of those vectors.
   // Thus, on all levels, neighbors expressed as the level 0's nodes' ordinals.
-  private final List<List<NeighborArray>> graph;
-  private final int nsize;
-  private final int nsize0;
+  private final List<List<Lucene91NeighborArray>> graph;
 
   // KnnGraphValues iterator members
   private int upto;
-  private NeighborArray cur;
+  private Lucene91NeighborArray cur;
 
-  OnHeapHnswGraph(int M, int levelOfFirstNode, boolean similarityReversed) {
-    this.similarityReversed = similarityReversed;
+  Lucene91OnHeapHnswGraph(int maxConn, int levelOfFirstNode) {
+    this.maxConn = maxConn;
     this.numLevels = levelOfFirstNode + 1;
     this.graph = new ArrayList<>(numLevels);
     this.entryNode = 0;
-    // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
-    // We allocate extra space for neighbours, but then prune them to keep allowed maximum
-    this.nsize = M + 1;
-    this.nsize0 = (M * 2 + 1);
-    for (int l = 0; l < numLevels; l++) {
+    for (int i = 0; i < numLevels; i++) {
       graph.add(new ArrayList<>());
-      graph.get(l).add(new NeighborArray(l == 0 ? nsize0 : nsize, similarityReversed == false));
+      // Typically with diversity criteria we see nodes not fully occupied;
+      // average fanout seems to be about 1/2 maxConn.
+      // There is some indexing time penalty for under-allocating, but saves RAM
+      graph.get(i).add(new Lucene91NeighborArray(Math.max(32, maxConn / 4)));
     }
 
     this.nodesByLevel = new ArrayList<>(numLevels);
@@ -79,7 +77,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
    * @param level level of the graph
    * @param node the node whose neighbors are returned, represented as an ordinal on the level 0.
    */
-  public NeighborArray getNeighbors(int level, int node) {
+  public Lucene91NeighborArray getNeighbors(int level, int node) {
     if (level == 0) {
       return graph.get(level).get(node);
     }
@@ -123,9 +121,8 @@ public final class OnHeapHnswGraph extends HnswGraph {
         }
       }
     }
-    graph
-        .get(level)
-        .add(new NeighborArray(level == 0 ? nsize0 : nsize, similarityReversed == false));
+
+    graph.get(level).add(new Lucene91NeighborArray(maxConn + 1));
   }
 
   @Override

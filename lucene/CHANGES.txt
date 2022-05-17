@@ -25,7 +25,9 @@ API Changes
 * LUCENE-10436: Remove deprecated DocValuesFieldExistsQuery, NormsFieldExistsQuery and
   KnnVectorFieldExistsQuery. (Zach Chen, Adrien Grand)
 
-* LUCENE-10266 Move nearest-neighbor search on points to core.
+* LUCENE-10561 Reduce class/member visibility of all normalizer and stemmer classes. (Rushabh Shah)
+
+* LUCENE-10266 Move nearest-neighbor search on points to core. (Rushabh Shah)
 
 New Features
 ---------------------
@@ -117,6 +119,8 @@ Improvements
 * LUCENE-9848: Correctly sort HNSW graph neighbors when applying diversity criterion (Mayya
   Sharipova, Michael Sokolov)
 
+* LUCENE-10527: Use 2*maxConn for the last layer in HNSW (Mayya Sharipova)
+
 Optimizations
 ---------------------
 
@@ -161,6 +165,9 @@ Optimizations
 * LUCENE-10502: Use IndexedDISI to store docIds and DirectMonotonicWriter/Reader to handle
   ordToDoc in HNSW vectors (Lu Xugang)
 
+* LUCENE-10488: Facets#getTopDims optimized for taxonomy faceting and
+  ConcurrentSortedSetDocValuesFacetCounts. (Yuting Gan)
+
 Bug Fixes
 ---------------------
 * LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
@@ -199,12 +206,16 @@ Bug Fixes
   custom dictionary support. Please also use new URL-based constructors for classpath/module
   system ressources.  (Uwe Schindler, Tomoko Uchida, Mike Sokolov)
 
+* LUCENE-10564: Make sure SparseFixedBitSet#or updates ramBytesUsed. (Julie Tibshirani)
+
 Build
 ---------------------
 
-* Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
+* GITHUB#768: Upgrade forbiddenapis to version 3.3.  (Uwe Schindler)
 
-* LUCENE-10532: Remove LuceneTestCase.Slow annotation. ALl tests can be fast. (Robert Muir)
+* GITHUB#890: Detect CI builds on Github or Jenkins and enable errorprone.  (Uwe Schindler, Dawid Weiss)
+
+* LUCENE-10532: Remove LuceneTestCase.Slow annotation. All tests can be fast. (Robert Muir)
 
 Other
 ---------------------

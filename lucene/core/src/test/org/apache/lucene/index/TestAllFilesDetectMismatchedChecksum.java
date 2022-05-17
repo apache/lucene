@@ -20,6 +20,16 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -27,62 +37,59 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
-import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressFileSystems;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
-/** Test that the default codec detects bit flips at open or checkIntegrity time. */
+/** Test that the default codec detects mismatched checksums at open or checkIntegrity time. */
 @SuppressFileSystems("ExtrasFS")
-@AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9356")
-public class TestAllFilesDetectBitFlips extends LuceneTestCase {
+public class TestAllFilesDetectMismatchedChecksum extends LuceneTestCase {
 
   public void test() throws Exception {
-    doTest(false);
-  }
-
-  public void testCFS() throws Exception {
-    doTest(true);
-  }
-
-  public void doTest(boolean cfs) throws Exception {
     Directory dir = newDirectory();
 
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setCodec(TestUtil.getDefaultCodec());
-
-    if (cfs == false) {
-      conf.setUseCompoundFile(false);
-      conf.getMergePolicy().setNoCFSRatio(0.0);
-    }
+    // Disable CFS, which makes it harder to test due to its double checksumming
+    conf.setUseCompoundFile(false);
+    conf.getMergePolicy().setNoCFSRatio(0.0);
 
     RandomIndexWriter riw = new RandomIndexWriter(random(), dir, conf);
-    // Use LineFileDocs so we (hopefully) get most Lucene features
-    // tested, e.g. IntPoint was recently added to it:
-    LineFileDocs docs = new LineFileDocs(random());
+    Document doc = new Document();
+    FieldType textWithTermVectorsType = new FieldType(TextField.TYPE_STORED);
+    textWithTermVectorsType.setStoreTermVectors(true);
+    Field text = new Field("text", "", textWithTermVectorsType);
+    doc.add(text);
+    Field termString = new StringField("string", "", Store.YES);
+    doc.add(termString);
+    Field dvString = new SortedDocValuesField("string", new BytesRef());
+    doc.add(dvString);
+    Field pointNumber = new LongPoint("long", 0L);
+    doc.add(pointNumber);
+    Field dvNumber = new NumericDocValuesField("long", 0L);
+    doc.add(dvNumber);
+    KnnVectorField vector = new KnnVectorField("vector", new float[16]);
+    doc.add(vector);
+
     for (int i = 0; i < 100; i++) {
-      riw.addDocument(docs.nextDoc());
-      if (random().nextInt(7) == 0) {
-        riw.commit();
-      }
-      if (random().nextInt(20) == 0) {
-        riw.deleteDocuments(new Term("docid", Integer.toString(i)));
-      }
-      if (random().nextInt(15) == 0) {
-        riw.updateNumericDocValue(
-            new Term("docid", Integer.toString(i)), "docid_intDV", Long.valueOf(i));
-      }
+      text.setStringValue(TestUtil.randomAnalysisString(random(), 20, true));
+      String randomString = TestUtil.randomSimpleString(random(), 5);
+      termString.setStringValue(randomString);
+      dvString.setBytesValue(new BytesRef(randomString));
+      long number = random().nextInt(10);
+      pointNumber.setLongValue(number);
+      dvNumber.setLongValue(number);
+      Arrays.fill(vector.vectorValue(), i % 4);
+      riw.addDocument(doc);
     }
-    if (TEST_NIGHTLY == false) {
-      riw.forceMerge(1);
-    }
+    riw.deleteDocuments(LongPoint.newRangeQuery("long", 0, 2));
     riw.close();
-    checkBitFlips(dir);
+    checkMismatchedChecksum(dir);
     dir.close();
   }
 
-  private void checkBitFlips(Directory dir) throws IOException {
+  private void checkMismatchedChecksum(Directory dir) throws IOException {
     for (String name : dir.listAll()) {
       if (name.equals(IndexWriter.WRITE_LOCK_NAME) == false) {
         corruptFile(dir, name);
@@ -95,7 +102,9 @@ public class TestAllFilesDetectBitFlips extends LuceneTestCase {
       dirCopy.setCheckIndexOnClose(false);
 
       long victimLength = dir.fileLength(victim);
-      long flipOffset = TestUtil.nextLong(random(), 0, victimLength - 1);
+      long flipOffset =
+          TestUtil.nextLong(
+              random(), Math.max(0, victimLength - CodecUtil.footerLength()), victimLength - 1);
 
       if (VERBOSE) {
         System.out.println(
@@ -118,28 +127,13 @@ public class TestAllFilesDetectBitFlips extends LuceneTestCase {
             out.writeByte((byte) (in.readByte() + TestUtil.nextInt(random(), 0x01, 0xFF)));
             out.copyBytes(in, victimLength - flipOffset - 1);
           }
-          try (IndexInput in = dirCopy.openInput(name, IOContext.DEFAULT)) {
-            try {
-              CodecUtil.checksumEntireFile(in);
-              System.out.println(
-                  "TEST: changing a byte in " + victim + " did not update the checksum)");
-              return;
-            } catch (
-                @SuppressWarnings("unused")
-                CorruptIndexException e) {
-              // ok
-            }
-          }
         }
         dirCopy.sync(Collections.singleton(name));
       }
 
       // corruption must be detected
-      expectThrowsAnyOf(
-          Arrays.asList(
-              CorruptIndexException.class,
-              IndexFormatTooOldException.class,
-              IndexFormatTooNewException.class),
+      expectThrows(
+          CorruptIndexException.class,
           () -> {
             try (IndexReader reader = DirectoryReader.open(dirCopy)) {
               for (LeafReaderContext context : reader.leaves()) {
