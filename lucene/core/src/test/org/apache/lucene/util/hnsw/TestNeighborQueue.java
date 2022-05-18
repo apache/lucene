@@ -45,8 +45,8 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testTopMaxHeap() {
     NeighborQueue nn = new NeighborQueue(2, true);
-    nn.add(1, 2);
-    nn.add(2, 1);
+    nn.add(1, 2, HnswGraphSearcher.Multivalued.NONE);
+    nn.add(2, 1, HnswGraphSearcher.Multivalued.NONE);
     // lower scores are better; highest score on top
     assertEquals(2, nn.topScore(), 0);
     assertEquals(1, nn.topNode());
@@ -54,8 +54,8 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testTopMinHeap() {
     NeighborQueue nn = new NeighborQueue(2, false);
-    nn.add(1, 0.5f);
-    nn.add(2, -0.5f);
+    nn.add(1, 0.5f, HnswGraphSearcher.Multivalued.NONE);
+    nn.add(2, -0.5f, HnswGraphSearcher.Multivalued.NONE);
     // higher scores are better; lowest score on top
     assertEquals(-0.5f, nn.topScore(), 0);
     assertEquals(2, nn.topNode());
@@ -69,8 +69,8 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testClear() {
     NeighborQueue nn = new NeighborQueue(2, false);
-    nn.add(1, 1.1f);
-    nn.add(2, -2.2f);
+    nn.add(1, 1.1f, HnswGraphSearcher.Multivalued.NONE);
+    nn.add(2, -2.2f, HnswGraphSearcher.Multivalued.NONE);
     nn.setVisitedCount(42);
     nn.clear();
 
@@ -80,18 +80,18 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testMaxSizeQueue() {
     NeighborQueue nn = new NeighborQueue(2, false);
-    nn.add(1, 1);
-    nn.add(2, 2);
+    nn.add(1, 1, HnswGraphSearcher.Multivalued.NONE);
+    nn.add(2, 2, HnswGraphSearcher.Multivalued.NONE);
     assertEquals(2, nn.size());
     assertEquals(1, nn.topNode());
 
     // insertWithOverflow does not extend the queue
-    nn.insertWithOverflow(3, 3);
+    nn.insertWithOverflow(3, 3, HnswGraphSearcher.Multivalued.NONE);
     assertEquals(2, nn.size());
     assertEquals(2, nn.topNode());
 
     // add does extend the queue beyond maxSize
-    nn.add(4, 1);
+    nn.add(4, 1, HnswGraphSearcher.Multivalued.NONE);
     assertEquals(3, nn.size());
   }
 

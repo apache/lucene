@@ -220,7 +220,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -240,7 +240,8 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+            visitedLimit,
+            strategy);
 
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];

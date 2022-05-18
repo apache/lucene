@@ -29,6 +29,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.hnsw.BoundsChecker;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -72,15 +73,16 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
    * @return a priority queue holding the closest neighbors found
    */
   public static NeighborQueue search(
-      float[] query,
-      int topK,
-      int numSeed,
-      RandomAccessVectorValues vectors,
-      VectorSimilarityFunction similarityFunction,
-      HnswGraph graphValues,
-      Bits acceptOrds,
-      int visitedLimit,
-      SplittableRandom random)
+          float[] query,
+          int topK,
+          int numSeed,
+          RandomAccessVectorValues vectors,
+          VectorSimilarityFunction similarityFunction,
+          HnswGraph graphValues,
+          Bits acceptOrds,
+          int visitedLimit,
+          SplittableRandom random,
+          HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     int size = graphValues.size();
 
@@ -103,9 +105,9 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
         }
         // explore the topK starting points of some random numSeed probes
         float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
-        candidates.add(entryPoint, score);
+        candidates.add(entryPoint, score, strategy);
         if (acceptOrds == null || acceptOrds.get(entryPoint)) {
-          results.add(entryPoint, score);
+          results.add(entryPoint, score, strategy);
         }
         numVisited++;
       }
@@ -140,9 +142,9 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
 
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         if (results.size() < numSeed || bound.check(score) == false) {
-          candidates.add(friendOrd, score);
+          candidates.add(friendOrd, score, strategy);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            results.insertWithOverflow(friendOrd, score);
+            results.insertWithOverflow(friendOrd, score, strategy);
             bound.set(results.topScore());
           }
         }

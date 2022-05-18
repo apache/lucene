@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * Wraps arbitrary readers for merging. Note that this can cause slow and memory-intensive merges.
@@ -167,9 +168,9 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+      public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
           throws IOException {
-        return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+        return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit, strategy);
       }
 
       @Override

@@ -30,6 +30,7 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /** Wraps the default KnnVectorsFormat and provides additional assertions. */
 public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
@@ -114,11 +115,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+    public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
         throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null && fi.getVectorDimension() > 0;
-      TopDocs hits = delegate.search(field, target, k, acceptDocs, visitedLimit);
+      TopDocs hits = delegate.search(field, target, k, acceptDocs, visitedLimit, strategy);
       assert hits != null;
       assert hits.scoreDocs.length <= k;
       return hits;

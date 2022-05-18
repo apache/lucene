@@ -33,6 +33,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -54,6 +55,7 @@ public class KnnVectorQuery extends Query {
   private final float[] target;
   private final int k;
   private final Query filter;
+  private final HnswGraphSearcher.Multivalued strategy;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -65,7 +67,7 @@ public class KnnVectorQuery extends Query {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnVectorQuery(String field, float[] target, int k) {
-    this(field, target, k, null);
+    this(field, target, k, null, HnswGraphSearcher.Multivalued.NONE);
   }
 
   /**
@@ -79,6 +81,20 @@ public class KnnVectorQuery extends Query {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnVectorQuery(String field, float[] target, int k, Query filter) {
+    this(field, target, k, filter, HnswGraphSearcher.Multivalued.NONE);
+  }
+
+  /**
+   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
+   * given field. <code>target</code> vector.
+   *
+   * @param field a field that has been indexed as a {@link KnnVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find
+   * @param filter a filter applied before the vector search
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   */
+  public KnnVectorQuery(String field, float[] target, int k, Query filter, HnswGraphSearcher.Multivalued strategy) {
     this.field = field;
     this.target = target;
     this.k = k;
@@ -86,6 +102,8 @@ public class KnnVectorQuery extends Query {
       throw new IllegalArgumentException("k must be at least 1, got: " + k);
     }
     this.filter = filter;
+    this.strategy = strategy;
+    
   }
 
   @Override
@@ -126,7 +144,7 @@ public class KnnVectorQuery extends Query {
 
     if (filterCollector == null) {
       Bits acceptDocs = ctx.reader().getLiveDocs();
-      return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE);
+      return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE, strategy);
     } else {
       BitSetIterator filterIterator = filterCollector.getIterator(ctx.ord);
       if (filterIterator == null || filterIterator.cost() == 0) {
@@ -143,7 +161,7 @@ public class KnnVectorQuery extends Query {
       Bits acceptDocs =
           filterIterator.getBitSet(); // The filter iterator already incorporates live docs
       int visitedLimit = (int) filterIterator.cost();
-      TopDocs results = approximateSearch(ctx, acceptDocs, visitedLimit);
+      TopDocs results = approximateSearch(ctx, acceptDocs, visitedLimit, strategy);
       if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
         return results;
       } else {
@@ -153,10 +171,10 @@ public class KnnVectorQuery extends Query {
     }
   }
 
-  private TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  private TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     TopDocs results =
-        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit, strategy);
     return results != null ? results : NO_RESULTS;
   }
 

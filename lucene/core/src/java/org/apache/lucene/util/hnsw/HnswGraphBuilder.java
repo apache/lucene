@@ -153,12 +153,12 @@ public final class HnswGraphBuilder {
 
     // for levels > nodeLevel search with topk = 1
     for (int level = curMaxLevel; level > nodeLevel; level--) {
-      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectorValues, hnsw);
+      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectorValues, hnsw, HnswGraphSearcher.Multivalued.NONE);
       eps = new int[] {candidates.pop()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
-      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectorValues, hnsw);
+      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectorValues, hnsw, HnswGraphSearcher.Multivalued.NONE);
       eps = candidates.nodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);

@@ -31,6 +31,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * Buffers up pending vector value(s) per doc, then flushes when segment flushes.
@@ -136,7 +137,7 @@ class VectorValuesWriter {
 
           @Override
           public TopDocs search(
-              String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+                  String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
               throws IOException {
             throw new UnsupportedOperationException();
           }

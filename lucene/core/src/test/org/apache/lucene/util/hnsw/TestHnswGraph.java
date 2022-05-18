@@ -168,7 +168,7 @@ public class TestHnswGraph extends LuceneTestCase {
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             null,
-            Integer.MAX_VALUE);
+            Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
 
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
@@ -207,7 +207,7 @@ public class TestHnswGraph extends LuceneTestCase {
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             acceptOrds,
-            Integer.MAX_VALUE);
+            Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
@@ -243,7 +243,7 @@ public class TestHnswGraph extends LuceneTestCase {
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             acceptOrds,
-            Integer.MAX_VALUE);
+            Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
     int[] nodes = nn.nodes();
     assertEquals(numAccepted, nodes.length);
     for (int node : nodes) {
@@ -272,7 +272,7 @@ public class TestHnswGraph extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN,
             hnsw,
             acceptOrds,
-            Integer.MAX_VALUE);
+            Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
@@ -303,7 +303,7 @@ public class TestHnswGraph extends LuceneTestCase {
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
             createRandomAcceptOrds(0, vectors.size),
-            visitedLimit);
+            visitedLimit, HnswGraphSearcher.Multivalued.NONE);
     assertTrue(nn.incomplete());
     // The visited count shouldn't exceed the limit
     assertTrue(nn.visitedCount() <= visitedLimit);
@@ -437,14 +437,14 @@ public class TestHnswGraph extends LuceneTestCase {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
           HnswGraphSearcher.search(
-              query, 100, vectors, similarityFunction, hnsw, acceptOrds, Integer.MAX_VALUE);
+              query, 100, vectors, similarityFunction, hnsw, acceptOrds, Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
       while (actual.size() > topK) {
         actual.pop();
       }
       NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
-          expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)));
+          expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)), HnswGraphSearcher.Multivalued.NONE);
           if (expected.size() > topK) {
             expected.pop();
           }

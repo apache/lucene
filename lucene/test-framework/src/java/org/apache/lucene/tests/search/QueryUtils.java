@@ -54,6 +54,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.junit.Assert;
 
 /** Utility class for sanity-checking queries. */
@@ -229,7 +230,7 @@ public class QueryUtils {
 
       @Override
       public TopDocs searchNearestVectors(
-          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+              String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
         return null;
       }
 

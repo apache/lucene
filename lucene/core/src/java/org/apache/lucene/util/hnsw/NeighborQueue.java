@@ -20,6 +20,8 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.util.LongHeap;
 import org.apache.lucene.util.NumericUtils;
 
+import java.util.HashMap;
+
 /**
  * NeighborQueue uses a {@link LongHeap} to store lists of arcs in an HNSW graph, represented as a
  * neighbor node id with an associated score packed together as a sortable long, which is sorted
@@ -49,6 +51,7 @@ public class NeighborQueue {
   }
 
   private final LongHeap heap;
+  private final HashMap<Integer,Integer> nodeIdToHeapIndex;
   private final Order order;
 
   // Used to track the number of neighbors visited during a single graph traversal
@@ -59,6 +62,7 @@ public class NeighborQueue {
   public NeighborQueue(int initialSize, boolean reversed) {
     this.heap = new LongHeap(initialSize);
     this.order = reversed ? Order.REVERSED : Order.NATURAL;
+    this.nodeIdToHeapIndex = new HashMap<>(initialSize);
   }
 
   /** @return the number of elements in the heap */
@@ -69,11 +73,34 @@ public class NeighborQueue {
   /**
    * Adds a new graph arc, extending the storage as needed.
    *
-   * @param newNode the neighbor node id
-   * @param newScore the score of the neighbor, relative to some other node
+   * @param nodeId the neighbor node id
+   * @param nodeScore the score of the neighbor, relative to some other node
    */
-  public void add(int newNode, float newScore) {
-    heap.push(encode(newNode, newScore));
+  public void add(int nodeId, float nodeScore) {
+    heap.push(encode(nodeId, nodeScore));
+  }
+  
+  /**
+   * Adds a new graph arc, extending the storage as needed.
+   * This variant is more expensive but it is compatible with a multi-valued scenario.
+   *
+   * @param nodeId the neighbor node id
+   * @param nodeScore the score of the neighbor, relative to some other node
+   */
+  public void add(int nodeId, float nodeScore, HnswGraphSearcher.Multivalued strategy) {
+    if(strategy.equals(HnswGraphSearcher.Multivalued.NONE)){
+      this.add(nodeId,nodeScore);
+    } else {
+      Integer heapIndex = nodeIdToHeapIndex.get(nodeId);
+      if (heapIndex == null) {
+        heapIndex = heap.push(encode(nodeId, nodeScore));
+      } else {
+        float originalScore = decodeScore(heap.get(heapIndex));
+        float updatedScore = strategy.updateScore(originalScore, nodeScore);
+        heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
+      }
+      nodeIdToHeapIndex.put(nodeId, heapIndex);
+    }
   }
 
   /**
@@ -82,20 +109,61 @@ public class NeighborQueue {
    * score, and replaces the top element if newScore is better than (greater than unless the heap is
    * reversed), the current top score.
    *
-   * @param newNode the neighbor node id
-   * @param newScore the score of the neighbor, relative to some other node
+   * @param nodeId the neighbor node id
+   * @param nodeScore the score of the neighbor, relative to some other node
    */
-  public boolean insertWithOverflow(int newNode, float newScore) {
-    return heap.insertWithOverflow(encode(newNode, newScore));
+  public boolean insertWithOverflow(int nodeId, float nodeScore) {
+    return (heap.insertWithOverflow(encode(nodeId, nodeScore)) != -1);
+  }
+  
+  /**
+   * If the heap is not full (size is less than the initialSize provided to the constructor), adds a
+   * new node-and-score element. If the heap is full, compares the score against the current top
+   * score, and replaces the top element if newScore is better than (greater than unless the heap is
+   * reversed), the current top score.
+   *
+   * @param nodeId the neighbor node id
+   * @param nodeScore the score of the neighbor, relative to some other node
+   */
+  public boolean insertWithOverflow(int nodeId, float nodeScore, HnswGraphSearcher.Multivalued strategy) {
+    if (strategy.equals(HnswGraphSearcher.Multivalued.NONE)) {
+      return insertWithOverflow(nodeId, nodeScore);
+    } else {
+      boolean nodeAdded = false;
+      Integer heapIndex = nodeIdToHeapIndex.get(nodeId);
+      if (heapIndex == null) {
+        int minNodeId = this.topNode();
+        heapIndex = heap.insertWithOverflow(encode(nodeId, nodeScore));
+        if (heapIndex != -1) {
+          this.nodeIdToHeapIndex.remove(minNodeId);
+          nodeAdded = true;
+        }
+      } else {
+        float originalScore = decodeScore(heap.get(heapIndex));
+        float updatedScore = strategy.updateScore(originalScore, nodeScore);
+        heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
+      }
+      nodeIdToHeapIndex.put(nodeId, heapIndex);
+
+      return nodeAdded;
+    }
   }
 
-  private long encode(int node, float score) {
-    return order.apply((((long) NumericUtils.floatToSortableInt(score)) << 32) | node);
+  private long encode(int nodeId, float score) {
+    return order.apply((((long) NumericUtils.floatToSortableInt(score)) << 32) | nodeId);
+  }
+
+  private float decodeScore(long heapValue) {
+    return NumericUtils.sortableIntToFloat((int) (order.apply(heapValue) >> 32));
+  }
+
+  private int decodeNodeId(long heapValue) {
+    return (int) order.apply(heapValue);
   }
 
   /** Removes the top element and returns its node id. */
   public int pop() {
-    return (int) order.apply(heap.pop());
+    return decodeNodeId(heap.pop());
   }
 
   public int[] nodes() {
@@ -109,12 +177,12 @@ public class NeighborQueue {
 
   /** Returns the top element's node id. */
   public int topNode() {
-    return (int) order.apply(heap.top());
+    return decodeNodeId(heap.top());
   }
 
   /** Returns the top element's node score. */
   public float topScore() {
-    return NumericUtils.sortableIntToFloat((int) (order.apply(heap.top()) >> 32));
+    return decodeScore(heap.top());
   }
 
   public void clear() {

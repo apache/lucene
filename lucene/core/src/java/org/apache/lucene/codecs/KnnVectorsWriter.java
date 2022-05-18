@@ -28,6 +28,7 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Closeable {
@@ -87,7 +88,7 @@ public abstract class KnnVectorsWriter implements Closeable {
 
               @Override
               public TopDocs search(
-                  String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+                      String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
                 throw new UnsupportedOperationException();
               }
             });

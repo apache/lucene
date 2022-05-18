@@ -37,6 +37,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -385,7 +386,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
       @Override
       public TopDocs search(
-          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+              String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
         throw new UnsupportedOperationException();
       }
 

@@ -26,6 +26,7 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.BoundsChecker;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -152,7 +153,7 @@ public final class Lucene90HnswGraphBuilder {
             hnsw,
             null,
             Integer.MAX_VALUE,
-            random);
+            random, HnswGraphSearcher.Multivalued.NONE);
 
     int node = hnsw.addNode();
 

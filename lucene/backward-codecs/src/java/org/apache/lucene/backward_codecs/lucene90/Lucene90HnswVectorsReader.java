@@ -47,6 +47,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -237,7 +238,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -261,7 +262,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
             getGraphValues(fieldEntry),
             getAcceptOrds(acceptDocs, fieldEntry),
             visitedLimit,
-            random);
+            random, strategy);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {

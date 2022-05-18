@@ -26,6 +26,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable, Accountable {
@@ -78,7 +79,7 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
    */
   public abstract TopDocs search(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

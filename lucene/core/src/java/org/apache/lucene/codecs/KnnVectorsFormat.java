@@ -25,6 +25,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * Encodes/decodes per-document vector and any associated indexing structures required to support
@@ -101,7 +102,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
             @Override
             public TopDocs search(
-                String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+                    String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
               return TopDocsCollector.EMPTY_TOPDOCS;
             }
 

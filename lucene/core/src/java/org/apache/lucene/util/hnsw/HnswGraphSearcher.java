@@ -32,6 +32,33 @@ import org.apache.lucene.util.SparseFixedBitSet;
  */
 public final class HnswGraphSearcher {
   private final VectorSimilarityFunction similarityFunction;
+
+  /**
+   * multi valued approach
+   */
+  public enum Multivalued {
+    NONE {
+      @Override
+      float updateScore(float originalScore, float newScore) {
+        return 0;
+      }
+    },
+    MAX {
+      @Override
+      float updateScore(float originalScore, float newScore) {
+        return Math.max(originalScore,newScore);
+      }
+    },
+    SUM {
+      @Override
+      float updateScore(float originalScore, float newScore) {
+        return originalScore + newScore;
+      }
+    };
+
+    abstract float updateScore(float originalScore, float newScore);
+  }
+  
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
@@ -69,13 +96,14 @@ public final class HnswGraphSearcher {
    * @return a priority queue holding the closest neighbors found
    */
   public static NeighborQueue search(
-      float[] query,
-      int topK,
-      RandomAccessVectorValues vectors,
-      VectorSimilarityFunction similarityFunction,
-      HnswGraph graph,
-      Bits acceptOrds,
-      int visitedLimit)
+          float[] query,
+          int topK,
+          RandomAccessVectorValues vectors,
+          VectorSimilarityFunction similarityFunction,
+          HnswGraph graph,
+          Bits acceptOrds,
+          int visitedLimit,
+          Multivalued strategy)
       throws IOException {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
@@ -86,14 +114,14 @@ public final class HnswGraphSearcher {
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, strategy);
       eps[0] = results.pop();
 
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
     }
     results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
+        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, strategy);
     results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }
@@ -113,14 +141,14 @@ public final class HnswGraphSearcher {
    * @return a priority queue holding the closest neighbors found
    */
   public NeighborQueue searchLevel(
-      float[] query,
-      int topK,
-      int level,
-      final int[] eps,
-      RandomAccessVectorValues vectors,
-      HnswGraph graph)
+          float[] query,
+          int topK,
+          int level,
+          final int[] eps,
+          RandomAccessVectorValues vectors,
+          HnswGraph graph, Multivalued strategy)
       throws IOException {
-    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE);
+    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE, strategy);
   }
 
   private NeighborQueue searchLevel(
@@ -131,7 +159,7 @@ public final class HnswGraphSearcher {
       RandomAccessVectorValues vectors,
       HnswGraph graph,
       Bits acceptOrds,
-      int visitedLimit)
+      int visitedLimit, Multivalued strategy)
       throws IOException {
     int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
@@ -146,9 +174,9 @@ public final class HnswGraphSearcher {
         }
         float score = similarityFunction.compare(query, vectors.vectorValue(ep));
         numVisited++;
-        candidates.add(ep, score);
+        candidates.add(ep, score, strategy);
         if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.add(ep, score);
+          results.add(ep, score, strategy);
         }
       }
     }
@@ -182,9 +210,9 @@ public final class HnswGraphSearcher {
         float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         numVisited++;
         if (bound.check(score) == false) {
-          candidates.add(friendOrd, score);
+          candidates.add(friendOrd, score, strategy);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
+            if (results.insertWithOverflow(friendOrd, score, strategy) && results.size() >= topK) {
               bound.set(results.topScore());
             }
           }

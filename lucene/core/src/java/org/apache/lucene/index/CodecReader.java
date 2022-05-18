@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /** LeafReader implemented by codec APIs. */
 public abstract class CodecReader extends LeafReader {
@@ -224,7 +225,7 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final TopDocs searchNearestVectors(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+          String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
@@ -232,7 +233,7 @@ public abstract class CodecReader extends LeafReader {
       return null;
     }
 
-    return getVectorReader().search(field, target, k, acceptDocs, visitedLimit);
+    return getVectorReader().search(field, target, k, acceptDocs, visitedLimit, strategy);
   }
 
   @Override

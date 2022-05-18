@@ -48,6 +48,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * Reads vector values from a simple text format. All vectors are read up front and cached in RAM in
@@ -144,7 +145,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     VectorValues values = getVectorValues(field);
     if (target.length != values.dimension()) {
