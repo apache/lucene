@@ -24,10 +24,10 @@ public class DoubleHyperRectangle extends HyperRectangle {
 
   /** Creates DoubleHyperRectangle */
   public DoubleHyperRectangle(String label, DoubleRangePair... pairs) {
-    super(label, convertToLongRangePairArray(pairs));
+    super(label, convertToLongRangePairs(pairs));
   }
 
-  private static LongRangePair[] convertToLongRangePairArray(DoubleRangePair... pairs) {
+  private static LongRangePair[] convertToLongRangePairs(DoubleRangePair... pairs) {
     if (pairs == null || pairs.length == 0) {
       throw new IllegalArgumentException("Pairs cannot be null or empty");
     }
@@ -62,12 +62,12 @@ public class DoubleHyperRectangle extends HyperRectangle {
       }
 
       if (!maxInclusive) {
-        // Why no Math.nextDown?
-        maxIn = Math.nextAfter(maxIn, Double.NEGATIVE_INFINITY);
+        maxIn = Math.nextDown(maxIn);
       }
 
       if (minIn > maxIn) {
-        throw new IllegalArgumentException("Minimum cannot be greater than maximum");
+        throw new IllegalArgumentException(
+            "Minimum cannot be greater than maximum, max=" + maxIn + ", min=" + minIn);
       }
 
       this.min = minIn;

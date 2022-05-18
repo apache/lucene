@@ -85,7 +85,8 @@ public abstract class HyperRectangle {
       }
 
       if (minIn > maxIn) {
-        throw new IllegalArgumentException("Minimum cannot be greater than maximum");
+        throw new IllegalArgumentException(
+            "Minimum cannot be greater than maximum, max=" + maxIn + ", min=" + minIn);
       }
 
       this.min = minIn;

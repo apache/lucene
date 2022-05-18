@@ -47,38 +47,17 @@ public class HyperRectangleFacetCounts extends Facets {
   protected int totCount;
 
   /**
-   * Create HyperRectangleFacetCounts using
+   * Create HyperRectangleFacetCounts using this
    *
    * @param field Field name
    * @param hits Hits to facet on
-   * @param hyperRectangles List of long hyper rectangle facets
+   * @param hyperRectangles List of hyper rectangle facets
    * @throws IOException If there is a problem reading the field
    */
   public HyperRectangleFacetCounts(
-      String field, FacetsCollector hits, LongHyperRectangle... hyperRectangles)
-      throws IOException {
-    this(true, field, hits, hyperRectangles);
-  }
-
-  /**
-   * Create HyperRectangleFacetCounts using
-   *
-   * @param field Field name
-   * @param hits Hits to facet on
-   * @param hyperRectangles List of double hyper rectangle facets
-   * @throws IOException If there is a problem reading the field
-   */
-  public HyperRectangleFacetCounts(
-      String field, FacetsCollector hits, DoubleHyperRectangle... hyperRectangles)
-      throws IOException {
-    this(true, field, hits, hyperRectangles);
-  }
-
-  private HyperRectangleFacetCounts(
-      boolean discarded, String field, FacetsCollector hits, HyperRectangle... hyperRectangles)
-      throws IOException {
+      String field, FacetsCollector hits, HyperRectangle... hyperRectangles) throws IOException {
     assert hyperRectangles.length > 0 : "Hyper rectangle ranges cannot be empty";
-    assert isHyperRectangleDimsConsistent(hyperRectangles)
+    assert areHyperRectangleDimsConsistent(hyperRectangles)
         : "All hyper rectangles must be the same dimensionality";
     this.field = field;
     this.hyperRectangles = hyperRectangles;
@@ -87,7 +66,7 @@ public class HyperRectangleFacetCounts extends Facets {
     count(field, hits.getMatchingDocs());
   }
 
-  private boolean isHyperRectangleDimsConsistent(HyperRectangle[] hyperRectangles) {
+  private boolean areHyperRectangleDimsConsistent(HyperRectangle[] hyperRectangles) {
     int dims = hyperRectangles[0].dims;
     return Arrays.stream(hyperRectangles).allMatch(hyperRectangle -> hyperRectangle.dims == dims);
   }
@@ -107,7 +86,7 @@ public class HyperRectangleFacetCounts extends Facets {
         continue;
       }
 
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         if (binaryDocValues.advanceExact(doc)) {
           long[] point = LongPoint.unpack(binaryDocValues.binaryValue());
           assert point.length == dims
@@ -136,7 +115,6 @@ public class HyperRectangleFacetCounts extends Facets {
             totCount++;
           }
         }
-        doc = it.nextDoc();
       }
     }
   }
@@ -148,7 +126,7 @@ public class HyperRectangleFacetCounts extends Facets {
       throw new IllegalArgumentException(
           "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
     }
-    if (path.length != 0) {
+    if (path != null && path.length != 0) {
       throw new IllegalArgumentException("path.length should be 0");
     }
     LabelAndValue[] labelValues = new LabelAndValue[counts.length];
