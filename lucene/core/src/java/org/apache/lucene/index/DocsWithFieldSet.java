@@ -44,10 +44,6 @@ public final class DocsWithFieldSet extends DocIdSet {
    * @param docID – document ID to be added
    */
   public void add(int docID) {
-    if (docID <= lastDocId) {
-      throw new IllegalArgumentException(
-          "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
-    }
     if (set != null) {
       set = FixedBitSet.ensureCapacity(set, docID);
       set.set(docID);

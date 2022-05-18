@@ -47,6 +47,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /** TestKnnVectorQuery tests KnnVectorQuery. */
 public class TestKnnVectorQuery extends LuceneTestCase {
@@ -95,6 +96,23 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /**
+   * Tests that a KnnVectorQuery whose topK &gt;= numDocs returns all the documents in score order
+   */
+  public void testMultiVale() throws IOException {
+    try (Directory indexStore =
+                 getMultiValuedIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+         IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, null, HnswGraphSearcher.Multivalued.SUM);
+      assertMatches(searcher, kvq, 3);
+      ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
+      assertIdMatches(reader, "id2", scoreDocs[0]);
+      assertIdMatches(reader, "id0", scoreDocs[1]);
+      assertIdMatches(reader, "id1", scoreDocs[2]);
+    }
+  }
+  
   /**
    * Tests that a KnnVectorQuery whose topK &gt;= numDocs returns all the documents in score order
    */
@@ -688,6 +706,29 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     return indexStore;
   }
 
+  /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
+  private Directory getMultiValuedIndexStore(String field, float[]... contents) throws IOException {
+    Directory indexStore = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
+    for (int i = 0; i < contents.length; ++i) {
+      Document doc = new Document();
+      for (int j = 0; j < contents.length; ++j) {
+      doc.add(new KnnVectorField(field, contents[j]));
+      }
+      doc.add(new StringField("id", "id" + i, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+    // Add some documents without a vector
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("other", "value", Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
+    writer.close();
+    return indexStore;
+  }
+  
   private void assertMatches(IndexSearcher searcher, Query q, int expectedMatches)
       throws IOException {
     ScoreDoc[] result = searcher.search(q, 1000).scoreDocs;

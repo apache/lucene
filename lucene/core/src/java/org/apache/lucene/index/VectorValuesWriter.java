@@ -67,12 +67,6 @@ class VectorValuesWriter {
    * @throws IllegalArgumentException if a value has already been added to the given document
    */
   public void addValue(int docID, float[] vectorValue) {
-    if (docID == lastDocID) {
-      throw new IllegalArgumentException(
-          "VectorValuesField \""
-              + fieldInfo.name
-              + "\" appears more than once in this document (only one value is allowed per field)");
-    }
     if (vectorValue.length != fieldInfo.getVectorDimension()) {
       throw new IllegalArgumentException(
           "Attempt to index a vector of dimension "
@@ -82,7 +76,6 @@ class VectorValuesWriter {
               + "\" has dimension "
               + fieldInfo.getVectorDimension());
     }
-    assert docID > lastDocID;
     docsWithField.add(docID);
     vectors.add(ArrayUtil.copyOfSubArray(vectorValue, 0, vectorValue.length));
     updateBytesUsed();
