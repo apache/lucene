@@ -148,6 +148,18 @@ public class LatLonShape {
     return new LatLonShapeBoundingBoxQuery(field, queryRelation, rectangle);
   }
 
+  /** create a docvalue query to find all geo shapes that intersect a defined bounding box * */
+  public static Query newDocValuesBoxQuery(
+      String field,
+      QueryRelation queryRelation,
+      double minLatitude,
+      double maxLatitude,
+      double minLongitude,
+      double maxLongitude) {
+    return new LatLonShapeDocValuesBoundingBoxQuery(
+        field, queryRelation, minLatitude, maxLatitude, minLongitude, maxLongitude);
+  }
+
   /**
    * create a query to find all indexed geo shapes that intersect a provided linestring (or array of
    * linestrings) note: does not support dateline crossing

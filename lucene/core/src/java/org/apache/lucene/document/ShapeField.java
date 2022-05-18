@@ -371,7 +371,7 @@ public final class ShapeField {
     resolveTriangleType(triangle);
   }
 
-  private static void resolveTriangleType(DecodedTriangle triangle) {
+  static void resolveTriangleType(DecodedTriangle triangle) {
     if (triangle.aX == triangle.bX && triangle.aY == triangle.bY) {
       if (triangle.aX == triangle.cX && triangle.aY == triangle.cY) {
         triangle.type = DecodedTriangle.TYPE.POINT;

@@ -121,6 +121,12 @@ public class XYShape {
     return newGeometryQuery(field, queryRelation, rectangle);
   }
 
+  /** create a docvalu query to find all cartesian shapes that intersect a defined bounding box * */
+  public static Query newDocValuesBoxQuery(
+      String field, QueryRelation queryRelation, float minX, float maxX, float minY, float maxY) {
+    return new XYShapeDocValuesBoundingBoxQuery(field, queryRelation, minX, maxX, minY, maxY);
+  }
+
   /**
    * create a query to find all cartesian shapes that intersect a provided linestring (or array of
    * linestrings) *
