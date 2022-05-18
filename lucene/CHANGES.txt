@@ -83,7 +83,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10574: Prevent pathological O(N^2) merging. (Adrien Grand)
 
 Other
 ---------------------
