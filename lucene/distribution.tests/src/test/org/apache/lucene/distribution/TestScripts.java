@@ -38,6 +38,7 @@ import org.junit.Test;
 /** Verify that scripts included in the distribution work. */
 public class TestScripts extends AbstractLuceneDistributionTest {
   @Test
+  @RequiresGUI
   public void testLukeCanBeLaunched() throws Exception {
     Path distributionPath;
     if (randomBoolean()) {
@@ -69,7 +70,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
     execute(
         launcher,
         0,
-        60,
+        120,
         (outputBytes) -> {
           // We know it's UTF-8 because we set file.encoding explicitly.
           var output = Files.readString(outputBytes, StandardCharsets.UTF_8);
