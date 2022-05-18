@@ -10,7 +10,7 @@ on:
 
   push:
     branches:
-      - 'run-scripts-test-nightly'
+      - 'main'
 
 jobs:
   test:
