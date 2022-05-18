@@ -44,7 +44,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-
 (No changes)
 
 Other
@@ -63,6 +62,32 @@ Other
   (Tomoko Uchida)
 
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
+
+======================== Lucene 9.3.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
 
 ======================= Lucene 9.2.0 =======================
 
