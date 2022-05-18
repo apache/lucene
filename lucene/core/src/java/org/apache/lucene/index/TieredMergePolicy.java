@@ -532,13 +532,21 @@ public class TieredMergePolicy extends MergePolicy {
         // segments, and already pre-excluded the too-large segments:
         assert candidate.size() > 0;
 
+        SegmentSizeAndDocs maxSegmentSize = segInfosSizes.get(candidate.get(0));
+        if (hitTooLarge == false
+            && mergeType == MERGE_TYPE.NATURAL
+            && bytesThisMerge < maxSegmentSize.sizeInBytes * 1.5) {
+          // Ignore any merge where the resulting segment is not at least 50% larger than the
+          // biggest input segment.
+          // Otherwise we could run into pathological O(N^2) merging where merges keep rewriting
+          // again and again the biggest input segment into a segment that is barely bigger.
+          continue;
+        }
+
         // A singleton merge with no deletes makes no sense. We can get here when forceMerge is
         // looping around...
-        if (candidate.size() == 1) {
-          SegmentSizeAndDocs segSizeDocs = segInfosSizes.get(candidate.get(0));
-          if (segSizeDocs.delCount == 0) {
-            continue;
-          }
+        if (candidate.size() == 1 && maxSegmentSize.delCount == 0) {
+          continue;
         }
 
         // If we didn't find a too-large merge and have a list of candidates
