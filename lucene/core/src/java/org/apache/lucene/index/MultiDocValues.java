@@ -64,7 +64,7 @@ public class MultiDocValues {
         break;
       }
     }
-    if (!normFound) {
+    if (normFound == false) {
       return null;
     }
 
