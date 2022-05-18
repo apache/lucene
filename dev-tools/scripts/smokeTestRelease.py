@@ -1132,6 +1132,9 @@ def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys,
   # coverage.
   testArgs = '-Dtests.nightly=true %s' % testArgs
 
+  # We also enable GUI tests in smoke tests (LUCENE-10531)
+  testArgs = '-Dtests.gui=true %s' % testArgs
+
   if FORCE_CLEAN:
     if os.path.exists(tmpDir):
       raise RuntimeError('temp dir %s exists; please remove first' % tmpDir)
