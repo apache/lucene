@@ -594,7 +594,9 @@ public abstract class LogMergePolicy extends MergePolicy {
             // biggest input segment.
             // Otherwise we could run into pathological O(N^2) merging where merges keep rewriting
             // again and again the biggest input segment into a segment that is barely bigger.
-            if (spec == null) spec = new MergeSpecification();
+            if (spec == null) {
+              spec = new MergeSpecification();
+            }
             final List<SegmentCommitInfo> mergeInfos = new ArrayList<>(end - start);
             for (int i = start; i < end; i++) {
               mergeInfos.add(levels.get(i).info);
