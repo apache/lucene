@@ -92,15 +92,15 @@ public class NeighborQueue {
   }
 
   private long encode(int node, float score) {
-    long nodeReverse = reversed ? node : (-1 - node);
-    // make sure all high 32 bits were 0 by unsigned right shift
-    nodeReverse = nodeReverse << 32 >>> 32;
+    int nodeReverse = reversed ? node : Integer.MAX_VALUE - node;
     return order.apply((((long) NumericUtils.floatToSortableInt(score)) << 32) | nodeReverse);
   }
 
   /** Removes the top element and returns its node id. */
   public int pop() {
-    return reversed ? (int) order.apply(heap.pop()) : -1 - (int) order.apply(heap.pop());
+    return reversed
+        ? (int) order.apply(heap.pop())
+        : Integer.MAX_VALUE - (int) order.apply(heap.pop());
   }
 
   int[] nodes() {
@@ -108,14 +108,18 @@ public class NeighborQueue {
     int[] nodes = new int[size];
     for (int i = 0; i < size; i++) {
       nodes[i] =
-          reversed ? (int) order.apply(heap.get(i + 1)) : -1 - (int) order.apply(heap.get(i + 1));
+          reversed
+              ? (int) order.apply(heap.get(i + 1))
+              : Integer.MAX_VALUE - (int) order.apply(heap.get(i + 1));
     }
     return nodes;
   }
 
   /** Returns the top element's node id. */
   public int topNode() {
-    return reversed ? (int) (order.apply(heap.top())) : -1 - (int) (order.apply(heap.top()));
+    return reversed
+        ? (int) (order.apply(heap.top()))
+        : Integer.MAX_VALUE - (int) (order.apply(heap.top()));
   }
 
   /** Returns the top element's node score. */
