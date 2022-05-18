@@ -539,6 +539,8 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
     MockDirectoryWrapper dir = newMockDirectory();
     // IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new
     // MockAnalyzer(random)).setReaderPooling(true));
+    LogDocMergePolicy mp = new LogDocMergePolicy();
+    mp.setMergeFactor(2);
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -546,7 +548,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
                 .setMergeScheduler(new SerialMergeScheduler())
                 .setReaderPooling(true)
                 .setMergePolicy(
-                    new FilterMergePolicy(newLogMergePolicy(2)) {
+                    new FilterMergePolicy(mp) {
                       @Override
                       public boolean keepFullyDeletedSegment(
                           IOSupplier<CodecReader> readerIOSupplier) throws IOException {
