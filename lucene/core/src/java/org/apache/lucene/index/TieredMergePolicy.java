@@ -545,7 +545,7 @@ public class TieredMergePolicy extends MergePolicy {
           // again and again the biggest input segment into a segment that is barely bigger.
           // The only exception we make is when the merge would reclaim lots of deletes in the
           // biggest segment. This is important for cases when lots of documents get deleted at once
-          // without introducing new segments for instance.
+          // without introducing new segments of a similar size for instance.
           continue;
         }
 
