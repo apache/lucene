@@ -536,11 +536,16 @@ public class TieredMergePolicy extends MergePolicy {
         SegmentSizeAndDocs maxCandidateSegmentSize = segInfosSizes.get(candidate.get(0));
         if (hitTooLarge == false
             && mergeType == MERGE_TYPE.NATURAL
-            && bytesThisMerge < maxCandidateSegmentSize.sizeInBytes * 1.5) {
+            && bytesThisMerge < maxCandidateSegmentSize.sizeInBytes * 1.5
+            && maxCandidateSegmentSize.delCount
+                > maxCandidateSegmentSize.maxDoc * deletesPctAllowed) {
           // Ignore any merge where the resulting segment is not at least 50% larger than the
           // biggest input segment.
           // Otherwise we could run into pathological O(N^2) merging where merges keep rewriting
           // again and again the biggest input segment into a segment that is barely bigger.
+          // The only exception we make is when the merge would reclaim lots of deletes in the
+          // biggest segment. This is important for cases when lots of documents get deleted at once
+          // without introducing new segments for instance.
           continue;
         }
 
