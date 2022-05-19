@@ -32,7 +32,14 @@ public class TestPersianStemFilter extends BaseTokenStreamTestCase {
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    a = new PersianAnalyzer();
+    a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            final Tokenizer source = new MockTokenizer();
+            return new TokenStreamComponents(source, new PersianStemFilter(source));
+          }
+        };
   }
 
   @Override
