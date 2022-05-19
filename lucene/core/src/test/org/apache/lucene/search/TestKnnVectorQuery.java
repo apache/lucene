@@ -713,7 +713,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
       for (int j = 0; j < contents.length; ++j) {
-      doc.add(new KnnVectorField(field, contents[j]));
+      doc.add(new KnnVectorField(field, contents[j],VectorSimilarityFunction.EUCLIDEAN,true));
       }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);

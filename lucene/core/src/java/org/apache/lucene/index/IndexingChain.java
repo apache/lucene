@@ -682,6 +682,7 @@ final class IndexingChain implements Accountable {
                 s.pointIndexDimensionCount,
                 s.pointNumBytes,
                 s.vectorDimension,
+                s.vectorMultiValued,
                 s.vectorSimilarityFunction,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
     pf.setFieldInfo(fi);
@@ -825,7 +826,7 @@ final class IndexingChain implements Accountable {
           fieldType.pointNumBytes());
     }
     if (fieldType.vectorDimension() != 0) {
-      schema.setVectors(fieldType.vectorSimilarityFunction(), fieldType.vectorDimension());
+      schema.setVectors(fieldType.vectorSimilarityFunction(), fieldType.vectorDimension(),fieldType.vectorMultiValued());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1326,6 +1327,7 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
+    private boolean vectorMultiValued = false;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
     private static String errMsg =
@@ -1406,13 +1408,16 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setVectors(VectorSimilarityFunction similarityFunction, int dimension) {
+    void setVectors(VectorSimilarityFunction similarityFunction, int dimension, boolean multiValued) {
       if (vectorDimension == 0) {
         this.vectorDimension = dimension;
         this.vectorSimilarityFunction = similarityFunction;
+        this.vectorMultiValued = multiValued;
       } else {
         assertSame("vector similarity function", vectorSimilarityFunction, similarityFunction);
         assertSame("vector dimension", vectorDimension, dimension);
+        assertSame("vector multi valued", vectorMultiValued, multiValued);
+
       }
     }
 

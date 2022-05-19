@@ -196,7 +196,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            VectorSimilarityFunction.EUCLIDEAN,
+                false, VectorSimilarityFunction.EUCLIDEAN,
             true);
     List<Integer> docsDeleted = Arrays.asList(1, 3, 7, 8, DocIdSetIterator.NO_MORE_DOCS);
     List<DocValuesFieldUpdates> updates = Arrays.asList(singleUpdate(docsDeleted, 10, true));
@@ -233,7 +233,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            VectorSimilarityFunction.EUCLIDEAN,
+                false, VectorSimilarityFunction.EUCLIDEAN,
             true);
     for (DocValuesFieldUpdates update : updates) {
       deletes.onDocValuesUpdate(fieldInfo, update.iterator());
@@ -295,7 +295,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            VectorSimilarityFunction.EUCLIDEAN,
+                false, VectorSimilarityFunction.EUCLIDEAN,
             true);
     List<Integer> docsDeleted = Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS);
     List<DocValuesFieldUpdates> updates = Arrays.asList(singleUpdate(docsDeleted, 3, true));
@@ -362,7 +362,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            VectorSimilarityFunction.EUCLIDEAN,
+                false, VectorSimilarityFunction.EUCLIDEAN,
             true);
     List<DocValuesFieldUpdates> updates =
         Arrays.asList(singleUpdate(Arrays.asList(0, 1, DocIdSetIterator.NO_MORE_DOCS), 3, false));
@@ -398,7 +398,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            VectorSimilarityFunction.EUCLIDEAN,
+                false, VectorSimilarityFunction.EUCLIDEAN,
             true);
     updates = Arrays.asList(singleUpdate(Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS), 3, true));
     for (DocValuesFieldUpdates update : updates) {

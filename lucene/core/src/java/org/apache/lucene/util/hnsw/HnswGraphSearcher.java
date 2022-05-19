@@ -108,7 +108,7 @@ public final class HnswGraphSearcher {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            new NeighborQueue(topK, similarityFunction.reversed == false),
+            new NeighborQueue(topK, !similarityFunction.reversed),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
@@ -146,60 +146,61 @@ public final class HnswGraphSearcher {
           int level,
           final int[] eps,
           RandomAccessVectorValues vectors,
-          HnswGraph graph, Multivalued strategy)
+          HnswGraph graph)
       throws IOException {
-    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE, strategy);
+    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE, Multivalued.NONE);
   }
 
   private NeighborQueue searchLevel(
       float[] query,
       int topK,
       int level,
-      final int[] eps,
+      final int[] entryPoints,
       RandomAccessVectorValues vectors,
       HnswGraph graph,
       Bits acceptOrds,
-      int visitedLimit, Multivalued strategy)
+      int visitedLimit,
+      Multivalued strategy)
       throws IOException {
     int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
     clearScratchState();
 
     int numVisited = 0;
-    for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
+    for (int vectorId : entryPoints) {
+      if (visited.getAndSet(vectorId) == false) {
         if (numVisited >= visitedLimit) {
           results.markIncomplete();
           break;
         }
-        float score = similarityFunction.compare(query, vectors.vectorValue(ep));
+        float score = similarityFunction.compare(query, vectors.vectorValue(vectorId));
         numVisited++;
-        candidates.add(ep, score, strategy);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.add(ep, score, strategy);
+        candidates.add(vectorId, score);
+        if (acceptOrds == null || acceptOrds.get(vectorId)) {
+          results.add(vectors.ordToDoc(vectorId), score, strategy);
         }
       }
     }
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
+    BoundsChecker maxDistance = BoundsChecker.create(similarityFunction.reversed);
     if (results.size() >= topK) {
-      bound.set(results.topScore());
+      maxDistance.set(results.topScore());
     }
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateScore = candidates.topScore();
-      if (bound.check(topCandidateScore)) {
+      if (maxDistance.check(topCandidateScore)) {
         break;
       }
 
       int topCandidateNode = candidates.pop();
       graph.seek(level, topCandidateNode);
-      int friendOrd;
-      while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd)) {
+      int friendVectorId;
+      while ((friendVectorId = graph.nextNeighbor()) != NO_MORE_DOCS) {
+        assert friendVectorId < size : "friendOrd=" + friendVectorId + "; size=" + size;
+        if (visited.getAndSet(friendVectorId)) {
           continue;
         }
 
@@ -207,13 +208,13 @@ public final class HnswGraphSearcher {
           results.markIncomplete();
           break;
         }
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        float score = similarityFunction.compare(query, vectors.vectorValue(friendVectorId));
         numVisited++;
-        if (bound.check(score) == false) {
-          candidates.add(friendOrd, score, strategy);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.insertWithOverflow(friendOrd, score, strategy) && results.size() >= topK) {
-              bound.set(results.topScore());
+        if (maxDistance.check(score) == false) {
+          candidates.add(friendVectorId, score);
+          if (acceptOrds == null || acceptOrds.get(friendVectorId)) {
+            if (results.insertWithOverflow(vectors.ordToDoc(friendVectorId), score, strategy) && results.size() >= topK) {
+              maxDistance.set(results.topScore());
             }
           }
         }

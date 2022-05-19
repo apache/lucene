@@ -44,6 +44,7 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
+  private boolean vectorMultiValued;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private Map<String, String> attributes;
 
@@ -62,6 +63,7 @@ public class FieldType implements IndexableFieldType {
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
     this.vectorDimension = ref.vectorDimension();
+    this.vectorMultiValued = ref.vectorMultiValued();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
@@ -372,7 +374,7 @@ public class FieldType implements IndexableFieldType {
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
   public void setVectorDimensionsAndSimilarityFunction(
-      int numDimensions, VectorSimilarityFunction distFunc) {
+          int numDimensions, VectorSimilarityFunction distFunc, boolean multiValued) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
@@ -386,11 +388,17 @@ public class FieldType implements IndexableFieldType {
     }
     this.vectorDimension = numDimensions;
     this.vectorSimilarityFunction = Objects.requireNonNull(distFunc);
+    this.vectorMultiValued =multiValued;
   }
 
   @Override
   public int vectorDimension() {
     return vectorDimension;
+  }
+
+  @Override
+  public boolean vectorMultiValued() {
+    return vectorMultiValued;
   }
 
   @Override

@@ -57,6 +57,7 @@ public final class FieldInfo {
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
   private final VectorSimilarityFunction vectorSimilarityFunction;
+  private final boolean vectorMultiValued;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -67,21 +68,22 @@ public final class FieldInfo {
    * @lucene.experimental
    */
   public FieldInfo(
-      String name,
-      int number,
-      boolean storeTermVector,
-      boolean omitNorms,
-      boolean storePayloads,
-      IndexOptions indexOptions,
-      DocValuesType docValues,
-      long dvGen,
-      Map<String, String> attributes,
-      int pointDimensionCount,
-      int pointIndexDimensionCount,
-      int pointNumBytes,
-      int vectorDimension,
-      VectorSimilarityFunction vectorSimilarityFunction,
-      boolean softDeletesField) {
+          String name,
+          int number,
+          boolean storeTermVector,
+          boolean omitNorms,
+          boolean storePayloads,
+          IndexOptions indexOptions,
+          DocValuesType docValues,
+          long dvGen,
+          Map<String, String> attributes,
+          int pointDimensionCount,
+          int pointIndexDimensionCount,
+          int pointNumBytes,
+          int vectorDimension,
+          boolean multiValuedVectors,
+          VectorSimilarityFunction vectorSimilarityFunction,
+          boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
     this.docValuesType =
@@ -105,6 +107,7 @@ public final class FieldInfo {
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
+    this.vectorMultiValued = multiValuedVectors;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.checkConsistency();
@@ -468,6 +471,11 @@ public final class FieldInfo {
   /** Returns the number of dimensions of the vector value */
   public int getVectorDimension() {
     return vectorDimension;
+  }
+
+  /** Returns true if the vector field can have multiple values */
+  public boolean isVectorMultiValued() {
+    return vectorMultiValued;
   }
 
   /** Returns {@link VectorSimilarityFunction} for the field */

@@ -159,7 +159,7 @@ abstract class OffHeapVectorValues extends VectorValues
     }
   }
 
-  private static class SparseOffHeapVectorValues extends OffHeapVectorValues {
+  static class SparseOffHeapVectorValues extends OffHeapVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()

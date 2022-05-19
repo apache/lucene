@@ -246,6 +246,11 @@ class VectorValuesWriter {
         public BytesRef binaryValue(int targetOrd) {
           throw new UnsupportedOperationException();
         }
+
+        @Override
+        public int ordToDoc(int ord) {
+          return 0;
+        }
       };
     }
   }
@@ -303,6 +308,11 @@ class VectorValuesWriter {
     public BytesRef binaryValue(int targetOrd) {
       raBuffer.asFloatBuffer().put(vectors.get(targetOrd));
       return raBinaryValue;
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return 0;
     }
 
     @Override

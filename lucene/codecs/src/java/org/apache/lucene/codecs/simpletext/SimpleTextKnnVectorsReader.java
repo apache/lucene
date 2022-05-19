@@ -363,6 +363,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     public BytesRef binaryValue(int targetOrd) throws IOException {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ord;
+    }
   }
 
   private int readInt(IndexInput in, BytesRef field) throws IOException {

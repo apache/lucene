@@ -151,6 +151,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
           boolean omitNorms = (bits & OMIT_NORMS) != 0;
           boolean storePayloads = (bits & STORE_PAYLOADS) != 0;
           boolean isSoftDeletesField = (bits & SOFT_DELETES_FIELD) != 0;
+          boolean isVectorMultiValued = (bits & VECTOR_MULTI_VALUED) != 0;
 
           final IndexOptions indexOptions = getIndexOptions(input, input.readByte());
 
@@ -191,6 +192,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     pointIndexDimensionCount,
                     pointNumBytes,
                     vectorDimension,
+                        isVectorMultiValued,
                     vectorDistFunc,
                     isSoftDeletesField);
             infos[i].checkConsistency();
@@ -333,6 +335,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         if (fi.omitsNorms()) bits |= OMIT_NORMS;
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;
+        if (fi.isVectorMultiValued()) bits |= VECTOR_MULTI_VALUED;
         output.writeByte(bits);
 
         output.writeByte(indexOptionsByte(fi.getIndexOptions()));
@@ -366,4 +369,5 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
   static final byte OMIT_NORMS = 0x2;
   static final byte STORE_PAYLOADS = 0x4;
   static final byte SOFT_DELETES_FIELD = 0x8;
+  static final byte VECTOR_MULTI_VALUED = 0x16;
 }

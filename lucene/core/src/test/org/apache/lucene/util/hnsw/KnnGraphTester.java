@@ -696,6 +696,11 @@ public class KnnGraphTester {
       public BytesRef binaryValue(int targetOrd) {
         throw new UnsupportedOperationException();
       }
+
+      @Override
+      public int ordToDoc(int ord) {
+        return ord;
+      }
     }
   }
 

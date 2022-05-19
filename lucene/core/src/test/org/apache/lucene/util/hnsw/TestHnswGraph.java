@@ -547,6 +547,11 @@ public class TestHnswGraph extends LuceneTestCase {
     public BytesRef binaryValue(int ord) {
       return null;
     }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ord;
+    }
   }
 
   private static float[] unitVector2d(double piRadians) {

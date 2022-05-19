@@ -114,6 +114,11 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
+          public boolean vectorMultiValued() {
+            return false;
+          }
+
+          @Override
           public VectorSimilarityFunction vectorSimilarityFunction() {
             return VectorSimilarityFunction.EUCLIDEAN;
           }

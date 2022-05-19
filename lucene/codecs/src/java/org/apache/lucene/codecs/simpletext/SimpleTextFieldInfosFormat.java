@@ -68,6 +68,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   static final BytesRef INDEX_DIM_COUNT = new BytesRef("  index dimensional count ");
   static final BytesRef DIM_NUM_BYTES = new BytesRef("  dimensional num bytes ");
   static final BytesRef VECTOR_NUM_DIMS = new BytesRef("  vector number of dimensions ");
+  static final BytesRef VECTOR_MULTI_VALUED = new BytesRef("  vector multi valued ");
   static final BytesRef VECTOR_SEARCH_STRATEGY = new BytesRef("  vector search strategy ");
   static final BytesRef SOFT_DELETES = new BytesRef("  soft-deletes ");
 
@@ -156,6 +157,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         int vectorNumDimensions = Integer.parseInt(readString(VECTOR_NUM_DIMS.length, scratch));
 
         SimpleTextUtil.readLine(input, scratch);
+        assert StringHelper.startsWith(scratch.get(), VECTOR_MULTI_VALUED);
+        boolean vectorMultiValued = !Boolean.parseBoolean(readString(VECTOR_MULTI_VALUED.length, scratch));
+        
+        SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), VECTOR_SEARCH_STRATEGY);
         String scoreFunction = readString(VECTOR_SEARCH_STRATEGY.length, scratch);
         VectorSimilarityFunction vectorDistFunc = distanceFunction(scoreFunction);
@@ -179,7 +184,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 indexDimensionalCount,
                 dimensionalNumBytes,
                 vectorNumDimensions,
-                vectorDistFunc,
+                    vectorMultiValued, vectorDistFunc,
                 isSoftDeletesField);
       }
 

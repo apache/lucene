@@ -214,7 +214,7 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
                 pointIndexDimensionCount,
                 pointNumBytes,
                 0,
-                VectorSimilarityFunction.EUCLIDEAN,
+                    false, VectorSimilarityFunction.EUCLIDEAN,
                 isSoftDeletesField);
       } catch (IllegalStateException e) {
         throw new CorruptIndexException(

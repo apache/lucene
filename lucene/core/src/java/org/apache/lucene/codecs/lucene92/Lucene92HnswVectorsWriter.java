@@ -145,9 +145,15 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       // we use Lucene92HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
-      OffHeapVectorValues offHeapVectors =
-          new OffHeapVectorValues.DenseOffHeapVectorValues(
-              vectors.dimension(), docsWithField.cardinality(), vectorDataInput);
+      OffHeapVectorValues offHeapVectors;
+      if(fieldInfo.isVectorMultiValued()){
+        offHeapVectors = new OffHeapVectorValues.SparseOffHeapVectorValues(
+                new Lucene92HnswVectorsReader.FieldEntry(vectorDataInput,fieldInfo.getVectorSimilarityFunction()), vectorDataInput, vectorDataInput);
+      }else{
+        offHeapVectors = new OffHeapVectorValues.DenseOffHeapVectorValues(
+                vectors.dimension(), docsWithField.cardinality(), vectorDataInput);
+      }
+      
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
