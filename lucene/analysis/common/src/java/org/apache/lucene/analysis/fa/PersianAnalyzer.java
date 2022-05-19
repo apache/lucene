@@ -88,6 +88,7 @@ public final class PersianAnalyzer extends StopwordAnalyzerBase {
   }
 
   private final CharArraySet stemExclusionSet;
+  private final boolean useStemming;
 
   /** Builds an analyzer with the default stop words: {@link #DEFAULT_STOPWORD_FILE}. */
   public PersianAnalyzer() {
@@ -95,23 +96,35 @@ public final class PersianAnalyzer extends StopwordAnalyzerBase {
   }
 
   /**
-   * Builds an analyzer with the given stop words
+   * Builds an analyzer with the default stop words: {@link #DEFAULT_STOPWORD_FILE}
+   *
+   * @param useStemming whether or not to enable stemming
+   */
+  public PersianAnalyzer(boolean useStemming) {
+    this(DefaultSetHolder.DEFAULT_STOP_SET, useStemming, CharArraySet.EMPTY_SET);
+  }
+
+  /**
+   * Builds an analyzer with the given stop words and no stemming
    *
    * @param stopwords a stopword set
    */
   public PersianAnalyzer(CharArraySet stopwords) {
-    this(stopwords, CharArraySet.EMPTY_SET);
+    this(stopwords, false, CharArraySet.EMPTY_SET);
   }
 
   /**
-   * Builds an analyzer with the given stop word. If a none-empty stem exclusion set is provided
-   * this analyzer will add a {@link SetKeywordMarkerFilter} before {@link PersianStemFilter}.
+   * Builds an analyzer with the given stop word. If a non-empty stem exclusion set is provided this
+   * analyzer will add a {@link SetKeywordMarkerFilter} before {@link PersianStemFilter}.
    *
    * @param stopwords a stopword set
+   * @param useStemming whether or not to enable stemming
    * @param stemExclusionSet a set of terms not to be stemmed
    */
-  public PersianAnalyzer(CharArraySet stopwords, CharArraySet stemExclusionSet) {
+  public PersianAnalyzer(
+      CharArraySet stopwords, boolean useStemming, CharArraySet stemExclusionSet) {
     super(stopwords);
+    this.useStemming = useStemming;
     this.stemExclusionSet = CharArraySet.unmodifiableSet(CharArraySet.copy(stemExclusionSet));
   }
 
@@ -140,7 +153,10 @@ public final class PersianAnalyzer extends StopwordAnalyzerBase {
     if (!stemExclusionSet.isEmpty()) {
       result = new SetKeywordMarkerFilter(result, stemExclusionSet);
     }
-    return new TokenStreamComponents(source, new PersianStemFilter(result));
+    if (useStemming) {
+      result = new PersianStemFilter(result);
+    }
+    return new TokenStreamComponents(source, result);
   }
 
   @Override

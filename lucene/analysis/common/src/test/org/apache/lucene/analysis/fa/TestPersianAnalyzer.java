@@ -227,4 +227,15 @@ public class TestPersianAnalyzer extends BaseTokenStreamTestCase {
     checkRandomData(random(), a, 200 * RANDOM_MULTIPLIER);
     a.close();
   }
+
+  public void testStemming() throws Exception {
+    {
+      PersianAnalyzer a = new PersianAnalyzer();
+      checkOneTerm(a, "دوستان", "دوستان");
+    }
+    {
+      PersianAnalyzer a = new PersianAnalyzer(true);
+      checkOneTerm(a, "دوستان", "دوست");
+    }
+  }
 }
