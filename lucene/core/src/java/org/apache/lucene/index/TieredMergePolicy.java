@@ -538,7 +538,7 @@ public class TieredMergePolicy extends MergePolicy {
             && mergeType == MERGE_TYPE.NATURAL
             && bytesThisMerge < maxCandidateSegmentSize.sizeInBytes * 1.5
             && maxCandidateSegmentSize.delCount
-                > maxCandidateSegmentSize.maxDoc * deletesPctAllowed) {
+                < maxCandidateSegmentSize.maxDoc * deletesPctAllowed / 100) {
           // Ignore any merge where the resulting segment is not at least 50% larger than the
           // biggest input segment.
           // Otherwise we could run into pathological O(N^2) merging where merges keep rewriting
