@@ -28,7 +28,7 @@ public class TestUpgradeIndexMergePolicy extends BaseMergePolicyTestCase {
     TieredMergePolicy in = newTieredMergePolicy();
     // Avoid low values of the max merged segment size which prevent this merge policy from
     // scaling well
-    ((TieredMergePolicy) in).setMaxMergedSegmentMB(TestUtil.nextInt(random(), 1024, 10 * 1024));
+    in.setMaxMergedSegmentMB(TestUtil.nextInt(random(), 1024, 10 * 1024));
     return new UpgradeIndexMergePolicy(in);
   }
 
