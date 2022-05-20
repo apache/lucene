@@ -100,7 +100,7 @@ public class KnnGraphTester {
     dim = 256;
     topK = 100;
     fanout = topK;
-    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT8;
   }
 
   public static void main(String... args) throws Exception {
@@ -255,11 +255,12 @@ public class KnnGraphTester {
     }
   }
 
+  @SuppressWarnings("unchecked")
   private void dumpGraph(Path docsPath) throws IOException {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
-      HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0);
+      HnswGraphBuilder<float[]> builder = (HnswGraphBuilder<float[]>)
+          HnswGraphBuilder.create(vectors, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
         builder.addGraphNode(i, values.vectorValue(i));

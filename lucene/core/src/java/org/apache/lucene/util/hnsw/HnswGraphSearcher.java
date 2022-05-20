@@ -18,20 +18,24 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.VectorUtil.dotProduct;
 
 import java.io.IOException;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
  * search algorithm, see {@link HnswGraph}.
+ * @param <T> the type of query vector
  */
-public final class HnswGraphSearcher {
+public class HnswGraphSearcher<T> {
   private final VectorSimilarityFunction similarityFunction;
+
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
@@ -68,8 +72,8 @@ public final class HnswGraphSearcher {
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
    */
-  public static NeighborQueue search(
-      float[] query,
+  public static<T> NeighborQueue search(
+      T query,
       int topK,
       RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
@@ -77,8 +81,8 @@ public final class HnswGraphSearcher {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    HnswGraphSearcher graphSearcher =
-        new HnswGraphSearcher(
+    HnswGraphSearcher<T> graphSearcher =
+        new HnswGraphSearcher<T>(
             similarityFunction,
             new NeighborQueue(topK, similarityFunction.reversed == false),
             new SparseFixedBitSet(vectors.size()));
@@ -113,7 +117,7 @@ public final class HnswGraphSearcher {
    * @return a priority queue holding the closest neighbors found
    */
   public NeighborQueue searchLevel(
-      float[] query,
+      T query,
       int topK,
       int level,
       final int[] eps,
@@ -124,7 +128,7 @@ public final class HnswGraphSearcher {
   }
 
   private NeighborQueue searchLevel(
-      float[] query,
+      T query,
       int topK,
       int level,
       final int[] eps,
@@ -144,7 +148,7 @@ public final class HnswGraphSearcher {
           results.markIncomplete();
           break;
         }
-        float score = similarityFunction.compare(query, vectors.vectorValue(ep));
+        float score = compare(query, vectors, ep);
         numVisited++;
         candidates.add(ep, score);
         if (acceptOrds == null || acceptOrds.get(ep)) {
@@ -179,7 +183,7 @@ public final class HnswGraphSearcher {
           results.markIncomplete();
           break;
         }
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        float score = compare(query, vectors, friendOrd);
         numVisited++;
         if (bound.check(score) == false) {
           candidates.add(friendOrd, score);
@@ -196,6 +200,14 @@ public final class HnswGraphSearcher {
     }
     results.setVisitedCount(numVisited);
     return results;
+  }
+
+  private float compare(T query, RandomAccessVectorValues vectors, int ord) throws IOException {
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+      return dotProduct((BytesRef) query, 0, vectors.binaryValue(ord), 0, vectors.dimension());
+    } else {
+      return similarityFunction.compare((float[]) query, vectors.vectorValue(ord));
+    }
   }
 
   private void clearScratchState() {

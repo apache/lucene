@@ -95,7 +95,7 @@ abstract class OffHeapVectorValues extends VectorValues
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     int byteSize;
-    if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+    if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
       byteSize = fieldEntry.dimension;
     } else {
       byteSize = fieldEntry.dimension * Float.BYTES;

@@ -8,6 +8,9 @@ import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
 
+/**
+ * reads from byte-encoded data
+ */
 public class ExpandingVectorValues extends FilterVectorValues {
 
   private final float[] value;
