@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
+import static org.apache.lucene.util.VectorUtil.dotProduct;
 
 import java.io.IOException;
 import java.util.Locale;
@@ -26,14 +27,16 @@ import java.util.SplittableRandom;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
  * hyperparameters.
+ * @param <T> the type of vector
  */
-public final class HnswGraphBuilder {
+public final class HnswGraphBuilder<T> {
 
   /** Default random seed for level generation * */
   private static final long DEFAULT_RAND_SEED = 42;
@@ -52,7 +55,7 @@ public final class HnswGraphBuilder {
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
   private final BoundsChecker bound;
-  private final HnswGraphSearcher graphSearcher;
+  private final HnswGraphSearcher<T> graphSearcher;
 
   final OnHeapHnswGraph hnsw;
 
@@ -61,6 +64,20 @@ public final class HnswGraphBuilder {
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
   private RandomAccessVectorValues buildVectors;
+
+  public static HnswGraphBuilder<?> create(
+          RandomAccessVectorValuesProducer vectors,
+          VectorSimilarityFunction similarityFunction,
+          int M,
+          int beamWidth,
+          long seed)
+          throws IOException {
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+      return new HnswGraphBuilder<BytesRef>(vectors, similarityFunction, M, beamWidth, seed);
+    } else {
+      return new HnswGraphBuilder<float[]>(vectors, similarityFunction, M, beamWidth, seed);
+    }
+  }
 
   /**
    * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense
@@ -74,7 +91,7 @@ public final class HnswGraphBuilder {
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
    */
-  public HnswGraphBuilder(
+  private HnswGraphBuilder(
       RandomAccessVectorValuesProducer vectors,
       VectorSimilarityFunction similarityFunction,
       int M,
@@ -98,7 +115,7 @@ public final class HnswGraphBuilder {
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
     this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode, similarityFunction.reversed);
     this.graphSearcher =
-        new HnswGraphSearcher(
+        new HnswGraphSearcher<T>(
             similarityFunction,
             new NeighborQueue(beamWidth, similarityFunction.reversed == false),
             new FixedBitSet(vectorValues.size()));
@@ -112,7 +129,7 @@ public final class HnswGraphBuilder {
    * enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
-   * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
+   * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independent
    *     accessor for the vectors
    */
   public OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
@@ -123,15 +140,36 @@ public final class HnswGraphBuilder {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
     }
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+      addByteVectors(vectors);
+    } else {
+      addFloatVectors(vectors);
+    }
+    return hnsw;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void addFloatVectors(RandomAccessVectorValues vectors) throws IOException {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectors.size(); node++) {
-      addGraphNode(node, vectors.vectorValue(node));
+      addGraphNode(node, (T) vectors.vectorValue(node));
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
       }
     }
-    return hnsw;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void addByteVectors(RandomAccessVectorValues vectors) throws IOException {
+    long start = System.nanoTime(), t = start;
+    // start at node 1! node 0 is added implicitly, in the constructor
+    for (int node = 1; node < vectors.size(); node++) {
+      addGraphNode(node, (T) vectors.binaryValue(node));
+      if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
+        t = printGraphBuildStatus(node, start, t);
+      }
+    }
   }
 
   /** Set info-stream to output debugging information * */
@@ -140,7 +178,7 @@ public final class HnswGraphBuilder {
   }
 
   /** Inserts a doc with vector value to the graph */
-  void addGraphNode(int node, float[] value) throws IOException {
+  void addGraphNode(int node, T value) throws IOException {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
@@ -213,7 +251,7 @@ public final class HnswGraphBuilder {
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
       assert cNode < hnsw.size();
-      if (diversityCheck(vectorValues.vectorValue(cNode), cScore, neighbors, buildVectors)) {
+      if (diversityCheck(cNode, cScore, neighbors)) {
         neighbors.add(cNode, cScore);
       }
     }
@@ -240,15 +278,37 @@ public final class HnswGraphBuilder {
    * @return whether the candidate is diverse given the existing neighbors
    */
   private boolean diversityCheck(
-      float[] candidate,
+      int candidate,
       float score,
-      NeighborArray neighbors,
-      RandomAccessVectorValues vectorValues)
+      NeighborArray neighbors)
       throws IOException {
     bound.set(score);
+    return isDiverse(candidate, neighbors);
+  }
+
+  private boolean isDiverse(int candidate, NeighborArray neighbors) throws IOException {
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+      return isDiverse(vectorValues.binaryValue(candidate), neighbors);
+    } else {
+      return isDiverse(vectorValues.vectorValue(candidate), neighbors);
+    }
+  }
+
+  private boolean isDiverse(float[] candidate, NeighborArray neighbors) throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
       float diversityCheck =
-          similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
+          similarityFunction.compare(candidate, buildVectors.vectorValue(neighbors.node[i]));
+      if (bound.check(diversityCheck) == false) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean isDiverse(BytesRef candidate, NeighborArray neighbors) throws IOException {
+    for (int i = 0; i < neighbors.size(); i++) {
+      float diversityCheck =
+              dotProduct(candidate, 0, buildVectors.binaryValue(neighbors.node[i]), 0, buildVectors.dimension());
       if (bound.check(diversityCheck) == false) {
         return false;
       }

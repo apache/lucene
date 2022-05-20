@@ -213,4 +213,13 @@ public final class VectorUtil {
       u[i] += v[i];
     }
   }
+
+  public static float dotProduct(BytesRef a, int aOffset, BytesRef b, int bOffset, int len) {
+    // fixme -- move to codec? What if later we want to access the bytes some other way?
+    int total = 0;
+    for (int i = 0; i < len; i++) {
+      total += a.bytes[aOffset++] * b.bytes[bOffset++];
+    }
+    return total;
+  }
 }

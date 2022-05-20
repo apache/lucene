@@ -121,8 +121,8 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
-    if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.DOT_PRODUCT) {
-      vectors = new CompressingVectorValues(vectors, Math.nextAfter(SCALE8 * 128, 0));
+    if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.DOT_PRODUCT8) {
+      vectors = new CompressingVectorValues(vectors);
     }
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -133,7 +133,7 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       // write the vector data to a temporary file
       DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, vectors);
       int byteSize;
-      if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.DOT_PRODUCT) {
+      if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.DOT_PRODUCT8) {
         byteSize = vectors.dimension();
       } else {
         byteSize = vectors.dimension() * Float.BYTES;
@@ -278,13 +278,9 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
   private OnHeapHnswGraph writeGraph(
       RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
-
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
-      vectorValues = new ExpandingRandomAccessVectorValues(vectorValues, 1 / (SCALE8 * 128));
-    }
     // build graph
-    HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(
+    HnswGraphBuilder<?> hnswGraphBuilder =
+        HnswGraphBuilder.create(
             vectorValues, similarityFunction, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());

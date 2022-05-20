@@ -6,20 +6,20 @@ import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
 
+/**
+ * convert from floating point to reduced-precision byte
+ */
 public class CompressingVectorValues extends FilterVectorValues {
 
   private final BytesRef binaryValue;
-  private final double scale;
 
   /**
    * Sole constructor
    *
    * @param in
    */
-  protected CompressingVectorValues(VectorValues in, double scale) {
+  protected CompressingVectorValues(VectorValues in) {
     super(in);
-    assert scale != 0;
-    this.scale = scale;
     binaryValue = new BytesRef(in.dimension());
     binaryValue.length = in.dimension();
   }
@@ -30,7 +30,7 @@ public class CompressingVectorValues extends FilterVectorValues {
     byte[] bytes = binaryValue.bytes;
     for (int i = 0; i < dimension(); i++) {
       // scale and clip to [-128,127]
-      bytes[i] = (byte) Math.max(-128, Math.min(127, Math.floor(floats[i] * scale)));
+      bytes[i] = (byte) floats[i];
     }
     return binaryValue;
   }
