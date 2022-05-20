@@ -72,8 +72,8 @@ public class HnswGraphSearcher<T> {
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
    */
-  public static<T> NeighborQueue search(
-      T query,
+  public static NeighborQueue search(
+      float[] query,
       int topK,
       RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
@@ -81,11 +81,19 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    HnswGraphSearcher<T> graphSearcher =
-        new HnswGraphSearcher<T>(
-            similarityFunction,
-            new NeighborQueue(topK, similarityFunction.reversed == false),
-            new SparseFixedBitSet(vectors.size()));
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+      BytesRef bQuery = new BytesRef(query.length);
+      // nocommit: refactor this conversion to some shared place
+      for (int i = 0; i < query.length; i++) {
+        bQuery.bytes[i] = (byte) query[i];
+      }
+      return search(bQuery, topK, vectors, similarityFunction, graph, acceptOrds, visitedLimit);
+    }
+    HnswGraphSearcher<float[]> graphSearcher =
+            new HnswGraphSearcher<>(
+                    similarityFunction,
+                    new NeighborQueue(topK, similarityFunction.reversed == false),
+                    new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
@@ -97,7 +105,37 @@ public class HnswGraphSearcher<T> {
       visitedLimit -= results.visitedCount();
     }
     results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
+            graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
+    results.setVisitedCount(results.visitedCount() + numVisited);
+    return results;
+  }
+
+  private static NeighborQueue search(
+          BytesRef query,
+          int topK,
+          RandomAccessVectorValues vectors,
+          VectorSimilarityFunction similarityFunction,
+          HnswGraph graph,
+          Bits acceptOrds,
+          int visitedLimit)
+          throws IOException {
+    HnswGraphSearcher<BytesRef> graphSearcher =
+            new HnswGraphSearcher<>(
+                    similarityFunction,
+                    new NeighborQueue(topK, similarityFunction.reversed == false),
+                    new SparseFixedBitSet(vectors.size()));
+    NeighborQueue results;
+    int[] eps = new int[] {graph.entryNode()};
+    int numVisited = 0;
+    for (int level = graph.numLevels() - 1; level >= 1; level--) {
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
+      eps[0] = results.pop();
+
+      numVisited += results.visitedCount();
+      visitedLimit -= results.visitedCount();
+    }
+    results =
+            graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
     results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }

@@ -268,10 +268,8 @@ public class TestHnswGraph extends LuceneTestCase {
     }
   }
 
-  private Object getTargetVector() {
-    return similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8 ?
-            new BytesRef(new byte[]{1, 0}, 0, 1)
-            : new float[]{1, 0};
+  private float[] getTargetVector() {
+    return new float[]{1, 0};
   }
 
   public void testSearchWithSkewedAcceptOrds() throws IOException {
@@ -463,16 +461,19 @@ public class TestHnswGraph extends LuceneTestCase {
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
       NeighborQueue actual;
-      Object query;
+      float[] query;
+      BytesRef bQuery = null;
       if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
         query = randomVector8(random(), dim);
-        actual = HnswGraphSearcher.search(
-                query, 100, vectors, similarityFunction, hnsw, acceptOrds, Integer.MAX_VALUE);
+        bQuery = new BytesRef(query.length);
+        for (int j = 0; j < query.length; j++) {
+          bQuery.bytes[j] = (byte) query[j];
+        }
       } else {
         query = randomVector(random(), dim);
-        actual = HnswGraphSearcher.search(
-                query, 100, vectors, similarityFunction, hnsw, acceptOrds, Integer.MAX_VALUE);
       }
+      actual = HnswGraphSearcher.search(
+              query, 100, vectors, similarityFunction, hnsw, acceptOrds, Integer.MAX_VALUE);
       while (actual.size() > topK) {
         actual.pop();
       }
@@ -480,9 +481,9 @@ public class TestHnswGraph extends LuceneTestCase {
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
           if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-            expected.add(j, dotProduct((BytesRef) query, 0, vectors.binaryValue(j), 0, dim));
+            expected.add(j, dotProduct(bQuery, 0, vectors.binaryValue(j), 0, dim));
           } else {
-            expected.add(j, similarityFunction.compare((float[]) query, vectors.vectorValue(j)));
+            expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)));
           }
           if (expected.size() > topK) {
             expected.pop();
@@ -696,12 +697,11 @@ public class TestHnswGraph extends LuceneTestCase {
     return vec;
   }
 
-  private static BytesRef randomVector8(Random random, int dim) {
-    BytesRef vec = new BytesRef(dim);
+  private static float[] randomVector8(Random random, int dim) {
     float[] fvec = randomVector(random, dim);
     for (int i = 0; i < dim; i++) {
-      vec.bytes[i] = (byte) (fvec[i] * 127);
+      fvec[i] *= 127;
     }
-    return vec;
+    return fvec;
   }
 }
