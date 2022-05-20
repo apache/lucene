@@ -597,6 +597,7 @@ public class KnnGraphTester {
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setRAMBufferSizeMB(1994d);
+    iwc.setUseCompoundFile(false);
     // iwc.setMaxBufferedDocs(10000);
 
     FieldType fieldType = KnnVectorField.createFieldType(dim, similarityFunction);
