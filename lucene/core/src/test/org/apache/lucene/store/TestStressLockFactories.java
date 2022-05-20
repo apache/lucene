@@ -62,6 +62,7 @@ public class TestStressLockFactories extends LuceneTestCase {
                           new ProcessBuilder(
                               Paths.get(System.getProperty("java.home"), "bin", "java").toString(),
                               "-Xmx32M",
+                              "--enable-preview", // TODO: fix this with LUCENE-10370
                               "-cp",
                               System.getProperty("java.class.path"),
                               LockStressTest.class.getName(),
