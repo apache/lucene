@@ -88,7 +88,9 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* LUCENE-10370: pass proper classpath/module arguments for forking jvms from within tests. (Dawid Weiss)
+
 
 ======================= Lucene 9.2.0 =======================
 
