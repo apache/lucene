@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 
 // Configure miscellaneous aspects required for supporting the java module system layer.
@@ -172,6 +175,8 @@ allprojects {
     // have the need for it.
     Closure<Void> configureTestTaskForSourceSet = { Test task, SourceSet sourceSet ->
       task.configure {
+        def forkProperties = file("${task.temporaryDir}/jvm-forking.properties")
+
         ModularPathsExtension modularPaths = sourceSet.modularPaths
 
         dependsOn modularPaths
@@ -184,6 +189,30 @@ allprojects {
 
         doFirst {
           modularPaths.logRuntimePaths(logger)
+        }
+
+        // Pass all the required properties for tests which fork the JVM. We don't use
+        // regular system properties here because this could affect task up-to-date checks.
+        jvmArgumentProviders.add(new CommandLineArgumentProvider() {
+          @Override
+          Iterable<String> asArguments() {
+            return ["-Dtests.jvmForkArgsFile=" + forkProperties.absolutePath]
+          }
+        })
+        doFirst {
+          List<String> args = new ArrayList<>(modularPaths.runtimeArguments.asArguments().collect())
+          def cp = modularPaths.runtimeClasspath.asPath
+          if (!cp.isBlank()) {
+            args.addAll(["-cp", cp])
+          }
+
+          // Sanity check.
+          args.forEach(s -> {
+            if (s.contains("\n")) {
+              throw new RuntimeException("LF in forked jvm property?: " + s)
+            }
+          })
+          Files.writeString(forkProperties.toPath(), String.join("\n", args), StandardCharsets.UTF_8)
         }
       }
     }
