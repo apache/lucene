@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.codecs.lucene92;
 
 import org.apache.lucene.index.FilterVectorValues;
@@ -7,16 +24,14 @@ import org.apache.lucene.util.BytesRef;
 import java.io.IOException;
 
 /**
- * convert from floating point to reduced-precision byte
+ * convert from floating point to single byte
  */
 public class CompressingVectorValues extends FilterVectorValues {
 
   private final BytesRef binaryValue;
 
   /**
-   * Sole constructor
-   *
-   * @param in
+   * @param in the wrapped values
    */
   protected CompressingVectorValues(VectorValues in) {
     super(in);
@@ -29,7 +44,6 @@ public class CompressingVectorValues extends FilterVectorValues {
     float[] floats = vectorValue();
     byte[] bytes = binaryValue.bytes;
     for (int i = 0; i < dimension(); i++) {
-      // scale and clip to [-128,127]
       bytes[i] = (byte) floats[i];
     }
     return binaryValue;
