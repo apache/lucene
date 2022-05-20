@@ -17,7 +17,6 @@
 
 package org.apache.lucene.codecs.lucene92;
 
-import static org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat.SCALE8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -222,8 +221,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     FieldEntry fieldEntry = fields.get(field);
     VectorValues values = OffHeapVectorValues.load(fieldEntry, vectorData);
     if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      // TODO: move scaling computation somewhere shared (in the format??)
-      return new ExpandingVectorValues(values, 1);
+      return new ExpandingVectorValues(values);
     } else {
       return values;
     }

@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs.lucene92;
 
 import static org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat.SCALE8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
