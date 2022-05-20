@@ -474,7 +474,7 @@ public class TestKnnGraph extends LuceneTestCase {
               "vector did not match for doc " + i + ", id=" + id + ": " + Arrays.toString(scratch),
               values[id],
               scratch,
-                  0);
+              0);
           numDocsWithVectors++;
         }
         // if IndexDisi.doc == NO_MORE_DOCS, we should not call IndexDisi.nextDoc()

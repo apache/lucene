@@ -116,7 +116,6 @@ public final class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
-
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
    * {@link Lucene92HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.

@@ -17,22 +17,17 @@
 
 package org.apache.lucene.codecs.lucene92;
 
+import java.io.IOException;
 import org.apache.lucene.index.FilterVectorValues;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BytesRef;
 
-import java.io.IOException;
-
-/**
- * reads from byte-encoded data
- */
+/** reads from byte-encoded data */
 public class ExpandingVectorValues extends FilterVectorValues {
 
   private final float[] value;
 
-  /**
-   * @param in the wrapped values
-   */
+  /** @param in the wrapped values */
   protected ExpandingVectorValues(VectorValues in) {
     super(in);
     value = new float[in.dimension()];
