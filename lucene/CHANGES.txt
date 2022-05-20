@@ -79,7 +79,7 @@ Improvements
 
 Optimizations
 ---------------------
-* LUCENE-8519 MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
+* LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
 
 Bug Fixes
 ---------------------
