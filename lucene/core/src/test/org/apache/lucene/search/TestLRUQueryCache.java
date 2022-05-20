@@ -1971,7 +1971,19 @@ public class TestLRUQueryCache extends LuceneTestCase {
     w.addDocuments(Arrays.asList(doc1, doc2, doc3));
     final IndexReader reader = w.getReader();
     final IndexSearcher searcher = newSearcher(reader);
-    final UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
+    final QueryCachingPolicy policy =
+        new QueryCachingPolicy() {
+
+          @Override
+          public boolean shouldCache(Query query) throws IOException {
+            return query.getClass() != TermQuery.class;
+          }
+
+          @Override
+          public void onUse(Query query) {
+            // no-op
+          }
+        };
     searcher.setQueryCachingPolicy(policy);
     w.close();
 

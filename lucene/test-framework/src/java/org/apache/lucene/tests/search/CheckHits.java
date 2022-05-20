@@ -19,6 +19,8 @@ package org.apache.lucene.tests.search;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -27,6 +29,7 @@ import java.util.regex.Pattern;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -100,17 +103,31 @@ public class CheckHits {
     for (int i = 0; i < results.length; i++) {
       correct.add(Integer.valueOf(results[i]));
     }
-    final Set<Integer> actual = new TreeSet<>();
-    final Collector c = new SetCollector(actual);
 
-    searcher.search(query, c);
+    Set<Integer> actual = searcher.search(query, new SetCollectorManager());
     assertEquals("Simple: " + query.toString(defaultFieldName), correct, actual);
 
     for (int i = -1; i < 2; i++) {
       actual.clear();
       IndexSearcher s = QueryUtils.wrapUnderlyingReader(random, searcher, i);
-      s.search(query, c);
+      actual = s.search(query, new SetCollectorManager());
       assertEquals("Wrap Reader " + i + ": " + query.toString(defaultFieldName), correct, actual);
+    }
+  }
+
+  private static class SetCollectorManager implements CollectorManager<SetCollector, Set<Integer>> {
+    @Override
+    public SetCollector newCollector() throws IOException {
+      return new SetCollector(new HashSet<>());
+    }
+
+    @Override
+    public Set<Integer> reduce(Collection<SetCollector> collectors) throws IOException {
+      Set<Integer> ids = new TreeSet<>();
+      for (SetCollector collector : collectors) {
+        ids.addAll(collector.bag);
+      }
+      return ids;
     }
   }
 
@@ -311,7 +328,19 @@ public class CheckHits {
       Query query, String defaultFieldName, IndexSearcher searcher, boolean deep)
       throws IOException {
 
-    searcher.search(query, new ExplanationAsserter(query, defaultFieldName, searcher, deep));
+    searcher.search(
+        query,
+        new CollectorManager<ExplanationAsserter, Void>() {
+          @Override
+          public ExplanationAsserter newCollector() {
+            return new ExplanationAsserter(query, defaultFieldName, searcher, deep);
+          }
+
+          @Override
+          public Void reduce(Collection<ExplanationAsserter> collectors) {
+            return null;
+          }
+        });
   }
 
   /**
@@ -322,7 +351,19 @@ public class CheckHits {
    * @param searcher the search to test against
    */
   public static void checkMatches(Query query, IndexSearcher searcher) throws IOException {
-    searcher.search(query, new MatchesAsserter(query, searcher));
+    searcher.search(
+        query,
+        new CollectorManager<MatchesAsserter, Void>() {
+          @Override
+          public MatchesAsserter newCollector() throws IOException {
+            return new MatchesAsserter(query, searcher);
+          }
+
+          @Override
+          public Void reduce(Collection<MatchesAsserter> collectors) {
+            return null;
+          }
+        });
   }
 
   private static final Pattern COMPUTED_FROM_PATTERN = Pattern.compile(".*, computed as .* from:");
@@ -484,7 +525,19 @@ public class CheckHits {
     }
 
     protected void checkExplanations(Query q) throws IOException {
-      super.search(q, new ExplanationAsserter(q, null, this));
+      super.search(
+          q,
+          new CollectorManager<ExplanationAsserter, Void>() {
+            @Override
+            public ExplanationAsserter newCollector() {
+              return new ExplanationAsserter(q, null, ExplanationAssertingSearcher.this);
+            }
+
+            @Override
+            public Void reduce(Collection<ExplanationAsserter> collectors) {
+              return null;
+            }
+          });
     }
 
     @Override
@@ -498,6 +551,13 @@ public class CheckHits {
     public void search(Query query, Collector results) throws IOException {
       checkExplanations(query);
       super.search(query, results);
+    }
+
+    @Override
+    public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
+        throws IOException {
+      checkExplanations(query);
+      return super.search(query, collectorManager);
     }
 
     @Override
@@ -634,12 +694,13 @@ public class CheckHits {
 
   private static void doCheckTopScores(Query query, IndexSearcher searcher, int numHits)
       throws IOException {
-    TopScoreDocCollector collector1 =
-        TopScoreDocCollector.create(numHits, null, Integer.MAX_VALUE); // COMPLETE
-    TopScoreDocCollector collector2 = TopScoreDocCollector.create(numHits, null, 1); // TOP_SCORES
-    searcher.search(query, collector1);
-    searcher.search(query, collector2);
-    checkEqual(query, collector1.topDocs().scoreDocs, collector2.topDocs().scoreDocs);
+    CollectorManager<TopScoreDocCollector, TopDocs> complete =
+        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+    ScoreDoc[] completeScoreDocs = searcher.search(query, complete).scoreDocs;
+    CollectorManager<TopScoreDocCollector, TopDocs> topScores =
+        TopScoreDocCollector.createSharedManager(numHits, null, 1);
+    ScoreDoc[] topScoresScoreDocs = searcher.search(query, topScores).scoreDocs;
+    checkEqual(query, completeScoreDocs, topScoresScoreDocs);
   }
 
   private static void doCheckMaxScores(Random random, Query query, IndexSearcher searcher)

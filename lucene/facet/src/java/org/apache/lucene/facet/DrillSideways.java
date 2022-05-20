@@ -18,7 +18,6 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -198,23 +197,7 @@ public class DrillSideways {
       final int fTopN = Math.min(topN, limit);
 
       final CollectorManager<TopFieldCollector, TopFieldDocs> collectorManager =
-          new CollectorManager<>() {
-
-            @Override
-            public TopFieldCollector newCollector() {
-              return TopFieldCollector.create(sort, fTopN, after, Integer.MAX_VALUE);
-            }
-
-            @Override
-            public TopFieldDocs reduce(Collection<TopFieldCollector> collectors) {
-              final TopFieldDocs[] topFieldDocs = new TopFieldDocs[collectors.size()];
-              int pos = 0;
-              for (TopFieldCollector collector : collectors)
-                topFieldDocs[pos++] = collector.topDocs();
-              return TopDocs.merge(sort, topN, topFieldDocs);
-            }
-          };
-
+          TopFieldCollector.createSharedManager(sort, fTopN, after, Integer.MAX_VALUE);
       final ConcurrentDrillSidewaysResult<TopFieldDocs> r = search(query, collectorManager);
 
       TopFieldDocs topDocs = r.collectorResult;
@@ -247,24 +230,7 @@ public class DrillSideways {
     final int fTopN = Math.min(topN, limit);
 
     final CollectorManager<TopScoreDocCollector, TopDocs> collectorManager =
-        new CollectorManager<>() {
-
-          @Override
-          public TopScoreDocCollector newCollector() {
-            return TopScoreDocCollector.create(fTopN, after, Integer.MAX_VALUE);
-          }
-
-          @Override
-          public TopDocs reduce(Collection<TopScoreDocCollector> collectors) {
-            final TopDocs[] topDocs = new TopDocs[collectors.size()];
-            int pos = 0;
-            for (TopScoreDocCollector collector : collectors) {
-              topDocs[pos++] = collector.topDocs();
-            }
-            return TopDocs.merge(topN, topDocs);
-          }
-        };
-
+        TopScoreDocCollector.createSharedManager(fTopN, after, Integer.MAX_VALUE);
     final ConcurrentDrillSidewaysResult<TopDocs> r = search(query, collectorManager);
     return new DrillSidewaysResult(
         r.facets,

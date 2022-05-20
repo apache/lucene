@@ -218,6 +218,7 @@ abstract class RangeFacetCounts extends Facets {
 
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) {
+    validateTopN(topN);
     if (dim.equals(field) == false) {
       throw new IllegalArgumentException(
           "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
@@ -240,6 +241,7 @@ abstract class RangeFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
+    validateTopN(topN);
     return Collections.singletonList(getTopChildren(topN, field));
   }
 

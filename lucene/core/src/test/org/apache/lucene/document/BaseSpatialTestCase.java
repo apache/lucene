@@ -31,7 +31,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
@@ -39,9 +38,8 @@ import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
@@ -84,7 +82,6 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
   }
 
   // Force low cardinality leaves
-  @Slow
   public void testLowCardinalityShapeManyTimes() throws Exception {
     int numShapes = atLeast(20);
     int cardinality = TestUtil.nextInt(random(), 2, 20);
@@ -107,12 +104,10 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     doTestRandom(10);
   }
 
-  @Slow
   public void testRandomMedium() throws Exception {
     doTestRandom(atLeast(20));
   }
 
-  @Slow
   @Nightly
   public void testRandomBig() throws Exception {
     doTestRandom(20000);
@@ -259,7 +254,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     Set<Integer> deleted = new HashSet<>();
     for (int id = 0; id < shapes.length; ++id) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       if (shapes[id] != null) {
         addShapeToDoc(FIELD_NAME, doc, shapes[id]);
@@ -697,29 +692,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
   }
 
   private FixedBitSet searchIndex(IndexSearcher s, Query query, int maxDoc) throws IOException {
-    final FixedBitSet hits = new FixedBitSet(maxDoc);
-    s.search(
-        query,
-        new SimpleCollector() {
-
-          private int docBase;
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) {
-            docBase = context.docBase;
-          }
-
-          @Override
-          public void collect(int doc) {
-            hits.set(docBase + doc);
-          }
-        });
-    return hits;
+    return s.search(query, FixedBitSetCollector.createManager(maxDoc));
   }
 
   protected abstract Validator getValidator();

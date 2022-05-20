@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -99,7 +100,7 @@ public class TestMultiCollector extends LuceneTestCase {
       }
       final IndexReader reader = w.getReader();
       w.close();
-      final IndexSearcher searcher = newSearcher(reader);
+      final IndexSearcher searcher = newSearcher(reader, true, true, false);
       Map<TotalHitCountCollector, Integer> expectedCounts = new HashMap<>();
       List<Collector> collectors = new ArrayList<>();
       final int numCollectors = TestUtil.nextInt(random(), 1, 5);
@@ -110,7 +111,19 @@ public class TestMultiCollector extends LuceneTestCase {
         expectedCounts.put(collector, expectedCount);
         collectors.add(new TerminateAfterCollector(collector, terminateAfter));
       }
-      searcher.search(new MatchAllDocsQuery(), MultiCollector.wrap(collectors));
+      searcher.search(
+          new MatchAllDocsQuery(),
+          new CollectorManager<Collector, Void>() {
+            @Override
+            public Collector newCollector() {
+              return MultiCollector.wrap(collectors);
+            }
+
+            @Override
+            public Void reduce(Collection<Collector> collectors) {
+              return null;
+            }
+          });
       for (Map.Entry<TotalHitCountCollector, Integer> expectedCount : expectedCounts.entrySet()) {
         assertEquals(expectedCount.getValue().intValue(), expectedCount.getKey().getTotalHits());
       }

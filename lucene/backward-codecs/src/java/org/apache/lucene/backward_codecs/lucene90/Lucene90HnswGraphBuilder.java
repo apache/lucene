@@ -26,7 +26,6 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.BoundsChecker;
-import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -38,7 +37,7 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
 public final class Lucene90HnswGraphBuilder {
 
   /** Default random seed for level generation * */
-  private static final long DEFAULT_RAND_SEED = System.currentTimeMillis();
+  private static final long DEFAULT_RAND_SEED = 42;
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 
@@ -47,7 +46,7 @@ public final class Lucene90HnswGraphBuilder {
 
   private final int maxConn;
   private final int beamWidth;
-  private final NeighborArray scratch;
+  private final Lucene90NeighborArray scratch;
 
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
@@ -78,7 +77,8 @@ public final class Lucene90HnswGraphBuilder {
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
-      long seed) {
+      long seed)
+      throws IOException {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
@@ -93,7 +93,7 @@ public final class Lucene90HnswGraphBuilder {
     this.hnsw = new Lucene90OnHeapHnswGraph(maxConn);
     bound = BoundsChecker.create(similarityFunction.reversed);
     random = new SplittableRandom(seed);
-    scratch = new NeighborArray(Math.max(beamWidth, maxConn + 1));
+    scratch = new Lucene90NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
 
   /**
@@ -144,7 +144,15 @@ public final class Lucene90HnswGraphBuilder {
     // We pass 'null' for acceptOrds because there are no deletions while building the graph
     NeighborQueue candidates =
         Lucene90OnHeapHnswGraph.search(
-            value, beamWidth, beamWidth, vectorValues, similarityFunction, hnsw, null, random);
+            value,
+            beamWidth,
+            beamWidth,
+            vectorValues,
+            similarityFunction,
+            hnsw,
+            null,
+            Integer.MAX_VALUE,
+            random);
 
     int node = hnsw.addNode();
 
@@ -165,7 +173,7 @@ public final class Lucene90HnswGraphBuilder {
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
      */
-    NeighborArray neighbors = hnsw.getNeighbors(node);
+    Lucene90NeighborArray neighbors = hnsw.getNeighbors(node);
     assert neighbors.size() == 0; // new node
     popToScratch(candidates);
     selectDiverse(neighbors, scratch);
@@ -175,7 +183,7 @@ public final class Lucene90HnswGraphBuilder {
     int size = neighbors.size();
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node()[i];
-      NeighborArray nbrNbr = hnsw.getNeighbors(nbr);
+      Lucene90NeighborArray nbrNbr = hnsw.getNeighbors(nbr);
       nbrNbr.add(node, neighbors.score()[i]);
       if (nbrNbr.size() > maxConn) {
         diversityUpdate(nbrNbr);
@@ -183,7 +191,8 @@ public final class Lucene90HnswGraphBuilder {
     }
   }
 
-  private void selectDiverse(NeighborArray neighbors, NeighborArray candidates) throws IOException {
+  private void selectDiverse(Lucene90NeighborArray neighbors, Lucene90NeighborArray candidates)
+      throws IOException {
     // Select the best maxConn neighbors of the new node, applying the diversity heuristic
     for (int i = candidates.size() - 1; neighbors.size() < maxConn && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
@@ -220,7 +229,7 @@ public final class Lucene90HnswGraphBuilder {
   private boolean diversityCheck(
       float[] candidate,
       float score,
-      NeighborArray neighbors,
+      Lucene90NeighborArray neighbors,
       RandomAccessVectorValues vectorValues)
       throws IOException {
     bound.set(score);
@@ -234,7 +243,7 @@ public final class Lucene90HnswGraphBuilder {
     return true;
   }
 
-  private void diversityUpdate(NeighborArray neighbors) throws IOException {
+  private void diversityUpdate(Lucene90NeighborArray neighbors) throws IOException {
     assert neighbors.size() == maxConn + 1;
     int replacePoint = findNonDiverse(neighbors);
     if (replacePoint == -1) {
@@ -254,7 +263,7 @@ public final class Lucene90HnswGraphBuilder {
   }
 
   // scan neighbors looking for diversity violations
-  private int findNonDiverse(NeighborArray neighbors) throws IOException {
+  private int findNonDiverse(Lucene90NeighborArray neighbors) throws IOException {
     for (int i = neighbors.size() - 1; i >= 0; i--) {
       // check each neighbor against its better-scoring neighbors. If it fails diversity check with
       // them, drop it

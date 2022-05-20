@@ -35,7 +35,7 @@ import org.junit.Before;
 public class TestExceedMaxTermLength extends LuceneTestCase {
 
   private static final int minTestTermLength = IndexWriter.MAX_TERM_LENGTH + 1;
-  private static final int maxTestTermLegnth = IndexWriter.MAX_TERM_LENGTH * 2;
+  private static final int maxTestTermLength = IndexWriter.MAX_TERM_LENGTH * 2;
 
   Directory dir = null;
 
@@ -52,8 +52,9 @@ public class TestExceedMaxTermLength extends LuceneTestCase {
 
   public void test() throws Exception {
 
-    IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig(random(), new MockAnalyzer(random())));
+    MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
+    mockAnalyzer.setMaxTokenLength(Integer.MAX_VALUE);
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(random(), mockAnalyzer));
     try {
       final FieldType ft = new FieldType();
       ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
@@ -72,7 +73,7 @@ public class TestExceedMaxTermLength extends LuceneTestCase {
       // problematic field
       final String name = TestUtil.randomSimpleString(random(), 1, 50);
       final String value =
-          TestUtil.randomSimpleString(random(), minTestTermLength, maxTestTermLegnth);
+          TestUtil.randomSimpleString(random(), minTestTermLength, maxTestTermLength);
       final Field f = new Field(name, value, ft);
       if (random().nextBoolean()) {
         // totally ok short field value

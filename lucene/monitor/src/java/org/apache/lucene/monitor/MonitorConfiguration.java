@@ -27,6 +27,7 @@ import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.IOSupplier;
 
 /** Encapsulates various configuration settings for a Monitor's query index */
 public class MonitorConfiguration {
@@ -35,8 +36,9 @@ public class MonitorConfiguration {
   private long purgeFrequency = 5;
   private TimeUnit purgeFrequencyUnits = TimeUnit.MINUTES;
   private QueryDecomposer queryDecomposer = new QueryDecomposer();
-  private Path indexPath = null;
   private MonitorQuerySerializer serializer;
+  private boolean readOnly = false;
+  private IOSupplier<Directory> directoryProvider = () -> new ByteBuffersDirectory();
 
   private static IndexWriterConfig defaultIndexWriterConfig() {
     IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
@@ -47,16 +49,49 @@ public class MonitorConfiguration {
     return iwc;
   }
 
-  public MonitorConfiguration setIndexPath(Path indexPath, MonitorQuerySerializer serializer) {
-    this.indexPath = indexPath;
+  public boolean isReadOnly() {
+    return readOnly;
+  }
+
+  public IOSupplier<Directory> getDirectoryProvider() {
+    return directoryProvider;
+  }
+
+  /**
+   * Sets a custom directory, with a custom serializer.
+   *
+   * <p>You have also the chance to configure the Monitor as read-only.
+   *
+   * @param directoryProvider lambda to provide the index Directory implementation
+   * @param serializer the serializer used to store the queries
+   * @param readOnly set the monitor as read-only
+   * @return MonitorCOnfiguration
+   */
+  public MonitorConfiguration setDirectoryProvider(
+      IOSupplier<Directory> directoryProvider,
+      MonitorQuerySerializer serializer,
+      Boolean readOnly) {
+    this.directoryProvider = directoryProvider;
+    this.serializer = serializer;
+    this.readOnly = readOnly;
+    return this;
+  }
+
+  public MonitorConfiguration setDirectoryProvider(
+      IOSupplier<Directory> directoryProvider, MonitorQuerySerializer serializer) {
+    this.directoryProvider = directoryProvider;
     this.serializer = serializer;
     return this;
   }
 
+  public MonitorConfiguration setIndexPath(Path indexPath, MonitorQuerySerializer serializer) {
+    this.serializer = serializer;
+    this.directoryProvider = () -> FSDirectory.open(indexPath);
+    return this;
+  }
+
   public IndexWriter buildIndexWriter() throws IOException {
-    Directory directory =
-        indexPath == null ? new ByteBuffersDirectory() : FSDirectory.open(indexPath);
-    return new IndexWriter(directory, getIndexWriterConfig());
+    return new IndexWriter(directoryProvider.get(), getIndexWriterConfig());
   }
 
   protected IndexWriterConfig getIndexWriterConfig() {

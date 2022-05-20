@@ -254,6 +254,11 @@ public final class FunctionScoreQuery extends Query {
     }
 
     @Override
+    public int count(LeafReaderContext context) throws IOException {
+      return inner.count(context);
+    }
+
+    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return inner.isCacheable(ctx) && valueSource.isCacheable(ctx);
     }

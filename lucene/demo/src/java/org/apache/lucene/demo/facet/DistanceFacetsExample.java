@@ -31,6 +31,7 @@ import org.apache.lucene.facet.DrillSideways;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.DoubleRangeFacetCounts;
@@ -213,9 +214,7 @@ public class DistanceFacetsExample implements Closeable {
   /** User runs a query and counts facets. */
   public FacetResult search() throws IOException {
 
-    FacetsCollector fc = new FacetsCollector();
-
-    searcher.search(new MatchAllDocsQuery(), fc);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
         new DoubleRangeFacetCounts(

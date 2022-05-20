@@ -1076,8 +1076,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       indexBytes = data.slice("terms-index", entry.termsIndexOffset, entry.termsIndexLength);
       term = new BytesRef(entry.maxTermLength);
 
+      // add the max term length for the dictionary
       // add 7 padding bytes can help decompression run faster.
-      int bufferSize = entry.maxBlockLength + LZ4_DECOMPRESSOR_PADDING;
+      int bufferSize = entry.maxBlockLength + entry.maxTermLength + LZ4_DECOMPRESSOR_PADDING;
       blockBuffer = new BytesRef(new byte[bufferSize], 0, bufferSize);
     }
 
@@ -1111,13 +1112,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (ord < 0 || ord >= entry.termsDictSize) {
         throw new IndexOutOfBoundsException();
       }
-      final long blockIndex = ord >>> TERMS_DICT_BLOCK_LZ4_SHIFT;
-      final long blockAddress = blockAddresses.get(blockIndex);
-      bytes.seek(blockAddress);
-      this.ord = (blockIndex << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1;
-      do {
+      // Signed shift since ord is -1 when the terms enum is not positioned
+      final long currentBlockIndex = this.ord >> TERMS_DICT_BLOCK_LZ4_SHIFT;
+      final long blockIndex = ord >> TERMS_DICT_BLOCK_LZ4_SHIFT;
+      if (ord < this.ord || blockIndex != currentBlockIndex) {
+        // The looked up ord is before the current ord or belongs to a different block, seek again
+        final long blockAddress = blockAddresses.get(blockIndex);
+        bytes.seek(blockAddress);
+        this.ord = (blockIndex << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1;
+      }
+      // Scan to the looked up ord
+      while (this.ord < ord) {
         next();
-      } while (this.ord < ord);
+      }
     }
 
     private BytesRef getTermFromIndex(long index) throws IOException {
@@ -1229,9 +1236,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (offset < entry.termsDataLength - 1) {
         // Avoid decompress again if we are reading a same block.
         if (currentCompressedBlockStart != offset) {
-          int decompressLength = bytes.readVInt();
-          // Decompress the remaining of current block
-          LZ4.decompress(bytes, decompressLength, blockBuffer.bytes, 0);
+          blockBuffer.offset = term.length;
+          blockBuffer.length = bytes.readVInt();
+          // Decompress the remaining of current block, using the first term as a dictionary
+          System.arraycopy(term.bytes, 0, blockBuffer.bytes, 0, blockBuffer.offset);
+          LZ4.decompress(bytes, blockBuffer.length, blockBuffer.bytes, blockBuffer.offset);
           currentCompressedBlockStart = offset;
           currentCompressedBlockEnd = bytes.getFilePointer();
         } else {
@@ -1240,7 +1249,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         // Reset the buffer.
-        blockInput = new ByteArrayDataInput(blockBuffer.bytes, 0, blockBuffer.length);
+        blockInput =
+            new ByteArrayDataInput(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
       }
     }
 
@@ -1440,6 +1450,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           return NO_MORE_ORDS;
         }
         return ords.nextValue();
+      }
+
+      @Override
+      public long docValueCount() {
+        return count;
       }
 
       @Override

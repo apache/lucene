@@ -23,6 +23,7 @@ import org.apache.lucene.queryparser.flexible.standard.nodes.WildcardQueryNode;
 import org.apache.lucene.queryparser.flexible.standard.processors.MultiTermRewriteMethodProcessor;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.WildcardQuery;
+import org.apache.lucene.util.automaton.Operations;
 
 /** Builds a {@link WildcardQuery} object from a {@link WildcardQueryNode} object. */
 public class WildcardQueryNodeBuilder implements StandardQueryBuilder {
@@ -35,16 +36,15 @@ public class WildcardQueryNodeBuilder implements StandardQueryBuilder {
   public WildcardQuery build(QueryNode queryNode) throws QueryNodeException {
     WildcardQueryNode wildcardNode = (WildcardQueryNode) queryNode;
 
-    WildcardQuery q =
-        new WildcardQuery(
-            new Term(wildcardNode.getFieldAsString(), wildcardNode.getTextAsString()));
-
     MultiTermQuery.RewriteMethod method =
         (MultiTermQuery.RewriteMethod) queryNode.getTag(MultiTermRewriteMethodProcessor.TAG_ID);
-    if (method != null) {
-      q.setRewriteMethod(method);
+    if (method == null) {
+      method = MultiTermQuery.CONSTANT_SCORE_REWRITE;
     }
 
-    return q;
+    return new WildcardQuery(
+        new Term(wildcardNode.getFieldAsString(), wildcardNode.getTextAsString()),
+        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+        method);
   }
 }

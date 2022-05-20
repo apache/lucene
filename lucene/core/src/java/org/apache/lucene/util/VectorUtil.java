@@ -133,11 +133,34 @@ public final class VectorUtil {
     }
     float squareSum = 0.0f;
     int dim = v1.length;
-    for (int i = 0; i < dim; i++) {
+    int i;
+    for (i = 0; i + 8 <= dim; i += 8) {
+      squareSum += squareDistanceUnrolled8(v1, v2, i);
+    }
+    for (; i < dim; i++) {
       float diff = v1[i] - v2[i];
       squareSum += diff * diff;
     }
     return squareSum;
+  }
+
+  private static float squareDistanceUnrolled8(float[] v1, float[] v2, int index) {
+    float diff0 = v1[index + 0] - v2[index + 0];
+    float diff1 = v1[index + 1] - v2[index + 1];
+    float diff2 = v1[index + 2] - v2[index + 2];
+    float diff3 = v1[index + 3] - v2[index + 3];
+    float diff4 = v1[index + 4] - v2[index + 4];
+    float diff5 = v1[index + 5] - v2[index + 5];
+    float diff6 = v1[index + 6] - v2[index + 6];
+    float diff7 = v1[index + 7] - v2[index + 7];
+    return diff0 * diff0
+        + diff1 * diff1
+        + diff2 * diff2
+        + diff3 * diff3
+        + diff4 * diff4
+        + diff5 * diff5
+        + diff6 * diff6
+        + diff7 * diff7;
   }
 
   /**

@@ -32,8 +32,6 @@ public final class FacetResult {
    * topN. If a document contains multiple values for the same path, it will only be counted once in
    * this value.
    */
-  // TODO: This may not hold true for SSDV faceting, where docs can be counted more than
-  // once. We should fix this. See LUCENE-9952
   public final Number value;
 
   /** How many child labels were encountered. */

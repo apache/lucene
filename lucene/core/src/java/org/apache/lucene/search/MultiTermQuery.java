@@ -36,10 +36,10 @@ import org.apache.lucene.util.AttributeSource;
  * #getTermsEnum(Terms,AttributeSource)} to provide a {@link FilteredTermsEnum} that iterates
  * through the terms to be matched.
  *
- * <p><b>NOTE</b>: if {@link #setRewriteMethod} is either {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} or
+ * <p><b>NOTE</b>: if {@link RewriteMethod} is either {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} or
  * {@link #SCORING_BOOLEAN_REWRITE}, you may encounter a {@link IndexSearcher.TooManyClauses}
  * exception during searching, which happens when the number of terms to be searched exceeds {@link
- * IndexSearcher#getMaxClauseCount()}. Setting {@link #setRewriteMethod} to {@link
+ * IndexSearcher#getMaxClauseCount()}. Setting {@link RewriteMethod} to {@link
  * #CONSTANT_SCORE_REWRITE} prevents this.
  *
  * <p>The recommended rewrite method is {@link #CONSTANT_SCORE_REWRITE}: it doesn't spend CPU
@@ -52,7 +52,7 @@ import org.apache.lucene.util.AttributeSource;
  */
 public abstract class MultiTermQuery extends Query {
   protected final String field;
-  protected RewriteMethod rewriteMethod = CONSTANT_SCORE_REWRITE;
+  protected final RewriteMethod rewriteMethod;
 
   /** Abstract class that defines how the query is rewritten. */
   public abstract static class RewriteMethod {
@@ -77,8 +77,6 @@ public abstract class MultiTermQuery extends Query {
    * <p>This method is faster than the BooleanQuery rewrite methods when the number of matched terms
    * or matched documents is non-trivial. Also, it will never hit an errant {@link
    * IndexSearcher.TooManyClauses} exception.
-   *
-   * @see #setRewriteMethod
    */
   public static final RewriteMethod CONSTANT_SCORE_REWRITE =
       new RewriteMethod() {
@@ -96,8 +94,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p><b>NOTE</b>: This rewrite method will hit {@link IndexSearcher.TooManyClauses} if the number
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.
-   *
-   * @see #setRewriteMethod
    */
   public static final RewriteMethod SCORING_BOOLEAN_REWRITE =
       ScoringRewrite.SCORING_BOOLEAN_REWRITE;
@@ -108,8 +104,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p><b>NOTE</b>: This rewrite method will hit {@link IndexSearcher.TooManyClauses} if the number
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.
-   *
-   * @see #setRewriteMethod
    */
   public static final RewriteMethod CONSTANT_SCORE_BOOLEAN_REWRITE =
       ScoringRewrite.CONSTANT_SCORE_BOOLEAN_REWRITE;
@@ -120,8 +114,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p>This rewrite method only uses the top scoring terms so it will not overflow the boolean max
    * clause count.
-   *
-   * @see #setRewriteMethod
    */
   public static final class TopTermsScoringBooleanQueryRewrite
       extends TopTermsRewrite<BooleanQuery.Builder> {
@@ -167,8 +159,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p>This rewrite method only uses the top scoring terms so it will not overflow the boolean max
    * clause count.
-   *
-   * @see #setRewriteMethod
    */
   public static final class TopTermsBlendedFreqScoringRewrite
       extends TopTermsRewrite<BlendedTermQuery.Builder> {
@@ -217,8 +207,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p>This rewrite method only uses the top scoring terms so it will not overflow the boolean max
    * clause count.
-   *
-   * @see #setRewriteMethod
    */
   public static final class TopTermsBoostOnlyBooleanQueryRewrite
       extends TopTermsRewrite<BooleanQuery.Builder> {
@@ -257,8 +245,9 @@ public abstract class MultiTermQuery extends Query {
   }
 
   /** Constructs a query matching terms that cannot be represented with a single Term. */
-  public MultiTermQuery(final String field) {
+  public MultiTermQuery(final String field, RewriteMethod rewriteMethod) {
     this.field = Objects.requireNonNull(field, "field must not be null");
+    this.rewriteMethod = Objects.requireNonNull(rewriteMethod, "rewriteMethod must not be null");
   }
 
   /** Returns the field name for this query */
@@ -294,17 +283,9 @@ public abstract class MultiTermQuery extends Query {
     return rewriteMethod.rewrite(reader, this);
   }
 
-  /** @see #setRewriteMethod */
+  /** @return the rewrite method used to build the final query */
   public RewriteMethod getRewriteMethod() {
     return rewriteMethod;
-  }
-
-  /**
-   * Sets the rewrite method to be used when executing the query. You can use one of the four core
-   * methods, or implement your own subclass of {@link RewriteMethod}.
-   */
-  public void setRewriteMethod(RewriteMethod method) {
-    rewriteMethod = method;
   }
 
   @Override

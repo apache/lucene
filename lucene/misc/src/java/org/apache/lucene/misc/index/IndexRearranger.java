@@ -32,6 +32,10 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -44,12 +48,23 @@ import org.apache.lucene.util.NamedThreadFactory;
  * <p>TODO: another possible (faster) approach to do this is to manipulate FlushPolicy and
  * MergePolicy at indexing time to create small desired segments first and merge them accordingly
  * for details please see: https://markmail.org/message/lbtdntclpnocmfuf
+ *
+ * @lucene.experimental
  */
 public class IndexRearranger {
   protected final Directory input, output;
   protected final IndexWriterConfig config;
   protected final List<DocumentSelector> documentSelectors;
 
+  /**
+   * Constructor
+   *
+   * @param input input dir
+   * @param output output dir
+   * @param config index writer config
+   * @param documentSelectors specify what document is desired in the rearranged index segments,
+   *     each selector correspond to one segment
+   */
   public IndexRearranger(
       Directory input,
       Directory output,
@@ -84,6 +99,34 @@ public class IndexRearranger {
       }
       executor.shutdown();
     }
+    List<SegmentCommitInfo> ordered = new ArrayList<>();
+    try (IndexReader reader = DirectoryReader.open(output)) {
+      for (DocumentSelector ds : documentSelectors) {
+        int foundLeaf = -1;
+        for (LeafReaderContext context : reader.leaves()) {
+          SegmentReader sr = (SegmentReader) context.reader();
+          int docFound = ds.getFilteredLiveDocs(sr).nextSetBit(0);
+          if (docFound != DocIdSetIterator.NO_MORE_DOCS) {
+            if (foundLeaf != -1) {
+              throw new IllegalStateException(
+                  "Document selector "
+                      + ds
+                      + " has matched more than 1 segments. Matched segments order: "
+                      + foundLeaf
+                      + ", "
+                      + context.ord);
+            }
+            foundLeaf = context.ord;
+            ordered.add(sr.getSegmentInfo());
+          }
+        }
+        assert foundLeaf != -1;
+      }
+    }
+    SegmentInfos sis = SegmentInfos.readLatestCommit(output);
+    sis.clear();
+    sis.addAll(ordered);
+    sis.commit(output);
   }
 
   private static void addOneSegment(

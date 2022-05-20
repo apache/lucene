@@ -35,7 +35,7 @@ import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
@@ -126,9 +126,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     assertEquals(1, reader.leaves().size());
     MergePolicy policy =
         new SoftDeletesRetentionMergePolicy(
-            "soft_delete",
-            () -> new DocValuesFieldExistsQuery("keep_around"),
-            NoMergePolicy.INSTANCE);
+            "soft_delete", () -> new FieldExistsQuery("keep_around"), NoMergePolicy.INSTANCE);
     assertFalse(
         policy.keepFullyDeletedSegment(() -> (SegmentReader) reader.leaves().get(0).reader()));
     reader.close();
@@ -496,7 +494,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     config.setReaderPooling(true);
     config.setMergePolicy(
         new SoftDeletesRetentionMergePolicy(
-            "soft_delete", () -> new DocValuesFieldExistsQuery("keep"), new LogDocMergePolicy()));
+            "soft_delete", () -> new FieldExistsQuery("keep"), new LogDocMergePolicy()));
     IndexWriter writer = new IndexWriter(dir, config);
     writer
         .getConfig()

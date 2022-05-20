@@ -19,6 +19,8 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -258,14 +260,10 @@ public abstract class PointRangeQuery extends Query {
         };
       }
 
-      @Override
-      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        LeafReader reader = context.reader();
-
-        PointValues values = reader.getPointValues(field);
+      private boolean checkValidPointValues(PointValues values) throws IOException {
         if (values == null) {
           // No docs in this segment/field indexed any points
-          return null;
+          return false;
         }
 
         if (values.getNumIndexDimensions() != numDims) {
@@ -285,6 +283,17 @@ public abstract class PointRangeQuery extends Query {
                   + values.getBytesPerDimension()
                   + " but this query has bytesPerDim="
                   + bytesPerDim);
+        }
+        return true;
+      }
+
+      @Override
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        LeafReader reader = context.reader();
+
+        PointValues values = reader.getPointValues(field);
+        if (checkValidPointValues(values) == false) {
+          return null;
         }
 
         boolean allDocsMatch;
@@ -367,6 +376,113 @@ public abstract class PointRangeQuery extends Query {
           return null;
         }
         return scorerSupplier.get(Long.MAX_VALUE);
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        LeafReader reader = context.reader();
+
+        PointValues values = reader.getPointValues(field);
+        if (checkValidPointValues(values) == false) {
+          return 0;
+        }
+
+        if (reader.hasDeletions() == false) {
+          if (relate(values.getMinPackedValue(), values.getMaxPackedValue())
+              == Relation.CELL_INSIDE_QUERY) {
+            return values.getDocCount();
+          }
+          // only 1D: we have the guarantee that it will actually run fast since there are at most 2
+          // crossing leaves.
+          // docCount == size : counting according number of points in leaf node, so must be
+          // single-valued.
+          if (numDims == 1 && values.getDocCount() == values.size()) {
+            return (int) pointCount(values.getPointTree(), this::relate, this::matches);
+          }
+        }
+        return super.count(context);
+      }
+
+      /**
+       * Finds the number of points matching the provided range conditions. Using this method is
+       * faster than calling {@link PointValues#intersect(IntersectVisitor)} to get the count of
+       * intersecting points. This method does not enforce live documents, therefore it should only
+       * be used when there are no deleted documents.
+       *
+       * @param pointTree start node of the count operation
+       * @param nodeComparator comparator to be used for checking whether the internal node is
+       *     inside the range
+       * @param leafComparator comparator to be used for checking whether the leaf node is inside
+       *     the range
+       * @return count of points that match the range
+       */
+      private long pointCount(
+          PointValues.PointTree pointTree,
+          BiFunction<byte[], byte[], Relation> nodeComparator,
+          Predicate<byte[]> leafComparator)
+          throws IOException {
+        final int[] matchingNodeCount = {0};
+        // create a custom IntersectVisitor that records the number of leafNodes that matched
+        final IntersectVisitor visitor =
+            new IntersectVisitor() {
+              @Override
+              public void visit(int docID) {
+                // this branch should be unreachable
+                throw new UnsupportedOperationException(
+                    "This IntersectVisitor does not perform any actions on a "
+                        + "docID="
+                        + docID
+                        + " node being visited");
+              }
+
+              @Override
+              public void visit(int docID, byte[] packedValue) {
+                if (leafComparator.test(packedValue)) {
+                  matchingNodeCount[0]++;
+                }
+              }
+
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                return nodeComparator.apply(minPackedValue, maxPackedValue);
+              }
+            };
+        pointCount(visitor, pointTree, matchingNodeCount);
+        return matchingNodeCount[0];
+      }
+
+      private void pointCount(
+          IntersectVisitor visitor, PointValues.PointTree pointTree, int[] matchingNodeCount)
+          throws IOException {
+        Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+        switch (r) {
+          case CELL_OUTSIDE_QUERY:
+            // This cell is fully outside the query shape: return 0 as the count of its nodes
+            return;
+          case CELL_INSIDE_QUERY:
+            // This cell is fully inside the query shape: return the size of the entire node as the
+            // count
+            matchingNodeCount[0] += pointTree.size();
+            return;
+          case CELL_CROSSES_QUERY:
+            /*
+            The cell crosses the shape boundary, or the cell fully contains the query, so we fall
+            through and do full counting.
+            */
+            if (pointTree.moveToChild()) {
+              do {
+                pointCount(visitor, pointTree, matchingNodeCount);
+              } while (pointTree.moveToSibling());
+              pointTree.moveToParent();
+            } else {
+              // we have reached a leaf node here.
+              pointTree.visitDocValues(visitor);
+              // leaf node count is saved in the matchingNodeCount array by the visitor
+            }
+            return;
+          default:
+            throw new IllegalArgumentException("Unreachable code");
+        }
       }
 
       @Override

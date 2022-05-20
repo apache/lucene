@@ -25,6 +25,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -39,6 +40,7 @@ import org.junit.Test;
 @Ignore
 public class TestScripts extends AbstractLuceneDistributionTest {
   @Test
+  @RequiresGUI
   public void testLukeCanBeLaunched() throws Exception {
     Path distributionPath;
     if (randomBoolean()) {
@@ -50,13 +52,19 @@ public class TestScripts extends AbstractLuceneDistributionTest {
       distributionPath = getDistributionPath();
     }
 
+    Path currentJava =
+        Paths.get(System.getProperty("java.home"), "bin", WINDOWS ? "java.exe" : "java");
+    Assertions.assertThat(currentJava).exists();
+
     Path lukeScript = resolveScript(distributionPath.resolve("bin").resolve("luke"));
 
     Launcher launcher =
         new ProcessBuilderLauncher()
             .executable(lukeScript)
-            // tweak Windows launcher scripts so that they don't fork asynchronous java.
-            .envvar("DISTRIBUTION_TESTING", "true")
+            // pass the same JVM which the tests are currently using; this also forces UTF-8 as
+            // console
+            // encoding so that we know we can safely read it.
+            .envvar("LAUNCH_CMD", currentJava.toAbsolutePath().toString())
             .viaShellLauncher()
             .cwd(distributionPath)
             .args("--sanity-check");
@@ -64,8 +72,10 @@ public class TestScripts extends AbstractLuceneDistributionTest {
     execute(
         launcher,
         0,
-        60,
-        (output) -> {
+        120,
+        (outputBytes) -> {
+          // We know it's UTF-8 because we set file.encoding explicitly.
+          var output = Files.readString(outputBytes, StandardCharsets.UTF_8);
           Assertions.assertThat(output).contains("[Vader] Hello, Luke.");
         });
   }
@@ -98,14 +108,14 @@ public class TestScripts extends AbstractLuceneDistributionTest {
       () -> {
         // The default charset for a forked java process could be computed for the current
         // platform but it adds more complexity. For now, assume it's just parseable ascii.
-        return StandardCharsets.US_ASCII;
+        return StandardCharsets.ISO_8859_1;
       };
 
-  protected String execute(
+  protected void execute(
       Launcher launcher,
       int expectedExitCode,
       long timeoutInSeconds,
-      ThrowingConsumer<String> consumer)
+      ThrowingConsumer<Path> processOutputConsumer)
       throws Exception {
 
     try (ForkedProcess forkedProcess = launcher.execute()) {
@@ -124,9 +134,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
             .as("forked process exit status")
             .isEqualTo(expectedExitCode);
 
-        String output = Files.readString(forkedProcess.getProcessOutputFile(), charset);
-        consumer.accept(output);
-        return output;
+        processOutputConsumer.accept(forkedProcess.getProcessOutputFile());
       } catch (Throwable t) {
         logSubprocessOutput(
             command, Files.readString(forkedProcess.getProcessOutputFile(), charset));

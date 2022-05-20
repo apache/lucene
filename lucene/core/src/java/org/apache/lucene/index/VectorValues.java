@@ -30,7 +30,7 @@ import org.apache.lucene.util.BytesRef;
 public abstract class VectorValues extends DocIdSetIterator {
 
   /** The maximum length of a vector */
-  public static int MAX_DIMENSIONS = 1024;
+  public static final int MAX_DIMENSIONS = 1024;
 
   /** Sole constructor */
   protected VectorValues() {}

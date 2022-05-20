@@ -27,8 +27,8 @@ import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
  * <p>Few Stemmer criteria are taken from:
  * <i>http://members.unine.ch/jacques.savoy/clef/BengaliStemmerLight.java.txt</i>
  */
-public class BengaliStemmer {
-  public int stem(char[] buffer, int len) {
+class BengaliStemmer {
+  int stem(char[] buffer, int len) {
 
     // 8
     if (len > 9

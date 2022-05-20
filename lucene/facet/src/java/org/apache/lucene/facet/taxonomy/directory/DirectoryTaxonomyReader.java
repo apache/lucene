@@ -78,10 +78,20 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   private volatile TaxonomyIndexArrays taxoArrays;
 
   /**
-   * Called only from {@link #doOpenIfChanged()}. If the taxonomy has been recreated, you should
-   * pass {@code null} as the caches and parent/children arrays.
+   * Expert: Use this method to explicitly force the {@link DirectoryTaxonomyReader} to use specific
+   * parent/children arrays and caches.
+   *
+   * <p>Called from {@link #doOpenIfChanged()}. If the taxonomy has been recreated, you should pass
+   * {@code null} as the caches and parent/children arrays.
+   *
+   * @param indexReader An indexReader that is opened in the desired Directory
+   * @param taxoWriter The {@link DirectoryTaxonomyWriter} from which to obtain newly added
+   *     categories, in real-time.
+   * @param ordinalCache a FacetLabel to Integer ordinal mapping if it already exists
+   * @param categoryCache an ordinal to FacetLabel mapping if it already exists
+   * @param taxoArrays taxonomy arrays that store the parent, siblings, children information
    */
-  DirectoryTaxonomyReader(
+  protected DirectoryTaxonomyReader(
       DirectoryReader indexReader,
       DirectoryTaxonomyWriter taxoWriter,
       LRUHashMap<FacetLabel, Integer> ordinalCache,
@@ -207,7 +217,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
 
       final DirectoryTaxonomyReader newtr;
       if (recreated) {
-        // if recreated, do not reuse anything from this instace. the information
+        // if recreated, do not reuse anything from this instance. the information
         // will be lazily computed by the new instance when needed.
         newtr = new DirectoryTaxonomyReader(r2, taxoWriter, null, null, null);
       } else {
@@ -238,7 +248,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
    * Expert: returns the underlying {@link DirectoryReader} instance that is used by this {@link
    * TaxonomyReader}.
    */
-  DirectoryReader getInternalIndexReader() {
+  protected DirectoryReader getInternalIndexReader() {
     ensureOpen();
     return indexReader;
   }
