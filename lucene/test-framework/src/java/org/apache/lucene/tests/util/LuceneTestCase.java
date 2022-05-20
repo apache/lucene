@@ -63,6 +63,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -106,8 +107,46 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.CompositeReader;
+import org.apache.lucene.index.ConcurrentMergeScheduler;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.LiveIndexWriterConfig;
+import org.apache.lucene.index.LogByteSizeMergePolicy;
+import org.apache.lucene.index.LogDocMergePolicy;
+import org.apache.lucene.index.LogMergePolicy;
+import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.MergeScheduler;
+import org.apache.lucene.index.MultiBits;
+import org.apache.lucene.index.MultiDocValues;
+import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.ParallelCompositeReader;
+import org.apache.lucene.index.ParallelLeafReader;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.SimpleMergedSegmentWarmer;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -935,7 +974,7 @@ public abstract class LuceneTestCase extends Assert {
   /**
    * Convenience method for logging an array. Wraps the array in an iterator and delegates
    *
-   * @see #dumpIterator(String,Iterator,PrintStream)
+   * @see #dumpIterator(String, Iterator, PrintStream)
    */
   public static void dumpArray(String label, Object[] objs, PrintStream stream) {
     Iterator<?> iter = (null == objs) ? null : Arrays.asList(objs).iterator();
@@ -3033,6 +3072,25 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static Path createTempFile() throws IOException {
     return createTempFile("tempFile", ".tmp");
+  }
+
+  /**
+   * Returns a set of JVM arguments to fork a JVM with the same class or module path (including any
+   * associated JVM options). The returned value may be empty. This method may throw an assertion
+   * error if fork options cannot be reliably acquired (at the moment they are collected and passed
+   * as an external file in gradle scripts).
+   *
+   * <p><b>JVM forking is strongly discouraged as it makes test slower and more resource-hungry.
+   * Consider all alternatives first.</b>
+   */
+  public static List<String> getJvmForkArguments() throws IOException {
+    String forkArgsFile = System.getProperty("tests.jvmForkArgsFile");
+    Path forkArgsPath;
+    if (forkArgsFile == null || !Files.isRegularFile(forkArgsPath = Paths.get(forkArgsFile))) {
+      throw new AssertionError("JVM fork arguments are not present.");
+    }
+
+    return Files.readAllLines(forkArgsPath, StandardCharsets.UTF_8);
   }
 
   /**
