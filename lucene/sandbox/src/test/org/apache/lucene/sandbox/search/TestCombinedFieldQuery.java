@@ -589,4 +589,52 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
       return new BM25Similarity().scorer(boost, collectionStats, termStats);
     }
   }
+
+  public void testDistributedCollectionStatistics() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setSimilarity(randomCompatibleSimilarity());
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    String queryString = "foo";
+
+    Document doc0 = new Document();
+    doc0.add(new TextField("f", "foo", Store.NO));
+    doc0.add(new TextField("g", "foo baz", Store.NO));
+    w.addDocument(doc0);
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher =
+        new IndexSearcher(reader) {
+          @Override
+          public CollectionStatistics collectionStatistics(String field) throws IOException {
+            CollectionStatistics shardStatistics = super.collectionStatistics(field);
+            int extraMaxDoc = randomIntBetween(0, 10);
+            int extraDocCount = randomIntBetween(0, extraMaxDoc);
+            int extraSumDocFreq = extraDocCount + randomIntBetween(0, 10);
+            int extraSumTotalTermFreq = extraSumDocFreq + randomIntBetween(0, 10);
+            CollectionStatistics globalStatistics =
+                new CollectionStatistics(
+                    field,
+                    shardStatistics.maxDoc() + extraMaxDoc,
+                    shardStatistics.docCount() + extraDocCount,
+                    shardStatistics.sumTotalTermFreq() + extraSumTotalTermFreq,
+                    shardStatistics.sumDocFreq() + extraSumDocFreq);
+            return globalStatistics;
+          }
+        };
+    searcher.setSimilarity(new BM25Similarity());
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("f")
+            .addField("g")
+            .addTerm(new BytesRef(queryString))
+            .build();
+    // just check that search does not fail
+    searcher.search(query, 10);
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
 }
