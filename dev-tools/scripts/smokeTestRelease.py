@@ -19,6 +19,7 @@ import argparse
 import codecs
 import datetime
 import filecmp
+import glob
 import hashlib
 import http.client
 import os
@@ -1028,29 +1029,14 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
   #for tup in allReleases:
   #  print('  %s' % '.'.join(str(x) for x in tup))
 
+  testedIndicesPaths = glob.glob('%s/lucene/backward-codecs/src/test/org/apache/lucene/backward_index/*-cfs.zip' % unpackPath)
   testedIndices = set()
 
-  os.chdir(unpackPath)
-
-  print('    run TestBackwardsCompatibility..')
-  command = './gradlew --no-daemon test -p lucene/backward-codecs --tests TestBackwardsCompatibility --max-workers=1 ' \
-            '-Dtests.verbose=true '
-  p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  stdout, stderr = p.communicate()
-  if p.returncode != 0:
-    # Not good: the test failed!
-    raise RuntimeError('%s failed:\n%s' % (command, stdout))
-  stdout = stdout.decode('utf-8',errors='replace').replace('\r\n','\n')
-
-  if stderr is not None:
-    # Should not happen since we redirected stderr to stdout:
-    raise RuntimeError('stderr non-empty')
-
-  reIndexName = re.compile(r'TEST: index[\s*=\s*](.*?)(-cfs|-nocfs)$', re.MULTILINE)
-  for name, cfsPart in reIndexName.findall(stdout):
-    # Fragile: decode the inconsistent naming schemes we've used in TestBWC's indices:
-    #print('parse name %s' % name)
-    tup = tuple(name.split('.'))
+  reIndexName = re.compile(r'^[^.]*.(.*?)-cfs.zip')
+  for name in testedIndicesPaths:
+    basename = os.path.basename(name)
+    version = reIndexName.fullmatch(basename).group(1)
+    tup = tuple(version.split('.'))
     if len(tup) == 3:
       # ok
       tup = tuple(int(x) for x in tup)
@@ -1060,11 +1046,11 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
     elif tup == ('4', '0', '0', '2'):
       # CONFUSING: this is the 4.0.0-beta index??
       tup = 4, 0, 0, 1
-    elif name == '5x-with-4x-segments':
+    elif basename == 'unsupported.5x-with-4x-segments-cfs.zip':
       # Mixed version test case; ignore it for our purposes because we only
       # tally up the "tests single Lucene version" indices
       continue
-    elif name == '5.0.0.singlesegment':
+    elif basename == 'unsupported.5.0.0.singlesegment-cfs.zip':
       tup = 5, 0, 0
     else:
       raise RuntimeError('could not parse version %s' % name)
