@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene92.Lucene92Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -286,11 +287,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertEquals(0, vectorValues.nextDoc());
           // The merge order is randomized, we might get 0 first, or 1
           float value = vectorValues.vectorValue()[0];
-          // 0.984375 is the result of compressing 1f to a (byte) 127 and back again.
-          // assertTrue("unexpected value " + value, value == 0 || value == 0.984375);
+          assertTrue(value == 0 || value == 1);
           assertEquals(1, vectorValues.nextDoc());
           value += vectorValues.vectorValue()[0];
-          // assertEquals(0.984375, value, 0);
+          assertEquals(1, value, 0);
         }
       }
     }
@@ -600,9 +600,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     VectorSimilarityFunction[] fieldSimilarityFunctions = new VectorSimilarityFunction[numFields];
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
-      fieldSimilarityFunctions[i] =
-          VectorSimilarityFunction.values()[
-              random().nextInt(VectorSimilarityFunction.values().length)];
+      fieldSimilarityFunctions[i] = randomSimilarity();
     }
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
@@ -640,10 +638,23 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           }
           assertEquals(fieldDocCounts[field], docCount);
           // Account for quantization done when indexing fields w/DOT_PRODUCT8
-          double delta = fieldSimilarityFunctions[field] == VectorSimilarityFunction.DOT_PRODUCT8 ? numDocs * 0.01 : 1e-5;
+          double delta =
+              fieldSimilarityFunctions[field] == VectorSimilarityFunction.DOT_PRODUCT8
+                  ? numDocs * 0.01
+                  : 1e-5;
           assertEquals(fieldTotals[field], checksum, delta);
         }
       }
+    }
+  }
+
+  private VectorSimilarityFunction randomSimilarity() {
+    if (getCodec() instanceof Lucene92Codec) {
+      return VectorSimilarityFunction.values()[
+          random().nextInt(VectorSimilarityFunction.values().length)];
+    } else {
+      return VectorSimilarityFunction.values()[
+          random().nextInt(VectorSimilarityFunction.values().length - 1)];
     }
   }
 
@@ -1107,10 +1118,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   public void testVectorValuesReportCorrectDocs() throws Exception {
     final int numDocs = atLeast(1000);
     final int dim = random().nextInt(20) + 1;
-    final VectorSimilarityFunction similarityFunction =
-        VectorSimilarityFunction.values()[
-            random().nextInt(VectorSimilarityFunction.values().length)];
-
+    final VectorSimilarityFunction similarityFunction = randomSimilarity();
     double fieldValuesCheckSum = 0;
     int fieldDocCount = 0;
     long fieldSumDocIDs = 0;
@@ -1155,7 +1163,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             }
           }
         }
-        assertEquals(fieldValuesCheckSum, checksum, similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8 ? numDocs * 0.2 : 1e-5);
+        assertEquals(
+            fieldValuesCheckSum,
+            checksum,
+            similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8 ? numDocs * 0.2 : 1e-5);
         assertEquals(fieldDocCount, docCount);
         assertEquals(fieldSumDocIDs, sumDocIds);
       }

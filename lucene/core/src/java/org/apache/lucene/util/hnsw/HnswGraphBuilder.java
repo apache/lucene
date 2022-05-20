@@ -34,6 +34,7 @@ import org.apache.lucene.util.InfoStream;
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
  * hyperparameters.
+ *
  * @param <T> the type of vector
  */
 public final class HnswGraphBuilder<T> {
@@ -66,12 +67,12 @@ public final class HnswGraphBuilder<T> {
   private RandomAccessVectorValues buildVectors;
 
   public static HnswGraphBuilder<?> create(
-          RandomAccessVectorValuesProducer vectors,
-          VectorSimilarityFunction similarityFunction,
-          int M,
-          int beamWidth,
-          long seed)
-          throws IOException {
+      RandomAccessVectorValuesProducer vectors,
+      VectorSimilarityFunction similarityFunction,
+      int M,
+      int beamWidth,
+      long seed)
+      throws IOException {
     if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
       return new HnswGraphBuilder<BytesRef>(vectors, similarityFunction, M, beamWidth, seed);
     } else {
@@ -268,10 +269,7 @@ public final class HnswGraphBuilder<T> {
    * @param neighbors the neighbors selected so far
    * @return whether the candidate is diverse given the existing neighbors
    */
-  private boolean diversityCheck(
-      int candidate,
-      float score,
-      NeighborArray neighbors)
+  private boolean diversityCheck(int candidate, float score, NeighborArray neighbors)
       throws IOException {
     bound.set(score);
     return isDiverse(candidate, neighbors);
@@ -299,7 +297,12 @@ public final class HnswGraphBuilder<T> {
   private boolean isDiverse(BytesRef candidate, NeighborArray neighbors) throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
       float diversityCheck =
-              dotProduct(candidate, 0, buildVectors.binaryValue(neighbors.node[i]), 0, buildVectors.dimension());
+          dotProduct(
+              candidate,
+              0,
+              buildVectors.binaryValue(neighbors.node[i]),
+              0,
+              buildVectors.dimension());
       if (bound.check(diversityCheck) == false) {
         return false;
       }
@@ -328,10 +331,11 @@ public final class HnswGraphBuilder<T> {
     }
   }
 
-  private boolean isWorstNonDiverse(int candidateIndex, float[] candidate, NeighborArray neighbors) throws IOException {
-    for (int i = candidateIndex - 1; i >- 0; i--) {
+  private boolean isWorstNonDiverse(int candidateIndex, float[] candidate, NeighborArray neighbors)
+      throws IOException {
+    for (int i = candidateIndex - 1; i > -0; i--) {
       float diversityCheck =
-              similarityFunction.compare(candidate, buildVectors.vectorValue(neighbors.node[i]));
+          similarityFunction.compare(candidate, buildVectors.vectorValue(neighbors.node[i]));
       if (bound.check(diversityCheck) == false) {
         return false;
       }
@@ -339,10 +343,16 @@ public final class HnswGraphBuilder<T> {
     return true;
   }
 
-  private boolean isWorstNonDiverse(int candidateIndex, BytesRef candidate, NeighborArray neighbors) throws IOException {
-    for (int i = candidateIndex - 1; i >- 0; i--) {
+  private boolean isWorstNonDiverse(int candidateIndex, BytesRef candidate, NeighborArray neighbors)
+      throws IOException {
+    for (int i = candidateIndex - 1; i > -0; i--) {
       float diversityCheck =
-              dotProduct(candidate, 0, buildVectors.binaryValue(neighbors.node[i]), 0, buildVectors.dimension());
+          dotProduct(
+              candidate,
+              0,
+              buildVectors.binaryValue(neighbors.node[i]),
+              0,
+              buildVectors.dimension());
       if (bound.check(diversityCheck) == false) {
         return false;
       }

@@ -17,22 +17,17 @@
 
 package org.apache.lucene.codecs.lucene92;
 
+import java.io.IOException;
 import org.apache.lucene.index.FilterVectorValues;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BytesRef;
 
-import java.io.IOException;
-
-/**
- * convert from floating point to single byte
- */
+/** convert from floating point to single byte */
 public class CompressingVectorValues extends FilterVectorValues {
 
   private final BytesRef binaryValue;
 
-  /**
-   * @param in the wrapped values
-   */
+  /** @param in the wrapped values */
   protected CompressingVectorValues(VectorValues in) {
     super(in);
     binaryValue = new BytesRef(in.dimension());
@@ -48,5 +43,4 @@ public class CompressingVectorValues extends FilterVectorValues {
     }
     return binaryValue;
   }
-
 }

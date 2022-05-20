@@ -61,7 +61,8 @@ public class TestHnswGraph extends LuceneTestCase {
 
   @Before
   public void setup() {
-    similarityFunction = VectorSimilarityFunction.values()[
+    similarityFunction =
+        VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
   }
 
@@ -129,9 +130,9 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   private VectorSimilarityFunction randomAngularSimilarity() {
-    return random().nextBoolean() ?
-            VectorSimilarityFunction.DOT_PRODUCT :
-            VectorSimilarityFunction.DOT_PRODUCT8;
+    return random().nextBoolean()
+        ? VectorSimilarityFunction.DOT_PRODUCT
+        : VectorSimilarityFunction.DOT_PRODUCT8;
   }
 
   private void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
@@ -169,13 +170,12 @@ public class TestHnswGraph extends LuceneTestCase {
     similarityFunction = randomAngularSimilarity();
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     HnswGraphBuilder<?> builder =
-        HnswGraphBuilder.create(
-            vectors, similarityFunction, 10, 100, random().nextInt());
+        HnswGraphBuilder.create(vectors, similarityFunction, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors);
     // run some searches
     NeighborQueue nn =
         HnswGraphSearcher.search(
-                getTargetVector(),
+            getTargetVector(),
             10,
             vectors.randomAccess(),
             similarityFunction,
@@ -208,14 +208,13 @@ public class TestHnswGraph extends LuceneTestCase {
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     similarityFunction = randomAngularSimilarity();
     HnswGraphBuilder<?> builder =
-        HnswGraphBuilder.create(
-            vectors, similarityFunction, 16, 100, random().nextInt());
+        HnswGraphBuilder.create(vectors, similarityFunction, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors);
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
         HnswGraphSearcher.search(
-                getTargetVector(),
+            getTargetVector(),
             10,
             vectors.randomAccess(),
             similarityFunction,
@@ -239,8 +238,7 @@ public class TestHnswGraph extends LuceneTestCase {
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     similarityFunction = randomAngularSimilarity();
     HnswGraphBuilder<?> builder =
-        HnswGraphBuilder.create(
-            vectors, similarityFunction, 16, 100, random().nextInt());
+        HnswGraphBuilder.create(vectors, similarityFunction, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors);
     // Only mark a few vectors as accepted
     BitSet acceptOrds = new FixedBitSet(vectors.size);
@@ -252,7 +250,7 @@ public class TestHnswGraph extends LuceneTestCase {
     int numAccepted = acceptOrds.cardinality();
     NeighborQueue nn =
         HnswGraphSearcher.search(
-                getTargetVector(),
+            getTargetVector(),
             numAccepted,
             vectors.randomAccess(),
             similarityFunction,
@@ -267,7 +265,7 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   private float[] getTargetVector() {
-    return new float[]{1, 0};
+    return new float[] {1, 0};
   }
 
   public void testSearchWithSkewedAcceptOrds() throws IOException {
@@ -275,8 +273,7 @@ public class TestHnswGraph extends LuceneTestCase {
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     HnswGraphBuilder<?> builder =
-        HnswGraphBuilder.create(
-            vectors, similarityFunction, 16, 100, random().nextInt());
+        HnswGraphBuilder.create(vectors, similarityFunction, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors);
 
     // Skip over half of the documents that are closest to the query vector
@@ -310,8 +307,7 @@ public class TestHnswGraph extends LuceneTestCase {
     similarityFunction = randomAngularSimilarity();
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     HnswGraphBuilder<?> builder =
-        HnswGraphBuilder.create(
-            vectors, similarityFunction, 16, 100, random().nextInt());
+        HnswGraphBuilder.create(vectors, similarityFunction, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors);
 
     int topK = 50;
@@ -358,7 +354,8 @@ public class TestHnswGraph extends LuceneTestCase {
     expectThrows(NullPointerException.class, () -> HnswGraphBuilder.create(null, null, 0, 0, 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> HnswGraphBuilder.create(
+        () ->
+            HnswGraphBuilder.create(
                 new RandomVectorValues(1, 1, random()),
                 VectorSimilarityFunction.EUCLIDEAN,
                 0,
@@ -366,7 +363,8 @@ public class TestHnswGraph extends LuceneTestCase {
                 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> HnswGraphBuilder.create(
+        () ->
+            HnswGraphBuilder.create(
                 new RandomVectorValues(1, 1, random()),
                 VectorSimilarityFunction.EUCLIDEAN,
                 10,
@@ -379,12 +377,12 @@ public class TestHnswGraph extends LuceneTestCase {
     VectorSimilarityFunction similarityFunction = randomAngularSimilarity();
     // Some carefully checked test cases with simple 2d vectors on the unit circle:
     float[][] values = {
-            unitVector2d(0.5),
-            unitVector2d(0.75),
-            unitVector2d(0.2),
-            unitVector2d(0.9),
-            unitVector2d(0.8),
-            unitVector2d(0.77),
+      unitVector2d(0.5),
+      unitVector2d(0.75),
+      unitVector2d(0.2),
+      unitVector2d(0.9),
+      unitVector2d(0.8),
+      unitVector2d(0.77),
     };
     if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
       for (float[] v : values) {
@@ -396,8 +394,8 @@ public class TestHnswGraph extends LuceneTestCase {
     MockVectorValues vectors = new MockVectorValues(values);
     // First add nodes until everybody gets a full neighbor list
     HnswGraphBuilder<float[]> builder =
-            (HnswGraphBuilder<float[]>) HnswGraphBuilder.create(
-            vectors, similarityFunction, 2, 10, random().nextInt());
+        (HnswGraphBuilder<float[]>)
+            HnswGraphBuilder.create(vectors, similarityFunction, 2, 10, random().nextInt());
     // node 0 is added by the builder constructor
     // builder.addGraphNode(vectors.vectorValue(0));
     builder.addGraphNode(1, vectors);
@@ -467,7 +465,8 @@ public class TestHnswGraph extends LuceneTestCase {
       } else {
         query = randomVector(random(), dim);
       }
-      actual = HnswGraphSearcher.search(
+      actual =
+          HnswGraphSearcher.search(
               query, 100, vectors, similarityFunction, hnsw, acceptOrds, Integer.MAX_VALUE);
       while (actual.size() > topK) {
         actual.pop();
@@ -630,7 +629,8 @@ public class TestHnswGraph extends LuceneTestCase {
       super(createRandomVectors(size, dimension, null, random));
     }
 
-    RandomVectorValues(int size, int dimension, VectorSimilarityFunction similarityFunction, Random random) {
+    RandomVectorValues(
+        int size, int dimension, VectorSimilarityFunction similarityFunction, Random random) {
       super(createRandomVectors(size, dimension, similarityFunction, random));
     }
 
@@ -643,7 +643,8 @@ public class TestHnswGraph extends LuceneTestCase {
       return new RandomVectorValues(this);
     }
 
-    private static float[][] createRandomVectors(int size, int dimension, VectorSimilarityFunction similarityFunction, Random random) {
+    private static float[][] createRandomVectors(
+        int size, int dimension, VectorSimilarityFunction similarityFunction, Random random) {
       float[][] vectors = new float[size][];
       for (int offset = 0; offset < size; offset += random.nextInt(3) + 1) {
         vectors[offset] = randomVector(random, dimension);

@@ -267,8 +267,9 @@ public class KnnGraphTester {
   private void dumpGraph(Path docsPath) throws IOException {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
-      HnswGraphBuilder<float[]> builder = (HnswGraphBuilder<float[]>)
-          HnswGraphBuilder.create(vectors, similarityFunction, maxConn, beamWidth, 0);
+      HnswGraphBuilder<float[]> builder =
+          (HnswGraphBuilder<float[]>)
+              HnswGraphBuilder.create(vectors, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
         builder.addGraphNode(i, values);
