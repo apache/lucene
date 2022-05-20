@@ -68,25 +68,27 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         segments.add(sci);
       }
       MergeSpecification spec = null;
-      for (int start = 0; start < segments.size(); ) {
-        final int end = start + mergeFactor;
-        if (end > segments.size()) {
-          break;
-        }
-        int minDocCount = Integer.MAX_VALUE;
-        int maxDocCount = 0;
-        for (int i = start; i < end; ++i) {
+      for (int start = 0; start <= segments.size() - mergeFactor; ) {
+
+        final int startDocCount = segments.get(start).info.maxDoc();
+        // Now search for the right-most segment that could be merged with the start segment
+        int end = start + 1;
+        for (int i = segments.size() - 1; i > start; --i) {
           int docCount = segments.get(i).info.maxDoc();
-          minDocCount = Math.min(docCount, minDocCount);
-          maxDocCount = Math.max(docCount, maxDocCount);
+          if ((long) docCount * mergeFactor > startDocCount
+              && docCount < (long) mergeFactor * startDocCount) {
+            end = i + 1;
+            break;
+          }
         }
-        if (maxDocCount < (long) mergeFactor * minDocCount) {
-          // Segment sizes differ by less than mergeFactor, they can be merged together
+
+        // Now record a merge if possible
+        if (start + mergeFactor <= end) {
           if (spec == null) {
             spec = new MergeSpecification();
           }
-          spec.add(new OneMerge(segments.subList(start, end)));
-          start = end;
+          spec.add(new OneMerge(segments.subList(start, start + mergeFactor)));
+          start += mergeFactor;
         } else {
           start++;
         }
@@ -338,54 +340,27 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     int ramSegmentCount = writer.getNumBufferedDocuments();
     assertTrue(ramSegmentCount < maxBufferedDocs);
 
-    int lowerBound = -1;
-    int upperBound = maxBufferedDocs;
-    int numSegments = 0;
-
     int segmentCount = writer.getSegmentCount();
-    for (int i = segmentCount - 1; i >= 0; i--) {
-      int docCount = writer.maxDoc(i);
-      assertTrue(
-          "docCount="
-              + docCount
-              + " lowerBound="
-              + lowerBound
-              + " upperBound="
-              + upperBound
-              + " i="
-              + i
-              + " segmentCount="
-              + segmentCount
-              + " index="
-              + writer.segString()
-              + " config="
-              + writer.getConfig(),
-          docCount > lowerBound);
-
-      if (docCount <= upperBound) {
-        numSegments++;
-      } else {
-        assertTrue(
-            "numSegments="
-                + numSegments
-                + "; upperBound="
-                + upperBound
-                + "; mergeFactor="
-                + mergeFactor
-                + "; segs="
-                + writer.segString()
-                + " config="
-                + writer.getConfig(),
-            numSegments < mergeFactor);
-
-        do {
-          lowerBound = upperBound;
-          upperBound *= mergeFactor;
-        } while (docCount > upperBound);
-        numSegments = 1;
-      }
+    int lowerBound = Integer.MAX_VALUE;
+    for (int i = 0; i < segmentCount; ++i) {
+      lowerBound = Math.min(lowerBound, writer.maxDoc(i));
     }
-    assertTrue(numSegments < mergeFactor);
+    int upperBound = lowerBound * mergeFactor;
+
+    int segmentsAcrossLevels = 0;
+    while (segmentsAcrossLevels < segmentCount) {
+
+      int segmentsOnCurrentLevel = 0;
+      for (int i = 0; i < segmentCount; ++i) {
+        int docCount = writer.maxDoc(i);
+        if (docCount >= lowerBound && docCount < upperBound) {
+          segmentsOnCurrentLevel++;
+        }
+      }
+
+      assertTrue(segmentsOnCurrentLevel < mergeFactor);
+      segmentsAcrossLevels += segmentsOnCurrentLevel;
+    }
   }
 
   private static final double EPSILON = 1E-14;
