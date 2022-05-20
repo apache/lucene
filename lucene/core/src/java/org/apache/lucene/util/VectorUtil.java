@@ -222,4 +222,12 @@ public final class VectorUtil {
     }
     return total;
   }
+
+  public static BytesRef toBytesRef(float[] vector) {
+    BytesRef b = new BytesRef(vector.length);
+    for (int i = 0; i < vector.length; i++) {
+      b.bytes[i] = (byte) vector[i];
+    }
+    return b;
+  }
 }
