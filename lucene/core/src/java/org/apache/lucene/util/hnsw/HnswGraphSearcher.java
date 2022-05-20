@@ -27,6 +27,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SparseFixedBitSet;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
@@ -82,12 +83,7 @@ public class HnswGraphSearcher<T> {
       int visitedLimit)
       throws IOException {
     if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      BytesRef bQuery = new BytesRef(query.length);
-      // nocommit: refactor this conversion to some shared place
-      for (int i = 0; i < query.length; i++) {
-        bQuery.bytes[i] = (byte) query[i];
-      }
-      return search(bQuery, topK, vectors, similarityFunction, graph, acceptOrds, visitedLimit);
+      return search(VectorUtil.toBytesRef(query), topK, vectors, similarityFunction, graph, acceptOrds, visitedLimit);
     }
     HnswGraphSearcher<float[]> graphSearcher =
             new HnswGraphSearcher<>(

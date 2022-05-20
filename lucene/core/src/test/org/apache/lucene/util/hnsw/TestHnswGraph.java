@@ -72,8 +72,6 @@ public class TestHnswGraph extends LuceneTestCase {
     int M = random().nextInt(4) + 2;
     int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();
-    // nocommit - randomize
-    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT8;
     RandomVectorValues vectors = new RandomVectorValues(nDoc, dim, similarityFunction, random());
     RandomVectorValues v2 = vectors.copy(), v3 = vectors.copy();
     HnswGraphBuilder<?> builder =
@@ -465,10 +463,7 @@ public class TestHnswGraph extends LuceneTestCase {
       BytesRef bQuery = null;
       if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
         query = randomVector8(random(), dim);
-        bQuery = new BytesRef(query.length);
-        for (int j = 0; j < query.length; j++) {
-          bQuery.bytes[j] = (byte) query[j];
-        }
+        bQuery = VectorUtil.toBytesRef(query);
       } else {
         query = randomVector(random(), dim);
       }
