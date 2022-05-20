@@ -101,17 +101,13 @@ final class FeatureSortField extends SortField {
 
     @Override
     protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      Terms terms = context.reader().terms(field);
-      if (terms == null) {
-        currentReaderPostingsValues = null;
+      Terms terms = Terms.getTerms(context.reader(), field);
+      TermsEnum termsEnum = terms.iterator();
+      if (termsEnum.seekExact(featureName)) {
+        currentReaderPostingsValues =
+            termsEnum.postings(currentReaderPostingsValues, PostingsEnum.FREQS);
       } else {
-        TermsEnum termsEnum = terms.iterator();
-        if (termsEnum.seekExact(featureName) == false) {
-          currentReaderPostingsValues = null;
-        } else {
-          currentReaderPostingsValues =
-              termsEnum.postings(currentReaderPostingsValues, PostingsEnum.FREQS);
-        }
+        currentReaderPostingsValues = null;
       }
     }
 

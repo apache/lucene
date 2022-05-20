@@ -21,13 +21,16 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CodecReader;
@@ -43,6 +46,7 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
@@ -561,7 +565,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
-            leafReader.searchNearestVectors("v", randomVector(3), 1, leafReader.getLiveDocs());
+            leafReader.searchNearestVectors(
+                "v", randomVector(3), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -589,7 +594,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     int numDocs = atLeast(1000);
     int numFields = TestUtil.nextInt(random(), 1, 10);
     int[] fieldDocCounts = new int[numFields];
-    float[] fieldTotals = new float[numFields];
+    double[] fieldTotals = new double[numFields];
     int[] fieldDims = new int[numFields];
     VectorSimilarityFunction[] fieldSearchStrategies = new VectorSimilarityFunction[numFields];
     for (int i = 0; i < numFields; i++) {
@@ -617,7 +622,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader r = w.getReader()) {
         for (int field = 0; field < numFields; field++) {
           int docCount = 0;
-          float checksum = 0;
+          double checksum = 0;
           String fieldName = "int" + field;
           for (LeafReaderContext ctx : r.leaves()) {
             VectorValues vectors = ctx.reader().getVectorValues(fieldName);
@@ -819,6 +824,68 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   /**
+   * Tests whether {@link KnnVectorsReader#search} implementations obey the limit on the number of
+   * visited vectors. This test is a best-effort attempt to capture the right behavior, and isn't
+   * meant to define a strict requirement on behavior.
+   */
+  public void testSearchWithVisitedLimit() throws Exception {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    String fieldName = "field";
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, iwc)) {
+      int numDoc = 300;
+      int dimension = 10;
+      for (int i = 0; i < numDoc; i++) {
+        float[] value;
+        if (random().nextInt(7) != 3) {
+          // usually index a vector value for a doc
+          value = randomVector(dimension);
+        } else {
+          value = null;
+        }
+        add(iw, fieldName, i, value, VectorSimilarityFunction.EUCLIDEAN);
+      }
+      iw.forceMerge(1);
+
+      // randomly delete some documents
+      for (int i = 0; i < 30; i++) {
+        int idToDelete = random().nextInt(numDoc);
+        iw.deleteDocuments(new Term("id", Integer.toString(idToDelete)));
+      }
+
+      try (IndexReader reader = DirectoryReader.open(iw)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          Bits liveDocs = ctx.reader().getLiveDocs();
+          VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
+          if (vectorValues == null) {
+            continue;
+          }
+
+          // check the limit is hit when it's very small
+          int k = 5 + random().nextInt(45);
+          int visitedLimit = k + random().nextInt(5);
+          TopDocs results =
+              ctx.reader()
+                  .searchNearestVectors(
+                      fieldName, randomVector(dimension), k, liveDocs, visitedLimit);
+          assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation);
+          assertEquals(visitedLimit, results.totalHits.value);
+
+          // check the limit is not hit when it clearly exceeds the number of vectors
+          k = vectorValues.size();
+          visitedLimit = k + 30;
+          results =
+              ctx.reader()
+                  .searchNearestVectors(
+                      fieldName, randomVector(dimension), k, liveDocs, visitedLimit);
+          assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation);
+          assertTrue(results.totalHits.value <= visitedLimit);
+        }
+      }
+    }
+  }
+
+  /**
    * Index random vectors, sometimes skipping documents, sometimes updating a document, sometimes
    * merging, sometimes sorting the index, using an HNSW similarity function so as to also produce a
    * graph, and verify that the expected values can be read back consistently.
@@ -885,7 +952,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             k = numLiveDocsWithVectors;
           }
           TopDocs results =
-              ctx.reader().searchNearestVectors(fieldName, randomVector(dimension), k, liveDocs);
+              ctx.reader()
+                  .searchNearestVectors(
+                      fieldName, randomVector(dimension), k, liveDocs, Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
@@ -1015,6 +1084,59 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             }
           }
         }
+      }
+    }
+  }
+
+  public void testVectorValuesReportCorrectDocs() throws Exception {
+    final int numDocs = atLeast(1000);
+    final int dim = random().nextInt(20) + 1;
+    final VectorSimilarityFunction similarityFunction =
+        VectorSimilarityFunction.values()[
+            random().nextInt(VectorSimilarityFunction.values().length)];
+
+    double fieldValuesCheckSum = 0;
+    int fieldDocCount = 0;
+    long fieldSumDocIDs = 0;
+
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        int docID = random().nextInt(numDocs);
+        doc.add(new StoredField("id", docID));
+        if (random().nextInt(4) == 3) {
+          float[] vector = randomVector(dim);
+          doc.add(new KnnVectorField("knn_vector", vector, similarityFunction));
+          fieldValuesCheckSum += vector[0];
+          fieldDocCount++;
+          fieldSumDocIDs += docID;
+        }
+        w.addDocument(doc);
+      }
+
+      if (random().nextBoolean()) {
+        w.forceMerge(1);
+      }
+
+      try (IndexReader r = w.getReader()) {
+        double checksum = 0;
+        int docCount = 0;
+        long sumDocIds = 0;
+        for (LeafReaderContext ctx : r.leaves()) {
+          VectorValues vectors = ctx.reader().getVectorValues("knn_vector");
+          if (vectors != null) {
+            docCount += vectors.size();
+            while (vectors.nextDoc() != NO_MORE_DOCS) {
+              checksum += vectors.vectorValue()[0];
+              Document doc = ctx.reader().document(vectors.docID(), Set.of("id"));
+              sumDocIds += Integer.parseInt(doc.get("id"));
+            }
+          }
+        }
+        assertEquals(fieldValuesCheckSum, checksum, 1e-3);
+        assertEquals(fieldDocCount, docCount);
+        assertEquals(fieldSumDocIDs, sumDocIds);
       }
     }
   }

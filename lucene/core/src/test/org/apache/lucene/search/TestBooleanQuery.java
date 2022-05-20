@@ -20,7 +20,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -42,11 +41,14 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.automaton.Operations;
 
 public class TestBooleanQuery extends LuceneTestCase {
 
@@ -254,8 +256,11 @@ public class TestBooleanQuery extends LuceneTestCase {
 
     BooleanQuery.Builder query = new BooleanQuery.Builder(); // Query: +foo -ba*
     query.add(new TermQuery(new Term("field", "foo")), BooleanClause.Occur.MUST);
-    WildcardQuery wildcardQuery = new WildcardQuery(new Term("field", "ba*"));
-    wildcardQuery.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    WildcardQuery wildcardQuery =
+        new WildcardQuery(
+            new Term("field", "ba*"),
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     query.add(wildcardQuery, BooleanClause.Occur.MUST_NOT);
 
     MultiReader multireader = new MultiReader(reader1, reader2);
@@ -412,30 +417,8 @@ public class TestBooleanQuery extends LuceneTestCase {
     dir.close();
   }
 
-  private static BitSet getMatches(IndexSearcher searcher, Query query) throws IOException {
-    BitSet set = new BitSet();
-    searcher.search(
-        query,
-        new SimpleCollector() {
-          int docBase = 0;
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            super.doSetNextReader(context);
-            docBase = context.docBase;
-          }
-
-          @Override
-          public void collect(int doc) throws IOException {
-            set.set(docBase + doc);
-          }
-        });
-    return set;
+  private static FixedBitSet getMatches(IndexSearcher searcher, Query query) throws IOException {
+    return searcher.search(query, FixedBitSetCollector.createManager(searcher.reader.maxDoc()));
   }
 
   public void testFILTERClauseBehavesLikeMUST() throws IOException {
@@ -469,8 +452,8 @@ public class TestBooleanQuery extends LuceneTestCase {
         bq2.add(q, Occur.FILTER);
       }
 
-      final BitSet matches1 = getMatches(searcher, bq1.build());
-      final BitSet matches2 = getMatches(searcher, bq2.build());
+      final FixedBitSet matches1 = getMatches(searcher, bq1.build());
+      final FixedBitSet matches2 = getMatches(searcher, bq2.build());
       assertEquals(matches1, matches2);
     }
 

@@ -25,9 +25,9 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene91.Lucene91Codec;
-import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsReader;
+import org.apache.lucene.codecs.lucene92.Lucene92Codec;
+import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnVectorField;
@@ -45,6 +45,7 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -61,14 +62,14 @@ public class TestHnswGraph extends LuceneTestCase {
     RandomVectorValues vectors = new RandomVectorValues(nDoc, dim, random());
     RandomVectorValues v2 = vectors.copy(), v3 = vectors.copy();
 
-    int maxConn = random().nextInt(10) + 5;
+    int M = random().nextInt(10) + 5;
     int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();
     VectorSimilarityFunction similarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
     HnswGraphBuilder builder =
-        new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, seed);
+        new HnswGraphBuilder(vectors, similarityFunction, M, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors);
 
     // Recreate the graph while indexing with the same random seed and write it out
@@ -80,10 +81,10 @@ public class TestHnswGraph extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new Lucene91Codec() {
+                  new Lucene92Codec() {
                     @Override
                     public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene91HnswVectorsFormat(maxConn, beamWidth);
+                      return new Lucene92HnswVectorsFormat(M, beamWidth);
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
@@ -110,7 +111,7 @@ public class TestHnswGraph extends LuceneTestCase {
           assertEquals(indexedDoc, ctx.reader().numDocs());
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
-              ((Lucene91HnswVectorsReader)
+              ((Lucene92HnswVectorsReader)
                       ((PerFieldKnnVectorsFormat.FieldsReader)
                               ((CodecReader) ctx.reader()).getVectorReader())
                           .getFieldReader("field"))
@@ -152,12 +153,11 @@ public class TestHnswGraph extends LuceneTestCase {
   // ensuring that we have all the distance functions, comparators, priority queues and so on
   // oriented in the right directions
   public void testAknnDiverse() throws IOException {
-    int maxConn = 10;
     int nDoc = 100;
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors);
     // run some searches
     NeighborQueue nn =
@@ -167,7 +167,8 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
-            null);
+            null,
+            Integer.MAX_VALUE);
 
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
@@ -191,11 +192,10 @@ public class TestHnswGraph extends LuceneTestCase {
 
   public void testSearchWithAcceptOrds() throws IOException {
     int nDoc = 100;
-    int maxConn = 16;
     CircularVectorValues vectors = new CircularVectorValues(nDoc);
     HnswGraphBuilder builder =
         new HnswGraphBuilder(
-            vectors, VectorSimilarityFunction.DOT_PRODUCT, maxConn, 100, random().nextInt());
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors);
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
@@ -206,7 +206,8 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors.randomAccess(),
             VectorSimilarityFunction.DOT_PRODUCT,
             hnsw,
-            acceptOrds);
+            acceptOrds,
+            Integer.MAX_VALUE);
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
@@ -217,6 +218,37 @@ public class TestHnswGraph extends LuceneTestCase {
     // We expect to get approximately 100% recall;
     // the lowest docIds are closest to zero; sum(0,9) = 45
     assertTrue("sum(result docs)=" + sum, sum < 75);
+  }
+
+  public void testSearchWithSelectiveAcceptOrds() throws IOException {
+    int nDoc = 100;
+    CircularVectorValues vectors = new CircularVectorValues(nDoc);
+    HnswGraphBuilder builder =
+        new HnswGraphBuilder(
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, 16, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(vectors);
+    // Only mark a few vectors as accepted
+    BitSet acceptOrds = new FixedBitSet(vectors.size);
+    for (int i = 0; i < vectors.size; i += random().nextInt(15, 20)) {
+      acceptOrds.set(i);
+    }
+
+    // Check the search finds all accepted vectors
+    int numAccepted = acceptOrds.cardinality();
+    NeighborQueue nn =
+        HnswGraphSearcher.search(
+            new float[] {1, 0},
+            numAccepted,
+            vectors.randomAccess(),
+            VectorSimilarityFunction.DOT_PRODUCT,
+            hnsw,
+            acceptOrds,
+            Integer.MAX_VALUE);
+    int[] nodes = nn.nodes();
+    assertEquals(numAccepted, nodes.length);
+    for (int node : nodes) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
+    }
   }
 
   public void testSearchWithSkewedAcceptOrds() throws IOException {
@@ -239,7 +271,8 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors.randomAccess(),
             VectorSimilarityFunction.EUCLIDEAN,
             hnsw,
-            acceptOrds);
+            acceptOrds,
+            Integer.MAX_VALUE);
     int[] nodes = nn.nodes();
     assertTrue("Number of found results is not equal to [10].", nodes.length == 10);
     int sum = 0;
@@ -250,6 +283,30 @@ public class TestHnswGraph extends LuceneTestCase {
     // We still expect to get reasonable recall. The lowest non-skipped docIds
     // are closest to the query vector: sum(500,509) = 5045
     assertTrue("sum(result docs)=" + sum, sum < 5100);
+  }
+
+  public void testVisitedLimit() throws IOException {
+    int nDoc = 500;
+    CircularVectorValues vectors = new CircularVectorValues(nDoc);
+    HnswGraphBuilder builder =
+        new HnswGraphBuilder(
+            vectors, VectorSimilarityFunction.DOT_PRODUCT, 16, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(vectors);
+
+    int topK = 50;
+    int visitedLimit = topK + random().nextInt(5);
+    NeighborQueue nn =
+        HnswGraphSearcher.search(
+            new float[] {1, 0},
+            topK,
+            vectors.randomAccess(),
+            VectorSimilarityFunction.DOT_PRODUCT,
+            hnsw,
+            createRandomAcceptOrds(0, vectors.size),
+            visitedLimit);
+    assertTrue(nn.incomplete());
+    // The visited count shouldn't exceed the limit
+    assertTrue(nn.visitedCount() <= visitedLimit);
   }
 
   public void testBoundsCheckerMax() {
@@ -335,9 +392,7 @@ public class TestHnswGraph extends LuceneTestCase {
     builder.addGraphNode(4, vectors.vectorValue(4));
     // 4 is the same distance from 0 that 2 is; we leave the existing node in place
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
-    // 4 is closer to 1 than either existing neighbor (0, 3). 3 fails diversity check with 4, so
-    // replace it
-    assertLevel0Neighbors(builder.hnsw, 1, 0, 4);
+    assertLevel0Neighbors(builder.hnsw, 1, 0, 3, 4);
     assertLevel0Neighbors(builder.hnsw, 2, 0);
     // 1 survives the diversity check
     assertLevel0Neighbors(builder.hnsw, 3, 1, 4);
@@ -345,11 +400,11 @@ public class TestHnswGraph extends LuceneTestCase {
 
     builder.addGraphNode(5, vectors.vectorValue(5));
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
-    assertLevel0Neighbors(builder.hnsw, 1, 0, 5);
+    assertLevel0Neighbors(builder.hnsw, 1, 0, 3, 4, 5);
     assertLevel0Neighbors(builder.hnsw, 2, 0);
     // even though 5 is closer, 3 is not a neighbor of 5, so no update to *its* neighbors occurs
     assertLevel0Neighbors(builder.hnsw, 3, 1, 4);
-    assertLevel0Neighbors(builder.hnsw, 4, 3, 5);
+    assertLevel0Neighbors(builder.hnsw, 4, 1, 3, 5);
     assertLevel0Neighbors(builder.hnsw, 5, 1, 4);
   }
 
@@ -367,14 +422,13 @@ public class TestHnswGraph extends LuceneTestCase {
   public void testRandom() throws IOException {
     int size = atLeast(100);
     int dim = atLeast(10);
-    int maxConn = 10;
     RandomVectorValues vectors = new RandomVectorValues(size, dim, random());
     VectorSimilarityFunction similarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
     int topK = 5;
     HnswGraphBuilder builder =
-        new HnswGraphBuilder(vectors, similarityFunction, maxConn, 30, random().nextLong());
+        new HnswGraphBuilder(vectors, similarityFunction, 10, 30, random().nextLong());
     OnHeapHnswGraph hnsw = builder.build(vectors);
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
@@ -382,7 +436,8 @@ public class TestHnswGraph extends LuceneTestCase {
     for (int i = 0; i < 100; i++) {
       float[] query = randomVector(random(), dim);
       NeighborQueue actual =
-          HnswGraphSearcher.search(query, 100, vectors, similarityFunction, hnsw, acceptOrds);
+          HnswGraphSearcher.search(
+              query, 100, vectors, similarityFunction, hnsw, acceptOrds, Integer.MAX_VALUE);
       while (actual.size() > topK) {
         actual.pop();
       }

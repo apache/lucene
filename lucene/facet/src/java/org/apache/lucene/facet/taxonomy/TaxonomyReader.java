@@ -197,7 +197,7 @@ public abstract class TaxonomyReader implements Closeable {
    * number, an integer which starts with 0 and grows as more categories are added (note that once a
    * category is added, it can never be deleted).
    *
-   * @return the category's ordinal or {@link #INVALID_ORDINAL} if the category wasn't foun.
+   * @return the category's ordinal or {@link #INVALID_ORDINAL} if the category wasn't found.
    */
   public abstract int getOrdinal(FacetLabel categoryPath) throws IOException;
 

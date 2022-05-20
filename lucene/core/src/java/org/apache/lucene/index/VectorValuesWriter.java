@@ -135,7 +135,8 @@ class VectorValuesWriter {
           }
 
           @Override
-          public TopDocs search(String field, float[] target, int k, Bits acceptDocs)
+          public TopDocs search(
+              String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
               throws IOException {
             throw new UnsupportedOperationException();
           }
@@ -224,7 +225,7 @@ class VectorValuesWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues randomAccess() throws IOException {
 
       // Must make a new delegate randomAccess so that we have our own distinct float[]
       final RandomAccessVectorValues delegateRA =

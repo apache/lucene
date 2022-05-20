@@ -337,179 +337,163 @@ public class TestMatchHighlighter extends LuceneTestCase {
       String inputDocument = "The quick brown fox jumps over the lazy dog";
 
       List<String[]> queryResultPairs =
-          new ArrayList<>(
-              Arrays.asList(
-                  new String[][] {
-                    {
-                      "fn:ordered(brown dog)",
-                      "0. %s: The quick >brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:within(fn:or(lazy quick) 1 fn:or(dog fox))",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:containedBy(fox fn:ordered(brown fox dog))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:atLeast(2 quick fox \"furry dog\")",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:maxgaps(0 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The quick brown fox jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxgaps(1 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The >quick brown fox< jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxwidth(2 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The quick brown fox jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:maxwidth(3 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
-                      "0. %s: The >quick brown fox< jumps over the >lazy dog<"
-                    },
-                    {
-                      "fn:or(quick \"fox\")",
-                      "0. %s: The >quick< brown >fox< jumps over the lazy dog"
-                    },
-                    {"fn:or(\"quick fox\")"},
-                    {
-                      "fn:phrase(quick brown fox)",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {"fn:wildcard(jump*)", "0. %s: The quick brown fox >jumps< over the lazy dog"},
-                    {"fn:wildcard(br*n)", "0. %s: The quick >brown< fox jumps over the lazy dog"},
-                    {"fn:fuzzyTerm(fxo)", "0. %s: The quick brown >fox< jumps over the lazy dog"},
-                    {"fn:or(dog fox)", "0. %s: The quick brown >fox< jumps over the lazy >dog<"},
-                    {
-                      "fn:phrase(fn:ordered(quick fox) jumps)",
-                      "0. %s: The >quick brown fox jumps< over the lazy dog"
-                    },
-                    {
-                      "fn:ordered(quick jumps dog)",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:ordered(quick fn:or(fox dog))",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:ordered(quick jumps fn:or(fox dog))",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:unordered(dog jumps quick)",
-                      "0. %s: The >quick brown fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:unordered(fn:or(fox dog) quick)",
-                      "0. %s: The >quick brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:unordered(fn:phrase(brown fox) fn:phrase(fox jumps))",
-                      "0. %s: The quick >brown fox jumps< over the lazy dog"
-                    },
-                    {"fn:ordered(fn:phrase(brown fox) fn:phrase(fox jumps))"},
-                    {"fn:unorderedNoOverlaps(fn:phrase(brown fox) fn:phrase(fox jumps))"},
-                    {
-                      "fn:before(fn:or(brown lazy) fox)",
-                      "0. %s: The quick >brown< fox jumps over the lazy dog"
-                    },
-                    {
-                      "fn:before(fn:or(brown lazy) fn:or(dog fox))",
-                      "0. %s: The quick >brown< fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:after(fn:or(brown lazy) fox)",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:after(fn:or(brown lazy) fn:or(dog fox))",
-                      "0. %s: The quick brown fox jumps over the >lazy< dog"
-                    },
-                    {
-                      "fn:within(fn:or(fox dog) 1 fn:or(quick lazy))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:within(fn:or(fox dog) 2 fn:or(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:notWithin(fn:or(fox dog) 1 fn:or(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:containedBy(fn:or(fox dog) fn:ordered(quick lazy))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:notContainedBy(fn:or(fox dog) fn:ordered(quick lazy))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:containing(fn:atLeast(2 quick fox dog) jumps)",
-                      "0. %s: The quick brown >fox jumps over the lazy dog<"
-                    },
-                    {
-                      "fn:notContaining(fn:ordered(fn:or(the The) fn:or(fox dog)) brown)",
-                      "0. %s: The quick brown fox jumps over >the lazy dog<"
-                    },
-                    {
-                      "fn:overlapping(fn:phrase(brown fox) fn:phrase(fox jumps))",
-                      "0. %s: The quick >brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:overlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
-                      "0. %s: The quick brown fox jumps over the lazy >dog<"
-                    },
-                    {
-                      "fn:nonOverlapping(fn:phrase(brown fox) fn:phrase(lazy dog))",
-                      "0. %s: The quick >brown fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:nonOverlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
-                      "0. %s: The quick brown >fox< jumps over the lazy dog"
-                    },
-                    {
-                      "fn:atLeast(2 fn:unordered(furry dog) fn:unordered(brown dog) lazy quick)",
-                      "0. %s: The >quick >brown fox jumps over the lazy<<> dog<"
-                    },
-                  }));
-
-      // TODO: LUCENE-10229: The test cases below do not work for fields enabled with offset yet:
-      // mainly "extend".
-      if (field.equals(FLD_TEXT2)) {
-        queryResultPairs.addAll(
-            Arrays.asList(
-                new String[][] {
-                  {"fn:extend(fox 1 2)", "0. %s: The quick >brown fox jumps over< the lazy dog"},
-                  {
-                    "fn:extend(fn:or(dog fox) 2 0)",
-                    "0. %s: The >quick brown fox< jumps over >the lazy dog<"
-                  },
-                  {
-                    "fn:containedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
-                    "0. %s: The quick brown fox jumps over the lazy >dog<"
-                  },
-                  {
-                    "fn:notContainedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
-                    "0. %s: The quick brown >fox< jumps over the lazy dog"
-                  },
-                  {
-                    "fn:containing(fn:extend(fn:or(lazy brown) 1 1) fn:or(fox dog))",
-                    "0. %s: The >quick brown fox< jumps over >the lazy dog<"
-                  },
-                  {
-                    "fn:notContaining(fn:extend(fn:or(fox dog) 1 0) fn:or(brown yellow))",
-                    "0. %s: The quick brown fox jumps over the >lazy dog<"
-                  }
-                }));
-      }
+          Arrays.asList(
+              new String[][] {
+                {"fn:ordered(brown dog)", "0. %s: The quick >brown fox jumps over the lazy dog<"},
+                {
+                  "fn:within(fn:or(lazy quick) 1 fn:or(dog fox))",
+                  "0. %s: The quick brown fox jumps over the >lazy< dog"
+                },
+                {
+                  "fn:containedBy(fox fn:ordered(brown fox dog))",
+                  "0. %s: The quick brown >fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:atLeast(2 quick fox \"furry dog\")",
+                  "0. %s: The >quick brown fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:maxgaps(0 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+                  "0. %s: The quick brown fox jumps over the >lazy dog<"
+                },
+                {
+                  "fn:maxgaps(1 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+                  "0. %s: The >quick brown fox< jumps over the >lazy dog<"
+                },
+                {
+                  "fn:maxwidth(2 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+                  "0. %s: The quick brown fox jumps over the >lazy dog<"
+                },
+                {
+                  "fn:maxwidth(3 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+                  "0. %s: The >quick brown fox< jumps over the >lazy dog<"
+                },
+                {"fn:or(quick \"fox\")", "0. %s: The >quick< brown >fox< jumps over the lazy dog"},
+                {"fn:or(\"quick fox\")"},
+                {
+                  "fn:phrase(quick brown fox)",
+                  "0. %s: The >quick brown fox< jumps over the lazy dog"
+                },
+                {"fn:wildcard(jump*)", "0. %s: The quick brown fox >jumps< over the lazy dog"},
+                {"fn:wildcard(br*n)", "0. %s: The quick >brown< fox jumps over the lazy dog"},
+                {"fn:fuzzyTerm(fxo)", "0. %s: The quick brown >fox< jumps over the lazy dog"},
+                {"fn:or(dog fox)", "0. %s: The quick brown >fox< jumps over the lazy >dog<"},
+                {
+                  "fn:phrase(fn:ordered(quick fox) jumps)",
+                  "0. %s: The >quick brown fox jumps< over the lazy dog"
+                },
+                {
+                  "fn:ordered(quick jumps dog)",
+                  "0. %s: The >quick brown fox jumps over the lazy dog<"
+                },
+                {
+                  "fn:ordered(quick fn:or(fox dog))",
+                  "0. %s: The >quick brown fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:ordered(quick jumps fn:or(fox dog))",
+                  "0. %s: The >quick brown fox jumps over the lazy dog<"
+                },
+                {
+                  "fn:unordered(dog jumps quick)",
+                  "0. %s: The >quick brown fox jumps over the lazy dog<"
+                },
+                {
+                  "fn:unordered(fn:or(fox dog) quick)",
+                  "0. %s: The >quick brown fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:unordered(fn:phrase(brown fox) fn:phrase(fox jumps))",
+                  "0. %s: The quick >brown fox jumps< over the lazy dog"
+                },
+                {"fn:ordered(fn:phrase(brown fox) fn:phrase(fox jumps))"},
+                {"fn:unorderedNoOverlaps(fn:phrase(brown fox) fn:phrase(fox jumps))"},
+                {
+                  "fn:before(fn:or(brown lazy) fox)",
+                  "0. %s: The quick >brown< fox jumps over the lazy dog"
+                },
+                {
+                  "fn:before(fn:or(brown lazy) fn:or(dog fox))",
+                  "0. %s: The quick >brown< fox jumps over the >lazy< dog"
+                },
+                {
+                  "fn:after(fn:or(brown lazy) fox)",
+                  "0. %s: The quick brown fox jumps over the >lazy< dog"
+                },
+                {
+                  "fn:after(fn:or(brown lazy) fn:or(dog fox))",
+                  "0. %s: The quick brown fox jumps over the >lazy< dog"
+                },
+                {
+                  "fn:within(fn:or(fox dog) 1 fn:or(quick lazy))",
+                  "0. %s: The quick brown fox jumps over the lazy >dog<"
+                },
+                {
+                  "fn:within(fn:or(fox dog) 2 fn:or(quick lazy))",
+                  "0. %s: The quick brown >fox< jumps over the lazy >dog<"
+                },
+                {
+                  "fn:notWithin(fn:or(fox dog) 1 fn:or(quick lazy))",
+                  "0. %s: The quick brown >fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:containedBy(fn:or(fox dog) fn:ordered(quick lazy))",
+                  "0. %s: The quick brown >fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:notContainedBy(fn:or(fox dog) fn:ordered(quick lazy))",
+                  "0. %s: The quick brown fox jumps over the lazy >dog<"
+                },
+                {
+                  "fn:containing(fn:atLeast(2 quick fox dog) jumps)",
+                  "0. %s: The quick brown >fox jumps over the lazy dog<"
+                },
+                {
+                  "fn:notContaining(fn:ordered(fn:or(the The) fn:or(fox dog)) brown)",
+                  "0. %s: The quick brown fox jumps over >the lazy dog<"
+                },
+                {
+                  "fn:overlapping(fn:phrase(brown fox) fn:phrase(fox jumps))",
+                  "0. %s: The quick >brown fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:overlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
+                  "0. %s: The quick brown fox jumps over the lazy >dog<"
+                },
+                {
+                  "fn:nonOverlapping(fn:phrase(brown fox) fn:phrase(lazy dog))",
+                  "0. %s: The quick >brown fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:nonOverlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
+                  "0. %s: The quick brown >fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:atLeast(2 fn:unordered(furry dog) fn:unordered(brown dog) lazy quick)",
+                  "0. %s: The >quick >brown fox jumps over the lazy<<> dog<"
+                },
+                {"fn:extend(fox 1 2)", "0. %s: The quick >brown fox jumps over< the lazy dog"},
+                {
+                  "fn:extend(fn:or(dog fox) 2 0)",
+                  "0. %s: The >quick brown fox< jumps over >the lazy dog<"
+                },
+                {
+                  "fn:containedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
+                  "0. %s: The quick brown fox jumps over the lazy >dog<"
+                },
+                {
+                  "fn:notContainedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
+                  "0. %s: The quick brown >fox< jumps over the lazy dog"
+                },
+                {
+                  "fn:containing(fn:extend(fn:or(lazy brown) 1 1) fn:or(fox dog))",
+                  "0. %s: The >quick brown fox< jumps over >the lazy dog<"
+                },
+                {
+                  "fn:notContaining(fn:extend(fn:or(fox dog) 1 0) fn:or(brown yellow))",
+                  "0. %s: The quick brown fox jumps over the >lazy dog<"
+                }
+              });
 
       // Verify assertions.
       new IndexBuilder(this::toField)

@@ -76,7 +76,22 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    *     UTF32ToUTF8 conversion
    */
   public AutomatonQuery(final Term term, Automaton automaton, boolean isBinary) {
-    super(term.field());
+    this(term, automaton, isBinary, CONSTANT_SCORE_REWRITE);
+  }
+
+  /**
+   * Create a new AutomatonQuery from an {@link Automaton}.
+   *
+   * @param term Term containing field and possibly some pattern structure. The term text is
+   *     ignored.
+   * @param automaton Automaton to run, terms that are accepted are considered a match.
+   * @param isBinary if true, this automaton is already binary and will not go through the
+   *     UTF32ToUTF8 conversion
+   * @param rewriteMethod the rewriteMethod to use to build the final query from the automaton
+   */
+  public AutomatonQuery(
+      final Term term, Automaton automaton, boolean isBinary, RewriteMethod rewriteMethod) {
+    super(term.field(), rewriteMethod);
     this.term = term;
     this.automaton = automaton;
     this.automatonIsBinary = isBinary;

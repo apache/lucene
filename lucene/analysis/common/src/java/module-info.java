@@ -60,6 +60,7 @@ module org.apache.lucene.analysis.common {
   exports org.apache.lucene.analysis.lv;
   exports org.apache.lucene.analysis.minhash;
   exports org.apache.lucene.analysis.miscellaneous;
+  exports org.apache.lucene.analysis.morph;
   exports org.apache.lucene.analysis.ne;
   exports org.apache.lucene.analysis.ngram;
   exports org.apache.lucene.analysis.nl;
@@ -188,6 +189,7 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.es.SpanishMinimalStemFilterFactory,
       org.apache.lucene.analysis.es.SpanishPluralStemFilterFactory,
       org.apache.lucene.analysis.fa.PersianNormalizationFilterFactory,
+      org.apache.lucene.analysis.fa.PersianStemFilterFactory,
       org.apache.lucene.analysis.fi.FinnishLightStemFilterFactory,
       org.apache.lucene.analysis.fr.FrenchLightStemFilterFactory,
       org.apache.lucene.analysis.fr.FrenchMinimalStemFilterFactory,

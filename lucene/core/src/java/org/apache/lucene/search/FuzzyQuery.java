@@ -56,6 +56,11 @@ public class FuzzyQuery extends MultiTermQuery {
   public static final int defaultMaxExpansions = 50;
   public static final boolean defaultTranspositions = true;
 
+  /** Creates a default top-terms blended frequency scoring rewrite with the given max expansions */
+  public static RewriteMethod defaultRewriteMethod(int maxExpansions) {
+    return new MultiTermQuery.TopTermsBlendedFreqScoringRewrite(maxExpansions);
+  }
+
   private final int maxEdits;
   private final int maxExpansions;
   private final boolean transpositions;
@@ -76,10 +81,16 @@ public class FuzzyQuery extends MultiTermQuery {
    *     maxClauseCount will be used instead.
    * @param transpositions true if transpositions should be treated as a primitive edit operation.
    *     If this is false, comparisons will implement the classic Levenshtein algorithm.
+   * @param rewriteMethod the rewrite method to use to build the final query
    */
   public FuzzyQuery(
-      Term term, int maxEdits, int prefixLength, int maxExpansions, boolean transpositions) {
-    super(term.field());
+      Term term,
+      int maxEdits,
+      int prefixLength,
+      int maxExpansions,
+      boolean transpositions,
+      RewriteMethod rewriteMethod) {
+    super(term.field(), rewriteMethod);
 
     if (maxEdits < 0 || maxEdits > LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE) {
       throw new IllegalArgumentException(
@@ -97,7 +108,22 @@ public class FuzzyQuery extends MultiTermQuery {
     this.prefixLength = prefixLength;
     this.transpositions = transpositions;
     this.maxExpansions = maxExpansions;
-    setRewriteMethod(new MultiTermQuery.TopTermsBlendedFreqScoringRewrite(maxExpansions));
+  }
+
+  /**
+   * Calls {@link #FuzzyQuery(Term, int, int, int, boolean,
+   * org.apache.lucene.search.MultiTermQuery.RewriteMethod)} FuzzyQuery(term, maxEdits,
+   * prefixLength, maxExpansions, defaultRewriteMethod(maxExpansions))
+   */
+  public FuzzyQuery(
+      Term term, int maxEdits, int prefixLength, int maxExpansions, boolean transpositions) {
+    this(
+        term,
+        maxEdits,
+        prefixLength,
+        maxExpansions,
+        transpositions,
+        defaultRewriteMethod(maxExpansions));
   }
 
   /**

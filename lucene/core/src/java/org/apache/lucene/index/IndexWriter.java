@@ -59,7 +59,7 @@ import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -3142,8 +3142,7 @@ public class IndexWriter
           Bits liveDocs = leaf.getLiveDocs();
           numSoftDeleted +=
               PendingSoftDeletes.countSoftDeletes(
-                  DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(
-                      config.getSoftDeletesField(), leaf),
+                  FieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), leaf),
                   liveDocs);
         }
       }
@@ -4848,8 +4847,7 @@ public class IndexWriter
     int hardDeleteCount = 0;
     int softDeletesCount = 0;
     DocIdSetIterator softDeletedDocs =
-        DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(
-            config.getSoftDeletesField(), reader);
+        FieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), reader);
     if (softDeletedDocs != null) {
       int docId;
       while ((docId = softDeletedDocs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -6200,14 +6198,15 @@ public class IndexWriter
   /** DocStats for this index */
   public static final class DocStats {
     /**
-     * The total number of docs in this index, including docs not yet flushed (still in the RAM
-     * buffer), not counting deletions.
+     * The total number of docs in this index, counting docs not yet flushed (still in the RAM
+     * buffer), and also counting deleted docs. <b>NOTE:</b> buffered deletions are not counted. If
+     * you really need these to be counted you should call {@link IndexWriter#commit()} first.
      */
     public final int maxDoc;
+
     /**
-     * The total number of docs in this index, including docs not yet flushed (still in the RAM
-     * buffer), and including deletions. <b>NOTE:</b> buffered deletions are not counted. If you
-     * really need these to be counted you should call {@link IndexWriter#commit()} first.
+     * The total number of docs in this index, counting docs not yet flushed (still in the RAM
+     * buffer), but not counting deleted docs.
      */
     public final int numDocs;
 

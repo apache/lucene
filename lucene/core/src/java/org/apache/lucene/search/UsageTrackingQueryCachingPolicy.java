@@ -58,9 +58,8 @@ public class UsageTrackingQueryCachingPolicy implements QueryCachingPolicy {
       return true;
     }
 
-    if (query instanceof DocValuesFieldExistsQuery) {
-      // We do not bother caching DocValuesFieldExistsQuery queries since they are already plenty
-      // fast.
+    if (query instanceof FieldExistsQuery) {
+      // We do not bother caching FieldExistsQuery queries since they are already plenty fast.
       return true;
     }
 

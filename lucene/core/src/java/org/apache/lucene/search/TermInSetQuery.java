@@ -244,8 +244,8 @@ public class TermInSetQuery extends Query implements Accountable {
 
       @Override
       public Matches matches(LeafReaderContext context, int doc) throws IOException {
-        Terms terms = context.reader().terms(field);
-        if (terms == null || terms.hasPositions() == false) {
+        Terms terms = Terms.getTerms(context.reader(), field);
+        if (terms.hasPositions() == false) {
           return super.matches(context, doc);
         }
         return MatchesUtils.forField(

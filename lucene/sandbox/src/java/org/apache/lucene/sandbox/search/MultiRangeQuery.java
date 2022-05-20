@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
@@ -30,6 +31,7 @@ import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -41,12 +43,11 @@ import org.apache.lucene.util.DocIdSetBuilder;
 
 /**
  * Abstract class for range queries involving multiple ranges against physical points such as {@code
- * IntPoints} All ranges are logically ORed together TODO: Add capability for handling overlapping
- * ranges at rewrite time
+ * IntPoints} All ranges are logically ORed together
  *
  * @lucene.experimental
  */
-public abstract class MultiRangeQuery extends Query {
+public abstract class MultiRangeQuery extends Query implements Cloneable {
   /** Representation of a single clause in a MultiRangeQuery */
   public static final class RangeClause {
     byte[] lowerValue;
@@ -140,7 +141,7 @@ public abstract class MultiRangeQuery extends Query {
   final String field;
   final int numDims;
   final int bytesPerDim;
-  final List<RangeClause> rangeClauses;
+  List<RangeClause> rangeClauses;
   /**
    * Expert: create a multidimensional range query with multiple connected ranges
    *
@@ -160,6 +161,79 @@ public abstract class MultiRangeQuery extends Query {
   public void visit(QueryVisitor visitor) {
     if (visitor.acceptField(field)) {
       visitor.visitLeaf(this);
+    }
+  }
+
+  /**
+   * Merges the overlapping ranges and returns unconnected ranges by calling {@link
+   * #mergeOverlappingRanges}
+   */
+  @Override
+  public Query rewrite(IndexReader reader) throws IOException {
+    if (numDims != 1) {
+      return this;
+    }
+    List<RangeClause> mergedRanges = mergeOverlappingRanges(rangeClauses, bytesPerDim);
+    if (mergedRanges != rangeClauses) {
+      try {
+        MultiRangeQuery clone = (MultiRangeQuery) super.clone();
+        clone.rangeClauses = mergedRanges;
+        return clone;
+      } catch (CloneNotSupportedException e) {
+        throw new AssertionError(e);
+      }
+    } else {
+      return this;
+    }
+  }
+
+  /**
+   * Merges overlapping ranges and returns unconnected ranges
+   *
+   * @param rangeClauses some overlapping ranges
+   * @param bytesPerDim bytes per Dimension of the point value
+   * @return unconnected ranges
+   */
+  static List<RangeClause> mergeOverlappingRanges(List<RangeClause> rangeClauses, int bytesPerDim) {
+    if (rangeClauses.size() <= 1) {
+      return rangeClauses;
+    }
+    List<RangeClause> originRangeClause = new ArrayList<>(rangeClauses);
+    final ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+    originRangeClause.sort(
+        new Comparator<RangeClause>() {
+          @Override
+          public int compare(RangeClause o1, RangeClause o2) {
+            int result = comparator.compare(o1.lowerValue, 0, o2.lowerValue, 0);
+            if (result == 0) {
+              return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
+            } else {
+              return result;
+            }
+          }
+        });
+    List<RangeClause> finalRangeClause = new ArrayList<>();
+    RangeClause current = originRangeClause.get(0);
+    for (int i = 1; i < originRangeClause.size(); i++) {
+      RangeClause nextClause = originRangeClause.get(i);
+      if (comparator.compare(nextClause.lowerValue, 0, current.upperValue, 0) > 0) {
+        finalRangeClause.add(current);
+        current = nextClause;
+      } else {
+        if (comparator.compare(nextClause.upperValue, 0, current.upperValue, 0) > 0) {
+          current = new RangeClause(current.lowerValue, nextClause.upperValue);
+        }
+      }
+    }
+    finalRangeClause.add(current);
+    /**
+     * in {@link #rewrite} it compares the returned rangeClauses with origin rangeClauses to decide
+     * if rewrite should return a new query or the origin query
+     */
+    if (finalRangeClause.size() != rangeClauses.size()) {
+      return finalRangeClause;
+    } else {
+      return rangeClauses;
     }
   }
 
@@ -313,6 +387,38 @@ public abstract class MultiRangeQuery extends Query {
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        if (numDims != 1 || context.reader().hasDeletions() == true) {
+          return super.count(context);
+        }
+        PointValues pointValues = context.reader().getPointValues(field);
+        if (pointValues == null || pointValues.size() != pointValues.getDocCount()) {
+          return super.count(context);
+        }
+        int total = 0;
+        for (RangeClause rangeClause : rangeClauses) {
+          PointRangeQuery pointRangeQuery =
+              new PointRangeQuery(field, rangeClause.lowerValue, rangeClause.upperValue, numDims) {
+                @Override
+                protected String toString(int dimension, byte[] value) {
+                  return MultiRangeQuery.this.toString(dimension, value);
+                }
+              };
+          int count =
+              pointRangeQuery
+                  .createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f)
+                  .count(context);
+
+          if (count != -1) {
+            total += count;
+          } else {
+            return super.count(context);
+          }
+        }
+        return total;
       }
     };
   }

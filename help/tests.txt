@@ -68,17 +68,17 @@ Test groups
 -----------
 
 Tests can be filtered by an annotation they're marked with.
-Some test group annotations include: @AwaitsFix, @Nightly, @Slow
+Some test group annotations include: @AwaitsFix, @Nightly
 
 This uses filtering infrastructure on the *runner* (randomizedtesting), 
 not gradle's built-in mechanisms (but it can be combined with "--tests").
-For example, run all lucene-core tests annotated as @Slow:
+For example, run all lucene-core tests annotated as @Nightly:
 
-gradlew -p lucene/core test -Ptests.filter=@Slow
+gradlew -p lucene/core test -Ptests.filter=@Nightly
 
 Test group filters can be combined into Boolean expressions:
 
-gradlew -p lucene/core test "default and not(@awaitsfix or @slow)"
+gradlew -p lucene/core test "default and not(@awaitsfix or @nightly)"
 
 
 Reiteration ("beasting")
@@ -126,6 +126,24 @@ to be dumped directly to the console. Run your verbose tests explicitly
 specifying the project and test task or a fully qualified task path. Example:
 
 gradlew -p lucene/core test -Ptests.verbose=true --tests "TestDemo"
+
+
+Run GUI tests headlessly with Xvfb (Linux only)
+-----------------------------------------------
+
+GUI test for Luke application launches a window, this might mess up your
+monitor depending on the display manager you are using. In that case,
+you can install Xvfb (X Virtual Frame Buffer) so that the test runs on the
+virtual display and does not open a real window.
+
+# redhat-type OS
+$ sudo yum install Xvfb
+
+# ubuntu/debian-type OS
+$ sudo apt install xvfb
+
+# arch
+$ sudo pacman -S xorg-server-xvfb
 
 
 Profiling slow tests

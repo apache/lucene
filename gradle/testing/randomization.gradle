@@ -85,17 +85,21 @@ allprojects {
           [propName: 'tests.timezone', value: "random", description: "Sets the default time zone tests should run with."],
           // filtering
           [propName: 'tests.filter', value: null, description: "Applies a test filter (see :helpTests)."],
-          [propName: 'tests.slow', value: true, description: "Enables or disables @Slow tests."],
           [propName: 'tests.nightly', value: false, description: "Enables or disables @Nightly tests."],
           [propName: 'tests.weekly', value: false, description: "Enables or disables @Weekly tests."],
           [propName: 'tests.monster', value: false, description: "Enables or disables @Monster tests."],
           [propName: 'tests.awaitsfix', value: null, description: "Enables or disables @AwaitsFix tests."],
           [propName: 'tests.badapples', value: null, description: "Enables or disables @BadApple tests."],
+          [propName: 'tests.gui',
+            value: {  ->
+              return rootProject.ext.isCIBuild
+            },
+            description: "Enables or disables @RequiresGUI tests."],
           [propName: 'tests.file.encoding',
-           value: { ->
-             RandomPicks.randomFrom(new Random(projectSeedLong), ["US-ASCII", "ISO-8859-1", "UTF-8"])
-           },
-           description: "Sets the default file.encoding on test JVM.", buildOnly: true],
+            value: { ->
+              RandomPicks.randomFrom(new Random(projectSeedLong), ["US-ASCII", "ISO-8859-1", "UTF-8"])
+            },
+            description: "Sets the default file.encoding on test JVM.", buildOnly: true],
           // Test data file used.
           [propName: 'tests.linedocsfile', value: 'europarl.lines.txt.gz', description: "Test data file path."],
           // miscellaneous; some of them very weird.

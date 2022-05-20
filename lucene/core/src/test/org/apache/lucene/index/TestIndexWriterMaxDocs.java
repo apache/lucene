@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -66,9 +67,9 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       assertEquals(IndexWriter.MAX_DOCS, ir.maxDoc());
       assertEquals(IndexWriter.MAX_DOCS, ir.numDocs());
       IndexSearcher searcher = new IndexSearcher(ir);
-      TopScoreDocCollector collector = TopScoreDocCollector.create(10, Integer.MAX_VALUE);
-      searcher.search(new TermQuery(new Term("field", "text")), collector);
-      TopDocs hits = collector.topDocs();
+      CollectorManager<TopScoreDocCollector, TopDocs> manager =
+          TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
+      TopDocs hits = searcher.search(new TermQuery(new Term("field", "text")), manager);
       assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value);
 
       // Sort by docID reversed:

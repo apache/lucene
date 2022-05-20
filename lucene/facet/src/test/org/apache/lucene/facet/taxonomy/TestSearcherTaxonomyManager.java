@@ -28,6 +28,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.SearcherTaxonomyManager.SearcherAndTaxonomy;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -184,8 +185,8 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         SearcherAndTaxonomy pair = mgr.acquire();
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
-          FacetsCollector sfc = new FacetsCollector();
-          pair.searcher.search(new MatchAllDocsQuery(), sfc);
+          FacetsCollector sfc =
+              pair.searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
           Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
           if (pair.searcher.getIndexReader().numDocs() > 0) {
@@ -239,8 +240,8 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         SearcherAndTaxonomy pair = mgr.acquire();
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
-          FacetsCollector sfc = new FacetsCollector();
-          pair.searcher.search(new MatchAllDocsQuery(), sfc);
+          FacetsCollector sfc =
+              pair.searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
           Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
           if (pair.searcher.getIndexReader().numDocs() > 0) {

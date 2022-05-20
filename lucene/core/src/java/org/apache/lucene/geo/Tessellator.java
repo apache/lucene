@@ -102,6 +102,9 @@ public final class Tessellator {
     if (outerNode == null) {
       throw new IllegalArgumentException("Malformed shape detected in Tessellator!");
     }
+    if (outerNode == outerNode.next || outerNode == outerNode.next.next) {
+      throw new IllegalArgumentException("at least three non-collinear points required");
+    }
 
     // Determine if the specified list of points contains holes
     if (polygon.numHoles() > 0) {
@@ -153,6 +156,9 @@ public final class Tessellator {
     // specification)
     if (outerNode == null) {
       throw new IllegalArgumentException("Malformed shape detected in Tessellator!");
+    }
+    if (outerNode == outerNode.next || outerNode == outerNode.next.next) {
+      throw new IllegalArgumentException("at least three non-collinear points required");
     }
 
     // Determine if the specified list of points contains holes
@@ -821,7 +827,8 @@ public final class Tessellator {
       }
       searchNode = searchNode.next;
     } while (searchNode != start);
-    return false;
+    // if there is some area left, we failed
+    return signedArea(start, start) == 0;
   }
 
   /** Computes if edge defined by a and b overlaps with a polygon edge * */
@@ -1096,6 +1103,12 @@ public final class Tessellator {
 
   /** Determine whether the polygon defined between node start and node end is CW */
   private static boolean isCWPolygon(final Node start, final Node end) {
+    // The polygon must be CW
+    return (signedArea(start, end) < 0) ? true : false;
+  }
+
+  /** Determine the signed area between node start and node end */
+  private static double signedArea(final Node start, final Node end) {
     Node next = start;
     double windingSum = 0;
     do {
@@ -1105,8 +1118,7 @@ public final class Tessellator {
               next.getX(), next.getY(), next.next.getX(), next.next.getY(), end.getX(), end.getY());
       next = next.next;
     } while (next.next != end);
-    // The polygon must be CW
-    return (windingSum < 0) ? true : false;
+    return windingSum;
   }
 
   private static final boolean isLocallyInside(final Node a, final Node b) {
@@ -1285,10 +1297,12 @@ public final class Tessellator {
       // we can filter points when:
       // 1. they are the same
       // 2.- each one starts and ends in each other
-      // 3.- they are co-linear and both edges have the same value in .isNextEdgeFromPolygon
+      // 3.- they are collinear and both edges have the same value in .isNextEdgeFromPolygon
+      // 4.-  they are collinear and second edge returns over the first edge
       if (isVertexEquals(node, nextNode)
           || isVertexEquals(prevNode, nextNode)
-          || (prevNode.isNextEdgeFromPolygon == node.isNextEdgeFromPolygon
+          || ((prevNode.isNextEdgeFromPolygon == node.isNextEdgeFromPolygon
+                  || isPointInLine(prevNode, node, nextNode.getX(), nextNode.getY()))
               && area(
                       prevNode.getX(),
                       prevNode.getY(),
