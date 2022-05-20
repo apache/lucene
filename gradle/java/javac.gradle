@@ -55,7 +55,7 @@ allprojects {
         "-Xlint:-path",
         "-Xlint:processing",
         "-Xlint:rawtypes",
-        "-Xlint:removal",
+        "-Xlint:-removal",
         "-Xlint:requires-automatic",
         "-Xlint:requires-transitive-automatic",
         "-Xlint:-serial",
@@ -66,15 +66,17 @@ allprojects {
         "-Xlint:try",
         "-Xlint:unchecked",
         "-Xlint:varargs",
-        "-Xlint:preview",
+        "-Xlint:-preview",
         "-Xdoclint:all/protected",
         "-Xdoclint:-missing",
         "-Xdoclint:-accessibility",
         "-proc:none",  // proc:none was added because of LOG4J2-1925 / JDK-8186647
+
+        "--enable-preview"
       ]
 
       if (propertyOrDefault("javac.failOnWarnings", true).toBoolean()) {
-        options.compilerArgs += "-Werror"
+        // disabled in this branch: options.compilerArgs += "-Werror"
       }
     }
   }

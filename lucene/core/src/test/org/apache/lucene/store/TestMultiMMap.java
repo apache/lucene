@@ -137,10 +137,11 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
 
       // check impl (we must check size < chunksize: currently, if size==chunkSize, we get 2
       // buffers, the second one empty:
-      assertTrue(
+      assertSame(
           (size < chunkSize)
-              ? (ii instanceof ByteBufferIndexInput.SingleBufferImpl)
-              : (ii instanceof ByteBufferIndexInput.MultiBufferImpl));
+              ? MemorySegmentIndexInput.SingleSegmentImpl.class
+              : MemorySegmentIndexInput.MultiSegmentImpl.class,
+          ii.getClass());
 
       // clone tests:
       assertSame(ii.getClass(), ii.clone().getClass());
@@ -148,10 +149,11 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
       // slice test (offset 0)
       int sliceSize = random().nextInt(size);
       IndexInput slice = ii.slice("slice", 0, sliceSize);
-      assertTrue(
+      assertSame(
           (sliceSize < chunkSize)
-              ? (slice instanceof ByteBufferIndexInput.SingleBufferImpl)
-              : (slice instanceof ByteBufferIndexInput.MultiBufferImpl));
+              ? MemorySegmentIndexInput.SingleSegmentImpl.class
+              : MemorySegmentIndexInput.MultiSegmentImpl.class,
+          slice.getClass());
 
       // slice test (offset > 0 )
       int offset = random().nextInt(size - 1) + 1;
@@ -160,9 +162,9 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
       // System.out.println(offset + "/" + sliceSize + " chunkSize=" + chunkSize + " " +
       // slice.getClass());
       if (offset % chunkSize + sliceSize < chunkSize) {
-        assertTrue(slice instanceof ByteBufferIndexInput.SingleBufferImpl);
+        assertSame(MemorySegmentIndexInput.SingleSegmentImpl.class, slice.getClass());
       } else {
-        assertTrue(slice instanceof ByteBufferIndexInput.MultiBufferImpl);
+        assertSame(MemorySegmentIndexInput.MultiSegmentImpl.class, slice.getClass());
       }
 
       ii.close();
