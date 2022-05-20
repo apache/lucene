@@ -140,32 +140,15 @@ public final class HnswGraphBuilder<T> {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
     }
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      addByteVectors(vectors);
-    } else {
-      addFloatVectors(vectors);
-    }
+    addVectors(vectors);
     return hnsw;
   }
 
-  @SuppressWarnings("unchecked")
-  private void addFloatVectors(RandomAccessVectorValues vectors) throws IOException {
+  private void addVectors(RandomAccessVectorValues vectors) throws IOException {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectors.size(); node++) {
-      addGraphNode(node, (T) vectors.vectorValue(node));
-      if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
-        t = printGraphBuildStatus(node, start, t);
-      }
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private void addByteVectors(RandomAccessVectorValues vectors) throws IOException {
-    long start = System.nanoTime(), t = start;
-    // start at node 1! node 0 is added implicitly, in the constructor
-    for (int node = 1; node < vectors.size(); node++) {
-      addGraphNode(node, (T) vectors.binaryValue(node));
+      addGraphNode(node, vectors);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
       }
@@ -178,7 +161,7 @@ public final class HnswGraphBuilder<T> {
   }
 
   /** Inserts a doc with vector value to the graph */
-  void addGraphNode(int node, T value) throws IOException {
+  void addGraphNode(int node, RandomAccessVectorValues values) throws IOException {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
@@ -189,6 +172,7 @@ public final class HnswGraphBuilder<T> {
       hnsw.addNode(level, node);
     }
 
+    T value = getValue(node, values);
     // for levels > nodeLevel search with topk = 1
     for (int level = curMaxLevel; level > nodeLevel; level--) {
       candidates = graphSearcher.searchLevel(value, 1, level, eps, vectorValues, hnsw);
@@ -200,6 +184,15 @@ public final class HnswGraphBuilder<T> {
       eps = candidates.nodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private T getValue(int node, RandomAccessVectorValues values) throws IOException {
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+      return (T) values.binaryValue(node);
+    } else {
+      return (T) values.vectorValue(node);
     }
   }
 
@@ -273,8 +266,6 @@ public final class HnswGraphBuilder<T> {
    * @param score the score of the new candidate and node n, to be compared with scores of the
    *     candidate and n's neighbors
    * @param neighbors the neighbors selected so far
-   * @param vectorValues source of values used for making comparisons between candidate and existing
-   *     neighbors
    * @return whether the candidate is diverse given the existing neighbors
    */
   private boolean diversityCheck(
@@ -322,20 +313,41 @@ public final class HnswGraphBuilder<T> {
    */
   private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
     for (int i = neighbors.size() - 1; i > 0; i--) {
-      int cNode = neighbors.node[i];
-      float[] cVector = vectorValues.vectorValue(cNode);
-      bound.set(neighbors.score[i]);
-      // check the candidate against its better-scoring neighbors
-      for (int j = i - 1; j >= 0; j--) {
-        float diversityCheck =
-            similarityFunction.compare(cVector, buildVectors.vectorValue(neighbors.node[j]));
-        // node i is too similar to node j given its score relative to the base node
-        if (bound.check(diversityCheck) == false) {
-          return i;
-        }
+      if (isWorstNonDiverse(i, neighbors)) {
+        return i;
       }
     }
     return neighbors.size() - 1;
+  }
+
+  private boolean isWorstNonDiverse(int candidate, NeighborArray neighbors) throws IOException {
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+      return isWorstNonDiverse(candidate, vectorValues.binaryValue(candidate), neighbors);
+    } else {
+      return isWorstNonDiverse(candidate, vectorValues.vectorValue(candidate), neighbors);
+    }
+  }
+
+  private boolean isWorstNonDiverse(int candidateIndex, float[] candidate, NeighborArray neighbors) throws IOException {
+    for (int i = candidateIndex - 1; i >- 0; i--) {
+      float diversityCheck =
+              similarityFunction.compare(candidate, buildVectors.vectorValue(neighbors.node[i]));
+      if (bound.check(diversityCheck) == false) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean isWorstNonDiverse(int candidateIndex, BytesRef candidate, NeighborArray neighbors) throws IOException {
+    for (int i = candidateIndex - 1; i >- 0; i--) {
+      float diversityCheck =
+              dotProduct(candidate, 0, buildVectors.binaryValue(neighbors.node[i]), 0, buildVectors.dimension());
+      if (bound.check(diversityCheck) == false) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private static int getRandomGraphLevel(double ml, SplittableRandom random) {

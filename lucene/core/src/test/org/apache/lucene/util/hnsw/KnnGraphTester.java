@@ -100,7 +100,7 @@ public class KnnGraphTester {
     dim = 256;
     topK = 100;
     fanout = topK;
-    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT8;
+    similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
   }
 
   public static void main(String... args) throws Exception {
@@ -183,10 +183,18 @@ public class KnnGraphTester {
           break;
         case "-metric":
           String metric = args[++iarg];
-          if (metric.equals("euclidean")) {
-            similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-          } else if (metric.equals("angular") == false) {
-            throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
+          switch (metric) {
+            case "euclidean":
+              similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+              break;
+            case "angular":
+              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+              break;
+            case "angular8":
+              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT8;
+              break;
+            default:
+              throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
           }
           break;
         case "-forceMerge":
@@ -263,7 +271,7 @@ public class KnnGraphTester {
           HnswGraphBuilder.create(vectors, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
-        builder.addGraphNode(i, values.vectorValue(i));
+        builder.addGraphNode(i, values);
         System.out.println("\nITERATION " + i);
         dumpGraph(builder.hnsw);
       }

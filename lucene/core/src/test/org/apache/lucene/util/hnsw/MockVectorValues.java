@@ -94,7 +94,7 @@ class MockVectorValues extends VectorValues
   public BytesRef binaryValue(int targetOrd) {
     float[] value = vectorValue(targetOrd);
     for (int i = 0; i < value.length; i++) {
-      binaryValue.bytes[i] = (byte) (value[i] * 127);
+      binaryValue.bytes[i] = (byte) value[i];
     }
     return binaryValue;
   }
