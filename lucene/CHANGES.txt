@@ -19,7 +19,7 @@ Improvements
 
 Optimizations
 ---------------------
-* LUCENE-8519 MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
+* LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
 
 Bug Fixes
 ---------------------
@@ -18457,80 +18457,4 @@ Infrastructure
       public static boolean indexExists(File directory);
       public static boolean indexExists(Directory directory);
       public static boolean isLocked(Directory directory);
-      public static void unlock(Directory directory);
-    (cutting, otis)
-
-11. Fixed bugs in GermanAnalyzer (gschwarz)
-
-
-1.2 RC2
- - added sources to distribution
- - removed broken build scripts and libraries from distribution
- - SegmentsReader: fixed potential race condition
- - FSDirectory: fixed so that getDirectory(xxx,true) correctly
-   erases the directory contents, even when the directory
-   has already been accessed in this JVM.
- - RangeQuery: Fix issue where an inclusive range query would
-   include the nearest term in the index above a non-existant
-   specified upper term.
- - SegmentTermEnum: Fix NullPointerException in clone() method
-   when the Term is null.
- - JDK 1.1 compatibility fix: disabled lock files for JDK 1.1,
-   since they rely on a feature added in JDK 1.2.
-
-1.2 RC1
-  - first Apache release
-  - packages renamed from com.lucene to org.apache.lucene
-  - license switched from LGPL to Apache
-  - ant-only build -- no more makefiles
-  - addition of lock files--now fully thread & process safe
-  - addition of German stemmer
-  - MultiSearcher now supports low-level search API
-  - added RangeQuery, for term-range searching
-  - Analyzers can choose tokenizer based on field name
-  - misc bug fixes.
-
-1.01b
- . last Sourceforge release
- . a few bug fixes
- . new Query Parser
- . new prefix query (search for "foo*" matches "food")
-
-1.0
-
-This release fixes a few serious bugs and also includes some
-performance optimizations, a stemmer, and a few other minor
-enhancements.
-
-0.04
-
-Lucene now includes a grammar-based tokenizer, StandardTokenizer.
-
-The only tokenizer included in the previous release (LetterTokenizer)
-identified terms consisting entirely of alphabetic characters.  The
-new tokenizer uses a regular-expression grammar to identify more
-complex classes of terms, including numbers, acronyms, email
-addresses, etc.
-
-StandardTokenizer serves two purposes:
-
- 1. It is a much better, general purpose tokenizer for use by
-    applications as is.
-
-    The easiest way for applications to start using
-    StandardTokenizer is to use StandardAnalyzer.
-
- 2. It provides a good example of grammar-based tokenization.
-
-    If an application has special tokenization requirements, it can
-    implement a custom tokenizer by copying the directory containing
-    the new tokenizer into the application and modifying it
-    accordingly.
-
-0.01
-
-First open source release.
-
-The code has been re-organized into a new package and directory
-structure for this release.  It builds OK, but has not been tested
-beyond that since the re-organization.
+      public static 
