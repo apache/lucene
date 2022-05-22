@@ -14,18 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.facet.hyperrectangle;
+package org.apache.lucene.document;
 
 import java.util.Arrays;
-import org.apache.lucene.document.BinaryDocValuesField;
-import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.util.NumericUtils;
 
 /**
  * Takes an array of doubles and converts them to sortable longs, then stores as a {@link
  * BinaryDocValuesField}
+ *
+ * @lucene.experimental
  */
-public class DoublePointFacetField extends BinaryDocValuesField {
+public class DoublePointDocValuesField extends BinaryDocValuesField {
 
   /**
    * Creates a new DoublePointFacetField, indexing the provided N-dimensional long point.
@@ -34,11 +34,14 @@ public class DoublePointFacetField extends BinaryDocValuesField {
    * @param point double[] value
    * @throws IllegalArgumentException if the field name or value is null.
    */
-  public DoublePointFacetField(String name, double... point) {
+  public DoublePointDocValuesField(String name, double... point) {
     super(name, LongPoint.pack(convertToSortableLongPoint(point)));
   }
 
   private static long[] convertToSortableLongPoint(double[] point) {
+    if (point == null || point.length == 0) {
+      throw new IllegalArgumentException("Point value cannot be null or empty");
+    }
     return Arrays.stream(point).mapToLong(NumericUtils::doubleToSortableLong).toArray();
   }
 }

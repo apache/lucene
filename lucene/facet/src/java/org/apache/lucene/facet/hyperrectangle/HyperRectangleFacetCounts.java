@@ -20,31 +20,35 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 
-/** Get counts given a list of HyperRectangles (which must be of the same type) */
+/**
+ * Get counts given a list of HyperRectangles
+ *
+ * @lucene.experimental
+ */
 public class HyperRectangleFacetCounts extends Facets {
-  /** Hypper rectangles passed to constructor. */
-  protected final HyperRectangle[] hyperRectangles;
+  /** Hyper rectangles passed to constructor. */
+  private final HyperRectangle[] hyperRectangles;
 
-  /** Counts, initialized in subclass. */
-  protected final int[] counts;
+  /**
+   * Holds the number of matching documents (contains intersecting point in field) for each {@link
+   * HyperRectangle}
+   */
+  private final int[] counts;
 
   /** Our field name. */
-  protected final String field;
-
-  /** Number of dimensions for field */
-  protected final int dims;
+  private final String field;
 
   /** Total number of hits. */
-  protected int totCount;
+  private int totCount;
 
   /**
    * Create HyperRectangleFacetCounts using this
@@ -56,12 +60,14 @@ public class HyperRectangleFacetCounts extends Facets {
    */
   public HyperRectangleFacetCounts(
       String field, FacetsCollector hits, HyperRectangle... hyperRectangles) throws IOException {
-    assert hyperRectangles.length > 0 : "Hyper rectangle ranges cannot be empty";
-    assert areHyperRectangleDimsConsistent(hyperRectangles)
-        : "All hyper rectangles must be the same dimensionality";
+    if (hyperRectangles == null || hyperRectangles.length == 0) {
+      throw new IllegalArgumentException("Hyper rectangle ranges cannot be empty");
+    }
+    if (areHyperRectangleDimsConsistent(hyperRectangles) == false) {
+      throw new IllegalArgumentException("All hyper rectangles must be the same dimensionality");
+    }
     this.field = field;
     this.hyperRectangles = hyperRectangles;
-    this.dims = hyperRectangles[0].dims;
     this.counts = new int[hyperRectangles.length];
     count(field, hits.getMatchingDocs());
   }
@@ -75,50 +81,34 @@ public class HyperRectangleFacetCounts extends Facets {
   private void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
       throws IOException {
 
-    for (int i = 0; i < matchingDocs.size(); i++) {
-
-      FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
+    for (FacetsCollector.MatchingDocs hits : matchingDocs) {
 
       BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context.reader(), field);
 
-      final DocIdSetIterator it = hits.bits.iterator();
+      final DocIdSetIterator it =
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), binaryDocValues));
       if (it == null) {
         continue;
       }
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        if (binaryDocValues.advanceExact(doc)) {
-          long[] point = LongPoint.unpack(binaryDocValues.binaryValue());
-          assert point.length == dims
-              : "Point dimension (dim="
-                  + point.length
-                  + ") is incompatible with hyper rectangle dimension (dim="
-                  + dims
-                  + ")";
-          // linear scan, change this to use R trees
-          boolean docIsValid = false;
-          for (int j = 0; j < hyperRectangles.length; j++) {
-            boolean validPoint = true;
-            for (int dim = 0; dim < dims; dim++) {
-              HyperRectangle.LongRangePair range = hyperRectangles[j].getComparableDimRange(dim);
-              if (!range.accept(point[dim])) {
-                validPoint = false;
-                break;
-              }
-            }
-            if (validPoint) {
-              counts[j]++;
-              docIsValid = true;
-            }
+        boolean shouldCountDoc = false;
+        // linear scan, change this to use R trees
+        for (int j = 0; j < hyperRectangles.length; j++) {
+          if (hyperRectangles[j].matches(binaryDocValues.binaryValue().bytes)) {
+            counts[j]++;
+            shouldCountDoc = true;
           }
-          if (docIsValid) {
-            totCount++;
-          }
+        }
+        if (shouldCountDoc) {
+          totCount++;
         }
       }
     }
   }
 
+  // TODO: This does not really provide "top children" functionality yet but provides "all
+  // children". This is being worked on in LUCENE-10550
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);

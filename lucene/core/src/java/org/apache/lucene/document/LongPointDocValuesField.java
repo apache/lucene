@@ -14,13 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.facet.hyperrectangle;
+package org.apache.lucene.document;
 
-import org.apache.lucene.document.BinaryDocValuesField;
-import org.apache.lucene.document.LongPoint;
-
-/** Packs an array of longs into a {@link BinaryDocValuesField} */
-public class LongPointFacetField extends BinaryDocValuesField {
+/**
+ * Packs an array of longs into a {@link BinaryDocValuesField}
+ *
+ * @lucene.experimental
+ */
+public class LongPointDocValuesField extends BinaryDocValuesField {
 
   /**
    * Creates a new LongPointFacetField, indexing the provided N-dimensional long point.
@@ -29,7 +30,14 @@ public class LongPointFacetField extends BinaryDocValuesField {
    * @param point long[] value
    * @throws IllegalArgumentException if the field name or value is null.
    */
-  public LongPointFacetField(String name, long... point) {
-    super(name, LongPoint.pack(point));
+  public LongPointDocValuesField(String name, long... point) {
+    super(name, LongPoint.pack(validatePoint(point)));
+  }
+
+  private static long[] validatePoint(long[] point) {
+    if (point == null || point.length == 0) {
+      throw new IllegalArgumentException("Point value cannot be null or empty");
+    }
+    return point;
   }
 }

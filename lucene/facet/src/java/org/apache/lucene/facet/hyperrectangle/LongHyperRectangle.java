@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.facet.hyperrectangle;
 
-/** Stores a hyper rectangle as an array of LongRangePairs */
+/**
+ * Stores a hyper rectangle as an array of LongRangePairs
+ *
+ * @lucene.experimental
+ */
 public class LongHyperRectangle extends HyperRectangle {
 
   /** Created LongHyperRectangle */

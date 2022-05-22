@@ -16,7 +16,15 @@
  */
 package org.apache.lucene.facet.hyperrectangle;
 
-/** Holds the name and the number of dims for a HyperRectangle */
+import java.util.Arrays;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.util.ArrayUtil;
+
+/**
+ * Holds the label, the number of dims, and the point pairs for a HyperRectangle
+ *
+ * @lucene.experimental
+ */
 public abstract class HyperRectangle {
   /** Label that identifies this range. */
   public final String label;
@@ -24,8 +32,11 @@ public abstract class HyperRectangle {
   /** How many dimensions this hyper rectangle has (IE: a regular rectangle would have dims=2) */
   public final int dims;
 
-  /** All subclasses should store pairs as comparable longs */
-  protected final LongRangePair[] pairs;
+  private final ArrayUtil.ByteArrayComparator byteComparator =
+      ArrayUtil.getUnsignedComparator(Long.BYTES);
+
+  private final byte[] lowerPoints;
+  private final byte[] upperPoints;
 
   /** Sole constructor. */
   protected HyperRectangle(String label, LongRangePair... pairs) {
@@ -37,17 +48,41 @@ public abstract class HyperRectangle {
     }
     this.label = label;
     this.dims = pairs.length;
-    this.pairs = pairs;
+
+    this.lowerPoints =
+        LongPoint.pack(Arrays.stream(pairs).mapToLong(pair -> pair.min).toArray()).bytes;
+    this.upperPoints =
+        LongPoint.pack(Arrays.stream(pairs).mapToLong(pair -> pair.max).toArray()).bytes;
   }
 
   /**
-   * Returns comparable long range for a provided dim
+   * Checked a long packed value against this HyperRectangle. If you indexed a field with {@link
+   * org.apache.lucene.document.LongPointDocValuesField} or {@link
+   * org.apache.lucene.document.DoublePointDocValuesField}, those field values will be able to be
+   * passed directly into this method.
    *
-   * @param dim dimension of the request range
-   * @return The comparable long version of the requested range
+   * @param packedValue a byte array representing a long value
+   * @return whether the packed long point intersects with this HyperRectangle
    */
-  public LongRangePair getComparableDimRange(int dim) {
-    return pairs[dim];
+  public final boolean matches(byte[] packedValue) {
+    assert packedValue.length / Long.BYTES == dims
+        : "Point dimension (dim="
+            + packedValue.length / Long.BYTES
+            + ") is incompatible with hyper rectangle dimension (dim="
+            + dims
+            + ")";
+    for (int dim = 0; dim < dims; dim++) {
+      int offset = dim * Long.BYTES;
+      if (byteComparator.compare(packedValue, offset, lowerPoints, offset) < 0) {
+        // Doc's value is too low, in this dimension
+        return false;
+      }
+      if (byteComparator.compare(packedValue, offset, upperPoints, offset) > 0) {
+        // Doc's value is too low, in this dimension
+        return false;
+      }
+    }
+    return true;
   }
 
   /** Defines a single range in a HyperRectangle */
@@ -91,11 +126,6 @@ public abstract class HyperRectangle {
 
       this.min = minIn;
       this.max = maxIn;
-    }
-
-    /** True if this range accepts the provided value. */
-    public boolean accept(long value) {
-      return value >= min && value <= max;
     }
   }
 }

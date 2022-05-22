@@ -19,7 +19,11 @@ package org.apache.lucene.facet.hyperrectangle;
 import java.util.Arrays;
 import org.apache.lucene.util.NumericUtils;
 
-/** Stores a hyper rectangle as an array of DoubleRangePairs */
+/**
+ * Stores a hyper rectangle as an array of DoubleRangePairs
+ *
+ * @lucene.experimental
+ */
 public class DoubleHyperRectangle extends HyperRectangle {
 
   /** Creates DoubleHyperRectangle */
@@ -79,7 +83,7 @@ public class DoubleHyperRectangle extends HyperRectangle {
      *
      * @return A LongRangePair equivalent of this object
      */
-    public LongRangePair toLongRangePair() {
+    private LongRangePair toLongRangePair() {
       long longMin = NumericUtils.doubleToSortableLong(min);
       long longMax = NumericUtils.doubleToSortableLong(max);
       return new LongRangePair(longMin, true, longMax, true);
