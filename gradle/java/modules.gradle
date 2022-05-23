@@ -212,6 +212,8 @@ allprojects {
               throw new RuntimeException("LF in forked jvm property?: " + s)
             }
           })
+
+          Files.createDirectories(forkProperties.toPath().getParent())
           Files.writeString(forkProperties.toPath(), String.join("\n", args), StandardCharsets.UTF_8)
         }
       }
