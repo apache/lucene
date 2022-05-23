@@ -26,7 +26,6 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitudeCeil;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
 import org.apache.lucene.geo.Circle;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.LatLonGeometry;
@@ -45,7 +44,6 @@ import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
-import org.apache.lucene.search.NearestNeighbor;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -384,8 +382,7 @@ public class LatLonPoint extends Field {
    *
    * <p>This is functionally equivalent to running {@link MatchAllDocsQuery} with a {@link
    * LatLonDocValuesField#newDistanceSort}, but is far more efficient since it takes advantage of
-   * properties the indexed BKD tree. Currently this only works with {@link Lucene90PointsFormat}
-   * (used by the default codec). Multi-valued fields are currently not de-duplicated, so if a
+   * properties the indexed BKD tree. Multi-valued fields are currently not de-duplicated, so if a
    * document had multiple instances of the specified field that make it into the top n, that
    * document will appear more than once.
    *
