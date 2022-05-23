@@ -24,9 +24,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.MergePolicy.MergeContext;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.store.Directory;
@@ -895,5 +898,25 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     mergePolicy.setMaxMergedSegmentMB(TestUtil.nextInt(random(), 1024, 10 * 1024));
     int numDocs = TEST_NIGHTLY ? atLeast(10_000_000) : atLeast(1_000_000);
     doTestSimulateUpdates(mergePolicy, numDocs, 2500);
+  }
+
+  public void testFullFlushMerges() throws IOException {
+    AtomicLong segNameGenerator = new AtomicLong();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+
+    TieredMergePolicy mp = mergePolicy();
+
+    for (int i = 0; i < mp.getSegmentsPerTier(); ++i) {
+      assertNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(),
+              1,
+              0,
+              Double.MIN_VALUE,
+              IndexWriter.SOURCE_FLUSH));
+    }
+    assertNotNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
   }
 }

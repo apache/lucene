@@ -168,9 +168,16 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   /**
-   * Segments smaller than this are "rounded up" to this size, ie treated as equal (floor) size for
-   * merge selection. This is to prevent frequent flushing of tiny segments from allowing a long
-   * tail in the index. Default is 2 MB.
+   * Segments smaller than this size are merged more aggressively:
+   *
+   * <ul>
+   *   <li>They are candidates for full-flush merges, in order to reduce the number of segments in
+   *       the index prior to opening a new point-in-time view of the index.
+   *   <li>For background merges, smaller segments are "rounded up" to this size.
+   * </ul>
+   *
+   * In both cases, this helps prevent frequent flushing of tiny segments to create a long tail of
+   * small segments in the index. Default is 2MB.
    */
   public TieredMergePolicy setFloorSegmentMB(double v) {
     if (v <= 0.0) {
@@ -931,6 +938,45 @@ public class TieredMergePolicy extends MergePolicy {
         MERGE_TYPE.FORCE_MERGE_DELETES,
         mergeContext,
         false);
+  }
+
+  @Override
+  public MergeSpecification findFullFlushMerges(
+      MergeTrigger mergeTrigger, SegmentInfos infos, MergeContext mergeContext) throws IOException {
+
+    // The logic for full flush merges consists of identifying the largest flush segment that is
+    // below the floor size, and merging it together with every other segment that is smaller,
+    // possibly including merged segments.
+    //  - Making sure the largest segment is a flush segment helps prevent O(n^2) merging where the
+    // same segment gets rewritten to a barely larger segment ever and ever again through merges.
+    //  - This is not trying to bound the number of segments that are merged at once: since all
+    // segments to be merged are below the floor size, this would be a cheap merge anyway that
+    // doesn't need to be parallelized.
+
+    List<SegmentSizeAndDocs> sortedInfos = getSortedBySegmentSize(infos, mergeContext);
+    sortedInfos.removeIf(ssd -> mergeContext.getMergingSegments().contains(ssd.segInfo));
+
+    int maxFlushSegmentSizeBelowFloorIndex = sortedInfos.size();
+    for (int i = 0; i < sortedInfos.size(); ++i) {
+      final SegmentSizeAndDocs ssd = sortedInfos.get(i);
+      if (ssd.sizeInBytes < floorSegmentBytes
+          && IndexWriter.SOURCE_FLUSH.equals(ssd.segInfo.info.getAttribute(IndexWriter.SOURCE))) {
+        maxFlushSegmentSizeBelowFloorIndex = i;
+        break;
+      }
+    }
+
+    MergeSpecification spec = null;
+    if (sortedInfos.size() - maxFlushSegmentSizeBelowFloorIndex >= segsPerTier) {
+      spec = new MergeSpecification();
+      final List<SegmentCommitInfo> merge = new ArrayList<>();
+      for (SegmentSizeAndDocs ssd :
+          sortedInfos.subList(maxFlushSegmentSizeBelowFloorIndex, sortedInfos.size())) {
+        merge.add(ssd.segInfo);
+      }
+      spec.add(new OneMerge(merge));
+    }
+    return spec;
   }
 
   private long floorSize(long bytes) {

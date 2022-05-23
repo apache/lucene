@@ -634,6 +634,35 @@ public abstract class LogMergePolicy extends MergePolicy {
     return spec;
   }
 
+  @Override
+  public MergeSpecification findFullFlushMerges(
+      MergeTrigger mergeTrigger, SegmentInfos infos, MergeContext mergeContext) throws IOException {
+
+    // The logic consists of merging tail segments that come from a flush and are below the min
+    // segment size together. Since these segments are all below the min segment size, the merge is
+    // expected to be cheap anyway so we don't mind merging more than mergeFactor segments together.
+    // This might create unbalanced merges, though only considering flushed segments ensures that a
+    // segment can only be part of one unbalanced merge in its entire lifetime: the first merge
+    // after flushing.
+
+    int mergeSize = 0;
+    for (int i = infos.size() - 1; i >= 0; --i) {
+      final SegmentCommitInfo sci = infos.info(i);
+      if (size(sci, mergeContext) <= minMergeSize
+          && mergeContext.getMergingSegments().contains(sci) == false
+          && IndexWriter.SOURCE_FLUSH.equals(sci.info.getAttribute(IndexWriter.SOURCE))) {
+        mergeSize++;
+      }
+    }
+
+    MergeSpecification mergeSpec = null;
+    if (mergeSize >= mergeFactor) {
+      mergeSpec = new MergeSpecification();
+      mergeSpec.add(new OneMerge(infos.asList().subList(infos.size() - mergeSize, infos.size())));
+    }
+    return mergeSpec;
+  }
+
   /**
    * Determines the largest segment (measured by document count) that may be merged with other
    * segments. Small values (e.g., less than 10,000) are best for interactive indexing, as this

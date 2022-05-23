@@ -17,14 +17,18 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.lucene.index.MergePolicy.MergeContext;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
+import org.apache.lucene.util.Version;
 
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
   @Override
-  public MergePolicy mergePolicy() {
+  public LogMergePolicy mergePolicy() {
     return newLogMergePolicy(random());
   }
 
@@ -44,5 +48,25 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
     for (OneMerge oneMerge : merge.merges) {
       assertEquals(lmp.getMergeFactor(), oneMerge.segments.size());
     }
+  }
+
+  public void testFullFlushMerges() throws IOException {
+    AtomicLong segNameGenerator = new AtomicLong();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+
+    LogMergePolicy mp = mergePolicy();
+
+    for (int i = 0; i < mp.getMergeFactor(); ++i) {
+      assertNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(),
+              1,
+              0,
+              Double.MIN_VALUE,
+              IndexWriter.SOURCE_FLUSH));
+    }
+    assertNotNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
   }
 }

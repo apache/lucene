@@ -75,7 +75,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10078: Merge-on-refresh is now enabled by default. (Adrien Grand)
 
 Optimizations
 ---------------------
