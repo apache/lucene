@@ -46,7 +46,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-
 (No changes)
 
 Other
@@ -65,6 +64,35 @@ Other
   (Tomoko Uchida)
 
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
+
+======================== Lucene 9.3.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+* LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
+
+Bug Fixes
+---------------------
+
+* LUCENE-10574: Prevent pathological O(N^2) merging. (Adrien Grand)
+
+Other
+---------------------
+
+* LUCENE-10370: pass proper classpath/module arguments for forking jvms from within tests. (Dawid Weiss)
+
 
 ======================= Lucene 9.2.0 =======================
 

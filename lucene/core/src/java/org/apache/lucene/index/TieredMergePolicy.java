@@ -237,6 +237,7 @@ public class TieredMergePolicy extends MergePolicy {
 
   private static class SegmentSizeAndDocs {
     private final SegmentCommitInfo segInfo;
+    /// Size of the segment in bytes, pro-rated by the number of live documents.
     private final long sizeInBytes;
     private final int delCount;
     private final int maxDoc;
@@ -532,13 +533,26 @@ public class TieredMergePolicy extends MergePolicy {
         // segments, and already pre-excluded the too-large segments:
         assert candidate.size() > 0;
 
+        SegmentSizeAndDocs maxCandidateSegmentSize = segInfosSizes.get(candidate.get(0));
+        if (hitTooLarge == false
+            && mergeType == MERGE_TYPE.NATURAL
+            && bytesThisMerge < maxCandidateSegmentSize.sizeInBytes * 1.5
+            && maxCandidateSegmentSize.delCount
+                < maxCandidateSegmentSize.maxDoc * deletesPctAllowed / 100) {
+          // Ignore any merge where the resulting segment is not at least 50% larger than the
+          // biggest input segment.
+          // Otherwise we could run into pathological O(N^2) merging where merges keep rewriting
+          // again and again the biggest input segment into a segment that is barely bigger.
+          // The only exception we make is when the merge would reclaim lots of deletes in the
+          // biggest segment. This is important for cases when lots of documents get deleted at once
+          // without introducing new segments of a similar size for instance.
+          continue;
+        }
+
         // A singleton merge with no deletes makes no sense. We can get here when forceMerge is
         // looping around...
-        if (candidate.size() == 1) {
-          SegmentSizeAndDocs segSizeDocs = segInfosSizes.get(candidate.get(0));
-          if (segSizeDocs.delCount == 0) {
-            continue;
-          }
+        if (candidate.size() == 1 && maxCandidateSegmentSize.delCount == 0) {
+          continue;
         }
 
         // If we didn't find a too-large merge and have a list of candidates
