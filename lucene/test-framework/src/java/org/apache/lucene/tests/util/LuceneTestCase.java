@@ -1042,18 +1042,18 @@ public abstract class LuceneTestCase extends Assert {
       c.setIndexWriterEventListener(new MockIndexWriterEventListener());
     }
     switch (r.nextInt(3)) {
-    case 0:
-      // Disable merge on refresh
-      c.setMaxFullFlushMergeWaitMillis(0L);
-      break;
-    case 1:
-      // Very low timeout, merges will likely not be able to run in time
-      c.setMaxFullFlushMergeWaitMillis(1L);
-      break;
-    default:
-      // Very long timeout, merges will almost always be able to run in time
-      c.setMaxFullFlushMergeWaitMillis(1000L);
-      break;
+      case 0:
+        // Disable merge on refresh
+        c.setMaxFullFlushMergeWaitMillis(0L);
+        break;
+      case 1:
+        // Very low timeout, merges will likely not be able to run in time
+        c.setMaxFullFlushMergeWaitMillis(1L);
+        break;
+      default:
+        // Very long timeout, merges will almost always be able to run in time
+        c.setMaxFullFlushMergeWaitMillis(1000L);
+        break;
     }
 
     c.setMaxFullFlushMergeWaitMillis(rarely() ? atLeast(r, 1000) : atLeast(r, 200));

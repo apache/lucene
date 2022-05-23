@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.lucene.index.MergePolicy.MergeContext;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
