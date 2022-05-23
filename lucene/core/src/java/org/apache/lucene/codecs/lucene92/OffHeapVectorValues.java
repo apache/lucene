@@ -118,6 +118,11 @@ abstract class OffHeapVectorValues extends VectorValues
     }
 
     @Override
+    public long nextOrd() throws IOException {
+      return 0;
+    }
+
+    @Override
     public BytesRef binaryValue() throws IOException {
       slice.seek((long) doc * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
@@ -194,6 +199,11 @@ abstract class OffHeapVectorValues extends VectorValues
     }
 
     @Override
+    public long nextOrd() throws IOException {
+      return 0;
+    }
+
+    @Override
     public BytesRef binaryValue() throws IOException {
       slice.seek((long) (disi.index()) * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
@@ -266,6 +276,11 @@ abstract class OffHeapVectorValues extends VectorValues
     @Override
     public float[] vectorValue() throws IOException {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long nextOrd() throws IOException {
+      return 0;
     }
 
     @Override

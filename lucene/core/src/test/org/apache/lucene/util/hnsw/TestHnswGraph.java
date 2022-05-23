@@ -509,6 +509,11 @@ public class TestHnswGraph extends LuceneTestCase {
     }
 
     @Override
+    public long nextOrd() throws IOException {
+      return doc;
+    }
+
+    @Override
     public RandomAccessVectorValues randomAccess() {
       return new CircularVectorValues(size);
     }

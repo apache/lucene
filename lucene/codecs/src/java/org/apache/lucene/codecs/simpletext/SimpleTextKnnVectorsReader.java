@@ -294,6 +294,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public long nextOrd() throws IOException {
+      return ++curOrd;
+    }
+
+    @Override
     public BytesRef binaryValue() {
       ByteBuffer.wrap(binaryValue.bytes).asFloatBuffer().get(values[curOrd]);
       return binaryValue;

@@ -182,6 +182,11 @@ public abstract class KnnVectorsWriter implements Closeable {
     }
 
     @Override
+    public long nextOrd() throws IOException {
+      return 0;
+    }
+
+    @Override
     public BytesRef binaryValue() throws IOException {
       return current.values.binaryValue();
     }

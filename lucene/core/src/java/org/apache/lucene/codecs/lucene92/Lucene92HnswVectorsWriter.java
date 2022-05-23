@@ -187,10 +187,13 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-      // write vector
-      BytesRef binaryValue = vectors.binaryValue();
-      assert binaryValue.length == vectors.dimension() * Float.BYTES;
-      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      for(long vectorId = vectors.nextOrd();vectorId!=-1;vectorId = vectors.nextOrd()) {
+        // write vector
+        BytesRef binaryValue = vectors.binaryValue();
+        assert binaryValue.length == vectors.dimension() * Float.BYTES;
+        output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+        
+      }
       docsWithField.add(docV);
     }
     return docsWithField;
@@ -221,7 +224,7 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount
       meta.writeByte((byte) -1); // denseRankPower
-    } else if (count == maxDoc) {
+    } else if (!field.isVectorMultiValued() && count == maxDoc ) {
       meta.writeLong(-1); // docsWithFieldOffset
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount

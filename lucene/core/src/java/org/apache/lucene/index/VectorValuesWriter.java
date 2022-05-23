@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -28,10 +29,13 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.packed.PackedInts;
+import org.apache.lucene.util.packed.PackedLongValues;
 
 /**
  * Buffers up pending vector value(s) per doc, then flushes when segment flushes.
@@ -39,34 +43,37 @@ import org.apache.lucene.util.hnsw.HnswGraphSearcher;
  * @lucene.experimental
  */
 class VectorValuesWriter {
-
+  private final PackedLongValues.Builder allVectorIds; // stream of all vectorIDs
+  private PackedLongValues.Builder perDocumentVectors; // vectorIDs per doc
+  private int currentDoc = -1;
+  private int currentVectorId = 0;
+  private int[] currentValues = new int[8];
+  private int currentUpto;
+  private int maxCount;
+  private PackedLongValues finalOrds;
+  private PackedLongValues finalOrdCounts;
+  private int[] finalSortedValues;
+  
   private final FieldInfo fieldInfo;
   private final Counter iwBytesUsed;
   private final List<float[]> vectors = new ArrayList<>();
   private final DocsWithFieldSet docsWithField;
-
-  private int lastDocID = -1;
-
   private long bytesUsed;
 
-  VectorValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed) {
+  VectorValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = iwBytesUsed;
+    this.allVectorIds = PackedLongValues.packedBuilder(PackedInts.COMPACT);
     this.docsWithField = new DocsWithFieldSet();
-    this.bytesUsed = docsWithField.ramBytesUsed();
-    if (iwBytesUsed != null) {
-      iwBytesUsed.addAndGet(bytesUsed);
-    }
+    bytesUsed =
+            allVectorIds.ramBytesUsed()
+                    + docsWithField.ramBytesUsed()
+                    + RamUsageEstimator.sizeOf(currentValues);
+    iwBytesUsed.addAndGet(bytesUsed);
   }
-
-  /**
-   * Adds a value for the given document. Only a single value may be added.
-   *
-   * @param docID the value is added to this document
-   * @param vectorValue the value to add
-   * @throws IllegalArgumentException if a value has already been added to the given document
-   */
+  
   public void addValue(int docID, float[] vectorValue) {
+    assert docID >= currentDoc;
     if (vectorValue.length != fieldInfo.getVectorDimension()) {
       throw new IllegalArgumentException(
           "Attempt to index a vector of dimension "
@@ -76,19 +83,64 @@ class VectorValuesWriter {
               + "\" has dimension "
               + fieldInfo.getVectorDimension());
     }
-    docsWithField.add(docID);
-    vectors.add(ArrayUtil.copyOfSubArray(vectorValue, 0, vectorValue.length));
+    if (docID != currentDoc) {
+      finishCurrentDoc();
+      currentDoc = docID;
+    }
+    addOneVector(vectorValue);
     updateBytesUsed();
-    lastDocID = docID;
+    vectors.add(ArrayUtil.copyOfSubArray(vectorValue, 0, vectorValue.length));
+  }
+
+  // finalize currentDoc: this deduplicates the current term ids
+  private void finishCurrentDoc() {
+    if (currentDoc == -1) {
+      return;
+    }
+    Arrays.sort(currentValues, 0, currentUpto);
+    int currentDocumentVectors = 0;
+    for (int i = 0; i < currentUpto; i++) {
+      int vectorId = currentValues[i];
+      allVectorIds.add(vectorId);
+      currentDocumentVectors++;
+    }
+    
+    if (perDocumentVectors != null) {
+      perDocumentVectors.add(currentDocumentVectors);
+    } else if (currentDocumentVectors != 1) {
+      perDocumentVectors = PackedLongValues.deltaPackedBuilder(PackedInts.COMPACT);
+      for (int i = 0; i < docsWithField.cardinality(); ++i) {
+        perDocumentVectors.add(1);
+      }
+      perDocumentVectors.add(currentDocumentVectors);
+    }
+    maxCount = Math.max(maxCount, currentDocumentVectors);
+    currentUpto = 0;
+    docsWithField.add(currentDoc);
+  }
+
+  private void addOneVector(float[] vector) {
+    int vectorId = currentVectorId ++;
+
+    if (currentUpto == currentValues.length) {
+      currentValues = ArrayUtil.grow(currentValues, currentValues.length + 1);
+      iwBytesUsed.addAndGet((currentValues.length - currentUpto) * Integer.BYTES);
+    }
+
+    currentValues[currentUpto] = vectorId;
+    currentUpto++;
   }
 
   private void updateBytesUsed() {
     final long newBytesUsed =
-        docsWithField.ramBytesUsed()
+            allVectorIds.ramBytesUsed()
+                    + (perDocumentVectors == null ? 0 : perDocumentVectors.ramBytesUsed())
+                    + docsWithField.ramBytesUsed()
+                    + RamUsageEstimator.sizeOf(currentValues)
             + vectors.size()
                 * (RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                    + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-            + vectors.size() * vectors.get(0).length * Float.BYTES;
+                    + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER);
+            //+ vectors.size() * vectors.get(0).length * Float.BYTES;
     if (iwBytesUsed != null) {
       iwBytesUsed.addAndGet(newBytesUsed - bytesUsed);
     }
@@ -104,6 +156,20 @@ class VectorValuesWriter {
    * @throws IOException if there is an error writing the field and its values
    */
   public void flush(Sorter.DocMap sortMap, KnnVectorsWriter knnVectorsWriter) throws IOException {
+    final PackedLongValues ords;
+    final PackedLongValues ordCounts;
+
+    if (finalOrds == null) {
+      assert finalOrdCounts == null && finalSortedValues == null;
+      finishCurrentDoc();
+      ords = allVectorIds.build();
+      ordCounts = perDocumentVectors == null ? null : perDocumentVectors.build();
+    } else {
+      ords = finalOrds;
+      ordCounts = finalOrdCounts;
+    }
+
+    
     KnnVectorsReader knnVectorsReader =
         new KnnVectorsReader() {
           @Override
@@ -124,7 +190,7 @@ class VectorValuesWriter {
           @Override
           public VectorValues getVectorValues(String field) throws IOException {
             VectorValues vectorValues =
-                new BufferedVectorValues(docsWithField, vectors, fieldInfo.getVectorDimension());
+                new BufferedVectorValues(docsWithField, vectors, fieldInfo.getVectorDimension(),ords,ordCounts);
             return sortMap != null ? new SortingVectorValues(vectorValues, sortMap) : vectorValues;
           }
 
@@ -199,6 +265,11 @@ class VectorValuesWriter {
     }
 
     @Override
+    public long nextOrd() throws IOException {
+      return delegate.nextOrd();
+    }
+
+    @Override
     public int dimension() {
       return delegate.dimension();
     }
@@ -269,10 +340,19 @@ class VectorValuesWriter {
     final ByteBuffer raBuffer;
     final BytesRef raBinaryValue;
 
+    final PackedLongValues ords;
+    final PackedLongValues ordCounts;
+    final PackedLongValues.Iterator vectorIdsIter;
+    final PackedLongValues.Iterator vectorIdsPerDocumentCountIterator;
     DocIdSetIterator docsWithFieldIter;
-    int ord = -1;
+    final int[] currentDocVectorsId;
 
-    BufferedVectorValues(DocsWithFieldSet docsWithField, List<float[]> vectors, int dimension) {
+    private int vectorsPerDocumentCount;
+    private int visitedVectorIdPerCurrentDoc;
+
+    BufferedVectorValues(DocsWithFieldSet docsWithField, List<float[]> vectors, int dimension, PackedLongValues ords,
+                         PackedLongValues ordCounts) {
+      this.currentDocVectorsId = new int[vectors.size()];//should be the max recorded per document
       this.docsWithField = docsWithField;
       this.vectors = vectors;
       this.dimension = dimension;
@@ -280,12 +360,17 @@ class VectorValuesWriter {
       binaryValue = new BytesRef(buffer.array());
       raBuffer = ByteBuffer.allocate(dimension * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
       raBinaryValue = new BytesRef(raBuffer.array());
+
+      this.vectorIdsIter = ords.iterator();
+      this.vectorIdsPerDocumentCountIterator = ordCounts.iterator();
       docsWithFieldIter = docsWithField.iterator();
+      this.ords = ords;
+      this.ordCounts = ordCounts;
     }
 
     @Override
     public RandomAccessVectorValues randomAccess() {
-      return new BufferedVectorValues(docsWithField, vectors, dimension);
+      return new BufferedVectorValues(docsWithField, vectors, dimension, ords, ordCounts);
     }
 
     @Override
@@ -317,7 +402,7 @@ class VectorValuesWriter {
 
     @Override
     public float[] vectorValue() {
-      return vectors.get(ord);
+      return vectors.get(currentDocVectorsId[visitedVectorIdPerCurrentDoc-1]);
     }
 
     @Override
@@ -334,9 +419,23 @@ class VectorValuesWriter {
     public int nextDoc() throws IOException {
       int docID = docsWithFieldIter.nextDoc();
       if (docID != NO_MORE_DOCS) {
-        ++ord;
+        vectorsPerDocumentCount = (int) vectorIdsPerDocumentCountIterator.next();
+        assert vectorsPerDocumentCount > 0;
+        for (int i = 0; i < vectorsPerDocumentCount; i++) {
+          currentDocVectorsId[i] = Math.toIntExact(vectorIdsIter.next());
+        }
+        visitedVectorIdPerCurrentDoc = 0;
       }
       return docID;
+    }
+
+    @Override
+    public long nextOrd() {
+      if (visitedVectorIdPerCurrentDoc == vectorsPerDocumentCount) {
+        return -1;
+      } else {
+        return currentDocVectorsId[visitedVectorIdPerCurrentDoc++];
+      }
     }
 
     @Override

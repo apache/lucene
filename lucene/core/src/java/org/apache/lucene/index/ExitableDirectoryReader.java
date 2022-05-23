@@ -436,6 +436,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public long nextOrd() throws IOException {
+        return in.nextOrd();
+      }
+
+      @Override
       public BytesRef binaryValue() throws IOException {
         checkAndThrow();
         return in.binaryValue();

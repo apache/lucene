@@ -66,6 +66,8 @@ final class IndexingChain implements Accountable {
   final TermsHash termsHash;
   // Shared pool for doc-value terms
   final ByteBlockPool docValuesBytePool;
+  // Shared pool for doc-value terms
+  final ByteBlockPool vectorIdsBytePool;
   // Writes stored fields
   final StoredFieldsConsumer storedFieldsConsumer;
   final TermVectorsConsumer termVectorsWriter;
@@ -130,6 +132,7 @@ final class IndexingChain implements Accountable {
         new FreqProxTermsWriter(
             intBlockAllocator, byteBlockAllocator, bytesUsed, termVectorsWriter);
     docValuesBytePool = new ByteBlockPool(byteBlockAllocator);
+    vectorIdsBytePool = new ByteBlockPool(byteBlockAllocator);
   }
 
   private void onAbortingException(Throwable th) {
@@ -715,7 +718,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
     if (fi.getVectorDimension() != 0) {
-      pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed);
+      pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed, vectorIdsBytePool);
     }
   }
 

@@ -56,6 +56,16 @@ public abstract class VectorValues extends DocIdSetIterator {
    */
   public abstract float[] vectorValue() throws IOException;
 
+    /**
+     * Returns the next ordinal for the current document. It is illegal to call this method after
+     * advanceExact(int) returned {@code false}.
+     *
+     * @return next ordinal for the document, or . ordinals are dense, start at
+     *     0, then increment by 1 for the next value in sorted order.
+     */
+    
+    public abstract long nextOrd() throws IOException;
+
   /**
    * Return the binary encoded vector value for the current document ID. These are the bytes
    * corresponding to the float array return by {@link #vectorValue}. It is illegal to call this
@@ -91,7 +101,12 @@ public abstract class VectorValues extends DocIdSetIterator {
               "Attempt to get vectors from EMPTY values (which was not advanced)");
         }
 
-        @Override
+          @Override
+          public long nextOrd() throws IOException {
+              return 0;
+          }
+
+          @Override
         public int docID() {
           throw new IllegalStateException("VectorValues is EMPTY, and not positioned on a doc");
         }

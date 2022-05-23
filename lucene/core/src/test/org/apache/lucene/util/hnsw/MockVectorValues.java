@@ -23,6 +23,8 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
+import java.io.IOException;
+
 class MockVectorValues extends VectorValues
     implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
   private final float[] scratch;
@@ -75,6 +77,11 @@ class MockVectorValues extends VectorValues
       System.arraycopy(values[pos], 0, scratch, 0, dimension);
       return scratch;
     }
+  }
+
+  @Override
+  public long nextOrd() throws IOException {
+    return 0;
   }
 
   @Override

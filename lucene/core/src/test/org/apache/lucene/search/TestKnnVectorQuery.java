@@ -16,15 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.TestVectorUtil.randomVector;
-
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -48,6 +39,16 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+
+import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.TestVectorUtil.randomVector;
 
 /** TestKnnVectorQuery tests KnnVectorQuery. */
 public class TestKnnVectorQuery extends LuceneTestCase {
@@ -101,7 +102,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
    */
   public void testMultiVale() throws IOException {
     try (Directory indexStore =
-                 getMultiValuedIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+                 getMultiValuedIndexStore("field", new float[] {0, 100}, new float[] {1, 200}, new float[] {0, 300});
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, null, HnswGraphSearcher.Multivalued.SUM);
@@ -713,7 +714,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
       for (int j = 0; j < contents.length; ++j) {
-      doc.add(new KnnVectorField(field, contents[j],VectorSimilarityFunction.EUCLIDEAN,true));
+        doc.add(new KnnVectorField(field, new float[]{i ,contents[j][1]}, VectorSimilarityFunction.EUCLIDEAN, true));
       }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);
