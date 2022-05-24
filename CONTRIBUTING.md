@@ -78,7 +78,7 @@ Please be patient. Committers are busy people too. If no one responds to your pa
 
 Please refer to [GitHub's documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests) for an explanation of how to create a pull request.
 
-You should open a pull request against the `main` branch. 
+You should open a pull request against the `main` branch. Committers will backport it to the maintenance branches once the change is merged into `main` (as far as it is possible).
 
 You can open a pull request with or without Jira issue. If there is an associated Jira issue, the pull request title should start with the Jira issue number that your work is related to, this way your pull request will get automatically linked from the Jira issue.
 
