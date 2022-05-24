@@ -151,18 +151,18 @@ public final class MultiTermsEnum extends BaseTermsEnum {
           } else if (cmp < 0) {
             status = false;
           } else {
-            status = currentSubs[i].terms.seekExact(term);
+            status = currentSubs[i].seekExact(term);
           }
         } else {
           status = false;
         }
       } else {
-        status = currentSubs[i].terms.seekExact(term);
+        status = currentSubs[i].seekExact(term);
       }
 
       if (status) {
         top[numTop++] = currentSubs[i];
-        current = currentSubs[i].current = currentSubs[i].terms.term();
+        current = currentSubs[i].current = currentSubs[i].term();
         assert term.equals(currentSubs[i].current);
       }
     }
@@ -203,22 +203,22 @@ public final class MultiTermsEnum extends BaseTermsEnum {
           } else if (cmp < 0) {
             status = SeekStatus.NOT_FOUND;
           } else {
-            status = currentSubs[i].terms.seekCeil(term);
+            status = currentSubs[i].seekCeil(term);
           }
         } else {
           status = SeekStatus.END;
         }
       } else {
-        status = currentSubs[i].terms.seekCeil(term);
+        status = currentSubs[i].seekCeil(term);
       }
 
       if (status == SeekStatus.FOUND) {
         top[numTop++] = currentSubs[i];
-        current = currentSubs[i].current = currentSubs[i].terms.term();
+        current = currentSubs[i].current = currentSubs[i].term();
         queue.add(currentSubs[i]);
       } else {
         if (status == SeekStatus.NOT_FOUND) {
-          currentSubs[i].current = currentSubs[i].terms.term();
+          currentSubs[i].current = currentSubs[i].term();
           assert currentSubs[i].current != null;
           queue.add(currentSubs[i]);
         } else {
@@ -265,7 +265,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     // call next() on each top, and reorder queue
     for (int i = 0; i < numTop; i++) {
       TermsEnumWithSlice top = queue.top();
-      top.current = top.terms.next();
+      top.current = top.next();
       if (top.current == null) {
         queue.pop();
       } else {
@@ -309,7 +309,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
   public int docFreq() throws IOException {
     int sum = 0;
     for (int i = 0; i < numTop; i++) {
-      sum += top[i].terms.docFreq();
+      sum += top[i].docFreq();
     }
     return sum;
   }
@@ -318,7 +318,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
   public long totalTermFreq() throws IOException {
     long sum = 0;
     for (int i = 0; i < numTop; i++) {
-      final long v = top[i].terms.totalTermFreq();
+      final long v = top[i].totalTermFreq();
       assert v != -1;
       sum += v;
     }
@@ -351,7 +351,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
       assert entry.subIndex < docsEnum.subPostingsEnums.length
           : entry.subIndex + " vs " + docsEnum.subPostingsEnums.length + "; " + subs.length;
       final PostingsEnum subPostingsEnum =
-          entry.terms.postings(docsEnum.subPostingsEnums[entry.subIndex], flags);
+          entry.postings(docsEnum.subPostingsEnums[entry.subIndex], flags);
       assert subPostingsEnum != null;
       docsEnum.subPostingsEnums[entry.subIndex] = subPostingsEnum;
       subDocs[upto].postingsEnum = subPostingsEnum;
@@ -370,7 +370,6 @@ public final class MultiTermsEnum extends BaseTermsEnum {
 
   static final class TermsEnumWithSlice extends TermsEnumIndex {
     private final ReaderSlice subSlice;
-    TermsEnum terms;
     public BytesRef current;
 
     public TermsEnumWithSlice(int index, ReaderSlice subSlice) {
@@ -381,14 +380,13 @@ public final class MultiTermsEnum extends BaseTermsEnum {
 
     @Override
     public void reset(TermsEnum terms, BytesRef term) {
-      this.terms = terms;
       current = term;
       super.reset(terms, term);
     }
 
     @Override
     public String toString() {
-      return subSlice.toString() + ":" + terms;
+      return subSlice.toString() + ":" + termsEnum();
     }
   }
 
