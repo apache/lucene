@@ -65,6 +65,7 @@ class TermsEnumIndex {
   }
 
   final int subIndex;
+  // Properly encapsulate the terms enum, next() and seeks require updating currentTerm and currentTermPrefix8
   private TermsEnum termsEnum;
   private BytesRef currentTerm;
   private int prefixLength;
@@ -89,6 +90,14 @@ class TermsEnumIndex {
 
   BytesRef term() {
     return currentTerm;
+  }
+
+  long ord() throws IOException {
+    return termsEnum.ord();
+  }
+
+  long size() throws IOException {
+    return termsEnum.size();
   }
 
   private void setTerm(BytesRef term) {
@@ -124,6 +133,11 @@ class TermsEnumIndex {
       setTerm(null);
     }
     return found;
+  }
+
+  void seekExact(long ord) throws IOException {
+    termsEnum.seekExact(ord);
+    setTerm(termsEnum.term());
   }
 
   void reset(TermsEnumIndex tei) throws IOException {

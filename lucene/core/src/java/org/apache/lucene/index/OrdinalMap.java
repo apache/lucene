@@ -30,6 +30,7 @@ import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -48,20 +49,19 @@ public class OrdinalMap implements Accountable {
   // need it
   // TODO: use more efficient packed ints structures?
 
-  private static class TermsEnumIndex {
-    final int subIndex;
-    final TermsEnum termsEnum;
-    BytesRef currentTerm;
+  private static final int WINDOW_SIZE = 4096;
 
-    public TermsEnumIndex(TermsEnum termsEnum, int subIndex) {
-      this.termsEnum = termsEnum;
-      this.subIndex = subIndex;
+  private static class TermsEnumPriorityQueue extends PriorityQueue<TermsEnumIndex> {
+
+    TermsEnumPriorityQueue(int size) {
+      super(size);
     }
 
-    public BytesRef next() throws IOException {
-      currentTerm = termsEnum.next();
-      return currentTerm;
+    @Override
+    protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
+      return a.compareTermTo(b) < 0;
     }
+
   }
 
   private static class SegmentMap implements Accountable {
@@ -226,13 +226,7 @@ public class OrdinalMap implements Accountable {
     long[] segmentOrds = new long[subs.length];
 
     // Just merge-sorts by term:
-    PriorityQueue<TermsEnumIndex> queue =
-        new PriorityQueue<TermsEnumIndex>(subs.length) {
-          @Override
-          protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
-            return a.currentTerm.compareTo(b.currentTerm) < 0;
-          }
-        };
+    TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
 
     for (int i = 0; i < subs.length; i++) {
       TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);
@@ -245,57 +239,99 @@ public class OrdinalMap implements Accountable {
 
     long globalOrd = 0;
     while (queue.size() != 0) {
+
+      // Compute a number of bytes that the next WINDOW_SIZE terms are guaranteed to share as a prefix with the current term
       TermsEnumIndex top = queue.top();
-      scratch.copyBytes(top.currentTerm);
-
-      int firstSegmentIndex = Integer.MAX_VALUE;
-      long globalOrdDelta = Long.MAX_VALUE;
-
-      // Advance past this term, recording the per-segment ord deltas:
-      while (true) {
-        top = queue.top();
-        long segmentOrd = top.termsEnum.ord();
-        long delta = globalOrd - segmentOrd;
-        int segmentIndex = top.subIndex;
-        // We compute the least segment where the term occurs. In case the
-        // first segment contains most (or better all) values, this will
-        // help save significant memory
-        if (segmentIndex < firstSegmentIndex) {
-          firstSegmentIndex = segmentIndex;
-          globalOrdDelta = delta;
-        }
-        ordDeltaBits[segmentIndex] |= delta;
-
-        // for each per-segment ord, map it back to the global term; the while loop is needed
-        // in case the incoming TermsEnums don't have compact ordinals (some ordinal values
-        // are skipped), which can happen e.g. with a FilteredTermsEnum:
-        assert segmentOrds[segmentIndex] <= segmentOrd;
-
-        // TODO: we could specialize this case (the while loop is not needed when the ords
-        // are compact)
-        do {
-          ordDeltas[segmentIndex].add(delta);
-          segmentOrds[segmentIndex]++;
-        } while (segmentOrds[segmentIndex] <= segmentOrd);
-
-        if (top.next() == null) {
-          queue.pop();
-          if (queue.size() == 0) {
-            break;
-          }
-        } else {
-          queue.updateTop();
-        }
-        if (queue.top().currentTerm.equals(scratch.get()) == false) {
-          break;
+      scratch.copyBytes(top.term());
+      int windowSharedPrefix = 0;
+      for (TermsEnumIndex tei : queue) {
+        long currentOrd = tei.ord();
+        if (currentOrd + WINDOW_SIZE <= tei.size()) {
+          tei.seekExact(currentOrd + WINDOW_SIZE - 1);
+          int teiWindowSharedPrefix = StringHelper.bytesDifference(scratch.get(), tei.term());
+          windowSharedPrefix = Math.max(windowSharedPrefix, teiWindowSharedPrefix);
+          tei.seekExact(currentOrd);
         }
       }
 
-      // for each unique term, just mark the first segment index/delta where it occurs
-      firstSegments.add(firstSegmentIndex);
-      firstSegmentBits |= firstSegmentIndex;
-      globalOrdDeltas.add(globalOrdDelta);
-      globalOrd++;
+      BytesRef windowPrefix = top.term().clone();
+      windowPrefix.length = windowSharedPrefix;
+      TermsEnumPriorityQueue newQueue = new TermsEnumPriorityQueue(subs.length);
+      List<TermsEnumIndex> other = new ArrayList<>();
+      for (TermsEnumIndex tei : queue) {
+        if (StringHelper.startsWith(tei.term(), windowPrefix)) {
+          tei.setPrefixLength(windowSharedPrefix);
+          newQueue.add(tei);
+        } else {
+          other.add(tei);
+        }
+      }
+      assert newQueue.size() > 0;
+      queue = newQueue;
+
+      for (int i = 0; i < WINDOW_SIZE && queue.size() != 0; ++i) {
+        top = queue.top();
+        scratch.copyBytes(top.term());
+        int firstSegmentIndex = Integer.MAX_VALUE;
+        long globalOrdDelta = Long.MAX_VALUE;
+
+        // Advance past this term, recording the per-segment ord deltas:
+        while (true) {
+          top = queue.top();
+          long segmentOrd = top.ord();
+          long delta = globalOrd - segmentOrd;
+          int segmentIndex = top.subIndex;
+          // We compute the least segment where the term occurs. In case the
+          // first segment contains most (or better all) values, this will
+          // help save significant memory
+          if (segmentIndex < firstSegmentIndex) {
+            firstSegmentIndex = segmentIndex;
+            globalOrdDelta = delta;
+          }
+          ordDeltaBits[segmentIndex] |= delta;
+
+          // for each per-segment ord, map it back to the global term; the while loop is needed
+          // in case the incoming TermsEnums don't have compact ordinals (some ordinal values
+          // are skipped), which can happen e.g. with a FilteredTermsEnum:
+          assert segmentOrds[segmentIndex] <= segmentOrd;
+
+          // TODO: we could specialize this case (the while loop is not needed when the ords
+          // are compact)
+          do {
+            ordDeltas[segmentIndex].add(delta);
+            segmentOrds[segmentIndex]++;
+          } while (segmentOrds[segmentIndex] <= segmentOrd);
+
+          if (top.next() == null) {
+            queue.pop();
+            if (queue.size() == 0) {
+              break;
+            }
+          } else {
+            queue.updateTop();
+          }
+          if (queue.top().term().equals(scratch.get()) == false) {
+            break;
+          }
+        }
+
+        // for each unique term, just mark the first segment index/delta where it occurs
+        firstSegments.add(firstSegmentIndex);
+        firstSegmentBits |= firstSegmentIndex;
+        globalOrdDeltas.add(globalOrdDelta);
+        globalOrd++;
+      }
+
+      newQueue = new TermsEnumPriorityQueue(subs.length);
+      for (TermsEnumIndex tei : queue) {
+        tei.setPrefixLength(0);
+        newQueue.add(tei);
+      }
+      for (TermsEnumIndex tei : other) {
+        tei.setPrefixLength(0);
+        newQueue.add(tei);
+      }
+      queue = newQueue;
     }
 
     long ramBytesUsed = BASE_RAM_BYTES_USED + segmentMap.ramBytesUsed();
