@@ -420,6 +420,11 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
     public ImpactsEnum impacts(int flags) throws IOException {
       return new SlowImpactsEnum(postings(null, PostingsEnum.FREQS));
     }
+
+    @Override
+    public long size() throws IOException {
+      return terms.size();
+    }
   }
 
   // note: these two enum classes are exactly like the Default impl...

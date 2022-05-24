@@ -589,4 +589,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   public SeekStatus seekCeil(BytesRef text) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public long size() throws IOException {
+    return -1;
+  }
 }

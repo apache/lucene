@@ -1402,6 +1402,11 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
     public int docFreq() throws IOException {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public long size() throws IOException {
+      return entry.termsDictSize;
+    }
   }
 
   @Override

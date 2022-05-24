@@ -1325,4 +1325,9 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
       }
     }
   }
+
+  @Override
+  public long size() throws IOException {
+    return fr.numTerms;
+  }
 }

@@ -366,6 +366,11 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       public ImpactsEnum impacts(int flags) throws IOException {
         return delegate().impacts(flags);
       }
+
+      @Override
+      public long size() throws IOException {
+        return delegateTerms.size();
+      }
     }
 
     @Override

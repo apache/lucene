@@ -566,4 +566,9 @@ public class BlockReader extends BaseTermsEnum implements Accountable {
             + "\"",
         blockInput);
   }
+
+  @Override
+  public long size() throws IOException {
+    return fieldMetadata.getNumTerms();
+  }
 }

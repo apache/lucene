@@ -586,6 +586,11 @@ public abstract class DocValuesConsumer implements Closeable {
     public TermState termState() throws IOException {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public long size() throws IOException {
+      return -1;
+    }
   }
 
   /** Tracks state of one sorted sub-reader that we are merging */

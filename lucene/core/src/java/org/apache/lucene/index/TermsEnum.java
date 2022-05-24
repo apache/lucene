@@ -105,9 +105,6 @@ public abstract class TermsEnum implements BytesRefIterator {
    */
   public abstract long ord() throws IOException;
 
-  // TODO: clean this up
-  public long size() { return Long.MAX_VALUE; }
-
   /**
    * Returns the number of documents containing the current term. Do not call this when the enum is
    * unpositioned. {@link SeekStatus#END}.
@@ -171,6 +168,13 @@ public abstract class TermsEnum implements BytesRefIterator {
    * @see #seekExact(BytesRef, TermState)
    */
   public abstract TermState termState() throws IOException;
+
+  /**
+   * Returns the number of terms for this field, or -1 if this measure isn't stored by the codec.
+   * Note that, just like other term measures, this measure does not take deleted documents into
+   * account.
+   */
+  public abstract long size() throws IOException;
 
   /**
    * An empty TermsEnum for quickly returning an empty instance e.g. in {@link
@@ -249,6 +253,11 @@ public abstract class TermsEnum implements BytesRefIterator {
         @Override
         public void seekExact(BytesRef term, TermState state) {
           throw new IllegalStateException("this method should never be called");
+        }
+
+        @Override
+        public long size() throws IOException {
+          return 0;
         }
       };
 }

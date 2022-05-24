@@ -122,4 +122,9 @@ class SortedDocValuesTermsEnum extends BaseTermsEnum {
     state.ord = currentOrd;
     return state;
   }
+
+  @Override
+  public long size() throws IOException {
+    return values.getValueCount();
+  }
 }

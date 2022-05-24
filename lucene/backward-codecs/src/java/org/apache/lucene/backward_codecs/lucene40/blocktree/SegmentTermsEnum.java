@@ -1190,4 +1190,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   public long ord() {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public long size() throws IOException {
+    return fr.numTerms;
+  }
 }

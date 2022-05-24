@@ -668,6 +668,11 @@ public class RandomPostingsTester {
     public ImpactsEnum impacts(int flags) throws IOException {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public long size() throws IOException {
+      return terms.size();
+    }
   }
 
   private static class ThreadState {

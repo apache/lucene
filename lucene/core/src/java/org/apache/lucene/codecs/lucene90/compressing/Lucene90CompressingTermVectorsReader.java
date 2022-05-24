@@ -1176,6 +1176,11 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       final PostingsEnum delegate = postings(null, PostingsEnum.FREQS);
       return new SlowImpactsEnum(delegate);
     }
+
+    @Override
+    public long size() throws IOException {
+      return numTerms;
+    }
   }
 
   private static class TVPostingsEnum extends PostingsEnum {

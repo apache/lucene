@@ -407,6 +407,11 @@ public class FSTTermsReader extends FieldsProducer {
           seekPending = true;
         }
       }
+
+      @Override
+      public long size() throws IOException {
+        return numTerms;
+      }
     }
 
     // Iterates intersect result with automaton (cannot seek!)
@@ -742,6 +747,11 @@ public class FSTTermsReader extends FieldsProducer {
           term.setLength(term.length() - 1);
         }
         return term;
+      }
+
+      @Override
+      public long size() throws IOException {
+        return -1;
       }
     }
   }

@@ -406,4 +406,9 @@ public final class FuzzyTermsEnum extends TermsEnum {
       throw new UnsupportedOperationException();
     }
   }
+
+  @Override
+  public long size() throws IOException {
+    return -1;
+  }
 }

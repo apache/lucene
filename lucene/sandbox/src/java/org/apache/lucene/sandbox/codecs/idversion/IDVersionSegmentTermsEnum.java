@@ -1219,4 +1219,9 @@ public final class IDVersionSegmentTermsEnum extends BaseTermsEnum {
   public String toString() {
     return "IDVersionSegmentTermsEnum(seg=" + fr.parent + ")";
   }
+
+  @Override
+  public long size() throws IOException {
+    return fr.numTerms;
+  }
 }

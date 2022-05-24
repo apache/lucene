@@ -450,6 +450,11 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     public ImpactsEnum impacts(int flags) throws IOException {
       return new SlowImpactsEnum(postings(null, PostingsEnum.FREQS));
     }
+
+    @Override
+    public long size() throws IOException {
+      return ramField.termToDocs.size();
+    }
   }
 
   private static class RAMDocsEnum extends PostingsEnum {

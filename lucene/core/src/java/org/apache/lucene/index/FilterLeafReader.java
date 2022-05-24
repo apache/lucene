@@ -240,6 +240,11 @@ public abstract class FilterLeafReader extends LeafReader {
     public TermState termState() throws IOException {
       return in.termState();
     }
+
+    @Override
+    public long size() throws IOException {
+      return in.size();
+    }
   }
 
   /** Base class for filtering {@link PostingsEnum} implementations. */

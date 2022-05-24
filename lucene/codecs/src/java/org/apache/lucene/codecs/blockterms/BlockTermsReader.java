@@ -862,6 +862,11 @@ public class BlockTermsReader extends FieldsProducer {
           // System.out.println("  skip! seekPending");
         }
       }
+
+      @Override
+      public long size() throws IOException {
+        return numTerms;
+      }
     }
   }
 

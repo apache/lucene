@@ -767,6 +767,11 @@ public class TestCodecs extends LuceneTestCase {
     public ImpactsEnum impacts(int flags) throws IOException {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public long size() throws IOException {
+      return fieldData.terms.length;
+    }
   }
 
   private static class DataPostingsEnum extends PostingsEnum {

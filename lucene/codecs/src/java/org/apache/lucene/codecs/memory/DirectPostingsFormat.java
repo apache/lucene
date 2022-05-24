@@ -941,6 +941,11 @@ public final class DirectPostingsFormat extends PostingsFormat {
       public ImpactsEnum impacts(int flags) throws IOException {
         return new SlowImpactsEnum(postings(null, flags));
       }
+
+      @Override
+      public long size() throws IOException {
+        return terms.length;
+      }
     }
 
     private final class DirectIntersectTermsEnum extends BaseTermsEnum {
@@ -1523,6 +1528,11 @@ public final class DirectPostingsFormat extends PostingsFormat {
       @Override
       public void seekExact(long ord) {
         throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public long size() throws IOException {
+        return -1;
       }
     }
   }

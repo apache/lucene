@@ -258,4 +258,9 @@ public abstract class FilteredTermsEnum extends TermsEnum {
       }
     }
   }
+
+  @Override
+  public long size() {
+    return -1;
+  }
 }
