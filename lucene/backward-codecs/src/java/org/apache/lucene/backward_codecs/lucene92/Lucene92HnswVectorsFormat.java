@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene92;
+package org.apache.lucene.backward_codecs.lucene92;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -129,10 +129,17 @@ public final class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int beamWidth;
 
+  /** Constructs a format using default graph construction parameters */
   public Lucene92HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
+  /**
+   * Constructs a format using the given graph construction parameters.
+   *
+   * @param maxConn the maximum number of connections to a node in the HNSW graph
+   * @param beamWidth the size of the queue maintained during graph construction.
+   */
   public Lucene92HnswVectorsFormat(int maxConn, int beamWidth) {
     super("lucene92HnswVectorsFormat");
     this.maxConn = maxConn;
