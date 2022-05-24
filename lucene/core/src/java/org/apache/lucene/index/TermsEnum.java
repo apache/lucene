@@ -105,6 +105,9 @@ public abstract class TermsEnum implements BytesRefIterator {
    */
   public abstract long ord() throws IOException;
 
+  // TODO: clean this up
+  public long size() { return Long.MAX_VALUE; }
+
   /**
    * Returns the number of documents containing the current term. Do not call this when the enum is
    * unpositioned. {@link SeekStatus#END}.
