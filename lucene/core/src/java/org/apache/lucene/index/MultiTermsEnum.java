@@ -56,17 +56,6 @@ public final class MultiTermsEnum extends BaseTermsEnum {
   private int numSubs;
   private BytesRef current;
 
-  static class TermsEnumIndex {
-    public static final TermsEnumIndex[] EMPTY_ARRAY = new TermsEnumIndex[0];
-    final int subIndex;
-    final TermsEnum termsEnum;
-
-    public TermsEnumIndex(TermsEnum termsEnum, int subIndex) {
-      this.termsEnum = termsEnum;
-      this.subIndex = subIndex;
-    }
-  }
-
   /** Returns how many sub-reader slices contain the current term. @see #getMatchArray */
   public int getMatchCount() {
     return numTop;
@@ -114,10 +103,10 @@ public final class MultiTermsEnum extends BaseTermsEnum {
       final TermsEnumIndex termsEnumIndex = termsEnumsIndex[i];
       assert termsEnumIndex != null;
 
-      final BytesRef term = termsEnumIndex.termsEnum.next();
+      final BytesRef term = termsEnumIndex.next();
       if (term != null) {
         final TermsEnumWithSlice entry = subs[termsEnumIndex.subIndex];
-        entry.reset(termsEnumIndex.termsEnum, term);
+        entry.reset(termsEnumIndex.termsEnum(), term);
         queue.add(entry);
         currentSubs[numSubs++] = entry;
       } else {
