@@ -390,7 +390,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
 
     @Override
     protected boolean lessThan(TermsEnumWithSlice termsA, TermsEnumWithSlice termsB) {
-      return termsA.term().compareTo(termsB.term()) < 0;
+      return termsA.compareTermTo(termsB) < 0;
     }
 
     /**
