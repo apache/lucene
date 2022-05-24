@@ -47,7 +47,7 @@ public final class HnswGraphSearcher {
    * @param candidates max heap that will track the candidate nodes to explore
    * @param visited bit set that will track nodes that have already been visited
    */
-  HnswGraphSearcher(
+  public HnswGraphSearcher(
       VectorSimilarityFunction similarityFunction, NeighborQueue candidates, BitSet visited) {
     this.similarityFunction = similarityFunction;
     this.candidates = candidates;
@@ -112,7 +112,7 @@ public final class HnswGraphSearcher {
    * @param graph the graph values
    * @return a priority queue holding the closest neighbors found
    */
-  NeighborQueue searchLevel(
+  public NeighborQueue searchLevel(
       float[] query,
       int topK,
       int level,

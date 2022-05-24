@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.ko.dict;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.lucene.util.IOSupplier;
@@ -34,6 +35,17 @@ public final class ConnectionCosts extends org.apache.lucene.analysis.morph.Conn
    */
   public ConnectionCosts(Path connectionCostsFile) throws IOException {
     this(() -> Files.newInputStream(connectionCostsFile));
+  }
+
+  /**
+   * Create a {@link ConnectionCosts} from an external resource URL (e.g. from Classpath with {@link
+   * ClassLoader#getResource(String)}).
+   *
+   * @param connectionCostsUrl where to load connection costs resource
+   * @throws IOException if resource was not found or broken
+   */
+  public ConnectionCosts(URL connectionCostsUrl) throws IOException {
+    this(() -> connectionCostsUrl.openStream());
   }
 
   private ConnectionCosts() throws IOException {

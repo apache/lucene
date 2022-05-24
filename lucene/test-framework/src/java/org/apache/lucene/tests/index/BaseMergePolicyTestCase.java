@@ -512,4 +512,54 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
     /** Bytes written through merges. */
     long mergeBytesWritten;
   }
+
+  public void testNoPathologicalMerges() throws IOException {
+    MergePolicy mergePolicy = mergePolicy();
+    IOStats stats = new IOStats();
+    AtomicLong segNameGenerator = new AtomicLong();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+    // Both the docs per flush and doc size are small because these are the typical cases that used
+    // to trigger pathological O(n^2) merging due to floor segment sizes
+    final double avgDocSizeMB = 10. / 1024 / 1024;
+    final int maxDocsPerFlush = 3;
+    final int totalDocs = 10_000;
+    int numFlushes = 0;
+    for (int numDocs = 0; numDocs < totalDocs; ) {
+      int flushDocCount = TestUtil.nextInt(random(), 1, maxDocsPerFlush);
+      numDocs += flushDocCount;
+      double flushSizeMB = flushDocCount * avgDocSizeMB;
+      stats.flushBytesWritten += flushSizeMB * 1024 * 1024;
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(),
+              flushDocCount,
+              0,
+              flushSizeMB,
+              IndexWriter.SOURCE_FLUSH));
+      ++numFlushes;
+
+      MergeSpecification merges =
+          mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      while (merges != null) {
+        assertTrue(merges.merges.size() > 0);
+        assertMerge(mergePolicy, merges);
+        for (OneMerge oneMerge : merges.merges) {
+          segmentInfos =
+              applyMerge(segmentInfos, oneMerge, "_" + segNameGenerator.getAndIncrement(), stats);
+        }
+        merges = mergePolicy.findMerges(MergeTrigger.MERGE_FINISHED, segmentInfos, mergeContext);
+      }
+      assertSegmentInfos(mergePolicy, segmentInfos);
+    }
+
+    final double writeAmplification =
+        (double) (stats.flushBytesWritten + stats.mergeBytesWritten) / stats.flushBytesWritten;
+    // Assuming a merge factor of 2, which is the value that triggers the most write amplification,
+    // the total write amplification would be ~ log(numFlushes)/log(2). We allow merge policies to
+    // have a write amplification up to log(numFlushes)/log(1.5). Greater values would indicate a
+    // problem with the merge policy.
+    final double maxAllowedWriteAmplification = Math.log(numFlushes) / Math.log(1.5);
+    assertTrue(writeAmplification < maxAllowedWriteAmplification);
+  }
 }

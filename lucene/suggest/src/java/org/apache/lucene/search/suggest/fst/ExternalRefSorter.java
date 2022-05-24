@@ -118,11 +118,10 @@ public class ExternalRefSorter implements BytesRefSorter, Closeable {
   /**
    * Iterates over {@link BytesRef}s in a file, closes the reader when the iterator is exhausted.
    */
-  static class ByteSequenceIterator implements BytesRefIterator, Closeable {
+  public static class ByteSequenceIterator implements BytesRefIterator, Closeable {
     private final OfflineSorter.ByteSequencesReader reader;
-    private BytesRef scratch;
 
-    public ByteSequenceIterator(OfflineSorter.ByteSequencesReader reader) {
+    private ByteSequenceIterator(OfflineSorter.ByteSequencesReader reader) {
       this.reader = reader;
     }
 
@@ -130,7 +129,7 @@ public class ExternalRefSorter implements BytesRefSorter, Closeable {
     public BytesRef next() throws IOException {
       boolean success = false;
       try {
-        scratch = reader.next();
+        BytesRef scratch = reader.next();
         if (scratch == null) {
           close();
         }

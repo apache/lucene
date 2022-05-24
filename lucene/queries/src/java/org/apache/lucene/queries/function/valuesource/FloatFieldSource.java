@@ -25,8 +25,6 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.docvalues.FloatDocValues;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
-import org.apache.lucene.util.mutable.MutableValue;
-import org.apache.lucene.util.mutable.MutableValueFloat;
 
 /**
  * Obtains float field values from {@link org.apache.lucene.index.LeafReader#getNumericDocValues}
@@ -57,7 +55,17 @@ public class FloatFieldSource extends FieldCacheSource {
     return new FloatDocValues(this) {
       int lastDocID;
 
-      private float getValueForDoc(int doc) throws IOException {
+      @Override
+      public float floatVal(int doc) throws IOException {
+        if (exists(doc)) {
+          return Float.intBitsToFloat((int) arr.longValue());
+        } else {
+          return 0f;
+        }
+      }
+
+      @Override
+      public boolean exists(int doc) throws IOException {
         if (doc < lastDocID) {
           throw new IllegalArgumentException(
               "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
@@ -67,40 +75,7 @@ public class FloatFieldSource extends FieldCacheSource {
         if (doc > curDocID) {
           curDocID = arr.advance(doc);
         }
-        if (doc == curDocID) {
-          return Float.intBitsToFloat((int) arr.longValue());
-        } else {
-          return 0f;
-        }
-      }
-
-      @Override
-      public float floatVal(int doc) throws IOException {
-        return getValueForDoc(doc);
-      }
-
-      @Override
-      public boolean exists(int doc) throws IOException {
-        getValueForDoc(doc);
-        return arr.docID() == doc;
-      }
-
-      @Override
-      public ValueFiller getValueFiller() {
-        return new ValueFiller() {
-          private final MutableValueFloat mval = new MutableValueFloat();
-
-          @Override
-          public MutableValue getValue() {
-            return mval;
-          }
-
-          @Override
-          public void fillValue(int doc) throws IOException {
-            mval.value = floatVal(doc);
-            mval.exists = arr.docID() == doc;
-          }
-        };
+        return doc == curDocID;
       }
     };
   }

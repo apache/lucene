@@ -128,6 +128,12 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
         facets.getTopChildren(10, "Author").toString());
 
+    // test getAllDims
+    List<FacetResult> results = facets.getAllDims(10);
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allTopDimsResults = facets.getTopDims(10, 10);
+    assertEquals(results, allTopDimsResults);
+
     // Now user drills down on Publish Date/2010:
     DrillDownQuery q2 = new DrillDownQuery(config);
     q2.add("Publish Date", "2010");
@@ -242,8 +248,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(results, allDimsResults);
 
     // test getTopDims(0, 1)
-    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
-    assertEquals(0, topDimsResults2.size());
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(0, 1);
+        });
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(
@@ -287,6 +296,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
+
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allTopDimsResults = facets.getTopDims(10, 10);
+    assertEquals(results, allTopDimsResults);
+
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -642,15 +656,18 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       assertEquals(r.numDocs(), result.value.intValue());
     }
 
-    // test default implementation of getTopDims
+    // test override implementation of getTopDims
     if (allDimsResult.size() > 0) {
       List<FacetResult> topNDimsResult = facets.getTopDims(1, 10);
       assertEquals(allDimsResult.get(0), topNDimsResult.get(0));
     }
 
     // test getTopDims(0, 1)
-    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
-    assertEquals(0, topDimsResults2.size());
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopDims(0, 1);
+        });
 
     // test getTopDims(1, 0) with topNChildren = 0
     expectThrows(
@@ -695,10 +712,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "calling getFacetResults twice should return the .equals()=true result", res1, res2);
 
-    // test default implementation of getTopDims
+    // test getTopDims(n, 10)
     if (res1.size() > 0) {
-      List<FacetResult> topNDimsResult = facets.getTopDims(1, 10);
-      assertEquals(res1.get(0), topNDimsResult.get(0));
+      for (int i = 1; i < res1.size(); i++) {
+        assertEquals(res1.subList(0, i), facets.getTopDims(i, 10));
+      }
     }
 
     iw.close();
@@ -995,11 +1013,12 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
       assertEquals(expected, actual);
 
-      // test default implementation of getTopDims
-
-      List<FacetResult> topNDimsResult = facets.getTopDims(actual.size(), 10);
-      sortTies(topNDimsResult);
-      assertEquals(actual, topNDimsResult);
+      // test getTopDims
+      if (actual.size() > 0) {
+        List<FacetResult> topNDimsResult = facets.getTopDims(actual.size(), 10);
+        sortTies(topNDimsResult);
+        assertEquals(actual, topNDimsResult);
+      }
 
       // Test facet labels for each matching test doc
       List<List<FacetLabel>> actualLabels = getAllTaxonomyFacetLabels(null, tr, fc);

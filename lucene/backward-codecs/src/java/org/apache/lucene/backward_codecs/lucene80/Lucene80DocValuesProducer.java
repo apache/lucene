@@ -1603,6 +1603,11 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
           }
           return ords.get(start++);
         }
+
+        @Override
+        public long docValueCount() {
+          return end - start;
+        }
       };
     } else {
       // sparse
@@ -1662,6 +1667,11 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
           } else {
             return ords.get(start++);
           }
+        }
+
+        @Override
+        public long docValueCount() {
+          return end - start;
         }
       };
     }

@@ -67,6 +67,7 @@ public class Lucene90PointsReader extends PointsReader {
           Lucene90PointsFormat.VERSION_CURRENT,
           readState.segmentInfo.getId(),
           readState.segmentSuffix);
+      CodecUtil.retrieveChecksum(indexIn);
 
       dataIn = readState.directory.openInput(dataFileName, readState.context);
       CodecUtil.checkIndexHeader(
@@ -76,6 +77,7 @@ public class Lucene90PointsReader extends PointsReader {
           Lucene90PointsFormat.VERSION_CURRENT,
           readState.segmentInfo.getId(),
           readState.segmentSuffix);
+      CodecUtil.retrieveChecksum(dataIn);
 
       long indexLength = -1, dataLength = -1;
       try (ChecksumIndexInput metaIn =

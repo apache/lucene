@@ -96,7 +96,6 @@ public class TestBM25NBClassifier extends ClassificationTestBase<BytesRef> {
   }
 
   @Test
-  @Slow
   public void testPerformance() throws Exception {
     MockAnalyzer analyzer = new MockAnalyzer(random());
     int numDocs = atLeast(10);

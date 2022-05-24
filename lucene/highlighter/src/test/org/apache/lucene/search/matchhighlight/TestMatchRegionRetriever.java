@@ -399,10 +399,6 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  @AwaitsFix(
-      bugUrl =
-          "https://issues.apache.org/jira/browse/LUCENE-9634: "
-              + "Highlighting of degenerate spans on fields with offsets doesn't work properly")
   public void testDegenerateIntervalsWithOffsets() throws Exception {
     testDegenerateIntervals(FLD_TEXT_POS_OFFS);
   }

@@ -98,7 +98,6 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     }
   }
 
-  @Slow
   public void testSortedVariableLengthBigVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -161,7 +160,6 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     }
   }
 
-  @Slow
   public void testSparseDocValuesVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -929,5 +927,35 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       te.seekExact(i);
       assertEquals(terms.get(i), te.term());
     }
+  }
+
+  // Exercise the logic that leverages the first term of a block as a dictionary for suffixes of
+  // other terms
+  public void testTermsEnumDictionary() throws IOException {
+    Directory directory = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig();
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, conf);
+    Document doc = new Document();
+    SortedDocValuesField field = new SortedDocValuesField("field", new BytesRef("abc0defghijkl"));
+    doc.add(field);
+    iwriter.addDocument(doc);
+    field.setBytesValue(new BytesRef("abc1defghijkl"));
+    iwriter.addDocument(doc);
+    field.setBytesValue(new BytesRef("abc2defghijkl"));
+    iwriter.addDocument(doc);
+    iwriter.forceMerge(1);
+    iwriter.close();
+
+    IndexReader reader = DirectoryReader.open(directory);
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    SortedDocValues values = leafReader.getSortedDocValues("field");
+    TermsEnum termsEnum = values.termsEnum();
+    assertEquals(new BytesRef("abc0defghijkl"), termsEnum.next());
+    assertEquals(new BytesRef("abc1defghijkl"), termsEnum.next());
+    assertEquals(new BytesRef("abc2defghijkl"), termsEnum.next());
+    assertNull(termsEnum.next());
+
+    reader.close();
+    directory.close();
   }
 }
