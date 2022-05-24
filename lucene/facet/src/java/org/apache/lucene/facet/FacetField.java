@@ -34,7 +34,7 @@ public class FacetField extends Field {
   public static final FieldType TYPE = new FieldType();
 
   static {
-    TYPE.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    TYPE.setIndexOptions(IndexOptions.DOCS);
     TYPE.freeze();
   }
 
