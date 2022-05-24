@@ -36,7 +36,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
       new Comparator<TermsEnumWithSlice>() {
         @Override
         public int compare(TermsEnumWithSlice o1, TermsEnumWithSlice o2) {
-          return o1.index - o2.index;
+          return o1.subIndex - o2.subIndex;
         }
       };
 
@@ -348,12 +348,12 @@ public final class MultiTermsEnum extends BaseTermsEnum {
 
       final TermsEnumWithSlice entry = top[i];
 
-      assert entry.index < docsEnum.subPostingsEnums.length
-          : entry.index + " vs " + docsEnum.subPostingsEnums.length + "; " + subs.length;
+      assert entry.subIndex < docsEnum.subPostingsEnums.length
+          : entry.subIndex + " vs " + docsEnum.subPostingsEnums.length + "; " + subs.length;
       final PostingsEnum subPostingsEnum =
-          entry.terms.postings(docsEnum.subPostingsEnums[entry.index], flags);
+          entry.terms.postings(docsEnum.subPostingsEnums[entry.subIndex], flags);
       assert subPostingsEnum != null;
-      docsEnum.subPostingsEnums[entry.index] = subPostingsEnum;
+      docsEnum.subPostingsEnums[entry.subIndex] = subPostingsEnum;
       subDocs[upto].postingsEnum = subPostingsEnum;
       subDocs[upto].slice = entry.subSlice;
       upto++;
@@ -368,21 +368,22 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     return new SlowImpactsEnum(postings(null, flags));
   }
 
-  static final class TermsEnumWithSlice {
+  static final class TermsEnumWithSlice extends TermsEnumIndex {
     private final ReaderSlice subSlice;
     TermsEnum terms;
     public BytesRef current;
-    final int index;
 
     public TermsEnumWithSlice(int index, ReaderSlice subSlice) {
+      super(null, index);
       this.subSlice = subSlice;
-      this.index = index;
       assert subSlice.length >= 0 : "length=" + subSlice.length;
     }
 
+    @Override
     public void reset(TermsEnum terms, BytesRef term) {
       this.terms = terms;
       current = term;
+      super.reset(terms, term);
     }
 
     @Override
