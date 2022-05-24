@@ -412,7 +412,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
         final int leftChild = index << 1;
         for (int child = leftChild, end = Math.min(size, leftChild + 1); child <= end; ++child) {
           TermsEnumWithSlice te = get(child);
-          if (te.term().equals(tops[0].term())) {
+          if (te.compareTermTo(tops[0]) == 0) {
             tops[numTop++] = te;
             stack[stackLen++] = child;
           }
@@ -429,5 +429,10 @@ public final class MultiTermsEnum extends BaseTermsEnum {
   @Override
   public String toString() {
     return "MultiTermsEnum(" + Arrays.toString(subs) + ")";
+  }
+
+  @Override
+  public long size() throws IOException {
+    return -1;
   }
 }
