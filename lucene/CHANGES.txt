@@ -79,7 +79,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
 
 Bug Fixes
 ---------------------
@@ -88,7 +88,9 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* LUCENE-10370: pass proper classpath/module arguments for forking jvms from within tests. (Dawid Weiss)
+
 
 ======================= Lucene 9.2.0 =======================
 
