@@ -91,18 +91,6 @@ class TermsEnumIndex {
     return currentTerm;
   }
 
-  // TODO: remove
-  @Deprecated
-  TermsEnum termsEnum() {
-    return termsEnum;
-  }
-
-  @Deprecated
-  void reset(TermsEnum te, BytesRef term) {
-    termsEnum = te;
-    currentTerm = term;
-  }
-
   private void setTerm(BytesRef term) {
     currentTerm = term;
     if (currentTerm == null) {

@@ -106,7 +106,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
       final BytesRef term = termsEnumIndex.next();
       if (term != null) {
         final TermsEnumWithSlice entry = subs[termsEnumIndex.subIndex];
-        entry.reset(termsEnumIndex.termsEnum(), term);
+        entry.reset(termsEnumIndex);
         queue.add(entry);
         currentSubs[numSubs++] = entry;
       } else {
