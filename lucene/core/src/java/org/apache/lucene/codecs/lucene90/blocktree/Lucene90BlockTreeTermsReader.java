@@ -151,7 +151,6 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       long indexLength = -1, termsLength = -1;
       try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName, state.context)) {
         try {
-          final IndexInput indexMetaIn, termsMetaIn;
           CodecUtil.checkIndexHeader(
               metaIn,
               TERMS_META_CODEC_NAME,
@@ -159,52 +158,51 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
               version,
               state.segmentInfo.getId(),
               state.segmentSuffix);
-          indexMetaIn = termsMetaIn = metaIn;
           postingsReader.init(metaIn, state);
 
-          final int numFields = termsMetaIn.readVInt();
+          final int numFields = metaIn.readVInt();
           if (numFields < 0) {
-            throw new CorruptIndexException("invalid numFields: " + numFields, termsMetaIn);
+            throw new CorruptIndexException("invalid numFields: " + numFields, metaIn);
           }
           fieldMap = new HashMap<>((int) (numFields / 0.75f) + 1);
           for (int i = 0; i < numFields; ++i) {
-            final int field = termsMetaIn.readVInt();
-            final long numTerms = termsMetaIn.readVLong();
+            final int field = metaIn.readVInt();
+            final long numTerms = metaIn.readVLong();
             if (numTerms <= 0) {
               throw new CorruptIndexException(
-                  "Illegal numTerms for field number: " + field, termsMetaIn);
+                  "Illegal numTerms for field number: " + field, metaIn);
             }
-            final BytesRef rootCode = readBytesRef(termsMetaIn);
+            final BytesRef rootCode = readBytesRef(metaIn);
             final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(field);
             if (fieldInfo == null) {
-              throw new CorruptIndexException("invalid field number: " + field, termsMetaIn);
+              throw new CorruptIndexException("invalid field number: " + field, metaIn);
             }
-            final long sumTotalTermFreq = termsMetaIn.readVLong();
+            final long sumTotalTermFreq = metaIn.readVLong();
             // when frequencies are omitted, sumDocFreq=sumTotalTermFreq and only one value is
             // written.
             final long sumDocFreq =
                 fieldInfo.getIndexOptions() == IndexOptions.DOCS
                     ? sumTotalTermFreq
-                    : termsMetaIn.readVLong();
-            final int docCount = termsMetaIn.readVInt();
-            BytesRef minTerm = readBytesRef(termsMetaIn);
-            BytesRef maxTerm = readBytesRef(termsMetaIn);
+                    : metaIn.readVLong();
+            final int docCount = metaIn.readVInt();
+            BytesRef minTerm = readBytesRef(metaIn);
+            BytesRef maxTerm = readBytesRef(metaIn);
             if (docCount < 0
                 || docCount > state.segmentInfo.maxDoc()) { // #docs with field must be <= #docs
               throw new CorruptIndexException(
                   "invalid docCount: " + docCount + " maxDoc: " + state.segmentInfo.maxDoc(),
-                  termsMetaIn);
+                  metaIn);
             }
             if (sumDocFreq < docCount) { // #postings must be >= #docs with field
               throw new CorruptIndexException(
-                  "invalid sumDocFreq: " + sumDocFreq + " docCount: " + docCount, termsMetaIn);
+                  "invalid sumDocFreq: " + sumDocFreq + " docCount: " + docCount, metaIn);
             }
             if (sumTotalTermFreq < sumDocFreq) { // #positions must be >= #postings
               throw new CorruptIndexException(
                   "invalid sumTotalTermFreq: " + sumTotalTermFreq + " sumDocFreq: " + sumDocFreq,
-                  termsMetaIn);
+                  metaIn);
             }
-            final long indexStartFP = indexMetaIn.readVLong();
+            final long indexStartFP = metaIn.readVLong();
             FieldReader previous =
                 fieldMap.put(
                     fieldInfo.name,
@@ -217,12 +215,12 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
                         sumDocFreq,
                         docCount,
                         indexStartFP,
-                        indexMetaIn,
+                        metaIn,
                         indexIn,
                         minTerm,
                         maxTerm));
             if (previous != null) {
-              throw new CorruptIndexException("duplicate field: " + fieldInfo.name, termsMetaIn);
+              throw new CorruptIndexException("duplicate field: " + fieldInfo.name, metaIn);
             }
           }
           indexLength = metaIn.readLong();
