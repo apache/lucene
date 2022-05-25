@@ -164,7 +164,7 @@ public class Lucene92Codec extends Codec {
   }
 
   @Override
-  public final KnnVectorsFormat knnVectorsFormat() {
+  public KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
   }
 
