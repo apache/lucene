@@ -86,20 +86,8 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
 
   void ensureOpen() {
     if (curSegment == null) {
-      throw alreadyClosed();
+      throw alreadyClosed(null);
     }
-  }
-
-  RuntimeException wrapAlreadyClosedException(RuntimeException e) {
-    if (e instanceof NullPointerException) {
-      return alreadyClosed();
-    }
-    // TODO: maybe open a JDK issue to have a separate, more
-    // meaningful exception for unmapped segments:
-    if (e.getMessage() != null && e.getMessage().contains("closed")) {
-      return alreadyClosed();
-    }
-    return e;
   }
 
   RuntimeException handlePositionalIOOBE(String action, long pos) throws IOException {
@@ -110,7 +98,8 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
     }
   }
 
-  private AlreadyClosedException alreadyClosed() {
+  // the unused parameter is just to silence javac about unused variables
+  AlreadyClosedException alreadyClosed(RuntimeException unused) {
     return new AlreadyClosedException("Already closed: " + this);
   }
 
@@ -135,7 +124,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       curPosition++;
       return v;
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -149,7 +138,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException e) {
       readBytesBoundary(b, offset, len);
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -171,7 +160,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       MemorySegment.copy(curSegment, LAYOUT_BYTE, curPosition, b, offset, len);
       curPosition += len;
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -185,7 +174,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException iobe) {
       super.readInts(dst, offset, length);
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -199,7 +188,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException iobe) {
       super.readLongs(dst, offset, length);
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -213,7 +202,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException iobe) {
       super.readFloats(dst, offset, length);
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -228,7 +217,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException e) {
       return super.readShort();
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -243,7 +232,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException e) {
       return super.readInt();
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -258,7 +247,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException e) {
       return super.readLong();
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -299,7 +288,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException ioobe) {
       throw handlePositionalIOOBE("read", pos);
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -316,7 +305,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
         IndexOutOfBoundsException ioobe) {
       throw handlePositionalIOOBE("read", pos);
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -332,7 +321,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       setPos(pos, si);
       return readShort();
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -348,7 +337,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       setPos(pos, si);
       return readInt();
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -364,7 +353,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
       setPos(pos, si);
       return readLong();
     } catch (NullPointerException | IllegalStateException e) {
-      throw wrapAlreadyClosedException(e);
+      throw alreadyClosed(e);
     }
   }
 
@@ -503,7 +492,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
           IndexOutOfBoundsException e) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
-        throw wrapAlreadyClosedException(e);
+        throw alreadyClosed(e);
       }
     }
 
@@ -516,7 +505,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
           IndexOutOfBoundsException e) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
-        throw wrapAlreadyClosedException(e);
+        throw alreadyClosed(e);
       }
     }
 
@@ -529,7 +518,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
           IndexOutOfBoundsException e) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
-        throw wrapAlreadyClosedException(e);
+        throw alreadyClosed(e);
       }
     }
 
@@ -542,7 +531,7 @@ public abstract class MemorySegmentIndexInput extends IndexInput implements Rand
           IndexOutOfBoundsException e) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
-        throw wrapAlreadyClosedException(e);
+        throw alreadyClosed(e);
       }
     }
   }
