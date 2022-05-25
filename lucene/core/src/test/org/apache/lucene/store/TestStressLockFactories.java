@@ -57,25 +57,23 @@ public class TestStressLockFactories extends LuceneTestCase {
           // spawn clients as separate Java processes
           for (int i = 0; i < clients; i++) {
             try {
-              processes.add(
-                  applyRedirection(
-                          new ProcessBuilder(
-                              Paths.get(System.getProperty("java.home"), "bin", "java").toString(),
-                              "-Xmx32M",
-                              "--enable-preview", // TODO: fix this with LUCENE-10370
-                              "-cp",
-                              System.getProperty("java.class.path"),
-                              LockStressTest.class.getName(),
-                              Integer.toString(i),
-                              addr.getHostString(),
-                              Integer.toString(addr.getPort()),
-                              impl.getName(),
-                              dir.toString(),
-                              Integer.toString(delay),
-                              Integer.toString(rounds)),
-                          i,
-                          dir)
-                      .start());
+              List<String> args = new ArrayList<>();
+              args.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
+              args.addAll(getJvmForkArguments());
+              args.addAll(
+                  List.of(
+                      "-Xmx32M",
+                      "--enable-preview", // TODO: fix this somehow
+                      LockStressTest.class.getName(),
+                      Integer.toString(i),
+                      addr.getHostString(),
+                      Integer.toString(addr.getPort()),
+                      impl.getName(),
+                      dir.toString(),
+                      Integer.toString(delay),
+                      Integer.toString(rounds)));
+
+              processes.add(applyRedirection(new ProcessBuilder(args), i, dir).start());
             } catch (IOException ioe) {
               throw new AssertionError("Failed to start child process.", ioe);
             }

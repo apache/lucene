@@ -580,7 +580,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
                       'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
                       'sandbox', 'spatial-extras', 'spatial-test-fixtures', 'spatial3d', 'suggest', 'test-framework', 'licenses']
   if isSrc:
-    expected_src_root_files = ['build.gradle', 'buildSrc', 'dev-docs', 'dev-tools', 'gradle', 'gradlew',
+    expected_src_root_files = ['build.gradle', 'buildSrc', 'CONTRIBUTING.md', 'dev-docs', 'dev-tools', 'gradle', 'gradlew',
                                'gradlew.bat', 'help', 'lucene', 'settings.gradle', 'versions.lock', 'versions.props']
     expected_src_lucene_files = ['build.gradle', 'documentation', 'distribution', 'dev-docs']
     is_in_list(in_root_folder, expected_src_root_files)
