@@ -61,7 +61,6 @@ public class OrdinalMap implements Accountable {
     protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
       return a.compareTermTo(b) < 0;
     }
-
   }
 
   private static class SegmentMap implements Accountable {
@@ -225,26 +224,32 @@ public class OrdinalMap implements Accountable {
     long[] ordDeltaBits = new long[subs.length];
     long[] segmentOrds = new long[subs.length];
 
-    // Just merge-sorts by term:
-    TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
-
+    List<TermsEnumIndex> subEnums = new ArrayList<>(subs.length);
     for (int i = 0; i < subs.length; i++) {
       TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);
       if (sub.next() != null) {
-        queue.add(sub);
+        subEnums.add(sub);
       }
     }
+    List<TermsEnumIndex> other = new ArrayList<>();
 
+    TermsEnumIndex.TermState topState = new TermsEnumIndex.TermState();
     BytesRefBuilder scratch = new BytesRefBuilder();
 
     long globalOrd = 0;
-    while (queue.size() != 0) {
+    while (subEnums.isEmpty() == false) {
 
-      // Compute a number of bytes that the next WINDOW_SIZE terms are guaranteed to share as a prefix with the current term
-      TermsEnumIndex top = queue.top();
-      scratch.copyBytes(top.term());
+      // Compute a number of bytes that the next WINDOW_SIZE terms are guaranteed to share as a
+      // prefix with the current term
+      TermsEnumIndex min = null;
+      for (TermsEnumIndex tei : subEnums) {
+        if (min == null || tei.compareTermTo(min) < 0) {
+          min = tei;
+        }
+      }
+      scratch.copyBytes(min.term());
       int windowSharedPrefix = 0;
-      for (TermsEnumIndex tei : queue) {
+      for (TermsEnumIndex tei : subEnums) {
         long currentOrd = tei.ord();
         if (currentOrd + WINDOW_SIZE <= tei.size()) {
           tei.seekExact(currentOrd + WINDOW_SIZE - 1);
@@ -254,24 +259,23 @@ public class OrdinalMap implements Accountable {
         }
       }
 
-      BytesRef windowPrefix = top.term().clone();
+      BytesRef windowPrefix = scratch.get().clone();
       windowPrefix.length = windowSharedPrefix;
-      TermsEnumPriorityQueue newQueue = new TermsEnumPriorityQueue(subs.length);
-      List<TermsEnumIndex> other = new ArrayList<>();
-      for (TermsEnumIndex tei : queue) {
+      TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
+      for (TermsEnumIndex tei : subEnums) {
         if (StringHelper.startsWith(tei.term(), windowPrefix)) {
           tei.setPrefixLength(windowSharedPrefix);
-          newQueue.add(tei);
+          queue.add(tei);
         } else {
           other.add(tei);
         }
       }
-      assert newQueue.size() > 0;
-      queue = newQueue;
+      subEnums.clear();
+      assert queue.size() > 0;
 
       for (int i = 0; i < WINDOW_SIZE && queue.size() != 0; ++i) {
-        top = queue.top();
-        scratch.copyBytes(top.term());
+        TermsEnumIndex top = queue.top();
+        topState.copyFrom(top);
         int firstSegmentIndex = Integer.MAX_VALUE;
         long globalOrdDelta = Long.MAX_VALUE;
 
@@ -307,10 +311,12 @@ public class OrdinalMap implements Accountable {
             if (queue.size() == 0) {
               break;
             }
+            top = queue.top();
           } else {
-            queue.updateTop();
+            top = queue.updateTop();
           }
-          if (queue.top().term().equals(scratch.get()) == false) {
+
+          if (top.termEquals(topState) == false) {
             break;
           }
         }
@@ -322,16 +328,12 @@ public class OrdinalMap implements Accountable {
         globalOrd++;
       }
 
-      newQueue = new TermsEnumPriorityQueue(subs.length);
       for (TermsEnumIndex tei : queue) {
         tei.setPrefixLength(0);
-        newQueue.add(tei);
+        subEnums.add(tei);
       }
-      for (TermsEnumIndex tei : other) {
-        tei.setPrefixLength(0);
-        newQueue.add(tei);
-      }
-      queue = newQueue;
+      subEnums.addAll(other);
+      other.clear();
     }
 
     long ramBytesUsed = BASE_RAM_BYTES_USED + segmentMap.ramBytesUsed();

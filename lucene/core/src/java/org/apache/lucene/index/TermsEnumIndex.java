@@ -19,11 +19,16 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 
+/**
+ * Wrapper around a {@link TermsEnum} and an integer that identifies it. All operations that move
+ * the current position of the {@link TermsEnum} must be performed via this wrapper class, not
+ * directly on the wrapped {@link TermsEnum}.
+ */
 class TermsEnumIndex {
 
   static final TermsEnumIndex[] EMPTY_ARRAY = new TermsEnumIndex[0];
@@ -38,6 +43,7 @@ class TermsEnumIndex {
     // Use Big Endian so that longs are comparable
     final int offset = term.offset + prefixLength;
     final int length = term.length - prefixLength;
+
     if (length >= Long.BYTES) {
       return (long) BitUtil.VH_BE_LONG.get(term.bytes, offset);
     } else {
@@ -65,7 +71,8 @@ class TermsEnumIndex {
   }
 
   final int subIndex;
-  // Properly encapsulate the terms enum, next() and seeks require updating currentTerm and currentTermPrefix8
+  // Properly encapsulate the terms enum, next() and seeks require updating currentTerm and
+  // currentTermPrefix8
   private TermsEnum termsEnum;
   private BytesRef currentTerm;
   private int prefixLength;
@@ -76,28 +83,8 @@ class TermsEnumIndex {
     this.subIndex = subIndex;
   }
 
-  int docFreq() throws IOException {
-    return termsEnum.docFreq();
-  }
-
-  long totalTermFreq() throws IOException {
-    return termsEnum.totalTermFreq();
-  }
-
-  PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
-    return termsEnum.postings(reuse, flags);
-  }
-
   BytesRef term() {
     return currentTerm;
-  }
-
-  long ord() throws IOException {
-    return termsEnum.ord();
-  }
-
-  long size() throws IOException {
-    return termsEnum.size();
   }
 
   private void setTerm(BytesRef term) {
@@ -141,19 +128,20 @@ class TermsEnumIndex {
   }
 
   void reset(TermsEnumIndex tei) throws IOException {
+    prefixLength = tei.prefixLength;
     termsEnum = tei.termsEnum;
-    setTerm(tei.currentTerm);
+    currentTerm = tei.currentTerm;
+    currentTermPrefix8 = tei.currentTermPrefix8;
   }
 
   void setPrefixLength(int prefixLength) {
-    this.prefixLength = prefixLength;
-    currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm, prefixLength);
+    if (prefixLength != this.prefixLength) {
+      this.prefixLength = prefixLength;
+      currentTermPrefix8 = prefix8ToComparableUnsignedLong(currentTerm, prefixLength);
+    }
   }
 
   int compareTermTo(TermsEnumIndex that) {
-    assert currentTermPrefix8 == prefix8ToComparableUnsignedLong(currentTerm, prefixLength);
-    assert that.currentTermPrefix8 == prefix8ToComparableUnsignedLong(that.currentTerm, prefixLength);
-
     assert Arrays.equals(
         currentTerm.bytes,
         currentTerm.offset,
@@ -188,5 +176,38 @@ class TermsEnumIndex {
   @Override
   public String toString() {
     return Objects.toString(termsEnum);
+  }
+
+  /** Wrapper around a term that allows for quick equals comparisons. */
+  static class TermState {
+    private final BytesRefBuilder term = new BytesRefBuilder();
+    private int prefixLength;
+    private long termPrefix8;
+
+    void copyFrom(TermsEnumIndex tei) {
+      term.copyBytes(tei.term());
+      prefixLength = tei.prefixLength;
+      termPrefix8 = tei.currentTermPrefix8;
+    }
+  }
+
+  boolean termEquals(TermState that) {
+    assert Arrays.equals(
+        currentTerm.bytes,
+        currentTerm.offset,
+        currentTerm.offset + prefixLength,
+        that.term.bytes(),
+        0,
+        that.prefixLength);
+    if (currentTermPrefix8 != that.termPrefix8) {
+      return false;
+    }
+    return Arrays.equals(
+        currentTerm.bytes,
+        currentTerm.offset + prefixLength,
+        currentTerm.offset + currentTerm.length,
+        that.term.bytes(),
+        that.prefixLength,
+        that.term.length());
   }
 }

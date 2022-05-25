@@ -145,8 +145,7 @@ public final class MultiTerms extends Terms {
     }
 
     if (termsEnums.size() > 0) {
-      return new MultiTermsEnum(subSlices)
-          .reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
+      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
     } else {
       return TermsEnum.EMPTY;
     }
@@ -190,8 +189,7 @@ public final class MultiTerms extends Terms {
     }
 
     if (termsEnums.size() > 0) {
-      return new MultiTermsEnum(subSlices)
-          .reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
+      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
     } else {
       return TermsEnum.EMPTY;
     }
