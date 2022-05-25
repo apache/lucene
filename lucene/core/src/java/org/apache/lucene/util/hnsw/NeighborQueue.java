@@ -35,6 +35,11 @@ public class NeighborQueue {
       long apply(long v) {
         return v;
       }
+
+      @Override
+      int getNode(long v) {
+        return Integer.MAX_VALUE - (int) v;
+      }
     },
     REVERSED {
       @Override
@@ -43,9 +48,16 @@ public class NeighborQueue {
         // needs a function that returns MAX_VALUE for MIN_VALUE and vice-versa.
         return -1 - v;
       }
+
+      @Override
+      int getNode(long v) {
+        return (int) (-1 - v);
+      }
     };
 
     abstract long apply(long v);
+
+    abstract int getNode(long v);
   }
 
   private final LongHeap heap;
@@ -98,28 +110,21 @@ public class NeighborQueue {
 
   /** Removes the top element and returns its node id. */
   public int pop() {
-    return reversed
-        ? (int) order.apply(heap.pop())
-        : Integer.MAX_VALUE - (int) order.apply(heap.pop());
+    return order.getNode(heap.pop());
   }
 
   int[] nodes() {
     int size = size();
     int[] nodes = new int[size];
     for (int i = 0; i < size; i++) {
-      nodes[i] =
-          reversed
-              ? (int) order.apply(heap.get(i + 1))
-              : Integer.MAX_VALUE - (int) order.apply(heap.get(i + 1));
+      nodes[i] = order.getNode(heap.get(i + 1));
     }
     return nodes;
   }
 
   /** Returns the top element's node id. */
   public int topNode() {
-    return reversed
-        ? (int) (order.apply(heap.top()))
-        : Integer.MAX_VALUE - (int) (order.apply(heap.top()));
+    return order.getNode(heap.top());
   }
 
   /** Returns the top element's node score. */
