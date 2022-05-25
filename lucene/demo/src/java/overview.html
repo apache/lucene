@@ -26,7 +26,7 @@
 <ul class="minitoc">
 <li><a href="#About_this_Document">About this Document</a></li>
 <li><a href="#About_the_Demo">About the Demo</a></li>
-<li><a href="#Setting_your_module_path">Setting your module path</a></li>
+<li><a href="#Setting_your_module_path">Setting your module path (or classpath)</a></li>
 <li><a href="#Indexing_Files">Indexing Files</a></li>
 <li><a href="#About_the_code">About the code</a></li>
 <li><a href="#Location_of_the_source">Location of the source</a></li>
@@ -50,7 +50,7 @@ demonstrates various functionalities of Lucene and how you can add Lucene to
 your applications.</p>
 </div>
 <a id="Setting_your_module_path"></a>
-<h2 class="boxed">Setting your module path</h2>
+<h2 class="boxed">Setting your module path (or classpath)</h2>
 <div class="section">
 <p>First, you should <a href=
 "http://www.apache.org/dyn/closer.cgi/lucene/java/">download</a> the latest
@@ -63,21 +63,31 @@ files called <span class="codefrag">lucene-queryparser-{version}.jar</span>,
 <span class=
 "codefrag">lucene-analysis-common-{version}.jar</span> and <span class=
 "codefrag">lucene-demo-{version}.jar</span> under modules directory.</p>
-<p>Put all of these files in your Java module path.</p>
+<p>There are two ways to run Java program: with module path or with classpath. Either way is fine. Put all of these files in your Java modulepath or class path.</p>
 </div>
 <a id="Indexing_Files"></a>
 <h2 class="boxed">Indexing Files</h2>
 <div class="section">
 <p>Once you've gotten this far you're probably itching to go. Let's <b>build an
-index!</b> Just type:</p>
+index!</b>Just type either command:</p>
+<p>With module path</p>
 <pre>
     java --module-path modules:modules-thirdparty --module org.apache.lucene.demo/org.apache.lucene.demo.IndexFiles -docs {path-to-lucene}
 </pre>
+<p>With classpath</p>
+<pre>
+    java -cp "modules/*:modules-thirdparty/*" org.apache.lucene.demo.IndexFiles -docs {path-to-lucene}
+</pre>
 This will produce a subdirectory called <span class="codefrag">index</span>
 which will contain an index of all of the Lucene source code.
-<p>To <b>search the index</b> type:</p>
+<p>To <b>search the index</b> type either command:</p>
+<p>With module path</p>
 <pre>
     java --module-path modules:modules-thirdparty --add-modules jdk.unsupported --module org.apache.lucene.demo/org.apache.lucene.demo.SearchFiles
+</pre>
+<p>With classpath</p>
+<pre>
+    java -cp "modules/*:modules-thirdparty/*" org.apache.lucene.demo.SearchFiles
 </pre>
 You'll be prompted for a query. Type in a gibberish or made up word (for example: 
 "superca<!-- need to break up word in a way that is not visible so it doesn't cause this file to match a search on this word -->lifragilisticexpialidocious").
