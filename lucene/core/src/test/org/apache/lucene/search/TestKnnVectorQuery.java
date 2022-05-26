@@ -184,11 +184,16 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   /**
    * Query = (0.5, 1)
-   * Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444
-   * Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8
-   * Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235
-   * Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089
-   * Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045
+   *
+   * <p>Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444,
+   *
+   * <p>Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8,
+   *
+   * <p>Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235,
+   *
+   * <p>Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089,
+   *
+   * <p>Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045,
    *
    * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
    */
@@ -224,11 +229,16 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   /**
    * Query = (0.5, 1)
-   * Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444
-   * Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8
-   * Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235
-   * Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089
-   * Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045
+   *
+   * <p>Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444,
+   *
+   * <p>Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8,
+   *
+   * <p>Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235,
+   *
+   * <p>Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089,
+   *
+   * <p>Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045,
    *
    * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
    */
@@ -415,11 +425,16 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   /**
    * Query = (0.5, 1)
-   * Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444
-   * Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8
-   * Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235
-   * Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089
-   * Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045
+   *
+   * <p>Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444,
+   *
+   * <p>Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8,
+   *
+   * <p>Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235,
+   *
+   * <p>Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089,
+   *
+   * <p>Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045,
    *
    * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
    */
