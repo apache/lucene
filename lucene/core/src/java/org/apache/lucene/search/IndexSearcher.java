@@ -32,15 +32,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexReaderContext;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.NIOFSDirectory;
@@ -83,6 +75,8 @@ public class IndexSearcher {
   static int maxClauseCount = 1024;
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
+  private boolean isTimeoutEnabled = false;
+  private int timeAllowed;
 
   static {
     final int maxCachedQueries = 1000;
@@ -532,6 +526,12 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
+  public TopDocs search(Query query, int n, int timeAllowed) throws IOException {
+    this.isTimeoutEnabled = true;
+    this.timeAllowed = timeAllowed;
+    return search(query, n);
+  }
+
   /**
    * Finds the top <code>n</code> hits for <code>query</code>.
    *
@@ -766,18 +766,29 @@ public class IndexSearcher {
       }
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
-        try {
-          scorer.score(leafCollector, ctx.reader().getLiveDocs());
-        } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
-          // collection was terminated prematurely
-          // continue with the following leaf
+        if (isTimeoutEnabled) {
+          QueryTimeoutImpl queryTimeout = new QueryTimeoutImpl(timeAllowed);
+          TimeLimitingBulkScorer timeLimitingBulkScorer =
+              new TimeLimitingBulkScorer(scorer, queryTimeout);
+          try {
+            timeLimitingBulkScorer.score(leafCollector, ctx.reader().getLiveDocs());
+          } catch (
+              @SuppressWarnings("unused")
+              TimeLimitingBulkScorer.TimeExceededException e) {
+          }
+        } else {
+          try {
+            scorer.score(leafCollector, ctx.reader().getLiveDocs());
+          } catch (
+              @SuppressWarnings("unused")
+              CollectionTerminatedException e) {
+            // collection was terminated prematurely
+            // continue with the following leaf
+          }
         }
       }
     }
   }
-
   /**
    * Expert: called to re-write queries into primitive queries.
    *
