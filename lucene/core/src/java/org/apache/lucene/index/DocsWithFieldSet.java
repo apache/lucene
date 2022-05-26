@@ -34,6 +34,7 @@ public final class DocsWithFieldSet extends DocIdSet {
   private FixedBitSet set;
   private int cardinality = 0;
   private int lastDocId = -1;
+  private int[] valuesPerDocument;
 
   /** Creates an empty DocsWithFieldSet. */
   public DocsWithFieldSet() {}
@@ -44,6 +45,10 @@ public final class DocsWithFieldSet extends DocIdSet {
    * @param docID – document ID to be added
    */
   public void add(int docID) {
+    if (docID <= lastDocId) {
+      throw new IllegalArgumentException(
+          "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
+    }
     if (set != null) {
       set = FixedBitSet.ensureCapacity(set, docID);
       set.set(docID);
@@ -70,5 +75,13 @@ public final class DocsWithFieldSet extends DocIdSet {
   /** Return the number of documents of this set. */
   public int cardinality() {
     return cardinality;
+  }
+
+  public int[] getValuesPerDocument() {
+    return valuesPerDocument;
+  }
+
+  public void setValuesPerDocument(int[] valuesPerDocument) {
+    this.valuesPerDocument = valuesPerDocument;
   }
 }

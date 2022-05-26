@@ -176,8 +176,9 @@ public final class HnswGraphSearcher {
         float score = similarityFunction.compare(query, vectors.vectorValue(vectorId));
         numVisited++;
         candidates.add(vectorId, score);
-        if (acceptOrds == null || acceptOrds.get(vectorId)) {
-          results.add(vectors.ordToDoc(vectorId), score, strategy);
+        int docId = vectors.ordToDoc(vectorId);
+        if (acceptOrds == null || acceptOrds.get(docId)) {
+          results.add(docId, score, strategy);
         }
       }
     }
@@ -195,8 +196,8 @@ public final class HnswGraphSearcher {
         break;
       }
 
-      int topCandidateNode = candidates.pop();
-      graph.seek(level, topCandidateNode);
+      int topCandidateVectorId = candidates.pop();
+      graph.seek(level, topCandidateVectorId);
       int friendVectorId;
       while ((friendVectorId = graph.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendVectorId < size : "friendOrd=" + friendVectorId + "; size=" + size;

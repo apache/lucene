@@ -200,7 +200,7 @@ abstract class OffHeapVectorValues extends VectorValues
 
     @Override
     public long nextOrd() throws IOException {
-      return 0;
+      return 0; //it should not be used at query time
     }
 
     @Override

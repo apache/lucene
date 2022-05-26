@@ -397,7 +397,7 @@ class VectorValuesWriter {
 
     @Override
     public int ordToDoc(int ord) {
-      return 0;
+      return ord;
     }
 
     @Override

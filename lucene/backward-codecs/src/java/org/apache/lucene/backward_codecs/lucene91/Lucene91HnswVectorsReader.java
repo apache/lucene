@@ -450,6 +450,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public long nextOrd() throws IOException {
+      return ord;
+    }
+
+    @Override
     public BytesRef binaryValue() throws IOException {
       dataIn.seek((long) ord * byteSize);
       dataIn.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);

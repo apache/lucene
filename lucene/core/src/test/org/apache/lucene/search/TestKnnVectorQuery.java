@@ -41,7 +41,10 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
@@ -101,16 +104,27 @@ public class TestKnnVectorQuery extends LuceneTestCase {
    * Tests that a KnnVectorQuery whose topK &gt;= numDocs returns all the documents in score order
    */
   public void testMultiVale() throws IOException {
+    float[][] doc1Vectors = new float[][]{new float[] {1, 3,1}, new float[] {1, 3,1}};
+    float[][] doc2Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 500,1}, new float[] {1, 1,4}};
+    float[][] doc3Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 300,1}};
+    
     try (Directory indexStore =
-                 getMultiValuedIndexStore("field", new float[] {0, 100}, new float[] {1, 200}, new float[] {0, 300});
+                 getMultiValuedIndexStore("vector3D", doc1Vectors,doc2Vectors,doc3Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
-      KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0, 0}, 10, null, HnswGraphSearcher.Multivalued.SUM);
+      KnnVectorQuery kvq = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, null, HnswGraphSearcher.Multivalued.SUM);
       assertMatches(searcher, kvq, 3);
       ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
-      assertIdMatches(reader, "id2", scoreDocs[0]);
-      assertIdMatches(reader, "id0", scoreDocs[1]);
-      assertIdMatches(reader, "id1", scoreDocs[2]);
+      assertIdMatches(reader, "id0", scoreDocs[0]);
+      assertIdMatches(reader, "id1", scoreDocs[1]);
+      assertIdMatches(reader, "id2", scoreDocs[2]);
+
+      KnnVectorQuery kvq2 = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, null, HnswGraphSearcher.Multivalued.MAX);
+      assertMatches(searcher, kvq2, 3);
+      ScoreDoc[] scoreDocs2 = searcher.search(kvq, 3).scoreDocs;
+      assertIdMatches(reader, "id2", scoreDocs2[0]);
+      assertIdMatches(reader, "id0", scoreDocs2[1]);
+      assertIdMatches(reader, "id1", scoreDocs2[2]);
     }
   }
   
@@ -708,13 +722,14 @@ public class TestKnnVectorQuery extends LuceneTestCase {
   }
 
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
-  private Directory getMultiValuedIndexStore(String field, float[]... contents) throws IOException {
+  private Directory getMultiValuedIndexStore(String field, float[][]... documents) throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
-    for (int i = 0; i < contents.length; ++i) {
+    for (int i = 0; i < documents.length; ++i) {
       Document doc = new Document();
-      for (int j = 0; j < contents.length; ++j) {
-        doc.add(new KnnVectorField(field, new float[]{i ,contents[j][1]}, VectorSimilarityFunction.EUCLIDEAN, true));
+      float[][] vectors = documents[i];
+      for (int j = 0; j < vectors.length; ++j) {
+        doc.add(new KnnVectorField(field, vectors[j], VectorSimilarityFunction.EUCLIDEAN, true));
       }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);
