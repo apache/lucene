@@ -241,11 +241,19 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
           float dimValue;
           if (dimConfig.multiValued) {
             if (dimConfig.requireDimCount) {
+              // If the dim is configured as multi-valued and requires dim counts, we can access
+              // an accurate count for the dim computed at indexing time:
               dimValue = values[dimOrd];
             } else {
+              // If the dim is configured as multi-valued but not requiring dim counts, we cannot
+              // compute an accurate dim count, and use -1 as a place-holder:
               dimValue = -1;
             }
           } else {
+            // Single-valued dims require aggregating descendant paths to get accurate dim counts
+            // since we don't directly access ancestry paths:
+            // TODO: We could consider indexing dim counts directly if getTopDims is a common
+            // use-case.
             TopChildrenForPath topChildrenForPath =
                 getTopChildrenForPath(dimConfig, dimOrd, topNChildren);
             if (intermediateResults == null) {

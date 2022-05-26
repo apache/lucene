@@ -130,14 +130,29 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       DimConfig dimConfig = stateConfig.getDimConfig(dim);
       int dimCount;
       if (dimConfig.hierarchical) {
+        // For hierarchical dims, we directly index each level of the ancestry path (i.e., we
+        // "rollup" at indexing time), meaning we can directly access accurate dim counts without
+        // needing to rollup the descendant paths:
         int dimOrd = state.getDimTree(dim).dimStartOrd;
         dimCount = getCount(dimOrd);
       } else {
         OrdRange ordRange = state.getOrdRange(dim);
         int dimOrd = ordRange.start;
-        if (dimConfig.multiValued && dimConfig.requireDimCount) {
-          dimCount = getCount(dimOrd);
+        if (dimConfig.multiValued) {
+          if (dimConfig.requireDimCount) {
+            // If a dim is configured as multi-valued and requires dim count, we index dim counts
+            // directly, so we can access accurate counts  without needing to rollup children:
+            dimCount = getCount(dimOrd);
+          } else {
+            // If a dim is configured as multi-valued but _not_ requiring dim count, we have no
+            // way to get accurate counts. We use -1 to indicate this:
+            dimCount = -1;
+          }
         } else {
+          // If a dim is single-valued, we must aggregate child counts to get accurate dim counts.
+          // We don't index the dim counts directly:
+          // TODO: If getTopDims becomes a common use-case, we could consider always indexing dim
+          // counts to optimize this path.
           PrimitiveIterator.OfInt childIt = ordRange.iterator();
           TopChildrenForPath topChildrenForPath =
               computeTopChildren(childIt, topNChildren, dimConfig, dimOrd);
@@ -186,6 +201,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     return Arrays.asList(results);
   }
 
+  /** Retrieve the count for a specified ordinal. */
   abstract int getCount(int ord);
 
   /**
