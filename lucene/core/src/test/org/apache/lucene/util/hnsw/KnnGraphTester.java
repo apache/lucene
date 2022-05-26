@@ -273,8 +273,7 @@ public class KnnGraphTester {
     for (int i = 0; i < hnsw.size(); i++) {
       NeighborArray neighbors = hnsw.getNeighbors(0, i);
       System.out.printf(Locale.ROOT, "%5d", i);
-      NeighborArray sorted =
-          new NeighborArray(neighbors.size(), true);
+      NeighborArray sorted = new NeighborArray(neighbors.size(), true);
       for (int j = 0; j < neighbors.size(); j++) {
         int node = neighbors.node[j];
         float score = neighbors.score[j];

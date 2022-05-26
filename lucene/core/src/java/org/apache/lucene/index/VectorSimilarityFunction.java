@@ -50,8 +50,7 @@ public enum VectorSimilarityFunction {
    * Cosine similarity. NOTE: the preferred way to perform cosine similarity is to normalize all
    * vectors to unit length, and instead use {@link VectorSimilarityFunction#DOT_PRODUCT}. You
    * should only use this function if you need to preserve the original vectors and cannot normalize
-   * them in advance.
-   * The similarity score is normalised to assure it is positive.
+   * them in advance. The similarity score is normalised to assure it is positive.
    */
   COSINE {
     @Override
@@ -59,14 +58,14 @@ public enum VectorSimilarityFunction {
       return (1 + cosine(v1, v2)) / 2;
     }
   };
-  
+
   /**
-   * Calculates a similarity score between the two vectors with a specified function.
-   * Highest similarity score, means always closer vectors.
+   * Calculates a similarity score between the two vectors with a specified function. Highest
+   * similarity score, means always closer vectors.
+   *
    * @param v1 a vector
    * @param v2 another vector, of the same dimension
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(float[] v1, float[] v2);
-  
 }

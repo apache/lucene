@@ -155,7 +155,7 @@ public final class HnswGraphSearcher {
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    float minAcceptedSimilarity = Float.NEGATIVE_INFINITY; 
+    float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
     if (results.size() >= topK) {
       minAcceptedSimilarity = results.topNodeScore();
     }

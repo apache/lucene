@@ -29,7 +29,7 @@ import org.apache.lucene.util.ArrayUtil;
  * construct the HNSW graph before it's written to the index.
  */
 public final class OnHeapHnswGraph extends HnswGraph {
-  
+
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
 
@@ -121,9 +121,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
         }
       }
     }
-    graph
-        .get(level)
-        .add(new NeighborArray(level == 0 ? nsize0 : nsize, true));
+    graph.get(level).add(new NeighborArray(level == 0 ? nsize0 : nsize, true));
   }
 
   @Override

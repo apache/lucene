@@ -120,10 +120,10 @@ public class NeighborQueue {
     return decodeNodeId(heap.top());
   }
 
-  /** Returns the top element's node score.
-   * For the min heap this is the minimum score.
-   * For the max heap this is the maximum score.
-   * */
+  /**
+   * Returns the top element's node score. For the min heap this is the minimum score. For the max
+   * heap this is the maximum score.
+   */
   public float topNodeScore() {
     return decodeScore(heap.top());
   }

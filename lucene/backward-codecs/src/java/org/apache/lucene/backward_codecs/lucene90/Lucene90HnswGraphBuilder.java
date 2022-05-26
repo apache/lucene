@@ -270,7 +270,8 @@ public final class Lucene90HnswGraphBuilder {
       float[] neighborVector = vectorValues.vectorValue(neighborId);
       for (int j = maxConn; j > i; j--) {
         float neighborSimilarity =
-            similarityFunction.compare(neighborVector, buildVectors.vectorValue(neighbors.node()[j]));
+            similarityFunction.compare(
+                neighborVector, buildVectors.vectorValue(neighbors.node()[j]));
         if (neighborSimilarity >= minAcceptedSimilarity) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]
