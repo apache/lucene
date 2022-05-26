@@ -191,8 +191,6 @@ public class TestKnnVectorQuery extends LuceneTestCase {
    * Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045
    *
    * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
-   *
-   * @throws IOException
    */
   public void testAdvanceShallow() throws IOException {
     try (Directory d = newDirectory()) {
@@ -233,8 +231,6 @@ public class TestKnnVectorQuery extends LuceneTestCase {
    * Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045
    *
    * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
-   *
-   * @throws IOException
    */
   public void testScoreEuclidean() throws IOException {
     try (Directory d = newDirectory()) {
@@ -426,8 +422,6 @@ public class TestKnnVectorQuery extends LuceneTestCase {
    * Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045
    *
    * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
-   *
-   * @throws IOException
    */
   public void testExplain() throws IOException {
     try (Directory d = newDirectory()) {
