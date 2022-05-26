@@ -39,6 +39,6 @@ public final class Lucene92RWHnswVectorsFormat extends Lucene92HnswVectorsFormat
 
   @Override
   public String toString() {
-    return "Lucene92RWHnswVectorsFormat";
+    return "lucene92RWHnswVectorsFormat";
   }
 }

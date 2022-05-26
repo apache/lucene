@@ -104,9 +104,9 @@ public class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
    */
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
-  static final String META_CODEC_NAME = "Lucene92HnswVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene92HnswVectorsFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "Lucene92HnswVectorsFormatIndex";
+  static final String META_CODEC_NAME = "lucene92HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "lucene92HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "lucene92HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -116,7 +116,7 @@ public class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
 
   /** Constructs a format for reading old indexes */
   public Lucene92HnswVectorsFormat() {
-    super("Lucene92HnswVectorsFormat");
+    super("lucene92HnswVectorsFormat");
   }
 
   @Override
@@ -131,6 +131,6 @@ public class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "Lucene92HnswVectorsFormat";
+    return "lucene92HnswVectorsFormat";
   }
 }

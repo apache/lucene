@@ -34,7 +34,7 @@ public class TestLucene92HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
             return new Lucene92RWHnswVectorsFormat();
           }
         };
-    String expectedString = "Lucene92RWHnswVectorsFormat";
+    String expectedString = "lucene92RWHnswVectorsFormat";
     assertEquals(
         expectedString,
         ((Lucene92Codec) customCodec).getKnnVectorsFormatForField("bogus_field").toString());
