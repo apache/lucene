@@ -274,7 +274,7 @@ public class KnnGraphTester {
       NeighborArray neighbors = hnsw.getNeighbors(0, i);
       System.out.printf(Locale.ROOT, "%5d", i);
       NeighborArray sorted =
-          new NeighborArray(neighbors.size(), similarityFunction.reversed == false);
+          new NeighborArray(neighbors.size(), true);
       for (int j = 0; j < neighbors.size(); j++) {
         int node = neighbors.node[j];
         float score = neighbors.score[j];
@@ -555,7 +555,7 @@ public class KnnGraphTester {
                   .order(ByteOrder.LITTLE_ENDIAN)
                   .asFloatBuffer();
           offset += blockSize;
-          NeighborQueue queue = new NeighborQueue(topK, similarityFunction.reversed);
+          NeighborQueue queue = new NeighborQueue(topK, false);
           for (; j < numDocs && vectors.hasRemaining(); j++) {
             vectors.get(vector);
             float d = similarityFunction.compare(query, vector);

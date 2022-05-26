@@ -80,7 +80,7 @@ public final class HnswGraphSearcher {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            new NeighborQueue(topK, similarityFunction.reversed == false),
+            new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
@@ -134,7 +134,7 @@ public final class HnswGraphSearcher {
       int visitedLimit)
       throws IOException {
     int size = graph.size();
-    NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
+    NeighborQueue results = new NeighborQueue(topK, false);
     clearScratchState();
 
     int numVisited = 0;
@@ -155,14 +155,14 @@ public final class HnswGraphSearcher {
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
+    float minAcceptedSimilarity = Float.NEGATIVE_INFINITY; 
     if (results.size() >= topK) {
-      bound.set(results.topScore());
+      minAcceptedSimilarity = results.topNodeScore();
     }
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
-      float topCandidateScore = candidates.topScore();
-      if (bound.check(topCandidateScore)) {
+      float topCandidateSimilarity = candidates.topNodeScore();
+      if (topCandidateSimilarity < minAcceptedSimilarity) {
         break;
       }
 
@@ -179,13 +179,13 @@ public final class HnswGraphSearcher {
           results.markIncomplete();
           break;
         }
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         numVisited++;
-        if (bound.check(score) == false) {
-          candidates.add(friendOrd, score);
+        if (friendSimilarity >= minAcceptedSimilarity) {
+          candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
-              bound.set(results.topScore());
+            if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.size() >= topK) {
+              minAcceptedSimilarity = results.topNodeScore();
             }
           }
         }

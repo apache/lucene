@@ -29,8 +29,7 @@ import org.apache.lucene.util.ArrayUtil;
  * construct the HNSW graph before it's written to the index.
  */
 public final class OnHeapHnswGraph extends HnswGraph {
-
-  private final boolean similarityReversed;
+  
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
 
@@ -52,8 +51,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
   private int upto;
   private NeighborArray cur;
 
-  OnHeapHnswGraph(int M, int levelOfFirstNode, boolean similarityReversed) {
-    this.similarityReversed = similarityReversed;
+  OnHeapHnswGraph(int M, int levelOfFirstNode) {
     this.numLevels = levelOfFirstNode + 1;
     this.graph = new ArrayList<>(numLevels);
     this.entryNode = 0;
@@ -63,7 +61,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
     this.nsize0 = (M * 2 + 1);
     for (int l = 0; l < numLevels; l++) {
       graph.add(new ArrayList<>());
-      graph.get(l).add(new NeighborArray(l == 0 ? nsize0 : nsize, similarityReversed == false));
+      graph.get(l).add(new NeighborArray(l == 0 ? nsize0 : nsize, true));
     }
 
     this.nodesByLevel = new ArrayList<>(numLevels);
@@ -125,7 +123,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
     }
     graph
         .get(level)
-        .add(new NeighborArray(level == 0 ? nsize0 : nsize, similarityReversed == false));
+        .add(new NeighborArray(level == 0 ? nsize0 : nsize, true));
   }
 
   @Override

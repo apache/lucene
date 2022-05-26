@@ -30,13 +30,13 @@ import org.apache.lucene.util.NumericUtils;
 public class NeighborQueue {
 
   private enum Order {
-    NATURAL {
+    MIN_HEAP {
       @Override
       long apply(long v) {
         return v;
       }
     },
-    REVERSED {
+    MAX_HEAP {
       @Override
       long apply(long v) {
         // This cannot be just `-v` since Long.MIN_VALUE doesn't have a positive counterpart. It
@@ -56,9 +56,9 @@ public class NeighborQueue {
   // Whether the search stopped early because it reached the visited nodes limit
   private boolean incomplete;
 
-  public NeighborQueue(int initialSize, boolean reversed) {
+  public NeighborQueue(int initialSize, boolean maxHeap) {
     this.heap = new LongHeap(initialSize);
-    this.order = reversed ? Order.REVERSED : Order.NATURAL;
+    this.order = maxHeap ? Order.MAX_HEAP : Order.MIN_HEAP;
   }
 
   /** @return the number of elements in the heap */
@@ -93,9 +93,17 @@ public class NeighborQueue {
     return order.apply((((long) NumericUtils.floatToSortableInt(score)) << 32) | node);
   }
 
+  private float decodeScore(long heapValue) {
+    return NumericUtils.sortableIntToFloat((int) (order.apply(heapValue) >> 32));
+  }
+
+  private int decodeNodeId(long heapValue) {
+    return (int) order.apply(heapValue);
+  }
+
   /** Removes the top element and returns its node id. */
   public int pop() {
-    return (int) order.apply(heap.pop());
+    return decodeNodeId(heap.pop());
   }
 
   public int[] nodes() {
@@ -109,12 +117,15 @@ public class NeighborQueue {
 
   /** Returns the top element's node id. */
   public int topNode() {
-    return (int) order.apply(heap.top());
+    return decodeNodeId(heap.top());
   }
 
-  /** Returns the top element's node score. */
-  public float topScore() {
-    return NumericUtils.sortableIntToFloat((int) (order.apply(heap.top()) >> 32));
+  /** Returns the top element's node score.
+   * For the min heap this is the minimum score.
+   * For the max heap this is the maximum score.
+   * */
+  public float topNodeScore() {
+    return decodeScore(heap.top());
   }
 
   public void clear() {

@@ -27,9 +27,9 @@ public class TestNeighborQueue extends LuceneTestCase {
     assertTrue(nn.insertWithOverflow(2, 0.5f));
     assertTrue(nn.insertWithOverflow(1, 0.2f));
     assertTrue(nn.insertWithOverflow(3, 1f));
-    assertEquals(0.5f, nn.topScore(), 0);
+    assertEquals(0.5f, nn.topNodeScore(), 0);
     nn.pop();
-    assertEquals(1f, nn.topScore(), 0);
+    assertEquals(1f, nn.topNodeScore(), 0);
     nn.pop();
   }
 
@@ -38,9 +38,9 @@ public class TestNeighborQueue extends LuceneTestCase {
     assertTrue(nn.insertWithOverflow(2, 2));
     assertTrue(nn.insertWithOverflow(1, 1));
     assertFalse(nn.insertWithOverflow(3, 3));
-    assertEquals(2f, nn.topScore(), 0);
+    assertEquals(2f, nn.topNodeScore(), 0);
     nn.pop();
-    assertEquals(1f, nn.topScore(), 0);
+    assertEquals(1f, nn.topNodeScore(), 0);
   }
 
   public void testTopMaxHeap() {
@@ -48,7 +48,7 @@ public class TestNeighborQueue extends LuceneTestCase {
     nn.add(1, 2);
     nn.add(2, 1);
     // lower scores are better; highest score on top
-    assertEquals(2, nn.topScore(), 0);
+    assertEquals(2, nn.topNodeScore(), 0);
     assertEquals(1, nn.topNode());
   }
 
@@ -57,7 +57,7 @@ public class TestNeighborQueue extends LuceneTestCase {
     nn.add(1, 0.5f);
     nn.add(2, -0.5f);
     // higher scores are better; lowest score on top
-    assertEquals(-0.5f, nn.topScore(), 0);
+    assertEquals(-0.5f, nn.topNodeScore(), 0);
     assertEquals(2, nn.topNode());
   }
 
@@ -108,7 +108,7 @@ public class TestNeighborQueue extends LuceneTestCase {
       }
       nn.add(i, score);
     }
-    assertEquals(maxScore, nn.topScore(), 0);
+    assertEquals(maxScore, nn.topNodeScore(), 0);
     assertEquals(maxNode, nn.topNode());
   }
 

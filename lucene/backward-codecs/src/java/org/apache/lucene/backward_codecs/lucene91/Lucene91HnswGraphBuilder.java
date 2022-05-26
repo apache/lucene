@@ -28,7 +28,6 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.hnsw.BoundsChecker;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
@@ -55,7 +54,7 @@ public final class Lucene91HnswGraphBuilder {
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
-  private final BoundsChecker bound;
+  private float minAcceptedSimilarity = Float.POSITIVE_INFINITY;
   private final HnswGraphSearcher graphSearcher;
 
   final Lucene91OnHeapHnswGraph hnsw;
@@ -104,9 +103,8 @@ public final class Lucene91HnswGraphBuilder {
     this.graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            new NeighborQueue(beamWidth, similarityFunction.reversed == false),
+            new NeighborQueue(beamWidth, true),
             new FixedBitSet(vectorValues.size()));
-    bound = BoundsChecker.create(similarityFunction.reversed);
     scratch = new Lucene91NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
 
@@ -231,8 +229,8 @@ public final class Lucene91HnswGraphBuilder {
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float score = candidates.topScore();
-      scratch.add(candidates.pop(), score);
+      float similarity = candidates.topNodeScore();
+      scratch.add(candidates.pop(), similarity);
     }
   }
 
@@ -251,11 +249,11 @@ public final class Lucene91HnswGraphBuilder {
       Lucene91NeighborArray neighbors,
       RandomAccessVectorValues vectorValues)
       throws IOException {
-    bound.set(score);
+    minAcceptedSimilarity = score;
     for (int i = 0; i < neighbors.size(); i++) {
-      float diversityCheck =
+      float neighborSimilarity =
           similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
-      if (bound.check(diversityCheck) == false) {
+      if (neighborSimilarity >= minAcceptedSimilarity) {
         return false;
       }
     }
@@ -267,8 +265,8 @@ public final class Lucene91HnswGraphBuilder {
     int replacePoint = findNonDiverse(neighbors);
     if (replacePoint == -1) {
       // none found; check score against worst existing neighbor
-      bound.set(neighbors.score[0]);
-      if (bound.check(neighbors.score[maxConn])) {
+      minAcceptedSimilarity = neighbors.score[0];
+      if (neighbors.score[maxConn] < minAcceptedSimilarity) {
         // drop the new neighbor; it is not competitive and there were no diversity failures
         neighbors.removeLast();
         return;
@@ -286,13 +284,13 @@ public final class Lucene91HnswGraphBuilder {
     for (int i = neighbors.size() - 1; i >= 0; i--) {
       // check each neighbor against its better-scoring neighbors. If it fails diversity check with
       // them, drop it
-      int nbrNode = neighbors.node[i];
-      bound.set(neighbors.score[i]);
-      float[] nbrVector = vectorValues.vectorValue(nbrNode);
+      int neighborId = neighbors.node[i];
+      minAcceptedSimilarity = neighbors.score[i];
+      float[] neighborVector = vectorValues.vectorValue(neighborId);
       for (int j = maxConn; j > i; j--) {
-        float diversityCheck =
-            similarityFunction.compare(nbrVector, buildVectors.vectorValue(neighbors.node[j]));
-        if (bound.check(diversityCheck) == false) {
+        float buildVectorSimilarity =
+            similarityFunction.compare(neighborVector, buildVectors.vectorValue(neighbors.node[j]));
+        if (buildVectorSimilarity >= minAcceptedSimilarity) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]
           return i;
