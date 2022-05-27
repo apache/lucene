@@ -60,8 +60,8 @@ public enum VectorSimilarityFunction {
   };
 
   /**
-   * Calculates a similarity score between the two vectors with a specified function. Highest
-   * similarity score, means always closer vectors.
+   * Calculates a similarity score between the two vectors with a specified function.
+   * Higher similarity scores correspond to closer vectors.
    *
    * @param v1 a vector
    * @param v2 another vector, of the same dimension
