@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.ko.dict;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.lucene.analysis.morph.BinaryDictionary;
@@ -42,6 +43,20 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> 
         () -> Files.newInputStream(targetMapFile),
         () -> Files.newInputStream(posDictFile),
         () -> Files.newInputStream(dictFile));
+  }
+
+  /**
+   * Create a {@link UnknownDictionary} from an external resource URL (e.g. from Classpath with
+   * {@link ClassLoader#getResource(String)}).
+   *
+   * @param targetMapUrl where to load target map resource
+   * @param posDictUrl where to load POS dictionary resource
+   * @param dictUrl where to load dictionary entries resource
+   * @throws IOException if resource was not found or broken
+   */
+  public UnknownDictionary(URL targetMapUrl, URL posDictUrl, URL dictUrl) throws IOException {
+    this(
+        () -> targetMapUrl.openStream(), () -> posDictUrl.openStream(), () -> dictUrl.openStream());
   }
 
   private UnknownDictionary() throws IOException {

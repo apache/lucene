@@ -61,10 +61,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -140,7 +138,6 @@ import org.apache.lucene.tests.index.MismatchedDirectoryReader;
 import org.apache.lucene.tests.index.MismatchedLeafReader;
 import org.apache.lucene.tests.index.MockIndexWriterEventListener;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
-import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.VirusCheckingFS;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
@@ -237,7 +234,6 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_WEEKLY = "tests.weekly";
   public static final String SYSPROP_MONSTER = "tests.monster";
   public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
-  public static final String SYSPROP_SLOW = "tests.slow";
 
   /** @see #ignoreAfterMaxFailures */
   public static final String SYSPROP_MAXFAILURES = "tests.maxfailures";
@@ -277,16 +273,6 @@ public abstract class LuceneTestCase extends Assert {
     /** Point to JIRA entry. */
     public String bugUrl();
   }
-
-  /**
-   * Annotation for tests that are slow. Slow tests do run by default but can be disabled if a quick
-   * run is needed.
-   */
-  @Documented
-  @Inherited
-  @Retention(RetentionPolicy.RUNTIME)
-  @TestGroup(enabled = true, sysProperty = SYSPROP_SLOW)
-  public @interface Slow {}
 
   /**
    * Annotation for test classes that should avoid certain codec types (because they are expensive,
@@ -434,10 +420,6 @@ public abstract class LuceneTestCase extends Assert {
   public static final boolean TEST_AWAITSFIX =
       systemPropertyAsBoolean(
           SYSPROP_AWAITSFIX, AwaitsFix.class.getAnnotation(TestGroup.class).enabled());
-
-  /** Whether or not {@link Slow} tests should run. */
-  public static final boolean TEST_SLOW =
-      systemPropertyAsBoolean(SYSPROP_SLOW, Slow.class.getAnnotation(TestGroup.class).enabled());
 
   /** Throttling, see {@link MockDirectoryWrapper#setThrottling(Throttling)}. */
   public static final Throttling TEST_THROTTLING =
@@ -1398,8 +1380,7 @@ public abstract class LuceneTestCase extends Assert {
   public static Path addVirusChecker(Path path) {
     if (TestUtil.hasVirusChecker(path) == false) {
       VirusCheckingFS fs = new VirusCheckingFS(path.getFileSystem(), random().nextLong());
-      FileSystem filesystem = fs.getFileSystem(URI.create("file:///"));
-      path = new FilterPath(path, filesystem);
+      path = fs.wrapPath(path);
     }
     return path;
   }

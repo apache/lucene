@@ -32,14 +32,16 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene91.Lucene91Codec;
-import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsReader;
+import org.apache.lucene.codecs.lucene92.Lucene92Codec;
+import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
@@ -47,7 +49,6 @@ import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
@@ -55,11 +56,12 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PrintStreamInfoStream;
@@ -79,7 +81,6 @@ public class KnnGraphTester {
   private int numDocs;
   private int dim;
   private int topK;
-  private int warmCount;
   private int numIters;
   private int fanout;
   private Path indexPath;
@@ -98,7 +99,6 @@ public class KnnGraphTester {
     numIters = 1000;
     dim = 256;
     topK = 100;
-    warmCount = 1000;
     fanout = topK;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
   }
@@ -178,9 +178,6 @@ public class KnnGraphTester {
         case "-out":
           outputPath = Paths.get(args[++iarg]);
           break;
-        case "-warm":
-          warmCount = Integer.parseInt(args[++iarg]);
-          break;
         case "-docs":
           docVectorsPath = Paths.get(args[++iarg]);
           break;
@@ -251,7 +248,7 @@ public class KnnGraphTester {
         KnnVectorsReader vectorsReader =
             ((PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) leafReader).getVectorReader())
                 .getFieldReader(KNN_FIELD);
-        HnswGraph knnValues = ((Lucene91HnswVectorsReader) vectorsReader).getGraph(KNN_FIELD);
+        HnswGraph knnValues = ((Lucene92HnswVectorsReader) vectorsReader).getGraph(KNN_FIELD);
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());
       }
@@ -276,7 +273,8 @@ public class KnnGraphTester {
     for (int i = 0; i < hnsw.size(); i++) {
       NeighborArray neighbors = hnsw.getNeighbors(0, i);
       System.out.printf(Locale.ROOT, "%5d", i);
-      NeighborArray sorted = new NeighborArray(neighbors.size());
+      NeighborArray sorted =
+          new NeighborArray(neighbors.size(), similarityFunction.reversed == false);
       for (int j = 0; j < neighbors.size(); j++) {
         int node = neighbors.node[j];
         float score = neighbors.score[j];
@@ -349,8 +347,9 @@ public class KnnGraphTester {
     TopDocs[] results = new TopDocs[numIters];
     long elapsed, totalCpuTime, totalVisited = 0;
     try (FileChannel q = FileChannel.open(queryPath)) {
+      int bufferSize = numIters * dim * Float.BYTES;
       FloatBuffer targets =
-          q.map(FileChannel.MapMode.READ_ONLY, 0, numIters * dim * Float.BYTES)
+          q.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize)
               .order(ByteOrder.LITTLE_ENDIAN)
               .asFloatBuffer();
       float[] target = new float[dim];
@@ -362,18 +361,19 @@ public class KnnGraphTester {
       long cpuTimeStartNs;
       try (Directory dir = FSDirectory.open(indexPath);
           DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
         numDocs = reader.maxDoc();
-        for (int i = 0; i < warmCount; i++) {
+        for (int i = 0; i < numIters; i++) {
           // warm up
           targets.get(target);
-          results[i] = doKnnSearch(reader, KNN_FIELD, target, topK, fanout);
+          doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout);
         }
         targets.position(0);
         start = System.nanoTime();
         cpuTimeStartNs = bean.getCurrentThreadCpuTime();
         for (int i = 0; i < numIters; i++) {
           targets.get(target);
-          results[i] = doKnnSearch(reader, KNN_FIELD, target, topK, fanout);
+          results[i] = doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout);
         }
         totalCpuTime = (bean.getCurrentThreadCpuTime() - cpuTimeStartNs) / 1_000_000;
         elapsed = (System.nanoTime() - start) / 1_000_000; // ns -> ms
@@ -430,19 +430,9 @@ public class KnnGraphTester {
     }
   }
 
-  private static TopDocs doKnnSearch(
-      IndexReader reader, String field, float[] vector, int k, int fanout) throws IOException {
-    TopDocs[] results = new TopDocs[reader.leaves().size()];
-    for (LeafReaderContext ctx : reader.leaves()) {
-      Bits liveDocs = ctx.reader().getLiveDocs();
-      results[ctx.ord] =
-          ctx.reader().searchNearestVectors(field, vector, k + fanout, liveDocs, Integer.MAX_VALUE);
-      int docBase = ctx.docBase;
-      for (ScoreDoc scoreDoc : results[ctx.ord].scoreDocs) {
-        scoreDoc.doc += docBase;
-      }
-    }
-    return TopDocs.merge(k, results);
+  private static TopDocs doKnnVectorQuery(
+      IndexSearcher searcher, String field, float[] vector, int k, int fanout) throws IOException {
+    return searcher.search(new KnnVectorQuery(field, vector, k + fanout), k);
   }
 
   private float checkResults(TopDocs[] results, int[][] nn) {
@@ -487,15 +477,26 @@ public class KnnGraphTester {
 
   private int[][] getNN(Path docPath, Path queryPath) throws IOException {
     // look in working directory for cached nn file
-    String nnFileName = "nn-" + numDocs + "-" + numIters + "-" + topK + "-" + dim + ".bin";
+    String hash = Integer.toString(Objects.hash(docPath, queryPath, numDocs, numIters, topK), 36);
+    String nnFileName = "nn-" + hash + ".bin";
     Path nnPath = Paths.get(nnFileName);
-    if (Files.exists(nnPath)) {
+    if (Files.exists(nnPath) && isNewer(nnPath, docPath, queryPath)) {
       return readNN(nnPath);
     } else {
       int[][] nn = computeNN(docPath, queryPath);
       writeNN(nn, nnPath);
       return nn;
     }
+  }
+
+  private boolean isNewer(Path path, Path... others) throws IOException {
+    FileTime modified = Files.getLastModifiedTime(path);
+    for (Path other : others) {
+      if (Files.getLastModifiedTime(other).compareTo(modified) >= 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private int[][] readNN(Path nnPath) throws IOException {
@@ -579,10 +580,10 @@ public class KnnGraphTester {
   private int createIndex(Path docsPath, Path indexPath) throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
     iwc.setCodec(
-        new Lucene91Codec() {
+        new Lucene92Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene91HnswVectorsFormat(maxConn, beamWidth);
+            return new Lucene92HnswVectorsFormat(maxConn, beamWidth);
           }
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);

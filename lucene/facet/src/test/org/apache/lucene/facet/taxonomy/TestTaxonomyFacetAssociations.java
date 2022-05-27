@@ -31,11 +31,17 @@ import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -115,7 +121,6 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
           }
           if (random().nextBoolean()) { // maybe index a float association with the dim
             float nextFloat = random().nextFloat() * 10000f;
-            randomFloatValues.computeIfAbsent(path, k -> new ArrayList<>()).add(nextFloat);
             doc.add(new FloatAssociationFacetField(nextFloat, "float_random", path));
           }
         }
@@ -129,7 +134,6 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         }
         if (random().nextBoolean()) {
           float nextFloat = random().nextFloat() * 10000f;
-          randomFloatSingleValued.computeIfAbsent(path, k -> new ArrayList<>()).add(nextFloat);
           doc.add(new FloatAssociationFacetField(nextFloat, "float_single_valued", path));
         }
       }
@@ -141,6 +145,34 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     reader = writer.getReader();
     writer.close();
     taxoReader = new DirectoryTaxonomyReader(taxoDir);
+
+    // To avoid floating point precision issues, it's useful to keep track of the values in the
+    // exact same order they appear when iterating the doc values in the index. This ensures we
+    // sum them in the same order when determining expected values for tests cases and when the
+    // actual facets implementation sums them. See LUCENE-10530:
+    for (LeafReaderContext ctx : reader.leaves()) {
+      BinaryDocValues dv = DocValues.getBinary(ctx.reader(), "$facets.float");
+      for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
+        final BytesRef bytesRef = dv.binaryValue();
+        byte[] bytes = bytesRef.bytes;
+        int end = bytesRef.offset + bytesRef.length;
+        int offset = bytesRef.offset;
+        while (offset < end) {
+          int ord = (int) BitUtil.VH_BE_INT.get(bytes, offset);
+          offset += 4;
+          float value = (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
+          offset += 4;
+          FacetLabel label = taxoReader.getPath(ord);
+          String dim = label.components[0];
+          String child = label.components[1];
+          if ("float_random".equals(dim)) {
+            randomFloatValues.computeIfAbsent(child, k -> new ArrayList<>()).add(value);
+          } else if ("float_single_valued".equals(dim)) {
+            randomFloatSingleValued.computeIfAbsent(child, k -> new ArrayList<>()).add(value);
+          }
+        }
+      }
+    }
   }
 
   @AfterClass
@@ -170,6 +202,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
+
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   public void testIntAssociationRandom() throws Exception {
@@ -197,6 +234,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
     validateInts("int_single_valued", expected, AssociationAggregationFunction.SUM, false, facets);
 
+    // test getAllDims and getTopDims
+    List<FacetResult> allDims = facets.getAllDims(10);
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    assertEquals(topDims, allDims);
+
     // MAX:
     facets =
         new TaxonomyFacetIntAssociations(
@@ -211,6 +253,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       expected.put(e.getKey(), e.getValue().stream().max(Integer::compareTo).orElse(0));
     }
     validateInts("int_single_valued", expected, AssociationAggregationFunction.MAX, false, facets);
+
+    // test getAllDims and getTopDims
+    topDims = facets.getTopDims(10, 10);
+    allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   public void testFloatSumAssociation() throws Exception {
@@ -233,6 +280,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         10f,
         facets.getSpecificValue("float", "b").floatValue(),
         0.00001);
+
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   public void testFloatAssociationRandom() throws Exception {
@@ -261,6 +313,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     validateFloats(
         "float_single_valued", expected, AssociationAggregationFunction.SUM, false, facets);
 
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
+
     // MAX:
     facets =
         new TaxonomyFacetFloatAssociations(
@@ -276,6 +333,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
     validateFloats(
         "float_single_valued", expected, AssociationAggregationFunction.MAX, false, facets);
+
+    // test getAllDims and getTopDims
+    topDims = facets.getTopDims(10, 10);
+    allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   /**
@@ -427,9 +489,16 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
 
     FacetResult facetResult = facets.getTopChildren(10, dim);
-    assertEquals(dim, facetResult.dim);
-    assertEquals(aggregatedValue, facetResult.value.intValue());
-    assertEquals(expected.size(), facetResult.childCount);
+
+    if (expected.isEmpty()) {
+      // If we hit the rare random case where nothing is indexed for the dim, we expect a null
+      // facetResult (see: LUCENE-10529)
+      assertNull(facetResult);
+    } else {
+      assertEquals(dim, facetResult.dim);
+      assertEquals(aggregatedValue, facetResult.value.intValue());
+      assertEquals(expected.size(), facetResult.childCount);
+    }
   }
 
   private void validateFloats(
@@ -442,7 +511,10 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     float aggregatedValue = 0f;
     for (Map.Entry<String, Float> e : expected.entrySet()) {
       float value = e.getValue();
-      assertEquals(value, facets.getSpecificValue(dim, e.getKey()).floatValue(), 1);
+      // We can expect the floats to be exactly equal here since we're ensuring that we sum them
+      // in the same order when determining expected values and when computing facets. See
+      // LUCENE-10530:
+      assertEquals(value, facets.getSpecificValue(dim, e.getKey()).floatValue(), 0f);
       aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
     }
 
@@ -451,8 +523,15 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
 
     FacetResult facetResult = facets.getTopChildren(10, dim);
-    assertEquals(dim, facetResult.dim);
-    assertEquals(aggregatedValue, facetResult.value.floatValue(), 1);
-    assertEquals(expected.size(), facetResult.childCount);
+
+    if (expected.isEmpty()) {
+      // If we hit the rare random case where nothing is indexed for the dim, we expect a null
+      // facetResult (see: LUCENE-10529)
+      assertNull(facetResult);
+    } else {
+      assertEquals(dim, facetResult.dim);
+      assertEquals(aggregatedValue, facetResult.value.floatValue(), 1f);
+      assertEquals(expected.size(), facetResult.childCount);
+    }
   }
 }

@@ -126,23 +126,41 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
       if (singleValued != null) {
-        for (int doc = singleValued.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = singleValued.nextDoc()) {
-          if (liveDocs != null && liveDocs.get(doc) == false) {
-            continue;
+        if (liveDocs == null) {
+          for (int doc = singleValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = singleValued.nextDoc()) {
+            values[(int) singleValued.longValue()]++;
           }
-          values[(int) singleValued.longValue()]++;
+        } else {
+          for (int doc = singleValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = singleValued.nextDoc()) {
+            if (liveDocs.get(doc) == false) {
+              continue;
+            }
+            values[(int) singleValued.longValue()]++;
+          }
         }
       } else {
-        for (int doc = multiValued.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = multiValued.nextDoc()) {
-          if (liveDocs != null && liveDocs.get(doc) == false) {
-            continue;
+        if (liveDocs == null) {
+          for (int doc = multiValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = multiValued.nextDoc()) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              values[(int) multiValued.nextValue()]++;
+            }
           }
-          for (int i = 0; i < multiValued.docValueCount(); i++) {
-            values[(int) multiValued.nextValue()]++;
+        } else {
+          for (int doc = multiValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = multiValued.nextDoc()) {
+            if (liveDocs.get(doc) == false) {
+              continue;
+            }
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              values[(int) multiValued.nextValue()]++;
+            }
           }
         }
       }

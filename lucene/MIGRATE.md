@@ -30,6 +30,11 @@ behind the scenes. It is the responsibility of the caller to to call
 These classes have been removed and consolidated into `FieldExistsQuery`. To migrate, caller simply replace those classes
 with the new one during object instantiation. 
 
+### Normalizer and stemmer classes are now package private (LUCENE-10561)
+
+Except for a few exceptions, almost all normalizer and stemmer classes are now package private. If your code depends on
+constants defined in them, copy the constant values and re-define them in your code.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
@@ -63,6 +68,19 @@ To feed Lucene's log events into the well-known Log4J system, we refer to
 the [Log4j JDK Logging Adapter](https://logging.apache.org/log4j/2.x/log4j-jul/index.html)
 in combination with the corresponding system property:
 `java.util.logging.manager=org.apache.logging.log4j.jul.LogManager`.
+
+### Kuromoji and Nori analysis component constructors for custom dictionaries
+
+The Kuromoji and Nori analysis modules had some way to customize the backing dictionaries
+by passing a path to file or classpath resources using some inconsistently implemented
+APIs. This was buggy from the beginning, but some users made use of it. Due to move to Java
+module system, especially the resource lookup on classpath stopped to work correctly.
+The Lucene team therefore implemented new APIs to create dictionary implementations
+with custom data files. Unfortunately there were some shortcomings in the 9.1 version,
+also when using the now deprecated ctors, so users are advised to upgrade to
+Lucene 9.2 or stay with 9.0.
+
+See LUCENE-10558 for more details and workarounds.
 
 ## Migration from Lucene 8.x to Lucene 9.0
 

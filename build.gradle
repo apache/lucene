@@ -20,12 +20,12 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   id "base"
-  id "com.palantir.consistent-versions" version "2.0.0"
+  id "com.palantir.consistent-versions" version "2.10.0"
   id "org.owasp.dependencycheck" version "5.3.0"
   id 'de.thetaphi.forbiddenapis' version '3.3' apply false
   id "de.undercouch.download" version "4.1.1" apply false
   id "net.ltgt.errorprone" version "2.0.2" apply false
-  id 'com.diffplug.spotless' version "5.14.3" apply false
+  id 'com.diffplug.spotless' version "6.5.0" apply false
 }
 
 apply from: file('gradle/globals.gradle')
@@ -183,3 +183,5 @@ apply from: file('gradle/hacks/turbocharge-jvm-opts.gradle')
 apply from: file('gradle/hacks/dummy-outputs.gradle')
 
 apply from: file('gradle/pylucene/pylucene.gradle')
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17

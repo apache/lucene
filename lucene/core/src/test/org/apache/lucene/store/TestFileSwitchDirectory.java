@@ -17,9 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,7 +32,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.TestIndexWriterReader;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.WindowsFS;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -180,8 +177,8 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
     // relies on windows semantics
     Path path = createTempDir();
     assumeFalse("Irony we seem to not emulate windows well enough", Constants.WINDOWS);
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    Path indexPath = new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    Path indexPath = provider.wrapPath(path);
     try (final FileSwitchDirectory dir =
         new FileSwitchDirectory(
             Collections.singleton("tim"),

@@ -30,9 +30,9 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene91.Lucene91Codec;
-import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsReader;
+import org.apache.lucene.codecs.lucene92.Lucene92Codec;
+import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -64,7 +64,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int maxConn = Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
+  private static int M = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
   private VectorSimilarityFunction similarityFunction;
@@ -73,15 +73,14 @@ public class TestKnnGraph extends LuceneTestCase {
   public void setup() {
     randSeed = random().nextLong();
     if (random().nextBoolean()) {
-      maxConn = random().nextInt(256) + 3;
+      M = random().nextInt(256) + 3;
     }
 
     codec =
-        new Lucene91Codec() {
+        new Lucene92Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene91HnswVectorsFormat(
-                maxConn, Lucene91HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            return new Lucene92HnswVectorsFormat(M, Lucene92HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
           }
         };
 
@@ -91,7 +90,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   @After
   public void cleanup() {
-    maxConn = Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
+    M = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */
@@ -238,8 +237,8 @@ public class TestKnnGraph extends LuceneTestCase {
         PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
             (PerFieldKnnVectorsFormat.FieldsReader)
                 ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
-        Lucene91HnswVectorsReader vectorReader =
-            (Lucene91HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
+        Lucene92HnswVectorsReader vectorReader =
+            (Lucene92HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
         graph = copyGraph(vectorReader.getGraph(KNN_GRAPH_FIELD));
       }
     }
@@ -263,7 +262,7 @@ public class TestKnnGraph extends LuceneTestCase {
   int[][][] copyGraph(HnswGraph graphValues) throws IOException {
     int[][][] graph = new int[graphValues.numLevels()][][];
     int size = graphValues.size();
-    int[] scratch = new int[maxConn];
+    int[] scratch = new int[M * 2];
 
     for (int level = 0; level < graphValues.numLevels(); level++) {
       NodesIterator nodesItr = graphValues.getNodesOnLevel(level);
@@ -437,8 +436,8 @@ public class TestKnnGraph extends LuceneTestCase {
         if (perFieldReader == null) {
           continue;
         }
-        Lucene91HnswVectorsReader vectorReader =
-            (Lucene91HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
+        Lucene92HnswVectorsReader vectorReader =
+            (Lucene92HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
         if (vectorReader == null) {
           continue;
         }
@@ -451,8 +450,9 @@ public class TestKnnGraph extends LuceneTestCase {
 
         // assert vector values:
         // stored vector values are the same as original
+        int nextDocWithVectors = 0;
         for (int i = 0; i < reader.maxDoc(); i++) {
-          int nextDocWithVectors = vectorValues.advance(i);
+          nextDocWithVectors = vectorValues.advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
             int id = Integer.parseInt(reader.document(i).get("id"));
             assertNull("document " + id + " has no vector, but was expected to", values[id]);
@@ -471,16 +471,24 @@ public class TestKnnGraph extends LuceneTestCase {
               0f);
           numDocsWithVectors++;
         }
-        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        // if IndexDisi.doc == NO_MORE_DOCS, we should not call IndexDisi.nextDoc()
+        if (nextDocWithVectors != NO_MORE_DOCS) {
+          assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        } else {
+          assertEquals(NO_MORE_DOCS, vectorValues.docID());
+        }
 
         // assert graph values:
         // For each level of the graph assert that:
         // 1. There are no orphan nodes without any friends
         // 2. If orphans are found, than the level must contain only 0 or a single node
-        // 3. If the number of nodes on the level doesn't exceed maxConn, assert that the graph is
+        // 3. If the number of nodes on the level doesn't exceed maxConnOnLevel, assert that the
+        // graph is
         //   fully connected, i.e. any node is reachable from any other node.
-        // 4. If the number of nodes on the level exceeds maxConn, assert that maxConn is respected.
+        // 4. If the number of nodes on the level exceeds maxConnOnLevel, assert that maxConnOnLevel
+        // is respected.
         for (int level = 0; level < graphValues.numLevels(); level++) {
+          int maxConnOnLevel = level == 0 ? M * 2 : M;
           int[][] graphOnLevel = new int[graphValues.size()][];
           int countOnLevel = 0;
           boolean foundOrphan = false;
@@ -502,7 +510,6 @@ public class TestKnnGraph extends LuceneTestCase {
             }
             countOnLevel++;
           }
-          // System.out.println("Level[" + level + "] has [" + nodesCount + "] nodes.");
           assertEquals(nodesItr.size(), countOnLevel);
           assertFalse("No nodes on level [" + level + "]", countOnLevel == 0);
           if (countOnLevel == 1) {
@@ -511,13 +518,13 @@ public class TestKnnGraph extends LuceneTestCase {
           } else {
             assertFalse(
                 "Graph has orphan nodes with no friends on level [" + level + "]", foundOrphan);
-            if (maxConn > countOnLevel) {
+            if (maxConnOnLevel > countOnLevel) {
               // assert that the graph is fully connected,
               // i.e. any node can be reached from any other node
               assertConnected(graphOnLevel);
             } else {
               // assert that max-connections was respected
-              assertMaxConn(graphOnLevel, maxConn);
+              assertMaxConn(graphOnLevel, maxConnOnLevel);
             }
           }
         }

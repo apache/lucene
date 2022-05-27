@@ -18,7 +18,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.QueryTimeoutImpl;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -29,9 +29,11 @@ import org.apache.lucene.util.Bits;
  * @see org.apache.lucene.index.ExitableDirectoryReader
  */
 public class TimeLimitingBulkScorer extends BulkScorer {
+
+  static final int INTERVAL = 100;
   /** Thrown when elapsed search time exceeds allowed search time. */
   @SuppressWarnings("serial")
-  public static class TimeExceededException extends RuntimeException {
+   static class TimeExceededException extends RuntimeException {
 
     private TimeExceededException() {
       super("TimeLimit Exceeded");
@@ -39,18 +41,24 @@ public class TimeLimitingBulkScorer extends BulkScorer {
   }
 
   private BulkScorer in;
-  private QueryTimeoutImpl queryTimeout;
-
-  public TimeLimitingBulkScorer(BulkScorer bulkScorer, QueryTimeoutImpl queryTimeout) {
+  private QueryTimeout queryTimeout;
+  /**
+   * Create a TimeLimitingBulkScorer wrapper over another {@link BulkScorer} with a specified
+   * timeout.
+   *
+   * @param bulkScorer the wrapped {@link BulkScorer}
+   * @param queryTimeout max time allowed for collecting hits after which {@link
+   *     TimeLimitingBulkScorer.TimeExceededException} is thrown
+   */
+  public TimeLimitingBulkScorer(BulkScorer bulkScorer, QueryTimeout queryTimeout) {
     this.in = bulkScorer;
     this.queryTimeout = queryTimeout;
   }
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-    int interval = 100;
     while (min < max) {
-      final int newMax = (int) Math.min((long) min + interval, max);
+      final int newMax = (int) Math.min((long) min + INTERVAL, max);
       if (queryTimeout.shouldExit() == true) {
         throw new TimeLimitingBulkScorer.TimeExceededException();
       }
@@ -61,6 +69,6 @@ public class TimeLimitingBulkScorer extends BulkScorer {
 
   @Override
   public long cost() {
-    return 0;
+    return in.cost();
   }
 }

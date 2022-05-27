@@ -51,15 +51,34 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
     Query query = new TermQuery(new Term("default", "ones"));
     directoryReader = DirectoryReader.open(directory);
     searcher = new IndexSearcher(directoryReader);
-    top = searcher.search(query, n, 5);
-
-    if (top != null) {
-      hits = top.scoreDocs;
-      assertTrue("Partial result", hits.length > 0 && hits.length < n);
-    } else {
-      System.out.println("No results found");
-    }
+    searcher.setTimeout(true, CountingQueryTimeout(10));
+    top = searcher.search(query, n);
+    hits = top.scoreDocs;
+    assertTrue(
+        "Partial result and is aborted is true",
+        hits.length > 0 && hits.length < n && searcher.isAborted());
     directoryReader.close();
     directory.close();
+  }
+
+  public static QueryTimeout CountingQueryTimeout(int timeallowed) {
+
+    return new QueryTimeout() {
+      public static int counter = 0;
+
+      @Override
+      public boolean shouldExit() {
+        counter++;
+        if (counter == timeallowed) {
+          return true;
+        }
+        return false;
+      }
+
+      @Override
+      public boolean isTimeoutEnabled() {
+        return true;
+      }
+    };
   }
 }

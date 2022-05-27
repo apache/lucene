@@ -1155,6 +1155,11 @@ public class MemoryIndex {
       }
 
       @Override
+      public long docValueCount() {
+        return values.size();
+      }
+
+      @Override
       public BytesRef lookupOrd(long ord) throws IOException {
         return values.get(bytesIds[(int) ord], scratch);
       }

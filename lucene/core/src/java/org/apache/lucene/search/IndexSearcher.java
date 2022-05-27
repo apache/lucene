@@ -32,7 +32,16 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexReaderContext;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.NIOFSDirectory;
@@ -76,7 +85,8 @@ public class IndexSearcher {
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
   private boolean isTimeoutEnabled = false;
-  private int timeAllowed;
+  private QueryTimeout queryTimeout;
+  private boolean partialResult = false;
 
   static {
     final int maxCachedQueries = 1000;
@@ -526,10 +536,9 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
-  public TopDocs search(Query query, int n, int timeAllowed) throws IOException {
-    this.isTimeoutEnabled = true;
-    this.timeAllowed = timeAllowed;
-    return search(query, n);
+  public void setTimeout(boolean isTimeoutEnabled, QueryTimeout queryTimeout) throws IOException {
+    this.isTimeoutEnabled = isTimeoutEnabled;
+    this.queryTimeout = queryTimeout;
   }
 
   /**
@@ -555,6 +564,9 @@ public class IndexSearcher {
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
   }
 
+  public boolean isAborted() {
+    return partialResult;
+  }
   /**
    * Search implementation with arbitrary sorting, plus control over whether hit scores and max
    * score should be computed. Finds the top <code>n</code> hits for <code>query</code>, and sorting
@@ -767,7 +779,6 @@ public class IndexSearcher {
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
         if (isTimeoutEnabled) {
-          QueryTimeoutImpl queryTimeout = new QueryTimeoutImpl(timeAllowed);
           TimeLimitingBulkScorer timeLimitingBulkScorer =
               new TimeLimitingBulkScorer(scorer, queryTimeout);
           try {
@@ -775,6 +786,7 @@ public class IndexSearcher {
           } catch (
               @SuppressWarnings("unused")
               TimeLimitingBulkScorer.TimeExceededException e) {
+            partialResult = true;
           }
         } else {
           try {

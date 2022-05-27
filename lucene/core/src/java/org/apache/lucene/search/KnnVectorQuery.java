@@ -288,15 +288,18 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public boolean equals(Object obj) {
-    return sameClassAs(obj)
-        && ((KnnVectorQuery) obj).k == k
+    if (sameClassAs(obj) == false) {
+      return false;
+    }
+    return ((KnnVectorQuery) obj).k == k
         && ((KnnVectorQuery) obj).field.equals(field)
-        && Arrays.equals(((KnnVectorQuery) obj).target, target);
+        && Arrays.equals(((KnnVectorQuery) obj).target, target)
+        && Objects.equals(filter, ((KnnVectorQuery) obj).filter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(classHash(), field, k, Arrays.hashCode(target));
+    return Objects.hash(classHash(), field, k, Arrays.hashCode(target), filter);
   }
 
   /** Caches the results of a KnnVector search: a list of docs and their scores */

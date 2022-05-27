@@ -159,6 +159,9 @@ class Circle2D implements Component2D {
     if (calculator.disjoint(minX, maxX, minY, maxY)) {
       return WithinRelation.DISJOINT;
     }
+    if (contains(aX, aY) || contains(bX, bY)) {
+      return WithinRelation.NOTWITHIN;
+    }
     if (ab == true && calculator.intersectsLine(aX, aY, bX, bY)) {
       return WithinRelation.NOTWITHIN;
     }
