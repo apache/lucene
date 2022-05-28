@@ -98,9 +98,6 @@ org.gradle.workers.max=${maxWorkers}
 # Maximum number of test JVMs forked per test task.
 tests.jvms=${testsJvms}
 
-# Disable auto JVM provisioning (we don't use toolchains yet but want no surprises).
-org.gradle.java.installations.auto-download=false
-
 # Set these to enable automatic JVM location discovery.
 org.gradle.java.installations.fromEnv=JDK11,JDK12,JDK13,JDK14,JDK15,JDK16,JDK17
 org.gradle.java.installations.paths=(custom paths)

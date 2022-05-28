@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat;
 @SuppressWarnings("module") // the test framework is compiled after the core...
 module org.apache.lucene.core {
   requires java.logging;
+  requires static jdk.unsupported; // this is optional but without it MMapDirectory won't be enabled
   requires static jdk.management; // this is optional but explicit declaration is recommended
 
   exports org.apache.lucene.analysis;

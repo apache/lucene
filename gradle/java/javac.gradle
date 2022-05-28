@@ -55,7 +55,7 @@ allprojects {
         "-Xlint:-path",
         "-Xlint:processing",
         "-Xlint:rawtypes",
-        "-Xlint:-removal",
+        "-Xlint:removal",
         "-Xlint:requires-automatic",
         "-Xlint:requires-transitive-automatic",
         "-Xlint:-serial",
@@ -66,18 +66,66 @@ allprojects {
         "-Xlint:try",
         "-Xlint:unchecked",
         "-Xlint:varargs",
-        "-Xlint:-preview",
+        "-Xlint:preview",
         "-Xdoclint:all/protected",
         "-Xdoclint:-missing",
         "-Xdoclint:-accessibility",
         "-proc:none",  // proc:none was added because of LOG4J2-1925 / JDK-8186647
-
-        "--enable-preview"
       ]
 
       if (propertyOrDefault("javac.failOnWarnings", true).toBoolean()) {
-        // disabled in this branch: options.compilerArgs += "-Werror"
+        options.compilerArgs += "-Werror"
       }
+    }
+  }
+}
+
+configure(project(":lucene:core")) {
+  plugins.withType(JavaPlugin) {
+    sourceSets {
+      main19 {
+        java {
+          srcDirs = ['src/java19']
+        }
+      }
+    }
+
+    configurations {
+      // Inherit any dependencies from the main source set.
+      main19Implementation.extendsFrom implementation
+    }
+    
+    dependencies {
+      // We need the main classes to compile our Java 19 pieces.
+      main19Implementation sourceSets.main.output
+    }
+
+    tasks.named('compileMain19Java').configure {
+      /* This will work when JDK 19 comes out:
+    
+      // select EA build:
+      javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(19)
+        vendor = JvmVendorSpec.ADOPTOPENJDK
+      }
+      
+      // undo alternative JDK support:
+      options.forkOptions.javaHome = null
+      */
+      
+      sourceCompatibility = 19
+      targetCompatibility = 19
+      options.compilerArgs += ["--release", 19 as String, "--enable-preview"]
+    }
+    
+    tasks.named('jar').configure {
+      into('META-INF/versions/19') {
+        from sourceSets.main19.output
+      }
+
+      manifest.attributes(
+        'Multi-Release': 'true'
+      )
     }
   }
 }

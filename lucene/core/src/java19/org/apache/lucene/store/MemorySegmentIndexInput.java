@@ -31,7 +31,8 @@ import java.util.Objects;
  * <p>For efficiency, this class requires that the segment size are a power-of-two (<code>
  * chunkSizePower</code>).
  */
-public abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
+@SuppressWarnings("preview")
+abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT.withOrder(ByteOrder.LITTLE_ENDIAN).withBitAlignment(8);

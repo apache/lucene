@@ -57,8 +57,7 @@ tasks.withType(Jar) {
 
 // Configure the main class and version attribute for the module system.
 tasks.compileJava.configure {
-  // nocommit: this does not work with Java 19 class files:
-  //options.javaModuleMainClass.set("org.apache.lucene.luke.app.desktop.LukeMain")
+  options.javaModuleMainClass.set("org.apache.lucene.luke.app.desktop.LukeMain")
 }
 
 // Process UTF8 property files to unicode escapes.

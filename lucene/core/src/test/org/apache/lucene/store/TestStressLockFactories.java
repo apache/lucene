@@ -63,7 +63,6 @@ public class TestStressLockFactories extends LuceneTestCase {
               args.addAll(
                   List.of(
                       "-Xmx32M",
-                      "--enable-preview", // TODO: fix this somehow
                       LockStressTest.class.getName(),
                       Integer.toString(i),
                       addr.getHostString(),

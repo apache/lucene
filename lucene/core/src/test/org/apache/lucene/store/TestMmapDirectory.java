@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
@@ -40,7 +41,26 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
     assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 
+  private static boolean isMemorySegmentImpl() {
+    return Objects.equals(
+        "MemorySegmentIndexInputProvider", MMapDirectory.PROVIDER.getClass().getSimpleName());
+  }
+
+  public void testCorrectImplementation() {
+    if (Runtime.version().feature() == 19) {
+      assertTrue(
+          "on Java 19 we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
+          isMemorySegmentImpl());
+    } else if (Runtime.version().feature() > 19) {
+      // TODO: We don't know how this is handled in later Java versions, so make no assumptions!
+    } else {
+      assertSame(MappedByteBufferIndexInputProvider.class, MMapDirectory.PROVIDER.getClass());
+    }
+  }
+
   public void testAceWithThreads() throws Exception {
+    assumeTrue("Test requires MemorySegmentIndexInput", isMemorySegmentImpl());
+    ;
     final int iters = RANDOM_MULTIPLIER * (TEST_NIGHTLY ? 50 : 10);
     for (int iter = 0; iter < iters; iter++) {
       Directory dir = getDirectory(createTempDir("testAceWithThreads"));
