@@ -15,7 +15,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10585: Facet module code cleanup (copy/paste scrubbing, simplification and some very minor
+  optimization tweaks). (Greg Miller)
 
 Optimizations
 ---------------------
