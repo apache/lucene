@@ -95,7 +95,8 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
 
     long startOffset = 0L;
     for (int segNr = 0; segNr < nrSegments; segNr++) {
-      long segSize = (length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset);
+      final long segSize =
+          (length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset);
       final MemorySegment segment;
       try {
         segment = fc.map(MapMode.READ_ONLY, startOffset, segSize, session);

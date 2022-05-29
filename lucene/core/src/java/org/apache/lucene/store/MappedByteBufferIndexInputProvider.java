@@ -71,7 +71,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
       final String resourceDescription = "ByteBufferIndexInput(path=\"" + path.toString() + "\")";
       return ByteBufferIndexInput.newInstance(
           resourceDescription,
-          map(resourceDescription, c, chunkSizePower, preload, 0, c.size()),
+          map(resourceDescription, c, chunkSizePower, preload, c.size()),
           c.size(),
           chunkSizePower,
           new ByteBufferGuard(resourceDescription, useUnmapHack ? cleaner : null));
@@ -95,12 +95,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
 
   /** Maps a file into a set of buffers */
   final ByteBuffer[] map(
-      String resourceDescription,
-      FileChannel fc,
-      int chunkSizePower,
-      boolean preload,
-      long offset,
-      long length)
+      String resourceDescription, FileChannel fc, int chunkSizePower, boolean preload, long length)
       throws IOException {
     if ((length >>> chunkSizePower) >= Integer.MAX_VALUE)
       throw new IllegalArgumentException(
@@ -111,15 +106,15 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
     // we always allocate one more buffer, the last one may be a 0 byte one
     final int nrBuffers = (int) (length >>> chunkSizePower) + 1;
 
-    ByteBuffer[] buffers = new ByteBuffer[nrBuffers];
+    final ByteBuffer[] buffers = new ByteBuffer[nrBuffers];
 
-    long bufferStart = 0L;
+    long startOffset = 0L;
     for (int bufNr = 0; bufNr < nrBuffers; bufNr++) {
-      int bufSize =
-          (int) ((length > (bufferStart + chunkSize)) ? chunkSize : (length - bufferStart));
-      MappedByteBuffer buffer;
+      final int bufSize =
+          (int) ((length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset));
+      final MappedByteBuffer buffer;
       try {
-        buffer = fc.map(MapMode.READ_ONLY, offset + bufferStart, bufSize);
+        buffer = fc.map(MapMode.READ_ONLY, startOffset, bufSize);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
       } catch (IOException ioe) {
         throw convertMapFailedIOException(ioe, resourceDescription, bufSize);
@@ -128,7 +123,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
         buffer.load();
       }
       buffers[bufNr] = buffer;
-      bufferStart += bufSize;
+      startOffset += bufSize;
     }
 
     return buffers;
