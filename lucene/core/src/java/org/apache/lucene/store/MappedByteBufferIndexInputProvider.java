@@ -141,7 +141,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
     final Lookup lookup = lookup();
     try {
       // *** sun.misc.Unsafe unmapping (Java 9+) ***
-      final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+      final Class<?> unsafeClass = lookup.findClass("sun.misc.Unsafe");
       // first check if Unsafe has the right method, otherwise we can give up
       // without doing any security critical stuff:
       final MethodHandle unmapper =

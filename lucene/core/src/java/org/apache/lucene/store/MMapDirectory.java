@@ -322,13 +322,11 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
-  static {
+  private static MMapIndexInputProvider lookupProvider() {
     final var lookup = MethodHandles.lookup();
-    MMapIndexInputProvider provider;
     try {
-      final var cls =
-          Class.forName("org.apache.lucene.store.MemorySegmentIndexInputProvider")
-              .asSubclass(MMapIndexInputProvider.class);
+      final var pkg = lookup.lookupClass().getPackageName();
+      final var cls = lookup.findClass(pkg + ".MemorySegmentIndexInputProvider");
       // we use method handles, so we do not need to deal with setAccessible as we have private
       // access through the lookup:
       final var constr =
@@ -336,7 +334,7 @@ public class MMapDirectory extends FSDirectory {
               .findConstructor(cls, MethodType.methodType(void.class))
               .asType(MethodType.methodType(MMapIndexInputProvider.class));
       try {
-        provider = (MMapIndexInputProvider) constr.invokeExact();
+        return (MMapIndexInputProvider) constr.invokeExact();
       } catch (RuntimeException | Error e) {
         throw e;
       } catch (Throwable th) {
@@ -346,7 +344,7 @@ public class MMapDirectory extends FSDirectory {
         @SuppressWarnings("unused")
         ClassNotFoundException e) {
       // we're before Java 19
-      provider = new MappedByteBufferIndexInputProvider();
+      return new MappedByteBufferIndexInputProvider();
     } catch (
         @SuppressWarnings("unused")
         UnsupportedClassVersionError e) {
@@ -358,14 +356,17 @@ public class MMapDirectory extends FSDirectory {
         log.warning(
             "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
       }
-      provider = new MappedByteBufferIndexInputProvider();
+      return new MappedByteBufferIndexInputProvider();
     } catch (NoSuchMethodException | IllegalAccessException e) {
       throw new LinkageError(
           "MemorySegmentIndexInputProvider is missing correctly typed constructor", e);
     }
-    PROVIDER = provider;
-    DEFAULT_MAX_CHUNK_SIZE = provider.getDefaultMaxChunkSize();
-    UNMAP_SUPPORTED = provider.isUnmapSupported();
-    UNMAP_NOT_SUPPORTED_REASON = provider.getUnmapNotSupportedReason();
+  }
+
+  static {
+    PROVIDER = lookupProvider();
+    DEFAULT_MAX_CHUNK_SIZE = PROVIDER.getDefaultMaxChunkSize();
+    UNMAP_SUPPORTED = PROVIDER.isUnmapSupported();
+    UNMAP_NOT_SUPPORTED_REASON = PROVIDER.getUnmapNotSupportedReason();
   }
 }
