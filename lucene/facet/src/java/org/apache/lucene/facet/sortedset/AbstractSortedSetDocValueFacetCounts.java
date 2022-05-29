@@ -74,7 +74,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
 
   @Override
   public Number getSpecificValue(String dim, String... path) throws IOException {
-    if (path.length != 1) {
+    if (stateConfig.getDimConfig(dim).hierarchical == false && path.length != 1) {
       throw new IllegalArgumentException("path must be length=1");
     }
     int ord = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
