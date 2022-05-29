@@ -124,7 +124,7 @@ allprojects {
       // (if the runner JVM does not support them, it will fail tests):
       jvmArgs '--add-modules', 'jdk.unsupported,jdk.management'
 
-      jvmArgs "--enable-preview"
+      jvmArgs '--enable-preview'
 
       systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
       systemProperty 'java.awt.headless', 'true'

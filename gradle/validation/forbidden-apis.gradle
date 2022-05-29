@@ -115,6 +115,7 @@ allprojects { prj ->
       inputs.dir(file(resources))
     }
 
+    // TODO: Remove this when forbiddenapis supports Java 19 class files
     tasks.matching { it.name == "forbiddenApisMain19" }.all {
       enabled = false
     }
