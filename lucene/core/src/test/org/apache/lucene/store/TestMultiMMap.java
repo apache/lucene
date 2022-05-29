@@ -137,9 +137,7 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
 
       // check impl (we must check size < chunksize: currently, if size==chunkSize, we get 2
       // buffers, the second one empty:
-      assertEquals(
-          (size < chunkSize) ? "SingleSegmentImpl" : "MultiSegmentImpl",
-          ii.getClass().getSimpleName());
+      assertCorrectImpl(size < chunkSize, ii);
 
       // clone tests:
       assertSame(ii.getClass(), ii.clone().getClass());
@@ -147,9 +145,7 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
       // slice test (offset 0)
       int sliceSize = random().nextInt(size);
       IndexInput slice = ii.slice("slice", 0, sliceSize);
-      assertEquals(
-          (sliceSize < chunkSize) ? "SingleSegmentImpl" : "MultiSegmentImpl",
-          slice.getClass().getSimpleName());
+      assertCorrectImpl(sliceSize < chunkSize, slice);
 
       // slice test (offset > 0 )
       int offset = random().nextInt(size - 1) + 1;
@@ -157,14 +153,21 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
       slice = ii.slice("slice", offset, sliceSize);
       // System.out.println(offset + "/" + sliceSize + " chunkSize=" + chunkSize + " " +
       // slice.getClass());
-      if (offset % chunkSize + sliceSize < chunkSize) {
-        assertEquals("SingleSegmentImpl", slice.getClass().getSimpleName());
-      } else {
-        assertEquals("MultiSegmentImpl", slice.getClass().getSimpleName());
-      }
+      assertCorrectImpl(offset % chunkSize + sliceSize < chunkSize, slice);
 
       ii.close();
       mmapDir.close();
+    }
+  }
+
+  private static void assertCorrectImpl(boolean isSingle, IndexInput ii) {
+    var clazz = ii.getClass();
+    if (isSingle) {
+      assertTrue(
+          "Require a single impl, got " + clazz, clazz.getSimpleName().matches("Single\\w+Impl"));
+    } else {
+      assertTrue(
+          "Require a multi impl, got " + clazz, clazz.getSimpleName().matches("Multi\\w+Impl"));
     }
   }
 }
