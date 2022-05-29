@@ -596,6 +596,7 @@ public class MemoryIndex {
           info.bytesRefHashProducer.dvBytesRefHashValuesSet = new BytesRefHash(byteBlockPool);
         }
         info.bytesRefHashProducer.dvBytesRefHashValuesSet.add((BytesRef) docValuesValue);
+        info.bytesRefHashProducer.count++;
         break;
       case NONE:
       default:
@@ -1142,7 +1143,8 @@ public class MemoryIndex {
     };
   }
 
-  private static SortedSetDocValues sortedSetDocValues(BytesRefHash values, int[] bytesIds) {
+  private static SortedSetDocValues sortedSetDocValues(
+      BytesRefHash values, int[] bytesIds, int count) {
     MemoryDocValuesIterator it = new MemoryDocValuesIterator();
     BytesRef scratch = new BytesRef();
     return new SortedSetDocValues() {
@@ -1156,7 +1158,7 @@ public class MemoryIndex {
 
       @Override
       public long docValueCount() {
-        return values.size();
+        return count;
       }
 
       @Override
@@ -1205,6 +1207,7 @@ public class MemoryIndex {
 
     BytesRefHash dvBytesRefHashValuesSet;
     int[] bytesIds;
+    int count;
 
     private void prepareForUsage() {
       bytesIds = dvBytesRefHashValuesSet.sort();
@@ -1346,7 +1349,9 @@ public class MemoryIndex {
       Info info = getInfoForExpectedDocValuesType(field, DocValuesType.SORTED_SET);
       if (info != null) {
         return sortedSetDocValues(
-            info.bytesRefHashProducer.dvBytesRefHashValuesSet, info.bytesRefHashProducer.bytesIds);
+            info.bytesRefHashProducer.dvBytesRefHashValuesSet,
+            info.bytesRefHashProducer.bytesIds,
+            info.bytesRefHashProducer.count);
       } else {
         return null;
       }
