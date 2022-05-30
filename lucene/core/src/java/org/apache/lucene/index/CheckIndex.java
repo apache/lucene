@@ -2203,15 +2203,16 @@ public final class CheckIndex implements Closeable {
         }
 
         // check unique term count
-        long termCount = -1;
+        long termCount = terms.size();
 
-        if (fieldTermCount > 0) {
-          termCount = fields.terms(field).size();
+        if (termCount != -1 && termCount != fieldTermCount) {
+          throw new CheckIndexException(
+              "termCount mismatch " + termCount + " vs " + fieldTermCount);
+        }
 
-          if (termCount != -1 && termCount != fieldTermCount) {
-            throw new CheckIndexException(
-                "termCount mismatch " + termCount + " vs " + fieldTermCount);
-          }
+        if (termsEnum.size() != termCount) {
+          throw new CheckIndexException(
+              "Terms enum reports different term count " + termCount + " vs " + termsEnum.size());
         }
 
         // Test seeking by ord

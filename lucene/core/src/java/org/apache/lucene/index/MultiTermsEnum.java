@@ -305,7 +305,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
   public int docFreq() throws IOException {
     int sum = 0;
     for (int i = 0; i < numTop; i++) {
-      sum += top[i].docFreq();
+      sum += top[i].termsEnum.docFreq();
     }
     return sum;
   }
@@ -314,7 +314,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
   public long totalTermFreq() throws IOException {
     long sum = 0;
     for (int i = 0; i < numTop; i++) {
-      final long v = top[i].totalTermFreq();
+      final long v = top[i].termsEnum.totalTermFreq();
       assert v != -1;
       sum += v;
     }
@@ -347,7 +347,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
       assert entry.subIndex < docsEnum.subPostingsEnums.length
           : entry.subIndex + " vs " + docsEnum.subPostingsEnums.length + "; " + subs.length;
       final PostingsEnum subPostingsEnum =
-          entry.postings(docsEnum.subPostingsEnums[entry.subIndex], flags);
+          entry.termsEnum.postings(docsEnum.subPostingsEnums[entry.subIndex], flags);
       assert subPostingsEnum != null;
       docsEnum.subPostingsEnums[entry.subIndex] = subPostingsEnum;
       subDocs[upto].postingsEnum = subPostingsEnum;

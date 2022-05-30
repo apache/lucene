@@ -1580,7 +1580,7 @@ public class MemoryIndex {
 
       @Override
       public long size() throws IOException {
-        return -1;
+        return info.terms.size();
       }
     }
 

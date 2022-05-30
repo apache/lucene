@@ -71,9 +71,7 @@ class TermsEnumIndex {
   }
 
   final int subIndex;
-  // Properly encapsulate the terms enum, next() and seeks require updating currentTerm and
-  // currentTermPrefix8
-  private TermsEnum termsEnum;
+  TermsEnum termsEnum;
   private BytesRef currentTerm;
   private int prefixLength;
   private long currentTermPrefix8;

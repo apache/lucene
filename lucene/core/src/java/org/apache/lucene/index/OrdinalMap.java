@@ -206,6 +206,11 @@ public class OrdinalMap implements Accountable {
       SegmentMap segmentMap,
       float acceptableOverheadRatio)
       throws IOException {
+    for (TermsEnum te : subs) {
+      if (te.size() < 0) {
+        throw new IllegalArgumentException("OrdinalMap requires terms enums whose size is known");
+      }
+    }
     // create the ordinal mappings by pulling a termsenum over each sub's
     // unique terms, and walking a multitermsenum over those
     this.owner = owner;
@@ -250,8 +255,8 @@ public class OrdinalMap implements Accountable {
       scratch.copyBytes(min.term());
       int windowSharedPrefix = 0;
       for (TermsEnumIndex tei : subEnums) {
-        long currentOrd = tei.ord();
-        if (currentOrd + WINDOW_SIZE <= tei.size()) {
+        long currentOrd = tei.termsEnum.ord();
+        if (currentOrd + WINDOW_SIZE <= tei.termsEnum.size()) {
           tei.seekExact(currentOrd + WINDOW_SIZE - 1);
           int teiWindowSharedPrefix = StringHelper.bytesDifference(scratch.get(), tei.term());
           windowSharedPrefix = Math.max(windowSharedPrefix, teiWindowSharedPrefix);
@@ -282,7 +287,7 @@ public class OrdinalMap implements Accountable {
         // Advance past this term, recording the per-segment ord deltas:
         while (true) {
           top = queue.top();
-          long segmentOrd = top.ord();
+          long segmentOrd = top.termsEnum.ord();
           long delta = globalOrd - segmentOrd;
           int segmentIndex = top.subIndex;
           // We compute the least segment where the term occurs. In case the
