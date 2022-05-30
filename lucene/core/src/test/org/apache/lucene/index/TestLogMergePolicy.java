@@ -17,9 +17,13 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.lucene.index.MergePolicy.MergeContext;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
+import org.apache.lucene.util.Version;
 
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
@@ -45,4 +49,36 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
       assertEquals(lmp.getMergeFactor(), oneMerge.segments.size());
     }
   }
+
+  public void testIgnoreLargeSegments() throws IOException {
+    LogDocMergePolicy mergePolicy = new LogDocMergePolicy();
+    IOStats stats = new IOStats();
+    mergePolicy.setMaxMergeDocs(10_000);
+    AtomicLong segNameGenerator = new AtomicLong();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+    // 1 segment that reached the maximum segment size
+    segmentInfos.add(
+        makeSegmentCommitInfo(
+            "_" + segNameGenerator.getAndIncrement(), 11_000, 0, 0, IndexWriter.SOURCE_MERGE));
+    // and 10 segments below the max segment size, but within the same level
+    for (int i = 0; i < 10; ++i) {
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(), 5_000, 0, 0, IndexWriter.SOURCE_MERGE));
+    }
+    // LogMergePolicy used to have a bug that would make it exclude the first mergeFactor segments
+    // from merging if any of them was above the maximum merged size
+    MergeSpecification spec =
+        mergePolicy.findMerges(MergeTrigger.EXPLICIT, segmentInfos, mergeContext);
+    assertNotNull(spec);
+    for (OneMerge oneMerge : spec.merges) {
+      segmentInfos =
+          applyMerge(segmentInfos, oneMerge, "_" + segNameGenerator.getAndIncrement(), stats);
+    }
+    assertEquals(2, segmentInfos.size());
+    assertEquals(11_000, segmentInfos.info(0).info.maxDoc());
+    assertEquals(50_000, segmentInfos.info(1).info.maxDoc());
+  }
+
 }
