@@ -1,0 +1,90 @@
+= FacetSets Overview
+:toc:
+
+This document describes the `FacetSets` capability, which allows to aggregate on multi dimensional values. It starts
+with outlining a few example use cases to showcase the motivation for this capability and follows with an API
+walk through.
+
+== Motivation
+
+[#movie-actors]
+=== Movie Actors DB
+
+Suppose that you want to build a search engine for movie actors which allows you to search for actors by name and see
+movie titles they appeared in. You might want to index standard fields such as `actorName`, `genre` and `releaseYear`
+which will let you search by the actor's name or see all actors who appeared in movies during 2021. Similarly, you can
+index facet fields that will let you aggregate by “Genre” and “Year” so that you can show how many actors appeared in
+each year or genre. Few example documents:
+
+[source]
+----
+{ "name": "Tom Hanks", "genre": ["Comedy", "Drama", …], "year": [1988, 2000,…] }
+{ "name": "Harrison Ford", "genre": ["Action", "Adventure", …], "year": [1977, 1981, …] }
+----
+
+However, these facet fields do not allow you to show the following aggregation:
+
+.Number of Actors performing in movies by Genre and Year
+[cols="4*"]
+|===
+| | 2020 | 2021 | 2022
+| Thriller | 121 | 43 | 97
+| Action | 145 | 52 | 130
+| Adventure | 87 | 21 | 32
+|===
+
+The reason is that each “genre” or “releaseYear” facet field is indexed in its own data structure, and therefore if an
+actor appeared in a "Thriller" movie in "2020" and "Action" movie in "2021", there's no way for you to tell that they
+didn't appear in an "Action" movie in "2020".
+
+[#automotive-parts]
+=== Automotive Parts Store
+
+Say you're building a search engine for an automotive parts store where customers can search for different car parts.
+For simplicity let's assume that each item in the catalog contains a searchable “type” field and “car model” it fits
+which consists of two separate fields: “manufacturer” and “year”. This lets you search for parts by their type as well
+as filter parts that fit only a certain manufacturer or year. Few example documents:
+
+[source]
+----
+{
+  "type": "Wiper Blades V1",
+  "models": [
+    { "manufaturer": "Ford", "year": 2010 },
+    { "manufacturer": "Chevy", "year": 2011 }
+  ]
+}
+{
+  "type": "Wiper Blades V2",
+  "models": [
+    { "manufaturer": "Ford", "year": 2011 },
+    { "manufacturer": "Chevy", "year": 2010 }
+  ]
+}
+----
+
+By breaking up the "models" field into its sub-fields "manufacturer" and "year", you can easily aggregate on parts that
+fit a certain manufacturer or year. However, if a user would like to aggregate on parts that can fit either a "Ford
+2010" or "Chevy 2011", then aggregating on the sub-fields will lead to a wrong count of 2 (in the above example) instead
+of 1.
+
+[#movie-awards]
+=== Movie Awards
+
+To showcase a 3-D multi-dimensional aggregation, lets expand the <<movie-actors>> example with awards an actor has
+received over the years. For this aggregation we will use four dimensions: Award Type ("Oscar", "Grammy", "Emmy"),
+Award Category ("Best Actor", "Best Supporting Actress"), Year and Genre. One interesting aggregation is to show how
+many "Best Actor" vs "Best Supporting Actor" awards one has received in the "Oscar" or "Emmy" for each year. Another
+aggregation is slicing the number of these awards by Genre over all the years.
+
+Building on these examples, one might be able to come up with an interesting use case for an N-dimensional aggregation
+(where `N > 3`). The higher `N` is, the harder it is to aggregate all the dimensions correctly and efficiently without
+`FacetSets`.
+
+== FacetSets API
+
+TBD
+
+== FacetSets Under the Hood
+
+TBD
