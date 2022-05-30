@@ -628,14 +628,10 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     int extraMaxDoc = randomIntBetween(0, 10);
     int extraDocCount = randomIntBetween(0, extraMaxDoc);
+    int extraSumDocFreq = extraDocCount + randomIntBetween(0, 10);
 
-    int extraSumDocFreqA = extraDocCount + randomIntBetween(0, 10);
-    int extraSumTotalTermFreqA = extraSumDocFreqA + randomIntBetween(0, 10);
-
-    int extraSumDocFreqB = extraDocCount + randomIntBetween(0, 10);
-    int extraSumTotalTermFreqB = extraSumDocFreqB + randomIntBetween(0, 10);
-
-    int extraSumDocFreqAB = extraSumDocFreqA + extraSumDocFreqB;
+    int extraSumTotalTermFreqA = extraSumDocFreq + randomIntBetween(0, 10);
+    int extraSumTotalTermFreqB = extraSumDocFreq + randomIntBetween(0, 10);
     int extraSumTotalTermFreqAB = extraSumTotalTermFreqA + extraSumTotalTermFreqB;
 
     IndexSearcher searcher =
@@ -643,29 +639,22 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
           @Override
           public CollectionStatistics collectionStatistics(String field) throws IOException {
             CollectionStatistics shardStatistics = super.collectionStatistics(field);
+            int extraSumTotalTermFreq;
             if (field.equals("a")) {
-              return new CollectionStatistics(
-                  field,
-                  shardStatistics.maxDoc() + extraMaxDoc,
-                  shardStatistics.docCount() + extraDocCount,
-                  shardStatistics.sumTotalTermFreq() + extraSumTotalTermFreqA,
-                  shardStatistics.sumDocFreq() + extraSumDocFreqA);
+              extraSumTotalTermFreq = extraSumTotalTermFreqA;
             } else if (field.equals("b")) {
-              return new CollectionStatistics(
-                  field,
-                  shardStatistics.maxDoc() + extraMaxDoc,
-                  shardStatistics.docCount() + extraDocCount,
-                  shardStatistics.sumTotalTermFreq() + extraSumTotalTermFreqB,
-                  shardStatistics.sumDocFreq() + extraSumDocFreqB);
+              extraSumTotalTermFreq = extraSumTotalTermFreqB;
             } else if (field.equals("ab")) {
-              return new CollectionStatistics(
-                  field,
-                  shardStatistics.maxDoc() + extraMaxDoc,
-                  shardStatistics.docCount() + extraDocCount,
-                  shardStatistics.sumTotalTermFreq() + extraSumTotalTermFreqAB,
-                  shardStatistics.sumDocFreq() + extraSumDocFreqAB);
+              extraSumTotalTermFreq = extraSumTotalTermFreqAB;
+            } else {
+              throw new AssertionError("should never be called");
             }
-            return shardStatistics;
+            return new CollectionStatistics(
+                field,
+                shardStatistics.maxDoc() + extraMaxDoc,
+                shardStatistics.docCount() + extraDocCount,
+                shardStatistics.sumTotalTermFreq() + extraSumTotalTermFreq,
+                shardStatistics.sumDocFreq() + extraSumDocFreq);
           }
         };
     searcher.setSimilarity(similarity);

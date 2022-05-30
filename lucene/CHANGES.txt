@@ -86,6 +86,8 @@ Bug Fixes
 
 * LUCENE-10574: Prevent pathological O(N^2) merging. (Adrien Grand)
 
+* LUCENE-10582: Fix merging of overridden CollectionStatistics in CombinedFieldQuery (Yannick Welsch)
+
 Other
 ---------------------
 
