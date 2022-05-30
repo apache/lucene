@@ -3,7 +3,7 @@ name: Gradle Precommit Checks
 on: 
   pull_request:
     branches:
-    - '*'
+    - 'NA'
 
   push:
     branches:

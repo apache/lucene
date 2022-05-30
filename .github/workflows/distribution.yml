@@ -6,11 +6,11 @@ on:
 
   pull_request:
     branches:
-      - 'main'
+      - 'NA'
 
   push:
     branches:
-      - 'main'
+      - 'NA'
 
 jobs:
   test:
