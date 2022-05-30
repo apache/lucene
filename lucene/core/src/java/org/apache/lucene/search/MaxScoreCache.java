@@ -37,6 +37,7 @@ final class MaxScoreCache {
   private final SimScorer scorer;
   private float[] maxScoreCache;
   private int[] maxScoreCacheUpTo;
+  private final float globalMaxScore;
 
   /** Sole constructor. */
   public MaxScoreCache(ImpactsSource impactsSource, SimScorer scorer) {
@@ -44,6 +45,7 @@ final class MaxScoreCache {
     this.scorer = scorer;
     maxScoreCache = new float[0];
     maxScoreCacheUpTo = new int[0];
+    this.globalMaxScore = scorer.score(Float.MAX_VALUE, 1L);
   }
 
   private void ensureCacheSize(int size) {
@@ -80,6 +82,9 @@ final class MaxScoreCache {
 
   /** Return the maximum score for the given {@code level}. */
   float getMaxScoreForLevel(int level) throws IOException {
+    if (level < 0) {
+      return globalMaxScore;
+    }
     final Impacts impacts = impactsSource.getImpacts();
     ensureCacheSize(level + 1);
     final int levelUpTo = impacts.getDocIdUpTo(level);
