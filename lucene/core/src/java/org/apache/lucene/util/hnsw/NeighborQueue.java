@@ -107,9 +107,9 @@ public class NeighborQueue {
    *
    * <p>The less significant 32 bits represent the node ID.
    *
-   * @param node
-   * @param score
-   * @return
+   * @param node the node ID
+   * @param score the node score
+   * @return the encoded score, node ID
    */
   private long encode(int node, float score) {
     return order.apply(
