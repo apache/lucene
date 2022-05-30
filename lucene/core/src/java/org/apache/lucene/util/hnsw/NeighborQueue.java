@@ -56,9 +56,9 @@ public class NeighborQueue {
   // Whether the search stopped early because it reached the visited nodes limit
   private boolean incomplete;
 
-  public NeighborQueue(int initialSize, boolean descOrder) {
+  public NeighborQueue(int initialSize, boolean maxHeap) {
     this.heap = new LongHeap(initialSize);
-    this.order = descOrder ? Order.MAX_HEAP : Order.MIN_HEAP;
+    this.order = maxHeap ? Order.MAX_HEAP : Order.MIN_HEAP;
   }
 
   /** @return the number of elements in the heap */
