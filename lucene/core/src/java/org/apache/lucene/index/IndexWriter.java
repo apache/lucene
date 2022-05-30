@@ -3254,23 +3254,29 @@ public class IndexWriter
       this.writer = writer;
     }
 
-    public synchronized void registerMerge(MergePolicy.OneMerge merge) {
-      pendingAddIndexesMerges.add(merge);
-    }
-
-    @Override
-    public synchronized MergePolicy.OneMerge getNextMerge() {
-      if (hasPendingMerges() == false) {
-        return null;
+    public void registerMerge(MergePolicy.OneMerge merge) {
+      synchronized (IndexWriter.this) {
+        pendingAddIndexesMerges.add(merge);
       }
-      MergePolicy.OneMerge merge = pendingAddIndexesMerges.remove();
-      runningMerges.add(merge);
-      return merge;
     }
 
     @Override
-    public synchronized void onMergeFinished(MergePolicy.OneMerge merge) {
-      runningMerges.remove(merge);
+    public MergePolicy.OneMerge getNextMerge() {
+      synchronized (IndexWriter.this) {
+        if (hasPendingMerges() == false) {
+          return null;
+        }
+        MergePolicy.OneMerge merge = pendingAddIndexesMerges.remove();
+        runningMerges.add(merge);
+        return merge;
+      }
+    }
+
+    @Override
+    public void onMergeFinished(MergePolicy.OneMerge merge) {
+      synchronized (IndexWriter.this) {
+        runningMerges.remove(merge);
+      }
     }
 
     @Override
@@ -3278,18 +3284,21 @@ public class IndexWriter
       return pendingAddIndexesMerges.size() > 0;
     }
 
-    public synchronized void abortPendingMerges() throws IOException {
-      IOUtils.applyToAll(
+    public void abortPendingMerges() throws IOException {
+      synchronized (IndexWriter.this) {
+        IOUtils.applyToAll(
           pendingAddIndexesMerges,
           merge -> {
             if (infoStream.isEnabled("IW")) {
               infoStream.message("IW", "now abort pending addIndexes merge");
             }
             merge.setAborted();
-            merge.close(false, false, mr -> {});
+            merge.close(false, false, mr -> {
+            });
             onMergeFinished(merge);
           });
-      pendingAddIndexesMerges.clear();
+        pendingAddIndexesMerges.clear();
+      }
     }
 
     @Override
@@ -3301,7 +3310,7 @@ public class IndexWriter
       } catch (Throwable t) {
         handleMergeException(t, merge);
       } finally {
-        synchronized (this) {
+        synchronized (IndexWriter.this) {
           merge.close(success, false, mr -> {});
           onMergeFinished(merge);
         }
