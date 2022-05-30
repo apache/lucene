@@ -3287,16 +3287,15 @@ public class IndexWriter
     public void abortPendingMerges() throws IOException {
       synchronized (IndexWriter.this) {
         IOUtils.applyToAll(
-          pendingAddIndexesMerges,
-          merge -> {
-            if (infoStream.isEnabled("IW")) {
-              infoStream.message("IW", "now abort pending addIndexes merge");
-            }
-            merge.setAborted();
-            merge.close(false, false, mr -> {
+            pendingAddIndexesMerges,
+            merge -> {
+              if (infoStream.isEnabled("IW")) {
+                infoStream.message("IW", "now abort pending addIndexes merge");
+              }
+              merge.setAborted();
+              merge.close(false, false, mr -> {});
+              onMergeFinished(merge);
             });
-            onMergeFinished(merge);
-          });
         pendingAddIndexesMerges.clear();
       }
     }
