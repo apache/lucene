@@ -182,21 +182,6 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
-  /**
-   * Query = (0.5, 1)
-   *
-   * <p>Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444,
-   *
-   * <p>Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8,
-   *
-   * <p>Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235,
-   *
-   * <p>Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089,
-   *
-   * <p>Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045,
-   *
-   * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
-   */
   public void testAdvanceShallow() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
@@ -208,40 +193,25 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {0.5f, 1}, 3);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
         Query dasq = query.rewrite(reader);
         Scorer scorer =
             dasq.createWeight(searcher, ScoreMode.COMPLETE, 1).scorer(reader.leaves().get(0));
         // before advancing the iterator
-        assertEquals(0, scorer.advanceShallow(0));
+        assertEquals(1, scorer.advanceShallow(0));
         assertEquals(1, scorer.advanceShallow(1));
         assertEquals(NO_MORE_DOCS, scorer.advanceShallow(10));
 
         // after advancing the iterator
         scorer.iterator().advance(2);
         assertEquals(2, scorer.advanceShallow(0));
-        assertEquals(2, scorer.advanceShallow(1));
         assertEquals(2, scorer.advanceShallow(2));
+        assertEquals(3, scorer.advanceShallow(3));
         assertEquals(NO_MORE_DOCS, scorer.advanceShallow(10));
       }
     }
   }
 
-  /**
-   * Query = (0.5, 1)
-   *
-   * <p>Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444,
-   *
-   * <p>Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8,
-   *
-   * <p>Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235,
-   *
-   * <p>Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089,
-   *
-   * <p>Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045,
-   *
-   * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
-   */
   public void testScoreEuclidean() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
@@ -255,7 +225,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(d)) {
         assertEquals(1, reader.leaves().size());
         IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {0.5f, 1}, 3);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
         Query rewritten = query.rewrite(reader);
         Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
@@ -266,18 +236,18 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
         // test getMaxScore
         assertEquals(0, scorer.getMaxScore(-1), 0);
-        assertEquals(0.444, scorer.getMaxScore(0), 0.001);
-        // This is 1 / ((l2distance((0.5, 1), (1, 1))) + 1) = 0.8
-        assertEquals(0.8f, scorer.getMaxScore(2), 0.001);
-        assertEquals(0.8f, scorer.getMaxScore(Integer.MAX_VALUE), 0);
+        assertEquals(0, scorer.getMaxScore(0), 0);
+        // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
+        assertEquals(1 / 2f, scorer.getMaxScore(2), 0);
+        assertEquals(1 / 2f, scorer.getMaxScore(Integer.MAX_VALUE), 0);
 
         DocIdSetIterator it = scorer.iterator();
         assertEquals(3, it.cost());
-        assertEquals(0, it.nextDoc());
-        assertEquals(0.444f, scorer.score(), 0.001);
-        assertEquals(2, it.advance(2));
-        assertEquals(0.235f, scorer.score(), 0.001);
-        assertEquals(NO_MORE_DOCS, it.advance(3));
+        assertEquals(1, it.nextDoc());
+        assertEquals(1 / 6f, scorer.score(), 0);
+        assertEquals(3, it.advance(3));
+        assertEquals(1 / 2f, scorer.score(), 0);
+        assertEquals(NO_MORE_DOCS, it.advance(4));
         expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
       }
     }
@@ -423,21 +393,6 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
-  /**
-   * Query = (0.5, 1)
-   *
-   * <p>Doc0 = (0, 0) 1 / (l2distance + 1) from query = 0.444,
-   *
-   * <p>Doc1 = (1, 1) 1 / (l2distance + 1) from query = 0.8,
-   *
-   * <p>Doc2 = (2, 2) 1 / (l2distance + 1) from query = 0.235,
-   *
-   * <p>Doc3 = (3, 3) 1 / (l2distance + 1) from query = 0.089,
-   *
-   * <p>Doc4 = (4, 4) 1 / (l2distance + 1) from query = 0.045,
-   *
-   * <p>The expected TOP 3 = [Doc1, Doc0, Doc2]
-   */
   public void testExplain() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
@@ -449,14 +404,14 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {0.5f, 1}, 3);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
         Explanation matched = searcher.explain(query, 2);
         assertTrue(matched.isMatch());
-        assertEquals(0.23529412f, matched.getValue());
+        assertEquals(1 / 2f, matched.getValue());
         assertEquals(0, matched.getDetails().length);
         assertEquals("within top 3", matched.getDescription());
 
-        Explanation nomatch = searcher.explain(query, 3);
+        Explanation nomatch = searcher.explain(query, 4);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);
