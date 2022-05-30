@@ -35,17 +35,17 @@ final class MaxScoreCache {
 
   private final ImpactsSource impactsSource;
   private final SimScorer scorer;
+  private final float globalMaxScore;
   private float[] maxScoreCache;
   private int[] maxScoreCacheUpTo;
-  private final float globalMaxScore;
 
   /** Sole constructor. */
   public MaxScoreCache(ImpactsSource impactsSource, SimScorer scorer) {
     this.impactsSource = impactsSource;
     this.scorer = scorer;
+    this.globalMaxScore = scorer.score(Float.MAX_VALUE, 1L);
     maxScoreCache = new float[0];
     maxScoreCacheUpTo = new int[0];
-    this.globalMaxScore = scorer.score(Float.MAX_VALUE, 1L);
   }
 
   private void ensureCacheSize(int size) {
