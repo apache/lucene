@@ -50,7 +50,7 @@ public final class Lucene90HnswGraphBuilder {
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
-  private float minAcceptedSimilarity = Float.POSITIVE_INFINITY;
+  private final Lucene90BoundsChecker bound;
   final Lucene90OnHeapHnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
@@ -90,6 +90,7 @@ public final class Lucene90HnswGraphBuilder {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     this.hnsw = new Lucene90OnHeapHnswGraph(maxConn);
+    bound = Lucene90BoundsChecker.create(false);
     random = new SplittableRandom(seed);
     scratch = new Lucene90NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
@@ -230,11 +231,11 @@ public final class Lucene90HnswGraphBuilder {
       Lucene90NeighborArray neighbors,
       RandomAccessVectorValues vectorValues)
       throws IOException {
-    minAcceptedSimilarity = score;
+    bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
           similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node()[i]));
-      if (neighborSimilarity >= score) {
+      if (bound.check(neighborSimilarity) == false) {
         return false;
       }
     }
@@ -246,8 +247,8 @@ public final class Lucene90HnswGraphBuilder {
     int replacePoint = findNonDiverse(neighbors);
     if (replacePoint == -1) {
       // none found; check score against worst existing neighbor
-      minAcceptedSimilarity = neighbors.score()[0];
-      if (neighbors.score()[maxConn] < minAcceptedSimilarity) {
+      bound.set(neighbors.score()[0]);
+      if (bound.check(neighbors.score()[maxConn])) {
         // drop the new neighbor; it is not competitive and there were no diversity failures
         neighbors.removeLast();
         return;
@@ -266,13 +267,12 @@ public final class Lucene90HnswGraphBuilder {
       // check each neighbor against its better-scoring neighbors. If it fails diversity check with
       // them, drop it
       int neighborId = neighbors.node()[i];
-      minAcceptedSimilarity = neighbors.score()[i];
+      bound.set(neighbors.score()[i]);
       float[] neighborVector = vectorValues.vectorValue(neighborId);
       for (int j = maxConn; j > i; j--) {
         float neighborSimilarity =
-            similarityFunction.compare(
-                neighborVector, buildVectors.vectorValue(neighbors.node()[j]));
-        if (neighborSimilarity >= minAcceptedSimilarity) {
+            similarityFunction.compare(neighborVector, buildVectors.vectorValue(neighbors.node()[j]));
+        if (bound.check(neighborSimilarity) == false) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]
           return i;

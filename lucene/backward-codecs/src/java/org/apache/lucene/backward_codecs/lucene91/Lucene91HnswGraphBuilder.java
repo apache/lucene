@@ -54,7 +54,7 @@ public final class Lucene91HnswGraphBuilder {
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
-  private float minAcceptedSimilarity = Float.POSITIVE_INFINITY;
+  private final Lucene91BoundsChecker bound;
   private final HnswGraphSearcher graphSearcher;
 
   final Lucene91OnHeapHnswGraph hnsw;
@@ -105,6 +105,7 @@ public final class Lucene91HnswGraphBuilder {
             similarityFunction,
             new NeighborQueue(beamWidth, true),
             new FixedBitSet(vectorValues.size()));
+    bound = Lucene91BoundsChecker.create(false);
     scratch = new Lucene91NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
 
@@ -249,11 +250,11 @@ public final class Lucene91HnswGraphBuilder {
       Lucene91NeighborArray neighbors,
       RandomAccessVectorValues vectorValues)
       throws IOException {
-    minAcceptedSimilarity = score;
+    bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
           similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
-      if (neighborSimilarity >= minAcceptedSimilarity) {
+      if (bound.check(neighborSimilarity) == false) {
         return false;
       }
     }
@@ -265,8 +266,8 @@ public final class Lucene91HnswGraphBuilder {
     int replacePoint = findNonDiverse(neighbors);
     if (replacePoint == -1) {
       // none found; check score against worst existing neighbor
-      minAcceptedSimilarity = neighbors.score[0];
-      if (neighbors.score[maxConn] < minAcceptedSimilarity) {
+      bound.set(neighbors.score[0]);
+      if (bound.check(neighbors.score[maxConn])) {
         // drop the new neighbor; it is not competitive and there were no diversity failures
         neighbors.removeLast();
         return;
@@ -285,12 +286,12 @@ public final class Lucene91HnswGraphBuilder {
       // check each neighbor against its better-scoring neighbors. If it fails diversity check with
       // them, drop it
       int neighborId = neighbors.node[i];
-      minAcceptedSimilarity = neighbors.score[i];
+      bound.set(neighbors.score[i]);
       float[] neighborVector = vectorValues.vectorValue(neighborId);
       for (int j = maxConn; j > i; j--) {
-        float buildVectorSimilarity =
+        float neighborSimilarity =
             similarityFunction.compare(neighborVector, buildVectors.vectorValue(neighbors.node[j]));
-        if (buildVectorSimilarity >= minAcceptedSimilarity) {
+        if (bound.check(neighborSimilarity) == false) {
           // node j is too similar to node i given its score relative to the base node
           // replace it with the new node, which is at [maxConn]
           return i;
