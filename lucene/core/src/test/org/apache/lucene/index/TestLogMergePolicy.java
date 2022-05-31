@@ -98,7 +98,7 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
     // 1 segment on a lower tier
     segmentInfos.add(
         makeSegmentCommitInfo(
-            "_" + segNameGenerator.getAndIncrement(), 1_000, 0, 0, IndexWriter.SOURCE_MERGE));
+            "_" + segNameGenerator.getAndIncrement(), 100, 0, 0, IndexWriter.SOURCE_MERGE));
     // 5 big segments again
     for (int i = 0; i < 5; ++i) {
       segmentInfos.add(
@@ -114,7 +114,7 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
           applyMerge(segmentInfos, oneMerge, "_" + segNameGenerator.getAndIncrement(), stats);
     }
     assertEquals(2, segmentInfos.size());
-    assertEquals(91_000, segmentInfos.info(0).info.maxDoc());
+    assertEquals(90_100, segmentInfos.info(0).info.maxDoc());
     assertEquals(10_000, segmentInfos.info(1).info.maxDoc());
   }
 
@@ -128,11 +128,11 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
     segmentInfos.add(
         makeSegmentCommitInfo(
             "_" + segNameGenerator.getAndIncrement(), 10_000, 0, 0, IndexWriter.SOURCE_MERGE));
-    // 8 segment on a lower tier
-    for (int i = 0; i < 8; ++i) {
+    // 9 segment on a lower tier
+    for (int i = 0; i < 9; ++i) {
       segmentInfos.add(
           makeSegmentCommitInfo(
-              "_" + segNameGenerator.getAndIncrement(), 1_000, 0, 0, IndexWriter.SOURCE_MERGE));
+              "_" + segNameGenerator.getAndIncrement(), 100, 0, 0, IndexWriter.SOURCE_MERGE));
     }
     // 1 big segment again
     segmentInfos.add(
@@ -147,7 +147,7 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
           applyMerge(segmentInfos, oneMerge, "_" + segNameGenerator.getAndIncrement(), stats);
     }
     assertEquals(2, segmentInfos.size());
-    assertEquals(91_000, segmentInfos.info(0).info.maxDoc());
+    assertEquals(10_900, segmentInfos.info(0).info.maxDoc());
     assertEquals(10_000, segmentInfos.info(1).info.maxDoc());
   }
 
