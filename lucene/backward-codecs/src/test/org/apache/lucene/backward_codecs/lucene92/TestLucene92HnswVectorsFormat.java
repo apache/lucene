@@ -31,10 +31,11 @@ public class TestLucene92HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         new Lucene92RWCodec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene92RWHnswVectorsFormat();
+            return new Lucene92RWHnswVectorsFormat(10, 20);
           }
         };
-    String expectedString = "lucene92RWHnswVectorsFormat";
+    String expectedString =
+        "Lucene92RWHnswVectorsFormat(name = Lucene92RWHnswVectorsFormat, maxConn = 10, beamWidth=20)";
     assertEquals(
         expectedString,
         ((Lucene92Codec) customCodec).getKnnVectorsFormatForField("bogus_field").toString());

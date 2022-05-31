@@ -33,7 +33,10 @@ public class Lucene92RWCodec extends Lucene92Codec {
 
   /** Instantiates a new codec. */
   public Lucene92RWCodec() {
-    defaultKnnVectorsFormat = new Lucene92RWHnswVectorsFormat();
+    defaultKnnVectorsFormat =
+        new Lucene92RWHnswVectorsFormat(
+            Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN,
+            Lucene92HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
   }
 
   @Override

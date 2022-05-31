@@ -27,6 +27,10 @@ public final class Lucene92RWHnswVectorsFormat extends Lucene92HnswVectorsFormat
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
+  public Lucene92RWHnswVectorsFormat(int maxConn, int beamWidth) {
+    super(maxConn, beamWidth);
+  }
+
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene92HnswVectorsWriter(state, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
@@ -39,6 +43,10 @@ public final class Lucene92RWHnswVectorsFormat extends Lucene92HnswVectorsFormat
 
   @Override
   public String toString() {
-    return "lucene92RWHnswVectorsFormat";
+    return "Lucene92RWHnswVectorsFormat(name = Lucene92RWHnswVectorsFormat, maxConn = "
+        + maxConn
+        + ", beamWidth="
+        + beamWidth
+        + ")";
   }
 }

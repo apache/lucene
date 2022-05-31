@@ -26,6 +26,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Lucene 9.2 vector format, which encodes numeric vector values and an optional associated graph
@@ -114,9 +115,28 @@ public class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
-  /** Constructs a format for reading old indexes */
+  /**
+   * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
+   * {@link #maxConn}. See {@link HnswGraph} for more details.
+   */
+  final int maxConn;
+
+  /**
+   * The number of candidate neighbors to track while searching the graph for each newly inserted
+   * node. Defaults to to {@link #DEFAULT_BEAM_WIDTH}. See {@link HnswGraph} for details.
+   */
+  final int beamWidth;
+
+  /** A constructor for vectors format with default parameters */
   public Lucene92HnswVectorsFormat() {
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
+  }
+
+  /** Constructs a format for reading old indexes */
+  public Lucene92HnswVectorsFormat(int maxConn, int beamWidth) {
     super("lucene92HnswVectorsFormat");
+    this.maxConn = maxConn;
+    this.beamWidth = beamWidth;
   }
 
   @Override
@@ -131,6 +151,10 @@ public class Lucene92HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "lucene92HnswVectorsFormat";
+    return "Lucene92HnswVectorsFormat(name = Lucene92HnswVectorsFormat, maxConn = "
+        + maxConn
+        + ", beamWidth="
+        + beamWidth
+        + ")";
   }
 }
