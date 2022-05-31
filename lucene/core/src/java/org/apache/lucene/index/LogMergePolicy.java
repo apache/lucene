@@ -570,7 +570,7 @@ public abstract class LogMergePolicy extends MergePolicy {
           final SegmentCommitInfo info = segLevel.info;
           anyTooLarge |=
               (size(info, mergeContext) >= maxMergeSize
-              || sizeDocs(info, mergeContext) >= maxMergeDocs);
+                  || sizeDocs(info, mergeContext) >= maxMergeDocs);
           if (mergingSegments.contains(info)) {
             anyMerging = true;
             break;
@@ -596,7 +596,7 @@ public abstract class LogMergePolicy extends MergePolicy {
                     + start
                     + " end="
                     + end,
-                    mergeContext);
+                mergeContext);
           }
           spec.add(new OneMerge(mergeInfos));
         } else if (verbose(mergeContext)) {
@@ -606,7 +606,7 @@ public abstract class LogMergePolicy extends MergePolicy {
                   + " to "
                   + end
                   + ": contains segment over maxMergeSize or maxMergeDocs; skipping",
-                  mergeContext);
+              mergeContext);
         }
 
         start = end;
