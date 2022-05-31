@@ -39,9 +39,9 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene92.Lucene92Codec;
-import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsReader;
+import org.apache.lucene.codecs.lucene93.Lucene93Codec;
+import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene93.Lucene92HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
@@ -580,10 +580,10 @@ public class KnnGraphTester {
   private int createIndex(Path docsPath, Path indexPath) throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
     iwc.setCodec(
-        new Lucene92Codec() {
+        new Lucene93Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene92HnswVectorsFormat(maxConn, beamWidth);
+            return new Lucene93HnswVectorsFormat(maxConn, beamWidth);
           }
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);

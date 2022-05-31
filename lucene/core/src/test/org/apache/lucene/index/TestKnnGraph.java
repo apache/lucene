@@ -30,9 +30,9 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene92.Lucene92Codec;
-import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsReader;
+import org.apache.lucene.codecs.lucene93.Lucene93Codec;
+import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene93.Lucene92HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -65,7 +65,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int M = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
+  private static int M = Lucene93HnswVectorsFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
   private VectorSimilarityFunction similarityFunction;
@@ -78,10 +78,10 @@ public class TestKnnGraph extends LuceneTestCase {
     }
 
     codec =
-        new Lucene92Codec() {
+        new Lucene93Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene92HnswVectorsFormat(M, Lucene92HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            return new Lucene93HnswVectorsFormat(M, Lucene93HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
           }
         };
 
@@ -91,7 +91,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   @After
   public void cleanup() {
-    M = Lucene92HnswVectorsFormat.DEFAULT_MAX_CONN;
+    M = Lucene93HnswVectorsFormat.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */

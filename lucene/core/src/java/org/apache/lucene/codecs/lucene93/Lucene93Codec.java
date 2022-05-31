@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene92;
+package org.apache.lucene.codecs.lucene93;
 
 import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
@@ -49,10 +49,10 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *
- * @see org.apache.lucene.codecs.lucene92 package documentation for file format details.
+ * @see org.apache.lucene.codecs.lucene93 package documentation for file format details.
  * @lucene.experimental
  */
-public class Lucene92Codec extends Codec {
+public class Lucene93Codec extends Codec {
 
   /** Configuration option for the codec. */
   public enum Mode {
@@ -80,7 +80,7 @@ public class Lucene92Codec extends Codec {
       new PerFieldPostingsFormat() {
         @Override
         public PostingsFormat getPostingsFormatForField(String field) {
-          return Lucene92Codec.this.getPostingsFormatForField(field);
+          return Lucene93Codec.this.getPostingsFormatForField(field);
         }
       };
 
@@ -89,7 +89,7 @@ public class Lucene92Codec extends Codec {
       new PerFieldDocValuesFormat() {
         @Override
         public DocValuesFormat getDocValuesFormatForField(String field) {
-          return Lucene92Codec.this.getDocValuesFormatForField(field);
+          return Lucene93Codec.this.getDocValuesFormatForField(field);
         }
       };
 
@@ -98,14 +98,14 @@ public class Lucene92Codec extends Codec {
       new PerFieldKnnVectorsFormat() {
         @Override
         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-          return Lucene92Codec.this.getKnnVectorsFormatForField(field);
+          return Lucene93Codec.this.getKnnVectorsFormatForField(field);
         }
       };
 
   private final StoredFieldsFormat storedFieldsFormat;
 
   /** Instantiates a new codec. */
-  public Lucene92Codec() {
+  public Lucene93Codec() {
     this(Mode.BEST_SPEED);
   }
 
@@ -114,13 +114,13 @@ public class Lucene92Codec extends Codec {
    *
    * @param mode stored fields compression mode to use for newly flushed/merged segments.
    */
-  public Lucene92Codec(Mode mode) {
+  public Lucene93Codec(Mode mode) {
     super("Lucene92");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene90PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
-    this.defaultKnnVectorsFormat = new Lucene92HnswVectorsFormat();
+    this.defaultKnnVectorsFormat = new Lucene93HnswVectorsFormat();
   }
 
   @Override

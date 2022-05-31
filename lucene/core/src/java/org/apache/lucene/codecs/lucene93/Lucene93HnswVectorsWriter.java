@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene92;
+package org.apache.lucene.codecs.lucene93;
 
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -43,7 +43,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Stack;
 
-import static org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
@@ -51,7 +51,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
  *
  * @lucene.experimental
  */
-public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
+public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
@@ -61,7 +61,7 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
   private final int beamWidth;
   private boolean finished;
 
-  Lucene92HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth) throws IOException {
+  Lucene93HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth) throws IOException {
     this.M = M;
     this.beamWidth = beamWidth;
 
@@ -70,19 +70,19 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
 
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene92HnswVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene93HnswVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene92HnswVectorsFormat.VECTOR_DATA_EXTENSION);
+            Lucene93HnswVectorsFormat.VECTOR_DATA_EXTENSION);
 
     String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene92HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
+            Lucene93HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
 
     boolean success = false;
     try {
@@ -92,20 +92,20 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene92HnswVectorsFormat.META_CODEC_NAME,
-          Lucene92HnswVectorsFormat.VERSION_CURRENT,
+          Lucene93HnswVectorsFormat.META_CODEC_NAME,
+          Lucene93HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene92HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene92HnswVectorsFormat.VERSION_CURRENT,
+          Lucene93HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene93HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
-          Lucene92HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene92HnswVectorsFormat.VERSION_CURRENT,
+          Lucene93HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+          Lucene93HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       maxDoc = state.segmentInfo.maxDoc();

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene92;
+package org.apache.lucene.codecs.lucene93;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
