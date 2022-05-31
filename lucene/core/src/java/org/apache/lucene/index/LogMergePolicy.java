@@ -42,7 +42,7 @@ public abstract class LogMergePolicy extends MergePolicy {
    * Defines the allowed range of log(size) for each level. A level is computed by taking the max
    * segment log size, minus LEVEL_LOG_SPAN, and finding all segments falling within that range.
    */
-  public static final float LEVEL_LOG_SPAN = 0.75f;
+  public static final double LEVEL_LOG_SPAN = 0.75;
 
   /** Default merge factor, which is how many segments are merged at a time */
   public static final int DEFAULT_MERGE_FACTOR = 10;
@@ -520,7 +520,6 @@ public abstract class LogMergePolicy extends MergePolicy {
     final int numMergeableSegments = levels.size();
 
     int start = 0;
-    main:
     while (start < numMergeableSegments) {
 
       // Find max level of all segments not already
@@ -539,13 +538,13 @@ public abstract class LogMergePolicy extends MergePolicy {
       if (maxLevel >= levelFloor) {
         // With a merge factor of 10, this means that the biggest segment and the smallest segment
         // that take part of a merge have a size difference of at most 5.6x.
-        levelBottom = maxLevel - LEVEL_LOG_SPAN;
+        levelBottom = (float) (maxLevel - LEVEL_LOG_SPAN);
       } else {
         // For segments below the floor size, we allow more unbalanced merges, but still somewhat
         // balanced to avoid running into O(n^2) merging.
         // With a merge factor of 10, this means that the biggest segment and the smallest segment
         // that take part of a merge have a size difference of at most 31.6x.
-        levelBottom = maxLevel - 2 * LEVEL_LOG_SPAN;
+        levelBottom = (float) (maxLevel - 2 * LEVEL_LOG_SPAN);
       }
 
       int upto = numMergeableSegments - 1;
@@ -564,32 +563,23 @@ public abstract class LogMergePolicy extends MergePolicy {
       // Finally, record all merges that are viable at this level:
       int end = start + mergeFactor;
       while (end <= 1 + upto) {
+        boolean anyTooLarge = false;
         boolean anyMerging = false;
         for (int i = start; i < end; i++) {
           final SegmentInfoAndLevel segLevel = levels.get(i);
           final SegmentCommitInfo info = segLevel.info;
-          if (sizeBytes(info, mergeContext) >= maxMergeSize
-              || sizeDocs(info, mergeContext) >= maxMergeDocs) {
-            if (verbose(mergeContext)) {
-              message(
-                  "    "
-                      + start
-                      + " to "
-                      + end
-                      + ": contains segment over maxMergeSize or maxMergeDocs; skipping",
-                  mergeContext);
-            }
-            start = i + 1;
-            continue main;
-          }
+          anyTooLarge |=
+              (size(info, mergeContext) >= maxMergeSize
+              || sizeDocs(info, mergeContext) >= maxMergeDocs);
           if (mergingSegments.contains(info)) {
             anyMerging = true;
+            break;
           }
         }
 
         if (anyMerging) {
           // skip
-        } else {
+        } else if (!anyTooLarge) {
           if (spec == null) {
             spec = new MergeSpecification();
           }
@@ -606,9 +596,17 @@ public abstract class LogMergePolicy extends MergePolicy {
                     + start
                     + " end="
                     + end,
-                mergeContext);
+                    mergeContext);
           }
           spec.add(new OneMerge(mergeInfos));
+        } else if (verbose(mergeContext)) {
+          message(
+              "    "
+                  + start
+                  + " to "
+                  + end
+                  + ": contains segment over maxMergeSize or maxMergeDocs; skipping",
+                  mergeContext);
         }
 
         start = end;
