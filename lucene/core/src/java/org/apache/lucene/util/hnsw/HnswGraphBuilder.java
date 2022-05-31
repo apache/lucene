@@ -265,10 +265,10 @@ public final class HnswGraphBuilder {
       minAcceptedSimilarity = neighbors.score[i];
       // check the candidate against its better-scoring neighbors
       for (int j = i - 1; j >= 0; j--) {
-        float buildVectorSimilarity =
+        float neighborSimilarity =
             similarityFunction.compare(cVector, buildVectors.vectorValue(neighbors.node[j]));
         // node i is too similar to node j given its score relative to the base node
-        if (buildVectorSimilarity >= minAcceptedSimilarity) {
+        if (neighborSimilarity >= minAcceptedSimilarity) {
           return i;
         }
       }
