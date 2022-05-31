@@ -18,6 +18,7 @@ package org.apache.lucene.geo;
 
 import static org.apache.lucene.tests.geo.GeoTestUtil.nextBoxNotCrossingDateline;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 
 import java.text.ParseException;
 import java.util.List;
@@ -837,6 +838,19 @@ public class TestTessellator extends LuceneTestCase {
     }
   }
 
+  public void testComplexPolygon50_WithMonitor() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertThat("Only one polygon", polygons.length, equalTo(1));
+    Polygon polygon = polygons[0];
+    TestCountingMonitor monitor = new TestCountingMonitor();
+    Tessellator.tessellate(polygon, true, monitor);
+    assertThat("Expected many monitor calls", monitor.count, greaterThan(400));
+    assertThat("Expected specific number of splits", monitor.splitsStarted, equalTo(3));
+    assertThat(
+        "Expected splits to start and end", monitor.splitsStarted, equalTo(monitor.splitsEnded));
+  }
+
   public void testComplexPolygon51() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10563-2.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
@@ -875,6 +889,28 @@ public class TestTessellator extends LuceneTestCase {
         "Expected specific error depending on checkSelfIntersections=" + checkSelfIntersections,
         error,
         ex.getMessage());
+  }
+
+  private static class TestCountingMonitor implements Tessellator.Monitor {
+    private int count = 0;
+    private int splitsStarted = 0;
+    private int splitsEnded = 0;
+
+    @Override
+    public void currentState(
+        String status, List<Point> points, List<Tessellator.Triangle> tessellation) {
+      count++;
+    }
+
+    @Override
+    public void startSplit(String status, List<Point> leftPolygon, List<Point> rightPolygon) {
+      splitsStarted++;
+    }
+
+    @Override
+    public void endSplit(String status) {
+      splitsEnded++;
+    }
   }
 
   private void checkPolygon(String wkt) throws Exception {
