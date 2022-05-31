@@ -35,6 +35,12 @@ public abstract class Lucene91BoundsChecker {
   /** @return whether the sample exceeds (is worse than) the bound */
   public abstract boolean check(float sample);
 
+  /**
+   * Create a min or max bound checker
+   *
+   * @param reversed true for the min and false for the max
+   * @return the bound checker
+   */
   public static Lucene91BoundsChecker create(boolean reversed) {
     if (reversed) {
       return new Min();
