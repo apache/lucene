@@ -224,7 +224,7 @@ public final class HnswGraphBuilder {
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float maxSimilarity = candidates.topNodeScore();
+      float maxSimilarity = candidates.topScore();
       scratch.add(candidates.pop(), maxSimilarity);
     }
   }

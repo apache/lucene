@@ -113,10 +113,10 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
     // Set the bound to the worst current result and below reject any newly-generated candidates
     // failing
     // to exceed this bound
-    float minAcceptedSimilarity = results.topNodeScore();
+    float minAcceptedSimilarity = results.topScore();
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
-      float topCandidateSimilarity = candidates.topNodeScore();
+      float topCandidateSimilarity = candidates.topScore();
       if (results.size() >= topK) {
         if (topCandidateSimilarity < minAcceptedSimilarity) {
           break;
@@ -141,7 +141,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             results.insertWithOverflow(friendOrd, friendSimilarity);
-            minAcceptedSimilarity = results.topNodeScore();
+            minAcceptedSimilarity = results.topScore();
           }
         }
         numVisited++;

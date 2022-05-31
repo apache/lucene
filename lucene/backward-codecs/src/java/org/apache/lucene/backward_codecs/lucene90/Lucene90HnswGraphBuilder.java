@@ -210,7 +210,7 @@ public final class Lucene90HnswGraphBuilder {
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float score = candidates.topNodeScore();
+      float score = candidates.topScore();
       scratch.add(candidates.pop(), score);
     }
   }

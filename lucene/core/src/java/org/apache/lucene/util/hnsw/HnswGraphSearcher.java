@@ -157,11 +157,11 @@ public final class HnswGraphSearcher {
     // have to be considered.
     float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
     if (results.size() >= topK) {
-      minAcceptedSimilarity = results.topNodeScore();
+      minAcceptedSimilarity = results.topScore();
     }
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
-      float topCandidateSimilarity = candidates.topNodeScore();
+      float topCandidateSimilarity = candidates.topScore();
       if (topCandidateSimilarity < minAcceptedSimilarity) {
         break;
       }
@@ -185,7 +185,7 @@ public final class HnswGraphSearcher {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.size() >= topK) {
-              minAcceptedSimilarity = results.topNodeScore();
+              minAcceptedSimilarity = results.topScore();
             }
           }
         }

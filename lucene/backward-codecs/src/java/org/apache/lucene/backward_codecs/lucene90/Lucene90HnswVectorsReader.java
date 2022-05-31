@@ -266,7 +266,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
       int node = results.topNode();
-      float minSimilarity = results.topNodeScore();
+      float minSimilarity = results.topScore();
       results.pop();
       scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc[node], minSimilarity);
     }
