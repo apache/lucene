@@ -51,7 +51,6 @@ public final class HnswGraphBuilder {
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
-  private float minAcceptedSimilarity = Float.POSITIVE_INFINITY;
   private final HnswGraphSearcher graphSearcher;
 
   final OnHeapHnswGraph hnsw;
@@ -244,11 +243,10 @@ public final class HnswGraphBuilder {
       NeighborArray neighbors,
       RandomAccessVectorValues vectorValues)
       throws IOException {
-    minAcceptedSimilarity = score;
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
           similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
-      if (neighborSimilarity >= minAcceptedSimilarity) {
+      if (neighborSimilarity >= score) {
         return false;
       }
     }
@@ -260,6 +258,7 @@ public final class HnswGraphBuilder {
    * neighbours
    */
   private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
+    float minAcceptedSimilarity; 
     for (int i = neighbors.size() - 1; i > 0; i--) {
       int cNode = neighbors.node[i];
       float[] cVector = vectorValues.vectorValue(cNode);
