@@ -22,70 +22,69 @@ package org.apache.lucene.backward_codecs.lucene91;
  */
 public abstract class Lucene91BoundsChecker {
 
-    float bound;
+  float bound;
 
-    /** Update the bound if sample is better */
-    public abstract void update(float sample);
+  /** Update the bound if sample is better */
+  public abstract void update(float sample);
 
-    /** Update the bound unconditionally */
-    public void set(float sample) {
+  /** Update the bound unconditionally */
+  public void set(float sample) {
+    bound = sample;
+  }
+
+  /** @return whether the sample exceeds (is worse than) the bound */
+  public abstract boolean check(float sample);
+
+  public static Lucene91BoundsChecker create(boolean reversed) {
+    if (reversed) {
+      return new Min();
+    } else {
+      return new Max();
+    }
+  }
+
+  /**
+   * A helper class for an hnsw graph that serves as a comparator of the currently set maximum value
+   * with a new value.
+   */
+  public static class Max extends Lucene91BoundsChecker {
+    Max() {
+      bound = Float.NEGATIVE_INFINITY;
+    }
+
+    @Override
+    public void update(float sample) {
+      if (sample > bound) {
         bound = sample;
+      }
     }
 
-    /** @return whether the sample exceeds (is worse than) the bound */
-    public abstract boolean check(float sample);
+    @Override
+    public boolean check(float sample) {
+      return sample < bound;
+    }
+  }
 
-    public static Lucene91BoundsChecker create(boolean reversed) {
-        if (reversed) {
-            return new Min();
-        } else {
-            return new Max();
-        }
+  /**
+   * A helper class for an hnsw graph that serves as a comparator of the currently set minimum value
+   * with a new value.
+   */
+  public static class Min extends Lucene91BoundsChecker {
+
+    Min() {
+      bound = Float.POSITIVE_INFINITY;
     }
 
-    /**
-     * A helper class for an hnsw graph that serves as a comparator of the currently set maximum value
-     * with a new value.
-     */
-    public static class Max extends Lucene91BoundsChecker {
-        Max() {
-            bound = Float.NEGATIVE_INFINITY;
-        }
-
-        @Override
-        public void update(float sample) {
-            if (sample > bound) {
-                bound = sample;
-            }
-        }
-
-        @Override
-        public boolean check(float sample) {
-            return sample < bound;
-        }
+    @Override
+    public void update(float sample) {
+      if (sample < bound) {
+        bound = sample;
+      }
     }
 
-    /**
-     * A helper class for an hnsw graph that serves as a comparator of the currently set minimum value
-     * with a new value.
-     */
-    public static class Min extends Lucene91BoundsChecker {
-
-        Min() {
-            bound = Float.POSITIVE_INFINITY;
-        }
-
-        @Override
-        public void update(float sample) {
-            if (sample < bound) {
-                bound = sample;
-            }
-        }
-
-        @Override
-        public boolean check(float sample) {
-            return sample > bound;
-        }
+    @Override
+    public boolean check(float sample) {
+      return sample > bound;
     }
+  }
 }
-

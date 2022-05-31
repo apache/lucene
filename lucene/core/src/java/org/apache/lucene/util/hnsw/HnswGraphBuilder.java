@@ -258,7 +258,7 @@ public final class HnswGraphBuilder {
    * neighbours
    */
   private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
-    float minAcceptedSimilarity; 
+    float minAcceptedSimilarity;
     for (int i = neighbors.size() - 1; i > 0; i--) {
       int cNode = neighbors.node[i];
       float[] cVector = vectorValues.vectorValue(cNode);
