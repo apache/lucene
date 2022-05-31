@@ -21,7 +21,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
-import org.apache.lucene.index.IndexOptions;
 
 /**
  * Add an instance of this to your {@link Document} for every facet label.
@@ -31,8 +30,10 @@ import org.apache.lucene.index.IndexOptions;
  */
 public class FacetField extends Field {
 
-  /** Field type used for storing facet values. Actual field type used for indexing is determined in
-   * {@link FacetsConfig#build(TaxonomyWriter, Document)} */
+  /**
+   * Field type used for storing facet values. Actual field type used for indexing is determined in
+   * {@link FacetsConfig#build(TaxonomyWriter, Document)}
+   */
   public static final FieldType TYPE = new FieldType();
 
   /** Dimension for this field. */
