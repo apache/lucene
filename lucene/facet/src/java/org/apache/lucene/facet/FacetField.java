@@ -33,11 +33,6 @@ public class FacetField extends Field {
   /** Field type used for storing facet values: docs, freqs, and positions. */
   public static final FieldType TYPE = new FieldType();
 
-  static {
-    TYPE.setIndexOptions(IndexOptions.DOCS);
-    TYPE.freeze();
-  }
-
   /** Dimension for this field. */
   public final String dim;
 
