@@ -29,7 +29,13 @@ public abstract class FacetSetMatcher {
   /** The number of dimensions that are matched by this matcher. */
   public final int dims;
 
-  public FacetSetMatcher(String label, int dims) {
+  /**
+   * Constructs a new matcher.
+   *
+   * @param label the label to associate to this matcher's aggregated value
+   * @param dims the number of dimensions that are matched by this matcher
+   */
+  protected FacetSetMatcher(String label, int dims) {
     this.label = label;
     this.dims = dims;
   }
