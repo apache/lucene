@@ -601,9 +601,9 @@ public abstract class MergePolicy {
       SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException;
 
   /**
-   * Identifies merges that we want to execute (synchronously) on commit. By default, this will do
-   * no merging on commit. If you implement this method in your {@code MergePolicy} you must also
-   * set a non-zero timeout using {@link IndexWriterConfig#setMaxFullFlushMergeWaitMillis}.
+   * Identifies merges that we want to execute (synchronously) on commit. By default, this will
+   * return {@link #findMerges natural merges} whose segments are all less than the {@link
+   * #maxFullFlushMergeSize() max segment size for full flushes}.
    *
    * <p>Any merges returned here will make {@link IndexWriter#commit()}, {@link
    * IndexWriter#prepareCommit()} or {@link IndexWriter#getReader(boolean, boolean)} block until the
@@ -628,7 +628,28 @@ public abstract class MergePolicy {
   public MergeSpecification findFullFlushMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {
-    return null;
+    // This returns natural merges that contain segments below the minimum size
+    MergeSpecification mergeSpec = findMerges(mergeTrigger, segmentInfos, mergeContext);
+    if (mergeSpec == null) {
+      return null;
+    }
+    MergeSpecification newMergeSpec = null;
+    for (OneMerge oneMerge : mergeSpec.merges) {
+      boolean belowMaxFullFlushSize = true;
+      for (SegmentCommitInfo sci : oneMerge.segments) {
+        if (size(sci, mergeContext) >= maxFullFlushMergeSize()) {
+          belowMaxFullFlushSize = false;
+          break;
+        }
+      }
+      if (belowMaxFullFlushSize) {
+        if (newMergeSpec == null) {
+          newMergeSpec = new MergeSpecification();
+        }
+        newMergeSpec.add(oneMerge);
+      }
+    }
+    return newMergeSpec;
   }
 
   /**
@@ -669,6 +690,14 @@ public abstract class MergePolicy {
         info.info.maxDoc() <= 0 ? 0d : (double) delCount / (double) info.info.maxDoc();
     assert delRatio <= 1.0;
     return (info.info.maxDoc() <= 0 ? byteSize : (long) (byteSize * (1.0 - delRatio)));
+  }
+
+  /**
+   * Return the maximum size of segments to be included in full-flush merges by the default
+   * implementation of {@link #findFullFlushMerges}.
+   */
+  protected long maxFullFlushMergeSize() {
+    return Long.MAX_VALUE;
   }
 
   /** Asserts that the delCount for this SegmentCommitInfo is valid */

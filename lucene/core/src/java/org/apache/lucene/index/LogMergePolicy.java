@@ -35,6 +35,9 @@ import java.util.Set;
  * specifies how a segment's size is determined. {@link LogDocMergePolicy} is one subclass that
  * measures size by document count in the segment. {@link LogByteSizeMergePolicy} is another
  * subclass that measures size as the total byte size of the file(s) for the segment.
+ *
+ * <p><b>NOTE</b>: This policy returns natural merges whose size is below the {@link #minMergeSize
+ * minimum merge size} for {@link #findFullFlushMerges full-flush merges}.
  */
 public abstract class LogMergePolicy extends MergePolicy {
 
@@ -632,35 +635,6 @@ public abstract class LogMergePolicy extends MergePolicy {
     }
 
     return spec;
-  }
-
-  @Override
-  public MergeSpecification findFullFlushMerges(
-      MergeTrigger mergeTrigger, SegmentInfos infos, MergeContext mergeContext) throws IOException {
-
-    // The logic consists of merging tail segments that come from a flush and are below the min
-    // segment size together. Since these segments are all below the min segment size, the merge is
-    // expected to be cheap anyway so we don't mind merging more than mergeFactor segments together.
-    // This might create unbalanced merges, though only considering flushed segments ensures that a
-    // segment can only be part of one unbalanced merge in its entire lifetime: the first merge
-    // after flushing.
-
-    int mergeSize = 0;
-    for (int i = infos.size() - 1; i >= 0; --i) {
-      final SegmentCommitInfo sci = infos.info(i);
-      if (size(sci, mergeContext) <= minMergeSize
-          && mergeContext.getMergingSegments().contains(sci) == false
-          && IndexWriter.SOURCE_FLUSH.equals(sci.info.getAttribute(IndexWriter.SOURCE))) {
-        mergeSize++;
-      }
-    }
-
-    MergeSpecification mergeSpec = null;
-    if (mergeSize >= mergeFactor) {
-      mergeSpec = new MergeSpecification();
-      mergeSpec.add(new OneMerge(infos.asList().subList(infos.size() - mergeSize, infos.size())));
-    }
-    return mergeSpec;
   }
 
   /**

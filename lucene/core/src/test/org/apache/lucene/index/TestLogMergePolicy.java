@@ -51,13 +51,16 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
   public void testFullFlushMerges() throws IOException {
     AtomicLong segNameGenerator = new AtomicLong();
+    IOStats stats = new IOStats();
     MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
     SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
 
     LogMergePolicy mp = mergePolicy();
 
-    for (int i = 0; i < mp.getMergeFactor(); ++i) {
-      assertNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
+    for (int i = 0; i < 2 * mp.getMergeFactor() + 3; ++i) {
+      if (i < mp.getMergeFactor()) {
+        assertNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
+      }
       segmentInfos.add(
           makeSegmentCommitInfo(
               "_" + segNameGenerator.getAndIncrement(),
@@ -66,6 +69,18 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
               Double.MIN_VALUE,
               IndexWriter.SOURCE_FLUSH));
     }
-    assertNotNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
+    MergeSpecification spec =
+        mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext);
+    assertNotNull(spec);
+    for (OneMerge merge : spec.merges) {
+      segmentInfos =
+          applyMerge(segmentInfos, merge, "_" + segNameGenerator.getAndIncrement(), stats);
+    }
+    assertEquals(5, segmentInfos.size());
+    assertEquals(mp.getMergeFactor(), segmentInfos.info(0).info.maxDoc());
+    assertEquals(mp.getMergeFactor(), segmentInfos.info(1).info.maxDoc());
+    assertEquals(1, segmentInfos.info(2).info.maxDoc());
+    assertEquals(1, segmentInfos.info(3).info.maxDoc());
+    assertEquals(1, segmentInfos.info(4).info.maxDoc());
   }
 }
