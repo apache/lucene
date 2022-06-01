@@ -67,6 +67,9 @@ final class MaxScoreCache {
 
   float getMaxScore(int upTo) throws IOException {
     final int level = getLevel(upTo);
+    if (level == -1) {
+      return globalMaxScore;
+    }
     return getMaxScoreForLevel(level);
   }
 
@@ -91,9 +94,7 @@ final class MaxScoreCache {
 
   /** Return the maximum score for the given {@code level}. */
   private float getMaxScoreForLevel(int level) throws IOException {
-    if (level == -1) {
-      return globalMaxScore;
-    }
+    assert level >= 0 : "level must not be a negative integer; got " + level;
     final Impacts impacts = impactsSource.getImpacts();
     ensureCacheSize(level + 1);
     final int levelUpTo = impacts.getDocIdUpTo(level);
