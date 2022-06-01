@@ -535,7 +535,7 @@ public abstract class LogMergePolicy extends MergePolicy {
       // Now search backwards for the rightmost segment that
       // falls into this level:
       float levelBottom;
-      if (maxLevel >= levelFloor) {
+      if (maxLevel > levelFloor) {
         // With a merge factor of 10, this means that the biggest segment and the smallest segment
         // that take part of a merge have a size difference of at most 5.6x.
         levelBottom = (float) (maxLevel - LEVEL_LOG_SPAN);
