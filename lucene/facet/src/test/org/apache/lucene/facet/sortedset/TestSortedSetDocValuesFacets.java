@@ -105,6 +105,12 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=b path=[] value=2 childCount=2\n  buzz (2)\n  baz (1)\n",
               facets.getTopChildren(10, "b").toString());
 
+          // test getAllChildren
+          // value for dim a should be -1 since it's multivalued but doesn't require dim counts:
+          assertEquals(
+              "dim=a path=[] value=-1 childCount=3\n  bar (1)\n  foo (2)\n  zoo (1)\n",
+              facets.getAllChildren("a").toString());
+
           // test getAllDims
           List<FacetResult> results = facets.getAllDims(10);
           assertEquals(2, results.size());
@@ -355,11 +361,17 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=a path=[] value=2 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
               facets.getTopChildren(10, "a").toString());
           assertEquals(
+              "dim=a path=[] value=2 childCount=3\n  bar (1)\n  foo (2)\n  zoo (1)\n",
+              facets.getAllChildren("a").toString());
+          assertEquals(
               "dim=b path=[] value=1 childCount=1\n  baz (1)\n",
               facets.getTopChildren(10, "b").toString());
           assertEquals(
               "dim=c path=[buzz] value=2 childCount=3\n  bif (2)\n  bee (1)\n  biz (1)\n",
               facets.getTopChildren(10, "c", "buzz").toString());
+          assertEquals(
+              "dim=c path=[buzz] value=2 childCount=3\n  bee (1)\n  bif (2)\n  biz (1)\n",
+              facets.getAllChildren("c", "buzz").toString());
           assertEquals(
               "dim=c path=[buzz, bif] value=2 childCount=1\n  baf (2)\n",
               facets.getTopChildren(10, "c", "buzz", "bif").toString());
@@ -371,7 +383,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           // ... but not on non-hierarchical dims:
           expectThrows(
               IllegalArgumentException.class, () -> facets.getSpecificValue("a", "foo", "bar)"));
-
+          assertEquals(
+              "dim=c path=[buzz, bif] value=2 childCount=1\n  baf (2)\n",
+              facets.getAllChildren("c", "buzz", "bif").toString());
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("a", "foo");
@@ -426,6 +440,10 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         assertEquals(
             "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
             facets.getTopChildren(10, "a").toString());
+
+        assertEquals(
+            "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
+            facets.getAllChildren("a").toString());
 
         // test topNChildren = 0
         Facets finalFacets = facets;
@@ -487,6 +505,18 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       doc.add(new SortedSetDocValuesFacetField("b", "buzz", "baz"));
       writer.addDocument(config.build(doc));
 
+      doc = new Document();
+      doc.add(new StringField("id", "2", Field.Store.NO));
+      doc.add(new SortedSetDocValuesFacetField("a", "buz"));
+      doc.add(new SortedSetDocValuesFacetField("b", "bar", "foo"));
+      writer.addDocument(config.build(doc));
+
+      doc = new Document();
+      doc.add(new StringField("id", "2", Field.Store.NO));
+      doc.add(new SortedSetDocValuesFacetField("a", "baz"));
+      doc.add(new SortedSetDocValuesFacetField("b", "bar"));
+      writer.addDocument(config.build(doc));
+
       writer.deleteDocuments(new Term("id", "0"));
 
       // NRT open
@@ -500,11 +530,18 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         Facets facets = new SortedSetDocValuesFacetCounts(state);
 
         assertEquals(
-            "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
+            "dim=a path=[] value=3 childCount=3\n  bar (1)\n  baz (1)\n  buz (1)\n",
             facets.getTopChildren(10, "a").toString());
         assertEquals(
             "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
             facets.getTopChildren(10, "b", "buzz").toString());
+        assertEquals(
+            "dim=a path=[] value=3 childCount=3\n  bar (1)\n  baz (1)\n  buz (1)\n",
+            facets.getAllChildren("a").toString());
+        assertEquals(
+            "dim=b path=[] value=3 childCount=2\n  bar (2)\n  buzz (1)\n",
+            facets.getAllChildren("b").toString());
+
         ExecutorService exec =
             new ThreadPoolExecutor(
                 1,
@@ -517,7 +554,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           facets = new ConcurrentSortedSetDocValuesFacetCounts(state, exec);
 
           assertEquals(
-              "dim=a path=[] value=1 childCount=1\n  bar (1)\n",
+              "dim=a path=[] value=3 childCount=3\n  bar (1)\n  baz (1)\n  buz (1)\n",
               facets.getTopChildren(10, "a").toString());
           assertEquals(
               "dim=b path=[buzz] value=1 childCount=1\n  baz (1)\n",
@@ -577,6 +614,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=a path=[] value=3 childCount=2\n  foo (2)\n  baz (1)\n",
               facets.getTopChildren(10, "a").toString());
           assertEquals(
+              "dim=a path=[] value=3 childCount=2\n  baz (1)\n  foo (2)\n",
+              facets.getAllChildren("a").toString());
+          assertEquals(
               "dim=b path=[] value=1 childCount=1\n  bar (1)\n",
               facets.getTopChildren(10, "b").toString());
 
@@ -602,7 +642,10 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       doc.add(new SortedSetDocValuesFacetField("c", "buzz", "bar"));
       writer.addDocument(config.build(doc));
       doc = new Document();
-      doc.add(new SortedSetDocValuesFacetField("c", "buzz", "baz"));
+      doc.add(new SortedSetDocValuesFacetField("c", "buzz", "buz"));
+      writer.addDocument(config.build(doc));
+      doc = new Document();
+      doc.add(new SortedSetDocValuesFacetField("c", "buz", "baz"));
       writer.addDocument(config.build(doc));
       if (random().nextBoolean()) {
         writer.commit();
@@ -625,7 +668,10 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           Facets facets = getAllFacets(searcher, state, exec);
 
           assertEquals(
-              "dim=c path=[buzz] value=2 childCount=2\n  bar (1)\n  baz (1)\n",
+              "dim=c path=[buzz] value=2 childCount=2\n  bar (1)\n  buz (1)\n",
+              facets.getTopChildren(10, "c", "buzz").toString());
+          assertEquals(
+              "dim=c path=[buzz] value=2 childCount=2\n  bar (1)\n  buz (1)\n",
               facets.getTopChildren(10, "c", "buzz").toString());
 
           DrillDownQuery q = new DrillDownQuery(config);
@@ -999,6 +1045,20 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=d path=[] value=2 childCount=2\n  biz1 (1)\n  biz2 (1)\n",
               topDimsResults2.get(2).toString());
 
+          // test getAllChildren
+          assertEquals(
+              "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n  foo2 (1)\n  foo3 (1)\n",
+              facets.getAllChildren("a").toString());
+          assertEquals(
+              "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n  bar2 (1)\n",
+              facets.getAllChildren("b").toString());
+          assertEquals(
+              "dim=c path=[] value=1 childCount=1\n  baz1 (1)\n",
+              facets.getAllChildren("c").toString());
+          assertEquals(
+              "dim=d path=[] value=2 childCount=2\n  biz1 (1)\n  biz2 (1)\n",
+              facets.getAllChildren("d").toString());
+
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
           if (searcher.getIndexReader().leaves().size() > 1) {
@@ -1071,6 +1131,14 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(
               "dim=d path=[] value=2 childCount=1\n  foo (2)\n", results.get(0).toString());
 
+          // test getAllChildren
+          assertEquals(
+              "dim=d path=[foo] value=2 childCount=2\n  bar (1)\n  baz (1)\n",
+              facets.getAllChildren("d", "foo").toString());
+          assertEquals(
+              "dim=d path=[] value=2 childCount=1\n  foo (2)\n",
+              facets.getAllChildren("d").toString());
+
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
           if (searcher.getIndexReader().leaves().size() > 1) {
@@ -1124,6 +1192,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(
               "dim=a path=[] value=2 childCount=2\n  foo1 (1)\n  foo2 (1)\n",
               facets.getTopChildren(10, "a").toString());
+          assertEquals(
+              "dim=a path=[] value=2 childCount=2\n  foo1 (1)\n  foo2 (1)\n",
+              facets.getAllChildren("a").toString());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -1137,10 +1208,12 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
       FacetsConfig config = new FacetsConfig();
       config.setHierarchical("b", true);
+      config.setMultiValued("b", true);
 
       Document doc = new Document();
       doc.add(new SortedSetDocValuesFacetField("a", "foo1"));
       doc.add(new SortedSetDocValuesFacetField("b", "foo", "bar"));
+      doc.add(new SortedSetDocValuesFacetField("b", "boo", "buzzz"));
       writer.addDocument(config.build(doc));
       writer.commit();
 
@@ -1171,8 +1244,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               "dim=a path=[] value=2 childCount=2\n  foo1 (1)\n  foo2 (1)\n",
               facets.getTopChildren(10, "a").toString());
           assertEquals(
-              "dim=b path=[] value=2 childCount=1\n  foo (2)\n",
+              "dim=b path=[] value=2 childCount=2\n  foo (2)\n  boo (1)\n",
               facets.getTopChildren(10, "b").toString());
+          assertEquals(
+              "dim=b path=[] value=2 childCount=2\n  boo (1)\n  foo (2)\n",
+              facets.getAllChildren("b").toString());
           assertEquals(
               "dim=b path=[foo] value=2 childCount=2\n  bar (1)\n  buzz (1)\n",
               facets.getTopChildren(10, "b", "foo").toString());
@@ -1525,6 +1601,38 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                     FacetResult actualResult = facets.getTopChildren(10, dimResult.dim, currPath);
                     try {
                       assertEquals(expectedResult, actualResult);
+                      // test getAllChildren
+                      FacetResult allChildrenResult =
+                          facets.getAllChildren(dimResult.dim, currPath);
+                      if (expectedResult != null && allChildrenResult != null) {
+                        // sort actual allChildrenResult labels by value, count (since
+                        // we have no insight into the ordinals assigned to the values, we resort)
+                        Arrays.sort(
+                            allChildrenResult.labelValues,
+                            (a, b) -> {
+                              int cmp = a.label.compareTo(b.label); // low-to-high
+                              if (cmp == 0) {
+                                cmp =
+                                    Long.compare(
+                                        b.value.longValue(), a.value.longValue()); // low-to-high
+                              }
+                              return cmp;
+                            });
+                        // also sort expected labels by value to match the sorting behavior of
+                        // getAllChildren
+                        Arrays.sort(
+                            expectedResult.labelValues,
+                            (a, b) -> {
+                              int cmp = a.label.compareTo(b.label); // low-to-high
+                              if (cmp == 0) {
+                                cmp =
+                                    Long.compare(
+                                        b.value.longValue(), a.value.longValue()); // low-to-high
+                              }
+                              return cmp;
+                            });
+                        assertEquals(expectedResult, allChildrenResult);
+                      }
                     } catch (AssertionError e) {
                       System.out.println(iter);
                       System.out.println(config.getDimConfig(dimResult.dim).hierarchical);
@@ -1600,6 +1708,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           // make sure the result is null (and no exception was thrown)
           assertNull(result);
+          result = facets.getAllChildren("non-existent dimension");
+          assertNull(result);
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -1631,6 +1741,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           FacetResult result = facets.getTopChildren(5, "non-existent dimension");
 
           // make sure the result is null (and no exception was thrown)
+          assertNull(result);
+          result = facets.getAllChildren("non-existent dimension");
           assertNull(result);
 
           expectThrows(
@@ -1668,6 +1780,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           FacetResult result = facets.getTopChildren(5, "fizz", "fake", "path");
 
           // make sure the result is null (and no exception was thrown)
+          assertNull(result);
+          result = facets.getAllChildren("fizz", "fake", "path");
           assertNull(result);
         } finally {
           if (exec != null) exec.shutdownNow();

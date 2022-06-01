@@ -19,6 +19,7 @@ package org.apache.lucene.facet;
 import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -128,6 +129,41 @@ public class StringValueFacetCounts extends Facets {
 
       countAll();
     }
+  }
+
+  @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
+    }
+
+    int childCount = 0; // total number of labels with non-zero count
+    List<LabelAndValue> labelValues = new ArrayList<>();
+
+    if (sparseCounts != null) {
+      for (IntIntCursor cursor : sparseCounts) {
+        childCount++; // every count in sparseValues should be non-zero
+        int count = cursor.value;
+        final BytesRef term = docValues.lookupOrd(cursor.key);
+        labelValues.add(new LabelAndValue(term.utf8ToString(), count));
+      }
+    } else {
+      for (int i = 0; i < denseCounts.length; i++) {
+        int count = denseCounts[i];
+        if (count != 0) {
+          childCount++;
+          final BytesRef term = docValues.lookupOrd(i);
+          labelValues.add(new LabelAndValue(term.utf8ToString(), count));
+        }
+      }
+    }
+
+    return new FacetResult(
+        field, new String[0], totalDocCount, labelValues.toArray(new LabelAndValue[0]), childCount);
   }
 
   @Override

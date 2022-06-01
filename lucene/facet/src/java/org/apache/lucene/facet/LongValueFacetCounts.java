@@ -347,6 +347,43 @@ public class LongValueFacetCounts extends Facets {
   }
 
   @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
+    }
+
+    List<LabelAndValue> labelValues = new ArrayList<>();
+    boolean countsAdded = false;
+    if (hashCounts.size() != 0) {
+      for (LongIntCursor c : hashCounts) {
+        int count = c.value;
+        if (count != 0) {
+          if (countsAdded == false && c.key >= counts.length) {
+            countsAdded = true;
+            appendCounts(labelValues);
+          }
+          labelValues.add(new LabelAndValue(Long.toString(c.key), count));
+        }
+      }
+    }
+
+    if (countsAdded == false) {
+      appendCounts(labelValues);
+    }
+
+    return new FacetResult(
+        field,
+        new String[0],
+        totCount,
+        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.size());
+  }
+
+  @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) {
     validateTopN(topN);
     if (dim.equals(field) == false) {

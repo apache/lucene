@@ -81,6 +81,259 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
   int getCount(int ord) {
     return counts.get(ord);
   }
+    
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
+
+    if (dimConfig.hierarchical) {
+      int pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
+      if (pathOrd < 0) {
+        // path was never indexed
+        return null;
+      }
+      SortedSetDocValuesReaderState.DimTree dimTree = state.getDimTree(dim);
+      return getPathResult(dimConfig, dim, path, pathOrd, dimTree.iterator(pathOrd));
+    } else {
+      if (path.length > 0) {
+        throw new IllegalArgumentException(
+            "Field is not configured as hierarchical, path should be 0 length");
+      }
+      OrdRange ordRange = state.getOrdRange(dim);
+      if (ordRange == null) {
+        // means dimension was never indexed
+        return null;
+      }
+      int dimOrd = ordRange.start;
+      PrimitiveIterator.OfInt childIt = ordRange.iterator();
+      if (dimConfig.multiValued && dimConfig.requireDimCount) {
+        // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
+        // the dimension and we need to skip past it so the iterator is positioned on the first
+        // child:
+        childIt.next();
+      }
+      return getPathResult(dimConfig, dim, null, dimOrd, childIt);
+    }
+  }
+
+  @Override
+  public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
+    validateTopN(topN);
+    FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
+
+    if (dimConfig.hierarchical) {
+      int pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
+      if (pathOrd < 0) {
+        // path was never indexed
+        return null;
+      }
+      SortedSetDocValuesReaderState.DimTree dimTree = state.getDimTree(dim);
+      return getPathResult(dimConfig, dim, path, pathOrd, dimTree.iterator(pathOrd), topN);
+    } else {
+      if (path.length > 0) {
+        throw new IllegalArgumentException(
+            "Field is not configured as hierarchical, path should be 0 length");
+      }
+      OrdRange ordRange = state.getOrdRange(dim);
+      if (ordRange == null) {
+        // means dimension was never indexed
+        return null;
+      }
+      int dimOrd = ordRange.start;
+      PrimitiveIterator.OfInt childIt = ordRange.iterator();
+      if (dimConfig.multiValued && dimConfig.requireDimCount) {
+        // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
+        // the dimension and we need to skip past it so the iterator is positioned on the first
+        // child:
+        childIt.next();
+      }
+      return getPathResult(dimConfig, dim, null, dimOrd, childIt, topN);
+    }
+  }
+
+  /** Returns all path results for a dimension */
+  private FacetResult getPathResult(
+      FacetsConfig.DimConfig dimConfig,
+      String dim,
+      String[] path,
+      int pathOrd,
+      PrimitiveIterator.OfInt childOrds)
+      throws IOException {
+
+    int dimCount = 0;
+    int childCount = 0;
+
+    List<LabelAndValue> labelValues = new ArrayList<>();
+
+    while (childOrds.hasNext()) {
+      int ord = childOrds.next();
+      if (counts.get(ord) > 0) {
+        dimCount += counts.get(ord);
+        childCount++;
+        final BytesRef term = dv.lookupOrd(ord);
+        String[] parts = FacetsConfig.stringToPath(term.utf8ToString());
+        labelValues.add(new LabelAndValue(parts[parts.length - 1], counts.get(ord)));
+      }
+    }
+
+    if (dimConfig.hierarchical == true) {
+      return new FacetResult(
+          dim, path, counts.get(pathOrd), labelValues.toArray(new LabelAndValue[0]), childCount);
+    } else {
+      // see if dimCount is actually reliable or needs to be reset
+      if (dimConfig.multiValued) {
+        if (dimConfig.requireDimCount) {
+          dimCount = counts.get(pathOrd);
+        } else {
+          dimCount = -1; // dimCount is in accurate at this point, so set it to -1
+        }
+      }
+      return new FacetResult(
+          dim, emptyPath, dimCount, labelValues.toArray(new LabelAndValue[0]), childCount);
+    }
+  }
+
+  /**
+   * Overloaded method to allow getPathResult be called without passing in the dimToChildOrdsResult
+   * parameter
+   */
+  private FacetResult getPathResult(
+      FacetsConfig.DimConfig dimConfig,
+      String dim,
+      String[] path,
+      int pathOrd,
+      PrimitiveIterator.OfInt childOrds,
+      int topN)
+      throws IOException {
+    return getPathResult(dimConfig, dim, path, pathOrd, childOrds, topN, null);
+  }
+
+  /** Returns path results for a dimension */
+  private FacetResult getPathResult(
+      FacetsConfig.DimConfig dimConfig,
+      String dim,
+      String[] path,
+      int pathOrd,
+      PrimitiveIterator.OfInt childOrds,
+      int topN,
+      ChildOrdsResult dimToChildOrdsResult)
+      throws IOException {
+
+    ChildOrdsResult childOrdsResult;
+
+    // if getTopDims is called, get results from previously stored dimToChildOrdsResult, otherwise
+    // call getChildOrdsResult to get dimCount, childCount and the queue for the dimension's top
+    // children
+    if (dimToChildOrdsResult != null) {
+      childOrdsResult = dimToChildOrdsResult;
+    } else {
+      childOrdsResult = getChildOrdsResult(childOrds, topN, dimConfig, pathOrd);
+    }
+
+    if (childOrdsResult.q == null) {
+      return null;
+    }
+
+    LabelAndValue[] labelValues = getLabelValuesFromTopOrdAndIntQueue(childOrdsResult.q);
+
+    if (dimConfig.hierarchical == true) {
+      return new FacetResult(
+          dim, path, childOrdsResult.dimCount, labelValues, childOrdsResult.childCount);
+    } else {
+      return new FacetResult(
+          dim, emptyPath, childOrdsResult.dimCount, labelValues, childOrdsResult.childCount);
+    }
+  }
+
+  /**
+   * Returns ChildOrdsResult that contains results of dimCount, childCount, and the queue for the
+   * dimension's top children to populate FacetResult in getPathResult.
+   */
+  private ChildOrdsResult getChildOrdsResult(
+      PrimitiveIterator.OfInt childOrds, int topN, FacetsConfig.DimConfig dimConfig, int pathOrd) {
+
+    TopOrdAndIntQueue q = null;
+    int bottomCount = 0;
+    int dimCount = 0;
+    int childCount = 0;
+
+    TopOrdAndIntQueue.OrdAndValue reuse = null;
+    while (childOrds.hasNext()) {
+      int ord = childOrds.next();
+      if (counts.get(ord) > 0) {
+        dimCount += counts.get(ord);
+        childCount++;
+        if (counts.get(ord) > bottomCount) {
+          if (reuse == null) {
+            reuse = new TopOrdAndIntQueue.OrdAndValue();
+          }
+          reuse.ord = ord;
+          reuse.value = counts.get(ord);
+          if (q == null) {
+            // Lazy init, so we don't create this for the
+            // sparse case unnecessarily
+            q = new TopOrdAndIntQueue(topN);
+          }
+          reuse = q.insertWithOverflow(reuse);
+          if (q.size() == topN) {
+            bottomCount = q.top().value;
+          }
+        }
+      }
+    }
+
+    if (dimConfig.hierarchical == true) {
+      dimCount = counts.get(pathOrd);
+    } else {
+      // see if dimCount is actually reliable or needs to be reset
+      if (dimConfig.multiValued) {
+        if (dimConfig.requireDimCount) {
+          dimCount = counts.get(pathOrd);
+        } else {
+          dimCount = -1; // dimCount is in accurate at this point, so set it to -1
+        }
+      }
+    }
+
+    return new ChildOrdsResult(dimCount, childCount, q);
+  }
+
+  /** Returns label values for dims. */
+  private LabelAndValue[] getLabelValuesFromTopOrdAndIntQueue(TopOrdAndIntQueue q)
+      throws IOException {
+    LabelAndValue[] labelValues = new LabelAndValue[q.size()];
+    for (int i = labelValues.length - 1; i >= 0; i--) {
+      TopOrdAndIntQueue.OrdAndValue ordAndValue = q.pop();
+      assert ordAndValue != null;
+      final BytesRef term = dv.lookupOrd(ordAndValue.ord);
+      String[] parts = FacetsConfig.stringToPath(term.utf8ToString());
+      labelValues[i] = new LabelAndValue(parts[parts.length - 1], ordAndValue.value);
+    }
+    return labelValues;
+  }
+
+  /** Returns value/count of a dimension. */
+  private int getDimValue(
+      FacetsConfig.DimConfig dimConfig,
+      String dim,
+      int dimOrd,
+      PrimitiveIterator.OfInt childOrds,
+      int topN,
+      HashMap<String, ChildOrdsResult> dimToChildOrdsResult) {
+
+    // if dimConfig.hierarchical == true || dim is multiValued and dim count has been aggregated at
+    // indexing time, return dimCount directly
+    if (dimConfig.hierarchical == true || (dimConfig.multiValued && dimConfig.requireDimCount)) {
+      return counts.get(dimOrd);
+    }
+
+    // if dimCount was not aggregated at indexing time, iterate over childOrds to get dimCount
+    ChildOrdsResult childOrdsResult = getChildOrdsResult(childOrds, topN, dimConfig, dimOrd);
+
+    // if no early termination, store dim and childOrdsResult into a hashmap to avoid calling
+    // getChildOrdsResult again in getPathResult
+    dimToChildOrdsResult.put(dim, childOrdsResult);
+    return childOrdsResult.dimCount;
+  }
 
   private class CountOneSegment implements Callable<Void> {
     final LeafReader leafReader;

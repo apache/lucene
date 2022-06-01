@@ -216,6 +216,24 @@ abstract class RangeFacetCounts extends Facets {
     totCount -= missingCount;
   }
 
+  // Return range labels in the order that specified by the user
+  @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
+    }
+    LabelAndValue[] labelValues = new LabelAndValue[counts.length];
+    for (int i = 0; i < counts.length; i++) {
+      labelValues[i] = new LabelAndValue(ranges[i].label, counts[i]);
+    }
+    return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
+  }
+
+  // TODO: fix getTopChildren in LUCENE-10538
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) {
     validateTopN(topN);
