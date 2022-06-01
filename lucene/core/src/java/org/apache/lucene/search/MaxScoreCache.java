@@ -65,11 +65,16 @@ final class MaxScoreCache {
     return maxScore;
   }
 
+  float getMaxScore(int upTo) throws IOException {
+    final int level = getLevel(upTo);
+    return getMaxScoreForLevel(level);
+  }
+
   /**
    * Return the first level that includes all doc IDs up to {@code upTo}, or -1 if there is no such
    * level.
    */
-  int getLevel(int upTo) throws IOException {
+  private int getLevel(int upTo) throws IOException {
     final Impacts impacts = impactsSource.getImpacts();
     for (int level = 0, numLevels = impacts.numLevels(); level < numLevels; ++level) {
       final int impactsUpTo = impacts.getDocIdUpTo(level);
@@ -82,7 +87,7 @@ final class MaxScoreCache {
 
   /** Return the maximum score for the given {@code level}. */
   float getMaxScoreForLevel(int level) throws IOException {
-    if (level < 0) {
+    if (level == -1) {
       return globalMaxScore;
     }
     final Impacts impacts = impactsSource.getImpacts();

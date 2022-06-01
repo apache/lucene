@@ -86,8 +86,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
    * @see Scorer#getMaxScore(int)
    */
   public float getMaxScore(int upTo) throws IOException {
-    final int level = maxScoreCache.getLevel(upTo);
-    return maxScoreCache.getMaxScoreForLevel(level);
+    return maxScoreCache.getMaxScore(upTo);
   }
 
   private int advanceTarget(int target) throws IOException {
