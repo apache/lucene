@@ -3337,8 +3337,21 @@ public final class CheckIndex implements Closeable {
     LongBitSet seenOrds = new LongBitSet(dv.getValueCount());
     long maxOrd2 = -1;
     for (int docID = dv.nextDoc(); docID != NO_MORE_DOCS; docID = dv.nextDoc()) {
+      long count = dv.docValueCount();
+      if (count == 0) {
+        throw new CheckIndexException(
+            "sortedset dv for field: "
+                + fieldName
+                + " returned docValueCount=0 for docID="
+                + docID);
+      }
       if (dv2.advanceExact(docID) == false) {
         throw new CheckIndexException("advanceExact did not find matching doc ID: " + docID);
+      }
+      long count2 = dv2.docValueCount();
+      if (count != count2) {
+        throw new CheckIndexException(
+            "advanceExact reports different value count: " + count + " != " + count2);
       }
       long lastOrd = -1;
       long ord;
