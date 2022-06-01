@@ -124,4 +124,9 @@ public class FilterMergePolicy extends MergePolicy implements Unwrappable<MergeP
   public MergePolicy unwrap() {
     return in;
   }
+
+  @Override
+  protected long maxFullFlushMergeSize() {
+    return in.maxFullFlushMergeSize();
+  }
 }

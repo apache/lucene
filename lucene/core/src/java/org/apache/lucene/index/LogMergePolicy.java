@@ -68,8 +68,8 @@ public abstract class LogMergePolicy extends MergePolicy {
   protected int mergeFactor = DEFAULT_MERGE_FACTOR;
 
   /**
-   * Any segments whose size is smaller than this value will be rounded up to this value. This
-   * ensures that tiny segments are aggressively merged.
+   * Any segments whose size is smaller than this value will be candidates for full-flush merges and
+   * merged more aggressively.
    */
   protected long minMergeSize;
 
@@ -182,6 +182,11 @@ public abstract class LogMergePolicy extends MergePolicy {
 
     return numToMerge <= maxNumSegments
         && (numToMerge != 1 || !segmentIsOriginal || isMerged(infos, mergeInfo, mergeContext));
+  }
+
+  @Override
+  protected long maxFullFlushMergeSize() {
+    return minMergeSize;
   }
 
   /**

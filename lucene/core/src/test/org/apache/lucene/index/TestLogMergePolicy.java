@@ -57,10 +57,7 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
     LogMergePolicy mp = mergePolicy();
 
-    for (int i = 0; i < 2 * mp.getMergeFactor() + 3; ++i) {
-      if (i < mp.getMergeFactor()) {
-        assertNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
-      }
+    for (int i = 0; i < mp.getMergeFactor(); ++i) {
       segmentInfos.add(
           makeSegmentCommitInfo(
               "_" + segNameGenerator.getAndIncrement(),
@@ -76,11 +73,6 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
       segmentInfos =
           applyMerge(segmentInfos, merge, "_" + segNameGenerator.getAndIncrement(), stats);
     }
-    assertEquals(5, segmentInfos.size());
-    assertEquals(mp.getMergeFactor(), segmentInfos.info(0).info.maxDoc());
-    assertEquals(mp.getMergeFactor(), segmentInfos.info(1).info.maxDoc());
-    assertEquals(1, segmentInfos.info(2).info.maxDoc());
-    assertEquals(1, segmentInfos.info(3).info.maxDoc());
-    assertEquals(1, segmentInfos.info(4).info.maxDoc());
+    assertEquals(1, segmentInfos.size());
   }
 }

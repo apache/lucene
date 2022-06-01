@@ -201,6 +201,11 @@ public class TieredMergePolicy extends MergePolicy {
     return floorSegmentBytes / (1024 * 1024.);
   }
 
+  @Override
+  protected long maxFullFlushMergeSize() {
+    return floorSegmentBytes;
+  }
+
   /**
    * When forceMergeDeletes is called, we only merge away a segment if its delete percentage is over
    * this threshold. Default is 10%.

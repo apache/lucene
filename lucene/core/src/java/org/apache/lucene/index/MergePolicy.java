@@ -697,7 +697,7 @@ public abstract class MergePolicy {
    * implementation of {@link #findFullFlushMerges}.
    */
   protected long maxFullFlushMergeSize() {
-    return Long.MAX_VALUE;
+    return 0L;
   }
 
   /** Asserts that the delCount for this SegmentCommitInfo is valid */

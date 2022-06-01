@@ -97,10 +97,10 @@ public class LogByteSizeMergePolicy extends LogMergePolicy {
 
   /**
    * Sets the minimum size for the lowest level segments. Any segments below this size are
-   * considered to be on the same level (even if they vary drastically in size) and will be merged
-   * whenever there are mergeFactor of them. This effectively truncates the "long tail" of small
-   * segments that would otherwise be created into a single level. If you set this too large, it
-   * could greatly increase the merging cost during indexing (if you flush many small segments).
+   * candidates for full-flush merges and merged more aggressively. This effectively reduces chances
+   * to get a "long tail" of small segments that would otherwise be created into a single level. If
+   * you set this too large, it could greatly increase the merging cost during indexing (if you
+   * flush many small segments).
    */
   public void setMinMergeMB(double mb) {
     minMergeSize = (long) (mb * 1024 * 1024);

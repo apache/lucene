@@ -922,13 +922,13 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
   public void testFullFlushMerges() throws IOException {
     AtomicLong segNameGenerator = new AtomicLong();
+    IOStats stats = new IOStats();
     MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
     SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
 
-    TieredMergePolicy mp = mergePolicy();
+    TieredMergePolicy mp = new TieredMergePolicy();
 
-    for (int i = 0; i < mp.getSegmentsPerTier(); ++i) {
-      assertNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
+    for (int i = 0; i < 11; ++i) {
       segmentInfos.add(
           makeSegmentCommitInfo(
               "_" + segNameGenerator.getAndIncrement(),
@@ -937,6 +937,13 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
               Double.MIN_VALUE,
               IndexWriter.SOURCE_FLUSH));
     }
-    assertNotNull(mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext));
+    MergeSpecification spec =
+        mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext);
+    assertNotNull(spec);
+    for (OneMerge merge : spec.merges) {
+      segmentInfos =
+          applyMerge(segmentInfos, merge, "_" + segNameGenerator.getAndIncrement(), stats);
+    }
+    assertEquals(2, segmentInfos.size());
   }
 }

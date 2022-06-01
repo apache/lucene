@@ -460,7 +460,7 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * <p>Note: Which segments would get merged depends on the implementation of {@link
    * MergePolicy#findFullFlushMerges(MergeTrigger, SegmentInfos, MergePolicy.MergeContext)}
    *
-   * <p>Note: Set to 0 to disable merge-on-refresh.
+   * <p>Note: Set to 0 to disable merging on full flush.
    */
   public IndexWriterConfig setMaxFullFlushMergeWaitMillis(long maxFullFlushMergeWaitMillis) {
     this.maxFullFlushMergeWaitMillis = maxFullFlushMergeWaitMillis;

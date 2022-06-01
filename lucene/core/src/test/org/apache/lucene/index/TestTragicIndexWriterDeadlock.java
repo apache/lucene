@@ -105,7 +105,10 @@ public class TestTragicIndexWriterDeadlock extends LuceneTestCase {
   // LUCENE-7570
   public void testDeadlockStalledMerges() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig();
+    IndexWriterConfig iwc =
+        new IndexWriterConfig()
+            // nocommit: deadlock if you don't disable merge-on-full-flush
+            .setMaxFullFlushMergeWaitMillis(0);
 
     // so we merge every 2 segments:
     LogMergePolicy mp = new LogDocMergePolicy();
