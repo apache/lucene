@@ -815,14 +815,15 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       final MergeState mergeState,
       final CompressingTermVectorsSub sub,
       final int fromDocID,
-      final int toDocID)
+      final int toDocID,
+      MergeStrategy mergeStrategy)
       throws IOException {
     final Lucene90CompressingTermVectorsReader reader =
         (Lucene90CompressingTermVectorsReader) mergeState.termVectorsReaders[sub.readerIndex];
     assert reader.getVersion() == VERSION_CURRENT;
     assert reader.getChunkSize() == chunkSize;
     assert reader.getCompressionMode() == compressionMode;
-    assert !tooDirty(reader);
+    assert mergeStrategy == (tooDirty(reader) ? MergeStrategy.CLEAN_CHUNKS : MergeStrategy.BULK);
     assert mergeState.liveDocs[sub.readerIndex] == null;
 
     int docID = fromDocID;
@@ -841,10 +842,6 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     final long toPointer =
         toDocID == sub.maxDoc ? reader.getMaxPointer() : index.getStartPointer(toDocID);
     if (fromPointer < toPointer) {
-      // flush any pending chunks
-      if (!pendingDocs.isEmpty()) {
-        flush(true);
-      }
       final IndexInput rawDocs = reader.getVectorsStream();
       rawDocs.seek(fromPointer);
       do {
@@ -860,6 +857,19 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         }
 
         final int code = rawDocs.readVInt();
+        final boolean dirtyChunk = (code & 1) != 0;
+        if (mergeStrategy == MergeStrategy.CLEAN_CHUNKS
+            && (pendingDocs.isEmpty() == false || dirtyChunk)) {
+          // If the strategy is to only copy clean chunks, abort as soon as we encounter a dirty
+          // chunk, or if there are buffered docs since flushing these buffered docs would create a
+          // dirty chunk
+          break;
+        }
+        // flush any pending chunks
+        if (pendingDocs.isEmpty() == false) {
+          flush(true);
+        }
+
         final int bufferedDocs = code >>> 1;
 
         // write a new index entry and new header for this chunk.
@@ -885,7 +895,6 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         }
         vectorsStream.copyBytes(rawDocs, end - rawDocs.getFilePointer());
         ++numChunks;
-        boolean dirtyChunk = (code & 1) != 0;
         if (dirtyChunk) {
           numDirtyChunks++;
           numDirtyDocs += bufferedDocs;
@@ -910,8 +919,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       if (reader != null) {
         reader.checkIntegrity();
       }
-      final boolean bulkMerge = canPerformBulkMerge(mergeState, matchingReaders, i);
-      subs.add(new CompressingTermVectorsSub(mergeState, bulkMerge, i));
+      final MergeStrategy mergeStrategy = getMergeStrategy(mergeState, matchingReaders, i);
+      subs.add(new CompressingTermVectorsSub(mergeState, mergeStrategy, i));
     }
     int docCount = 0;
     final DocIDMerger<CompressingTermVectorsSub> docIDMerger =
@@ -919,7 +928,9 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     CompressingTermVectorsSub sub = docIDMerger.next();
     while (sub != null) {
       assert sub.mappedDocID == docCount : sub.mappedDocID + " != " + docCount;
-      if (sub.canPerformBulkMerge) {
+      if (sub.mergeStrategy == MergeStrategy.BULK
+          || sub.mergeStrategy == MergeStrategy.CLEAN_CHUNKS) {
+        final MergeStrategy mergeStrategy = sub.mergeStrategy;
         final int fromDocID = sub.docID;
         int toDocID = fromDocID;
         final CompressingTermVectorsSub current = sub;
@@ -928,7 +939,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
           assert sub.docID == toDocID;
         }
         ++toDocID; // exclusive bound
-        copyChunks(mergeState, current, fromDocID, toDocID);
+        copyChunks(mergeState, current, fromDocID, toDocID, mergeStrategy);
         docCount += toDocID - fromDocID;
       } else {
         final TermVectorsReader reader = mergeState.termVectorsReaders[sub.readerIndex];
@@ -957,35 +968,51 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
         && candidate.getNumDirtyChunks() * 100 > candidate.getNumChunks();
   }
 
-  private boolean canPerformBulkMerge(
+  private enum MergeStrategy {
+    /** Copy chunk by chunk in a compressed format, including dirty chunks */
+    BULK,
+
+    /** Copy only clean chunks (dirty=false) that would not require flushing */
+    CLEAN_CHUNKS,
+
+    /** Copy document by document in a decompressed format */
+    DOC,
+  }
+
+  private MergeStrategy getMergeStrategy(
       MergeState mergeState, MatchingReaders matchingReaders, int readerIndex) {
     if (mergeState.termVectorsReaders[readerIndex]
         instanceof Lucene90CompressingTermVectorsReader) {
       final Lucene90CompressingTermVectorsReader reader =
           (Lucene90CompressingTermVectorsReader) mergeState.termVectorsReaders[readerIndex];
-      return BULK_MERGE_ENABLED
+      if (BULK_MERGE_ENABLED
           && matchingReaders.matchingReaders[readerIndex]
           && reader.getCompressionMode() == compressionMode
           && reader.getChunkSize() == chunkSize
           && reader.getVersion() == VERSION_CURRENT
           && reader.getPackedIntsVersion() == PackedInts.VERSION_CURRENT
-          && mergeState.liveDocs[readerIndex] == null
-          && !tooDirty(reader);
+          && mergeState.liveDocs[readerIndex] == null) {
+        if (tooDirty(reader)) {
+          return MergeStrategy.CLEAN_CHUNKS;
+        } else {
+          return MergeStrategy.BULK;
+        }
+      }
     }
-    return false;
+    return MergeStrategy.DOC;
   }
 
   private static class CompressingTermVectorsSub extends DocIDMerger.Sub {
     final int maxDoc;
     final int readerIndex;
-    final boolean canPerformBulkMerge;
+    final MergeStrategy mergeStrategy;
     int docID = -1;
 
-    CompressingTermVectorsSub(MergeState mergeState, boolean canPerformBulkMerge, int readerIndex) {
+    CompressingTermVectorsSub(MergeState mergeState, MergeStrategy mergeStrategy, int readerIndex) {
       super(mergeState.docMaps[readerIndex]);
       this.maxDoc = mergeState.maxDocs[readerIndex];
       this.readerIndex = readerIndex;
-      this.canPerformBulkMerge = canPerformBulkMerge;
+      this.mergeStrategy = mergeStrategy;
     }
 
     @Override
