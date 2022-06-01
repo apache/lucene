@@ -128,7 +128,7 @@ public class LukeMain {
                     420,
                     (factory) -> {});
             long _end = System.nanoTime() / 1_000_000;
-            log.info("Elapsed time for rendering main window: " + (_end - _start) + "msec");
+            log.info("Elapsed time for rendering opening dialog: " + (_end - _start) + "msec");
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
