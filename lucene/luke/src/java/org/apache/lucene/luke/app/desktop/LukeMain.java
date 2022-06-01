@@ -94,18 +94,8 @@ public class LukeMain {
           try {
             long _start = System.nanoTime() / 1_000_000;
             guiThreadResult.put(createGUI());
-
-            // Show the initial dialog.
-            OpenIndexDialogFactory openIndexDialogFactory = OpenIndexDialogFactory.getInstance();
-            new DialogOpener<>(openIndexDialogFactory)
-                .open(
-                    MessageUtils.getLocalizedMessage("openindex.dialog.title"),
-                    600,
-                    420,
-                    (factory) -> {});
-
             long _end = System.nanoTime() / 1_000_000;
-            log.info("Elapsed time for initializing GUI: " + (_end - _start) + "msec");
+            log.info("Elapsed time for rendering main window: " + (_end - _start) + "msec");
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
@@ -121,5 +111,27 @@ public class LukeMain {
       Logger.getGlobal().log(Level.SEVERE, "[Vader] Hello, Luke. We seem to be fine.");
       Runtime.getRuntime().exit(0);
     }
+
+    // LUCENE-10558: Workaround
+    // Showing the initial dialog is fairly slow.
+    // Can be skipped when running distribution test (GUI test is done with main window).
+    javax.swing.SwingUtilities.invokeLater(
+        () -> {
+          try {
+            long _start = System.nanoTime() / 1_000_000;
+            // Show the initial dialog.
+            OpenIndexDialogFactory openIndexDialogFactory = OpenIndexDialogFactory.getInstance();
+            new DialogOpener<>(openIndexDialogFactory)
+                .open(
+                    MessageUtils.getLocalizedMessage("openindex.dialog.title"),
+                    600,
+                    420,
+                    (factory) -> {});
+            long _end = System.nanoTime() / 1_000_000;
+            log.info("Elapsed time for rendering main window: " + (_end - _start) + "msec");
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 }
