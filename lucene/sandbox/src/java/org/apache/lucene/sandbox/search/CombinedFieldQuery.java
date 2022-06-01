@@ -352,13 +352,14 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     private CollectionStatistics mergeCollectionStatistics(IndexSearcher searcher)
         throws IOException {
-      long maxDoc = searcher.getIndexReader().maxDoc();
+      long maxDoc = 0;
       long docCount = 0;
       long sumTotalTermFreq = 0;
       long sumDocFreq = 0;
       for (FieldAndWeight fieldWeight : fieldAndWeights.values()) {
         CollectionStatistics collectionStats = searcher.collectionStatistics(fieldWeight.field);
         if (collectionStats != null) {
+          maxDoc = Math.max(collectionStats.maxDoc(), maxDoc);
           docCount = Math.max(collectionStats.docCount(), docCount);
           sumDocFreq = Math.max(collectionStats.sumDocFreq(), sumDocFreq);
           sumTotalTermFreq += (double) fieldWeight.weight * collectionStats.sumTotalTermFreq();

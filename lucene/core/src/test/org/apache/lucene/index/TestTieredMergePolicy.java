@@ -55,6 +55,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     int totalDelCount = 0;
     int totalMaxDoc = 0;
     long totalBytes = 0;
+    List<Long> segmentSizes = new ArrayList<>();
     for (SegmentCommitInfo sci : infos) {
       totalDelCount += sci.getDelCount();
       totalMaxDoc += sci.info.maxDoc();
@@ -62,6 +63,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       double liveRatio = 1 - (double) sci.getDelCount() / sci.info.maxDoc();
       long weightedByteSize = (long) (liveRatio * byteSize);
       totalBytes += weightedByteSize;
+      segmentSizes.add(weightedByteSize);
       minSegmentBytes = Math.min(minSegmentBytes, weightedByteSize);
     }
 
@@ -91,6 +93,25 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     }
     allowedSegCount = Math.max(allowedSegCount, tmp.getSegmentsPerTier());
 
+    // It's ok to be over the allowed segment count if none of the most balanced merges are balanced
+    // enough
+    Collections.sort(segmentSizes);
+    boolean hasBalancedMerges = false;
+    for (int i = 0; i < segmentSizes.size() - mergeFactor; ++i) {
+      long maxMergeSegmentSize = segmentSizes.get(i + mergeFactor - 1);
+      if (maxMergeSegmentSize >= maxMergedSegmentBytes / 2) {
+        break;
+      }
+      long totalMergeSize = 0;
+      for (int j = 0; j < i + mergeFactor; ++j) {
+        totalMergeSize += segmentSizes.get(j);
+      }
+      if (maxMergedSegmentBytes * 1.5 <= totalMergeSize) {
+        hasBalancedMerges = true;
+        break;
+      }
+    }
+
     int numSegments = infos.asList().size();
     assertTrue(
         String.format(
@@ -106,7 +127,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             totalBytes,
             delPercentage,
             tmp.getDeletesPctAllowed()),
-        numSegments <= allowedSegCount);
+        numSegments <= allowedSegCount || hasBalancedMerges == false);
   }
 
   @Override
