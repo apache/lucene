@@ -85,8 +85,12 @@ final class MaxScoreCache {
     return -1;
   }
 
+  float getMaxScoreForLevelZero() throws IOException {
+    return getMaxScoreForLevel(0);
+  }
+
   /** Return the maximum score for the given {@code level}. */
-  float getMaxScoreForLevel(int level) throws IOException {
+  private float getMaxScoreForLevel(int level) throws IOException {
     if (level == -1) {
       return globalMaxScore;
     }

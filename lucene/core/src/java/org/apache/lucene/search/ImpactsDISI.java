@@ -97,7 +97,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
     }
 
     upTo = advanceShallow(target);
-    maxScore = maxScoreCache.getMaxScoreForLevel(0);
+    maxScore = maxScoreCache.getMaxScoreForLevelZero();
 
     while (true) {
       assert upTo >= target;
@@ -119,7 +119,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
         target = skipUpTo + 1;
       }
       upTo = advanceShallow(target);
-      maxScore = maxScoreCache.getMaxScoreForLevel(0);
+      maxScore = maxScoreCache.getMaxScoreForLevelZero();
     }
   }
 
