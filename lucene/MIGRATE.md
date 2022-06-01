@@ -19,6 +19,11 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### PersianStemFilter is added to PersianAnalyzer (LUCENE-10312)
+
+PersianAnalyzer now includes PersianStemFilter, that would change analysis results. If you need the exactly same analysis
+behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by using `CustomAnalyzer` on your own. 
+
 ### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
 
 These classes no longer take a `determinizeWorkLimit` and no longer determinize

@@ -551,7 +551,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
                       numDocs));
 
           // Test an unrestrictive filter and check we use approximate search
-          Query filter3 = IntPoint.newRangeQuery("tag", lower, lower + 150);
+          Query filter3 = IntPoint.newRangeQuery("tag", lower, 200);
           results =
               searcher.search(
                   new ThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
@@ -565,7 +565,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
             assertEquals(1, fieldDoc.fields.length);
 
             int tag = (int) fieldDoc.fields[0];
-            assertTrue(lower <= tag && tag <= lower + 150);
+            assertTrue(lower <= tag && tag <= 200);
           }
         }
       }

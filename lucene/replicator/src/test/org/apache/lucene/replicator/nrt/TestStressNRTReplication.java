@@ -27,6 +27,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +48,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TestRuleIgnoreTestSuites;
@@ -115,7 +115,6 @@ import org.apache.lucene.util.ThreadInterruptedException;
  *
  * <p>Slow network is simulated with a RateLimiter.
  */
-@AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-10370")
 // MockRandom's .sd file has no index header/footer:
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
@@ -314,14 +313,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
       }
 
       message(
-          "PG="
-              + (primary == null ? "X" : primaryGen)
-              + " "
-              + liveCount
-              + " (of "
-              + nodes.length
-              + ") nodes running: "
-              + sb);
+          ("PG=" + (primary == null ? "X" : primaryGen))
+              + (" " + liveCount)
+              + (" (of " + nodes.length + ") nodes running: " + sb));
 
       // Commit a random node, primary or replica
 
@@ -560,12 +554,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
     NodeProcess curPrimary = primary;
 
-    cmd.add(
-        System.getProperty("java.home")
-            + System.getProperty("file.separator")
-            + "bin"
-            + System.getProperty("file.separator")
-            + "java");
+    cmd.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
     cmd.add("-Xmx512m");
 
     if (curPrimary != null) {
@@ -618,8 +607,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     long seed = random().nextLong() * nodeStartCounter.incrementAndGet();
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(seed));
     cmd.add("-ea");
-    cmd.add("-cp");
-    cmd.add(System.getProperty("java.class.path"));
+    cmd.addAll(getJvmForkArguments());
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(TestSimpleServer.class.getName());
 
