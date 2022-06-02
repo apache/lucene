@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -104,8 +105,8 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
 
-  static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  public static final int VERSION_START = 0;
+  public static final int VERSION_CURRENT = 1;
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
@@ -154,6 +155,11 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene93HnswVectorsReader(state);
+  }
+
+  @Override
+  public int currentVersion() {
+    return VERSION_CURRENT;
   }
 
   @Override

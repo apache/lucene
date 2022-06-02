@@ -77,6 +77,7 @@ public class Lucene93Codec extends Codec {
 
   private final PostingsFormat defaultPostingsFormat;
   private final PostingsFormat postingsFormat =
+
       new PerFieldPostingsFormat() {
         @Override
         public PostingsFormat getPostingsFormatForField(String field) {
@@ -99,6 +100,11 @@ public class Lucene93Codec extends Codec {
         @Override
         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
           return Lucene93Codec.this.getKnnVectorsFormatForField(field);
+        }
+
+        @Override
+        public int currentVersion() {
+          return Lucene93HnswVectorsFormat.VERSION_CURRENT;
         }
       };
 

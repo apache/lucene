@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene93.Lucene93Codec;
+import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -649,8 +650,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   private VectorSimilarityFunction randomSimilarity() {
-    if (getCodec() instanceof Lucene93Codec) {
-      // nocommit: how to determine which version we have?
+    Codec codec = getCodec();
+    if (codec.knnVectorsFormat().currentVersion() >= Codec.forName("Lucene93").knnVectorsFormat().currentVersion()) {
       return VectorSimilarityFunction.values()[
           random().nextInt(VectorSimilarityFunction.values().length)];
     } else {
