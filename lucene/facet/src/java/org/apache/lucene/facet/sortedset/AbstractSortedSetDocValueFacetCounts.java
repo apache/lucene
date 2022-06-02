@@ -87,7 +87,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     } else {
       if (path.length > 0) {
         throw new IllegalArgumentException(
-                "Field is not configured as hierarchical, path should be 0 length");
+            "Field is not configured as hierarchical, path should be 0 length");
       }
       OrdRange ordRange = state.getOrdRange(dim);
       if (ordRange == null) {
@@ -241,12 +241,12 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
 
   /** Return all path results for a dimension */
   private FacetResult getPathResult(
-          FacetsConfig.DimConfig dimConfig,
-          String dim,
-          String[] path,
-          int pathOrd,
-          PrimitiveIterator.OfInt childOrds)
-          throws IOException {
+      FacetsConfig.DimConfig dimConfig,
+      String dim,
+      String[] path,
+      int pathOrd,
+      PrimitiveIterator.OfInt childOrds)
+      throws IOException {
 
     int dimCount = 0;
     int childCount = 0;
@@ -266,7 +266,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
 
     if (dimConfig.hierarchical == true) {
       return new FacetResult(
-              dim, path, getCount(pathOrd), labelValues.toArray(new LabelAndValue[0]), childCount);
+          dim, path, getCount(pathOrd), labelValues.toArray(new LabelAndValue[0]), childCount);
     } else {
       // see if dimCount is actually reliable or needs to be reset
       if (dimConfig.multiValued) {
@@ -277,7 +277,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         }
       }
       return new FacetResult(
-              dim, new String[0], dimCount, labelValues.toArray(new LabelAndValue[0]), childCount);
+          dim, new String[0], dimCount, labelValues.toArray(new LabelAndValue[0]), childCount);
     }
   }
 
