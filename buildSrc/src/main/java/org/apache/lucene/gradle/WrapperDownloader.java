@@ -39,14 +39,7 @@ import static java.nio.file.StandardOpenOption.APPEND;
  * Has no dependencies outside of standard java libraries
  */
 public class WrapperDownloader {
-  private static final int REQUIRED_JAVA_VERSION_FEATURE = 17;
-  private static final int REQUIERD_JAVA_VERSION_INTERIM = 0;
-  private static final int REQUIRED_JAVA_VERSION_UPDATE = 3;
-  private static final String REQUIRED_JAVA_VERSION_STRING = String.format(
-    "%d.%d.%d",
-    REQUIRED_JAVA_VERSION_FEATURE,
-    REQUIERD_JAVA_VERSION_INTERIM,
-    REQUIRED_JAVA_VERSION_UPDATE);
+  private static final String REQUIRED_JAVA_VERSION_STRING = "17.0.3";
 
   public static void main(String[] args) {
     if (args.length != 1) {
@@ -64,15 +57,13 @@ public class WrapperDownloader {
   }
 
   public static void checkVersion() {
-    Runtime.Version version = Runtime.version();
-    int feature = version.feature();
-    int interim = version.interim();
-    int update = version.update();
-    if (feature != REQUIRED_JAVA_VERSION_FEATURE) {
-      throw new IllegalStateException("java version be exactly " + REQUIRED_JAVA_VERSION_FEATURE + " (>=" + REQUIRED_JAVA_VERSION_STRING + "), your version: " + version);
+    final Runtime.Version requiredVersion = Runtime.Version.parse(REQUIRED_JAVA_VERSION_STRING);
+    final Runtime.Version version = Runtime.version();
+    if (version.feature() != requiredVersion.feature()) {
+      throw new IllegalStateException("java version be exactly " + requiredVersion.feature() + " (>=" + requiredVersion + "), your version: " + version);
     }
-    if (interim < REQUIERD_JAVA_VERSION_INTERIM || (interim == REQUIERD_JAVA_VERSION_INTERIM && update < REQUIRED_JAVA_VERSION_UPDATE)) {
-      throw new IllegalStateException("you are using too old java minor version. use newer than " + REQUIRED_JAVA_VERSION_STRING + ", your version: " + version);
+    if (version.interim() < requiredVersion.interim() || (version.interim() == requiredVersion.interim() && version.update() < requiredVersion.update())) {
+      throw new IllegalStateException("you are using too old java minor version. use newer than " + requiredVersion + ", your version: " + version);
     }
   }
 
