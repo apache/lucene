@@ -72,7 +72,7 @@ public class WrapperDownloader {
     // Reformat as "$FEATURE.$INTERIM.$UPDATE"
     final String runtimeVersionString = String.format("%d.%d.%d", feature, interim, update);
     if (feature != REQUIRED_JAVA_VERSION_FEATURE) {
-      throw new IllegalStateException("java version be exactly 17 (>=" + REQUIRED_JAVA_VERSION_STRING + "), your version: " + runtimeVersionString);
+      throw new IllegalStateException("java version be exactly " + REQUIRED_JAVA_VERSION_FEATURE + " (>=" + REQUIRED_JAVA_VERSION_STRING + "), your version: " + runtimeVersionString);
     }
     if (interim < REQUIERD_JAVA_VERSION_INTERIM || (interim == REQUIERD_JAVA_VERSION_INTERIM && update < REQUIRED_JAVA_VERSION_UPDATE)) {
       throw new IllegalStateException("you are using too old java minor version. use newer than " + REQUIRED_JAVA_VERSION_STRING + ", your version: " + runtimeVersionString);
