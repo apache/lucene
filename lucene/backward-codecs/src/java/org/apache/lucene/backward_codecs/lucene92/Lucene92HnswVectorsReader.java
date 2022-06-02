@@ -219,12 +219,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    VectorValues values = OffHeapVectorValues.load(fieldEntry, vectorData);
-    if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      return new ExpandingVectorValues(values);
-    } else {
-      return values;
-    }
+    return OffHeapVectorValues.load(fieldEntry, vectorData);
   }
 
   @Override

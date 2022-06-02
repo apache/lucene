@@ -120,9 +120,6 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
-    if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.DOT_PRODUCT8) {
-      vectors = new CompressingVectorValues(vectors);
-    }
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
