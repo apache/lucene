@@ -39,7 +39,7 @@ import static java.nio.file.StandardOpenOption.APPEND;
  * Has no dependencies outside of standard java libraries
  */
 public class WrapperDownloader {
-  private static final String REQUIRED_JAVA_VERSION_STRING = "17.0.3";
+  private static final Runtime.Version REQUIRED_VERSION = Runtime.Version.parse("17.0.3");
 
   public static void main(String[] args) {
     if (args.length != 1) {
@@ -57,13 +57,12 @@ public class WrapperDownloader {
   }
 
   public static void checkVersion() {
-    final Runtime.Version requiredVersion = Runtime.Version.parse(REQUIRED_JAVA_VERSION_STRING);
     final Runtime.Version version = Runtime.version();
-    if (version.feature() != requiredVersion.feature()) {
-      throw new IllegalStateException("java version be exactly " + requiredVersion.feature() + " (>=" + requiredVersion + "), your version: " + version);
+    if (version.feature() != REQUIRED_VERSION.feature()) {
+      throw new IllegalStateException("java version be exactly " + REQUIRED_VERSION.feature() + " (>=" + REQUIRED_VERSION + "), your version: " + version);
     }
-    if (version.interim() < requiredVersion.interim() || (version.interim() == requiredVersion.interim() && version.update() < requiredVersion.update())) {
-      throw new IllegalStateException("you are using too old java minor version. use newer than " + requiredVersion + ", your version: " + version);
+    if (version.interim() < REQUIRED_VERSION.interim() || (version.interim() == REQUIRED_VERSION.interim() && version.update() < REQUIRED_VERSION.update())) {
+      throw new IllegalStateException("you are using too old java minor version. use newer than " + REQUIRED_VERSION + ", your version: " + version);
     }
   }
 
