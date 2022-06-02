@@ -101,7 +101,8 @@ abstract class OffHeapVectorValues extends VectorValues
       byteSize = fieldEntry.dimension * Float.BYTES;
     }
     if (fieldEntry.docsWithFieldOffset == -1) {
-      return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
+      return new DenseOffHeapVectorValues(
+          fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
     } else {
       return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice, byteSize);
     }
@@ -174,7 +175,10 @@ abstract class OffHeapVectorValues extends VectorValues
     private final Lucene93HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene93HnswVectorsReader.FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice, int byteSize)
+        Lucene93HnswVectorsReader.FieldEntry fieldEntry,
+        IndexInput dataIn,
+        IndexInput slice,
+        int byteSize)
         throws IOException {
 
       super(fieldEntry.dimension, fieldEntry.size, slice, byteSize);

@@ -77,7 +77,6 @@ public class Lucene93Codec extends Codec {
 
   private final PostingsFormat defaultPostingsFormat;
   private final PostingsFormat postingsFormat =
-
       new PerFieldPostingsFormat() {
         @Override
         public PostingsFormat getPostingsFormatForField(String field) {
