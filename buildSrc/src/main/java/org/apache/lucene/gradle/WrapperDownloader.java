@@ -39,6 +39,15 @@ import static java.nio.file.StandardOpenOption.APPEND;
  * Has no dependencies outside of standard java libraries
  */
 public class WrapperDownloader {
+  private static final int REQUIRED_JAVA_VERSION_FEATURE = 17;
+  private static final int REQUIERD_JAVA_VERSION_INTERIM = 0;
+  private static final int REQUIRED_JAVA_VERSION_UPDATE = 3;
+  private static final String REQUIRED_JAVA_VERSION_STRING = String.format(
+    "%d.%d.%d",
+    REQUIRED_JAVA_VERSION_FEATURE,
+    REQUIERD_JAVA_VERSION_INTERIM,
+    REQUIRED_JAVA_VERSION_UPDATE);
+
   public static void main(String[] args) {
     if (args.length != 1) {
       System.err.println("Usage: java WrapperDownloader.java <destination>");
@@ -55,9 +64,18 @@ public class WrapperDownloader {
   }
 
   public static void checkVersion() {
-    int major = Runtime.getRuntime().version().feature();
-    if (major != 17) {
-      throw new IllegalStateException("java version be exactly 17, your version: " + major);
+    Runtime.Version version = Runtime.version();
+    int feature = version.feature();
+    int interim = version.interim();
+    int update = version.update();
+    // Version.toString() can return arbitrary version string depending on vendors.
+    // Reformat as "$FEATURE.$INTERIM.$UPDATE"
+    final String runtimeVersionString = String.format("%d.%d.%d", feature, interim, update);
+    if (feature != REQUIRED_JAVA_VERSION_FEATURE) {
+      throw new IllegalStateException("java version be exactly 17 (>=" + REQUIRED_JAVA_VERSION_STRING + "), your version: " + runtimeVersionString);
+    }
+    if (interim < REQUIERD_JAVA_VERSION_INTERIM || (interim == REQUIERD_JAVA_VERSION_INTERIM && update < REQUIRED_JAVA_VERSION_UPDATE)) {
+      throw new IllegalStateException("you are using too old java minor version. use newer than " + REQUIRED_JAVA_VERSION_STRING + ", your version: " + runtimeVersionString);
     }
   }
 
