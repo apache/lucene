@@ -21,7 +21,7 @@ jobs:
         # Operating systems to run on.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '11' ]
+        java: [ '11.0.15' ]
 
     steps:
     - uses: actions/checkout@v2
