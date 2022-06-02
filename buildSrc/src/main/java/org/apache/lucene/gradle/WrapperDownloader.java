@@ -39,6 +39,8 @@ import static java.nio.file.StandardOpenOption.APPEND;
  * Has no dependencies outside of standard java libraries
  */
 public class WrapperDownloader {
+  private static final Runtime.Version REQUIRED_VERSION = Runtime.Version.parse("11.0.15");
+
   public static void main(String[] args) {
     if (args.length != 1) {
       System.err.println("Usage: java WrapperDownloader.java <destination>");
@@ -46,10 +48,21 @@ public class WrapperDownloader {
     }
 
     try {
+      checkVersion();
       new WrapperDownloader().run(Paths.get(args[0]));
     } catch (Exception e) {
       System.err.println("ERROR: " + e.getMessage());
       System.exit(1);
+    }
+  }
+
+  public static void checkVersion() {
+    final Runtime.Version version = Runtime.version();
+    if (version.feature() != REQUIRED_VERSION.feature()) {
+      throw new IllegalStateException("Java version must be exactly " + REQUIRED_VERSION.feature() + " (>=" + REQUIRED_VERSION + "), your version: " + version);
+    }
+    if (version.interim() < REQUIRED_VERSION.interim() || (version.interim() == REQUIRED_VERSION.interim() && version.update() < REQUIRED_VERSION.update())) {
+      throw new IllegalStateException("You are using too old Java minor version. Use newer than " + REQUIRED_VERSION + ", your version: " + version);
     }
   }
 
