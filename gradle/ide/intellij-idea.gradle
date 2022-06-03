@@ -22,6 +22,27 @@ rootProject.ext.isIdea = System.getProperty("idea.active") != null ||
 
 if (isIdea) {
   logger.warn("IntelliJ Idea IDE detected.")
+
+  // Skip certain long tasks if we're building within IntelliJ.
+  if (isIdea) {
+    gradle.taskGraph.whenReady { taskGraph ->
+      def tasks = taskGraph.getAllTasks()
+
+      def skipTasks = [
+          // Skip site javadoc rendering
+          ".*:(renderSiteJavadoc)",
+      ]
+
+      logger.lifecycle("Skipping certain tasks on IntelliJ builds")
+      tasks.each { task ->
+        def taskPath = task.path
+        if (skipTasks.any { pattern -> taskPath ==~ pattern }) {
+          logger.debug("Skipping task on IntelliJ: " + taskPath)
+          task.enabled = false
+        }
+      }
+    }
+  }
 }
 
 allprojects {
@@ -29,8 +50,8 @@ allprojects {
 
   idea {
     module {
-      outputDir file('build/idea/classes/main')
-      testOutputDir file('build/idea/classes/test')
+      // outputDir file('build/idea/classes/main')
+      // testOutputDir file('build/idea/classes/test')
       downloadSources = true
     }
   }
