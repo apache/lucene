@@ -40,6 +40,7 @@ import static java.nio.file.StandardOpenOption.APPEND;
  */
 public class WrapperDownloader {
   private static final Runtime.Version REQUIRED_VERSION = Runtime.Version.parse("11.0.15");
+  private static final int MAXIMUM_FEATURE_VERSION = 17;
 
   public static void main(String[] args) {
     if (args.length != 1) {
@@ -58,10 +59,17 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     final Runtime.Version version = Runtime.version();
-    if (version.feature() != REQUIRED_VERSION.feature()) {
-      throw new IllegalStateException("Java version must be exactly " + REQUIRED_VERSION.feature() + " (>=" + REQUIRED_VERSION + "), your version: " + version);
+    // check major version
+    if (version.feature() < REQUIRED_VERSION.feature() || version.feature() > MAXIMUM_FEATURE_VERSION) {
+      if (REQUIRED_VERSION.feature() == MAXIMUM_FEATURE_VERSION) {
+        throw new IllegalStateException("Java version must be exactly " + REQUIRED_VERSION.feature() + " (>=" + REQUIRED_VERSION + "), your version: " + version);
+      } else {
+        throw new IllegalStateException("Java version must be between " + REQUIRED_VERSION.feature() + " and " + MAXIMUM_FEATURE_VERSION + " (>=" + REQUIRED_VERSION + "), your version: " + version);
+      }
     }
-    if (version.interim() < REQUIRED_VERSION.interim() || (version.interim() == REQUIRED_VERSION.interim() && version.update() < REQUIRED_VERSION.update())) {
+    // check minor versions
+    if ((version.feature() == REQUIRED_VERSION.feature() && version.interim() < REQUIRED_VERSION.interim()) ||
+      (version.feature() == REQUIRED_VERSION.feature() && version.interim() == REQUIRED_VERSION.interim() && version.update() < REQUIRED_VERSION.update())) {
       throw new IllegalStateException("You are using too old Java minor version. Use newer than " + REQUIRED_VERSION + ", your version: " + version);
     }
   }
