@@ -265,6 +265,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
             assertTrue(valueSet.contains(sortedNumeric.nextValue()));
           }
           assertEquals(i, sortedSet.nextDoc());
+          assertEquals(valueSet.size(), sortedSet.docValueCount());
           int sortedSetCount = 0;
           while (true) {
             long ord = sortedSet.nextOrd();
@@ -488,6 +489,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       for (int i = 0; i < maxDoc; ++i) {
         assertEquals(i, values.nextDoc());
         final int numValues = in.readVInt();
+        assertEquals(numValues, values.docValueCount());
 
         for (int j = 0; j < numValues; ++j) {
           b.setLength(in.readVInt());
