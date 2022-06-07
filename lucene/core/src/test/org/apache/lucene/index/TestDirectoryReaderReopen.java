@@ -866,8 +866,8 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
   /** test reopening backwards from an NRT reader (with document deletes) */
   public void testNRTMdeletes2() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()))
-        .setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriterConfig iwc =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
     SnapshotDeletionPolicy snapshotter =
         new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
     iwc.setIndexDeletionPolicy(snapshotter);
