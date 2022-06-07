@@ -36,6 +36,12 @@ public abstract class FacetSetMatcher {
    * @param dims the number of dimensions that are matched by this matcher
    */
   protected FacetSetMatcher(String label, int dims) {
+    if (label == null) {
+      throw new IllegalArgumentException("label cannot be null");
+    }
+    if (dims <= 0) {
+      throw new IllegalArgumentException("dims must be greater than 0: " + dims);
+    }
     this.label = label;
     this.dims = dims;
   }

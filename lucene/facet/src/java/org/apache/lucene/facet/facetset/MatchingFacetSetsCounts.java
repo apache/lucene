@@ -41,6 +41,7 @@ public class MatchingFacetSetsCounts extends Facets {
   private final FacetSetMatcher[] facetSetMatchers;
   private final int[] counts;
   private final String field;
+
   private int totCount;
 
   /**
