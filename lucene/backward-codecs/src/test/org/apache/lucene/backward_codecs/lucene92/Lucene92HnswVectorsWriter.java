@@ -128,12 +128,6 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
     try {
       // write the vector data to a temporary file
       DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, vectors);
-      int byteSize;
-      if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.DOT_PRODUCT8) {
-        byteSize = vectors.dimension();
-      } else {
-        byteSize = vectors.dimension() * Float.BYTES;
-      }
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -186,8 +180,8 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-
       // write vector
+      assert binaryValue.length == vectors.dimension() * Float.BYTES;
       BytesRef binaryValue = vectors.binaryValue();
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
       docsWithField.add(docV);
