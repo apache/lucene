@@ -43,9 +43,10 @@ public class LogDocMergePolicy extends LogMergePolicy {
   }
 
   /**
-   * Sets the minimum size for the lowest level segments. Any segments below this size will be
-   * merged more aggressively in order to avoid having a long tail of small segments. Large values
-   * of this parameter increase the merging cost during indexing if you flush small segments.
+   * Sets the minimum size for the lowest level segments. Any segments below this size are
+   * candidates for full-flush merges and merged more aggressively in order to avoid having a long
+   * tail of small segments. Large values of this parameter increase the merging cost during
+   * indexing if you flush small segments.
    */
   public void setMinMergeDocs(int minMergeDocs) {
     minMergeSize = minMergeDocs;
