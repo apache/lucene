@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.VectorUtil.dotProduct;
 
 import java.io.IOException;
 import org.apache.lucene.index.RandomAccessVectorValues;
@@ -27,7 +26,6 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SparseFixedBitSet;
-import org.apache.lucene.util.VectorUtil;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
@@ -85,13 +83,7 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
       return search(
-          VectorUtil.toBytesRef(query),
-          topK,
-          vectors,
-          similarityFunction,
-          graph,
-          acceptOrds,
-          visitedLimit);
+          toBytesRef(query), topK, vectors, similarityFunction, graph, acceptOrds, visitedLimit);
     }
     HnswGraphSearcher<float[]> graphSearcher =
         new HnswGraphSearcher<>(
@@ -255,5 +247,21 @@ public class HnswGraphSearcher<T> {
   private void clearScratchState() {
     candidates.clear();
     visited.clear(0, visited.length());
+  }
+
+  static float dotProduct(BytesRef a, int aOffset, BytesRef b, int bOffset, int len) {
+    int total = 0;
+    for (int i = 0; i < len; i++) {
+      total += a.bytes[aOffset++] * b.bytes[bOffset++];
+    }
+    return total;
+  }
+
+  static BytesRef toBytesRef(float[] vector) {
+    BytesRef b = new BytesRef(vector.length);
+    for (int i = 0; i < vector.length; i++) {
+      b.bytes[i] = (byte) vector[i];
+    }
+    return b;
   }
 }

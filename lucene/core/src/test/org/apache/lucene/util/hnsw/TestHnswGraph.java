@@ -18,7 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.VectorUtil.dotProduct;
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.dotProduct;
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.toBytesRef;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -461,7 +462,7 @@ public class TestHnswGraph extends LuceneTestCase {
       BytesRef bQuery = null;
       if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
         query = randomVector8(random(), dim);
-        bQuery = VectorUtil.toBytesRef(query);
+        bQuery = toBytesRef(query);
       } else {
         query = randomVector(random(), dim);
       }

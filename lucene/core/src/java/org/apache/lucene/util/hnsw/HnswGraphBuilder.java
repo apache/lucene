@@ -18,7 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
-import static org.apache.lucene.util.VectorUtil.dotProduct;
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.dotProduct;
 
 import java.io.IOException;
 import java.util.Locale;
