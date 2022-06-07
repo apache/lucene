@@ -92,6 +92,7 @@ public class LukeMain {
     javax.swing.SwingUtilities.invokeLater(
         () -> {
           try {
+            long _start = System.nanoTime() / 1_000_000;
             guiThreadResult.put(createGUI());
 
             // Show the initial dialog.
@@ -102,6 +103,9 @@ public class LukeMain {
                     600,
                     420,
                     (factory) -> {});
+
+            long _end = System.nanoTime() / 1_000_000;
+            log.info("Elapsed time for initializing GUI: " + (_end - _start) + "msec");
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
