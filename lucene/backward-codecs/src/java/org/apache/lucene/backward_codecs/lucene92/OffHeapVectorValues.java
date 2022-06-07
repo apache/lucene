@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -42,11 +41,11 @@ abstract class OffHeapVectorValues extends VectorValues
   protected final int byteSize;
   protected final float[] value;
 
-  OffHeapVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
+  OffHeapVectorValues(int dimension, int size, IndexInput slice) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
-    this.byteSize = byteSize;
+    byteSize = Float.BYTES * dimension;
     byteBuffer = ByteBuffer.allocate(byteSize);
     value = new float[dimension];
     binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
@@ -94,17 +93,10 @@ abstract class OffHeapVectorValues extends VectorValues
     }
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    int byteSize;
-    if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      byteSize = fieldEntry.dimension;
-    } else {
-      byteSize = fieldEntry.dimension * Float.BYTES;
-    }
     if (fieldEntry.docsWithFieldOffset == -1) {
-      return new DenseOffHeapVectorValues(
-          fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
+      return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice);
     } else {
-      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice, byteSize);
+      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice);
     }
   }
 
@@ -114,8 +106,8 @@ abstract class OffHeapVectorValues extends VectorValues
 
     private int doc = -1;
 
-    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
-      super(dimension, size, slice, byteSize);
+    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice) {
+      super(dimension, size, slice);
     }
 
     @Override
@@ -153,7 +145,7 @@ abstract class OffHeapVectorValues extends VectorValues
 
     @Override
     public RandomAccessVectorValues randomAccess() throws IOException {
-      return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
+      return new DenseOffHeapVectorValues(dimension, size, slice.clone());
     }
 
     @Override
@@ -175,13 +167,10 @@ abstract class OffHeapVectorValues extends VectorValues
     private final Lucene92HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene92HnswVectorsReader.FieldEntry fieldEntry,
-        IndexInput dataIn,
-        IndexInput slice,
-        int byteSize)
+        Lucene92HnswVectorsReader.FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
         throws IOException {
 
-      super(fieldEntry.dimension, fieldEntry.size, slice, byteSize);
+      super(fieldEntry.dimension, fieldEntry.size, slice);
       this.fieldEntry = fieldEntry;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
@@ -229,7 +218,7 @@ abstract class OffHeapVectorValues extends VectorValues
 
     @Override
     public RandomAccessVectorValues randomAccess() throws IOException {
-      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
+      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone());
     }
 
     @Override
@@ -259,7 +248,7 @@ abstract class OffHeapVectorValues extends VectorValues
   private static class EmptyOffHeapVectorValues extends OffHeapVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, null, 0);
+      super(dimension, 0, null);
     }
 
     private int doc = -1;

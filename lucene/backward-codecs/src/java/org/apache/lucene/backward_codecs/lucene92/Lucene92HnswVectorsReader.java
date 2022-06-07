@@ -169,10 +169,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
               + fieldEntry.dimension);
     }
 
-    long numBytes = (long) fieldEntry.size() * dimension;
-    if (info.getVectorSimilarityFunction() != VectorSimilarityFunction.DOT_PRODUCT8) {
-      numBytes *= Float.BYTES;
-    }
+    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "Vector data length "
@@ -234,6 +231,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
     OffHeapVectorValues vectorValues = OffHeapVectorValues.load(fieldEntry, vectorData);
+
     NeighborQueue results =
         HnswGraphSearcher.search(
             target,
