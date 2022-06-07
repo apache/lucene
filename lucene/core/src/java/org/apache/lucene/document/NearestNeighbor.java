@@ -216,7 +216,7 @@ class NearestNeighbor {
   }
 
   /** Holds one hit from {@link NearestNeighbor#nearest} */
-  public static class NearestHit {
+  static class NearestHit {
     public int docID;
 
     /**
