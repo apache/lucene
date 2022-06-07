@@ -461,6 +461,9 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * MergePolicy#findFullFlushMerges(MergeTrigger, SegmentInfos, MergePolicy.MergeContext)}
    *
    * <p>Note: Set to 0 to disable merging on full flush.
+   *
+   * <p>Note: If {@link SerialMergeScheduler} is used, full-flush merges will always wait for the
+   * merge to finish without honoring the configured timeout.
    */
   public IndexWriterConfig setMaxFullFlushMergeWaitMillis(long maxFullFlushMergeWaitMillis) {
     this.maxFullFlushMergeWaitMillis = maxFullFlushMergeWaitMillis;
