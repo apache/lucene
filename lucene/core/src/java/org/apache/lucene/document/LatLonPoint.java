@@ -396,8 +396,8 @@ public class LatLonPoint extends Field {
    * @param n the number of nearest neighbors to retrieve.
    * @return TopFieldDocs containing documents ordered by distance, where the field value for each
    *     {@link FieldDoc} is the distance in meters
-   * @throws IllegalArgumentException if {@code field} or {@code
-   *     searcher} is null, or if {@code latitude}, {@code longitude} or {@code n} are out-of-bounds
+   * @throws IllegalArgumentException if {@code field} or {@code searcher} is null, or if {@code
+   *     latitude}, {@code longitude} or {@code n} are out-of-bounds
    * @throws IOException if an IOException occurs while finding the points.
    */
   // TODO: what about multi-valued documents? what happens?
