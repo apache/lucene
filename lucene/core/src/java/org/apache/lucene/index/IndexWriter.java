@@ -2373,6 +2373,10 @@ public class IndexWriter
    * @lucene.experimental
    */
   private synchronized MergePolicy.OneMerge getNextMerge() {
+    if (tragedy.get() != null) {
+      throw new IllegalStateException(
+          "this writer hit an unrecoverable error; cannot merge", tragedy.get());
+    }
     if (pendingMerges.size() == 0) {
       return null;
     } else {
@@ -2389,6 +2393,10 @@ public class IndexWriter
    * @lucene.experimental
    */
   public synchronized boolean hasPendingMerges() {
+    if (tragedy.get() != null) {
+      throw new IllegalStateException(
+          "this writer hit an unrecoverable error; cannot merge", tragedy.get());
+    }
     return pendingMerges.size() != 0;
   }
 
