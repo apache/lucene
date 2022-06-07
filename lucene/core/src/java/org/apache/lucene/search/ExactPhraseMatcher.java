@@ -103,8 +103,8 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   }
 
   /**
-   * Advance the given pos enum to the first doc on or after {@code target}. Return {@code false} if
-   * the enum was exhausted before reaching {@code target} and {@code true} otherwise.
+   * Advance the given pos enum to the first position on or after {@code target}. Return {@code
+   * false} if the enum was exhausted before reaching {@code target} and {@code true} otherwise.
    */
   private static boolean advancePosition(PostingsAndPosition posting, int target)
       throws IOException {

@@ -105,7 +105,7 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * Default value for time to wait for merges on commit or getReader (when using a {@link
    * MergePolicy} that implements {@link MergePolicy#findFullFlushMerges}).
    */
-  public static final long DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS = 0;
+  public static final long DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS = 500;
 
   // indicates whether this config instance is already attached to a writer.
   // not final so that it can be cloned properly.
@@ -457,9 +457,14 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * call, like natural segment merges. The default is <code>
    * {@value IndexWriterConfig#DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS}</code>.
    *
-   * <p>Note: This settings has no effect unless {@link
-   * MergePolicy#findFullFlushMerges(MergeTrigger, SegmentInfos, MergePolicy.MergeContext)} has an
-   * implementation that actually returns merges which by default doesn't return any merges.
+   * <p>Note: Which segments would get merged depends on the implementation of {@link
+   * MergePolicy#findFullFlushMerges(MergeTrigger, SegmentInfos, MergePolicy.MergeContext)}
+   *
+   * <p>Note: Set to 0 to disable merging on full flush.
+   *
+   * <p>Note: If {@link SerialMergeScheduler} is used and a non-zero timout is configured,
+   * full-flush merges will always wait for the merge to finish without honoring the configured
+   * timeout.
    */
   public IndexWriterConfig setMaxFullFlushMergeWaitMillis(long maxFullFlushMergeWaitMillis) {
     this.maxFullFlushMergeWaitMillis = maxFullFlushMergeWaitMillis;

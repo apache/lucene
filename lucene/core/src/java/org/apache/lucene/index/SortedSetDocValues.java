@@ -45,8 +45,9 @@ public abstract class SortedSetDocValues extends DocValuesIterator {
   public abstract long nextOrd() throws IOException;
 
   /**
-   * Retrieves the number of values for the current document. This must always be greater than zero.
-   * It is illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
+   * Retrieves the number of unique ords for the current document. This must always be greater than
+   * zero. It is illegal to call this method after {@link #advanceExact(int)} returned {@code
+   * false}.
    */
   public abstract long docValueCount();
 
