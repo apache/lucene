@@ -120,6 +120,7 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
+
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
@@ -181,8 +182,8 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
       // write vector
-      assert binaryValue.length == vectors.dimension() * Float.BYTES;
       BytesRef binaryValue = vectors.binaryValue();
+      assert binaryValue.length == vectors.dimension() * Float.BYTES;
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
       docsWithField.add(docV);
     }
@@ -268,6 +269,7 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
   private OnHeapHnswGraph writeGraph(
       RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
+
     // build graph
     HnswGraphBuilder<?> hnswGraphBuilder =
         HnswGraphBuilder.create(
