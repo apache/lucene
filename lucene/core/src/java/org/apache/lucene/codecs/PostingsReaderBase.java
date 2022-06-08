@@ -27,10 +27,9 @@ import org.apache.lucene.store.IndexInput;
 
 /**
  * The core terms dictionaries (BlockTermsReader, BlockTreeTermsReader) interact with a single
- * instance of this class to manage creation of {@link org.apache.lucene.index.PostingsEnum} and
- * {@link org.apache.lucene.index.PostingsEnum} instances. It provides an IndexInput (termsIn) where
- * this class may read any previously stored data that it had written in its corresponding {@link
- * PostingsWriterBase} at indexing time.
+ * instance of this class to manage creation of {@link org.apache.lucene.index.PostingsEnum}
+ * instances. It provides an IndexInput (termsIn) where this class may read any previously stored
+ * data that it had written in its corresponding {@link PostingsWriterBase} at indexing time.
  *
  * @lucene.experimental
  */
