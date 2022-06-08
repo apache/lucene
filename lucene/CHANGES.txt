@@ -3,7 +3,67 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
-======================= Lucene 9.3.0 =======================
+======================= Lucene 10.0.0 =======================
+
+API Changes
+---------------------
+
+* LUCENE-10010: AutomatonQuery, CompiledAutomaton, RunAutomaton, RegExp
+  classes no longer determinize NFAs. Instead it is the responsibility
+  of the caller to determinize.  (Robert Muir)
+
+* LUCENE-10368: IntTaxonomyFacets has been make pkg-private and serves only as an internal
+  implementation detail of taxonomy-faceting. (Greg Miller)
+
+* LUCENE-10400: Remove deprecated dictionary constructors in Kuromoji and Nori (Tomoko Uchida)
+
+* LUCENE-10440: TaxonomyFacets and FloatTaxonomyFacets have been made pkg-private and only serve
+  as internal implementation details of taxonomy-faceting. (Greg Miller)
+
+* LUCENE-10431: MultiTermQuery.setRewriteMethod() has been removed. (Alan Woodward)
+
+* LUCENE-10436: Remove deprecated DocValuesFieldExistsQuery, NormsFieldExistsQuery and
+  KnnVectorFieldExistsQuery. (Zach Chen, Adrien Grand)
+
+* LUCENE-10561 Reduce class/member visibility of all normalizer and stemmer classes. (Rushabh Shah)
+
+New Features
+---------------------
+
+* LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
+
+Improvements
+---------------------
+
+* LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
+  (Uihyun Kim)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+* LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
+  (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
+
+* LUCENE-10253: The @BadApple annotation has been removed from the test
+  framework. (Adrien Grand)
+
+* LUCENE-10393: Unify binary dictionary and dictionary writer in Kuromoji and Nori.
+  (Tomoko Uchida, Robert Muir)
+
+* LUCENE-10475: Merge dictionary builders in `util` package into `dict` package in Kuromoji and Nori.
+  All classes in `org.apache.lucene.analysis.[ja|ko].util` was moved to `org.apache.lucene.analysis.[ja|ko].dict`.
+  (Tomoko Uchida)
+
+* LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
+
+======================== Lucene 9.3.0 =======================
 
 API Changes
 ---------------------
@@ -32,6 +92,8 @@ Bug Fixes
 * LUCENE-10574: Prevent pathological O(N^2) merging. (Adrien Grand)
 
 * LUCENE-10582: Fix merging of overridden CollectionStatistics in CombinedFieldQuery (Yannick Welsch)
+
+* LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
 
 Other
 ---------------------
@@ -124,7 +186,7 @@ Optimizations
   term of each block as a dictionary when compressing suffixes of the other 63
   terms of the block. (Adrien Grand)
 
-* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader.
+* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader. 
   (Zach Chen, Adrien Grand, Julie Tibshirani, Tomoko Uchida)
 
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
@@ -173,13 +235,11 @@ Bug Fixes
 * LUCENE-10530: Avoid floating point precision test case bug in TestTaxonomyFacetAssociations.
   (Greg Miller)
 
-* LUCENE-10518: Relax field consistency check for old indices (Nhat Nguyen)
+* LUCENE-10552: KnnVectorQuery has incorrect equals/ hashCode. (Lu Xugang)
 
 * LUCENE-10558: Restore behaviour of deprecated Kuromoji and Nori dictionary constructors for
   custom dictionary support. Please also use new URL-based constructors for classpath/module
   system ressources.  (Uwe Schindler, Tomoko Uchida, Mike Sokolov)
-
-* LUCENE-10552: KnnVectorQuery has incorrect equals/ hashCode. (Lu Xugang)
 
 * LUCENE-10564: Make sure SparseFixedBitSet#or updates ramBytesUsed. (Julie Tibshirani)
 
