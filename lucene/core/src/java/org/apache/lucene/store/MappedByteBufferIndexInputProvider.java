@@ -80,7 +80,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
 
   @Override
   public long getDefaultMaxChunkSize() {
-    return Constants.JRE_IS_64BIT ? (1 << 30) : (1 << 28);
+    return Constants.JRE_IS_64BIT ? (1L << 30) : (1L << 28);
   }
 
   @Override

@@ -47,11 +47,12 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
   }
 
   public void testCorrectImplementation() {
-    if (Runtime.version().feature() == 19) {
+    final int runtimeVersion = Runtime.version().feature();
+    if (runtimeVersion == 19) {
       assertTrue(
           "on Java 19 we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
           isMemorySegmentImpl());
-    } else if (Runtime.version().feature() > 19) {
+    } else if (runtimeVersion > 19) {
       // TODO: We don't know how this is handled in later Java versions, so make no assumptions!
     } else {
       assertSame(MappedByteBufferIndexInputProvider.class, MMapDirectory.PROVIDER.getClass());
@@ -60,7 +61,7 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
 
   public void testAceWithThreads() throws Exception {
     assumeTrue("Test requires MemorySegmentIndexInput", isMemorySegmentImpl());
-    ;
+
     final int iters = RANDOM_MULTIPLIER * (TEST_NIGHTLY ? 50 : 10);
     for (int iter = 0; iter < iters; iter++) {
       Directory dir = getDirectory(createTempDir("testAceWithThreads"));
