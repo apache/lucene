@@ -45,7 +45,10 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.VectorUtil;
 
 /** TestKnnVectorQuery tests KnnVectorQuery. */
@@ -795,6 +798,82 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     @Override
     public CacheHelper getCoreCacheHelper() {
       return in.getCoreCacheHelper();
+    }
+  }
+
+  public void testBitSetQuery() throws IOException {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, iwc)) {
+      final int numDocs = 100;
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new KnnVectorField("vector", randomVector(dim)));
+        w.addDocument(d);
+      }
+      w.commit();
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
+        expectThrows(
+            UnsupportedOperationException.class,
+            () ->
+                searcher.search(
+                    new KnnVectorQuery("vector", randomVector(dim), 10, filter), numDocs));
+      }
+    }
+  }
+
+  private static class ThrowingBitSetQuery extends Query {
+
+    private final FixedBitSet docs;
+
+    ThrowingBitSetQuery(FixedBitSet docs) {
+      this.docs = docs;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      return new ConstantScoreWeight(this, boost) {
+        @Override
+        public Scorer scorer(LeafReaderContext context) throws IOException {
+          BitSetIterator bitSetIterator =
+              new BitSetIterator(docs, docs.approximateCardinality()) {
+                @Override
+                public BitSet getBitSet() {
+                  throw new UnsupportedOperationException("reusing BitSet is not supported");
+                }
+              };
+          return new ConstantScoreScorer(this, score(), scoreMode, bitSetIterator);
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return false;
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {}
+
+    @Override
+    public String toString(String field) {
+      return "throwingBitSetQuery";
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return sameClassAs(other) && docs.equals(((ThrowingBitSetQuery) other).docs);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + docs.hashCode();
     }
   }
 }
