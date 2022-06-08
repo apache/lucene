@@ -95,6 +95,8 @@ Bug Fixes
 
 * LUCENE-10598: SortedSetDocValues#docValueCount() should be always greater than zero. (Lu Xugang)
 
+* LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
+
 Other
 ---------------------
 
