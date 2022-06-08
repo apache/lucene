@@ -139,11 +139,11 @@ public final class Tessellator {
         earcutLinkedList(
             polygon, outerNode, new ArrayList<>(), State.INIT, mortonOptimized, monitor, 0);
     if (result.size() == 0) {
-      notifyMonitor("FAILED", monitor, null, result);
+      notifyMonitor(Monitor.FAILED, monitor, null, result);
       throw new IllegalArgumentException(
           "Unable to Tessellate shape. Possible malformed shape detected.");
     }
-    notifyMonitor("COMPLETED", monitor, null, result);
+    notifyMonitor(Monitor.COMPLETED, monitor, null, result);
 
     return result;
   }
@@ -202,11 +202,11 @@ public final class Tessellator {
         earcutLinkedList(
             polygon, outerNode, new ArrayList<>(), State.INIT, mortonOptimized, monitor, 0);
     if (result.size() == 0) {
-      notifyMonitor("FAILED", monitor, null, result);
+      notifyMonitor(Monitor.FAILED, monitor, null, result);
       throw new IllegalArgumentException(
           "Unable to Tessellate shape. Possible malformed shape detected.");
     }
-    notifyMonitor("COMPLETED", monitor, null, result);
+    notifyMonitor(Monitor.COMPLETED, monitor, null, result);
 
     return result;
   }
@@ -543,8 +543,7 @@ public final class Tessellator {
 
       // Iteratively slice ears
       do {
-        notifyMonitor(
-            state.name() + (depth == 0 ? "" : "[" + depth + "]"), monitor, currEar, tessellation);
+        notifyMonitor(state, depth, monitor, currEar, tessellation);
         prevNode = currEar.previous;
         nextNode = currEar.next;
         // Determine whether the current triangle must be cut off.
@@ -841,12 +840,12 @@ public final class Tessellator {
             sortByMortonWithReset(searchNode);
             sortByMortonWithReset(splitNode);
           }
-          notifyMonitorSplit("SPLIT[" + depth + "]", monitor, searchNode, splitNode);
+          notifyMonitorSplit(depth, monitor, searchNode, splitNode);
           earcutLinkedList(
               polygon, searchNode, tessellation, State.INIT, mortonOptimized, monitor, depth);
           earcutLinkedList(
               polygon, splitNode, tessellation, State.INIT, mortonOptimized, monitor, depth);
-          notifyMonitorSplitEnd("SPLIT[" + depth + "]", monitor);
+          notifyMonitorSplitEnd(depth, monitor);
           // Finish the iterative search
           return true;
         }
@@ -1474,12 +1473,15 @@ public final class Tessellator {
 
   /**
    * Implementation of this interface will receive calls with internal data at each step of the
-   * triangulation algoirithm. This is of use for debugging complex cases, as well as gaining
-   * insight into the way the algorithm works. Data provided includes a status string containing the
-   * current mode, list of points representing the current linked-list of internal nodes used for
+   * triangulation algorithm. This is of use for debugging complex cases, as well as gaining insight
+   * into the way the algorithm works. Data provided includes a status string containing the current
+   * mode, list of points representing the current linked-list of internal nodes used for
    * triangulation, and a list of triangles so far created by the algorithm.
    */
   public interface Monitor {
+    String FAILED = "FAILED";
+    String COMPLETED = "COMPLETED";
+
     /** Each loop of the main earclip algorithm will call this with the current state */
     void currentState(String status, List<Point> points, List<Triangle> tessellation);
 
@@ -1501,17 +1503,25 @@ public final class Tessellator {
   }
 
   private static void notifyMonitorSplit(
-      String status, Monitor monitor, Node searchNode, Node diagonalNode) {
+      int depth, Monitor monitor, Node searchNode, Node diagonalNode) {
     if (monitor != null) {
       if (searchNode == null || diagonalNode == null)
         throw new IllegalStateException("Invalid split provided to monitor");
-      monitor.startSplit(status, getPoints(searchNode), getPoints(diagonalNode));
+      monitor.startSplit("SPLIT[" + depth + "]", getPoints(searchNode), getPoints(diagonalNode));
     }
   }
 
-  private static void notifyMonitorSplitEnd(String status, Monitor monitor) {
+  private static void notifyMonitorSplitEnd(int depth, Monitor monitor) {
     if (monitor != null) {
-      monitor.endSplit(status);
+      monitor.endSplit("SPLIT[" + depth + "]");
+    }
+  }
+
+  private static void notifyMonitor(
+      State state, int depth, Monitor monitor, Node start, List<Triangle> tessellation) {
+    if (monitor != null) {
+      notifyMonitor(
+          state.name() + (depth == 0 ? "" : "[" + depth + "]"), monitor, start, tessellation);
     }
   }
 
