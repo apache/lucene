@@ -34,6 +34,9 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
   private final byte[] lowerRanges;
   private final byte[] upperRanges;
 
+  private final long[] lowerRangesLong;
+  private final long[] upperRangesLong;
+
   /**
    * Constructs and instance to match facet sets with dimensions that fall within the given ranges.
    */
@@ -43,6 +46,8 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
         LongPoint.pack(Arrays.stream(dimRanges).mapToLong(range -> range.min).toArray()).bytes;
     this.upperRanges =
         LongPoint.pack(Arrays.stream(dimRanges).mapToLong(range -> range.max).toArray()).bytes;
+    this.lowerRangesLong = Arrays.stream(dimRanges).mapToLong(range -> range.min).toArray();
+    this.upperRangesLong = Arrays.stream(dimRanges).mapToLong(range -> range.max).toArray();
   }
 
   @Override
@@ -58,11 +63,33 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
         dim < dims;
         dim++, valuesOffset += Long.BYTES, packedOffset += Long.BYTES) {
       if (byteComparator.compare(packedValue, packedOffset, lowerRanges, valuesOffset) < 0) {
-        // Doc's value is too low, in this dimension
+        // Doc's value is too low in this dimension
         return false;
       }
       if (byteComparator.compare(packedValue, packedOffset, upperRanges, valuesOffset) > 0) {
-        // Doc's value is too low, in this dimension
+        // Doc's value is too high in this dimension
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public boolean matches(long[] dimValues, int numDims) {
+    assert numDims == dims
+        : "Encoded dimensions (dims="
+            + numDims
+            + ") is incompatible with range dimensions (dims="
+            + dims
+            + ")";
+
+    for (int i = 0; i < dimValues.length; i++) {
+      if (dimValues[i] < lowerRangesLong[i]) {
+        // Doc's value is too low in this dimension
+        return false;
+      }
+      if (dimValues[i] > upperRangesLong[i]) {
+        // Doc's value is too high in this dimension
         return false;
       }
     }

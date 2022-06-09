@@ -32,7 +32,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Returns the count for each given {@link FacetSet}
+ * Returns the countBytes for each given {@link FacetSet}
  *
  * @lucene.experimental
  */
@@ -45,11 +45,12 @@ public class MatchingFacetSetsCounts extends Facets {
   private int totCount;
 
   /**
-   * Constructs a new instance of matching facet set counts which calculates the count for each
+   * Constructs a new instance of matching facet set counts which calculates the countBytes for each
    * given facet set matcher.
    */
   public MatchingFacetSetsCounts(
-      String field, FacetsCollector hits, FacetSetMatcher... facetSetMatchers) throws IOException {
+      String field, FacetsCollector hits, boolean countBytes, FacetSetMatcher... facetSetMatchers)
+      throws IOException {
     if (facetSetMatchers == null || facetSetMatchers.length == 0) {
       throw new IllegalArgumentException("facetSetMatchers cannot be null or empty");
     }
@@ -59,11 +60,15 @@ public class MatchingFacetSetsCounts extends Facets {
     this.field = field;
     this.facetSetMatchers = facetSetMatchers;
     this.counts = new int[facetSetMatchers.length];
-    count(field, hits.getMatchingDocs());
+    if (countBytes) {
+      countBytes(field, hits.getMatchingDocs());
+    } else {
+      countLongs(field, hits.getMatchingDocs());
+    }
   }
 
   /** Counts from the provided field. */
-  private void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
+  private void countBytes(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
       throws IOException {
 
     for (FacetsCollector.MatchingDocs hits : matchingDocs) {
@@ -76,16 +81,87 @@ public class MatchingFacetSetsCounts extends Facets {
         continue;
       }
 
+      int expectedNumDims = -1;
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         boolean shouldCountDoc = false;
         BytesRef bytesRef = binaryDocValues.binaryValue();
         byte[] packedValue = bytesRef.bytes;
         int numDims = (int) LongPoint.decodeDimension(packedValue, 0);
+        if (expectedNumDims == -1) {
+          expectedNumDims = numDims;
+        } else {
+          // Verify that the number of indexed dimensions for all matching documents is the same
+          // (since we cannot verify that at indexing time).
+          assert numDims == expectedNumDims
+              : "Expected ("
+                  + expectedNumDims
+                  + ") dimensions, found ("
+                  + numDims
+                  + ") for doc ("
+                  + doc
+                  + ")";
+        }
         for (int start = Long.BYTES;
             start < bytesRef.length;
             start += numDims * Long.BYTES) { // for each facet set
           for (int j = 0; j < facetSetMatchers.length; j++) { // for each facet set matcher
             if (facetSetMatchers[j].matches(packedValue, start, numDims)) {
+              counts[j]++;
+              shouldCountDoc = true;
+            }
+          }
+        }
+        if (shouldCountDoc) {
+          totCount++;
+        }
+      }
+    }
+  }
+
+  /** Counts from the provided field. */
+  private void countLongs(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
+      throws IOException {
+
+    for (FacetsCollector.MatchingDocs hits : matchingDocs) {
+
+      BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context.reader(), field);
+
+      final DocIdSetIterator it =
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), binaryDocValues));
+      if (it == null) {
+        continue;
+      }
+
+      long[] dimValues = null; // dimension values buffer
+      int expectedNumDims = -1;
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+        boolean shouldCountDoc = false;
+        BytesRef bytesRef = binaryDocValues.binaryValue();
+        byte[] packedValue = bytesRef.bytes;
+        int numDims = (int) LongPoint.decodeDimension(packedValue, 0);
+        if (expectedNumDims == -1) {
+          expectedNumDims = numDims;
+          dimValues = new long[numDims];
+        } else {
+          // Verify that the number of indexed dimensions for all matching documents is the same
+          // (since we cannot verify that at indexing time).
+          assert numDims == expectedNumDims
+              : "Expected ("
+                  + expectedNumDims
+                  + ") dimensions, found ("
+                  + numDims
+                  + ") for doc ("
+                  + doc
+                  + ")";
+        }
+        for (int start = Long.BYTES;
+            start < bytesRef.length;
+            start += numDims * Long.BYTES) { // for each facet set
+          for (int i = 0, offset = start; i < dimValues.length; i++, offset += Long.BYTES) {
+            dimValues[i] = LongPoint.decodeDimension(packedValue, offset);
+          }
+          for (int j = 0; j < facetSetMatchers.length; j++) { // for each facet set matcher
+            if (facetSetMatchers[j].matches(dimValues, numDims)) {
               counts[j]++;
               shouldCountDoc = true;
             }

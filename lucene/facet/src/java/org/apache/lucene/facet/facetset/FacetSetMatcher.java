@@ -54,4 +54,12 @@ public abstract class FacetSetMatcher {
    * @param numDims the number of dimension values each set contains in this field
    */
   public abstract boolean matches(byte[] packedValue, int start, int numDims);
+
+  /**
+   * Returns true if the facet set encoded in the given {@code long[]} is matched by this matcher.
+   *
+   * @param dimValues the encoded dimension values of all facet sets in this field
+   * @param numDims the number of dimension values each set contains in this field
+   */
+  public abstract boolean matches(long[] dimValues, int numDims);
 }

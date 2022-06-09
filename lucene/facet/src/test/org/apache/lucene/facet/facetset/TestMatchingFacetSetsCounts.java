@@ -46,9 +46,43 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
 
     Facets facets =
         new MatchingFacetSetsCounts(
-            "field", fc, new ExactFacetSetMatcher("Test", new FacetSet(123, 456)));
+            "field",
+            fc,
+            random().nextBoolean(),
+            new ExactFacetSetMatcher("Test", new FacetSet(123, 456)));
 
     expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
+
+    r.close();
+    d.close();
+  }
+
+  public void testInconsistentNumOfIndexedDimensions() throws IOException {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+
+    Document doc = new Document();
+    doc.add(FacetSetsField.create("field", new FacetSet(123, 456)));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(FacetSetsField.create("field", new FacetSet(123)));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    expectThrows(
+        AssertionError.class,
+        () ->
+            new MatchingFacetSetsCounts(
+                "field",
+                fc,
+                random().nextBoolean(),
+                new ExactFacetSetMatcher("Test", new FacetSet(1))));
 
     r.close();
     d.close();
