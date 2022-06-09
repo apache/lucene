@@ -97,6 +97,8 @@ Bug Fixes
 
 * LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
 
+* LUCENE-10605: Fix error in 32bit jvm object alignment gap calculation (Sun Wuqiang)
+
 Other
 ---------------------
 
