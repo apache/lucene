@@ -579,23 +579,41 @@ public abstract class LogMergePolicy extends MergePolicy {
       // Finally, record all merges that are viable at this level:
       int end = start + mergeFactor;
       while (end <= 1 + upto) {
-        boolean anyTooLarge = false;
         boolean anyMerging = false;
+        long mergeSize = 0;
+        long mergeDocs = 0;
         for (int i = start; i < end; i++) {
           final SegmentInfoAndLevel segLevel = levels.get(i);
           final SegmentCommitInfo info = segLevel.info;
-          anyTooLarge |=
-              (size(info, mergeContext) >= maxMergeSize
-                  || sizeDocs(info, mergeContext) >= maxMergeDocs);
           if (mergingSegments.contains(info)) {
             anyMerging = true;
             break;
           }
+          long segmentSize = size(info, mergeContext);
+          long segmentDocs = sizeDocs(info, mergeContext);
+          if (mergeSize + segmentSize > maxMergeSize || mergeDocs + segmentDocs > maxMergeDocs) {
+            // This merge is full, stop adding more segments to it
+            if (i == start) {
+              // This segment alone is too large, return a singleton merge
+              if (verbose(mergeContext)) {
+                message(
+                    "    " + i + " is larger than the max merge size/docs; ignoring", mergeContext);
+              }
+              end = i + 1;
+            } else {
+              // Previous segments are under the max merge size, return them
+              end = i;
+            }
+            break;
+          }
+          mergeSize += segmentSize;
+          mergeDocs += segmentDocs;
         }
 
-        if (anyMerging) {
-          // skip
-        } else if (!anyTooLarge) {
+        if (anyMerging || end - start <= 1) {
+          // skip: there is an ongoing merge at the current level or the computed merge has a single
+          // segment and this merge policy doesn't do singleton merges
+        } else {
           if (spec == null) {
             spec = new MergeSpecification();
           }
@@ -615,14 +633,6 @@ public abstract class LogMergePolicy extends MergePolicy {
                 mergeContext);
           }
           spec.add(new OneMerge(mergeInfos));
-        } else if (verbose(mergeContext)) {
-          message(
-              "    "
-                  + start
-                  + " to "
-                  + end
-                  + ": contains segment over maxMergeSize or maxMergeDocs; skipping",
-              mergeContext);
         }
 
         start = end;

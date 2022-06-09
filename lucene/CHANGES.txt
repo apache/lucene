@@ -44,7 +44,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
+  they reach the maximum merge size. (Adrien Grand)
 
 Other
 ---------------------
