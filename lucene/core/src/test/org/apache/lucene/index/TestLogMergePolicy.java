@@ -51,7 +51,7 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
   protected void assertMerge(MergePolicy policy, MergeSpecification merge) throws IOException {
     LogMergePolicy lmp = (LogMergePolicy) policy;
     for (OneMerge oneMerge : merge.merges) {
-      assertEquals(lmp.getMergeFactor(), oneMerge.segments.size());
+      assertTrue(oneMerge.segments.size() <= lmp.getMergeFactor());
     }
   }
 
@@ -186,6 +186,60 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
     assertEquals(2, segmentInfos.size());
     assertEquals(100, segmentInfos.info(0).info.maxDoc());
     assertEquals(10, segmentInfos.info(1).info.maxDoc());
+  }
+
+  public void testPackLargeSegments() throws IOException {
+    LogDocMergePolicy mergePolicy = new LogDocMergePolicy();
+    IOStats stats = new IOStats();
+    mergePolicy.setMaxMergeDocs(10_000);
+    AtomicLong segNameGenerator = new AtomicLong();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+    // 10 segments below the max segment size, but larger than maxMergeSize/mergeFactor
+    for (int i = 0; i < 10; ++i) {
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(), 3_000, 0, 0, IndexWriter.SOURCE_MERGE));
+    }
+    MergeSpecification spec =
+        mergePolicy.findMerges(MergeTrigger.EXPLICIT, segmentInfos, mergeContext);
+    assertNotNull(spec);
+    for (OneMerge oneMerge : spec.merges) {
+      segmentInfos =
+          applyMerge(segmentInfos, oneMerge, "_" + segNameGenerator.getAndIncrement(), stats);
+    }
+    // LogMP packed 3 3k segments together
+    assertEquals(9_000, segmentInfos.info(0).info.maxDoc());
+  }
+
+  public void testIgnoreLargeSegments() throws IOException {
+    LogDocMergePolicy mergePolicy = new LogDocMergePolicy();
+    IOStats stats = new IOStats();
+    mergePolicy.setMaxMergeDocs(10_000);
+    AtomicLong segNameGenerator = new AtomicLong();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+    // 1 segment that reached the maximum segment size
+    segmentInfos.add(
+        makeSegmentCommitInfo(
+            "_" + segNameGenerator.getAndIncrement(), 11_000, 0, 0, IndexWriter.SOURCE_MERGE));
+    // and 10 segments below the max segment size, but within the same level
+    for (int i = 0; i < 10; ++i) {
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(), 2_000, 0, 0, IndexWriter.SOURCE_MERGE));
+    }
+    // LogMergePolicy used to have a bug that would make it exclude the first mergeFactor segments
+    // from merging if any of them was above the maximum merged size
+    MergeSpecification spec =
+        mergePolicy.findMerges(MergeTrigger.EXPLICIT, segmentInfos, mergeContext);
+    assertNotNull(spec);
+    for (OneMerge oneMerge : spec.merges) {
+      segmentInfos =
+          applyMerge(segmentInfos, oneMerge, "_" + segNameGenerator.getAndIncrement(), stats);
+    }
+    assertEquals(11_000, segmentInfos.info(0).info.maxDoc());
+    assertEquals(10_000, segmentInfos.info(1).info.maxDoc());
   }
 
   public void testFullFlushMerges() throws IOException {
