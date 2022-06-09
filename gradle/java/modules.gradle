@@ -76,7 +76,7 @@ allprojects {
 
         // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
         // dependencies, don't know why.
-        if (!rootProject.ext.isIdea) {
+        if (!rootProject.ext.isIdeaSync) {
           task.classpath = modularPaths.compilationClasspath
         }
 
@@ -119,7 +119,7 @@ allprojects {
 
     // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
     // dependencies, don't know why.
-    if (!rootProject.ext.isIdea) {
+    if (!rootProject.ext.isIdeaSync) {
       def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
       def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
 
