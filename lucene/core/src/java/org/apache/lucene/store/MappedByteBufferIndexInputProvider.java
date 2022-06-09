@@ -67,12 +67,15 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
       throw new IllegalArgumentException(
           "ByteBufferIndexInput cannot use a chunk size of >1 GiBytes.");
     }
-    try (FileChannel c = FileChannel.open(path, StandardOpenOption.READ)) {
-      final String resourceDescription = "ByteBufferIndexInput(path=\"" + path.toString() + "\")";
+
+    final String resourceDescription = "ByteBufferIndexInput(path=\"" + path.toString() + "\")";
+
+    try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
+      final long fileSize = fc.size();
       return ByteBufferIndexInput.newInstance(
           resourceDescription,
-          map(resourceDescription, c, chunkSizePower, preload, c.size()),
-          c.size(),
+          map(resourceDescription, fc, chunkSizePower, preload, fileSize),
+          fileSize,
           chunkSizePower,
           new ByteBufferGuard(resourceDescription, useUnmapHack ? cleaner : null));
     }

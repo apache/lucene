@@ -22,6 +22,7 @@ import java.lang.foreign.MemorySession;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
@@ -44,13 +45,15 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
 
     boolean success = false;
     final MemorySession session = MemorySession.openShared();
-    try (var fc = FileChannel.open(path)) {
+    try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
-      final MemorySegment[] segments =
-          map(session, resourceDescription, fc, chunkSizePower, preload, fileSize);
       final IndexInput in =
           MemorySegmentIndexInput.newInstance(
-              resourceDescription, session, segments, fileSize, chunkSizePower);
+              resourceDescription,
+              session,
+              map(session, resourceDescription, fc, chunkSizePower, preload, fileSize),
+              fileSize,
+              chunkSizePower);
       success = true;
       return in;
     } finally {
