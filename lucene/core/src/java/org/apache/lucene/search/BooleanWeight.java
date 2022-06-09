@@ -345,6 +345,45 @@ final class BooleanWeight extends Weight {
   }
 
   @Override
+  public int count(LeafReaderContext context) throws IOException {
+    // Implement counting for pure conjunctions in the case when one clause doesn't match any docs,
+    // or all clauses but one match all docs.
+    if (weightedClauses.isEmpty()) {
+      return 0;
+    }
+    for (WeightedBooleanClause weightedClause : weightedClauses) {
+      switch (weightedClause.clause.getOccur()) {
+        case FILTER:
+        case MUST:
+          break;
+        case MUST_NOT:
+        case SHOULD:
+        default:
+          return super.count(context);
+      }
+    }
+    // From now on we know the query is a pure conjunction
+    int conjunctionCount = context.reader().maxDoc();
+    for (WeightedBooleanClause weightedClause : weightedClauses) {
+      int count = weightedClause.weight.count(context);
+      if (count == -1 || count == 0) {
+        // If the count of one clause is unknown, then the count of the conjunction is unknown too.
+        // If one clause doesn't match any docs then the conjunction doesn't match any docs either.
+        return count;
+      } else if (count == context.reader().maxDoc()) {
+        // the query matches all docs, it can be safely ignored
+      } else if (conjunctionCount == context.reader().maxDoc()) {
+        conjunctionCount = count;
+      } else {
+        // We have two clauses whose count is in [1, maxDoc), we can't figure out the number of docs
+        // that match the conjunction without running the query.
+        return super.count(context);
+      }
+    }
+    return conjunctionCount;
+  }
+
+  @Override
   public Scorer scorer(LeafReaderContext context) throws IOException {
     ScorerSupplier scorerSupplier = scorerSupplier(context);
     if (scorerSupplier == null) {
