@@ -78,6 +78,9 @@ New Features
 Improvements
 ---------------------
 
+* LUCENE-10078: Merge on full flush is now enabled by default with a timeout of
+  500ms. (Adrien Grand)
+
 * LUCENE-10585: Facet module code cleanup (copy/paste scrubbing, simplification and some very minor
   optimization tweaks). (Greg Miller)
 
@@ -93,6 +96,8 @@ Bug Fixes
 * LUCENE-10582: Fix merging of overridden CollectionStatistics in CombinedFieldQuery (Yannick Welsch)
 
 * LUCENE-10598: SortedSetDocValues#docValueCount() should be always greater than zero. (Lu Xugang)
+
+* LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
 
 Other
 ---------------------

@@ -35,6 +35,9 @@ import java.util.Set;
  * specifies how a segment's size is determined. {@link LogDocMergePolicy} is one subclass that
  * measures size by document count in the segment. {@link LogByteSizeMergePolicy} is another
  * subclass that measures size as the total byte size of the file(s) for the segment.
+ *
+ * <p><b>NOTE</b>: This policy returns natural merges whose size is below the {@link #minMergeSize
+ * minimum merge size} for {@link #findFullFlushMerges full-flush merges}.
  */
 public abstract class LogMergePolicy extends MergePolicy {
 
@@ -64,7 +67,10 @@ public abstract class LogMergePolicy extends MergePolicy {
   /** How many segments to merge at a time. */
   protected int mergeFactor = DEFAULT_MERGE_FACTOR;
 
-  /** Any segments whose size is smaller than this value will be merged more aggressively. */
+  /**
+   * Any segments whose size is smaller than this value will be candidates for full-flush merges and
+   * merged more aggressively.
+   */
   protected long minMergeSize;
 
   /** If the size of a segment exceeds this value then it will never be merged. */
@@ -176,6 +182,11 @@ public abstract class LogMergePolicy extends MergePolicy {
 
     return numToMerge <= maxNumSegments
         && (numToMerge != 1 || !segmentIsOriginal || isMerged(infos, mergeInfo, mergeContext));
+  }
+
+  @Override
+  protected long maxFullFlushMergeSize() {
+    return minMergeSize;
   }
 
   /**

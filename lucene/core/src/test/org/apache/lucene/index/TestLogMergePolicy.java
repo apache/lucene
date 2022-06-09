@@ -27,7 +27,7 @@ import org.apache.lucene.util.Version;
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
   @Override
-  public MergePolicy mergePolicy() {
+  public LogMergePolicy mergePolicy() {
     return newLogMergePolicy(random());
   }
 
@@ -240,5 +240,32 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
     }
     assertEquals(11_000, segmentInfos.info(0).info.maxDoc());
     assertEquals(10_000, segmentInfos.info(1).info.maxDoc());
+  }
+
+  public void testFullFlushMerges() throws IOException {
+    AtomicLong segNameGenerator = new AtomicLong();
+    IOStats stats = new IOStats();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+
+    LogMergePolicy mp = mergePolicy();
+
+    for (int i = 0; i < mp.getMergeFactor(); ++i) {
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(),
+              1,
+              0,
+              Double.MIN_VALUE,
+              IndexWriter.SOURCE_FLUSH));
+    }
+    MergeSpecification spec =
+        mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext);
+    assertNotNull(spec);
+    for (OneMerge merge : spec.merges) {
+      segmentInfos =
+          applyMerge(segmentInfos, merge, "_" + segNameGenerator.getAndIncrement(), stats);
+    }
+    assertEquals(1, segmentInfos.size());
   }
 }

@@ -428,7 +428,10 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
               IndexWriter.SOURCE_FLUSH));
 
       MergeSpecification merges =
-          mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+          mergePolicy.findFullFlushMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      if (merges == null) {
+        merges = mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      }
       while (merges != null) {
         assertTrue(merges.merges.size() > 0);
         assertMerge(mergePolicy, merges);
@@ -490,7 +493,10 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
               flushSize,
               IndexWriter.SOURCE_FLUSH));
       MergeSpecification merges =
-          mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+          mergePolicy.findFullFlushMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      if (merges == null) {
+        merges = mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      }
       while (merges != null) {
         assertMerge(mergePolicy, merges);
         for (OneMerge oneMerge : merges.merges) {
