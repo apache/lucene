@@ -102,6 +102,8 @@ Other
 
 * LUCENE-10370: pass proper classpath/module arguments for forking jvms from within tests. (Dawid Weiss)
 
+* LUCENE-10604: Improve ability to test and debug triangulation algorithm in Tessellator.
+  (Craig Taverner)
 
 ======================= Lucene 9.2.0 =======================
 
