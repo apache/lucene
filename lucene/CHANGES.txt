@@ -25,7 +25,9 @@ API Changes
 * LUCENE-10436: Remove deprecated DocValuesFieldExistsQuery, NormsFieldExistsQuery and
   KnnVectorFieldExistsQuery. (Zach Chen, Adrien Grand)
 
-* LUCENE-10561 Reduce class/member visibility of all normalizer and stemmer classes. (Rushabh Shah)
+* LUCENE-10561: Reduce class/member visibility of all normalizer and stemmer classes. (Rushabh Shah)
+
+* LUCENE-10266: Move nearest-neighbor search on points to core. (Rushabh Shah)
 
 New Features
 ---------------------

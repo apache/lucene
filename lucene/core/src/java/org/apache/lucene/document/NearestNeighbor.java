@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.search;
+package org.apache.lucene.document;
 
 import static org.apache.lucene.geo.GeoEncodingUtils.decodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
@@ -31,11 +31,7 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SloppyMath;
 
-/**
- * KNN search on top of 2D lat/lon indexed points.
- *
- * @lucene.experimental
- */
+/** KNN search on top of 2D lat/lon indexed points. */
 class NearestNeighbor {
 
   static class Cell implements Comparable<Cell> {
