@@ -363,20 +363,23 @@ final class BooleanWeight extends Weight {
       }
     }
     // From now on we know the query is a pure conjunction
-    int conjunctionCount = context.reader().maxDoc();
+    final int numDocs = context.reader().numDocs();
+    int conjunctionCount = numDocs;
     for (WeightedBooleanClause weightedClause : weightedClauses) {
       int count = weightedClause.weight.count(context);
       if (count == -1 || count == 0) {
         // If the count of one clause is unknown, then the count of the conjunction is unknown too.
         // If one clause doesn't match any docs then the conjunction doesn't match any docs either.
         return count;
-      } else if (count == context.reader().maxDoc()) {
+      } else if (count == numDocs) {
         // the query matches all docs, it can be safely ignored
-      } else if (conjunctionCount == context.reader().maxDoc()) {
+      } else if (conjunctionCount == numDocs) {
+        // all clauses seen so far match all docs, so the count of the new clause is also the count
+        // of the conjunction
         conjunctionCount = count;
       } else {
-        // We have two clauses whose count is in [1, maxDoc), we can't figure out the number of docs
-        // that match the conjunction without running the query.
+        // We have two clauses whose count is in [1, numDocs), we can't figure out the number of
+        // docs that match the conjunction without running the query.
         return super.count(context);
       }
     }
