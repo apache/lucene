@@ -19,7 +19,8 @@ package org.apache.lucene.codecs.lucene90;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene93.Lucene93Codec;
-import org.apache.lucene.codecs.lucene93.Lucene93Codec.Mode;
+import org.apache.lucene.codecs.lucene93.Lucene93CodecParameters;
+import org.apache.lucene.codecs.lucene93.Lucene93CodecParameters.StoredFieldsCompressionMode;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
@@ -31,7 +32,10 @@ import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFieldsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene93Codec(Mode.BEST_COMPRESSION);
+    return new Lucene93Codec(
+        Lucene93CodecParameters.builder()
+            .withStoredFieldsCompressionMode(StoredFieldsCompressionMode.BEST_COMPRESSION)
+            .build());
   }
 
   /**
@@ -41,7 +45,15 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     Directory dir = newDirectory();
     for (int i = 0; i < 10; i++) {
       IndexWriterConfig iwc = newIndexWriterConfig();
-      iwc.setCodec(new Lucene93Codec(RandomPicks.randomFrom(random(), Mode.values())));
+
+      StoredFieldsCompressionMode storedFieldsCompressionMode =
+          RandomPicks.randomFrom(random(), StoredFieldsCompressionMode.values());
+
+      iwc.setCodec(
+          new Lucene93Codec(
+              Lucene93CodecParameters.builder()
+                  .withStoredFieldsCompressionMode(storedFieldsCompressionMode)
+                  .build()));
       IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig());
       Document doc = new Document();
       doc.add(new StoredField("field1", "value1"));

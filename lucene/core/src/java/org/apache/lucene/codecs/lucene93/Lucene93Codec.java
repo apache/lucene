@@ -54,20 +54,6 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
  */
 public class Lucene93Codec extends Codec {
 
-  /** Configuration option for the codec. */
-  public enum Mode {
-    /** Trade compression ratio for retrieval speed. */
-    BEST_SPEED(Lucene90StoredFieldsFormat.Mode.BEST_SPEED),
-    /** Trade retrieval speed for compression ratio. */
-    BEST_COMPRESSION(Lucene90StoredFieldsFormat.Mode.BEST_COMPRESSION);
-
-    private final Lucene90StoredFieldsFormat.Mode storedMode;
-
-    private Mode(Lucene90StoredFieldsFormat.Mode storedMode) {
-      this.storedMode = Objects.requireNonNull(storedMode);
-    }
-  }
-
   private final TermVectorsFormat vectorsFormat = new Lucene90TermVectorsFormat();
   private final FieldInfosFormat fieldInfosFormat = new Lucene90FieldInfosFormat();
   private final SegmentInfoFormat segmentInfosFormat = new Lucene90SegmentInfoFormat();
@@ -106,21 +92,21 @@ public class Lucene93Codec extends Codec {
 
   /** Instantiates a new codec. */
   public Lucene93Codec() {
-    this(Mode.BEST_SPEED);
+    this(Lucene93CodecParameters.builder().build());
   }
-
-  /**
-   * Instantiates a new codec, specifying the stored fields compression mode to use.
-   *
-   * @param mode stored fields compression mode to use for newly flushed/merged segments.
-   */
-  public Lucene93Codec(Mode mode) {
+  /** Instantiates a new codec, specifying the stored fields compression mode to use. */
+  public Lucene93Codec(Lucene93CodecParameters codecParameters) {
     super("Lucene93");
     this.storedFieldsFormat =
-        new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
+        new Lucene90StoredFieldsFormat(
+            Objects.requireNonNull(codecParameters)
+                .getStoredFieldsCompressionMode()
+                .getStoredMode());
     this.defaultPostingsFormat = new Lucene90PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
-    this.defaultKnnVectorsFormat = new Lucene93HnswVectorsFormat();
+    this.defaultKnnVectorsFormat =
+        new Lucene93HnswVectorsFormat(
+            codecParameters.getHnswMaxConn(), codecParameters.getHnswBeamWidth());
   }
 
   @Override
