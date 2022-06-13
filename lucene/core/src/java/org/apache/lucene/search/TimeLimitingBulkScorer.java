@@ -22,18 +22,19 @@ import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.util.Bits;
 
 /**
- * The {@link TimeLimitingCollector} is used to timeout search requests that take longer than the
+ * The {@link TimeLimitingBulkScorer} is used to timeout search requests that take longer than the
  * maximum allowed search time limit. After this time is exceeded, the search thread is stopped by
- * throwing a {@link TimeLimitingCollector.TimeExceededException}.
+ * throwing a {@link TimeLimitingBulkScorer.TimeExceededException}.
  *
  * @see org.apache.lucene.index.ExitableDirectoryReader
  */
 public class TimeLimitingBulkScorer extends BulkScorer {
-
+  // We score chunks of documents at a time so as to avoid the cost of checking the timeout for
+  // every document we score.
   static final int INTERVAL = 100;
   /** Thrown when elapsed search time exceeds allowed search time. */
   @SuppressWarnings("serial")
-   static class TimeExceededException extends RuntimeException {
+  static class TimeExceededException extends RuntimeException {
 
     private TimeExceededException() {
       super("TimeLimit Exceeded");

@@ -84,8 +84,7 @@ public class IndexSearcher {
   static int maxClauseCount = 1024;
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
-  private boolean isTimeoutEnabled = false;
-  private QueryTimeout queryTimeout;
+  private QueryTimeout queryTimeout = null;
   private boolean partialResult = false;
 
   static {
@@ -536,8 +535,7 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
-  public void setTimeout(boolean isTimeoutEnabled, QueryTimeout queryTimeout) throws IOException {
-    this.isTimeoutEnabled = isTimeoutEnabled;
+  public void setTimeout(QueryTimeout queryTimeout) throws IOException {
     this.queryTimeout = queryTimeout;
   }
 
@@ -564,7 +562,7 @@ public class IndexSearcher {
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
   }
 
-  public boolean isAborted() {
+  public boolean timedOut() {
     return partialResult;
   }
   /**
@@ -778,7 +776,7 @@ public class IndexSearcher {
       }
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
-        if (isTimeoutEnabled) {
+        if (queryTimeout != null) {
           TimeLimitingBulkScorer timeLimitingBulkScorer =
               new TimeLimitingBulkScorer(scorer, queryTimeout);
           try {

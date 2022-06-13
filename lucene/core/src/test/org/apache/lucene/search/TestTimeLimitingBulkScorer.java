@@ -51,12 +51,12 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
     Query query = new TermQuery(new Term("default", "ones"));
     directoryReader = DirectoryReader.open(directory);
     searcher = new IndexSearcher(directoryReader);
-    searcher.setTimeout(true, CountingQueryTimeout(10));
+    searcher.setTimeout(CountingQueryTimeout(10));
     top = searcher.search(query, n);
     hits = top.scoreDocs;
     assertTrue(
         "Partial result and is aborted is true",
-        hits.length > 0 && hits.length < n && searcher.isAborted());
+        hits.length > 0 && hits.length < n && searcher.timedOut());
     directoryReader.close();
     directory.close();
   }
