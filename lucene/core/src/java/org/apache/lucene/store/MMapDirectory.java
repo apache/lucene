@@ -78,8 +78,8 @@ import org.apache.lucene.util.SuppressForbidden;
  * RAFDirectory} from the Lucene {@code misc} module in favor of {@link MMapDirectory}.
  *
  * <p><b>NOTE:</b> If your application requires external synchronization, you should <b>not</b>
- * synchronize on the <code>MMapDirectory</code> instance as this may cause deadlock;
- * use your own (non-Lucene) objects instead.
+ * synchronize on the <code>MMapDirectory</code> instance as this may cause deadlock; use your own
+ * (non-Lucene) objects instead.
  *
  * @see <a href="http://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html">Blog post
  *     about MMapDirectory</a>
