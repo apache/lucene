@@ -2169,6 +2169,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           FakeIOException fioe) {
         // OK: e.g. SMS hit the exception
         break;
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalStateException ise) {
+        // OK: Merge-on-refresh refuses to run because IndexWriter hit a tragedy
+        break;
       }
     }
 
