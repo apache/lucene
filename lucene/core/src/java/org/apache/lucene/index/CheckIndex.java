@@ -1378,7 +1378,7 @@ public final class CheckIndex implements Closeable {
       computedFieldCount++;
 
       final Terms terms = fields.terms(field);
-      if (terms == null) {
+      if (terms == Terms.EMPTY) {
         continue;
       }
 
@@ -1484,7 +1484,6 @@ public final class CheckIndex implements Closeable {
       }
 
       final TermsEnum termsEnum = terms.iterator();
-
       boolean hasOrd = true;
       final long termCountStart = status.delTermCount + status.termCount;
 

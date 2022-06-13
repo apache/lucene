@@ -70,10 +70,8 @@ public final class MultiFields extends Fields {
     // Gather all sub-readers that share this field
     for (int i = 0; i < subs.length; i++) {
       final Terms terms = subs[i].terms(field);
-      if (terms != null) {
-        subs2.add(terms);
-        slices2.add(subSlices[i]);
-      }
+      subs2.add(terms);
+      slices2.add(subSlices[i]);
     }
     if (subs2.size() != 0) {
       result =
@@ -81,7 +79,6 @@ public final class MultiFields extends Fields {
               subs2.toArray(Terms.EMPTY_ARRAY), slices2.toArray(ReaderSlice.EMPTY_ARRAY));
       terms.put(field, result);
     }
-
     return result;
   }
 

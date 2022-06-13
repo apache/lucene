@@ -350,7 +350,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     @Override
     public Terms terms(String field) throws IOException {
       FieldsProducer fieldsProducer = fields.get(field);
-      return fieldsProducer == null ? null : fieldsProducer.terms(field);
+      return fieldsProducer == null ? Terms.EMPTY : fieldsProducer.terms(field);
     }
 
     @Override

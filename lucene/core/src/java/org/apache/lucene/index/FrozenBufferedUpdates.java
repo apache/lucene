@@ -595,7 +595,7 @@ final class FrozenBufferedUpdates {
 
     DocIdSetIterator nextTerm(String field, BytesRef term) throws IOException {
       setField(field);
-      if (termsEnum != null) {
+      if (termsEnum != null && termsEnum != TermsEnum.EMPTY) {
         if (sortedTerms) {
           assert assertSorted(term);
           // in the sorted case we can take advantage of the "seeking forward" property

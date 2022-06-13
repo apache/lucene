@@ -40,6 +40,8 @@ Improvements
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
 
+* LUCENE-10357: Ghost fields and postings/points. (Rushabh Shah)
+
 Optimizations
 ---------------------
 (No changes)

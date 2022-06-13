@@ -178,8 +178,8 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
   @Override
   public Terms terms(String field) throws IOException {
     Terms terms = delegateFieldsProducer.terms(field);
-    if (terms == null) {
-      return null;
+    if (terms == null || terms == Terms.EMPTY) {
+      return Terms.EMPTY;
     }
     return new CompletionTerms(terms, readers.get(field));
   }

@@ -286,7 +286,8 @@ public class UniformSplitTermsReader extends FieldsProducer {
 
   @Override
   public Terms terms(String field) {
-    return fieldToTermsMap.get(field);
+    Terms terms = fieldToTermsMap.get(field);
+    return terms == null ? Terms.EMPTY : terms;
   }
 
   @Override

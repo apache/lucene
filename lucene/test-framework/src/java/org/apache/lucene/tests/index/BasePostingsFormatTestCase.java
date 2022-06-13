@@ -354,13 +354,12 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     // fields.size() == 0; all others must be == 1:
     assertTrue(ar.getFieldInfos().size() <= 1);
     Terms terms = ar.terms("ghostField");
-    if (terms != null) {
-      TermsEnum termsEnum = terms.iterator();
-      BytesRef term = termsEnum.next();
-      if (term != null) {
-        PostingsEnum postingsEnum = termsEnum.postings(null);
-        assertTrue(postingsEnum.nextDoc() == PostingsEnum.NO_MORE_DOCS);
-      }
+    assertNotNull(terms);
+    TermsEnum termsEnum = terms.iterator();
+    BytesRef term = termsEnum.next();
+    if (term != null) {
+      PostingsEnum postingsEnum = termsEnum.postings(null);
+      assertTrue(postingsEnum.nextDoc() == PostingsEnum.NO_MORE_DOCS);
     }
     ir.close();
     iw.close();

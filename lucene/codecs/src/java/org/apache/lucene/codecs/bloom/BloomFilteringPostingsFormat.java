@@ -200,8 +200,8 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
         return delegateFieldsProducer.terms(field);
       } else {
         Terms result = delegateFieldsProducer.terms(field);
-        if (result == null) {
-          return null;
+        if (result == Terms.EMPTY) {
+          return Terms.EMPTY;
         }
         return new BloomFilteredTerms(result, filter);
       }

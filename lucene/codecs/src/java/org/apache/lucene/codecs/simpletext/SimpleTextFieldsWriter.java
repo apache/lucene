@@ -78,14 +78,9 @@ class SimpleTextFieldsWriter extends FieldsConsumer {
     // for each field
     for (String field : fields) {
       Terms terms = fields.terms(field);
-      if (terms == null) {
-        // Annoyingly, this can happen!
-        continue;
-      }
       FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
 
       boolean wroteField = false;
-
       boolean hasPositions = terms.hasPositions();
       boolean hasFreqs = terms.hasFreqs();
       boolean hasPayloads = fieldInfo.hasPayloads();

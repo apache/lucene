@@ -53,6 +53,10 @@ public final class MultiTerms extends Terms {
     boolean _hasPositions = true;
     boolean _hasPayloads = false;
     for (int i = 0; i < subs.length; i++) {
+      if (subs[i] == EMPTY) {
+        // Skip calculating if terms is EMPTY
+        continue;
+      }
       _hasFreqs &= subs[i].hasFreqs();
       _hasOffsets &= subs[i].hasOffsets();
       _hasPositions &= subs[i].hasPositions();
@@ -253,5 +257,19 @@ public final class MultiTerms extends Terms {
   @Override
   public boolean hasPayloads() {
     return hasPayloads;
+  }
+
+  /**
+   * Tests whether all terms within MultiTerms is Empty
+   *
+   * @return true if all terms within MultiTerms is Empty, false otherwise
+   */
+  public boolean isEmpty() {
+    for (int i = 0; i < subs.length; i++) {
+      if (subs[i] != Terms.EMPTY) {
+        return false;
+      }
+    }
+    return true;
   }
 }

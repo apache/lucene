@@ -64,9 +64,9 @@ public class CompletionWeight extends Weight {
   @Override
   public BulkScorer bulkScorer(final LeafReaderContext context) throws IOException {
     final LeafReader reader = context.reader();
-    final Terms terms;
     final NRTSuggester suggester;
-    if ((terms = reader.terms(completionQuery.getField())) == null) {
+    final Terms terms = reader.terms(completionQuery.getField());
+    if (terms == null || terms == Terms.EMPTY) {
       return null;
     }
     if (terms instanceof CompletionTerms) {

@@ -511,7 +511,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
       while (true) {
         final long lineStart = in.getFilePointer();
         SimpleTextUtil.readLine(in, scratch);
-        // System.out.println("NEXT DOC: " + scratch.utf8ToString());
         if (StringHelper.startsWith(scratch.get(), DOC)) {
           if (!first) {
             nextDocStart = lineStart;
@@ -845,7 +844,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     if (terms == null) {
       Long fp = fields.get(field);
       if (fp == null) {
-        return null;
+        return Terms.EMPTY;
       } else {
         terms = new SimpleTextTerms(field, fp, maxDoc);
         termsCache.put(field, terms);

@@ -136,7 +136,8 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
     @Override
     public Terms terms(String field) {
-      return fields.get(field);
+      Terms terms = fields.get(field);
+      return terms == null ? Terms.EMPTY : terms;
     }
 
     @Override

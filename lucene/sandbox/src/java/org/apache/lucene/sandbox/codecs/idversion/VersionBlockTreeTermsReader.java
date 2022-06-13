@@ -229,7 +229,8 @@ public final class VersionBlockTreeTermsReader extends FieldsProducer {
   @Override
   public Terms terms(String field) throws IOException {
     assert field != null;
-    return fields.get(field);
+    Terms terms = fields.get(field);
+    return terms == null ? Terms.EMPTY : terms;
   }
 
   @Override

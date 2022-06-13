@@ -79,7 +79,7 @@ public final class AssertingPostingsFormat extends PostingsFormat {
     @Override
     public Terms terms(String field) throws IOException {
       Terms terms = in.terms(field);
-      return terms == null ? null : new AssertingLeafReader.AssertingTerms(terms);
+      return terms == Terms.EMPTY ? terms : new AssertingLeafReader.AssertingTerms(terms);
     }
 
     @Override
@@ -124,14 +124,13 @@ public final class AssertingPostingsFormat extends PostingsFormat {
       String lastField = null;
 
       for (String field : fields) {
-
         FieldInfo fieldInfo = writeState.fieldInfos.fieldInfo(field);
         assert fieldInfo != null;
         assert lastField == null || lastField.compareTo(field) < 0;
         lastField = field;
 
         Terms terms = fields.terms(field);
-        if (terms == null) {
+        if (terms == null || terms == Terms.EMPTY) {
           continue;
         }
         assert terms != null;

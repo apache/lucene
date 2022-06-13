@@ -39,10 +39,7 @@ public abstract class Terms {
    */
   public static Terms getTerms(LeafReader reader, String field) throws IOException {
     Terms terms = reader.terms(field);
-    if (terms == null) {
-      return EMPTY;
-    }
-    return terms;
+    return terms == null ? EMPTY : terms;
   }
 
   /** Returns an iterator that will step through all terms. This method will not return null. */
@@ -229,7 +226,7 @@ public abstract class Terms {
   }
 
   /** An empty {@link Terms} which returns no terms */
-  private static final Terms EMPTY =
+  public static final Terms EMPTY =
       new Terms() {
         @Override
         public TermsEnum iterator() throws IOException {
