@@ -1273,7 +1273,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
           query.add(bar, Occur.FILTER);
           query.add(foo, Occur.FILTER);
         }
-        indexSearcher.count(query.build());
+        indexSearcher.search(query.build(), new TotalHitCountCollectorManager());
         assertEquals(1, policy.frequency(query.build()));
         assertEquals(1, policy.frequency(foo));
         assertEquals(1, policy.frequency(bar));
