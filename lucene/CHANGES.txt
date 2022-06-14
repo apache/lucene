@@ -102,6 +102,8 @@ Bug Fixes
 
 * LUCENE-10605: Fix error in 32bit jvm object alignment gap calculation (Sun Wuqiang)
 
+* GITHUB#956: Make sure KnnVectorQuery applies search boost. (Julie Tibshirani)
+
 * LUCENE-10598: SortedSetDocValues#docValueCount() should be always greater than zero. (Lu Xugang)
 
 Other

@@ -112,6 +112,29 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  public void testSearchBoost() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      Query vectorQuery = new KnnVectorQuery("field", new float[] {0, 0}, 10);
+      ScoreDoc[] scoreDocs = searcher.search(vectorQuery, 3).scoreDocs;
+
+      Query boostQuery = new BoostQuery(vectorQuery, 3.0f);
+      ScoreDoc[] boostScoreDocs = searcher.search(boostQuery, 3).scoreDocs;
+      assertEquals(scoreDocs.length, boostScoreDocs.length);
+
+      for (int i = 0; i < scoreDocs.length; i++) {
+        ScoreDoc scoreDoc = scoreDocs[i];
+        ScoreDoc boostScoreDoc = boostScoreDocs[i];
+
+        assertEquals(scoreDoc.doc, boostScoreDoc.doc);
+        assertEquals(scoreDoc.score * 3.0f, boostScoreDoc.score, 0.001f);
+      }
+    }
+  }
+
   /** Tests that a KnnVectorQuery applies the filter query */
   public void testSimpleFilter() throws IOException {
     try (Directory indexStore =
