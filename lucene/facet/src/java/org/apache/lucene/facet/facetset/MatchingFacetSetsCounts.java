@@ -60,66 +60,11 @@ public class MatchingFacetSetsCounts extends Facets {
     this.field = field;
     this.facetSetMatchers = facetSetMatchers;
     this.counts = new int[facetSetMatchers.length];
-    if (countBytes) {
-      countBytes(field, hits.getMatchingDocs());
-    } else {
-      countLongs(field, hits.getMatchingDocs());
-    }
+    count(field, hits.getMatchingDocs());
   }
 
   /** Counts from the provided field. */
-  private void countBytes(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
-      throws IOException {
-
-    for (FacetsCollector.MatchingDocs hits : matchingDocs) {
-
-      BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context.reader(), field);
-
-      final DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), binaryDocValues));
-      if (it == null) {
-        continue;
-      }
-
-      int expectedNumDims = -1;
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        boolean shouldCountDoc = false;
-        BytesRef bytesRef = binaryDocValues.binaryValue();
-        byte[] packedValue = bytesRef.bytes;
-        int numDims = (int) LongPoint.decodeDimension(packedValue, 0);
-        if (expectedNumDims == -1) {
-          expectedNumDims = numDims;
-        } else {
-          // Verify that the number of indexed dimensions for all matching documents is the same
-          // (since we cannot verify that at indexing time).
-          assert numDims == expectedNumDims
-              : "Expected ("
-                  + expectedNumDims
-                  + ") dimensions, found ("
-                  + numDims
-                  + ") for doc ("
-                  + doc
-                  + ")";
-        }
-        for (int start = Long.BYTES;
-            start < bytesRef.length;
-            start += numDims * Long.BYTES) { // for each facet set
-          for (int j = 0; j < facetSetMatchers.length; j++) { // for each facet set matcher
-            if (facetSetMatchers[j].matches(packedValue, start, numDims)) {
-              counts[j]++;
-              shouldCountDoc = true;
-            }
-          }
-        }
-        if (shouldCountDoc) {
-          totCount++;
-        }
-      }
-    }
-  }
-
-  /** Counts from the provided field. */
-  private void countLongs(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
+  private void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
       throws IOException {
 
     for (FacetsCollector.MatchingDocs hits : matchingDocs) {
@@ -161,7 +106,7 @@ public class MatchingFacetSetsCounts extends Facets {
             dimValues[i] = LongPoint.decodeDimension(packedValue, offset);
           }
           for (int j = 0; j < facetSetMatchers.length; j++) { // for each facet set matcher
-            if (facetSetMatchers[j].matches(dimValues, numDims)) {
+            if (facetSetMatchers[j].matches(dimValues)) {
               counts[j]++;
               shouldCountDoc = true;
             }

@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.util.ArrayUtil;
-
 /**
  * A {@link FacetSetMatcher} which considers a set as a match only if all dimension values are equal
  * to the given one.
@@ -27,43 +24,19 @@ import org.apache.lucene.util.ArrayUtil;
  */
 public class ExactFacetSetMatcher extends FacetSetMatcher {
 
-  private final byte[] packedValues;
-  private final ArrayUtil.ByteArrayComparator byteComparator;
   private final long[] values;
 
   /** Constructs an instance to match the given facet set. */
   public ExactFacetSetMatcher(String label, FacetSet facetSet) {
     super(label, facetSet.values.length);
-    this.packedValues = LongPoint.pack(facetSet.values).bytes;
-    this.byteComparator = ArrayUtil.getUnsignedComparator(Long.BYTES);
     this.values = facetSet.values;
   }
 
   @Override
-  public boolean matches(byte[] packedValue, int start, int numDims) {
-    assert numDims == dims
+  public boolean matches(long[] dimValues) {
+    assert dimValues.length == dims
         : "Encoded dimensions (dims="
-            + numDims
-            + ") is incompatible with FacetSet dimensions (dims="
-            + dims
-            + ")";
-
-    for (int dim = 0, valuesOffset = 0, packedOffset = start;
-        dim < dims;
-        dim++, valuesOffset += Long.BYTES, packedOffset += Long.BYTES) {
-      if (byteComparator.compare(packedValue, packedOffset, packedValues, valuesOffset) != 0) {
-        // Field's dimension value is not equal to given dimension, the entire set is rejected
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @Override
-  public boolean matches(long[] dimValues, int numDims) {
-    assert numDims == dims
-        : "Encoded dimensions (dims="
-            + numDims
+            + dimValues.length
             + ") is incompatible with FacetSet dimensions (dims="
             + dims
             + ")";

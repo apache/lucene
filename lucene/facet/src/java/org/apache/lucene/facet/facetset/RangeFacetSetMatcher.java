@@ -17,8 +17,6 @@
 package org.apache.lucene.facet.facetset;
 
 import java.util.Arrays;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.util.ArrayUtil;
 
 /**
  * A {@link FacetSetMatcher} which considers a set as a match if all dimensions fall within the
@@ -28,67 +26,33 @@ import org.apache.lucene.util.ArrayUtil;
  */
 public class RangeFacetSetMatcher extends FacetSetMatcher {
 
-  private final ArrayUtil.ByteArrayComparator byteComparator =
-      ArrayUtil.getUnsignedComparator(Long.BYTES);
-
-  private final byte[] lowerRanges;
-  private final byte[] upperRanges;
-
-  private final long[] lowerRangesLong;
-  private final long[] upperRangesLong;
+  private final long[] lowerRanges;
+  private final long[] upperRanges;
 
   /**
    * Constructs and instance to match facet sets with dimensions that fall within the given ranges.
    */
   public RangeFacetSetMatcher(String label, LongRange... dimRanges) {
     super(label, getDims(dimRanges));
-    this.lowerRanges =
-        LongPoint.pack(Arrays.stream(dimRanges).mapToLong(range -> range.min).toArray()).bytes;
-    this.upperRanges =
-        LongPoint.pack(Arrays.stream(dimRanges).mapToLong(range -> range.max).toArray()).bytes;
-    this.lowerRangesLong = Arrays.stream(dimRanges).mapToLong(range -> range.min).toArray();
-    this.upperRangesLong = Arrays.stream(dimRanges).mapToLong(range -> range.max).toArray();
+    this.lowerRanges = Arrays.stream(dimRanges).mapToLong(range -> range.min).toArray();
+    this.upperRanges = Arrays.stream(dimRanges).mapToLong(range -> range.max).toArray();
   }
 
   @Override
-  public boolean matches(byte[] packedValue, int start, int numDims) {
-    assert numDims == dims
+  public boolean matches(long[] dimValues) {
+    assert dimValues.length == dims
         : "Encoded dimensions (dims="
-            + numDims
-            + ") is incompatible with range dimensions (dims="
-            + dims
-            + ")";
-
-    for (int dim = 0, valuesOffset = 0, packedOffset = start;
-        dim < dims;
-        dim++, valuesOffset += Long.BYTES, packedOffset += Long.BYTES) {
-      if (byteComparator.compare(packedValue, packedOffset, lowerRanges, valuesOffset) < 0) {
-        // Doc's value is too low in this dimension
-        return false;
-      }
-      if (byteComparator.compare(packedValue, packedOffset, upperRanges, valuesOffset) > 0) {
-        // Doc's value is too high in this dimension
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @Override
-  public boolean matches(long[] dimValues, int numDims) {
-    assert numDims == dims
-        : "Encoded dimensions (dims="
-            + numDims
+            + dimValues.length
             + ") is incompatible with range dimensions (dims="
             + dims
             + ")";
 
     for (int i = 0; i < dimValues.length; i++) {
-      if (dimValues[i] < lowerRangesLong[i]) {
+      if (dimValues[i] < lowerRanges[i]) {
         // Doc's value is too low in this dimension
         return false;
       }
-      if (dimValues[i] > upperRangesLong[i]) {
+      if (dimValues[i] > upperRanges[i]) {
         // Doc's value is too high in this dimension
         return false;
       }
