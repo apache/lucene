@@ -64,7 +64,6 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
-            random().nextBoolean(),
             new ExactFacetSetMatcher("Ford 2010", new FacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new FacetSet(CHEVY_ORD, 2011)));
 
@@ -126,7 +125,6 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
-            random().nextBoolean(),
             new ExactFacetSetMatcher("Ford 2010", new FacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new FacetSet(CHEVY_ORD, 2011)));
 

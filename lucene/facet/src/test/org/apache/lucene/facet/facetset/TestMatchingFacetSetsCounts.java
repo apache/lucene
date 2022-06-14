@@ -46,10 +46,7 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
 
     Facets facets =
         new MatchingFacetSetsCounts(
-            "field",
-            fc,
-            random().nextBoolean(),
-            new ExactFacetSetMatcher("Test", new FacetSet(123, 456)));
+            "field", fc, new ExactFacetSetMatcher("Test", new FacetSet(123, 456)));
 
     expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
@@ -79,10 +76,7 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
         AssertionError.class,
         () ->
             new MatchingFacetSetsCounts(
-                "field",
-                fc,
-                random().nextBoolean(),
-                new ExactFacetSetMatcher("Test", new FacetSet(1))));
+                "field", fc, new ExactFacetSetMatcher("Test", new FacetSet(1))));
 
     r.close();
     d.close();

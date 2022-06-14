@@ -32,7 +32,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Returns the countBytes for each given {@link FacetSet}
+ * Returns the counts for each given {@link FacetSet}
  *
  * @lucene.experimental
  */
@@ -41,16 +41,14 @@ public class MatchingFacetSetsCounts extends Facets {
   private final FacetSetMatcher[] facetSetMatchers;
   private final int[] counts;
   private final String field;
-
-  private int totCount;
+  private final int totCount;
 
   /**
    * Constructs a new instance of matching facet set counts which calculates the countBytes for each
    * given facet set matcher.
    */
   public MatchingFacetSetsCounts(
-      String field, FacetsCollector hits, boolean countBytes, FacetSetMatcher... facetSetMatchers)
-      throws IOException {
+      String field, FacetsCollector hits, FacetSetMatcher... facetSetMatchers) throws IOException {
     if (facetSetMatchers == null || facetSetMatchers.length == 0) {
       throw new IllegalArgumentException("facetSetMatchers cannot be null or empty");
     }
@@ -60,13 +58,14 @@ public class MatchingFacetSetsCounts extends Facets {
     this.field = field;
     this.facetSetMatchers = facetSetMatchers;
     this.counts = new int[facetSetMatchers.length];
-    count(field, hits.getMatchingDocs());
+    this.totCount = count(field, hits.getMatchingDocs());
   }
 
   /** Counts from the provided field. */
-  private void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
+  private int count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
       throws IOException {
 
+    int totCount = 0;
     for (FacetsCollector.MatchingDocs hits : matchingDocs) {
 
       BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context.reader(), field);
@@ -99,12 +98,9 @@ public class MatchingFacetSetsCounts extends Facets {
                   + doc
                   + ")";
         }
-        for (int start = Long.BYTES;
-            start < bytesRef.length;
-            start += numDims * Long.BYTES) { // for each facet set
-          for (int i = 0, offset = start; i < dimValues.length; i++, offset += Long.BYTES) {
-            dimValues[i] = LongPoint.decodeDimension(packedValue, offset);
-          }
+
+        for (int start = Long.BYTES; start < bytesRef.length; start += numDims * Long.BYTES) {
+          LongPoint.unpack(bytesRef, start, dimValues);
           for (int j = 0; j < facetSetMatchers.length; j++) { // for each facet set matcher
             if (facetSetMatchers[j].matches(dimValues)) {
               counts[j]++;
@@ -117,6 +113,7 @@ public class MatchingFacetSetsCounts extends Facets {
         }
       }
     }
+    return totCount;
   }
 
   // TODO: This does not really provide "top children" functionality yet but provides "all

@@ -94,7 +94,6 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
-            random().nextBoolean(),
             new RangeFacetSetMatcher(
                 "Ford [2010-2014]", single(FORD_ORD), range(2010, true, 2014, true)),
             new RangeFacetSetMatcher(

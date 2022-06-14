@@ -59,12 +59,6 @@ public class FacetSetsField extends BinaryDocValuesField {
     }
   }
 
-  // TODO: when there are many facet sets, it might be more efficient to pack each dimension
-  // separately.
-  // This however requires a matching "reader" in order to unpack them properly during aggregation
-  // time, therefore
-  // if the need arises we might need to factor this logic out to a FacetSetEncoder/Decoder or
-  // PackedFacetSet
   private static BytesRef toPackedLongs(FacetSet... facetSets) {
     int numDims = facetSets[0].values.length;
     long[] dimsAndCount = new long[1 + numDims * facetSets.length];

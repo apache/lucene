@@ -49,7 +49,7 @@ public abstract class FacetSetMatcher {
   /**
    * Returns true if the facet set encoded in the given {@code long[]} is matched by this matcher.
    *
-   * @param dimValues the encoded dimension values of all facet sets in this field
+   * @param dimValues the encoded dimension values of a single facet set in this field
    */
   public abstract boolean matches(long[] dimValues);
 }

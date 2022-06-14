@@ -118,22 +118,22 @@ public final class LongPoint extends Field {
   }
 
   /**
-   * Unpack a BytesRef into a long point
+   * Unpack a BytesRef into a long point. This method can be used to unpack values that were packed
+   * with {@link #pack(long...)}.
    *
    * @param bytesRef BytesRef Value
-   * @throws IllegalArgumentException the value is null
+   * @param start the start offset to unpack the values from
+   * @param buf the buffer to store the values in
+   * @throws IllegalArgumentException if bytesRef or buf are null
    */
-  public static long[] unpack(BytesRef bytesRef) {
-    if (bytesRef == null) {
-      throw new IllegalArgumentException("bytesRef must not be null");
-    }
-    long[] point = new long[bytesRef.length / Long.BYTES];
-
-    for (int dim = 0; dim < point.length; dim++) {
-      point[dim] = decodeDimension(bytesRef.bytes, dim * Long.BYTES);
+  public static void unpack(BytesRef bytesRef, int start, long[] buf) {
+    if (bytesRef == null || buf == null) {
+      throw new IllegalArgumentException("bytesRef and buf must not be null");
     }
 
-    return point;
+    for (int i = 0, offset = start; i < buf.length; i++, offset += Long.BYTES) {
+      buf[i] = LongPoint.decodeDimension(bytesRef.bytes, offset);
+    }
   }
 
   /**
