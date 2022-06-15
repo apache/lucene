@@ -106,7 +106,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
   public void testRandomQueries() throws Exception {
     MemoryIndex index = randomMemoryIndex();
     int iterations = TEST_NIGHTLY ? 100 * RANDOM_MULTIPLIER : 10 * RANDOM_MULTIPLIER;
-    // int iterations = 1;
     for (int i = 0; i < iterations; i++) {
       assertAgainstDirectory(index);
     }
@@ -123,7 +122,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
 
     // add up to 250 terms to field "foo"
     final int numFooTerms = random().nextInt(250 * RANDOM_MULTIPLIER);
-    // final int numFooTerms = 1;
     for (int i = 0; i < numFooTerms; i++) {
       fooField.append(" ");
       fooField.append(randomTerm());
@@ -131,7 +129,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
 
     // add up to 250 terms to field "term"
     final int numTermTerms = random().nextInt(250 * RANDOM_MULTIPLIER);
-    // final int numTermTerms = 1;
     for (int i = 0; i < numTermTerms; i++) {
       termField.append(" ");
       termField.append(randomTerm());
@@ -330,7 +327,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
       // return a random unicode term
       return TestUtil.randomUnicodeString(random());
     }
-    // return TEST_TERMS[random().nextInt(TEST_TERMS.length)];
   }
 
   public void testDocsEnumStart() throws Exception {
@@ -447,7 +443,7 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     assertNull(reader.getNormValues("not-in-index"));
     assertNull(reader.postings(new Term("not-in-index", "foo")));
     assertNull(reader.postings(new Term("not-in-index", "foo"), PostingsEnum.ALL));
-    assertNull(reader.terms("not-in-index"));
+    assertEquals(Terms.EMPTY, reader.terms("not-in-index"));
   }
 
   public void testDocValuesMemoryIndexVsNormalIndex() throws Exception {

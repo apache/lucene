@@ -1401,7 +1401,9 @@ public class MemoryIndex {
       @Override
       public Terms terms(final String field) {
         final Info info = fields.get(field);
-        if (info == null || info.fieldInfo.getIndexOptions() == IndexOptions.NONE || info.numTokens <= 0) {
+        if (info == null
+            || info.fieldInfo.getIndexOptions() == IndexOptions.NONE
+            || info.numTokens <= 0) {
           return Terms.EMPTY;
         }
 
