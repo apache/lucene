@@ -145,7 +145,7 @@ class TermIntervalsSource extends IntervalsSource {
   public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
       throws IOException {
     Terms terms = ctx.reader().terms(field);
-    if (terms == null) {
+    if (terms == null || terms == Terms.EMPTY) {
       return null;
     }
     if (terms.hasPositions() == false) {

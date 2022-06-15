@@ -485,7 +485,7 @@ public class PhraseQuery extends Query {
         PostingsAndFreq[] postingsFreqs = new PostingsAndFreq[terms.length];
 
         final Terms fieldTerms = reader.terms(field);
-        if (fieldTerms == null) {
+        if (fieldTerms == null || fieldTerms == Terms.EMPTY) {
           return null;
         }
 
