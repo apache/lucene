@@ -87,6 +87,7 @@ Bug Fixes
 ---------------------
 
 * LUCENE-10574: Prevent pathological O(N^2) merging. (Adrien Grand)
+
 * LUCENE-10584: Properly support #getSpecificValue for hierarchical dims in SSDV faceting.
   (Greg Miller)
 
