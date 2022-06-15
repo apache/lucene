@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -328,21 +328,31 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
   protected static SegmentInfos applyMerge(
       SegmentInfos infos, OneMerge merge, String mergedSegmentName, IOStats stats)
       throws IOException {
-    LinkedHashSet<SegmentCommitInfo> scis = new LinkedHashSet<>(infos.asList());
+
     int newMaxDoc = 0;
     double newSize = 0;
     for (SegmentCommitInfo sci : merge.segments) {
       int numLiveDocs = sci.info.maxDoc() - sci.getDelCount();
       newSize += (double) sci.sizeInBytes() * numLiveDocs / sci.info.maxDoc() / 1024 / 1024;
       newMaxDoc += numLiveDocs;
-      boolean removed = scis.remove(sci);
-      assertTrue(removed);
     }
+    SegmentCommitInfo mergedInfo =
+        makeSegmentCommitInfo(mergedSegmentName, newMaxDoc, 0, newSize, IndexWriter.SOURCE_MERGE);
+
+    Set<SegmentCommitInfo> mergedAway = new HashSet<>(merge.segments);
+    boolean mergedSegmentAdded = false;
     SegmentInfos newInfos = new SegmentInfos(Version.LATEST.major);
-    newInfos.addAll(scis);
-    // Now add the merged segment
-    newInfos.add(
-        makeSegmentCommitInfo(mergedSegmentName, newMaxDoc, 0, newSize, IndexWriter.SOURCE_MERGE));
+    for (int i = 0; i < infos.size(); ++i) {
+      SegmentCommitInfo info = infos.info(i);
+      if (mergedAway.contains(info)) {
+        if (mergedSegmentAdded == false) {
+          newInfos.add(mergedInfo);
+          mergedSegmentAdded = true;
+        }
+      } else {
+        newInfos.add(info);
+      }
+    }
     stats.mergeBytesWritten += newSize * 1024 * 1024;
     return newInfos;
   }
@@ -418,7 +428,10 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
               IndexWriter.SOURCE_FLUSH));
 
       MergeSpecification merges =
-          mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+          mergePolicy.findFullFlushMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      if (merges == null) {
+        merges = mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      }
       while (merges != null) {
         assertTrue(merges.merges.size() > 0);
         assertMerge(mergePolicy, merges);
@@ -480,7 +493,10 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
               flushSize,
               IndexWriter.SOURCE_FLUSH));
       MergeSpecification merges =
-          mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+          mergePolicy.findFullFlushMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      if (merges == null) {
+        merges = mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      }
       while (merges != null) {
         assertMerge(mergePolicy, merges);
         for (OneMerge oneMerge : merges.merges) {

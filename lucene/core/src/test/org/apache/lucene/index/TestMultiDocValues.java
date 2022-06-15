@@ -279,6 +279,7 @@ public class TestMultiDocValues extends LuceneTestCase {
         if (docID == NO_MORE_DOCS) {
           break;
         }
+        assertEquals(single.docValueCount(), multi.docValueCount());
 
         ArrayList<Long> expectedList = new ArrayList<>();
         long ord;

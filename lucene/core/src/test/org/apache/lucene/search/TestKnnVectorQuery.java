@@ -112,6 +112,29 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  public void testSearchBoost() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      Query vectorQuery = new KnnVectorQuery("field", new float[] {0, 0}, 10);
+      ScoreDoc[] scoreDocs = searcher.search(vectorQuery, 3).scoreDocs;
+
+      Query boostQuery = new BoostQuery(vectorQuery, 3.0f);
+      ScoreDoc[] boostScoreDocs = searcher.search(boostQuery, 3).scoreDocs;
+      assertEquals(scoreDocs.length, boostScoreDocs.length);
+
+      for (int i = 0; i < scoreDocs.length; i++) {
+        ScoreDoc scoreDoc = scoreDocs[i];
+        ScoreDoc boostScoreDoc = boostScoreDocs[i];
+
+        assertEquals(scoreDoc.doc, boostScoreDoc.doc);
+        assertEquals(scoreDoc.score * 3.0f, boostScoreDoc.score, 0.001f);
+      }
+    }
+  }
+
   /** Tests that a KnnVectorQuery applies the filter query */
   public void testSimpleFilter() throws IOException {
     try (Directory indexStore =
@@ -551,7 +574,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
                       numDocs));
 
           // Test an unrestrictive filter and check we use approximate search
-          Query filter3 = IntPoint.newRangeQuery("tag", lower, lower + 150);
+          Query filter3 = IntPoint.newRangeQuery("tag", lower, 200);
           results =
               searcher.search(
                   new ThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
@@ -565,7 +588,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
             assertEquals(1, fieldDoc.fields.length);
 
             int tag = (int) fieldDoc.fields[0];
-            assertTrue(lower <= tag && tag <= lower + 150);
+            assertTrue(lower <= tag && tag <= 200);
           }
         }
       }
