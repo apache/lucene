@@ -105,6 +105,8 @@ Bug Fixes
 
 * GITHUB#956: Make sure KnnVectorQuery applies search boost. (Julie Tibshirani)
 
+* LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
+
 Other
 ---------------------
 
