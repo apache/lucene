@@ -30,7 +30,7 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
   private final long[] upperRanges;
 
   /**
-   * Constructs and instance to match facet sets with dimensions that fall within the given ranges.
+   * Constructs an instance to match facet sets with dimensions that fall within the given ranges.
    */
   public RangeFacetSetMatcher(String label, LongRange... dimRanges) {
     super(label, getDims(dimRanges));

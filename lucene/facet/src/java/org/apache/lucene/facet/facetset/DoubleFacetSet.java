@@ -17,32 +17,18 @@
 package org.apache.lucene.facet.facetset;
 
 import java.util.Arrays;
+import org.apache.lucene.util.NumericUtils;
 
-/**
- * A {@link FacetSetMatcher} which considers a set as a match only if all dimension values are equal
- * to the given one.
- *
- * @lucene.experimental
- */
-public class ExactFacetSetMatcher extends FacetSetMatcher {
+/** A {@link FacetSet} which encodes double dimension values. */
+public class DoubleFacetSet extends FacetSet {
 
-  private final long[] values;
+  /** The raw dimension values of this facet set. */
+  public final double[] doubleValues;
 
-  /** Constructs an instance to match the given facet set. */
-  public ExactFacetSetMatcher(String label, FacetSet facetSet) {
-    super(label, facetSet.dims);
-    this.values = facetSet.values;
-  }
+  /** Constructs a new instance of a facet set which stores {@code double} dimension values. */
+  public DoubleFacetSet(double... values) {
+    super(Arrays.stream(values).mapToLong(NumericUtils::doubleToSortableLong).toArray());
 
-  @Override
-  public boolean matches(long[] dimValues) {
-    assert dimValues.length == dims
-        : "Encoded dimensions (dims="
-            + dimValues.length
-            + ") is incompatible with FacetSet dimensions (dims="
-            + dims
-            + ")";
-
-    return Arrays.equals(dimValues, values);
+    this.doubleValues = values;
   }
 }

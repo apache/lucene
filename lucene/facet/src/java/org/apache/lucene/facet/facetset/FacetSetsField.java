@@ -18,12 +18,12 @@ package org.apache.lucene.facet.facetset;
 
 import java.util.Arrays;
 import org.apache.lucene.document.BinaryDocValuesField;
-import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * A {@link BinaryDocValuesField} which encodes a list of {@link FacetSet facet sets}. The encoding
- * scheme consists of a packed {@code long[]} where the first value denotes the number of dimensions
+ * scheme consists of a packed {@code byte[]} where the first value denotes the number of dimensions
  * in all the sets, followed by each set's values.
  *
  * @lucene.experimental
@@ -34,40 +34,39 @@ public class FacetSetsField extends BinaryDocValuesField {
    * Create a new FacetSets field.
    *
    * @param name field name
-   * @param facetSets the {@link FacetSet} to index in that field. All must have the same number of
-   *     dimensions
+   * @param facetSets the {@link FacetSet facet sets} to index in that field. All must have the same
+   *     number of dimensions
    * @throws IllegalArgumentException if the field name is null or the given facet sets are invalid
    */
   public static FacetSetsField create(String name, FacetSet... facetSets) {
-    validateFacetSets(facetSets);
+    if (facetSets == null || facetSets.length == 0) {
+      throw new IllegalArgumentException("FacetSets cannot be null or empty!");
+    }
 
-    return new FacetSetsField(name, toPackedLongs(facetSets));
+    return new FacetSetsField(name, toPackedValues(facetSets));
   }
 
   private FacetSetsField(String name, BytesRef value) {
     super(name, value);
   }
 
-  private static void validateFacetSets(FacetSet... facetSets) {
-    if (facetSets == null || facetSets.length == 0) {
-      throw new IllegalArgumentException("FacetSets cannot be null or empty!");
-    }
-
-    int dims = facetSets[0].values.length;
-    if (!Arrays.stream(facetSets).allMatch(facetSet -> facetSet.values.length == dims)) {
-      throw new IllegalArgumentException("All FacetSets must have the same number of dimensions!");
-    }
-  }
-
-  private static BytesRef toPackedLongs(FacetSet... facetSets) {
-    int numDims = facetSets[0].values.length;
-    long[] dimsAndCount = new long[1 + numDims * facetSets.length];
-    int idx = 0;
-    dimsAndCount[idx++] = numDims;
+  private static BytesRef toPackedValues(FacetSet... facetSets) {
+    int numDims = facetSets[0].dims;
+    // We could have created a buffer that can accommodate Long.BYTES per dimension value in each
+    // facet set. The below attempts to avoid allocating unnecessarily bigger arrays.
+    byte[] buf = new byte[4 + Arrays.stream(facetSets).mapToInt(FacetSet::sizePackedBytes).sum()];
+    IntPoint.encodeDimension(numDims, buf, 0);
+    int offset = Integer.BYTES;
     for (FacetSet facetSet : facetSets) {
-      System.arraycopy(facetSet.values, 0, dimsAndCount, idx, numDims);
-      idx += numDims;
+      if (facetSet.dims != numDims) {
+        throw new IllegalArgumentException(
+            "All FacetSets must have the same number of dimensions. Expected "
+                + numDims
+                + " found "
+                + facetSet.dims);
+      }
+      offset += facetSet.packValues(buf, offset);
     }
-    return LongPoint.pack(dimsAndCount);
+    return new BytesRef(buf, 0, offset);
   }
 }

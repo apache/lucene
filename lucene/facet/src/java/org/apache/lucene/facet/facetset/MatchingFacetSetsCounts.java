@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
@@ -41,14 +41,19 @@ public class MatchingFacetSetsCounts extends Facets {
   private final FacetSetMatcher[] facetSetMatchers;
   private final int[] counts;
   private final String field;
+  private final FacetSetDecoder facetSetDecoder;
   private final int totCount;
 
   /**
-   * Constructs a new instance of matching facet set counts which calculates the countBytes for each
+   * Constructs a new instance of matching facet set counts which calculates the counts for each
    * given facet set matcher.
    */
   public MatchingFacetSetsCounts(
-      String field, FacetsCollector hits, FacetSetMatcher... facetSetMatchers) throws IOException {
+      String field,
+      FacetsCollector hits,
+      FacetSetDecoder facetSetDecoder,
+      FacetSetMatcher... facetSetMatchers)
+      throws IOException {
     if (facetSetMatchers == null || facetSetMatchers.length == 0) {
       throw new IllegalArgumentException("facetSetMatchers cannot be null or empty");
     }
@@ -56,6 +61,7 @@ public class MatchingFacetSetsCounts extends Facets {
       throw new IllegalArgumentException("All facet set matchers must be the same dimensionality");
     }
     this.field = field;
+    this.facetSetDecoder = facetSetDecoder;
     this.facetSetMatchers = facetSetMatchers;
     this.counts = new int[facetSetMatchers.length];
     this.totCount = count(field, hits.getMatchingDocs());
@@ -82,7 +88,7 @@ public class MatchingFacetSetsCounts extends Facets {
         boolean shouldCountDoc = false;
         BytesRef bytesRef = binaryDocValues.binaryValue();
         byte[] packedValue = bytesRef.bytes;
-        int numDims = (int) LongPoint.decodeDimension(packedValue, 0);
+        int numDims = IntPoint.decodeDimension(packedValue, 0);
         if (expectedNumDims == -1) {
           expectedNumDims = numDims;
           dimValues = new long[numDims];
@@ -99,8 +105,8 @@ public class MatchingFacetSetsCounts extends Facets {
                   + ")";
         }
 
-        for (int start = Long.BYTES; start < bytesRef.length; start += numDims * Long.BYTES) {
-          LongPoint.unpack(bytesRef, start, dimValues);
+        for (int start = Integer.BYTES; start < bytesRef.length; ) {
+          start += facetSetDecoder.decode(bytesRef, start, dimValues);
           for (int j = 0; j < facetSetMatchers.length; j++) { // for each facet set matcher
             if (facetSetMatchers[j].matches(dimValues)) {
               counts[j]++;

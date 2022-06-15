@@ -16,33 +16,17 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import java.util.Arrays;
+import org.apache.lucene.util.BytesRef;
 
 /**
- * A {@link FacetSetMatcher} which considers a set as a match only if all dimension values are equal
- * to the given one.
- *
- * @lucene.experimental
+ * A functional interface for decoding facet set values. You can use it by e.g. implementing a
+ * static method with the same signature and then pass it as {@code YourClass::decode}.
  */
-public class ExactFacetSetMatcher extends FacetSetMatcher {
+public interface FacetSetDecoder {
 
-  private final long[] values;
-
-  /** Constructs an instance to match the given facet set. */
-  public ExactFacetSetMatcher(String label, FacetSet facetSet) {
-    super(label, facetSet.dims);
-    this.values = facetSet.values;
-  }
-
-  @Override
-  public boolean matches(long[] dimValues) {
-    assert dimValues.length == dims
-        : "Encoded dimensions (dims="
-            + dimValues.length
-            + ") is incompatible with FacetSet dimensions (dims="
-            + dims
-            + ")";
-
-    return Arrays.equals(dimValues, values);
-  }
+  /**
+   * Decodes the facet set dimension values into the given destination buffer and returns the number
+   * of bytes read.
+   */
+  int decode(BytesRef bytesRef, int start, long[] dest);
 }

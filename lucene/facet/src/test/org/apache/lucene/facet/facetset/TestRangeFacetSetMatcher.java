@@ -56,7 +56,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
       Document doc = new Document();
       int numSets = random().nextInt(1, 4);
       Collections.shuffle(allSets, random());
-      FacetSet[] facetSets = allSets.subList(0, numSets).toArray(new FacetSet[0]);
+      FacetSet[] facetSets = allSets.subList(0, numSets).toArray(FacetSet[]::new);
       boolean matchingDoc = false;
       for (FacetSet facetSet : facetSets) {
         if (FORD_ORD != facetSet.values[0]) {
@@ -94,6 +94,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
+            FacetSet::decode,
             new RangeFacetSetMatcher(
                 "Ford [2010-2014]", single(FORD_ORD), range(2010, true, 2014, true)),
             new RangeFacetSetMatcher(
