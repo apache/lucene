@@ -35,7 +35,7 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
 
     Document doc = new Document();
-    doc.add(FacetSetsField.create("field", new FacetSet(123, 456)));
+    doc.add(FacetSetsField.create("field", new LongFacetSet(123, 456)));
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -48,8 +48,8 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
-            FacetSet::decode,
-            new ExactFacetSetMatcher("Test", new FacetSet(123, 456)));
+            FacetSetDecoder::decodeLongs,
+            new ExactFacetSetMatcher("Test", new LongFacetSet(123, 456)));
 
     expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
@@ -62,11 +62,11 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
 
     Document doc = new Document();
-    doc.add(FacetSetsField.create("field", new FacetSet(123, 456)));
+    doc.add(FacetSetsField.create("field", new LongFacetSet(123, 456)));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(FacetSetsField.create("field", new FacetSet(123)));
+    doc.add(FacetSetsField.create("field", new LongFacetSet(123)));
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -79,7 +79,10 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
         AssertionError.class,
         () ->
             new MatchingFacetSetsCounts(
-                "field", fc, FacetSet::decode, new ExactFacetSetMatcher("Test", new FacetSet(1))));
+                "field",
+                fc,
+                FacetSetDecoder::decodeLongs,
+                new ExactFacetSetMatcher("Test", new LongFacetSet(1))));
 
     r.close();
     d.close();

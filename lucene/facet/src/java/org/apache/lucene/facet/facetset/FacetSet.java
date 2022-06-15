@@ -16,61 +16,33 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.util.BytesRef;
-
 /**
  * Holds a set of facet dimension values.
  *
  * @lucene.experimental
  */
-public class FacetSet {
+public abstract class FacetSet {
 
   /** The number of dimension values in this set. */
   public final int dims;
 
-  /** The facet dimensions values as {@code long}. */
-  public final long[] values;
+  /** Constructs a new instance of a facet set with the given number of dimensions. */
+  protected FacetSet(int dims) {
+    this.dims = dims;
+  }
+
+  /** Returns the dimension values in this facet set as comparable longs. */
+  public abstract long[] getComparableValues();
 
   /**
-   * Constructs a new instance of a facet set with the given dimension values encoded as {@code
-   * long}. The actual encoding happens in {@link #packValues(byte[], int)}, so that the values are
-   * encoded more efficiently (e.g. consuming less space) if needed.
+   * Packs the dimension values into the given {@code byte[]} and returns the number of
+   * packed-values bytes.
    */
-  public FacetSet(long... values) {
-    if (values == null || values.length == 0) {
-      throw new IllegalArgumentException("values cannot be null or empty");
-    }
-
-    this.values = values;
-    this.dims = values.length;
-  }
+  public abstract int packValues(byte[] buf, int start);
 
   /**
-   * Packs the dimension values in a {@code byte[]}. The default implementation packs the {@link
-   * #values} using {@link LongPoint#encodeDimension(long, byte[], int)}, but you can override to
-   * implement your own encoding scheme.
+   * Returns the size of the packed values in this facet set. If the value is unknown in advance
+   * (e.g. if the values are compressed), this method can return an upper limit.
    */
-  public int packValues(byte[] buf, int start) {
-    for (int i = 0, offset = start; i < values.length; i++, offset += Long.BYTES) {
-      LongPoint.encodeDimension(values[i], buf, offset);
-    }
-    return values.length * Long.BYTES;
-  }
-
-  /**
-   * Returns the size of the packed values in this facet set. The default implementation returns
-   * {@code values.length * Long.BYTES}, but you can override to return a value that puts a tighter
-   * limit. If you are unsure of the final size (e.g. if you compress the values), you can always
-   * return an upper limit.
-   */
-  public int sizePackedBytes() {
-    return values.length * Long.BYTES;
-  }
-
-  /** An implementation of the {@link FacetSetDecoder} functional interface. */
-  public static int decode(BytesRef bytesRef, int start, long[] dest) {
-    LongPoint.unpack(bytesRef, start, dest);
-    return dest.length * Long.BYTES;
-  }
+  public abstract int sizePackedBytes();
 }

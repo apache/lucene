@@ -16,13 +16,37 @@
  */
 package org.apache.lucene.facet.facetset;
 
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * A functional interface for decoding facet set values. You can use it by e.g. implementing a
  * static method with the same signature and then pass it as {@code YourClass::decode}.
+ *
+ * @lucene.experimental
  */
 public interface FacetSetDecoder {
+
+  /**
+   * An implementation of {@link FacetSetDecoder#decode(BytesRef, int, long[])} for long/double
+   * dimension values.
+   */
+  static int decodeLongs(BytesRef bytesRef, int start, long[] dest) {
+    LongPoint.unpack(bytesRef, start, dest);
+    return dest.length * Long.BYTES;
+  }
+
+  /**
+   * An implementation of {@link FacetSetDecoder#decode(BytesRef, int, long[])} for int/float
+   * dimension values.
+   */
+  static int decodeInts(BytesRef bytesRef, int start, long[] dest) {
+    for (int i = 0, offset = start; i < dest.length; i++, offset += Integer.BYTES) {
+      dest[i] = IntPoint.decodeDimension(bytesRef.bytes, offset);
+    }
+    return dest.length * Integer.BYTES;
+  }
 
   /**
    * Decodes the facet set dimension values into the given destination buffer and returns the number

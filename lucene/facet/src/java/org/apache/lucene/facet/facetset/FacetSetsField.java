@@ -54,7 +54,9 @@ public class FacetSetsField extends BinaryDocValuesField {
     int numDims = facetSets[0].dims;
     // We could have created a buffer that can accommodate Long.BYTES per dimension value in each
     // facet set. The below attempts to avoid allocating unnecessarily bigger arrays.
-    byte[] buf = new byte[4 + Arrays.stream(facetSets).mapToInt(FacetSet::sizePackedBytes).sum()];
+    byte[] buf =
+        new byte
+            [Integer.BYTES + Arrays.stream(facetSets).mapToInt(FacetSet::sizePackedBytes).sum()];
     IntPoint.encodeDimension(numDims, buf, 0);
     int offset = Integer.BYTES;
     for (FacetSet facetSet : facetSets) {

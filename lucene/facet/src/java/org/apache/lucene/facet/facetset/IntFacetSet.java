@@ -16,44 +16,48 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import java.util.stream.IntStream;
+import java.util.Arrays;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.util.BytesRef;
 
-/** A {@link FacetSet} which encodes integer dimension values. */
+/**
+ * A {@link FacetSet} which encodes integer dimension values.
+ *
+ * @lucene.experimental
+ */
 public class IntFacetSet extends FacetSet {
 
   /** The raw dimension values of this facet set. */
-  public final int[] intValues;
+  public final int[] values;
 
   /** Constructs a new instance of a facet set which stores {@code int} dimension values. */
   public IntFacetSet(int... values) {
-    super(IntStream.of(values).mapToLong(Long::valueOf).toArray());
+    super(validateValuesAndGetNumDims(values));
 
-    this.intValues = values;
+    this.values = values;
+  }
+
+  @Override
+  public long[] getComparableValues() {
+    return Arrays.stream(values).mapToLong(Long::valueOf).toArray();
   }
 
   @Override
   public int packValues(byte[] buf, int start) {
-    for (int i = 0, offset = start; i < intValues.length; i++, offset += Integer.BYTES) {
-      IntPoint.encodeDimension(intValues[i], buf, offset);
+    for (int i = 0, offset = start; i < values.length; i++, offset += Integer.BYTES) {
+      IntPoint.encodeDimension(values[i], buf, offset);
     }
-    return intValues.length * Integer.BYTES;
+    return values.length * Integer.BYTES;
   }
 
   @Override
   public int sizePackedBytes() {
-    return values.length * Integer.BYTES;
+    return dims * Integer.BYTES;
   }
 
-  /**
-   * An implementation of the {@link FacetSetDecoder} functional interface for integer dimension
-   * values.
-   */
-  public static int decode(BytesRef bytesRef, int start, long[] dest) {
-    for (int i = 0, offset = start; i < dest.length; i++, offset += Integer.BYTES) {
-      dest[i] = IntPoint.decodeDimension(bytesRef.bytes, offset);
+  private static int validateValuesAndGetNumDims(int... values) {
+    if (values == null || values.length == 0) {
+      throw new IllegalArgumentException("values cannot be null or empty");
     }
-    return dest.length * Integer.BYTES;
+    return values.length;
   }
 }

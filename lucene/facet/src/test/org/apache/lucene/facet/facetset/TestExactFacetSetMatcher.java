@@ -44,14 +44,14 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
     Document doc = new Document();
     doc.add(
         FacetSetsField.create(
-            "field", new FacetSet(FORD_ORD, 2010), new FacetSet(CHEVY_ORD, 2011)));
+            "field", new LongFacetSet(FORD_ORD, 2010), new LongFacetSet(CHEVY_ORD, 2011)));
     w.addDocument(doc);
 
     // Ford-2011, Chevy-2010
     doc = new Document();
     doc.add(
         FacetSetsField.create(
-            "field", new FacetSet(FORD_ORD, 2011), new FacetSet(CHEVY_ORD, 2010)));
+            "field", new LongFacetSet(FORD_ORD, 2011), new LongFacetSet(CHEVY_ORD, 2010)));
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -64,9 +64,9 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
-            FacetSet::decode,
-            new ExactFacetSetMatcher("Ford 2010", new FacetSet(FORD_ORD, 2010)),
-            new ExactFacetSetMatcher("Chevy 2011", new FacetSet(CHEVY_ORD, 2011)));
+            FacetSetDecoder::decodeLongs,
+            new ExactFacetSetMatcher("Ford 2010", new LongFacetSet(FORD_ORD, 2010)),
+            new ExactFacetSetMatcher("Chevy 2011", new LongFacetSet(CHEVY_ORD, 2011)));
 
     FacetResult result = facets.getTopChildren(10, "field");
 
@@ -86,10 +86,10 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
 
-    List<FacetSet> allSets = new ArrayList<>();
+    List<LongFacetSet> allSets = new ArrayList<>();
     for (long manufacturerOrd : MANUFACTURER_ORDS) {
       for (long year : YEARS) {
-        allSets.add(new FacetSet(manufacturerOrd, year));
+        allSets.add(new LongFacetSet(manufacturerOrd, year));
       }
     }
 
@@ -100,9 +100,9 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
       Document doc = new Document();
       int numSets = random().nextInt(1, 4);
       Collections.shuffle(allSets, random());
-      FacetSet[] facetSets = allSets.subList(0, numSets).toArray(FacetSet[]::new);
+      LongFacetSet[] facetSets = allSets.subList(0, numSets).toArray(LongFacetSet[]::new);
       boolean matchingDoc = false;
-      for (FacetSet facetSet : facetSets) {
+      for (LongFacetSet facetSet : facetSets) {
         if (FORD_ORD == facetSet.values[0] && facetSet.values[1] == 2010) {
           ++numFord2010;
           matchingDoc = true;
@@ -126,9 +126,9 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
-            FacetSet::decode,
-            new ExactFacetSetMatcher("Ford 2010", new FacetSet(FORD_ORD, 2010)),
-            new ExactFacetSetMatcher("Chevy 2011", new FacetSet(CHEVY_ORD, 2011)));
+            FacetSetDecoder::decodeLongs,
+            new ExactFacetSetMatcher("Ford 2010", new LongFacetSet(FORD_ORD, 2010)),
+            new ExactFacetSetMatcher("Chevy 2011", new LongFacetSet(CHEVY_ORD, 2011)));
 
     FacetResult result = facets.getTopChildren(10, "field");
 
@@ -148,7 +148,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
 
-    List<FacetSet> allSets = new ArrayList<>();
+    List<IntFacetSet> allSets = new ArrayList<>();
     for (int manufacturerOrd : MANUFACTURER_ORDS) {
       for (int year : YEARS) {
         allSets.add(new IntFacetSet(manufacturerOrd, year));
@@ -162,9 +162,9 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
       Document doc = new Document();
       int numSets = random().nextInt(1, 4);
       Collections.shuffle(allSets, random());
-      FacetSet[] facetSets = allSets.subList(0, numSets).toArray(FacetSet[]::new);
+      IntFacetSet[] facetSets = allSets.subList(0, numSets).toArray(IntFacetSet[]::new);
       boolean matchingDoc = false;
-      for (FacetSet facetSet : facetSets) {
+      for (IntFacetSet facetSet : facetSets) {
         if (FORD_ORD == facetSet.values[0] && facetSet.values[1] == 2010) {
           ++numFord2010;
           matchingDoc = true;
@@ -188,9 +188,9 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
-            IntFacetSet::decode,
+            FacetSetDecoder::decodeInts,
             // We can mix Long and Integer facet sets
-            new ExactFacetSetMatcher("Ford 2010", new FacetSet(FORD_ORD, 2010)),
+            new ExactFacetSetMatcher("Ford 2010", new LongFacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new IntFacetSet(CHEVY_ORD, 2011)));
 
     FacetResult result = facets.getTopChildren(10, "field");

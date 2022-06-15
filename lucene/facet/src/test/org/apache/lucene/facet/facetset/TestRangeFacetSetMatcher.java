@@ -40,10 +40,10 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
 
-    List<FacetSet> allSets = new ArrayList<>();
+    List<LongFacetSet> allSets = new ArrayList<>();
     for (long manufacturer_ord : MANUFACTURER_ORDS) {
       for (long year : YEARS) {
-        allSets.add(new FacetSet(manufacturer_ord, year));
+        allSets.add(new LongFacetSet(manufacturer_ord, year));
       }
     }
 
@@ -56,9 +56,9 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
       Document doc = new Document();
       int numSets = random().nextInt(1, 4);
       Collections.shuffle(allSets, random());
-      FacetSet[] facetSets = allSets.subList(0, numSets).toArray(FacetSet[]::new);
+      LongFacetSet[] facetSets = allSets.subList(0, numSets).toArray(LongFacetSet[]::new);
       boolean matchingDoc = false;
-      for (FacetSet facetSet : facetSets) {
+      for (LongFacetSet facetSet : facetSets) {
         if (FORD_ORD != facetSet.values[0]) {
           continue;
         }
@@ -94,7 +94,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
         new MatchingFacetSetsCounts(
             "field",
             fc,
-            FacetSet::decode,
+            FacetSetDecoder::decodeLongs,
             new RangeFacetSetMatcher(
                 "Ford [2010-2014]", single(FORD_ORD), range(2010, true, 2014, true)),
             new RangeFacetSetMatcher(

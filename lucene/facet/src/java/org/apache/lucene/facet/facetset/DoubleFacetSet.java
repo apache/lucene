@@ -17,18 +17,48 @@
 package org.apache.lucene.facet.facetset;
 
 import java.util.Arrays;
+import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.util.NumericUtils;
 
-/** A {@link FacetSet} which encodes double dimension values. */
+/**
+ * A {@link FacetSet} which encodes double dimension values.
+ *
+ * @lucene.experimental
+ */
 public class DoubleFacetSet extends FacetSet {
 
   /** The raw dimension values of this facet set. */
-  public final double[] doubleValues;
+  public final double[] values;
 
   /** Constructs a new instance of a facet set which stores {@code double} dimension values. */
   public DoubleFacetSet(double... values) {
-    super(Arrays.stream(values).mapToLong(NumericUtils::doubleToSortableLong).toArray());
+    super(validateValuesAndGetNumDims(values));
 
-    this.doubleValues = values;
+    this.values = values;
+  }
+
+  @Override
+  public long[] getComparableValues() {
+    return Arrays.stream(values).mapToLong(NumericUtils::doubleToSortableLong).toArray();
+  }
+
+  @Override
+  public int packValues(byte[] buf, int start) {
+    for (int i = 0, offset = start; i < values.length; i++, offset += Long.BYTES) {
+      DoublePoint.encodeDimension(values[i], buf, offset);
+    }
+    return values.length * Long.BYTES;
+  }
+
+  @Override
+  public int sizePackedBytes() {
+    return dims * Long.BYTES;
+  }
+
+  private static int validateValuesAndGetNumDims(double... values) {
+    if (values == null || values.length == 0) {
+      throw new IllegalArgumentException("values cannot be null or empty");
+    }
+    return values.length;
   }
 }

@@ -16,22 +16,20 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import java.util.stream.IntStream;
-import org.apache.lucene.document.FloatPoint;
-import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.document.LongPoint;
 
 /**
- * A {@link FacetSet} which encodes float dimension values.
+ * A {@link FacetSet} which encodes long dimension values.
  *
  * @lucene.experimental
  */
-public class FloatFacetSet extends FacetSet {
+public class LongFacetSet extends FacetSet {
 
   /** The raw dimension values of this facet set. */
-  public final float[] values;
+  public final long[] values;
 
-  /** Constructs a new instance of a facet set which stores {@code float} dimension values. */
-  public FloatFacetSet(float... values) {
+  /** Constructs a new instance of a facet set which stores {@code long} dimension values. */
+  public LongFacetSet(long... values) {
     super(validateValuesAndGetNumDims(values));
 
     this.values = values;
@@ -39,25 +37,23 @@ public class FloatFacetSet extends FacetSet {
 
   @Override
   public long[] getComparableValues() {
-    return IntStream.range(0, values.length)
-        .mapToLong(idx -> NumericUtils.floatToSortableInt(values[idx]))
-        .toArray();
+    return values;
   }
 
   @Override
   public int packValues(byte[] buf, int start) {
-    for (int i = 0, offset = start; i < values.length; i++, offset += Float.BYTES) {
-      FloatPoint.encodeDimension(values[i], buf, offset);
+    for (int i = 0, offset = start; i < values.length; i++, offset += Long.BYTES) {
+      LongPoint.encodeDimension(values[i], buf, offset);
     }
-    return values.length * Float.BYTES;
+    return values.length * Long.BYTES;
   }
 
   @Override
   public int sizePackedBytes() {
-    return dims * Float.BYTES;
+    return dims * Long.BYTES;
   }
 
-  private static int validateValuesAndGetNumDims(float... values) {
+  private static int validateValuesAndGetNumDims(long... values) {
     if (values == null || values.length == 0) {
       throw new IllegalArgumentException("values cannot be null or empty");
     }

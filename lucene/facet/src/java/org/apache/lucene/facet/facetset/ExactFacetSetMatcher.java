@@ -31,7 +31,8 @@ public class ExactFacetSetMatcher extends FacetSetMatcher {
   /** Constructs an instance to match the given facet set. */
   public ExactFacetSetMatcher(String label, FacetSet facetSet) {
     super(label, facetSet.dims);
-    this.values = facetSet.values;
+
+    this.values = facetSet.getComparableValues();
   }
 
   @Override
