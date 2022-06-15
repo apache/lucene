@@ -90,6 +90,9 @@ Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
 
+* GITHUB#961: BooleanQuery can return quick counts for simple boolean queries.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 
