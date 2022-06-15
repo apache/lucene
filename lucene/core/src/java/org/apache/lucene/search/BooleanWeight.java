@@ -346,29 +346,50 @@ final class BooleanWeight extends Weight {
 
   @Override
   public int count(LeafReaderContext context) throws IOException {
-    // Implement counting for pure conjunctions in the case when one clause doesn't match any docs,
-    // or all clauses but one match all docs.
-    if (weightedClauses.isEmpty()) {
+    final int numDocs = context.reader().numDocs();
+    int positiveCount;
+    if (query.isPureDisjunction()) {
+      positiveCount = optCount(context, Occur.SHOULD);
+    } else if (query.getClauses(Occur.FILTER).isEmpty() == false
+        || query.getClauses(Occur.MUST).isEmpty() == false) {
+      if (query.getMinimumNumberShouldMatch() > 0) {
+        positiveCount = -1;
+      } else {
+        positiveCount = reqCount(context);
+      }
+    } else {
+      positiveCount = -1;
+    }
+
+    if (positiveCount == 0) {
       return 0;
     }
-    for (WeightedBooleanClause weightedClause : weightedClauses) {
-      switch (weightedClause.clause.getOccur()) {
-        case FILTER:
-        case MUST:
-          break;
-        case MUST_NOT:
-        case SHOULD:
-        default:
-          return super.count(context);
-      }
+
+    int prohibitedCount = optCount(context, Occur.MUST_NOT);
+    if (prohibitedCount == -1) {
+      return -1;
+    } else if (prohibitedCount == 0) {
+      return positiveCount;
+    } else if (prohibitedCount == numDocs) {
+      return 0;
+    } else if (positiveCount == numDocs) {
+      return numDocs - prohibitedCount;
+    } else {
+      return -1;
     }
-    if (query.getMinimumNumberShouldMatch() > 0) {
-      return super.count(context);
-    }
-    // From now on we know the query is a pure conjunction
+  }
+
+  /**
+   * Return the number of matches of required clauses, or -1 if unknown, or numDocs if there are no
+   * required clauses.
+   */
+  private int reqCount(LeafReaderContext context) throws IOException {
     final int numDocs = context.reader().numDocs();
-    int conjunctionCount = numDocs;
+    int reqCount = numDocs;
     for (WeightedBooleanClause weightedClause : weightedClauses) {
+      if (weightedClause.clause.isRequired() == false) {
+        continue;
+      }
       int count = weightedClause.weight.count(context);
       if (count == -1 || count == 0) {
         // If the count of one clause is unknown, then the count of the conjunction is unknown too.
@@ -376,17 +397,49 @@ final class BooleanWeight extends Weight {
         return count;
       } else if (count == numDocs) {
         // the query matches all docs, it can be safely ignored
-      } else if (conjunctionCount == numDocs) {
+      } else if (reqCount == numDocs) {
         // all clauses seen so far match all docs, so the count of the new clause is also the count
         // of the conjunction
-        conjunctionCount = count;
+        reqCount = count;
       } else {
         // We have two clauses whose count is in [1, numDocs), we can't figure out the number of
         // docs that match the conjunction without running the query.
-        return super.count(context);
+        return -1;
       }
     }
-    return conjunctionCount;
+    return reqCount;
+  }
+
+  /**
+   * Return the number of matches of required clauses, or -1 if unknown, or 0 if there are no
+   * optional clauses.
+   */
+  private int optCount(LeafReaderContext context, Occur occur) throws IOException {
+    final int numDocs = context.reader().numDocs();
+    int optCount = 0;
+    for (WeightedBooleanClause weightedClause : weightedClauses) {
+      if (weightedClause.clause.getOccur() != occur) {
+        continue;
+      }
+      int count = weightedClause.weight.count(context);
+      if (count == -1 || count == numDocs) {
+        // If any of the clauses has a number of matches that is unknown, the number of matches of
+        // the disjunction is unknown.
+        // If either clause matches all docs, then the disjunction matches all docs.
+        return count;
+      } else if (count == 0) {
+        // We can safely ignore this clause, it doesn't affect the count.
+      } else if (optCount == 0) {
+        // This is the first clause we see that has a non-zero count, it becomes the count of the
+        // disjunction.
+        optCount = count;
+      } else {
+        // We have two clauses whose count is in [1, numDocs), we can't figure out the number of
+        // docs that match the disjunction without running the query.
+        return -1;
+      }
+    }
+    return optCount;
   }
 
   @Override
