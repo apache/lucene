@@ -3356,6 +3356,14 @@ public final class CheckIndex implements Closeable {
       long ord;
       int ordCount = 0;
       while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+        if (count != dv.docValueCount()) {
+          throw new CheckIndexException(
+              "value count changed from "
+                  + count
+                  + " to "
+                  + dv.docValueCount()
+                  + " during iterating over all values");
+        }
         long ord2 = dv2.nextOrd();
         if (ord != ord2) {
           throw new CheckIndexException(
@@ -3372,6 +3380,13 @@ public final class CheckIndex implements Closeable {
         maxOrd2 = Math.max(maxOrd2, ord);
         seenOrds.set(ord);
         ordCount++;
+      }
+      if (dv.docValueCount() != dv2.docValueCount()) {
+        throw new CheckIndexException(
+            "dv and dv2 report different values count after iterating over all values: "
+                + dv.docValueCount()
+                + " != "
+                + dv2.docValueCount());
       }
       if (ordCount == 0) {
         throw new CheckIndexException(
