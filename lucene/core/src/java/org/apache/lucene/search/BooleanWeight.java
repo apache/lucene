@@ -362,6 +362,9 @@ final class BooleanWeight extends Weight {
           return super.count(context);
       }
     }
+    if (query.getMinimumNumberShouldMatch() > 0) {
+      return super.count(context);
+    }
     // From now on we know the query is a pure conjunction
     final int numDocs = context.reader().numDocs();
     int conjunctionCount = numDocs;
