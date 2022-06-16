@@ -67,7 +67,7 @@ Other
 
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
 
-* Remove unused and confusing FacetField indexing options (Gautam Worah)
+* GITHUB#922: Remove unused and confusing FacetField indexing options (Gautam Worah)
 
 ======================== Lucene 9.3.0 =======================
 
