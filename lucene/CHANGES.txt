@@ -110,6 +110,8 @@ Bug Fixes
 
 * LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
 
+* LUCENE-10611: Fix Heap Error in HnswGraphSearcher (Kaival Parikh)
+
 Other
 ---------------------
 
