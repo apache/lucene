@@ -1368,7 +1368,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
 
         int doc = -1;
         long start, end;
-        long count;
+        int count;
 
         @Override
         public int nextDoc() throws IOException {
@@ -1392,7 +1392,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
           }
           start = addresses.get(target);
           end = addresses.get(target + 1L);
-          count = (end - start);
+          count = (int) (end - start);
           return doc = target;
         }
 
@@ -1400,7 +1400,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
         public boolean advanceExact(int target) throws IOException {
           start = addresses.get(target);
           end = addresses.get(target + 1L);
-          count = (end - start);
+          count = (int) (end - start);
           doc = target;
           return true;
         }
@@ -1414,7 +1414,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public long docValueCount() {
+        public int docValueCount() {
           return count;
         }
       };
@@ -1428,7 +1428,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
         boolean set;
         long start;
         long end = 0;
-        long count;
+        int count;
 
         @Override
         public int nextDoc() throws IOException {
@@ -1463,7 +1463,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
             final int index = disi.index();
             start = addresses.get(index);
             end = addresses.get(index + 1L);
-            count = end - start;
+            count = (int) (end - start);
             set = true;
             return true;
           }
@@ -1482,7 +1482,7 @@ final class Lucene70DocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public long docValueCount() {
+        public int docValueCount() {
           set();
           return count;
         }
