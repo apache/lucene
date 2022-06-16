@@ -107,18 +107,20 @@ public class TestMultiCollector extends LuceneTestCase {
       for (int i = 0; i < numCollectors; ++i) {
         final int terminateAfter = random().nextInt(numDocs + 10);
         final int expectedCount = terminateAfter > numDocs ? numDocs : terminateAfter;
-        TotalHitCountCollector collector = new TotalHitCountCollector() {
-          @Override
-          public void setWeight(Weight weight) {
-            super.setWeight(new FilterWeight(weight.getQuery(), weight) {
+        TotalHitCountCollector collector =
+            new TotalHitCountCollector() {
               @Override
-              public int count(LeafReaderContext context) {
-                // Disable quick counts
-                return -1;
+              public void setWeight(Weight weight) {
+                super.setWeight(
+                    new FilterWeight(weight.getQuery(), weight) {
+                      @Override
+                      public int count(LeafReaderContext context) {
+                        // Disable quick counts
+                        return -1;
+                      }
+                    });
               }
-            });
-          }
-        };
+            };
         expectedCounts.put(collector, expectedCount);
         collectors.add(new TerminateAfterCollector(collector, terminateAfter));
       }
@@ -637,6 +639,5 @@ public class TestMultiCollector extends LuceneTestCase {
 
     @Override
     public void collect(int doc) throws IOException {}
-
   }
 }

@@ -1274,7 +1274,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
           query.add(bar, Occur.FILTER);
           query.add(foo, Occur.FILTER);
         }
-        indexSearcher.search(query.build(), FixedBitSetCollector.createManager(indexReader.maxDoc()));
+        indexSearcher.search(
+            query.build(), FixedBitSetCollector.createManager(indexReader.maxDoc()));
         assertEquals(1, policy.frequency(query.build()));
         assertEquals(1, policy.frequency(foo));
         assertEquals(1, policy.frequency(bar));

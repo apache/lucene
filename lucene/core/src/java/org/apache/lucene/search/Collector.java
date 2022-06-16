@@ -62,5 +62,4 @@ public interface Collector {
    * LeafCollector}s.
    */
   default void setWeight(Weight weight) {}
-
 }
