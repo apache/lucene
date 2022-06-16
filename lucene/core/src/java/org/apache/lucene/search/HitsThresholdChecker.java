@@ -31,18 +31,13 @@ abstract class HitsThresholdChecker {
     }
 
     @Override
-    void incrementHitCount() {
-      globalHitCount.incrementAndGet();
+    void incrementHitCount(int increment) {
+      globalHitCount.addAndGet(increment);
     }
 
     @Override
     boolean isThresholdReached() {
       return globalHitCount.getAcquire() > getHitsThreshold();
-    }
-
-    @Override
-    ScoreMode scoreMode() {
-      return ScoreMode.TOP_SCORES;
     }
   }
 
@@ -56,18 +51,13 @@ abstract class HitsThresholdChecker {
     }
 
     @Override
-    void incrementHitCount() {
-      ++hitCount;
+    void incrementHitCount(int increment) {
+      hitCount += increment;
     }
 
     @Override
     boolean isThresholdReached() {
       return hitCount > getHitsThreshold();
-    }
-
-    @Override
-    ScoreMode scoreMode() {
-      return ScoreMode.TOP_SCORES;
     }
   }
 
@@ -79,18 +69,13 @@ abstract class HitsThresholdChecker {
   private static final HitsThresholdChecker EXACT_HITS_COUNT_THRESHOLD_CHECKER =
       new HitsThresholdChecker(Integer.MAX_VALUE) {
         @Override
-        void incrementHitCount() {
+        void incrementHitCount(int increment) {
           // noop
         }
 
         @Override
         boolean isThresholdReached() {
           return false;
-        }
-
-        @Override
-        ScoreMode scoreMode() {
-          return ScoreMode.COMPLETE;
         }
       };
 
@@ -128,7 +113,5 @@ abstract class HitsThresholdChecker {
 
   abstract boolean isThresholdReached();
 
-  abstract ScoreMode scoreMode();
-
-  abstract void incrementHitCount();
+  abstract void incrementHitCount(int increment);
 }

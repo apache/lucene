@@ -74,16 +74,10 @@ public class TestNeedsScores extends LuceneTestCase {
   public void testConstantScoreQuery() throws Exception {
     Query term = new TermQuery(new Term("field", "this"));
 
-    // Counting queries and top-score queries that compute the hit count should use
-    // COMPLETE_NO_SCORES
+    // Counting queries should use COMPLETE_NO_SCORES
     Query constantScore =
         new ConstantScoreQuery(new AssertNeedsScores(term, ScoreMode.COMPLETE_NO_SCORES));
     assertEquals(5, searcher.count(constantScore));
-
-    TopDocs hits =
-        searcher.search(
-            constantScore, TopScoreDocCollector.createSharedManager(5, null, Integer.MAX_VALUE));
-    assertEquals(5, hits.totalHits.value);
 
     // Queries that support dynamic pruning like top-score or top-doc queries that do not compute
     // the hit count should use TOP_DOCS

@@ -81,7 +81,7 @@ public class TopDocs {
       // Equal Values
       // Tie break in same shard: resolve however the
       // shard had resolved it:
-      assert first.hitIndex != second.hitIndex;
+      assert first.hitIndex != second.hitIndex : first.hitIndex;
       return first.hitIndex < second.hitIndex;
     }
 

@@ -46,7 +46,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
    */
   protected final PriorityQueue<T> pq;
 
-  /** The total number of documents that the collector encountered. */
+  /** The total number of hits of the query. */
   protected int totalHits;
 
   /** Whether {@link #totalHits} is exact or a lower bound. */
@@ -84,17 +84,13 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
 
   /** The number of valid PQ entries */
   protected int topDocsSize() {
-    // In case pq was populated with sentinel values, there might be less
-    // results than pq.size(). Therefore return all results until either
-    // pq.size() or totalHits.
-    return totalHits < pq.size() ? totalHits : pq.size();
+    return pq.size();
   }
 
   /** Returns the top docs that were collected by this collector. */
   public TopDocs topDocs() {
     // In case pq was populated with sentinel values, there might be less
-    // results than pq.size(). Therefore return all results until either
-    // pq.size() or totalHits.
+    // results than pq.size().
     return topDocs(0, topDocsSize());
   }
 
@@ -110,8 +106,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
    */
   public TopDocs topDocs(int start) {
     // In case pq was populated with sentinel values, there might be less
-    // results than pq.size(). Therefore return all results until either
-    // pq.size() or totalHits.
+    // results than pq.size().
     return topDocs(start, topDocsSize());
   }
 
