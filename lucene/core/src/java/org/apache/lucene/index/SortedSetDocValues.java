@@ -49,7 +49,7 @@ public abstract class SortedSetDocValues extends DocValuesIterator {
    * zero. It is illegal to call this method after {@link #advanceExact(int)} returned {@code
    * false}.
    */
-  public abstract long docValueCount();
+  public abstract int docValueCount();
 
   /**
    * Retrieves the value for the specified ordinal. The returned {@link BytesRef} may be re-used
