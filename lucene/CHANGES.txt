@@ -106,6 +106,8 @@ Bug Fixes
 
 * LUCENE-10598: SortedSetDocValues#docValueCount() should be always greater than zero. (Lu Xugang)
 
+* LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
+
 Other
 ---------------------
 

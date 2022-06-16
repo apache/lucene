@@ -58,7 +58,7 @@ final class SingletonSortedSetDocValues extends SortedSetDocValues {
   }
 
   @Override
-  public long docValueCount() {
+  public int docValueCount() {
     return 1;
   }
 
