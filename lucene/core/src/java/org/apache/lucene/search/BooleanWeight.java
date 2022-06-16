@@ -350,14 +350,14 @@ final class BooleanWeight extends Weight {
     int positiveCount;
     if (query.isPureDisjunction()) {
       positiveCount = optCount(context, Occur.SHOULD);
-    } else if (query.getClauses(Occur.FILTER).isEmpty() == false
-        || query.getClauses(Occur.MUST).isEmpty() == false) {
-      if (query.getMinimumNumberShouldMatch() > 0) {
-        positiveCount = -1;
-      } else {
-        positiveCount = reqCount(context);
-      }
+    } else if ((query.getClauses(Occur.FILTER).isEmpty() == false
+            || query.getClauses(Occur.MUST).isEmpty() == false)
+        && query.getMinimumNumberShouldMatch() == 0) {
+      positiveCount = reqCount(context);
     } else {
+      // The query has a non-zero min-should match. We could handles some cases, e.g.
+      // minShouldMatch=N and we can find N SHOULD clauses that match all docs, but are there
+      // real-world queries that would benefit from Lucene handling this case?
       positiveCount = -1;
     }
 
@@ -411,7 +411,7 @@ final class BooleanWeight extends Weight {
   }
 
   /**
-   * Return the number of matches of required clauses, or -1 if unknown, or 0 if there are no
+   * Return the number of matches of optional clauses, or -1 if unknown, or 0 if there are no
    * optional clauses.
    */
   private int optCount(LeafReaderContext context, Occur occur) throws IOException {
