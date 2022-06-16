@@ -20,10 +20,9 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
- * Just counts the total number of hits. For cases when this is the only collector used, {@link
- * IndexSearcher#count(Query)} should be called instead of {@link IndexSearcher#search(Query,
- * Collector)} as the former is faster whenever the count can be returned directly from the index
- * statistics.
+ * Just counts the total number of hits. This is the collector behind {@link IndexSearcher#count}.
+ * When the {@link Weight} implement {@link Weight#count}, this collector will skip collecting
+ * segments.
  */
 public class TotalHitCountCollector implements Collector {
   private Weight weight;

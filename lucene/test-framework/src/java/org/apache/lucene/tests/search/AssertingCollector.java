@@ -71,6 +71,7 @@ class AssertingCollector extends FilterCollector {
 
   @Override
   public void setWeight(Weight weight) {
+    assert weightSet == false : "Weight set twice";
     weightSet = true;
     assert weight != null;
     in.setWeight(weight);
