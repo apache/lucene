@@ -110,7 +110,7 @@ Bug Fixes
 
 * LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
 
-* LUCENE-10611: Fix Heap Error in HnswGraphSearcher (Kaival Parikh)
+* LUCENE-10611: Fix failure when KnnVectorQuery has very selective filter (Kaival Parikh)
 
 Other
 ---------------------
