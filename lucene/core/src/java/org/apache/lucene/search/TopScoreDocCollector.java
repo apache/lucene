@@ -281,6 +281,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     };
   }
 
+  Weight weight;
   int docBase;
   ScoreDoc pqTop;
   final HitsThresholdChecker hitsThresholdChecker;
@@ -307,6 +308,11 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     }
 
     return new TopDocs(new TotalHits(totalHits, totalHitsRelation), results);
+  }
+
+  @Override
+  public void setWeight(Weight weight) {
+    this.weight = weight;
   }
 
   @Override
