@@ -27,7 +27,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.search.CountingCollectorWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Tests MatchAllDocsQuery. */

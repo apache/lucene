@@ -64,6 +64,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
@@ -169,8 +170,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
                         RandomPicks.randomFrom(
                             random(), new String[] {"blue", "red", "yellow", "green"});
                     final Query q = new TermQuery(new Term("color", value));
-                    TotalHitCountCollectorManager collectorManager =
-                        new TotalHitCountCollectorManager();
+                    CollectorManager<DummyTotalHitCountCollector, Integer> collectorManager =
+                        DummyTotalHitCountCollector.createManager();
                     // will use the cache
                     final int totalHits1 = searcher.search(q, collectorManager);
                     final long totalHits2 =
@@ -178,8 +179,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
                             q,
                             new CollectorManager<FilterCollector, Integer>() {
                               @Override
-                              public FilterCollector newCollector() {
-                                return new FilterCollector(new TotalHitCountCollector()) {
+                              public FilterCollector newCollector() throws IOException {
+                                return new FilterCollector(collectorManager.newCollector()) {
                                   @Override
                                   public ScoreMode scoreMode() {
                                     // will not use the cache because of scores
@@ -195,7 +196,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
                                     collectors.stream()
                                         .map(
                                             filterCollector ->
-                                                (TotalHitCountCollector) filterCollector.in)
+                                                (DummyTotalHitCountCollector) filterCollector.in)
                                         .collect(Collectors.toList()));
                               }
                             });
@@ -964,7 +965,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(policy);
-    searcher.search(query.build(), new TotalHitCountCollectorManager());
+    searcher.search(query.build(), DummyTotalHitCountCollector.createManager());
 
     reader.close();
     dir.close();
@@ -1188,12 +1189,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
     BadQuery query = new BadQuery();
-    searcher.search(query, new TotalHitCountCollectorManager());
+    searcher.search(query, DummyTotalHitCountCollector.createManager());
     query.i[0] += 1; // change the hashCode!
 
     try {
       // trigger an eviction
-      searcher.search(new MatchAllDocsQuery(), new TotalHitCountCollectorManager());
+      searcher.search(new MatchAllDocsQuery(), DummyTotalHitCountCollector.createManager());
       fail();
     } catch (
         @SuppressWarnings("unused")

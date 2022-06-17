@@ -43,7 +43,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.search.CountingCollectorWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
@@ -89,6 +88,24 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(i, ((Long) fieldDoc.fields[0]).intValue());
       }
       assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      assertNonCompetitiveHitsAreSkipped(counter.longValue(), numDocs);
+    }
+
+    { // sort that requests an exact hit count on a query that supports exact counting via
+      // Weight#count
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, Integer.MAX_VALUE);
+      AtomicLong counter = new AtomicLong();
+      TopDocs topDocs =
+          searcher.search(
+              new MatchAllDocsQuery(), CountingCollectorWrapper.createManager(manager, counter));
+      assertEquals(topDocs.scoreDocs.length, numHits);
+      for (int i = 0; i < numHits; i++) {
+        FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
+        assertEquals(i, ((Long) fieldDoc.fields[0]).intValue());
+      }
+      assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+      assertEquals(numDocs, topDocs.totalHits.value);
       assertNonCompetitiveHitsAreSkipped(counter.longValue(), numDocs);
     }
 
@@ -382,6 +399,24 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(1f * i, fieldDoc.fields[0]);
       }
       assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      assertNonCompetitiveHitsAreSkipped(counter.longValue(), numDocs);
+    }
+
+    { // sort that requests an exact hit count on a query that supports exact counting via
+      // Weight#count
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, Integer.MAX_VALUE);
+      AtomicLong counter = new AtomicLong();
+      TopDocs topDocs =
+          searcher.search(
+              new MatchAllDocsQuery(), CountingCollectorWrapper.createManager(manager, counter));
+      assertEquals(topDocs.scoreDocs.length, numHits);
+      for (int i = 0; i < numHits; i++) {
+        FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
+        assertEquals(1f * i, fieldDoc.fields[0]);
+      }
+      assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+      assertEquals(numDocs, topDocs.totalHits.value);
       assertNonCompetitiveHitsAreSkipped(counter.longValue(), numDocs);
     }
 

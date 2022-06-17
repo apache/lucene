@@ -34,7 +34,6 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.search.CountingCollectorWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestConstantScoreScorer extends LuceneTestCase {
