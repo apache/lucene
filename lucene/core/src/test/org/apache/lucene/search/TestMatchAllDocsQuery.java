@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -139,5 +138,4 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
     ir.close();
     dir.close();
   }
-
 }

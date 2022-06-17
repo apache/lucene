@@ -22,7 +22,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -267,5 +266,4 @@ public class TestConstantScoreScorer extends LuceneTestCase {
     ir.close();
     dir.close();
   }
-
 }

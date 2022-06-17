@@ -213,7 +213,10 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    */
   public static TopScoreDocCollector create(int numHits, ScoreDoc after, int totalHitsThreshold) {
     return create(
-        numHits, after, HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits)), null);
+        numHits,
+        after,
+        HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits), numHits),
+        null);
   }
 
   static TopScoreDocCollector create(
@@ -249,7 +252,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     return new CollectorManager<>() {
 
       private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(totalHitsMax);
+          HitsThresholdChecker.createShared(totalHitsMax, numHits);
       private final MaxScoreAccumulator minScoreAcc =
           totalHitsMax == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
 

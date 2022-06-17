@@ -25,9 +25,8 @@ abstract class HitsThresholdChecker {
   private static class GlobalHitsThresholdChecker extends HitsThresholdChecker {
     private final AtomicLong globalHitCount = new AtomicLong();
 
-    GlobalHitsThresholdChecker(int totalHitsThreshold) {
-      super(totalHitsThreshold);
-      assert totalHitsThreshold != Integer.MAX_VALUE;
+    GlobalHitsThresholdChecker(int totalHitsThreshold, int numHits) {
+      super(totalHitsThreshold, numHits);
     }
 
     @Override
@@ -39,15 +38,19 @@ abstract class HitsThresholdChecker {
     boolean isThresholdReached() {
       return globalHitCount.getAcquire() > getHitsThreshold();
     }
+
+    @Override
+    boolean isNumHitsReached() {
+      return globalHitCount.getAcquire() > getNumHits();
+    }
   }
 
   /** Default implementation of HitsThresholdChecker to be used for single threaded execution */
   private static class LocalHitsThresholdChecker extends HitsThresholdChecker {
     private int hitCount;
 
-    LocalHitsThresholdChecker(int totalHitsThreshold) {
-      super(totalHitsThreshold);
-      assert totalHitsThreshold != Integer.MAX_VALUE;
+    LocalHitsThresholdChecker(int totalHitsThreshold, int numHits) {
+      super(totalHitsThreshold, numHits);
     }
 
     @Override
@@ -59,59 +62,53 @@ abstract class HitsThresholdChecker {
     boolean isThresholdReached() {
       return hitCount > getHitsThreshold();
     }
+
+    @Override
+    boolean isNumHitsReached() {
+      return hitCount > getNumHits();
+    }
   }
-
-  /**
-   * No-op implementation of {@link HitsThresholdChecker} that does no counting, as the threshold
-   * can never be reached. This is useful for cases where early termination is never desired, so
-   * that the overhead of counting hits can be avoided.
-   */
-  private static final HitsThresholdChecker EXACT_HITS_COUNT_THRESHOLD_CHECKER =
-      new HitsThresholdChecker(Integer.MAX_VALUE) {
-        @Override
-        void incrementHitCount(int increment) {
-          // noop
-        }
-
-        @Override
-        boolean isThresholdReached() {
-          return false;
-        }
-      };
 
   /*
    * Returns a threshold checker that is useful for single threaded searches
    */
-  static HitsThresholdChecker create(final int totalHitsThreshold) {
-    return totalHitsThreshold == Integer.MAX_VALUE
-        ? HitsThresholdChecker.EXACT_HITS_COUNT_THRESHOLD_CHECKER
-        : new LocalHitsThresholdChecker(totalHitsThreshold);
+  static HitsThresholdChecker create(final int totalHitsThreshold, final int numHits) {
+    return new LocalHitsThresholdChecker(totalHitsThreshold, numHits);
   }
 
   /*
    * Returns a threshold checker that is based on a shared counter
    */
-  static HitsThresholdChecker createShared(final int totalHitsThreshold) {
-    return totalHitsThreshold == Integer.MAX_VALUE
-        ? HitsThresholdChecker.EXACT_HITS_COUNT_THRESHOLD_CHECKER
-        : new GlobalHitsThresholdChecker(totalHitsThreshold);
+  static HitsThresholdChecker createShared(final int totalHitsThreshold, final int numHits) {
+    return new GlobalHitsThresholdChecker(totalHitsThreshold, numHits);
   }
 
   private final int totalHitsThreshold;
+  private final int numHits;
 
-  HitsThresholdChecker(int totalHitsThreshold) {
-    if (totalHitsThreshold < 0) {
+  HitsThresholdChecker(int totalHitsThreshold, int numHits) {
+    if (numHits < 0) {
+      throw new IllegalArgumentException("numHits must be >= 0, got " + numHits);
+    }
+    if (totalHitsThreshold < numHits) {
       throw new IllegalArgumentException(
-          "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
+          "totalHitsThreshold must be >= numHits, got " + totalHitsThreshold + " < " + numHits);
     }
     this.totalHitsThreshold = totalHitsThreshold;
+    this.numHits = numHits;
   }
 
   final int getHitsThreshold() {
     return totalHitsThreshold;
   }
 
+  final int getNumHits() {
+    return numHits;
+  }
+
   abstract boolean isThresholdReached();
+
+  abstract boolean isNumHitsReached();
 
   abstract void incrementHitCount(int increment);
 }

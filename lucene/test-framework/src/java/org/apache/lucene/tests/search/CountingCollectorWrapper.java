@@ -19,10 +19,10 @@ package org.apache.lucene.tests.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
@@ -31,7 +31,8 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 
 /**
- * A wrapper that counts how many times {@link LeafCollector#collect} is called on a {@link TopDocsCollector}.
+ * A wrapper that counts how many times {@link LeafCollector#collect} is called on a {@link
+ * TopDocsCollector}.
  */
 public final class CountingCollectorWrapper extends FilterCollector {
 
@@ -50,13 +51,18 @@ public final class CountingCollectorWrapper extends FilterCollector {
         super.collect(doc);
         count.incrementAndGet();
       }
+
+      @Override
+      public DocIdSetIterator competitiveIterator() throws IOException {
+        return in.competitiveIterator();
+      }
     };
   }
 
-  /**
-   * Create a {@link CollectorManager}.
-   */
-  public static <S extends ScoreDoc, T extends TopDocs, C extends TopDocsCollector<S>> CollectorManager<CountingCollectorWrapper, T> createManager(CollectorManager<C, T> manager, AtomicLong count) {
+  /** Create a {@link CollectorManager}. */
+  public static <S extends ScoreDoc, T extends TopDocs, C extends TopDocsCollector<S>>
+      CollectorManager<CountingCollectorWrapper, T> createManager(
+          CollectorManager<C, T> manager, AtomicLong count) {
     return new CollectorManager<CountingCollectorWrapper, T>() {
 
       @Override
@@ -67,10 +73,8 @@ public final class CountingCollectorWrapper extends FilterCollector {
       @SuppressWarnings("unchecked")
       @Override
       public T reduce(Collection<CountingCollectorWrapper> collectors) throws IOException {
-        return manager.reduce(
-            collectors.stream().map(coll -> (C) coll.in).toList());
+        return manager.reduce(collectors.stream().map(coll -> (C) coll.in).toList());
       }
-
     };
   }
 }
