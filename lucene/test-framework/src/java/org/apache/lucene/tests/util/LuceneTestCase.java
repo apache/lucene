@@ -17,6 +17,8 @@
 
 package org.apache.lucene.tests.util;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -1949,7 +1951,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static IndexSearcher newSearcher(
       IndexReader r, boolean maybeWrap, boolean wrapWithAssertions) {
-    return newSearcher(r, maybeWrap, wrapWithAssertions, rarely());
+    return newSearcher(r, maybeWrap, wrapWithAssertions, randomBoolean());
   }
 
   /**
@@ -2021,13 +2023,28 @@ public abstract class LuceneTestCase extends Assert {
       }
       IndexSearcher ret;
       if (wrapWithAssertions) {
-        ret =
-            random.nextBoolean()
-                ? new AssertingIndexSearcher(random, r, ex)
-                : new AssertingIndexSearcher(random, r.getContext(), ex);
-      } else if (random.nextBoolean()) {
-        int maxDocPerSlice = 1 + random.nextInt(100000);
-        int maxSegmentsPerSlice = 1 + random.nextInt(20);
+        int maxDocPerSlice = 1 + random.nextInt(1000);
+        int maxSegmentsPerSlice = 1 + random.nextInt(10);
+        if (random.nextBoolean()) {
+          ret =
+              new AssertingIndexSearcher(random, r, ex) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                }
+              };
+        } else {
+          ret =
+              new AssertingIndexSearcher(random, r.getContext(), ex) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                }
+              };
+        }
+      } else if (frequently()) {
+        int maxDocPerSlice = 1 + random.nextInt(1000);
+        int maxSegmentsPerSlice = 1 + random.nextInt(10);
         ret =
             new IndexSearcher(r, ex) {
               @Override
