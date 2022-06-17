@@ -14,27 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.tests.search;
+package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.CollectorManager;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.FilterCollector;
-import org.apache.lucene.search.FilterLeafCollector;
-import org.apache.lucene.search.LeafCollector;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 
 /**
  * A wrapper that counts how many times {@link LeafCollector#collect} is called on a {@link
  * TopDocsCollector}.
  */
-public final class CountingCollectorWrapper extends FilterCollector {
+final class CountingCollectorWrapper extends FilterCollector {
 
   private final AtomicLong count;
 
