@@ -157,9 +157,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
               for (int doc = multiValues.nextDoc();
                   doc != DocIdSetIterator.NO_MORE_DOCS;
                   doc = multiValues.nextDoc()) {
-                for (int term = (int) multiValues.nextOrd();
-                    term != SortedSetDocValues.NO_MORE_ORDS;
-                    term = (int) multiValues.nextOrd()) {
+                for (int i = 0; i < multiValues.docValueCount(); i++) {
+                  int term = (int) multiValues.nextOrd();
                   counts.incrementAndGet((int) ordMap.get(term));
                 }
               }
@@ -167,9 +166,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
               for (int doc = it.nextDoc();
                   doc != DocIdSetIterator.NO_MORE_DOCS;
                   doc = it.nextDoc()) {
-                for (int term = (int) multiValues.nextOrd();
-                    term != SortedSetDocValues.NO_MORE_ORDS;
-                    term = (int) multiValues.nextOrd()) {
+                for (int i = 0; i < multiValues.docValueCount(); i++) {
+                  int term = (int) multiValues.nextOrd();
                   counts.incrementAndGet((int) ordMap.get(term));
                 }
               }
@@ -198,9 +196,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
               for (int doc = multiValues.nextDoc();
                   doc != DocIdSetIterator.NO_MORE_DOCS;
                   doc = multiValues.nextDoc()) {
-                for (int term = (int) multiValues.nextOrd();
-                    term != SortedSetDocValues.NO_MORE_ORDS;
-                    term = (int) multiValues.nextOrd()) {
+                for (int i = 0; i < multiValues.docValueCount(); i++) {
+                  int term = (int) multiValues.nextOrd();
                   segCounts[term]++;
                 }
               }
@@ -208,9 +205,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
               for (int doc = it.nextDoc();
                   doc != DocIdSetIterator.NO_MORE_DOCS;
                   doc = it.nextDoc()) {
-                for (int term = (int) multiValues.nextOrd();
-                    term != SortedSetDocValues.NO_MORE_ORDS;
-                    term = (int) multiValues.nextOrd()) {
+                for (int i = 0; i < multiValues.docValueCount(); i++) {
+                  int term = (int) multiValues.nextOrd();
                   segCounts[term]++;
                 }
               }
@@ -245,17 +241,15 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
             for (int doc = multiValues.nextDoc();
                 doc != DocIdSetIterator.NO_MORE_DOCS;
                 doc = multiValues.nextDoc()) {
-              for (int term = (int) multiValues.nextOrd();
-                  term != SortedSetDocValues.NO_MORE_ORDS;
-                  term = (int) multiValues.nextOrd()) {
+              for (int i = 0; i < multiValues.docValueCount(); i++) {
+                int term = (int) multiValues.nextOrd();
                 counts.incrementAndGet(term);
               }
             }
           } else {
             for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-              for (int term = (int) multiValues.nextOrd();
-                  term != SortedSetDocValues.NO_MORE_ORDS;
-                  term = (int) multiValues.nextOrd()) {
+              for (int i = 0; i < multiValues.docValueCount(); i++) {
+                int term = (int) multiValues.nextOrd();
                 counts.incrementAndGet(term);
               }
             }
