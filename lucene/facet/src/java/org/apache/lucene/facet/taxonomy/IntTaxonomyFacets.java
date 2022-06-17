@@ -174,7 +174,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
 
     int aggregatedValue = 0;
-    int childCount = 0;
 
     List<Integer> ordinals = new ArrayList<>();
     List<Integer> ordValues = new ArrayList<>();
@@ -185,7 +184,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         int ord = c.key;
         if (parents[ord] == dimOrd && value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
-          childCount++;
           ordinals.add(ord);
           ordValues.add(value);
         }
@@ -198,7 +196,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         int value = values[ord];
         if (value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
-          childCount++;
           ordinals.add(ord);
           ordValues.add(value);
         }
@@ -231,7 +228,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     for (int i = 0; i < ordValues.size(); i++) {
       labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
     }
-    return new FacetResult(dim, path, aggregatedValue, labelValues, childCount);
+    return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
 
   @Override

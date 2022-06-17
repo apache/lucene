@@ -30,8 +30,8 @@ public abstract class Facets {
   public Facets() {}
 
   /**
-   * Returns all the children labels under the specified path. Returns null if the specified path
-   * doesn't exist or if this dimension was never seen.
+   * Returns all the children labels with non-zero counts under the specified path in the unsorted
+   * order. Returns null if the specified path doesn't exist or if this dimension was never seen.
    */
   public abstract FacetResult getAllChildren(String dim, String... path) throws IOException;
 

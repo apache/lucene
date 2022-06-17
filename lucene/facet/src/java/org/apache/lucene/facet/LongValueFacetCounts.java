@@ -348,31 +348,20 @@ public class LongValueFacetCounts extends Facets {
 
   @Override
   public FacetResult getAllChildren(String dim, String... path) throws IOException {
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
-
+    validateDimAndPathForGetChildren(dim, path);
     List<LabelAndValue> labelValues = new ArrayList<>();
-    boolean countsAdded = false;
+    for (int i = 0; i < counts.length; i++) {
+      if (counts[i] != 0) {
+        labelValues.add(new LabelAndValue(Long.toString(i), counts[i]));
+      }
+    }
     if (hashCounts.size() != 0) {
       for (LongIntCursor c : hashCounts) {
         int count = c.value;
         if (count != 0) {
-          if (countsAdded == false && c.key >= counts.length) {
-            countsAdded = true;
-            appendCounts(labelValues);
-          }
-          labelValues.add(new LabelAndValue(Long.toString(c.key), count));
+          labelValues.add(new LabelAndValue(Long.toString(c.key), c.value));
         }
       }
-    }
-
-    if (countsAdded == false) {
-      appendCounts(labelValues);
     }
 
     return new FacetResult(
@@ -386,13 +375,7 @@ public class LongValueFacetCounts extends Facets {
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) {
     validateTopN(topN);
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+    validateDimAndPathForGetChildren(dim, path);
     return getTopChildrenSortByCount(topN);
   }
 
@@ -516,6 +499,16 @@ public class LongValueFacetCounts extends Facets {
       if (counts[i] != 0) {
         labelValues.add(new LabelAndValue(Long.toString(i), counts[i]));
       }
+    }
+  }
+
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
     }
   }
 

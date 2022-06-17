@@ -133,20 +133,12 @@ public class StringValueFacetCounts extends Facets {
 
   @Override
   public FacetResult getAllChildren(String dim, String... path) throws IOException {
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+    validateDimAndPathForGetChildren(dim, path);
 
-    int childCount = 0; // total number of labels with non-zero count
     List<LabelAndValue> labelValues = new ArrayList<>();
 
     if (sparseCounts != null) {
       for (IntIntCursor cursor : sparseCounts) {
-        childCount++; // every count in sparseValues should be non-zero
         int count = cursor.value;
         final BytesRef term = docValues.lookupOrd(cursor.key);
         labelValues.add(new LabelAndValue(term.utf8ToString(), count));
@@ -155,7 +147,6 @@ public class StringValueFacetCounts extends Facets {
       for (int i = 0; i < denseCounts.length; i++) {
         int count = denseCounts[i];
         if (count != 0) {
-          childCount++;
           final BytesRef term = docValues.lookupOrd(i);
           labelValues.add(new LabelAndValue(term.utf8ToString(), count));
         }
@@ -163,19 +154,17 @@ public class StringValueFacetCounts extends Facets {
     }
 
     return new FacetResult(
-        field, new String[0], totalDocCount, labelValues.toArray(new LabelAndValue[0]), childCount);
+        field,
+        new String[0],
+        totalDocCount,
+        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.size());
   }
 
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+    validateDimAndPathForGetChildren(dim, path);
 
     topN = Math.min(topN, cardinality);
     TopOrdAndIntQueue q = null;
@@ -582,6 +571,16 @@ public class StringValueFacetCounts extends Facets {
     if (ReaderUtil.getTopLevelContext(context).reader() != reader) {
       throw new IllegalStateException(
           "the SortedSetDocValuesReaderState provided to this class does not match the reader being searched; you must create a new SortedSetDocValuesReaderState every time you open a new IndexReader");
+    }
+  }
+
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
     }
   }
 }

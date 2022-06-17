@@ -116,7 +116,6 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     int ord = children[dimOrd];
     float aggregatedValue = 0;
-    int childCount = 0;
 
     List<Integer> ordinals = new ArrayList<>();
     List<Float> ordValues = new ArrayList<>();
@@ -124,7 +123,6 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       if (values[ord] > 0) {
         aggregatedValue = aggregationFunction.aggregate(aggregatedValue, values[ord]);
-        childCount++;
         ordinals.add(ord);
         ordValues.add(values[ord]);
       }
@@ -156,7 +154,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     for (int i = 0; i < labelValues.length; i++) {
       labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
     }
-    return new FacetResult(dim, path, aggregatedValue, labelValues, childCount);
+    return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
 
   @Override
