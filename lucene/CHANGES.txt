@@ -89,6 +89,8 @@ Improvements
 * LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
   SortedSetDocValues#docValueCount(). (Greg Miller)
 
+* LUCENE-10619: Optimize the writeBytes in TermsHashPerField. (Tang Donghai)
+
 Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
