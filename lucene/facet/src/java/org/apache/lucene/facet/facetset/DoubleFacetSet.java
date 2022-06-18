@@ -17,7 +17,6 @@
 package org.apache.lucene.facet.facetset;
 
 import java.util.Arrays;
-import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.util.NumericUtils;
 
 /**
@@ -40,19 +39,6 @@ public class DoubleFacetSet extends FacetSet {
   @Override
   public long[] getComparableValues() {
     return Arrays.stream(values).mapToLong(NumericUtils::doubleToSortableLong).toArray();
-  }
-
-  @Override
-  public int packValues(byte[] buf, int start) {
-    for (int i = 0, offset = start; i < values.length; i++, offset += Long.BYTES) {
-      DoublePoint.encodeDimension(values[i], buf, offset);
-    }
-    return values.length * Long.BYTES;
-  }
-
-  @Override
-  public int sizePackedBytes() {
-    return dims * Long.BYTES;
   }
 
   private static int validateValuesAndGetNumDims(double... values) {

@@ -211,14 +211,14 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     List<DoubleFacetSet> allSets = new ArrayList<>();
     for (int manufacturerOrd : MANUFACTURER_ORDS) {
       for (int year : YEARS) {
-        allSets.add(new DoubleFacetSet(manufacturerOrd, year));
+        allSets.add(new DoubleFacetSet(manufacturerOrd, year + 0.5));
       }
     }
 
-    int numFord2011_2013 = 0;
-    int numFord2010_2014 = 0;
     int numFord2011_2014 = 0;
-    int numFord2010_2013 = 0;
+    int numFord2010_2015 = 0;
+    int numFord2011_2015 = 0;
+    int numFord2010_2014 = 0;
     int numMatchingDocs = 0;
     for (int i = 0; i < 100; i++) {
       Document doc = new Document();
@@ -231,19 +231,19 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
           continue;
         }
         double year = facetSet.values[1];
-        if (year > 2010 && year < 2014) {
-          ++numFord2010_2013;
+        if (year > 2010.5 && year < 2014.5) {
           ++numFord2010_2014;
-          ++numFord2011_2013;
+          ++numFord2010_2015;
           ++numFord2011_2014;
+          ++numFord2011_2015;
           matchingDoc = true;
-        } else if (year == 2014) {
-          ++numFord2010_2014;
-          ++numFord2011_2014;
+        } else if (year == 2014.5) {
+          ++numFord2010_2015;
+          ++numFord2011_2015;
           matchingDoc = true;
-        } else if (year == 2010) {
+        } else if (year == 2010.5) {
+          ++numFord2010_2015;
           ++numFord2010_2014;
-          ++numFord2010_2013;
           matchingDoc = true;
         }
       }
@@ -264,21 +264,21 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
             fc,
             FacetSetDecoder::decodeLongs,
             new RangeFacetSetMatcher(
-                "Ford [2010-2014]",
+                "Ford [2010-2015]",
                 singleDouble(FORD_ORD),
-                doubleRange(2010.0, true, 2014.0, true)),
+                doubleRange(2010.0, true, 2015.0, true)),
             new RangeFacetSetMatcher(
-                "Ford (2010-2014]",
+                "Ford (2011-2015]",
                 singleDouble(FORD_ORD),
-                doubleRange(2010.0, false, 2014.0, true)),
+                doubleRange(2011.0, false, 2015.0, true)),
             new RangeFacetSetMatcher(
                 "Ford [2010-2014)",
                 singleDouble(FORD_ORD),
                 doubleRange(2010.0, true, 2014.0, false)),
             new RangeFacetSetMatcher(
-                "Ford (2010-2014)",
+                "Ford (2011-2014)",
                 singleDouble(FORD_ORD),
-                doubleRange(2010.0, false, 2014.0, false)));
+                doubleRange(2011.0, false, 2014.0, false)));
 
     FacetResult result = facets.getTopChildren(10, "field");
 
@@ -287,10 +287,10 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     assertEquals(numMatchingDocs, result.value);
     assertEquals(4, result.childCount);
 
-    assertEquals(new LabelAndValue("Ford [2010-2014]", numFord2010_2014), result.labelValues[0]);
-    assertEquals(new LabelAndValue("Ford (2010-2014]", numFord2011_2014), result.labelValues[1]);
-    assertEquals(new LabelAndValue("Ford [2010-2014)", numFord2010_2013), result.labelValues[2]);
-    assertEquals(new LabelAndValue("Ford (2010-2014)", numFord2011_2013), result.labelValues[3]);
+    assertEquals(new LabelAndValue("Ford [2010-2015]", numFord2010_2015), result.labelValues[0]);
+    assertEquals(new LabelAndValue("Ford (2011-2015]", numFord2011_2015), result.labelValues[1]);
+    assertEquals(new LabelAndValue("Ford [2010-2014)", numFord2010_2014), result.labelValues[2]);
+    assertEquals(new LabelAndValue("Ford (2011-2014)", numFord2011_2014), result.labelValues[3]);
 
     r.close();
     d.close();
@@ -303,14 +303,14 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     List<FloatFacetSet> allSets = new ArrayList<>();
     for (int manufacturerOrd : MANUFACTURER_ORDS) {
       for (int year : YEARS) {
-        allSets.add(new FloatFacetSet(manufacturerOrd, year));
+        allSets.add(new FloatFacetSet(manufacturerOrd, year + 0.5f));
       }
     }
 
-    int numFord2011_2013 = 0;
-    int numFord2010_2014 = 0;
     int numFord2011_2014 = 0;
-    int numFord2010_2013 = 0;
+    int numFord2010_2015 = 0;
+    int numFord2011_2015 = 0;
+    int numFord2010_2014 = 0;
     int numMatchingDocs = 0;
     for (int i = 0; i < 100; i++) {
       Document doc = new Document();
@@ -323,19 +323,19 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
           continue;
         }
         double year = facetSet.values[1];
-        if (year > 2010 && year < 2014) {
-          ++numFord2010_2013;
+        if (year > 2010.5f && year < 2014.5f) {
           ++numFord2010_2014;
-          ++numFord2011_2013;
+          ++numFord2010_2015;
           ++numFord2011_2014;
+          ++numFord2011_2015;
           matchingDoc = true;
-        } else if (year == 2014) {
-          ++numFord2010_2014;
-          ++numFord2011_2014;
+        } else if (year == 2014.5f) {
+          ++numFord2010_2015;
+          ++numFord2011_2015;
           matchingDoc = true;
-        } else if (year == 2010) {
+        } else if (year == 2010.5f) {
+          ++numFord2010_2015;
           ++numFord2010_2014;
-          ++numFord2010_2013;
           matchingDoc = true;
         }
       }
@@ -356,21 +356,21 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
             fc,
             FacetSetDecoder::decodeInts,
             new RangeFacetSetMatcher(
-                "Ford [2010-2014]",
+                "Ford [2010-2015]",
                 singleFloat(FORD_ORD),
-                floatRange(2010.0f, true, 2014.0f, true)),
+                floatRange(2010.0f, true, 2015.0f, true)),
             new RangeFacetSetMatcher(
-                "Ford (2010-2014]",
+                "Ford (2010-2015]",
                 singleFloat(FORD_ORD),
-                floatRange(2010.0f, false, 2014.0f, true)),
+                floatRange(2010.5f, false, 2015.0f, true)),
             new RangeFacetSetMatcher(
                 "Ford [2010-2014)",
                 singleFloat(FORD_ORD),
                 floatRange(2010.0f, true, 2014.0f, false)),
             new RangeFacetSetMatcher(
-                "Ford (2010-2014)",
+                "Ford (2011-2014)",
                 singleFloat(FORD_ORD),
-                floatRange(2010.0f, false, 2014.0f, false)));
+                floatRange(2011.0f, false, 2014.0f, false)));
 
     FacetResult result = facets.getTopChildren(10, "field");
 
@@ -379,38 +379,38 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     assertEquals(numMatchingDocs, result.value);
     assertEquals(4, result.childCount);
 
-    assertEquals(new LabelAndValue("Ford [2010-2014]", numFord2010_2014), result.labelValues[0]);
-    assertEquals(new LabelAndValue("Ford (2010-2014]", numFord2011_2014), result.labelValues[1]);
-    assertEquals(new LabelAndValue("Ford [2010-2014)", numFord2010_2013), result.labelValues[2]);
-    assertEquals(new LabelAndValue("Ford (2010-2014)", numFord2011_2013), result.labelValues[3]);
+    assertEquals(new LabelAndValue("Ford [2010-2015]", numFord2010_2015), result.labelValues[0]);
+    assertEquals(new LabelAndValue("Ford (2010-2015]", numFord2011_2015), result.labelValues[1]);
+    assertEquals(new LabelAndValue("Ford [2010-2014)", numFord2010_2014), result.labelValues[2]);
+    assertEquals(new LabelAndValue("Ford (2011-2014)", numFord2011_2014), result.labelValues[3]);
 
     r.close();
     d.close();
   }
 
-  private static RangeFacetSetMatcher.LongRange singleLong(long value) {
+  private static RangeFacetSetMatcher.DimRange singleLong(long value) {
     return RangeFacetSetMatcher.fromLongs(value, true, value, true);
   }
 
-  private static RangeFacetSetMatcher.LongRange longRange(
+  private static RangeFacetSetMatcher.DimRange longRange(
       long min, boolean minExclusive, long max, boolean maxExclusive) {
     return RangeFacetSetMatcher.fromLongs(min, minExclusive, max, maxExclusive);
   }
 
-  private static RangeFacetSetMatcher.LongRange singleDouble(double value) {
+  private static RangeFacetSetMatcher.DimRange singleDouble(double value) {
     return RangeFacetSetMatcher.fromDoubles(value, true, value, true);
   }
 
-  private static RangeFacetSetMatcher.LongRange doubleRange(
+  private static RangeFacetSetMatcher.DimRange doubleRange(
       double min, boolean minExclusive, double max, boolean maxExclusive) {
     return RangeFacetSetMatcher.fromDoubles(min, minExclusive, max, maxExclusive);
   }
 
-  private static RangeFacetSetMatcher.LongRange singleFloat(float value) {
+  private static RangeFacetSetMatcher.DimRange singleFloat(float value) {
     return RangeFacetSetMatcher.fromFloats(value, true, value, true);
   }
 
-  private static RangeFacetSetMatcher.LongRange floatRange(
+  private static RangeFacetSetMatcher.DimRange floatRange(
       float min, boolean minExclusive, float max, boolean maxExclusive) {
     return RangeFacetSetMatcher.fromFloats(min, minExclusive, max, maxExclusive);
   }

@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import org.apache.lucene.document.LongPoint;
-
 /**
  * A {@link FacetSet} which encodes long dimension values.
  *
@@ -38,19 +36,6 @@ public class LongFacetSet extends FacetSet {
   @Override
   public long[] getComparableValues() {
     return values;
-  }
-
-  @Override
-  public int packValues(byte[] buf, int start) {
-    for (int i = 0, offset = start; i < values.length; i++, offset += Long.BYTES) {
-      LongPoint.encodeDimension(values[i], buf, offset);
-    }
-    return values.length * Long.BYTES;
-  }
-
-  @Override
-  public int sizePackedBytes() {
-    return dims * Long.BYTES;
   }
 
   private static int validateValuesAndGetNumDims(long... values) {

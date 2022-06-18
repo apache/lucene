@@ -33,7 +33,7 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
   /**
    * Constructs an instance to match facet sets with dimensions that fall within the given ranges.
    */
-  public RangeFacetSetMatcher(String label, LongRange... dimRanges) {
+  public RangeFacetSetMatcher(String label, DimRange... dimRanges) {
     super(label, getDims(dimRanges));
     this.lowerRanges = Arrays.stream(dimRanges).mapToLong(range -> range.min).toArray();
     this.upperRanges = Arrays.stream(dimRanges).mapToLong(range -> range.max).toArray();
@@ -61,7 +61,7 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
     return true;
   }
 
-  private static int getDims(LongRange... dimRanges) {
+  private static int getDims(DimRange... dimRanges) {
     if (dimRanges == null || dimRanges.length == 0) {
       throw new IllegalArgumentException("dimRanges cannot be null or empty");
     }
@@ -69,11 +69,10 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
   }
 
   /**
-   * Creates a {@link LongRange} for the given min and max long values. This method is also suitable
+   * Creates a {@link DimRange} for the given min and max long values. This method is also suitable
    * for int values.
    */
-  public static LongRange fromLongs(
-      long min, boolean minInclusive, long max, boolean maxInclusive) {
+  public static DimRange fromLongs(long min, boolean minInclusive, long max, boolean maxInclusive) {
     if (!minInclusive) {
       if (min != Long.MAX_VALUE) {
         min++;
@@ -95,11 +94,11 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
           "Minimum cannot be greater than maximum, max=" + max + ", min=" + min);
     }
 
-    return new LongRange(min, max);
+    return new DimRange(min, max);
   }
 
-  /** Creates a {@link LongRange} for the given min and max double values. */
-  public static LongRange fromDoubles(
+  /** Creates a {@link DimRange} for the given min and max double values. */
+  public static DimRange fromDoubles(
       double min, boolean minInclusive, double max, boolean maxInclusive) {
     if (Double.isNaN(min)) {
       throw new IllegalArgumentException("min cannot be NaN");
@@ -118,12 +117,12 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
     if (min > max) {
       throw new IllegalArgumentException("Minimum cannot be greater than maximum");
     }
-    return new LongRange(
+    return new DimRange(
         NumericUtils.doubleToSortableLong(min), NumericUtils.doubleToSortableLong(max));
   }
 
-  /** Creates a {@link LongRange} for the given min and max float values. */
-  public static LongRange fromFloats(
+  /** Creates a {@link DimRange} for the given min and max float values. */
+  public static DimRange fromFloats(
       float min, boolean minInclusive, float max, boolean maxInclusive) {
     if (Float.isNaN(min)) {
       throw new IllegalArgumentException("min cannot be NaN");
@@ -142,12 +141,11 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
     if (min > max) {
       throw new IllegalArgumentException("Minimum cannot be greater than maximum");
     }
-    return new LongRange(
-        NumericUtils.floatToSortableInt(min), NumericUtils.floatToSortableInt(max));
+    return new DimRange(NumericUtils.floatToSortableInt(min), NumericUtils.floatToSortableInt(max));
   }
 
   /** Defines a single range in a FacetSet dimension. */
-  public static class LongRange {
+  public static class DimRange {
     /** Inclusive min */
     public final long min;
 
@@ -160,7 +158,7 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
      * @param min inclusive min value in range
      * @param max inclusive max value in range
      */
-    public LongRange(long min, long max) {
+    public DimRange(long min, long max) {
       this.min = min;
       this.max = max;
     }

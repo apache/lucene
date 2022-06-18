@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.facet.facetset;
 
+import org.apache.lucene.document.LongPoint;
+
 /**
  * Holds a set of facet dimension values.
  *
@@ -36,13 +38,25 @@ public abstract class FacetSet {
 
   /**
    * Packs the dimension values into the given {@code byte[]} and returns the number of
-   * packed-values bytes.
+   * packed-values bytes. The default implementation packs the {@link #getComparableValues()
+   * comparable values}, and you can override to implement your own scheme.
    */
-  public abstract int packValues(byte[] buf, int start);
+  public int packValues(byte[] buf, int start) {
+    long[] comparableValues = getComparableValues();
+    for (int i = 0, offset = start; i < comparableValues.length; i++, offset += Long.BYTES) {
+      LongPoint.encodeDimension(comparableValues[i], buf, offset);
+    }
+    return comparableValues.length * Long.BYTES;
+  }
 
   /**
    * Returns the size of the packed values in this facet set. If the value is unknown in advance
-   * (e.g. if the values are compressed), this method can return an upper limit.
+   * (e.g. if the values are compressed), this method can return an upper limit. The default
+   * implementations returns {@code dims * Long.BYTES} per the default implementation of {@link
+   * #packValues(byte[], int)}. You should override if you implement {@link #packValues(byte[],
+   * int)} differently.
    */
-  public abstract int sizePackedBytes();
+  public int sizePackedBytes() {
+    return dims * Long.BYTES;
+  }
 }
