@@ -17,12 +17,10 @@
 package org.apache.lucene.demo.facet;
 
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.*;
 import org.apache.lucene.facet.FacetResult;
@@ -49,11 +47,10 @@ import org.apache.lucene.util.NumericUtils;
  */
 public class CustomFacetSetExample {
 
-  private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
   private static final long MAY_SECOND_2022 = date("2022-05-02");
   private static final long JUNE_SECOND_2022 = date("2022-06-02");
   private static final long JULY_SECOND_2022 = date("2022-07-02");
-  private static final float HUNDRED_TWENTY_DEGEREES = fahrenheitToCelsius(120);
+  private static final float HUNDRED_TWENTY_DEGREES = fahrenheitToCelsius(120);
   private static final float HUNDRED_DEGREES = fahrenheitToCelsius(100);
   private static final float EIGHTY_DEGREES = fahrenheitToCelsius(80);
 
@@ -77,7 +74,7 @@ public class CustomFacetSetExample {
             "temperature",
             new TemperatureReadingFacetSet(MAY_SECOND_2022, HUNDRED_DEGREES),
             new TemperatureReadingFacetSet(JUNE_SECOND_2022, EIGHTY_DEGREES),
-            new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGEREES)));
+            new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
     indexWriter.addDocument(doc);
 
     doc = new Document();
@@ -87,7 +84,7 @@ public class CustomFacetSetExample {
             "temperature",
             new TemperatureReadingFacetSet(MAY_SECOND_2022, EIGHTY_DEGREES),
             new TemperatureReadingFacetSet(JUNE_SECOND_2022, HUNDRED_DEGREES),
-            new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGEREES)));
+            new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
     indexWriter.addDocument(doc);
 
     indexWriter.close();
@@ -114,7 +111,7 @@ public class CustomFacetSetExample {
                 new TemperatureReadingFacetSet(MAY_SECOND_2022, HUNDRED_DEGREES)),
             new ExactFacetSetMatcher(
                 "July 2022 (120f)",
-                new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGEREES)));
+                new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
 
     // Retrieve results
     List<FacetResult> results = Collections.singletonList(facets.getTopChildren(10, "temperature"));
@@ -186,11 +183,7 @@ public class CustomFacetSetExample {
   }
 
   private static long date(String dateString) {
-    try {
-      return DATE_FORMAT.parse(dateString).getTime();
-    } catch (ParseException e) {
-      throw new RuntimeException(e);
-    }
+    return LocalDate.parse(dateString).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli();
   }
 
   private static float fahrenheitToCelsius(int degrees) {
