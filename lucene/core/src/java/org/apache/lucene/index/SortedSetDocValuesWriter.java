@@ -350,6 +350,8 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     private final DocOrds ords;
     private int docID = -1;
     private long ordUpto;
+    private boolean set;
+    private int count;
 
     SortingSortedSetDocValues(SortedSetDocValues in, DocOrds ords) {
       this.in = in;
@@ -363,6 +365,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     @Override
     public int nextDoc() {
+      set = false;
       do {
         docID++;
         if (docID == ords.offsets.length) {
@@ -375,11 +378,13 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     @Override
     public int advance(int target) {
+      set = false;
       throw new UnsupportedOperationException("use nextDoc instead");
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
+      set = false;
       // needed in IndexSorter#StringSorter
       docID = target;
       ordUpto = ords.offsets[docID] - 1;
@@ -398,7 +403,8 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     @Override
     public int docValueCount() {
-      return (int) ords.ords.size();
+      set();
+      return count;
     }
 
     @Override
@@ -414,6 +420,19 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     @Override
     public long getValueCount() {
       return in.getValueCount();
+    }
+
+    private void set() {
+      if (set == false) {
+        int ordCount = 0;
+        assert docID >= 0;
+        long upto = ords.offsets[docID] - 1;
+        while (ords.ords.get(upto++) != 0) {
+          ordCount++;
+        }
+        count = ordCount;
+        set = true;
+      }
     }
   }
 
