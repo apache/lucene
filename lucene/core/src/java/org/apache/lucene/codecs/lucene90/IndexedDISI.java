@@ -542,39 +542,90 @@ public final class IndexedDISI extends DocIdSetIterator {
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
-        for (; disi.index < disi.nextBlockIndex; ) {
+
+        long sliceFilePointerBase = disi.slice.getFilePointer();
+        int indexBase = disi.index;
+        int indexEnd = disi.nextBlockIndex - 1;
+
+        // When the largest doc is smaller than target, move to the next splice
+        disi.slice.seek(sliceFilePointerBase + Short.BYTES * (indexEnd - indexBase));
+        int docLast = Short.toUnsignedInt(disi.slice.readShort());
+        if (docLast < targetInBlock) {
+          disi.index = indexEnd + 1;
+          return false;
+        }
+
+        int low = indexBase;
+        int high = disi.nextBlockIndex - 1;
+
+        while (low <= high) {
+          int mid = low + (high - low) / 2;
+          disi.slice.seek(sliceFilePointerBase + Short.BYTES * (mid - indexBase));
           int doc = Short.toUnsignedInt(disi.slice.readShort());
-          disi.index++;
-          if (doc >= targetInBlock) {
+          if (doc == targetInBlock) {
             disi.doc = disi.block | doc;
+            disi.index = mid + 1;
             disi.exists = true;
             return true;
+          } else if (doc < targetInBlock) {
+            low = mid + 1;
+          } else {
+            high = mid - 1;
           }
         }
-        return false;
+
+        disi.slice.seek(sliceFilePointerBase + Short.BYTES * (low - indexBase));
+        int doc = Short.toUnsignedInt(disi.slice.readShort());
+        disi.doc = disi.block | doc;
+        disi.index = low + 1;
+        disi.exists = true;
+        return true;
       }
 
       @Override
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
+
         if (target == disi.doc) {
           return disi.exists;
         }
-        for (; disi.index < disi.nextBlockIndex; ) {
+
+        long sliceFilePointerBase = disi.slice.getFilePointer();
+        int indexBase = disi.index;
+        int indexEnd = disi.nextBlockIndex - 1;
+
+        // When the largest doc is smaller than target, move to the next splice
+        disi.slice.seek(sliceFilePointerBase + Short.BYTES * (indexEnd - indexBase));
+        int docLast = Short.toUnsignedInt(disi.slice.readShort());
+        if (docLast < targetInBlock) {
+          disi.index = indexEnd + 1;
+          disi.exists = false;
+          return false;
+        }
+
+        int low = indexBase;
+        int high = disi.nextBlockIndex - 1;
+
+        while (low <= high) {
+          int mid = low + (high - low) / 2;
+          disi.slice.seek(sliceFilePointerBase + Short.BYTES * (mid - indexBase));
           int doc = Short.toUnsignedInt(disi.slice.readShort());
-          disi.index++;
-          if (doc >= targetInBlock) {
-            if (doc != targetInBlock) {
-              disi.index--;
-              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
-              break;
-            }
+          if (doc == targetInBlock) {
             disi.exists = true;
+            disi.index = mid + 1;
             return true;
+          } else if (doc < targetInBlock) {
+            low = mid + 1;
+          } else {
+            high = mid - 1;
           }
         }
+
+        // When the current splice's first doc is larger than target, stay at the end
+        high = Math.max(indexBase, high);
+
+        disi.slice.seek(sliceFilePointerBase + Short.BYTES * (high - indexBase));
+        disi.index = high;
         disi.exists = false;
         return false;
       }
