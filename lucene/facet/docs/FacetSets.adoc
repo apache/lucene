@@ -1,7 +1,7 @@
 = FacetSets Overview
 :toc:
 
-This document describes the `FacetSets` capability, which allows to aggregate on multi dimensional values. It starts
+This document describes the `FacetSets` capability, which allows to aggregate on multidimensional values. It starts
 with outlining a few example use cases to showcase the motivation for this capability and follows with an API
 walk through.
 
@@ -27,10 +27,10 @@ However, these facet fields do not allow you to show the following aggregation:
 .Number of Actors performing in movies by Genre and Year
 [cols="4*"]
 |===
-| | 2020 | 2021 | 2022
-| Thriller | 121 | 43 | 97
-| Action | 145 | 52 | 130
-| Adventure | 87 | 21 | 32
+|           | 2020 | 2021 | 2022
+| Thriller  | 121  | 43   | 97
+| Action    | 145  | 52   | 130
+| Adventure | 87   | 21   | 32
 |===
 
 The reason is that each “genre” or “releaseYear” facet field is indexed in its own data structure, and therefore if an
@@ -71,7 +71,7 @@ of 1.
 [#movie-awards]
 === Movie Awards
 
-To showcase a 3-D multi-dimensional aggregation, lets expand the <<movie-actors>> example with awards an actor has
+To showcase a 3-D multidimensional aggregation, lets expand the <<movie-actors>> example with awards an actor has
 received over the years. For this aggregation we will use four dimensions: Award Type ("Oscar", "Grammy", "Emmy"),
 Award Category ("Best Actor", "Best Supporting Actress"), Year and Genre. One interesting aggregation is to show how
 many "Best Actor" vs "Best Supporting Actor" awards one has received in the "Oscar" or "Emmy" for each year. Another
@@ -83,8 +83,48 @@ Building on these examples, one might be able to come up with an interesting use
 
 == FacetSets API
 
-TBD
+The `facetset` package consists of few components which allow you to index and aggregate multidimensional facet sets:
+
+=== FacetSet
+
+Holds a set of facet dimension values. Implementations are required to convert the dimensions into comparable long
+representation, as well can implement how the values are packed (encoded). The package offers four implementations:
+`Int/Float/Long/DoubleFacetSet` for `int`, `float`, `long` and `double` values respectively. You can also look at
+`org.apache.lucene.demo.facet.CustomFacetSetExample` in the `lucene/demo` package for a custom implementation of a
+`FacetSet`.
+
+=== FacetSetsField
+
+A `BinaryDocValues` field which lets you index a list of `FacetSet`. This field can be added to a document only once, so
+you will need to construct all the facet sets in advance.
+
+=== FacetSetMatcher
+
+Responsible for matching an encoded `FacetSet` against a given criteria. For example, `ExactFacetSetMatcher` only
+considers an encoded facet set as a match if all dimension values are equal to a given one. `RangeFacetSetMatcher`
+considers an encoded facet set as a match if all dimension values fall within predefined ranges. You can also look at
+`org.apache.lucene.demo.facet.CustomFacetSetExample` in the `lucene/demo` package for a custom implementation of a
+`FacetSetMatcher`.
+
+=== FacetSetDecoder
+
+A functional interface for decoding the packed dimension values back into comparable `long[]` representation. You can
+check out `org.apache.lucene.demo.facet.CustomFacetSetExample` in the `lucene/demo` package for a custom implementation
+of a `FacetSetDecoder`.
+
+=== MatchingFacetSetCounts
+
+A `Facets` implementation which counts how many documents are matched by each of a list of `FacetSetMatcher`, in
+addition to counting the total number of documents that were matched. It uses the `FacetSetDecoder` to decode the
+dimension values.
 
 == FacetSets Under the Hood
 
-TBD
+Facet sets are indexed as a `BinaryDocValues` field where the dimension values are encoded as a `byte[]` which consists
+of the number of dimensions in a set (`int`) followed by the packed values of each set (as implemented by
+`packValues()`). At aggregation time the values are decoded by `FacetSetDecoder` into a `long[]` and the matching of the
+values occurs in the `long` space.
+
+All out of the box `FacetSet` implementations pack the dimension values as sortable `long` (`Long/DoubleFacetSet`) or
+`int` (`Int/FloatFacetSet`). If you implement your own `FacetSet` and choose to encode the values differently (e.g. by
+compressing them), you should provide a corresponding implementation of a `FacetSetDecoder`.

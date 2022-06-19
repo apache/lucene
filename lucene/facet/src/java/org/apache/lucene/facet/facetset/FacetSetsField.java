@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import java.util.Arrays;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.util.BytesRef;
@@ -52,11 +51,8 @@ public class FacetSetsField extends BinaryDocValuesField {
 
   private static BytesRef toPackedValues(FacetSet... facetSets) {
     int numDims = facetSets[0].dims;
-    // We could have created a buffer that can accommodate Long.BYTES per dimension value in each
-    // facet set. The below attempts to avoid allocating unnecessarily bigger arrays.
-    byte[] buf =
-        new byte
-            [Integer.BYTES + Arrays.stream(facetSets).mapToInt(FacetSet::sizePackedBytes).sum()];
+    Class<?> expectedClass = facetSets[0].getClass();
+    byte[] buf = new byte[Integer.BYTES + facetSets[0].sizePackedBytes() * facetSets.length];
     IntPoint.encodeDimension(numDims, buf, 0);
     int offset = Integer.BYTES;
     for (FacetSet facetSet : facetSets) {
@@ -66,6 +62,14 @@ public class FacetSetsField extends BinaryDocValuesField {
                 + numDims
                 + " found "
                 + facetSet.dims);
+      }
+      // It doesn't make sense to index facet sets of different types in the same field
+      if (facetSet.getClass() != expectedClass) {
+        throw new IllegalArgumentException(
+            "All FacetSets must be the same type. Expected "
+                + expectedClass
+                + " found "
+                + facetSet.getClass());
       }
       offset += facetSet.packValues(buf, offset);
     }

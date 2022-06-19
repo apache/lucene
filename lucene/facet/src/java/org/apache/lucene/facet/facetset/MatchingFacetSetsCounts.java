@@ -127,7 +127,7 @@ public class MatchingFacetSetsCounts extends Facets {
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
-    if (!field.equals(dim)) {
+    if (field.equals(dim) == false) {
       throw new IllegalArgumentException(
           "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
     }
