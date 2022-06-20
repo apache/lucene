@@ -139,8 +139,9 @@ public class CustomFacetSetExample {
             TemperatureReadingFacetSet::decodeTemperatureReading,
             new RangeFacetSetMatcher(
                 "Eighty to Hundred Degrees",
-                RangeFacetSetMatcher.fromLongs(Long.MIN_VALUE, true, Long.MAX_VALUE, true),
-                RangeFacetSetMatcher.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
+                RangeFacetSetMatcher.DimRange.fromLongs(Long.MIN_VALUE, true, Long.MAX_VALUE, true),
+                RangeFacetSetMatcher.DimRange.fromFloats(
+                    EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
 
     // Retrieve results
     List<FacetResult> results = Collections.singletonList(facets.getTopChildren(10, "temperature"));
@@ -172,7 +173,8 @@ public class CustomFacetSetExample {
             TemperatureReadingFacetSet::decodeTemperatureReading,
             new TemperatureOnlyFacetSetMatcher(
                 "Eighty to Hundred Degrees",
-                RangeFacetSetMatcher.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
+                RangeFacetSetMatcher.DimRange.fromFloats(
+                    EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
 
     // Retrieve results
     List<FacetResult> results = Collections.singletonList(facets.getTopChildren(10, "temperature"));

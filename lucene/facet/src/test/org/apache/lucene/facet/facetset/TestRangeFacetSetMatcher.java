@@ -389,29 +389,29 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
   }
 
   private static RangeFacetSetMatcher.DimRange singleLong(long value) {
-    return RangeFacetSetMatcher.fromLongs(value, true, value, true);
+    return RangeFacetSetMatcher.DimRange.fromLongs(value, true, value, true);
   }
 
   private static RangeFacetSetMatcher.DimRange longRange(
       long min, boolean minExclusive, long max, boolean maxExclusive) {
-    return RangeFacetSetMatcher.fromLongs(min, minExclusive, max, maxExclusive);
+    return RangeFacetSetMatcher.DimRange.fromLongs(min, minExclusive, max, maxExclusive);
   }
 
   private static RangeFacetSetMatcher.DimRange singleDouble(double value) {
-    return RangeFacetSetMatcher.fromDoubles(value, true, value, true);
+    return RangeFacetSetMatcher.DimRange.fromDoubles(value, true, value, true);
   }
 
   private static RangeFacetSetMatcher.DimRange doubleRange(
       double min, boolean minExclusive, double max, boolean maxExclusive) {
-    return RangeFacetSetMatcher.fromDoubles(min, minExclusive, max, maxExclusive);
+    return RangeFacetSetMatcher.DimRange.fromDoubles(min, minExclusive, max, maxExclusive);
   }
 
   private static RangeFacetSetMatcher.DimRange singleFloat(float value) {
-    return RangeFacetSetMatcher.fromFloats(value, true, value, true);
+    return RangeFacetSetMatcher.DimRange.fromFloats(value, true, value, true);
   }
 
   private static RangeFacetSetMatcher.DimRange floatRange(
       float min, boolean minExclusive, float max, boolean maxExclusive) {
-    return RangeFacetSetMatcher.fromFloats(min, minExclusive, max, maxExclusive);
+    return RangeFacetSetMatcher.DimRange.fromFloats(min, minExclusive, max, maxExclusive);
   }
 }

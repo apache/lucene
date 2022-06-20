@@ -15,5 +15,8 @@
  * limitations under the License.
  */
 
-/** Provides FacetSets faceting capabilities. */
+/**
+ * Provides FacetSets faceting capabilities which allows users to facet on high dimensional field
+ * values. See FacetSets.adoc in the docs folder for more information on usage.
+ */
 package org.apache.lucene.facet.facetset;
