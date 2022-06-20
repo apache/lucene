@@ -24,6 +24,9 @@ public abstract class Lucene91BoundsChecker {
 
   float bound;
 
+  /** Default Constructor */
+  public Lucene91BoundsChecker() {}
+
   /** Update the bound if sample is better */
   public abstract void update(float sample);
 
