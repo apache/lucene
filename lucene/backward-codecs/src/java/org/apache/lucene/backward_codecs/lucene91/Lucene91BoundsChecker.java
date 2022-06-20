@@ -32,7 +32,12 @@ public abstract class Lucene91BoundsChecker {
     bound = sample;
   }
 
-  /** @return whether the sample exceeds (is worse than) the bound */
+  /**
+   * Check the sample
+   *
+   * @param sample a score
+   * @return whether the sample exceeds (is worse than) the bound
+   */
   public abstract boolean check(float sample);
 
   /**
