@@ -25,7 +25,9 @@ API Changes
 * LUCENE-10436: Remove deprecated DocValuesFieldExistsQuery, NormsFieldExistsQuery and
   KnnVectorFieldExistsQuery. (Zach Chen, Adrien Grand)
 
-* LUCENE-10561 Reduce class/member visibility of all normalizer and stemmer classes. (Rushabh Shah)
+* LUCENE-10561: Reduce class/member visibility of all normalizer and stemmer classes. (Rushabh Shah)
+
+* LUCENE-10266: Move nearest-neighbor search on points to core. (Rushabh Shah)
 
 New Features
 ---------------------
@@ -44,7 +46,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
+  they reach the maximum merge size. (Adrien Grand)
 
 Other
 ---------------------
@@ -75,22 +79,51 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10078: Merge on full flush is now enabled by default with a timeout of
+  500ms. (Adrien Grand)
+
+* LUCENE-10585: Facet module code cleanup (copy/paste scrubbing, simplification and some very minor
+  optimization tweaks). (Greg Miller)
+
+* LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
+  SortedSetDocValues#docValueCount(). (Greg Miller)
 
 Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
+
+* LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
 
 Bug Fixes
 ---------------------
 
 * LUCENE-10574: Prevent pathological O(N^2) merging. (Adrien Grand)
 
+* LUCENE-10584: Properly support #getSpecificValue for hierarchical dims in SSDV faceting.
+  (Greg Miller)
+
+* LUCENE-10582: Fix merging of overridden CollectionStatistics in CombinedFieldQuery (Yannick Welsch)
+
+* LUCENE-10598: SortedSetDocValues#docValueCount() should be always greater than zero. (Lu Xugang)
+
+* LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
+
+* LUCENE-10605: Fix error in 32bit jvm object alignment gap calculation (Sun Wuqiang)
+
+* GITHUB#956: Make sure KnnVectorQuery applies search boost. (Julie Tibshirani)
+
+* LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
+
+* LUCENE-10611: Fix failure when KnnVectorQuery has very selective filter (Kaival Parikh)
+
 Other
 ---------------------
 
 * LUCENE-10370: pass proper classpath/module arguments for forking jvms from within tests. (Dawid Weiss)
 
+* LUCENE-10604: Improve ability to test and debug triangulation algorithm in Tessellator.
+  (Craig Taverner)
 
 ======================= Lucene 9.2.0 =======================
 

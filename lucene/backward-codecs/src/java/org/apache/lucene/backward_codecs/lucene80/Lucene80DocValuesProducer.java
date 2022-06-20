@@ -1565,8 +1565,8 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       return new BaseSortedSetDocValues(entry, data) {
 
         int doc = -1;
-        long start;
-        long end;
+        long start, end;
+        int count;
 
         @Override
         public int nextDoc() throws IOException {
@@ -1590,6 +1590,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
           }
           start = addresses.get(target);
           end = addresses.get(target + 1L);
+          count = (int) (end - start);
           return doc = target;
         }
 
@@ -1597,6 +1598,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         public boolean advanceExact(int target) throws IOException {
           start = addresses.get(target);
           end = addresses.get(target + 1L);
+          count = (int) (end - start);
           doc = target;
           return true;
         }
@@ -1610,8 +1612,8 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public long docValueCount() {
-          return end - start;
+        public int docValueCount() {
+          return count;
         }
       };
     } else {
@@ -1629,6 +1631,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         boolean set;
         long start;
         long end = 0;
+        int count;
 
         @Override
         public int nextDoc() throws IOException {
@@ -1658,15 +1661,22 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
           return disi.advanceExact(target);
         }
 
-        @Override
-        public long nextOrd() throws IOException {
+        private boolean set() {
           if (set == false) {
             final int index = disi.index();
-            final long start = addresses.get(index);
-            this.start = start + 1;
+            start = addresses.get(index);
             end = addresses.get(index + 1L);
+            count = (int) (end - start);
             set = true;
-            return ords.get(start);
+            return true;
+          }
+          return false;
+        }
+
+        @Override
+        public long nextOrd() throws IOException {
+          if (set()) {
+            return ords.get(start++);
           } else if (start == end) {
             return NO_MORE_ORDS;
           } else {
@@ -1675,8 +1685,9 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public long docValueCount() {
-          return end - start;
+        public int docValueCount() {
+          set();
+          return count;
         }
       };
     }

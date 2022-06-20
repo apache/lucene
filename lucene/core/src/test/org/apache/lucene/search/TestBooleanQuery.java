@@ -29,10 +29,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
@@ -768,6 +772,71 @@ public class TestBooleanQuery extends LuceneTestCase {
     assertEquals(weight.count(reader.leaves().get(0)), -1);
 
     IOUtils.close(reader, w, dir);
+  }
+
+  public void testConjunctionMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    LongPoint longPoint = new LongPoint("long", 3L);
+    doc.add(longPoint);
+    StringField stringField = new StringField("string", "abc", Store.NO);
+    doc.add(stringField);
+    writer.addDocument(doc);
+    longPoint.setLongValue(10);
+    stringField.setStringValue("xyz");
+    writer.addDocument(doc);
+    IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 3L), Occur.FILTER)
+            .build();
+    Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // Both queries match a single doc, BooleanWeight can't figure out the count of the conjunction
+    assertEquals(-1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "missing")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 3L), Occur.FILTER)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // One query has a count of 0, the conjunction has a count of 0 too
+    assertEquals(0, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 5L), Occur.FILTER)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // One query has a count of 0, the conjunction has a count of 0 too
+    assertEquals(0, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newRangeQuery("long", 0L, 10L), Occur.FILTER)
+            .build();
+    // One query matches all docs, the count of the conjunction is the count of the other query
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    assertEquals(1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new MatchAllDocsQuery(), Occur.MUST)
+            .add(LongPoint.newRangeQuery("long", 1L, 5L), Occur.FILTER)
+            .build();
+    // One query matches all docs, the count of the conjunction is the count of the other query
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    assertEquals(1, weight.count(reader.leaves().get(0)));
+
+    reader.close();
+    dir.close();
   }
 
   public void testToString() {

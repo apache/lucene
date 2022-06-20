@@ -3338,13 +3338,34 @@ public final class CheckIndex implements Closeable {
     LongBitSet seenOrds = new LongBitSet(dv.getValueCount());
     long maxOrd2 = -1;
     for (int docID = dv.nextDoc(); docID != NO_MORE_DOCS; docID = dv.nextDoc()) {
+      int count = dv.docValueCount();
+      if (count == 0) {
+        throw new CheckIndexException(
+            "sortedset dv for field: "
+                + fieldName
+                + " returned docValueCount=0 for docID="
+                + docID);
+      }
       if (dv2.advanceExact(docID) == false) {
         throw new CheckIndexException("advanceExact did not find matching doc ID: " + docID);
+      }
+      int count2 = dv2.docValueCount();
+      if (count != count2) {
+        throw new CheckIndexException(
+            "advanceExact reports different value count: " + count + " != " + count2);
       }
       long lastOrd = -1;
       long ord;
       int ordCount = 0;
       while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+        if (count != dv.docValueCount()) {
+          throw new CheckIndexException(
+              "value count changed from "
+                  + count
+                  + " to "
+                  + dv.docValueCount()
+                  + " during iterating over all values");
+        }
         long ord2 = dv2.nextOrd();
         if (ord != ord2) {
           throw new CheckIndexException(
@@ -3361,6 +3382,13 @@ public final class CheckIndex implements Closeable {
         maxOrd2 = Math.max(maxOrd2, ord);
         seenOrds.set(ord);
         ordCount++;
+      }
+      if (dv.docValueCount() != dv2.docValueCount()) {
+        throw new CheckIndexException(
+            "dv and dv2 report different values count after iterating over all values: "
+                + dv.docValueCount()
+                + " != "
+                + dv2.docValueCount());
       }
       if (ordCount == 0) {
         throw new CheckIndexException(

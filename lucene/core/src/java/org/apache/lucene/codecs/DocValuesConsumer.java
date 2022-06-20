@@ -953,7 +953,7 @@ public abstract class DocValuesConsumer implements Closeable {
               }
 
               @Override
-              public long docValueCount() {
+              public int docValueCount() {
                 return currentSub.values.docValueCount();
               }
 
