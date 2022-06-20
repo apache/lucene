@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.search;
+package org.apache.lucene.search;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -30,12 +30,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -62,8 +56,7 @@ public class TestNearest extends LuceneTestCase {
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
     IndexSearcher s = newSearcher(r, false);
-    FieldDoc hit =
-        (FieldDoc) LatLonPointPrototypeQueries.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
+    FieldDoc hit = (FieldDoc) LatLonPoint.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
     assertEquals("0", r.document(hit.doc).getField("id").stringValue());
     r.close();
 
@@ -72,7 +65,7 @@ public class TestNearest extends LuceneTestCase {
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
     s = newSearcher(r, false);
-    hit = (FieldDoc) LatLonPointPrototypeQueries.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
+    hit = (FieldDoc) LatLonPoint.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
     assertEquals("1", r.document(hit.doc).getField("id").stringValue());
     r.close();
     w.close();
@@ -95,8 +88,7 @@ public class TestNearest extends LuceneTestCase {
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
     IndexSearcher s = newSearcher(r, false);
-    FieldDoc hit =
-        (FieldDoc) LatLonPointPrototypeQueries.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
+    FieldDoc hit = (FieldDoc) LatLonPoint.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
     assertEquals("0", r.document(hit.doc).getField("id").stringValue());
     r.close();
 
@@ -106,8 +98,7 @@ public class TestNearest extends LuceneTestCase {
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
     s = newSearcher(r, false);
-    assertEquals(
-        0, LatLonPointPrototypeQueries.nearest(s, "point", 40.0, 50.0, 1).scoreDocs.length);
+    assertEquals(0, LatLonPoint.nearest(s, "point", 40.0, 50.0, 1).scoreDocs.length);
     r.close();
     w.close();
     dir.close();
@@ -128,9 +119,7 @@ public class TestNearest extends LuceneTestCase {
     DirectoryReader r = DirectoryReader.open(w);
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
-    ScoreDoc[] hits =
-        LatLonPointPrototypeQueries.nearest(newSearcher(r, false), "point", 45.0, 50.0, 2)
-            .scoreDocs;
+    ScoreDoc[] hits = LatLonPoint.nearest(newSearcher(r, false), "point", 45.0, 50.0, 2).scoreDocs;
     assertEquals("0", r.document(hits[0].doc).getField("id").stringValue());
     assertEquals("1", r.document(hits[1].doc).getField("id").stringValue());
 
@@ -146,10 +135,7 @@ public class TestNearest extends LuceneTestCase {
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
     assertEquals(
-        0,
-        LatLonPointPrototypeQueries.nearest(newSearcher(r, false), "point", 40.0, 50.0, 1)
-            .scoreDocs
-            .length);
+        0, LatLonPoint.nearest(newSearcher(r, false), "point", 40.0, 50.0, 1).scoreDocs.length);
     r.close();
     w.close();
     dir.close();
@@ -245,8 +231,7 @@ public class TestNearest extends LuceneTestCase {
               topN,
               new Sort(LatLonDocValuesField.newDistanceSort("point", pointLat, pointLon)));
 
-      ScoreDoc[] hits =
-          LatLonPointPrototypeQueries.nearest(s, "point", pointLat, pointLon, topN).scoreDocs;
+      ScoreDoc[] hits = LatLonPoint.nearest(s, "point", pointLat, pointLon, topN).scoreDocs;
       for (int i = 0; i < topN; i++) {
         FieldDoc expected = expectedHits[i];
         FieldDoc expected2 = (FieldDoc) fieldDocs.scoreDocs[i];

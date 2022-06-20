@@ -104,8 +104,17 @@ public class TestTragicIndexWriterDeadlock extends LuceneTestCase {
 
   // LUCENE-7570
   public void testDeadlockStalledMerges() throws Exception {
+    doTestDeadlockStalledMerges(false);
+  }
+
+  public void testDeadlockStalledFullFlushMerges() throws Exception {
+    doTestDeadlockStalledMerges(true);
+  }
+
+  private void doTestDeadlockStalledMerges(boolean mergeOnFlush) throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig();
+    IndexWriterConfig iwc =
+        new IndexWriterConfig().setMaxFullFlushMergeWaitMillis(mergeOnFlush ? 1000 : 0);
 
     // so we merge every 2 segments:
     LogMergePolicy mp = new LogDocMergePolicy();
@@ -163,7 +172,8 @@ public class TestTragicIndexWriterDeadlock extends LuceneTestCase {
     w.addDocument(new Document());
     // w writes third segment
     w.addDocument(new Document());
-    w.commit();
+    IllegalStateException e = expectThrows(IllegalStateException.class, () -> w.commit());
+    assertTrue(e.getMessage(), e.getMessage().startsWith("this writer hit an unrecoverable error"));
     // w writes fourth segment, and commit flushes and kicks off merge that stalls
     w.close();
     dir.close();

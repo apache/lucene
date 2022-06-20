@@ -938,7 +938,7 @@ public class MultiDocValues {
     }
 
     @Override
-    public long docValueCount() {
+    public int docValueCount() {
       return currentValues.docValueCount();
     }
 

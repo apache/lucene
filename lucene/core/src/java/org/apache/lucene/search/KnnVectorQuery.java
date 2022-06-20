@@ -346,7 +346,7 @@ public class KnnVectorQuery extends Query {
           if (found < 0) {
             return Explanation.noMatch("not in top " + k);
           }
-          return Explanation.match(scores[found], "within top " + k);
+          return Explanation.match(scores[found] * boost, "within top " + k);
         }
 
         @Override
@@ -388,18 +388,18 @@ public class KnnVectorQuery extends Query {
             }
 
             @Override
-            public float getMaxScore(int docid) {
-              docid += context.docBase;
+            public float getMaxScore(int docId) {
+              docId += context.docBase;
               float maxScore = 0;
-              for (int idx = Math.max(0, upTo); idx < upper && docs[idx] <= docid; idx++) {
+              for (int idx = Math.max(0, upTo); idx < upper && docs[idx] <= docId; idx++) {
                 maxScore = Math.max(maxScore, scores[idx]);
               }
-              return maxScore;
+              return maxScore * boost;
             }
 
             @Override
             public float score() {
-              return scores[upTo];
+              return scores[upTo] * boost;
             }
 
             @Override

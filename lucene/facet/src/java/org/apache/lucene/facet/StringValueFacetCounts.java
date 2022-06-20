@@ -374,15 +374,14 @@ public class StringValueFacetCounts extends Facets {
         }
       } else {
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-          int term = (int) multiValues.nextOrd();
           boolean countedDocInTotal = false;
-          while (term != SortedSetDocValues.NO_MORE_ORDS) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             increment(term);
             if (countedDocInTotal == false) {
               totalDocCount++;
               countedDocInTotal = true;
             }
-            term = (int) multiValues.nextOrd();
           }
         }
       }
@@ -402,15 +401,14 @@ public class StringValueFacetCounts extends Facets {
           }
         } else {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
             boolean countedDocInTotal = false;
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
+            for (int i = 0; i < multiValues.docValueCount(); i++) {
+              int term = (int) multiValues.nextOrd();
               increment((int) ordMap.get(term));
               if (countedDocInTotal == false) {
                 totalDocCount++;
                 countedDocInTotal = true;
               }
-              term = (int) multiValues.nextOrd();
             }
           }
         }
@@ -427,15 +425,14 @@ public class StringValueFacetCounts extends Facets {
           }
         } else {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
             boolean countedDocInTotal = false;
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
+            for (int i = 0; i < multiValues.docValueCount(); i++) {
+              int term = (int) multiValues.nextOrd();
               segCounts[term]++;
               if (countedDocInTotal == false) {
                 totalDocCount++;
                 countedDocInTotal = true;
               }
-              term = (int) multiValues.nextOrd();
             }
           }
         }
@@ -474,9 +471,8 @@ public class StringValueFacetCounts extends Facets {
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = multiValues.nextDoc()) {
           boolean countedDocInTotal = false;
-          for (int term = (int) multiValues.nextOrd();
-              term != SortedSetDocValues.NO_MORE_ORDS;
-              term = (int) multiValues.nextOrd()) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             increment(term);
             if (countedDocInTotal == false) {
               totalDocCount++;
@@ -509,9 +505,8 @@ public class StringValueFacetCounts extends Facets {
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = multiValues.nextDoc()) {
           boolean countedDocInTotal = false;
-          for (int term = (int) multiValues.nextOrd();
-              term != SortedSetDocValues.NO_MORE_ORDS;
-              term = (int) multiValues.nextOrd()) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             segCounts[term]++;
             if (countedDocInTotal == false) {
               totalDocCount++;

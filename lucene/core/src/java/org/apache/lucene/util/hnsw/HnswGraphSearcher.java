@@ -87,10 +87,15 @@ public final class HnswGraphSearcher {
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
-      eps[0] = results.pop();
 
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
+
+      if (results.incomplete()) {
+        results.setVisitedCount(numVisited);
+        return results;
+      }
+      eps[0] = results.pop();
     }
     results =
         graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
