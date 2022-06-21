@@ -186,7 +186,7 @@ public final class HnswGraphSearcher {
         }
         float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         numVisited++;
-        if (friendSimilarity >= minAcceptedSimilarity) {
+        if ((friendSimilarity < minAcceptedSimilarity) == false) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.size() >= topK) {
