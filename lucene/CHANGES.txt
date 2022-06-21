@@ -77,7 +77,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
 
 Improvements
 ---------------------

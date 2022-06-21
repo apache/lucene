@@ -73,6 +73,76 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   }
 
   @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
+
+    // Determine the path ord and resolve an iterator to its immediate children. The logic for this
+    // depends on whether-or-not the dimension is configured as hierarchical:
+    final int pathOrd;
+    final PrimitiveIterator.OfInt childIterator;
+    if (dimConfig.hierarchical) {
+      DimTree dimTree = state.getDimTree(dim);
+      if (path.length > 0) {
+        pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
+      } else {
+        // If there's no path, this is a little more efficient to just look up the dim:
+        pathOrd = dimTree.dimStartOrd;
+      }
+      if (pathOrd < 0) {
+        // path was never indexed
+        return null;
+      }
+      childIterator = dimTree.iterator(pathOrd);
+    } else {
+      if (path.length > 0) {
+        throw new IllegalArgumentException(
+            "Field is not configured as hierarchical, path should be 0 length");
+      }
+      OrdRange ordRange = state.getOrdRange(dim);
+      if (ordRange == null) {
+        // means dimension was never indexed
+        return null;
+      }
+      pathOrd = ordRange.start;
+      childIterator = ordRange.iterator();
+      if (dimConfig.multiValued && dimConfig.requireDimCount) {
+        // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
+        // the dimension and we need to skip past it so the iterator is positioned on the first
+        // child:
+        childIterator.next();
+      }
+    }
+    // Compute the actual results:
+    int pathCount = 0;
+    List<LabelAndValue> labelValues = new ArrayList<>();
+    while (childIterator.hasNext()) {
+      int ord = childIterator.next();
+      int count = getCount(ord);
+      if (count > 0) {
+        pathCount += count;
+        final BytesRef term = dv.lookupOrd(ord);
+        String[] parts = FacetsConfig.stringToPath(term.utf8ToString());
+        labelValues.add(new LabelAndValue(parts[parts.length - 1], count));
+      }
+    }
+
+    if (dimConfig.hierarchical) {
+      pathCount = getCount(pathOrd);
+    } else {
+      // see if pathCount is actually reliable or needs to be reset
+      if (dimConfig.multiValued) {
+        if (dimConfig.requireDimCount) {
+          pathCount = getCount(pathOrd);
+        } else {
+          pathCount = -1; // pathCount is inaccurate at this point, so set it to -1
+        }
+      }
+    }
+    return new FacetResult(
+        dim, path, pathCount, labelValues.toArray(new LabelAndValue[0]), labelValues.size());
+  }
+
+  @Override
   public Number getSpecificValue(String dim, String... path) throws IOException {
     if (stateConfig.getDimConfig(dim).hierarchical == false && path.length != 1) {
       throw new IllegalArgumentException(
