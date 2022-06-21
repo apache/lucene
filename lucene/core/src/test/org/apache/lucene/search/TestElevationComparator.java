@@ -197,8 +197,14 @@ class ElevationComparatorSource extends FieldComparatorSource {
 
       @Override
       public int compare(int slot1, int slot2) {
-        return values[slot2]
-            - values[slot1]; // values will be small enough that there is no overflow concern
+        // values will be small enough that there is no overflow concern
+        return values[slot2] - values[slot1];
+      }
+
+      @Override
+      public int compareValues(Integer first, Integer second) {
+        // values will be small enough that there is no overflow concern
+        return second - first;
       }
 
       @Override
