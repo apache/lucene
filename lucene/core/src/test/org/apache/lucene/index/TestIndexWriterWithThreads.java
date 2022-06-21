@@ -116,7 +116,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
           }
         } catch (
             @SuppressWarnings("unused")
-            AlreadyClosedException ace) {
+            IllegalStateException ise) {
           // OK: abort closes the writer
           break;
         } catch (Throwable t) {

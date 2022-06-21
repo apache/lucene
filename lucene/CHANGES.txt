@@ -73,7 +73,9 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
+  SortedSetDocValues#docValueCount(). (Greg Miller)
 
 New Features
 ---------------------
@@ -88,9 +90,17 @@ Improvements
 * LUCENE-10585: Facet module code cleanup (copy/paste scrubbing, simplification and some very minor
   optimization tweaks). (Greg Miller)
 
+* LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
+  SortedSetDocValues#docValueCount(). (Greg Miller)
+
 Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
+
+* GITHUB#961: BooleanQuery can return quick counts for simple boolean queries.
+  (Adrien Grand)
+
+* LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
 
 Bug Fixes
 ---------------------
@@ -109,6 +119,10 @@ Bug Fixes
 * LUCENE-10605: Fix error in 32bit jvm object alignment gap calculation (Sun Wuqiang)
 
 * GITHUB#956: Make sure KnnVectorQuery applies search boost. (Julie Tibshirani)
+
+* LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
+
+* LUCENE-10611: Fix failure when KnnVectorQuery has very selective filter (Kaival Parikh)
 
 Other
 ---------------------

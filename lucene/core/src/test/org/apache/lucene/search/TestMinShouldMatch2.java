@@ -253,7 +253,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     termsList.addAll(Arrays.asList(rareTerms));
     String[] terms = termsList.toArray(new String[0]);
 
-    for (int minNrShouldMatch = 1; minNrShouldMatch <= terms.length; minNrShouldMatch++) {
+    for (int minNrShouldMatch = 1; minNrShouldMatch < terms.length; minNrShouldMatch++) {
       Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
       Scorer actual = scorer(terms, minNrShouldMatch, Mode.SCORER);
       assertNext(expected, actual);
@@ -273,7 +273,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     String[] terms = termsList.toArray(new String[0]);
 
     for (int amount = 25; amount < 200; amount += 25) {
-      for (int minNrShouldMatch = 1; minNrShouldMatch <= terms.length; minNrShouldMatch++) {
+      for (int minNrShouldMatch = 1; minNrShouldMatch < terms.length; minNrShouldMatch++) {
         Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
         Scorer actual = scorer(terms, minNrShouldMatch, Mode.SCORER);
         assertAdvance(expected, actual, amount);
@@ -294,7 +294,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     Collections.shuffle(termsList, random());
     for (int numTerms = 2; numTerms <= termsList.size(); numTerms++) {
       String[] terms = termsList.subList(0, numTerms).toArray(new String[0]);
-      for (int minNrShouldMatch = 1; minNrShouldMatch <= terms.length; minNrShouldMatch++) {
+      for (int minNrShouldMatch = 1; minNrShouldMatch < terms.length; minNrShouldMatch++) {
         Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
         Scorer actual = scorer(terms, minNrShouldMatch, Mode.SCORER);
         assertNext(expected, actual);
@@ -318,7 +318,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     for (int amount = 25; amount < 200; amount += 25) {
       for (int numTerms = 2; numTerms <= termsList.size(); numTerms++) {
         String[] terms = termsList.subList(0, numTerms).toArray(new String[0]);
-        for (int minNrShouldMatch = 1; minNrShouldMatch <= terms.length; minNrShouldMatch++) {
+        for (int minNrShouldMatch = 1; minNrShouldMatch < terms.length; minNrShouldMatch++) {
           Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
           Scorer actual = scorer(terms, minNrShouldMatch, Mode.SCORER);
           assertAdvance(expected, actual, amount);
