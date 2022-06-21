@@ -218,6 +218,8 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       // Our sum'd dim value is accurate, so we keep it
     }
 
+    // TODO: It would be nice if TaxonomyReader could directly support List in addition to an array
+    // so that we don't need to do this copy just to look up bulk paths
     int[] ordinalArray = new int[ordinals.size()];
     for (int i = 0; i < ordinals.size(); i++) {
       ordinalArray[i] = ordinals.get(i);
