@@ -388,30 +388,30 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     d.close();
   }
 
-  private static RangeFacetSetMatcher.DimRange singleLong(long value) {
-    return RangeFacetSetMatcher.DimRange.fromLongs(value, true, value, true);
+  private static DimRange singleLong(long value) {
+    return DimRange.fromLongs(value, true, value, true);
   }
 
-  private static RangeFacetSetMatcher.DimRange longRange(
+  private static DimRange longRange(
       long min, boolean minExclusive, long max, boolean maxExclusive) {
-    return RangeFacetSetMatcher.DimRange.fromLongs(min, minExclusive, max, maxExclusive);
+    return DimRange.fromLongs(min, minExclusive, max, maxExclusive);
   }
 
-  private static RangeFacetSetMatcher.DimRange singleDouble(double value) {
-    return RangeFacetSetMatcher.DimRange.fromDoubles(value, true, value, true);
+  private static DimRange singleDouble(double value) {
+    return DimRange.fromDoubles(value, true, value, true);
   }
 
-  private static RangeFacetSetMatcher.DimRange doubleRange(
+  private static DimRange doubleRange(
       double min, boolean minExclusive, double max, boolean maxExclusive) {
-    return RangeFacetSetMatcher.DimRange.fromDoubles(min, minExclusive, max, maxExclusive);
+    return DimRange.fromDoubles(min, minExclusive, max, maxExclusive);
   }
 
-  private static RangeFacetSetMatcher.DimRange singleFloat(float value) {
-    return RangeFacetSetMatcher.DimRange.fromFloats(value, true, value, true);
+  private static DimRange singleFloat(float value) {
+    return DimRange.fromFloats(value, true, value, true);
   }
 
-  private static RangeFacetSetMatcher.DimRange floatRange(
+  private static DimRange floatRange(
       float min, boolean minExclusive, float max, boolean maxExclusive) {
-    return RangeFacetSetMatcher.DimRange.fromFloats(min, minExclusive, max, maxExclusive);
+    return DimRange.fromFloats(min, minExclusive, max, maxExclusive);
   }
 }

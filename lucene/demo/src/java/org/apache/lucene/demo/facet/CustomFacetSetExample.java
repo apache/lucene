@@ -139,9 +139,8 @@ public class CustomFacetSetExample {
             TemperatureReadingFacetSet::decodeTemperatureReading,
             new RangeFacetSetMatcher(
                 "Eighty to Hundred Degrees",
-                RangeFacetSetMatcher.DimRange.fromLongs(Long.MIN_VALUE, true, Long.MAX_VALUE, true),
-                RangeFacetSetMatcher.DimRange.fromFloats(
-                    EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
+                DimRange.fromLongs(Long.MIN_VALUE, true, Long.MAX_VALUE, true),
+                DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
 
     // Retrieve results
     List<FacetResult> results = Collections.singletonList(facets.getTopChildren(10, "temperature"));
@@ -173,8 +172,7 @@ public class CustomFacetSetExample {
             TemperatureReadingFacetSet::decodeTemperatureReading,
             new TemperatureOnlyFacetSetMatcher(
                 "Eighty to Hundred Degrees",
-                RangeFacetSetMatcher.DimRange.fromFloats(
-                    EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
+                DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
 
     // Retrieve results
     List<FacetResult> results = Collections.singletonList(facets.getTopChildren(10, "temperature"));
@@ -285,11 +283,10 @@ public class CustomFacetSetExample {
    */
   public static class TemperatureOnlyFacetSetMatcher extends FacetSetMatcher {
 
-    private final RangeFacetSetMatcher.DimRange temperatureRange;
+    private final DimRange temperatureRange;
 
     /** Constructor */
-    protected TemperatureOnlyFacetSetMatcher(
-        String label, RangeFacetSetMatcher.DimRange temperatureRange) {
+    protected TemperatureOnlyFacetSetMatcher(String label, DimRange temperatureRange) {
       super(label, 1); // We only evaluate one dimension
 
       this.temperatureRange = temperatureRange;
