@@ -19,6 +19,7 @@ package org.apache.lucene.facet.taxonomy;
 import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -213,6 +214,75 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       return -1;
     }
     return getValue(ord);
+  }
+
+  @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    DimConfig dimConfig = verifyDim(dim);
+    FacetLabel cp = new FacetLabel(dim, path);
+    int dimOrd = taxoReader.getOrdinal(cp);
+    if (dimOrd == -1) {
+      return null;
+    }
+
+    int aggregatedValue = 0;
+
+    List<Integer> ordinals = new ArrayList<>();
+    List<Integer> ordValues = new ArrayList<>();
+
+    if (sparseValues != null) {
+      for (IntIntCursor c : sparseValues) {
+        int value = c.value;
+        int ord = c.key;
+        if (parents[ord] == dimOrd && value > 0) {
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+          ordinals.add(ord);
+          ordValues.add(value);
+        }
+      }
+    } else {
+      int[] children = getChildren();
+      int[] siblings = getSiblings();
+      int ord = children[dimOrd];
+      while (ord != TaxonomyReader.INVALID_ORDINAL) {
+        int value = values[ord];
+        if (value > 0) {
+          aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+          ordinals.add(ord);
+          ordValues.add(value);
+        }
+        ord = siblings[ord];
+      }
+    }
+
+    if (aggregatedValue == 0) {
+      return null;
+    }
+
+    if (dimConfig.multiValued) {
+      if (dimConfig.requireDimCount) {
+        aggregatedValue = getValue(dimOrd);
+      } else {
+        // Our sum'd value is not correct, in general:
+        aggregatedValue = -1;
+      }
+    } else {
+      // Our sum'd dim value is accurate, so we keep it
+    }
+
+    // TODO: It would be nice if TaxonomyReader could directly support List in addition to an array
+    // so that we don't need to do this copy just to look up bulk paths
+    int[] ordinalArray = new int[ordinals.size()];
+    for (int i = 0; i < ordinals.size(); i++) {
+      ordinalArray[i] = ordinals.get(i);
+    }
+
+    LabelAndValue[] labelValues = new LabelAndValue[ordValues.size()];
+    FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinalArray);
+    for (int i = 0; i < ordValues.size(); i++) {
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
+    }
+    return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
 
   @Override

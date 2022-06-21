@@ -216,21 +216,36 @@ abstract class RangeFacetCounts extends Facets {
     totCount -= missingCount;
   }
 
+  /**
+   * {@inheritDoc}
+   *
+   * <p>NOTE: This implementation guarantees that ranges will be returned in the order specified by
+   * the user when calling the constructor.
+   */
   @Override
-  public FacetResult getTopChildren(int topN, String dim, String... path) {
-    validateTopN(topN);
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    validateDimAndPathForGetChildren(dim, path);
     LabelAndValue[] labelValues = new LabelAndValue[counts.length];
     for (int i = 0; i < counts.length; i++) {
       labelValues[i] = new LabelAndValue(ranges[i].label, counts[i]);
     }
     return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
+  }
+
+  // The current getTopChildren method is not returning "top" ranges. Instead, it returns all
+  // user-provided ranges in
+  // the order the user specified them when instantiating. This concept is being introduced and
+  // supported in the
+  // getAllChildren functionality in LUCENE-10550. getTopChildren is temporarily calling
+  // getAllChildren to maintain its
+  // current behavior, and the current implementation will be replaced by an actual "top children"
+  // implementation
+  // in LUCENE-10614
+  // TODO: fix getTopChildren in LUCENE-10614
+  @Override
+  public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
+    validateTopN(topN);
+    return getAllChildren(dim, path);
   }
 
   @Override
@@ -259,5 +274,15 @@ abstract class RangeFacetCounts extends Facets {
       b.append('\n');
     }
     return b.toString();
+  }
+
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
+    }
   }
 }

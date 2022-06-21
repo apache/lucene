@@ -407,7 +407,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   public DimTree getDimTree(String dim) {
     if (config == null || config.getDimConfig(dim).hierarchical == false) {
       throw new UnsupportedOperationException(
-          "This opperation is only supported for hierarchical facets");
+          "This operation is only supported for hierarchical facets");
     }
     return prefixToDimTree.get(dim);
   }
