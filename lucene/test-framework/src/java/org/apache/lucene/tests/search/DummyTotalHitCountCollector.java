@@ -34,7 +34,13 @@ import org.apache.lucene.search.Weight;
 public class DummyTotalHitCountCollector implements Collector {
   private int totalHits;
 
-  private DummyTotalHitCountCollector() {}
+  /** Constructor */
+  public DummyTotalHitCountCollector() {}
+
+  /** Get the number of hits. */
+  public int getTotalHits() {
+    return totalHits;
+  }
 
   @Override
   public ScoreMode scoreMode() {

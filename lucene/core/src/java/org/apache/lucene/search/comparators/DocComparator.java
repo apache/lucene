@@ -32,6 +32,7 @@ public class DocComparator extends FieldComparator<Integer> {
   private int topValue;
   private boolean topValueSet;
   private boolean bottomValueSet;
+  private boolean hitsThresholdReached;
 
   /** Creates a new comparator based on document ids for {@code numHits} */
   public DocComparator(int numHits, boolean reverse, boolean enableSkipping) {
@@ -75,7 +76,6 @@ public class DocComparator extends FieldComparator<Integer> {
     private final int docBase;
     private final int minDoc;
     private final int maxDoc;
-    private boolean hitsThresholdReached;
     private DocIdSetIterator competitiveIterator; // iterator that starts from topValue
 
     public DocLeafComparator(LeafReaderContext context) {

@@ -65,7 +65,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
-import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
@@ -1275,8 +1274,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
           query.add(bar, Occur.FILTER);
           query.add(foo, Occur.FILTER);
         }
-        indexSearcher.search(
-            query.build(), FixedBitSetCollector.createManager(indexReader.maxDoc()));
+        indexSearcher.search(query.build(), DummyTotalHitCountCollector.createManager());
         assertEquals(1, policy.frequency(query.build()));
         assertEquals(1, policy.frequency(foo));
         assertEquals(1, policy.frequency(bar));

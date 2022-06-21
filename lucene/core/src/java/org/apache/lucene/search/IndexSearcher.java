@@ -458,9 +458,8 @@ public class IndexSearcher {
 
           private final HitsThresholdChecker hitsThresholdChecker =
               (executor == null || leafSlices.length <= 1)
-                  ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits), numHits)
-                  : HitsThresholdChecker.createShared(
-                      Math.max(TOTAL_HITS_THRESHOLD, numHits), numHits);
+                  ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
+                  : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
           private final MaxScoreAccumulator minScoreAcc =
               (executor == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
@@ -593,9 +592,8 @@ public class IndexSearcher {
 
           private final HitsThresholdChecker hitsThresholdChecker =
               (executor == null || leafSlices.length <= 1)
-                  ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits), numHits)
-                  : HitsThresholdChecker.createShared(
-                      Math.max(TOTAL_HITS_THRESHOLD, numHits), numHits);
+                  ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
+                  : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
           private final MaxScoreAccumulator minScoreAcc =
               (executor == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();

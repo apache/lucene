@@ -16,12 +16,12 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.BooleanClause.Occur;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -30,7 +30,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -244,12 +243,10 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
         TopScoreDocCollector.createSharedManager(10, null, 10);
-    AtomicLong collectCount = new AtomicLong();
     TopDocs topDocs =
-        is.search(
-            new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))),
-            CountingCollectorWrapper.createManager(manager, collectCount));
-    assertEquals(10, collectCount.get());
+        is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), manager);
+    assertEquals(11, topDocs.totalHits.value);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
     manager = TopScoreDocCollector.createSharedManager(10, null, 10);
     Query query =

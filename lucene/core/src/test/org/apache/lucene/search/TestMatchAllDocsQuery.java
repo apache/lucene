@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -118,14 +117,11 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
 
     IndexSearcher singleThreadedSearcher = newSearcher(ir, true, true, false);
     final int totalHitsThreshold = 200;
-    final int numHits = 10;
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(numHits, null, totalHitsThreshold);
-    AtomicLong collectCount = new AtomicLong();
-    TopDocs topDocs =
-        singleThreadedSearcher.search(
-            new MatchAllDocsQuery(), CountingCollectorWrapper.createManager(manager, collectCount));
-    assertEquals(numHits, collectCount.get());
+        TopScoreDocCollector.createSharedManager(10, null, totalHitsThreshold);
+    TopDocs topDocs = singleThreadedSearcher.search(new MatchAllDocsQuery(), manager);
+    assertEquals(totalHitsThreshold + 1, topDocs.totalHits.value);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
     IndexSearcher is = newSearcher(ir);
     manager = TopScoreDocCollector.createSharedManager(10, null, numDocs);

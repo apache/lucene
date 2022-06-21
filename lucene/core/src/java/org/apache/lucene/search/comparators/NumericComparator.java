@@ -54,6 +54,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   protected boolean topValueSet;
   protected boolean singleSort; // singleSort is true, if sort is based on a single sort field.
+  protected boolean hitsThresholdReached;
   protected boolean queueFull;
   private boolean canSkipDocuments;
 
@@ -100,7 +101,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private int currentSkipInterval = MIN_SKIP_INTERVAL;
     // helps to be conservative about increasing the sampling interval
     private int tryUpdateFailCount = 0;
-    protected boolean hitsThresholdReached;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);

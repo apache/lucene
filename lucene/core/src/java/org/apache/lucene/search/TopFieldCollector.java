@@ -49,8 +49,6 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     final int reverseMul;
     Scorable scorer;
     boolean collectedAllCompetitiveHits = false;
-    int counter;
-    boolean startedSkipping;
 
     TopFieldLeafCollector(FieldValueHitQueue<Entry> queue, Sort sort, LeafReaderContext context)
         throws IOException {
@@ -72,30 +70,21 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         this.reverseMul = 1;
         this.comparator = new MultiLeafFieldComparator(comparators, reverseMuls);
       }
-
-      maybeStartSkipping();
     }
 
     void countHit(int doc) throws IOException {
-      if (hitCountIsKnown == false) {
-        totalHits++;
-        hitsThresholdChecker.incrementHitCount(1);
-      } // else this has already been done in #onLeaf
+      ++totalHits;
+      hitsThresholdChecker.incrementHitCount();
 
-      if (minScoreAcc != null && (counter++ & minScoreAcc.modInterval) == 0) {
+      if (minScoreAcc != null && (totalHits & minScoreAcc.modInterval) == 0) {
         updateGlobalMinCompetitiveScore(scorer);
       }
-      maybeStartSkipping();
-    }
-
-    void maybeStartSkipping() throws IOException {
-      if (startedSkipping == false && canSkip()) {
-        // notify comparator that it can start skipping
+      if (scoreMode.isExhaustive() == false
+          && totalHitsRelation == TotalHits.Relation.EQUAL_TO
+          && hitsThresholdChecker.isThresholdReached()) {
+        // for the first time hitsThreshold is reached, notify comparator about this
         comparator.setHitsThresholdReached();
-        startedSkipping = true;
-        if (hitCountIsKnown == false) {
-          totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
-        }
+        totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
       }
     }
 
@@ -105,15 +94,13 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         // this document is largest than anything else in the queue, and
         // therefore not competitive.
         if (searchSortPartOfIndexSort) {
-          if (canSkip()) {
-            if (hitCountIsKnown == false) {
-              totalHitsRelation = Relation.GREATER_THAN_OR_EQUAL_TO;
-            }
+          if (hitsThresholdChecker.isThresholdReached()) {
+            totalHitsRelation = Relation.GREATER_THAN_OR_EQUAL_TO;
             throw new CollectionTerminatedException();
           } else {
             collectedAllCompetitiveHits = true;
           }
-        } else if (startedSkipping == false) {
+        } else if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
           // we can start setting the min competitive score if the
           // threshold is reached for the first time here.
           updateMinCompetitiveScore(scorer);
@@ -131,9 +118,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       updateMinCompetitiveScore(scorer);
     }
 
-    void collectAnyHit(int doc) throws IOException {
+    void collectAnyHit(int doc, int hitsCollected) throws IOException {
       // Startup transient: queue hasn't gathered numHits yet
-      int slot = pq.size();
+      int slot = hitsCollected - 1;
       // Copy hit into queue
       comparator.copy(slot, doc);
       add(slot, doc);
@@ -204,7 +191,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-      onLeaf(context);
+      // reset the minimum competitive score
+      minCompetitiveScore = 0f;
+      docBase = context.docBase;
 
       return new TopFieldLeafCollector(queue, sort, context) {
 
@@ -217,7 +206,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
             }
             collectCompetitiveHit(doc);
           } else {
-            collectAnyHit(doc);
+            collectAnyHit(doc, totalHits);
           }
         }
       };
@@ -230,6 +219,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   private static final class PagingFieldCollector extends TopFieldCollector {
 
     final Sort sort;
+    int collectedHits;
     final FieldValueHitQueue<Entry> queue;
     final FieldDoc after;
 
@@ -256,7 +246,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-      onLeaf(context);
+      // reset the minimum competitive score
+      minCompetitiveScore = 0f;
+      docBase = context.docBase;
       final int afterDoc = after.doc - docBase;
 
       return new TopFieldLeafCollector(queue, sort, context) {
@@ -282,7 +274,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
           if (queueFull) {
             collectCompetitiveHit(doc);
           } else {
-            collectAnyHit(doc);
+            collectedHits++;
+            collectAnyHit(doc, collectedHits);
           }
         }
       };
@@ -309,8 +302,6 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   int docBase;
   final boolean needsScores;
   final ScoreMode scoreMode;
-  Weight weight;
-  boolean hitCountIsKnown;
 
   // Declaring the constructor private prevents extending this class by anyone
   // else. Note that the class cannot be final since it's extended by the
@@ -332,12 +323,17 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     int reverseMul = pq.reverseMul[0];
 
     if (firstComparator.getClass().equals(FieldComparator.RelevanceComparator.class)
-        && reverseMul == 1) { // if the natural sort is preserved (sort by descending relevance)
+        && reverseMul == 1 // if the natural sort is preserved (sort by descending relevance)
+        && hitsThresholdChecker.getHitsThreshold() != Integer.MAX_VALUE) {
       scoreMode = ScoreMode.TOP_SCORES;
       canSetMinScore = true;
     } else {
       canSetMinScore = false;
-      scoreMode = needsScores ? ScoreMode.TOP_DOCS_WITH_SCORES : ScoreMode.TOP_DOCS;
+      if (hitsThresholdChecker.getHitsThreshold() != Integer.MAX_VALUE) {
+        scoreMode = needsScores ? ScoreMode.TOP_DOCS_WITH_SCORES : ScoreMode.TOP_DOCS;
+      } else {
+        scoreMode = needsScores ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+      }
     }
     this.minScoreAcc = minScoreAcc;
   }
@@ -347,14 +343,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     return scoreMode;
   }
 
-  private boolean canSkip() {
-    return (hitCountIsKnown && hitsThresholdChecker.isNumHitsReached())
-        || hitsThresholdChecker.isThresholdReached();
-  }
-
   protected void updateGlobalMinCompetitiveScore(Scorable scorer) throws IOException {
     assert minScoreAcc != null;
-    if (canSetMinScore && canSkip()) {
+    if (canSetMinScore && hitsThresholdChecker.isThresholdReached()) {
       // we can start checking the global maximum score even
       // if the local queue is not full because the threshold
       // is reached.
@@ -362,23 +353,19 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       if (maxMinScore != null && maxMinScore.score > minCompetitiveScore) {
         scorer.setMinCompetitiveScore(maxMinScore.score);
         minCompetitiveScore = maxMinScore.score;
-        if (hitCountIsKnown == false) {
-          totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
-        }
+        totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
       }
     }
   }
 
   protected void updateMinCompetitiveScore(Scorable scorer) throws IOException {
-    if (canSetMinScore && queueFull && canSkip()) {
+    if (canSetMinScore && queueFull && hitsThresholdChecker.isThresholdReached()) {
       assert bottom != null;
       float minScore = (float) firstComparator.value(bottom.slot);
       if (minScore > minCompetitiveScore) {
         scorer.setMinCompetitiveScore(minScore);
         minCompetitiveScore = minScore;
-        if (hitCountIsKnown == false) {
-          totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
-        }
+        totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         if (minScoreAcc != null) {
           minScoreAcc.accumulate(docBase, minScore);
         }
@@ -436,7 +423,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         sort,
         numHits,
         after,
-        HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits), numHits),
+        HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits)),
         null /* bottomValueChecker */);
   }
 
@@ -505,7 +492,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     int totalHitsMax = Math.max(totalHitsThreshold, numHits);
     return new CollectorManager<>() {
       private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(totalHitsMax, numHits);
+          HitsThresholdChecker.createShared(totalHitsMax);
       private final MaxScoreAccumulator minScoreAcc =
           totalHitsMax == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
 
@@ -618,27 +605,5 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   /** Return whether collection terminated early. */
   public boolean isEarlyTerminated() {
     return totalHitsRelation == Relation.GREATER_THAN_OR_EQUAL_TO;
-  }
-
-  @Override
-  public void setWeight(Weight weight) {
-    this.weight = weight;
-  }
-
-  protected final void onLeaf(LeafReaderContext context) throws IOException {
-    // reset the minimum competitive score
-    docBase = context.docBase;
-    minCompetitiveScore = 0f;
-    if (hitsThresholdChecker.isThresholdReached()) {
-      // We don't need the count
-      hitCountIsKnown = false;
-    } else {
-      final int leafHitCount = weight == null ? -1 : weight.count(context);
-      hitCountIsKnown = leafHitCount != -1;
-      if (hitCountIsKnown) {
-        hitsThresholdChecker.incrementHitCount(leafHitCount);
-        totalHits += leafHitCount;
-      }
-    }
   }
 }

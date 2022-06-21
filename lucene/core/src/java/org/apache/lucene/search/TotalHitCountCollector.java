@@ -21,7 +21,7 @@ import org.apache.lucene.index.LeafReaderContext;
 
 /**
  * Just counts the total number of hits. This is the collector behind {@link IndexSearcher#count}.
- * When the {@link Weight} implement {@link Weight#count}, this collector will skip collecting
+ * When the {@link Weight} implements {@link Weight#count}, this collector will skip collecting
  * segments.
  */
 public class TotalHitCountCollector implements Collector {
@@ -45,21 +45,20 @@ public class TotalHitCountCollector implements Collector {
 
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-    int leafCount = weight.count(context);
+    int leafCount = weight == null ? -1 : weight.count(context);
     if (leafCount != -1) {
       totalHits += leafCount;
       throw new CollectionTerminatedException();
-    } else {
-      return new LeafCollector() {
-
-        @Override
-        public void setScorer(Scorable scorer) throws IOException {}
-
-        @Override
-        public void collect(int doc) throws IOException {
-          totalHits++;
-        }
-      };
     }
+    return new LeafCollector() {
+
+      @Override
+      public void setScorer(Scorable scorer) throws IOException {}
+
+      @Override
+      public void collect(int doc) throws IOException {
+        totalHits++;
+      }
+    };
   }
 }

@@ -45,6 +45,7 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -1021,7 +1022,7 @@ public class TestBooleanQuery extends LuceneTestCase {
       builder.setMinimumNumberShouldMatch(TestUtil.nextInt(random(), 0, numShouldClauses));
       Query booleanQuery = builder.build();
       assertEquals(
-          (int) searcher.search(booleanQuery, new TotalHitCountCollectorManager()),
+          (int) searcher.search(booleanQuery, DummyTotalHitCountCollector.createManager()),
           searcher.count(booleanQuery));
     }
     reader.close();

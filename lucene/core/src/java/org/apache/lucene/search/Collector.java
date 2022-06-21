@@ -59,7 +59,8 @@ public interface Collector {
 
   /**
    * Set the {@link Weight} that will be used to produce scorers that will feed {@link
-   * LeafCollector}s.
+   * LeafCollector}s. This is typically useful to have access to {@link Weight#count} from {@link
+   * Collector#getLeafCollector}.
    */
   default void setWeight(Weight weight) {}
 }
