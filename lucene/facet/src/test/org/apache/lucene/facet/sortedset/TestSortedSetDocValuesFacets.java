@@ -147,6 +147,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                 facets.getAllDims(0);
               });
 
+          // test getSpecificValue
+          assertEquals(2, facets.getSpecificValue("a", "foo"));
+          expectThrows(
+              IllegalArgumentException.class, () -> facets.getSpecificValue("a", "foo", "bar"));
+
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("a", "foo");
@@ -358,6 +363,15 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           assertEquals(
               "dim=c path=[buzz, bif] value=2 childCount=1\n  baf (2)\n",
               facets.getTopChildren(10, "c", "buzz", "bif").toString());
+
+          // test getSpecificValue (and make sure hierarchical dims are supported: LUCENE-10584):
+          assertEquals(2, facets.getSpecificValue("c", "buzz"));
+          // should be able to request deeper paths on hierarchical dims:
+          assertEquals(1, facets.getSpecificValue("c", "buzz", "bee"));
+          // ... but not on non-hierarchical dims:
+          expectThrows(
+              IllegalArgumentException.class, () -> facets.getSpecificValue("a", "foo", "bar)"));
+
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("a", "foo");

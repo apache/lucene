@@ -521,7 +521,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   /** Tests with random vectors and a random filter. Uses RandomIndexWriter. */
   public void testRandomWithFilter() throws IOException {
-    int numDocs = 200;
+    int numDocs = 1000;
     int dimension = atLeast(5);
     int numIters = atLeast(10);
     try (Directory d = newDirectory()) {
@@ -543,7 +543,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = newSearcher(reader);
         for (int i = 0; i < numIters; i++) {
-          int lower = random().nextInt(50);
+          int lower = random().nextInt(500);
 
           // Test a filter with cost less than k and check we use exact search
           Query filter1 = IntPoint.newRangeQuery("tag", lower, lower + 8);
@@ -574,7 +574,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
                       numDocs));
 
           // Test an unrestrictive filter and check we use approximate search
-          Query filter3 = IntPoint.newRangeQuery("tag", lower, 200);
+          Query filter3 = IntPoint.newRangeQuery("tag", lower, numDocs);
           results =
               searcher.search(
                   new ThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
@@ -588,8 +588,17 @@ public class TestKnnVectorQuery extends LuceneTestCase {
             assertEquals(1, fieldDoc.fields.length);
 
             int tag = (int) fieldDoc.fields[0];
-            assertTrue(lower <= tag && tag <= 200);
+            assertTrue(lower <= tag && tag <= numDocs);
           }
+
+          // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
+          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
+          expectThrows(
+              UnsupportedOperationException.class,
+              () ->
+                  searcher.search(
+                      new ThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
+                      numDocs));
         }
       }
     }

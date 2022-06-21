@@ -728,7 +728,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       }
 
       @Override
-      public long docValueCount() {
+      public int docValueCount() {
         return currentOrds.length;
       }
 
