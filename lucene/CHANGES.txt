@@ -71,7 +71,9 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
+  SortedSetDocValues#docValueCount().
 
 New Features
 ---------------------
