@@ -32,6 +32,7 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.BytesRefHash.DirectBytesStartArray;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.packed.GrowableWriter;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -56,6 +57,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   private PackedLongValues finalOrdCounts;
   private int[] finalSortedValues;
   private int[] finalOrdMap;
+  int maxBitsRequired;
 
   SortedSetDocValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool) {
     this.fieldInfo = fieldInfo;
@@ -114,6 +116,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       }
       lastValue = termID;
     }
+    maxBitsRequired |= count;
     // record the number of unique term ids for this doc
     if (pendingCounts != null) {
       pendingCounts.add(count);
@@ -228,7 +231,8 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
               state.segmentInfo.maxDoc(),
               sortMap,
               getValues(sortedValues, ordMap, hash, ords, ordCounts, maxCount, docsWithField),
-              PackedInts.FASTEST);
+              PackedInts.FASTEST,
+              maxBitsRequired);
     } else {
       docOrds = null;
     }
@@ -393,12 +397,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     @Override
     public long nextOrd() {
-      long ord = ords.ords.get(ordUpto++);
-      if (ord == 0) {
-        return NO_MORE_ORDS;
-      } else {
-        return ord - 1;
-      }
+      return ords.ords.get(ordUpto++);
     }
 
     @Override
@@ -424,13 +423,8 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     private void set() {
       if (set == false) {
-        int ordCount = 0;
         assert docID >= 0;
-        long upto = ords.offsets[docID] - 1;
-        while (ords.ords.get(upto++) != 0) {
-          ordCount++;
-        }
-        count = ordCount;
+        count = (int) ords.growableWriter.get(docID);
         set = true;
       }
     }
@@ -439,6 +433,9 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   static final class DocOrds {
     final long[] offsets;
     final PackedLongValues ords;
+    final GrowableWriter growableWriter;
+
+    public static final int START_BITS_PER_VALUE = 2;
 
     DocOrds(
         int maxDoc,
@@ -446,22 +443,32 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
         SortedSetDocValues oldValues,
         float acceptableOverheadRatio)
         throws IOException {
+      this(maxDoc, sortMap, oldValues, acceptableOverheadRatio, START_BITS_PER_VALUE);
+    }
+
+    DocOrds(
+        int maxDoc,
+        Sorter.DocMap sortMap,
+        SortedSetDocValues oldValues,
+        float acceptableOverheadRatio,
+        int bitsPerValue)
+        throws IOException {
       offsets = new long[maxDoc];
       PackedLongValues.Builder builder = PackedLongValues.packedBuilder(acceptableOverheadRatio);
-      long ordOffset = 1; // 0 marks docs with no values
+      growableWriter = new GrowableWriter(bitsPerValue, maxDoc, acceptableOverheadRatio);
+      long ordOffset = 1;
       int docID;
       while ((docID = oldValues.nextDoc()) != NO_MORE_DOCS) {
         int newDocID = sortMap.oldToNew(docID);
         long startOffset = ordOffset;
         long ord;
         while ((ord = oldValues.nextOrd()) != NO_MORE_ORDS) {
-          builder.add(ord + 1);
+          builder.add(ord);
           ordOffset++;
         }
+        growableWriter.set(newDocID, ordOffset - startOffset);
         if (startOffset != ordOffset) { // do we have any values?
           offsets[newDocID] = startOffset;
-          builder.add(0); // 0 ord marks next value
-          ordOffset++;
         }
       }
       ords = builder.build();
