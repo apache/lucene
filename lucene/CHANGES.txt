@@ -71,11 +71,13 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
+  SortedSetDocValues#docValueCount(). (Greg Miller)
 
 New Features
 ---------------------
-(No changes)
+* LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
 
 Improvements
 ---------------------
@@ -92,6 +94,9 @@ Improvements
 Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
+
+* GITHUB#961: BooleanQuery can return quick counts for simple boolean queries.
+  (Adrien Grand)
 
 * LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
 
@@ -1040,6 +1045,20 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.2 =======================
+
+Bug Fixes
+---------------------
+* LUCENE-10564: Make sure SparseFixedBitSet#or updates ramBytesUsed. (Julie Tibshirani)
+
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
+
+Optimizations
+---------------------
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
 ======================= Lucene 8.11.1 =======================
 

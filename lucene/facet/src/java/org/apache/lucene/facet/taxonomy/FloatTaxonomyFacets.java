@@ -17,6 +17,7 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -99,6 +100,63 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       return -1;
     }
     return values[ord];
+  }
+
+  @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    DimConfig dimConfig = verifyDim(dim);
+    FacetLabel cp = new FacetLabel(dim, path);
+    int dimOrd = taxoReader.getOrdinal(cp);
+    if (dimOrd == -1) {
+      return null;
+    }
+
+    int[] children = getChildren();
+    int[] siblings = getSiblings();
+
+    int ord = children[dimOrd];
+    float aggregatedValue = 0;
+
+    List<Integer> ordinals = new ArrayList<>();
+    List<Float> ordValues = new ArrayList<>();
+
+    while (ord != TaxonomyReader.INVALID_ORDINAL) {
+      if (values[ord] > 0) {
+        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, values[ord]);
+        ordinals.add(ord);
+        ordValues.add(values[ord]);
+      }
+      ord = siblings[ord];
+    }
+
+    if (aggregatedValue == 0) {
+      return null;
+    }
+
+    if (dimConfig.multiValued) {
+      if (dimConfig.requireDimCount) {
+        aggregatedValue = values[dimOrd];
+      } else {
+        // Our sum'd count is not correct, in general:
+        aggregatedValue = -1;
+      }
+    } else {
+      // Our sum'd dim count is accurate, so we keep it
+    }
+
+    // TODO: It would be nice if TaxonomyReader could directly support List in addition to an array
+    // so that we don't need to do this copy just to look up bulk paths
+    int[] ordinalArray = new int[ordinals.size()];
+    for (int i = 0; i < ordinals.size(); i++) {
+      ordinalArray[i] = ordinals.get(i);
+    }
+
+    LabelAndValue[] labelValues = new LabelAndValue[ordValues.size()];
+    FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinalArray);
+    for (int i = 0; i < labelValues.length; i++) {
+      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
+    }
+    return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
 
   @Override
