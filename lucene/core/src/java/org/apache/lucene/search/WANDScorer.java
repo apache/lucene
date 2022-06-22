@@ -106,7 +106,7 @@ final class WANDScorer extends Scorer {
    * Scale min competitive scores the same way as max scores but this time by rounding down in order
    * to make sure that we do not miss any matches.
    */
-  private static long scaleMinScore(float minScore, int scalingFactor) {
+  static long scaleMinScore(float minScore, int scalingFactor) {
     assert Float.isFinite(minScore);
     assert minScore >= 0;
 

@@ -238,7 +238,9 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
       //
       // However, as WANDScorer uses more complex algorithm and data structure, we would like to
       // still use DisjunctionSumScorer to handle exhaustive pure disjunctions, which may be faster
-      if (scoreMode == ScoreMode.TOP_SCORES || minShouldMatch > 1) {
+      if (optionalScorers.size() == 2 && scoreMode == ScoreMode.TOP_SCORES && minShouldMatch == 0) {
+        return new BlockMaxMaxscoreScorer(weight, optionalScorers, scoreMode);
+      } else if (scoreMode == ScoreMode.TOP_SCORES || minShouldMatch > 1) {
         return new WANDScorer(weight, optionalScorers, minShouldMatch, scoreMode);
       } else {
         return new DisjunctionSumScorer(weight, optionalScorers, scoreMode);
