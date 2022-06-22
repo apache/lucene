@@ -130,6 +130,8 @@ Other
 * LUCENE-10604: Improve ability to test and debug triangulation algorithm in Tessellator.
   (Craig Taverner)
 
+* GITHUB#922: Remove unused and confusing FacetField indexing options (Gautam Worah)
+
 ======================= Lucene 9.2.0 =======================
 
 API Changes
