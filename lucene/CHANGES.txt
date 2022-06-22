@@ -1046,6 +1046,12 @@ Other
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
 
+======================= Lucene 8.11.2 =======================
+
+Bug Fixes
+---------------------
+(No changes)
+
 ======================= Lucene 8.11.1 =======================
 
 Bug Fixes
