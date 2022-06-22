@@ -18,6 +18,8 @@ package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,7 @@ import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.BinaryDocValues;
@@ -198,6 +201,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         "dim=int path=[] value=-1 childCount=2\n  a (200)\n  b (150)\n",
         facets.getTopChildren(10, "int").toString());
     assertEquals(
+        "dim=int path=[] value=-1 childCount=2\n  a (200)\n  b (150)\n",
+        sortAllChildren(facets.getAllChildren("int")).toString());
+    assertEquals(
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
@@ -267,6 +273,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     assertEquals(
         "dim=float path=[] value=-1.0 childCount=2\n  a (50.0)\n  b (9.999995)\n",
         facets.getTopChildren(10, "float").toString());
+    assertEquals(
+        "dim=float path=[] value=-1.0 childCount=2\n  a (50.0)\n  b (9.999995)\n",
+        sortAllChildren(facets.getAllChildren("float")).toString());
     assertEquals(
         "Wrong count for category 'a'!",
         50f,
@@ -379,6 +388,12 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         () -> {
           facets.getTopChildren(10, "float");
         });
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllChildren("float");
+        });
   }
 
   public void testMixedTypesInSameIndexField() throws Exception {
@@ -453,6 +468,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     assertEquals(
         "dim=int path=[] value=-1 childCount=2\n  b (150)\n  a (100)\n",
         facets.getTopChildren(10, "int").toString());
+
+    assertEquals(
+        "dim=int path=[] value=-1 childCount=2\n  a (100)\n  b (150)\n",
+        sortAllChildren(facets.getAllChildren("int")).toString());
+
     assertEquals(
         "Wrong count for category 'a'!", 100, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
@@ -513,15 +533,20 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
 
     FacetResult facetResult = facets.getTopChildren(10, dim);
+    FacetResult allChildrenResult = facets.getAllChildren(dim);
 
     if (expected.isEmpty()) {
       // If we hit the rare random case where nothing is indexed for the dim, we expect a null
       // facetResult (see: LUCENE-10529)
       assertNull(facetResult);
+      assertNull(allChildrenResult);
     } else {
       assertEquals(dim, facetResult.dim);
+      assertEquals(dim, allChildrenResult.dim);
       assertEquals(aggregatedValue, facetResult.value.intValue());
+      assertEquals(aggregatedValue, allChildrenResult.value.intValue());
       assertEquals(expected.size(), facetResult.childCount);
+      assertEquals(expected.size(), allChildrenResult.childCount);
     }
   }
 
@@ -547,15 +572,31 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     }
 
     FacetResult facetResult = facets.getTopChildren(10, dim);
+    FacetResult allChildrenResult = facets.getAllChildren(dim);
 
     if (expected.isEmpty()) {
       // If we hit the rare random case where nothing is indexed for the dim, we expect a null
       // facetResult (see: LUCENE-10529)
       assertNull(facetResult);
+      assertNull(allChildrenResult);
     } else {
       assertEquals(dim, facetResult.dim);
+      assertEquals(dim, allChildrenResult.dim);
       assertEquals(aggregatedValue, facetResult.value.floatValue(), 1f);
+      assertEquals(aggregatedValue, allChildrenResult.value.floatValue(), 1f);
       assertEquals(expected.size(), facetResult.childCount);
+      assertEquals(expected.size(), allChildrenResult.childCount);
     }
+  }
+
+  // since we have no insight into the ordinals assigned to the values, we sort labels by value and
+  // count in
+  // ascending order in order to compare with expected results
+  private static FacetResult sortAllChildren(FacetResult allChildrenResult) {
+    Arrays.sort(
+        allChildrenResult.labelValues,
+        Comparator.comparing((LabelAndValue a) -> a.label)
+            .thenComparingLong(a -> a.value.longValue()));
+    return allChildrenResult;
   }
 }

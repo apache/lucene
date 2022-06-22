@@ -19,6 +19,7 @@ package org.apache.lucene.facet;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -72,7 +73,9 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    checkFacetResult(expectedCounts, expectedTotalDocCount, searcher, 10, 2, 1, 0);
+    StringDocValuesReaderState state =
+        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+    checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -93,6 +96,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     doc.add(new SortedSetDocValuesField("field", new BytesRef("foo")));
     writer.addDocument(doc);
 
+    doc = new Document();
+    doc.add(new StringField("id", "2", Field.Store.NO));
+    doc.add(new SortedSetDocValuesField("field", new BytesRef("bar")));
+    writer.addDocument(doc);
+
     writer.deleteDocuments(new Term("id", "0"));
 
     IndexSearcher searcher = newSearcher(writer.getReader());
@@ -103,8 +111,16 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
     StringValueFacetCounts facets = new StringValueFacetCounts(state);
     assertEquals(
-        "dim=field path=[] value=1 childCount=1\n  foo (1)",
+        "dim=field path=[] value=2 childCount=2\n  bar (1)",
+        facets.getTopChildren(1, "field").toString().trim());
+
+    assertEquals(
+        "dim=field path=[] value=2 childCount=2\n  bar (1)\n  foo (1)",
         facets.getTopChildren(10, "field").toString().trim());
+
+    assertEquals(
+        "dim=field path=[] value=2 childCount=2\n  bar (1)\n  foo (1)",
+        facets.getAllChildren("field").toString().trim());
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -140,7 +156,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    checkFacetResult(expectedCounts, expectedTotalDocCount, searcher, 10, 2, 1, 0);
+    StringDocValuesReaderState state =
+        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+
+    checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
+    checkAllChildrenFacetResult(expectedCounts, expectedTotalDocCount, searcher, state);
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -170,7 +190,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    checkFacetResult(expectedCounts, expectedTotalDocCount, searcher, 10, 2, 1, 0);
+    StringDocValuesReaderState state =
+        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+
+    checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
+    checkAllChildrenFacetResult(expectedCounts, expectedTotalDocCount, searcher, state);
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -179,7 +203,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
-    Map<String, Integer> expectedCounts = new HashMap<>();
+    Map<String, Integer> expectedValueCounts = new HashMap<>();
 
     // Create two segments, each with only one doc that has a large number of SSDV field values.
     // This ensures "sparse" counting will occur in StringValueFacetCounts (i.e., small number
@@ -187,7 +211,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     Document doc = new Document();
     for (int i = 0; i < 100; i++) {
       doc.add(new SortedSetDocValuesField("field", new BytesRef("foo_" + i)));
-      expectedCounts.put("foo_" + i, 1);
+      expectedValueCounts.put("foo_" + i, 1);
     }
     writer.addDocument(doc);
     writer.commit();
@@ -195,7 +219,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     doc = new Document();
     for (int i = 0; i < 100; i++) {
       doc.add(new SortedSetDocValuesField("field", new BytesRef("bar_" + i)));
-      expectedCounts.put("bar_" + i, 1);
+      expectedValueCounts.put("bar_" + i, 1);
     }
     writer.addDocument(doc);
 
@@ -204,7 +228,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    checkFacetResult(expectedCounts, expectedTotalDocCount, searcher, 10, 2, 1, 0);
+    StringDocValuesReaderState state =
+        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+
+    checkTopNFacetResult(expectedValueCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
+    checkAllChildrenFacetResult(expectedValueCounts, expectedTotalDocCount, searcher, state);
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -236,7 +264,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    checkFacetResult(expectedCounts, expectedTotalDocCount, searcher, 10, 2, 1, 0);
+    StringDocValuesReaderState state =
+        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+
+    checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
+    checkAllChildrenFacetResult(expectedCounts, expectedTotalDocCount, searcher, state);
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -322,21 +354,23 @@ public class TestStringValueFacetCounts extends FacetTestCase {
         topNs[i] = atLeast(1);
       }
 
-      checkFacetResult(expected, expectedTotalDocCount, searcher, topNs);
+      StringDocValuesReaderState state =
+          new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+
+      checkTopNFacetResult(expected, expectedTotalDocCount, searcher, state, topNs);
+      checkAllChildrenFacetResult(expected, expectedTotalDocCount, searcher, state);
 
       IOUtils.close(searcher.getIndexReader(), dir);
     }
   }
 
-  private void checkFacetResult(
+  private void checkTopNFacetResult(
       Map<String, Integer> expectedCounts,
       int expectedTotalDocsWithValue,
       IndexSearcher searcher,
+      StringDocValuesReaderState state,
       int... topNs)
       throws IOException {
-
-    StringDocValuesReaderState state =
-        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
 
     FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
@@ -435,6 +469,53 @@ public class TestStringValueFacetCounts extends FacetTestCase {
             expectedCountsSorted.get(randomTestValIdx).getValue(),
             facetResult.labelValues[randomTestValIdx].value);
       }
+    }
+  }
+
+  private void checkAllChildrenFacetResult(
+      Map<String, Integer> expectedValueCounts,
+      int expectedTotalDocsWithValue,
+      IndexSearcher searcher,
+      StringDocValuesReaderState state)
+      throws IOException {
+
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    StringValueFacetCounts facets;
+    // should get the same result whether-or-not we provide a FacetsCollector since it's doing
+    // a MatchAllDocsQuery:
+    if (random().nextBoolean()) {
+      facets = new StringValueFacetCounts(state, c);
+    } else {
+      facets = new StringValueFacetCounts(state);
+    }
+
+    List<Map.Entry<String, Integer>> expectedCountsSortedByValue =
+        new ArrayList<>(expectedValueCounts.entrySet());
+
+    // sort expected counts by value, count
+    expectedCountsSortedByValue.sort(
+        Comparator.comparing((Map.Entry<String, Integer> a) -> a.getKey())
+            .thenComparingInt(Map.Entry::getValue));
+
+    FacetResult facetResult = facets.getAllChildren("field");
+    assertEquals(expectedTotalDocsWithValue, facetResult.value);
+
+    // since we have no insight into the ordinals assigned to the values, we sort labels by value
+    // and count in
+    // ascending order in order to compare with expected results
+    Arrays.sort(
+        facetResult.labelValues,
+        Comparator.comparing((LabelAndValue a) -> a.label)
+            .thenComparingLong(a -> a.value.longValue()));
+
+    for (int i = 0; i < expectedCountsSortedByValue.size(); i++) {
+      String expectedKey = expectedCountsSortedByValue.get(i).getKey();
+      int expectedValue = expectedCountsSortedByValue.get(i).getValue();
+      assertEquals(expectedKey, facetResult.labelValues[i].label);
+      assertEquals(expectedValue, facetResult.labelValues[i].value);
+      // make sure getSpecificValue reports the same count
+      assertEquals(expectedValue, facets.getSpecificValue("field", expectedKey));
     }
   }
 }
