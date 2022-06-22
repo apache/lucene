@@ -167,6 +167,10 @@ final class MaxScoreSumPropagator {
   }
 
   float scoreSumUpperBound(double sum) {
+    return scoreSumUpperBound(sum, numClauses);
+  }
+
+  static float scoreSumUpperBound(double sum, int numClauses) {
     if (numClauses <= 2) {
       // When there are only two clauses, the sum is always the same regardless
       // of the order.
