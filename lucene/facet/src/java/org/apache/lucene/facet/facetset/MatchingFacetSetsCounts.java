@@ -122,11 +122,8 @@ public class MatchingFacetSetsCounts extends Facets {
     return totCount;
   }
 
-  // TODO: This does not really provide "top children" functionality yet but provides "all
-  // children". This is being worked on in LUCENE-10550
   @Override
-  public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
-    validateTopN(topN);
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
     if (field.equals(dim) == false) {
       throw new IllegalArgumentException(
           "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
@@ -139,6 +136,12 @@ public class MatchingFacetSetsCounts extends Facets {
       labelValues[i] = new LabelAndValue(facetSetMatchers[i].label, counts[i]);
     }
     return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
+  }
+
+  @Override
+  public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
+    validateTopN(topN);
+    return getAllChildren(dim, path);
   }
 
   @Override

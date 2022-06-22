@@ -124,7 +124,7 @@ public class CustomFacetSetExample {
                   new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
 
       // Retrieve results
-      return facets.getTopChildren(10, "temperature");
+      return facets.getAllChildren("temperature");
     }
   }
 
@@ -150,7 +150,7 @@ public class CustomFacetSetExample {
                   DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
 
       // Retrieve results
-      return facets.getTopChildren(10, "temperature");
+      return facets.getAllChildren("temperature");
     }
   }
 
@@ -179,7 +179,7 @@ public class CustomFacetSetExample {
                   DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
 
       // Retrieve results
-      return facets.getTopChildren(10, "temperature");
+      return facets.getAllChildren("temperature");
     }
   }
 

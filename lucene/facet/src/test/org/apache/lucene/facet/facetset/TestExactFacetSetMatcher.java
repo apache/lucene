@@ -68,7 +68,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             new ExactFacetSetMatcher("Ford 2010", new LongFacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new LongFacetSet(CHEVY_ORD, 2011)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);
@@ -130,7 +130,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             new ExactFacetSetMatcher("Ford 2010", new LongFacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new LongFacetSet(CHEVY_ORD, 2011)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);
@@ -192,7 +192,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             new ExactFacetSetMatcher("Ford 2010", new IntFacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new IntFacetSet(CHEVY_ORD, 2011)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);
@@ -254,7 +254,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             new ExactFacetSetMatcher("Ford 2010", new DoubleFacetSet(FORD_ORD, 2010.5)),
             new ExactFacetSetMatcher("Chevy 2011", new DoubleFacetSet(CHEVY_ORD, 2011.5)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);
@@ -316,7 +316,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             new ExactFacetSetMatcher("Ford 2010", new FloatFacetSet(FORD_ORD, 2010.5f)),
             new ExactFacetSetMatcher("Chevy 2011", new FloatFacetSet(CHEVY_ORD, 2011.5f)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);

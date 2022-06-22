@@ -104,7 +104,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
             new RangeFacetSetMatcher(
                 "Ford (2010-2014)", singleLong(FORD_ORD), longRange(2010, false, 2014, false)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);
@@ -188,7 +188,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
             new RangeFacetSetMatcher(
                 "Ford (2010-2014)", singleLong(FORD_ORD), longRange(2010, false, 2014, false)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);
@@ -280,7 +280,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
                 singleDouble(FORD_ORD),
                 doubleRange(2011.0, false, 2014.0, false)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);
@@ -372,7 +372,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
                 singleFloat(FORD_ORD),
                 floatRange(2011.0f, false, 2014.0f, false)));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
 
     assertEquals("field", result.dim);
     assertEquals(0, result.path.length);
