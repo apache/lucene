@@ -120,6 +120,8 @@ Bug Fixes
 
 * LUCENE-10611: Fix failure when KnnVectorQuery has very selective filter (Kaival Parikh)
 
+* LUCENE-10607: Fix potential integer overflow in maxArcs computions (Tang Donghai)
+
 Other
 ---------------------
 
