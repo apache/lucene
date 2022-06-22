@@ -546,17 +546,8 @@ public final class IndexedDISI extends DocIdSetIterator {
         long sliceFilePointerBase = disi.slice.getFilePointer();
         int indexBase = disi.index;
         int indexEnd = disi.nextBlockIndex - 1;
-
-        // When the largest doc is smaller than target, move to the next splice
-        disi.slice.seek(sliceFilePointerBase + Short.BYTES * (indexEnd - indexBase));
-        int docLast = Short.toUnsignedInt(disi.slice.readShort());
-        if (docLast < targetInBlock) {
-          disi.index = indexEnd + 1;
-          return false;
-        }
-
         int low = indexBase;
-        int high = disi.nextBlockIndex - 1;
+        int high = indexEnd;
 
         while (low <= high) {
           int mid = low + (high - low) / 2;
@@ -573,7 +564,10 @@ public final class IndexedDISI extends DocIdSetIterator {
             high = mid - 1;
           }
         }
-
+        if (low > indexEnd) {
+          disi.index = low;
+          return false;
+        }
         disi.slice.seek(sliceFilePointerBase + Short.BYTES * (low - indexBase));
         int doc = Short.toUnsignedInt(disi.slice.readShort());
         disi.doc = disi.block | doc;
@@ -592,17 +586,6 @@ public final class IndexedDISI extends DocIdSetIterator {
 
         long sliceFilePointerBase = disi.slice.getFilePointer();
         int indexBase = disi.index;
-        int indexEnd = disi.nextBlockIndex - 1;
-
-        // When the largest doc is smaller than target, move to the next splice
-        disi.slice.seek(sliceFilePointerBase + Short.BYTES * (indexEnd - indexBase));
-        int docLast = Short.toUnsignedInt(disi.slice.readShort());
-        if (docLast < targetInBlock) {
-          disi.index = indexEnd + 1;
-          disi.exists = false;
-          return false;
-        }
-
         int low = indexBase;
         int high = disi.nextBlockIndex - 1;
 
@@ -620,12 +603,8 @@ public final class IndexedDISI extends DocIdSetIterator {
             high = mid - 1;
           }
         }
-
-        // When the current splice's first doc is larger than target, stay at the end
-        high = Math.max(indexBase, high);
-
-        disi.slice.seek(sliceFilePointerBase + Short.BYTES * (high - indexBase));
-        disi.index = high;
+        disi.slice.seek(sliceFilePointerBase + Short.BYTES * (low - indexBase));
+        disi.index = low;
         disi.exists = false;
         return false;
       }
