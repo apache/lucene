@@ -108,9 +108,11 @@ considers an encoded facet set as a match if all dimension values fall within pr
 
 === FacetSetDecoder
 
-A functional interface for decoding the packed dimension values back into comparable `long[]` representation. You can
-check out `org.apache.lucene.demo.facet.CustomFacetSetExample` in the `lucene/demo` package for a custom implementation
-of a `FacetSetDecoder`.
+A functional interface for decoding the packed dimension values back into comparable `long[]` representation. The
+off-the-shelf `Int/FloatFacetSet` can use `FacetSetDecoder::decodeInts` and `Long/DoubleFacetSet` can use
+`FacetSetDecoder::decodeLongs` to decode the indexed dimension values. You can check out
+`org.apache.lucene.demo.facet.CustomFacetSetExample` in the `lucene/demo` package for a custom implementation of a
+`FacetSetDecoder`.
 
 === MatchingFacetSetCounts
 

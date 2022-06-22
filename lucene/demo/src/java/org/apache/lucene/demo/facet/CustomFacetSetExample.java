@@ -19,15 +19,25 @@ package org.apache.lucene.demo.facet;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Collections;
-import java.util.List;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
-import org.apache.lucene.document.*;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
-import org.apache.lucene.facet.facetset.*;
+import org.apache.lucene.facet.facetset.DimRange;
+import org.apache.lucene.facet.facetset.ExactFacetSetMatcher;
+import org.apache.lucene.facet.facetset.FacetSet;
+import org.apache.lucene.facet.facetset.FacetSetDecoder;
+import org.apache.lucene.facet.facetset.FacetSetMatcher;
+import org.apache.lucene.facet.facetset.FacetSetsField;
+import org.apache.lucene.facet.facetset.MatchingFacetSetsCounts;
+import org.apache.lucene.facet.facetset.RangeFacetSetMatcher;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -91,63 +101,57 @@ public class CustomFacetSetExample {
   }
 
   /** Counting documents which exactly match a given {@link FacetSet}. */
-  private List<FacetResult> exactMatching() throws IOException {
-    DirectoryReader indexReader = DirectoryReader.open(indexDir);
-    IndexSearcher searcher = new IndexSearcher(indexReader);
+  private FacetResult exactMatching() throws IOException {
+    try (DirectoryReader indexReader = DirectoryReader.open(indexDir)) {
+      IndexSearcher searcher = new IndexSearcher(indexReader);
 
-    // MatchAllDocsQuery is for "browsing" (counts facets
-    // for all non-deleted docs in the index); normally
-    // you'd use a "normal" query:
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      // MatchAllDocsQuery is for "browsing" (counts facets
+      // for all non-deleted docs in the index); normally
+      // you'd use a "normal" query:
+      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
-    // Count both "Publish Date" and "Author" dimensions
-    Facets facets =
-        new MatchingFacetSetsCounts(
-            "temperature",
-            fc,
-            TemperatureReadingFacetSet::decodeTemperatureReading,
-            new ExactFacetSetMatcher(
-                "May 2022 (100f)",
-                new TemperatureReadingFacetSet(MAY_SECOND_2022, HUNDRED_DEGREES)),
-            new ExactFacetSetMatcher(
-                "July 2022 (120f)",
-                new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
+      // Count both "May 2022, 100 degrees" and "July 2022, 120 degrees" dimensions
+      Facets facets =
+          new MatchingFacetSetsCounts(
+              "temperature",
+              fc,
+              TemperatureReadingFacetSet::decodeTemperatureReading,
+              new ExactFacetSetMatcher(
+                  "May 2022 (100f)",
+                  new TemperatureReadingFacetSet(MAY_SECOND_2022, HUNDRED_DEGREES)),
+              new ExactFacetSetMatcher(
+                  "July 2022 (120f)",
+                  new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
 
-    // Retrieve results
-    List<FacetResult> results = Collections.singletonList(facets.getTopChildren(10, "temperature"));
-
-    indexReader.close();
-
-    return results;
+      // Retrieve results
+      return facets.getTopChildren(10, "temperature");
+    }
   }
 
   /** Counting documents which match a certain degrees value for any date. */
-  private List<FacetResult> rangeMatching() throws IOException {
-    DirectoryReader indexReader = DirectoryReader.open(indexDir);
-    IndexSearcher searcher = new IndexSearcher(indexReader);
+  private FacetResult rangeMatching() throws IOException {
+    try (DirectoryReader indexReader = DirectoryReader.open(indexDir)) {
+      IndexSearcher searcher = new IndexSearcher(indexReader);
 
-    // MatchAllDocsQuery is for "browsing" (counts facets
-    // for all non-deleted docs in the index); normally
-    // you'd use a "normal" query:
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      // MatchAllDocsQuery is for "browsing" (counts facets
+      // for all non-deleted docs in the index); normally
+      // you'd use a "normal" query:
+      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
-    // Count both "Publish Date" and "Author" dimensions
-    Facets facets =
-        new MatchingFacetSetsCounts(
-            "temperature",
-            fc,
-            TemperatureReadingFacetSet::decodeTemperatureReading,
-            new RangeFacetSetMatcher(
-                "Eighty to Hundred Degrees",
-                DimRange.fromLongs(Long.MIN_VALUE, true, Long.MAX_VALUE, true),
-                DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
+      // Count 80-100 degrees
+      Facets facets =
+          new MatchingFacetSetsCounts(
+              "temperature",
+              fc,
+              TemperatureReadingFacetSet::decodeTemperatureReading,
+              new RangeFacetSetMatcher(
+                  "Eighty to Hundred Degrees",
+                  DimRange.fromLongs(Long.MIN_VALUE, true, Long.MAX_VALUE, true),
+                  DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
 
-    // Retrieve results
-    List<FacetResult> results = Collections.singletonList(facets.getTopChildren(10, "temperature"));
-
-    indexReader.close();
-
-    return results;
+      // Retrieve results
+      return facets.getTopChildren(10, "temperature");
+    }
   }
 
   /**
@@ -155,31 +159,28 @@ public class CustomFacetSetExample {
    * FacetSetMatcher} which only considers certain dimensions (in this case only the temperature
    * one).
    */
-  private List<FacetResult> customRangeMatching() throws IOException {
-    DirectoryReader indexReader = DirectoryReader.open(indexDir);
-    IndexSearcher searcher = new IndexSearcher(indexReader);
+  private FacetResult customRangeMatching() throws IOException {
+    try (DirectoryReader indexReader = DirectoryReader.open(indexDir)) {
+      IndexSearcher searcher = new IndexSearcher(indexReader);
 
-    // MatchAllDocsQuery is for "browsing" (counts facets
-    // for all non-deleted docs in the index); normally
-    // you'd use a "normal" query:
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      // MatchAllDocsQuery is for "browsing" (counts facets
+      // for all non-deleted docs in the index); normally
+      // you'd use a "normal" query:
+      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
-    // Count both "Publish Date" and "Author" dimensions
-    Facets facets =
-        new MatchingFacetSetsCounts(
-            "temperature",
-            fc,
-            TemperatureReadingFacetSet::decodeTemperatureReading,
-            new TemperatureOnlyFacetSetMatcher(
-                "Eighty to Hundred Degrees",
-                DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
+      // Count 80-100 degrees
+      Facets facets =
+          new MatchingFacetSetsCounts(
+              "temperature",
+              fc,
+              TemperatureReadingFacetSet::decodeTemperatureReading,
+              new TemperatureOnlyFacetSetMatcher(
+                  "Eighty to Hundred Degrees",
+                  DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));
 
-    // Retrieve results
-    List<FacetResult> results = Collections.singletonList(facets.getTopChildren(10, "temperature"));
-
-    indexReader.close();
-
-    return results;
+      // Retrieve results
+      return facets.getTopChildren(10, "temperature");
+    }
   }
 
   private static long date(String dateString) {
@@ -191,19 +192,19 @@ public class CustomFacetSetExample {
   }
 
   /** Runs the exact matching example. */
-  public List<FacetResult> runExactMatching() throws IOException {
+  public FacetResult runExactMatching() throws IOException {
     index();
     return exactMatching();
   }
 
   /** Runs the range matching example. */
-  public List<FacetResult> runRangeMatching() throws IOException {
+  public FacetResult runRangeMatching() throws IOException {
     index();
     return rangeMatching();
   }
 
   /** Runs the custom range matching example. */
-  public List<FacetResult> runCustomRangeMatching() throws IOException {
+  public FacetResult runCustomRangeMatching() throws IOException {
     index();
     return customRangeMatching();
   }
@@ -214,18 +215,18 @@ public class CustomFacetSetExample {
 
     System.out.println("Exact Facet Set matching example:");
     System.out.println("-----------------------");
-    List<FacetResult> results = example.runExactMatching();
-    System.out.println("Temperature Reading: " + results.get(0));
+    FacetResult result = example.runExactMatching();
+    System.out.println("Temperature Reading: " + result);
 
     System.out.println("Range Facet Set matching example:");
     System.out.println("-----------------------");
-    results = example.runRangeMatching();
-    System.out.println("Temperature Reading: " + results.get(0));
+    result = example.runRangeMatching();
+    System.out.println("Temperature Reading: " + result);
 
     System.out.println("Custom Range Facet Set matching example:");
     System.out.println("-----------------------");
-    results = example.runCustomRangeMatching();
-    System.out.println("Temperature Reading: " + results.get(0));
+    result = example.runCustomRangeMatching();
+    System.out.println("Temperature Reading: " + result);
   }
 
   /**

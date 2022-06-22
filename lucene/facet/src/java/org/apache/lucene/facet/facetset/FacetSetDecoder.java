@@ -21,8 +21,9 @@ import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * A functional interface for decoding facet set values. You can use it by e.g. implementing a
- * static method with the same signature and then pass it as {@code YourClass::decode}.
+ * A functional interface for decoding facet set values into comparable `long` ones. You can use it
+ * by e.g. implementing a static method with the same signature and then pass it as {@code
+ * YourClass::decode}.
  *
  * @lucene.experimental
  */
@@ -30,7 +31,8 @@ public interface FacetSetDecoder {
 
   /**
    * An implementation of {@link FacetSetDecoder#decode(BytesRef, int, long[])} for long/double
-   * dimension values.
+   * dimension values which were encoded with {@link LongFacetSet} and {@link DoubleFacetSet}
+   * respectively.
    */
   static int decodeLongs(BytesRef bytesRef, int start, long[] dest) {
     LongPoint.unpack(bytesRef, start, dest);
@@ -39,7 +41,8 @@ public interface FacetSetDecoder {
 
   /**
    * An implementation of {@link FacetSetDecoder#decode(BytesRef, int, long[])} for int/float
-   * dimension values.
+   * dimension values which were encoded with {@link IntFacetSet} and {@link FloatFacetSet}
+   * respectively.
    */
   static int decodeInts(BytesRef bytesRef, int start, long[] dest) {
     for (int i = 0, offset = start; i < dest.length; i++, offset += Integer.BYTES) {

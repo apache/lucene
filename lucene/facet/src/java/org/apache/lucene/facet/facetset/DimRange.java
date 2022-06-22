@@ -18,7 +18,11 @@ package org.apache.lucene.facet.facetset;
 
 import org.apache.lucene.util.NumericUtils;
 
-/** Defines a single range in a FacetSet dimension. */
+/**
+ * Defines a single range in a {@link FacetSet} dimension.
+ *
+ * @lucene.experimental
+ */
 public class DimRange {
   /** Inclusive min */
   public final long min;
