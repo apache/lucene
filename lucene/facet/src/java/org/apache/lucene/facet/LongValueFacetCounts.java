@@ -347,15 +347,35 @@ public class LongValueFacetCounts extends Facets {
   }
 
   @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    validateDimAndPathForGetChildren(dim, path);
+    List<LabelAndValue> labelValues = new ArrayList<>();
+    for (int i = 0; i < counts.length; i++) {
+      if (counts[i] != 0) {
+        labelValues.add(new LabelAndValue(Long.toString(i), counts[i]));
+      }
+    }
+    if (hashCounts.size() != 0) {
+      for (LongIntCursor c : hashCounts) {
+        int count = c.value;
+        if (count != 0) {
+          labelValues.add(new LabelAndValue(Long.toString(c.key), c.value));
+        }
+      }
+    }
+
+    return new FacetResult(
+        field,
+        new String[0],
+        totCount,
+        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.size());
+  }
+
+  @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) {
     validateTopN(topN);
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+    validateDimAndPathForGetChildren(dim, path);
     return getTopChildrenSortByCount(topN);
   }
 
@@ -479,6 +499,16 @@ public class LongValueFacetCounts extends Facets {
       if (counts[i] != 0) {
         labelValues.add(new LabelAndValue(Long.toString(i), counts[i]));
       }
+    }
+  }
+
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
     }
   }
 

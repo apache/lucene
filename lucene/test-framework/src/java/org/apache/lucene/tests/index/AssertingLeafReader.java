@@ -1065,7 +1065,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public long docValueCount() {
+    public int docValueCount() {
       return in.docValueCount();
     }
 

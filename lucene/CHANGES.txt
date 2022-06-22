@@ -71,11 +71,13 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
+  SortedSetDocValues#docValueCount(). (Greg Miller)
 
 New Features
 ---------------------
-(No changes)
+* LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
 
 Improvements
 ---------------------
@@ -86,14 +88,25 @@ Improvements
 * LUCENE-10585: Facet module code cleanup (copy/paste scrubbing, simplification and some very minor
   optimization tweaks). (Greg Miller)
 
+* LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
+  SortedSetDocValues#docValueCount(). (Greg Miller)
+
 Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
+
+* GITHUB#961: BooleanQuery can return quick counts for simple boolean queries.
+  (Adrien Grand)
+
+* LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
 
 Bug Fixes
 ---------------------
 
 * LUCENE-10574: Prevent pathological O(N^2) merging. (Adrien Grand)
+
+* LUCENE-10584: Properly support #getSpecificValue for hierarchical dims in SSDV faceting.
+  (Greg Miller)
 
 * LUCENE-10582: Fix merging of overridden CollectionStatistics in CombinedFieldQuery (Yannick Welsch)
 
@@ -104,6 +117,10 @@ Bug Fixes
 * LUCENE-10605: Fix error in 32bit jvm object alignment gap calculation (Sun Wuqiang)
 
 * GITHUB#956: Make sure KnnVectorQuery applies search boost. (Julie Tibshirani)
+
+* LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
+
+* LUCENE-10611: Fix failure when KnnVectorQuery has very selective filter (Kaival Parikh)
 
 Other
 ---------------------
@@ -1030,6 +1047,20 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.2 =======================
+
+Bug Fixes
+---------------------
+* LUCENE-10564: Make sure SparseFixedBitSet#or updates ramBytesUsed. (Julie Tibshirani)
+
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
+
+Optimizations
+---------------------
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
 ======================= Lucene 8.11.1 =======================
 
