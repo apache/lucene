@@ -56,10 +56,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     int windowMin = min;
     main:
-    while (true) {
-      if (windowMin >= max) {
-        break;
-      }
+    while (windowMin < max) {
       int windowMax = updateMaxWindowScores(windowMin);
       windowMax = Math.min(windowMax, max);
       if (partitionScorers() == false) {
