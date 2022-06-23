@@ -33,6 +33,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -94,7 +95,12 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   private class FieldsWriter extends KnnVectorsWriter {
     private final Map<KnnVectorsFormat, WriterAndSuffix> formats;
     private final Map<String, Integer> suffixes = new HashMap<>();
+    private final Map<KnnVectorsWriter, Collection<String>> writersForFields =
+        new IdentityHashMap<>();
     private final SegmentWriteState segmentWriteState;
+
+    // if there is a single writer, cache it for faster indexing
+    private KnnVectorsWriter singleWriter;
 
     FieldsWriter(SegmentWriteState segmentWriteState) {
       this.segmentWriteState = segmentWriteState;
@@ -102,9 +108,48 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+    public void addField(FieldInfo fieldInfo) throws IOException {
+      KnnVectorsWriter writer = getInstance(fieldInfo);
+      writer.addField(fieldInfo);
+
+      Collection<String> fields = writersForFields.computeIfAbsent(writer, k -> new ArrayList<>());
+      fields.add(fieldInfo.name);
+      if (writersForFields.size() == 1) {
+        singleWriter = writer;
+      } else {
+        singleWriter = null;
+      }
+    }
+
+    @Override
+    public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue) throws IOException {
+      if (singleWriter != null) {
+        singleWriter.addValue(fieldInfo, docID, vectorValue);
+      } else {
+        for (Map.Entry<KnnVectorsWriter, Collection<String>> e : writersForFields.entrySet()) {
+          for (String field : e.getValue()) {
+            if (field.equals(fieldInfo.getName())) {
+              e.getKey().addValue(fieldInfo, docID, vectorValue);
+              return;
+            }
+          }
+        }
+        throw new AssertionError(
+            "Attempt to index uninitalized vector field [" + fieldInfo.name + "]");
+      }
+    }
+
+    @Override
+    public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+      for (WriterAndSuffix was : formats.values()) {
+        was.writer.flush(maxDoc, sortMap);
+      }
+    }
+
+    @Override
+    public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
         throws IOException {
-      getInstance(fieldInfo).writeField(fieldInfo, knnVectorsReader);
+      getInstance(fieldInfo).writeFieldForMerging(fieldInfo, knnVectorsReader);
     }
 
     @Override
@@ -180,9 +225,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
         assert suffixes.containsKey(formatName);
         suffix = writerAndSuffix.suffix;
       }
-
       field.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(suffix));
       return writerAndSuffix.writer;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      long total = 0;
+      for (KnnVectorsWriter writer : writersForFields.keySet()) {
+        total += writer.ramBytesUsed();
+      }
+      return total;
     }
   }
 

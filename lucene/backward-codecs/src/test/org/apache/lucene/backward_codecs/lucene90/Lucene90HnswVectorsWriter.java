@@ -23,13 +23,13 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorValuesWriter;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -41,7 +41,7 @@ import org.apache.lucene.util.IOUtils;
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
+public final class Lucene90HnswVectorsWriter extends VectorValuesWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
@@ -55,7 +55,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
-    assert state.fieldInfos.hasVectorValues();
     segmentWriteState = state;
 
     String metaFileName =
@@ -107,7 +106,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);

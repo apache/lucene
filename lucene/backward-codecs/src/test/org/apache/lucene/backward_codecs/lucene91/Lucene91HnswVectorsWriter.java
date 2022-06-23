@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -31,6 +30,7 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorValuesWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -43,11 +43,10 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
  *
  * @lucene.experimental
  */
-public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
+public final class Lucene91HnswVectorsWriter extends VectorValuesWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
-  private final int maxDoc;
 
   private final int maxConn;
   private final int beamWidth;
@@ -58,7 +57,6 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
-    assert state.fieldInfos.hasVectorValues();
     segmentWriteState = state;
 
     String metaFileName =
@@ -101,7 +99,6 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
           Lucene91HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      maxDoc = state.segmentInfo.maxDoc();
       success = true;
     } finally {
       if (success == false) {
@@ -111,7 +108,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
@@ -149,6 +146,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
+          maxDoc >= 0 ? maxDoc : segmentWriteState.segmentInfo.maxDoc(),
           vectorDataOffset,
           vectorDataLength,
           vectorIndexOffset,
@@ -186,6 +184,7 @@ public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
   private void writeMeta(
       FieldInfo field,
+      int maxDoc,
       long vectorDataOffset,
       long vectorDataLength,
       long vectorIndexOffset,

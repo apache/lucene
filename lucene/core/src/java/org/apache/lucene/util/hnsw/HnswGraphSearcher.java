@@ -24,6 +24,7 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
@@ -38,7 +39,7 @@ public final class HnswGraphSearcher {
    */
   private final NeighborQueue candidates;
 
-  private final BitSet visited;
+  private BitSet visited;
 
   /**
    * Creates a new graph searcher.
@@ -140,7 +141,7 @@ public final class HnswGraphSearcher {
       throws IOException {
     int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, false);
-    clearScratchState();
+    clearScratchState(vectors.size());
 
     int numVisited = 0;
     for (int ep : eps) {
@@ -203,8 +204,11 @@ public final class HnswGraphSearcher {
     return results;
   }
 
-  private void clearScratchState() {
+  private void clearScratchState(int capacity) {
     candidates.clear();
+    if (visited.length() < capacity) {
+      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
+    }
     visited.clear(0, visited.length());
   }
 }

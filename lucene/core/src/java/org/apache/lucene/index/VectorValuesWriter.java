@@ -26,233 +26,153 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
- * Buffers up pending vector value(s) per doc, then flushes when segment flushes.
+ * Buffers up pending vector value(s) per doc, then flushes when segment flushes. Used for {@code
+ * SimpleTextKnnVectorsWriter} and for vectors writers before v 9.3 .
  *
  * @lucene.experimental
  */
-class VectorValuesWriter {
+public abstract class VectorValuesWriter extends KnnVectorsWriter {
+  private FieldData[] fields;
 
-  private final FieldInfo fieldInfo;
-  private final Counter iwBytesUsed;
-  private final List<float[]> vectors = new ArrayList<>();
-  private final DocsWithFieldSet docsWithField;
+  /** Sole constructor */
+  protected VectorValuesWriter() {}
 
-  private int lastDocID = -1;
-
-  private long bytesUsed;
-
-  VectorValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed) {
-    this.fieldInfo = fieldInfo;
-    this.iwBytesUsed = iwBytesUsed;
-    this.docsWithField = new DocsWithFieldSet();
-    this.bytesUsed = docsWithField.ramBytesUsed();
-    if (iwBytesUsed != null) {
-      iwBytesUsed.addAndGet(bytesUsed);
+  @Override
+  public void addField(FieldInfo fieldInfo) throws IOException {
+    if (fields == null) {
+      fields = new FieldData[1];
+    } else {
+      FieldData[] newFields = new FieldData[fields.length + 1];
+      System.arraycopy(fields, 0, newFields, 0, fields.length);
+      fields = newFields;
     }
+    fields[fields.length - 1] = new FieldData(fieldInfo);
   }
 
-  /**
-   * Adds a value for the given document. Only a single value may be added.
-   *
-   * @param docID the value is added to this document
-   * @param vectorValue the value to add
-   * @throws IllegalArgumentException if a value has already been added to the given document
-   */
-  public void addValue(int docID, float[] vectorValue) {
-    if (docID == lastDocID) {
-      throw new IllegalArgumentException(
-          "VectorValuesField \""
-              + fieldInfo.name
-              + "\" appears more than once in this document (only one value is allowed per field)");
-    }
-    if (vectorValue.length != fieldInfo.getVectorDimension()) {
-      throw new IllegalArgumentException(
-          "Attempt to index a vector of dimension "
-              + vectorValue.length
-              + " but \""
-              + fieldInfo.name
-              + "\" has dimension "
-              + fieldInfo.getVectorDimension());
-    }
-    assert docID > lastDocID;
-    docsWithField.add(docID);
-    vectors.add(ArrayUtil.copyOfSubArray(vectorValue, 0, vectorValue.length));
-    updateBytesUsed();
-    lastDocID = docID;
-  }
-
-  private void updateBytesUsed() {
-    final long newBytesUsed =
-        docsWithField.ramBytesUsed()
-            + vectors.size()
-                * (RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                    + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-            + vectors.size() * vectors.get(0).length * Float.BYTES;
-    if (iwBytesUsed != null) {
-      iwBytesUsed.addAndGet(newBytesUsed - bytesUsed);
-    }
-    bytesUsed = newBytesUsed;
-  }
-
-  /**
-   * Flush this field's values to storage, sorting the values in accordance with sortMap
-   *
-   * @param sortMap specifies the order of documents being flushed, or null if they are to be
-   *     flushed in docid order
-   * @param knnVectorsWriter the Codec's vector writer that handles the actual encoding and I/O
-   * @throws IOException if there is an error writing the field and its values
-   */
-  public void flush(Sorter.DocMap sortMap, KnnVectorsWriter knnVectorsWriter) throws IOException {
-    KnnVectorsReader knnVectorsReader =
-        new KnnVectorsReader() {
-          @Override
-          public long ramBytesUsed() {
-            return 0;
-          }
-
-          @Override
-          public void close() throws IOException {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void checkIntegrity() throws IOException {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public VectorValues getVectorValues(String field) throws IOException {
-            VectorValues vectorValues =
-                new BufferedVectorValues(docsWithField, vectors, fieldInfo.getVectorDimension());
-            return sortMap != null ? new SortingVectorValues(vectorValues, sortMap) : vectorValues;
-          }
-
-          @Override
-          public TopDocs search(
-              String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
-              throws IOException {
-            throw new UnsupportedOperationException();
-          }
-        };
-
-    knnVectorsWriter.writeField(fieldInfo, knnVectorsReader);
-  }
-
-  static class SortingVectorValues extends VectorValues
-      implements RandomAccessVectorValuesProducer {
-
-    private final VectorValues delegate;
-    private final RandomAccessVectorValues randomAccess;
-    private final int[] docIdOffsets;
-    private final int[] ordMap;
-    private int docId = -1;
-
-    SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.delegate = delegate;
-      randomAccess = ((RandomAccessVectorValuesProducer) delegate).randomAccess();
-      docIdOffsets = new int[sortMap.size()];
-
-      int offset = 1; // 0 means no vector for this (field, document)
-      int docID;
-      while ((docID = delegate.nextDoc()) != NO_MORE_DOCS) {
-        int newDocID = sortMap.oldToNew(docID);
-        docIdOffsets[newDocID] = offset++;
+  @Override
+  public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue) throws IOException {
+    for (FieldData field : fields) {
+      if (field.fieldInfo.name.equals(fieldInfo.getName())) {
+        field.addValue(docID, vectorValue);
+        return;
       }
+    }
+    throw new AssertionError("Attempt to index to undefined vector field");
+  }
 
-      // set up ordMap to map from new dense ordinal to old dense ordinal
-      ordMap = new int[offset - 1];
-      int ord = 0;
-      for (int docIdOffset : docIdOffsets) {
-        if (docIdOffset != 0) {
-          ordMap[ord++] = docIdOffset - 1;
-        }
+  @Override
+  public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+    for (FieldData fieldData : fields) {
+      KnnVectorsReader knnVectorsReader =
+          new KnnVectorsReader() {
+            @Override
+            public long ramBytesUsed() {
+              return 0;
+            }
+
+            @Override
+            public void close() {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void checkIntegrity() {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public VectorValues getVectorValues(String field) throws IOException {
+              VectorValues vectorValues =
+                  new BufferedVectorValues(
+                      fieldData.docsWithField,
+                      fieldData.vectors,
+                      fieldData.fieldInfo.getVectorDimension());
+              return sortMap != null
+                  ? new VectorValues.SortingVectorValues(vectorValues, sortMap)
+                  : vectorValues;
+            }
+
+            @Override
+            public TopDocs search(
+                String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+              throw new UnsupportedOperationException();
+            }
+          };
+
+      writeField(fieldData.fieldInfo, knnVectorsReader, maxDoc);
+    }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long total = 0;
+    for (FieldData field : fields) {
+      total += field.ramBytesUsed();
+    }
+    return total;
+  }
+
+  @Override
+  public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    writeField(fieldInfo, knnVectorsReader, -1);
+  }
+
+  /** Write the provided field */
+  protected abstract void writeField(
+      FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc) throws IOException;
+
+  private static class FieldData implements Accountable {
+    private final FieldInfo fieldInfo;
+    private final int dim;
+    private final DocsWithFieldSet docsWithField;
+    private final List<float[]> vectors;
+
+    private int lastDocID = -1;
+
+    public FieldData(FieldInfo fieldInfo) {
+      this.fieldInfo = fieldInfo;
+      this.dim = fieldInfo.getVectorDimension();
+      this.docsWithField = new DocsWithFieldSet();
+      vectors = new ArrayList<>();
+    }
+
+    void addValue(int docID, float[] vectorValue) {
+      if (docID == lastDocID) {
+        throw new IllegalArgumentException(
+            "VectorValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
       }
-      assert ord == ordMap.length;
-    }
-
-    @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      while (docId < docIdOffsets.length - 1) {
-        ++docId;
-        if (docIdOffsets[docId] != 0) {
-          return docId;
-        }
+      if (vectorValue.length != dim) {
+        throw new IllegalArgumentException(
+            "Attempt to index a vector of dimension "
+                + vectorValue.length
+                + " but \""
+                + fieldInfo.name
+                + "\" has dimension "
+                + dim);
       }
-      docId = NO_MORE_DOCS;
-      return docId;
+      assert docID > lastDocID;
+      docsWithField.add(docID);
+      vectors.add(ArrayUtil.copyOfSubArray(vectorValue, 0, vectorValue.length));
+      lastDocID = docID;
     }
 
     @Override
-    public BytesRef binaryValue() throws IOException {
-      return randomAccess.binaryValue(docIdOffsets[docId] - 1);
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      return randomAccess.vectorValue(docIdOffsets[docId] - 1);
-    }
-
-    @Override
-    public int dimension() {
-      return delegate.dimension();
-    }
-
-    @Override
-    public int size() {
-      return delegate.size();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long cost() {
-      return size();
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
-
-      // Must make a new delegate randomAccess so that we have our own distinct float[]
-      final RandomAccessVectorValues delegateRA =
-          ((RandomAccessVectorValuesProducer) SortingVectorValues.this.delegate).randomAccess();
-
-      return new RandomAccessVectorValues() {
-
-        @Override
-        public int size() {
-          return delegateRA.size();
-        }
-
-        @Override
-        public int dimension() {
-          return delegateRA.dimension();
-        }
-
-        @Override
-        public float[] vectorValue(int targetOrd) throws IOException {
-          return delegateRA.vectorValue(ordMap[targetOrd]);
-        }
-
-        @Override
-        public BytesRef binaryValue(int targetOrd) {
-          throw new UnsupportedOperationException();
-        }
-      };
+    public long ramBytesUsed() {
+      if (vectors.size() == 0) return 0;
+      return docsWithField.ramBytesUsed()
+          + vectors.size()
+              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
+          + vectors.size() * vectors.get(0).length * Float.BYTES;
     }
   }
 

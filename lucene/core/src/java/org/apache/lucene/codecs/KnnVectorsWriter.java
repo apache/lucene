@@ -24,19 +24,31 @@ import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
-public abstract class KnnVectorsWriter implements Closeable {
+public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
   /** Sole constructor */
   protected KnnVectorsWriter() {}
 
-  /** Write all values contained in the provided reader */
-  public abstract void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+  /** Add new field for indexing */
+  public abstract void addField(FieldInfo fieldInfo) throws IOException;
+
+  /** Add new docID with its vector value to the given field for indexing */
+  public abstract void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue)
+      throws IOException;
+
+  /** Flush all buffered data on disk * */
+  public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
+
+  /** Write field for merging */
+  public abstract void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException;
 
   /** Called once at the end before close */
@@ -44,8 +56,8 @@ public abstract class KnnVectorsWriter implements Closeable {
 
   /**
    * Merges the segment vectors for all fields. This default implementation delegates to {@link
-   * #writeField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
-   * deleted documents.
+   * #writeFieldForMerging}, passing a {@link KnnVectorsReader} that combines the vector values and
+   * ignores deleted documents.
    */
   public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
@@ -62,7 +74,7 @@ public abstract class KnnVectorsWriter implements Closeable {
           mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
         }
 
-        writeField(
+        writeFieldForMerging(
             fieldInfo,
             new KnnVectorsReader() {
               @Override

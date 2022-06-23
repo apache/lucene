@@ -26,6 +26,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.TestUtil;
@@ -59,7 +60,22 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+    public void addField(FieldInfo fieldInfo) throws IOException {
+      delegate.addField(fieldInfo);
+    }
+
+    @Override
+    public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue) throws IOException {
+      delegate.addValue(fieldInfo, docID, vectorValue);
+    }
+
+    @Override
+    public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+      delegate.flush(maxDoc, sortMap);
+    }
+
+    @Override
+    public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
         throws IOException {
       assert fieldInfo != null;
       assert knnVectorsReader != null;
@@ -67,7 +83,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       // calls
       assert knnVectorsReader.getVectorValues(fieldInfo.name)
           != knnVectorsReader.getVectorValues(fieldInfo.name);
-      delegate.writeField(fieldInfo, knnVectorsReader);
+      delegate.writeFieldForMerging(fieldInfo, knnVectorsReader);
     }
 
     @Override
@@ -83,6 +99,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void close() throws IOException {
       delegate.close();
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return delegate.ramBytesUsed();
     }
   }
 

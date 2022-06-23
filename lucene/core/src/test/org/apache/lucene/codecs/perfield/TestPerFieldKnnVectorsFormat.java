@@ -41,6 +41,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -174,11 +175,29 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
       KnnVectorsWriter writer = delegate.fieldsWriter(state);
       return new KnnVectorsWriter() {
+
         @Override
-        public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+        public void addField(FieldInfo fieldInfo) throws IOException {
+          fieldsWritten.add(fieldInfo.name);
+          writer.addField(fieldInfo);
+        }
+
+        @Override
+        public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue)
+            throws IOException {
+          writer.addValue(fieldInfo, docID, vectorValue);
+        }
+
+        @Override
+        public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+          writer.flush(maxDoc, sortMap);
+        }
+
+        @Override
+        public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
             throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.writeField(fieldInfo, knnVectorsReader);
+          writer.writeFieldForMerging(fieldInfo, knnVectorsReader);
         }
 
         @Override
@@ -197,6 +216,11 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         @Override
         public void close() throws IOException {
           writer.close();
+        }
+
+        @Override
+        public long ramBytesUsed() {
+          return writer.ramBytesUsed();
         }
       };
     }
