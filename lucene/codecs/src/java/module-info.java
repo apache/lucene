@@ -16,8 +16,10 @@
  */
 
 /** Lucene codecs and postings formats */
+@SuppressWarnings({"requires-automatic", "requires-transitive-automatic"})
 module org.apache.lucene.codecs {
   requires org.apache.lucene.core;
+  requires com.github.luben.zstd_jni;
 
   exports org.apache.lucene.codecs.blockterms;
   exports org.apache.lucene.codecs.blocktreeords;
@@ -26,6 +28,7 @@ module org.apache.lucene.codecs {
   exports org.apache.lucene.codecs.simpletext;
   exports org.apache.lucene.codecs.uniformsplit;
   exports org.apache.lucene.codecs.uniformsplit.sharedterms;
+  exports org.apache.lucene.codecs.customcompression;
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat,
@@ -35,5 +38,6 @@ module org.apache.lucene.codecs {
       org.apache.lucene.codecs.uniformsplit.UniformSplitPostingsFormat,
       org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat;
   provides org.apache.lucene.codecs.Codec with
-      org.apache.lucene.codecs.simpletext.SimpleTextCodec;
+      org.apache.lucene.codecs.simpletext.SimpleTextCodec,
+      org.apache.lucene.codecs.customcompression.Lucene90CustomCompressionCodec;
 }

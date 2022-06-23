@@ -14,14 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.customcompression;
 
-apply plugin: 'java-library'
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 
-description = 'Lucene codecs and postings formats'
-
-dependencies {
-    moduleImplementation project(':lucene:core')
-    moduleImplementation 'com.github.luben:zstd-jni:1.5.0-4'
-    testImplementation project(':lucene:test-framework')
-    moduleTestImplementation project(':lucene:test-framework')
+public class TestLucene90CustomCompressionCodec extends BaseStoredFieldsFormatTestCase {
+  @Override
+  protected Codec getCodec() {
+    return new Lucene90CustomCompressionCodec();
+  }
 }
