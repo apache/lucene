@@ -14,21 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.tests.search;
 
 import java.io.IOException;
+import java.util.Collection;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.TotalHitCountCollector;
+import org.apache.lucene.search.Weight;
 
 /**
- * Just counts the total number of hits. This is the collector behind {@link IndexSearcher#count}.
- * When the {@link Weight} implements {@link Weight#count}, this collector will skip collecting
- * segments.
+ * A dummy version of {@link TotalHitCountCollector} that doesn't shortcut using {@link
+ * Weight#count}.
  */
-public class TotalHitCountCollector implements Collector {
-  private Weight weight;
+public class DummyTotalHitCountCollector implements Collector {
   private int totalHits;
 
-  /** Returns how many hits matched the search. */
+  /** Constructor */
+  public DummyTotalHitCountCollector() {}
+
+  /** Get the number of hits. */
   public int getTotalHits() {
     return totalHits;
   }
@@ -39,17 +48,7 @@ public class TotalHitCountCollector implements Collector {
   }
 
   @Override
-  public void setWeight(Weight weight) {
-    this.weight = weight;
-  }
-
-  @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-    int leafCount = weight == null ? -1 : weight.count(context);
-    if (leafCount != -1) {
-      totalHits += leafCount;
-      throw new CollectionTerminatedException();
-    }
     return new LeafCollector() {
 
       @Override
@@ -58,6 +57,26 @@ public class TotalHitCountCollector implements Collector {
       @Override
       public void collect(int doc) throws IOException {
         totalHits++;
+      }
+    };
+  }
+
+  /** Create a collector manager. */
+  public static CollectorManager<DummyTotalHitCountCollector, Integer> createManager() {
+    return new CollectorManager<DummyTotalHitCountCollector, Integer>() {
+
+      @Override
+      public DummyTotalHitCountCollector newCollector() throws IOException {
+        return new DummyTotalHitCountCollector();
+      }
+
+      @Override
+      public Integer reduce(Collection<DummyTotalHitCountCollector> collectors) throws IOException {
+        int sum = 0;
+        for (DummyTotalHitCountCollector coll : collectors) {
+          sum += coll.totalHits;
+        }
+        return sum;
       }
     };
   }
