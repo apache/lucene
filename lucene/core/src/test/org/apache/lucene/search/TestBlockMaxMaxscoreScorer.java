@@ -102,7 +102,7 @@ public class TestBlockMaxMaxscoreScorer extends LuceneTestCase {
     }
   }
 
-  public void testBasicsWithThreeDisjunctionClauses() throws Exception {
+  public void testBasicsWithThreeDisjunctionClausesNotUseBMMScorer() throws Exception {
     try (Directory dir = newDirectory()) {
       writeDocuments(dir);
 
@@ -149,41 +149,6 @@ public class TestBlockMaxMaxscoreScorer extends LuceneTestCase {
         assertEquals(1 + 3, scorer.score(), 0);
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
-      }
-    }
-  }
-
-  public void testBasicsWithMinScore() throws Exception {
-    try (Directory dir = newDirectory()) {
-      writeDocuments(dir);
-
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        IndexSearcher searcher = newSearcher(reader);
-
-        Query query =
-            new BooleanQuery.Builder()
-                .add(
-                    new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2),
-                    BooleanClause.Occur.SHOULD)
-                .add(
-                    new ConstantScoreQuery(new TermQuery(new Term("foo", "B"))),
-                    BooleanClause.Occur.SHOULD)
-                .add(
-                    new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3),
-                    BooleanClause.Occur.SHOULD)
-                .build();
-
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
-        scorer.setMinCompetitiveScore(4);
-
-        assertEquals(3, scorer.iterator().nextDoc());
-        assertEquals(2 + 1 + 3, scorer.score(), 0);
-
-        assertEquals(5, scorer.iterator().nextDoc());
-        assertEquals(1 + 3, scorer.score(), 0);
       }
     }
   }
