@@ -246,7 +246,7 @@ public final class HnswGraphBuilder {
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
           similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
-      if ((neighborSimilarity < score) == false) {
+      if (neighborSimilarity >= score) {
         return false;
       }
     }
@@ -268,7 +268,7 @@ public final class HnswGraphBuilder {
         float neighborSimilarity =
             similarityFunction.compare(cVector, buildVectors.vectorValue(neighbors.node[j]));
         // node i is too similar to node j given its score relative to the base node
-        if ((neighborSimilarity < minAcceptedSimilarity) == false) {
+        if (neighborSimilarity >= minAcceptedSimilarity) {
           return i;
         }
       }
