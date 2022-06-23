@@ -1378,9 +1378,6 @@ public final class CheckIndex implements Closeable {
       computedFieldCount++;
 
       final Terms terms = fields.terms(field);
-      if (terms == Terms.EMPTY) {
-        continue;
-      }
 
       if (terms.getDocCount() > maxDoc) {
         throw new CheckIndexException(
