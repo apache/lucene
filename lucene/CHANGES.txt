@@ -79,6 +79,9 @@ New Features
 ---------------------
 * LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
 
+* LUCENE-10274: Added facetsets module for high dimensional (hyper-rectangle) faceting
+(Shai Erera, Marc D'Mello, Greg Miller)
+
 Improvements
 ---------------------
 
