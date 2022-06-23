@@ -79,7 +79,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
 
 Improvements
 ---------------------
@@ -124,6 +124,8 @@ Bug Fixes
 
 * LUCENE-10611: Fix failure when KnnVectorQuery has very selective filter (Kaival Parikh)
 
+* LUCENE-10607: Fix potential integer overflow in maxArcs computions (Tang Donghai)
+
 Other
 ---------------------
 
@@ -131,6 +133,8 @@ Other
 
 * LUCENE-10604: Improve ability to test and debug triangulation algorithm in Tessellator.
   (Craig Taverner)
+
+* GITHUB#922: Remove unused and confusing FacetField indexing options (Gautam Worah)
 
 ======================= Lucene 9.2.0 =======================
 
@@ -1047,6 +1051,20 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.2 =======================
+
+Bug Fixes
+---------------------
+* LUCENE-10564: Make sure SparseFixedBitSet#or updates ramBytesUsed. (Julie Tibshirani)
+
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
+
+Optimizations
+---------------------
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
 ======================= Lucene 8.11.1 =======================
 
