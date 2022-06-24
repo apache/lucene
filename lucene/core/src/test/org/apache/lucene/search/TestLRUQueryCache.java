@@ -70,8 +70,8 @@ import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
+import org.junit.Ignore;
 
 public class TestLRUQueryCache extends LuceneTestCase {
 
@@ -356,11 +356,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
   // This test makes sure that by making the same assumptions as LRUQueryCache, RAMUsageTester
   // computes the same memory usage.
+  @Ignore(
+      "LUCENE-7595: RamUsageTester does not work exact in Java 9 or later (estimations for maps and lists)")
   public void testRamBytesUsedAgreesWithRamUsageTester() throws IOException {
-    assumeFalse(
-        "LUCENE-7595: RamUsageTester does not work exact in Java 9 (estimations for maps and lists)",
-        Constants.JRE_IS_MINIMUM_JAVA9);
-
     final LRUQueryCache queryCache =
         new LRUQueryCache(
             1 + random().nextInt(5),
@@ -496,11 +494,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
   // that require very little memory. In that case most of the memory is taken
   // by the cache itself, not cache entries, and we want to make sure that
   // memory usage is not grossly underestimated.
+  @Ignore(
+      "LUCENE-7595: RamUsageTester does not work exact in Java 9 or later (estimations for maps and lists)")
   public void testRamBytesUsedConstantEntryOverhead() throws IOException {
-    assumeFalse(
-        "LUCENE-7595: RamUsageTester does not work exact in Java 9 (estimations for maps and lists)",
-        Constants.JRE_IS_MINIMUM_JAVA9);
-
     final LRUQueryCache queryCache =
         new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
 
@@ -1172,9 +1168,6 @@ public class TestLRUQueryCache extends LuceneTestCase {
   }
 
   public void testDetectMutatedQueries() throws IOException {
-    LuceneTestCase.assumeFalse(
-        "LUCENE-7604: For some unknown reason the non-constant BadQuery#hashCode() does not trigger ConcurrentModificationException on Java 9 b150",
-        Constants.JRE_IS_MINIMUM_JAVA9);
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     w.addDocument(new Document());
