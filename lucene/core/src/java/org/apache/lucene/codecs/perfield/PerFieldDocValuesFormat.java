@@ -111,9 +111,9 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public void addSortedField(FieldInfo field, DocValuesProducer valuesProducer)
-        throws IOException {
-      getInstance(field).addSortedField(field, valuesProducer);
+    public void addSortedField(
+        FieldInfo field, DocValuesProducer valuesProducer, boolean primarySort) throws IOException {
+      getInstance(field).addSortedField(field, valuesProducer, primarySort);
     }
 
     @Override

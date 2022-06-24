@@ -228,7 +228,8 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   }
 
   @Override
-  public void addSortedField(FieldInfo field, DocValuesProducer valuesProducer) throws IOException {
+  public void addSortedField(FieldInfo field, DocValuesProducer valuesProducer, boolean primarySort)
+      throws IOException {
     assert fieldSeen(field.name);
     assert field.getDocValuesType() == DocValuesType.SORTED;
     writeFieldEntry(field, DocValuesType.SORTED);

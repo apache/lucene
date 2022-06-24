@@ -60,6 +60,9 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
@@ -899,6 +902,77 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     IndexReader reader = DirectoryReader.open(writer);
     LeafReader leafReader = getOnlyLeafReader(reader);
     doTestTermsDictLookupOrd(leafReader.getSortedSetDocValues("foo").termsEnum());
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  public void testSortedSetAdvanceOrd() throws IOException {
+    doTestSortedSetAdvanceOrd(false);
+  }
+
+  public void testSortedSetAdvanceOrdIndexSorted() throws IOException {
+    doTestSortedSetAdvanceOrd(true);
+  }
+
+  private void doTestSortedSetAdvanceOrd(boolean sorted) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    if (sorted) {
+      Sort indexSort = new Sort(new SortField("field", SortField.Type.STRING));
+      iwc.setIndexSort(indexSort);
+    }
+    IndexWriter writer = new IndexWriter(dir, iwc);
+    final int numDocs = atLeast(1000);
+    int termsSize = random().nextInt(1, rarely() ? numDocs : numDocs >> 6);
+    List<BytesRef> terms = new ArrayList<>(termsSize);
+    for (int i = 0; i < termsSize; i++) {
+      byte[] bytes = new byte[10];
+      random().nextBytes(bytes);
+      terms.add(new BytesRef(bytes));
+    }
+    int[] expectedCount = new int[termsSize];
+    for (int i = 0; i < numDocs; ++i) {
+      int pos = random().nextInt(termsSize);
+      SortedDocValuesField field = new SortedDocValuesField("field", terms.get(pos));
+      expectedCount[pos]++;
+      Document doc = new Document();
+      doc.add(field);
+      writer.addDocument(doc);
+      if (rarely()) {
+        writer.flush();
+      }
+    }
+    if (random().nextBoolean()) {
+      writer.forceMerge(1);
+    }
+    IndexReader reader = DirectoryReader.open(writer);
+    List<LeafReaderContext> subReaders = reader.leaves();
+    int[] count = new int[terms.size()];
+    for (LeafReaderContext leafReaderContext : subReaders) {
+      LeafReader leafReader = leafReaderContext.reader();
+      SortedSetDocValues sortedSetDocValues = DocValues.getSortedSet(leafReader, "field");
+      assertNotNull(sortedSetDocValues);
+      SortedDocValues sortedDocValues = DocValues.unwrapSingleton(sortedSetDocValues);
+      assertNotNull(sortedDocValues);
+      int doc = sortedDocValues.nextDoc();
+      int prevDoc = 0; // leafReader.docBase;
+
+      while (doc != DocIdSetIterator.NO_MORE_DOCS) {
+        int index = terms.indexOf(sortedDocValues.lookupOrd(sortedDocValues.ordValue()));
+        doc = sortedDocValues.advanceOrd();
+        if (doc != DocIdSetIterator.NO_MORE_DOCS) {
+          count[index] += doc - prevDoc;
+          prevDoc = doc;
+        } else {
+          count[index] += leafReader.numDocs() - prevDoc;
+        }
+      }
+      // make sure we don't crash when calling the reader and the reader is exhausted
+      sortedDocValues.advanceOrd();
+    }
+    assertArrayEquals(expectedCount, count);
+
     reader.close();
     writer.close();
     dir.close();

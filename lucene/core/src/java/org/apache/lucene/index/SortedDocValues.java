@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -51,6 +52,42 @@ public abstract class SortedDocValues extends DocValuesIterator {
    * @see #ordValue()
    */
   public abstract BytesRef lookupOrd(int ord) throws IOException;
+
+  /**
+   * Advances to the first beyond the current whose ordinal is distinct to the current ordinal and
+   * returns the document number itself. Exhausts the iterator and returns {@link #NO_MORE_DOCS} if
+   * theerre is no more ordinals distinct to the current one.
+   *
+   * <p>The behavior of this method is <b>undefined</b> when called with <code> target &le; current
+   * </code>, or after the iterator has exhausted. Both cases may result in unpredicted behavior.
+   *
+   * <p>When <code> target &gt; current</code> it behaves as if written:
+   *
+   * <pre class="prettyprint">
+   * int advanceOrd() {
+   *   final long ord = ordValue();
+   *   int doc = docID();
+   *   while (doc != DocIdSetIterator.NO_MORE_DOCS &amp;&amp; ordValue() == ord) {
+   *       doc = nextDoc();
+   *    }
+   *   return doc;
+   * }
+   * </pre>
+   *
+   * Some implementations are considerably more efficient than that.
+   */
+  public int advanceOrd() throws IOException {
+    int doc = docID();
+    if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+      return doc;
+    }
+    final long ord = ordValue();
+    do {
+      doc = nextDoc();
+    } while (doc != DocIdSetIterator.NO_MORE_DOCS && ordValue() == ord);
+    assert doc == docID();
+    return doc;
+  }
 
   /**
    * Returns the number of unique values.

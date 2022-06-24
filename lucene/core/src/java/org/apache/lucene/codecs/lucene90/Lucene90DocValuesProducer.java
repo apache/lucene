@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene90;
 
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.VERSION_ORDS_JUMP_TABLE;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -39,6 +40,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -252,6 +254,17 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     readNumeric(meta, entry.ordsEntry);
     entry.termsDictEntry = new TermsDictEntry();
     readTermDict(meta, entry.termsDictEntry);
+    if (version >= VERSION_ORDS_JUMP_TABLE && meta.readByte() == (byte) 1) {
+      entry.ordsJumpTableEntry = new OrdsJumpTableEntry();
+      final long termsDictSize = entry.termsDictEntry.termsDictSize;
+      final int blockShift = meta.readInt();
+      final long addressesSize =
+          (termsDictSize + (1L << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1) >>> TERMS_DICT_BLOCK_LZ4_SHIFT;
+      entry.ordsJumpTableEntry.values =
+          DirectMonotonicReader.loadMeta(meta, addressesSize, blockShift);
+      entry.ordsJumpTableEntry.start = meta.readLong();
+      entry.ordsJumpTableEntry.length = meta.readLong();
+    }
     return entry;
   }
 
@@ -371,9 +384,17 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     int maxBlockLength;
   }
 
+  private static class OrdsJumpTableEntry {
+    long start;
+
+    long length;
+    DirectMonotonicReader.Meta values;
+  }
+
   private static class SortedEntry {
     NumericEntry ordsEntry;
     TermsDictEntry termsDictEntry;
+    OrdsJumpTableEntry ordsJumpTableEntry;
   }
 
   private static class SortedSetEntry {
@@ -965,10 +986,26 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
     final SortedEntry entry;
     final TermsEnum termsEnum;
+    final OrdSupplier ordSupplier;
 
     BaseSortedDocValues(SortedEntry entry) throws IOException {
       this.entry = entry;
       this.termsEnum = termsEnum();
+      if (entry.ordsJumpTableEntry != null) {
+        final RandomAccessInput addressesSlice =
+            data.randomAccessSlice(entry.ordsJumpTableEntry.start, entry.ordsJumpTableEntry.length);
+        final DirectMonotonicReader ordsReader =
+            DirectMonotonicReader.getInstance(entry.ordsJumpTableEntry.values, addressesSlice);
+        ordSupplier =
+            () -> {
+              if (docID() == DocIdSetIterator.NO_MORE_DOCS) {
+                return DocIdSetIterator.NO_MORE_DOCS;
+              }
+              return advance((int) ordsReader.get(ordValue()));
+            };
+      } else {
+        ordSupplier = super::advanceOrd;
+      }
     }
 
     @Override
@@ -980,6 +1017,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public BytesRef lookupOrd(int ord) throws IOException {
       termsEnum.seekExact(ord);
       return termsEnum.term();
+    }
+
+    @Override
+    public int advanceOrd() throws IOException {
+      return ordSupplier.advanceOrd();
     }
 
     @Override
@@ -999,6 +1041,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public TermsEnum termsEnum() throws IOException {
       return new TermsDict(entry.termsDictEntry, data);
     }
+  }
+
+  @FunctionalInterface
+  private interface OrdSupplier {
+    int advanceOrd() throws IOException;
   }
 
   private abstract class BaseSortedSetDocValues extends SortedSetDocValues {
