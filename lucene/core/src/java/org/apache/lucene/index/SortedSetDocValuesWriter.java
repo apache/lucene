@@ -441,15 +441,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
         int maxDoc,
         Sorter.DocMap sortMap,
         SortedSetDocValues oldValues,
-        float acceptableOverheadRatio)
-        throws IOException {
-      this(maxDoc, sortMap, oldValues, acceptableOverheadRatio, START_BITS_PER_VALUE);
-    }
-
-    DocOrds(
-        int maxDoc,
-        Sorter.DocMap sortMap,
-        SortedSetDocValues oldValues,
         float acceptableOverheadRatio,
         int bitsPerValue)
         throws IOException {
