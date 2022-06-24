@@ -57,7 +57,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   private PackedLongValues finalOrdCounts;
   private int[] finalSortedValues;
   private int[] finalOrdMap;
-  int maxBitsRequired;
+  private int maxBitsRequired;
 
   SortedSetDocValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool) {
     this.fieldInfo = fieldInfo;
@@ -354,7 +354,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     private final DocOrds ords;
     private int docID = -1;
     private long ordUpto;
-    private boolean set;
     private int count;
 
     SortingSortedSetDocValues(SortedSetDocValues in, DocOrds ords) {
@@ -369,7 +368,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     @Override
     public int nextDoc() {
-      set = false;
       do {
         docID++;
         if (docID == ords.offsets.length) {
@@ -377,20 +375,20 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
         }
       } while (ords.offsets[docID] <= 0);
       ordUpto = ords.offsets[docID] - 1;
+      initCount();
       return docID;
     }
 
     @Override
     public int advance(int target) {
-      set = false;
       throw new UnsupportedOperationException("use nextDoc instead");
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      set = false;
       // needed in IndexSorter#StringSorter
       docID = target;
+      initCount();
       ordUpto = ords.offsets[docID] - 1;
       return ords.offsets[docID] > 0;
     }
@@ -402,7 +400,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     @Override
     public int docValueCount() {
-      set();
+      assert docID >= 0;
       return count;
     }
 
@@ -421,12 +419,9 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       return in.getValueCount();
     }
 
-    private void set() {
-      if (set == false) {
-        assert docID >= 0;
-        count = (int) ords.growableWriter.get(docID);
-        set = true;
-      }
+    private void initCount() {
+      assert docID >= 0;
+      count = (int) ords.growableWriter.get(docID);
     }
   }
 

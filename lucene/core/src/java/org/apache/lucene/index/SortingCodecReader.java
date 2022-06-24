@@ -483,7 +483,11 @@ public final class SortingCodecReader extends FilterCodecReader {
                 field.name,
                 () ->
                     new SortedSetDocValuesWriter.DocOrds(
-                        maxDoc(), docMap, oldDocValues, PackedInts.FAST, SortedSetDocValuesWriter.DocOrds.START_BITS_PER_VALUE)));
+                        maxDoc(),
+                        docMap,
+                        oldDocValues,
+                        PackedInts.FAST,
+                        SortedSetDocValuesWriter.DocOrds.START_BITS_PER_VALUE)));
       }
 
       @Override
