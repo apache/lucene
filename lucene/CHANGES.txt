@@ -136,6 +136,12 @@ Other
 
 * GITHUB#922: Remove unused and confusing FacetField indexing options (Gautam Worah)
 
+Build
+---------------------
+
+* GITHUB#976: Exclude Lucene's own JAR files from classpath entries in Eclipse config.
+  (Uwe Schindler)
+
 ======================= Lucene 9.2.0 =======================
 
 API Changes
