@@ -71,7 +71,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Ignore;
 
 public class TestLRUQueryCache extends LuceneTestCase {
 
@@ -356,8 +355,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
   // This test makes sure that by making the same assumptions as LRUQueryCache, RAMUsageTester
   // computes the same memory usage.
-  @Ignore(
-      "LUCENE-7595: RamUsageTester does not work exact in Java 9 or later (estimations for maps and lists)")
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7595")
   public void testRamBytesUsedAgreesWithRamUsageTester() throws IOException {
     final LRUQueryCache queryCache =
         new LRUQueryCache(
@@ -494,8 +492,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
   // that require very little memory. In that case most of the memory is taken
   // by the cache itself, not cache entries, and we want to make sure that
   // memory usage is not grossly underestimated.
-  @Ignore(
-      "LUCENE-7595: RamUsageTester does not work exact in Java 9 or later (estimations for maps and lists)")
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7595")
   public void testRamBytesUsedConstantEntryOverhead() throws IOException {
     final LRUQueryCache queryCache =
         new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
@@ -1167,6 +1164,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
   }
 
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7604")
   public void testDetectMutatedQueries() throws IOException {
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
