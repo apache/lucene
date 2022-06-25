@@ -15,17 +15,8 @@
  * limitations under the License.
  */
 
-/** Faceted indexing and search capabilities */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.facet {
-  requires com.carrotsearch.hppc;
-  requires org.apache.lucene.core;
-
-  exports org.apache.lucene.facet;
-  exports org.apache.lucene.facet.range;
-  exports org.apache.lucene.facet.sortedset;
-  exports org.apache.lucene.facet.taxonomy;
-  exports org.apache.lucene.facet.taxonomy.directory;
-  exports org.apache.lucene.facet.taxonomy.writercache;
-  exports org.apache.lucene.facet.facetset;
-}
+/**
+ * Provides FacetSets faceting capabilities which allows users to facet on high dimensional field
+ * values. See FacetSets.adoc in the docs folder for more information on usage.
+ */
+package org.apache.lucene.facet.facetset;
