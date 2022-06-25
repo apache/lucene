@@ -26,6 +26,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestExactFacetSetMatcher extends FacetTestCase {
 
@@ -98,7 +99,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
     int numMatchingDocs = 0;
     for (int i = 0; i < 100; i++) {
       Document doc = new Document();
-      int numSets = random().nextInt(1, 4);
+      int numSets = TestUtil.nextInt(random(), 1, 4);
       Collections.shuffle(allSets, random());
       LongFacetSet[] facetSets = allSets.subList(0, numSets).toArray(LongFacetSet[]::new);
       boolean matchingDoc = false;
@@ -160,7 +161,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
     int numMatchingDocs = 0;
     for (int i = 0; i < 100; i++) {
       Document doc = new Document();
-      int numSets = random().nextInt(1, 4);
+      int numSets = TestUtil.nextInt(random(), 1, 4);
       Collections.shuffle(allSets, random());
       IntFacetSet[] facetSets = allSets.subList(0, numSets).toArray(IntFacetSet[]::new);
       boolean matchingDoc = false;
@@ -222,7 +223,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
     int numMatchingDocs = 0;
     for (int i = 0; i < 100; i++) {
       Document doc = new Document();
-      int numSets = random().nextInt(1, 4);
+      int numSets = TestUtil.nextInt(random(), 1, 4);
       Collections.shuffle(allSets, random());
       DoubleFacetSet[] facetSets = allSets.subList(0, numSets).toArray(DoubleFacetSet[]::new);
       boolean matchingDoc = false;
@@ -284,7 +285,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
     int numMatchingDocs = 0;
     for (int i = 0; i < 100; i++) {
       Document doc = new Document();
-      int numSets = random().nextInt(1, 4);
+      int numSets = TestUtil.nextInt(random(), 1, 4);
       Collections.shuffle(allSets, random());
       FloatFacetSet[] facetSets = allSets.subList(0, numSets).toArray(FloatFacetSet[]::new);
       boolean matchingDoc = false;
