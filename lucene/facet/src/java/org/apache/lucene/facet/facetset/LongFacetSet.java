@@ -14,18 +14,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.facet.facetset;
 
-/** Faceted indexing and search capabilities */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.facet {
-  requires com.carrotsearch.hppc;
-  requires org.apache.lucene.core;
+/**
+ * A {@link FacetSet} which encodes long dimension values.
+ *
+ * @lucene.experimental
+ */
+public class LongFacetSet extends FacetSet {
 
-  exports org.apache.lucene.facet;
-  exports org.apache.lucene.facet.range;
-  exports org.apache.lucene.facet.sortedset;
-  exports org.apache.lucene.facet.taxonomy;
-  exports org.apache.lucene.facet.taxonomy.directory;
-  exports org.apache.lucene.facet.taxonomy.writercache;
-  exports org.apache.lucene.facet.facetset;
+  /** The raw dimension values of this facet set. */
+  public final long[] values;
+
+  /** Constructs a new instance of a facet set which stores {@code long} dimension values. */
+  public LongFacetSet(long... values) {
+    super(validateValuesAndGetNumDims(values));
+
+    this.values = values;
+  }
+
+  @Override
+  public long[] getComparableValues() {
+    return values;
+  }
+
+  private static int validateValuesAndGetNumDims(long... values) {
+    if (values == null || values.length == 0) {
+      throw new IllegalArgumentException("values cannot be null or empty");
+    }
+    return values.length;
+  }
 }
