@@ -804,9 +804,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
               public int nextDoc() throws IOException {
                 int doc = values.nextDoc();
                 if (doc != NO_MORE_DOCS) {
-                  docValueCount = 0;
+                  ords = ArrayUtil.grow(ords, values.docValueCount());
                   for (int j = 0; j < values.docValueCount(); j++) {
-                    ords = ArrayUtil.grow(ords, docValueCount + 1);
                     ords[docValueCount++] = values.nextOrd();
                   }
                   i = 0;
