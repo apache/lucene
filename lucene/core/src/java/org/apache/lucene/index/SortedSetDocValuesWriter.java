@@ -57,7 +57,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   private PackedLongValues finalOrdCounts;
   private int[] finalSortedValues;
   private int[] finalOrdMap;
-  private int maxBitsRequired;
 
   SortedSetDocValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool) {
     this.fieldInfo = fieldInfo;
@@ -116,7 +115,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       }
       lastValue = termID;
     }
-    maxBitsRequired |= count;
     // record the number of unique term ids for this doc
     if (pendingCounts != null) {
       pendingCounts.add(count);
@@ -232,7 +230,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
               sortMap,
               getValues(sortedValues, ordMap, hash, ords, ordCounts, maxCount, docsWithField),
               PackedInts.FASTEST,
-              maxBitsRequired);
+              PackedInts.bitsRequired(maxCount));
     } else {
       docOrds = null;
     }
