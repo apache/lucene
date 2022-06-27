@@ -276,11 +276,7 @@ public class FacetsConfig {
           checkSeen(seenDims, facetField.dim);
         }
         String indexFieldName = dimConfig.indexFieldName;
-        List<FacetField> fields = byField.get(indexFieldName);
-        if (fields == null) {
-          fields = new ArrayList<>();
-          byField.put(indexFieldName, fields);
-        }
+        List<FacetField> fields = byField.computeIfAbsent(indexFieldName, k -> new ArrayList<>());
         fields.add(facetField);
       }
 
@@ -291,11 +287,8 @@ public class FacetsConfig {
           checkSeen(seenDims, facetField.dim);
         }
         String indexFieldName = dimConfig.indexFieldName;
-        List<SortedSetDocValuesFacetField> fields = dvByField.get(indexFieldName);
-        if (fields == null) {
-          fields = new ArrayList<>();
-          dvByField.put(indexFieldName, fields);
-        }
+        List<SortedSetDocValuesFacetField> fields =
+            dvByField.computeIfAbsent(indexFieldName, k -> new ArrayList<>());
         fields.add(facetField);
       }
 
@@ -315,11 +308,8 @@ public class FacetsConfig {
         }
 
         String indexFieldName = dimConfig.indexFieldName;
-        List<AssociationFacetField> fields = assocByField.get(indexFieldName);
-        if (fields == null) {
-          fields = new ArrayList<>();
-          assocByField.put(indexFieldName, fields);
-        }
+        List<AssociationFacetField> fields =
+            assocByField.computeIfAbsent(indexFieldName, k -> new ArrayList<>());
         fields.add(facetField);
 
         // Best effort: detect mis-matched types in same
@@ -338,7 +328,7 @@ public class FacetsConfig {
           assocDimTypes.put(indexFieldName, type);
         } else if (!curType.equals(type)) {
           throw new IllegalArgumentException(
-              "mixing incompatible types of AssocationFacetField ("
+              "mixing incompatible types of AssociationFacetField ("
                   + curType
                   + " and "
                   + type
@@ -693,6 +683,6 @@ public class FacetsConfig {
     }
     parts.add(new String(buffer, 0, upto));
     assert !lastEscape;
-    return parts.toArray(new String[parts.size()]);
+    return parts.toArray(new String[0]);
   }
 }
