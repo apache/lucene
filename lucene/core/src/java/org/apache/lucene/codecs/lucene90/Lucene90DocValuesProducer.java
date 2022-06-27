@@ -256,14 +256,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     readTermDict(meta, entry.termsDictEntry);
     if (version >= VERSION_ORDS_JUMP_TABLE && meta.readByte() == (byte) 1) {
       entry.ordsJumpTableEntry = new OrdsJumpTableEntry();
-      final long termsDictSize = entry.termsDictEntry.termsDictSize;
-      final int blockShift = meta.readInt();
-      final long addressesSize =
-          (termsDictSize + (1L << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1) >>> TERMS_DICT_BLOCK_LZ4_SHIFT;
-      entry.ordsJumpTableEntry.values =
-          DirectMonotonicReader.loadMeta(meta, addressesSize, blockShift);
-      entry.ordsJumpTableEntry.start = meta.readLong();
-      entry.ordsJumpTableEntry.length = meta.readLong();
+      readOrdsJumpTable(meta, entry.ordsJumpTableEntry, entry.termsDictEntry.termsDictSize);
     }
     return entry;
   }
@@ -308,6 +301,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     entry.termsIndexLength = meta.readLong();
     entry.termsIndexAddressesOffset = meta.readLong();
     entry.termsIndexAddressesLength = meta.readLong();
+  }
+
+  private static void readOrdsJumpTable(
+      IndexInput meta, OrdsJumpTableEntry entry, long termsDictSize) throws IOException {
+    final int blockShift = meta.readInt();
+    entry.values = DirectMonotonicReader.loadMeta(meta, termsDictSize, blockShift);
+    entry.start = meta.readLong();
+    entry.length = meta.readLong();
   }
 
   private SortedNumericEntry readSortedNumeric(IndexInput meta) throws IOException {
