@@ -32,7 +32,6 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -92,20 +91,20 @@ public class KnnVectorQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
 
-    BitSetCollector filterCollector = null;
+    Weight filterWeight = null;
     if (filter != null) {
-      filterCollector = new BitSetCollector(reader.leaves().size());
       IndexSearcher indexSearcher = new IndexSearcher(reader);
       BooleanQuery booleanQuery =
           new BooleanQuery.Builder()
               .add(filter, BooleanClause.Occur.FILTER)
               .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
               .build();
-      indexSearcher.search(booleanQuery, filterCollector);
+      Query rewritten = indexSearcher.rewrite(booleanQuery);
+      filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
     }
 
     for (LeafReaderContext ctx : reader.leaves()) {
-      TopDocs results = searchLeaf(ctx, filterCollector);
+      TopDocs results = searchLeaf(ctx, filterWeight);
       if (ctx.docBase > 0) {
         for (ScoreDoc scoreDoc : results.scoreDocs) {
           scoreDoc.doc += ctx.docBase;
@@ -121,35 +120,53 @@ public class KnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, BitSetCollector filterCollector)
-      throws IOException {
+  private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
+    Bits liveDocs = ctx.reader().getLiveDocs();
+    int maxDoc = ctx.reader().maxDoc();
 
-    if (filterCollector == null) {
-      Bits acceptDocs = ctx.reader().getLiveDocs();
-      return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE);
+    if (filterWeight == null) {
+      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
+    }
+
+    Scorer scorer = filterWeight.scorer(ctx);
+    if (scorer == null) {
+      return NO_RESULTS;
+    }
+
+    BitSet bitSet = createBitSet(scorer.iterator(), liveDocs, maxDoc);
+    BitSetIterator filterIterator = new BitSetIterator(bitSet, bitSet.cardinality());
+
+    if (filterIterator.cost() <= k) {
+      // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
+      // must always visit at least k documents
+      return exactSearch(ctx, filterIterator);
+    }
+
+    // Perform the approximate kNN search
+    TopDocs results = approximateSearch(ctx, bitSet, (int) filterIterator.cost());
+    if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
+      return results;
     } else {
-      BitSetIterator filterIterator = filterCollector.getIterator(ctx.ord);
-      if (filterIterator == null || filterIterator.cost() == 0) {
-        return NO_RESULTS;
-      }
+      // We stopped the kNN search because it visited too many nodes, so fall back to exact search
+      return exactSearch(ctx, filterIterator);
+    }
+  }
 
-      if (filterIterator.cost() <= k) {
-        // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
-        // must always visit at least k documents
-        return exactSearch(ctx, filterIterator);
-      }
-
-      // Perform the approximate kNN search
-      Bits acceptDocs =
-          filterIterator.getBitSet(); // The filter iterator already incorporates live docs
-      int visitedLimit = (int) filterIterator.cost();
-      TopDocs results = approximateSearch(ctx, acceptDocs, visitedLimit);
-      if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-        return results;
-      } else {
-        // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-        return exactSearch(ctx, filterIterator);
-      }
+  private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
+      throws IOException {
+    if (liveDocs == null && iterator instanceof BitSetIterator) {
+      // If we already have a BitSet and no deletions, reuse the BitSet
+      return ((BitSetIterator) iterator).getBitSet();
+    } else {
+      // Create a new BitSet from matching and live docs
+      FilteredDocIdSetIterator filterIterator =
+          new FilteredDocIdSetIterator(iterator) {
+            @Override
+            protected boolean match(int doc) {
+              return liveDocs == null || liveDocs.get(doc);
+            }
+          };
+      return BitSet.of(filterIterator, maxDoc);
     }
   }
 
@@ -200,47 +217,6 @@ public class KnnVectorQuery extends Query {
 
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
     return new TopDocs(totalHits, topScoreDocs);
-  }
-
-  private static class BitSetCollector extends SimpleCollector {
-
-    private final BitSet[] bitSets;
-    private final int[] cost;
-    private int ord;
-
-    private BitSetCollector(int numLeaves) {
-      this.bitSets = new BitSet[numLeaves];
-      this.cost = new int[bitSets.length];
-    }
-
-    /**
-     * Return an iterator whose {@link BitSet} contains the matching documents, and whose {@link
-     * BitSetIterator#cost()} is the exact cardinality. If the leaf was never visited, then return
-     * null.
-     */
-    public BitSetIterator getIterator(int contextOrd) {
-      if (bitSets[contextOrd] == null) {
-        return null;
-      }
-      return new BitSetIterator(bitSets[contextOrd], cost[contextOrd]);
-    }
-
-    @Override
-    public void collect(int doc) throws IOException {
-      bitSets[ord].set(doc);
-      cost[ord]++;
-    }
-
-    @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      bitSets[context.ord] = new FixedBitSet(context.reader().maxDoc());
-      ord = context.ord;
-    }
-
-    @Override
-    public org.apache.lucene.search.ScoreMode scoreMode() {
-      return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
-    }
   }
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
