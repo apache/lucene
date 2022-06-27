@@ -16,20 +16,17 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.search.ScorerUtil.costWithMinShouldMatch;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
 /** Scorer implementing Block-Max Maxscore algorithm */
 public class BlockMaxMaxscoreScorer extends Scorer {
   private final ScoreMode scoreMode;
-  private final int scalingFactor;
 
   // current doc ID of the leads
   private int doc;
@@ -40,22 +37,19 @@ public class BlockMaxMaxscoreScorer extends Scorer {
   // heap of scorers ordered by doc ID
   private final DisiPriorityQueue essentialsScorers;
   // list of scorers ordered by maxScore
-  private final List<DisiWrapper> maxScoreSortedEssentialScorers;
-
-  // list of scorers whose sum of maxScore is less than minCompetitiveScore, ordered by maxScore
-  private final List<DisiWrapper> nonEssentialScorers;
+  private final LinkedList<DisiWrapper> maxScoreSortedEssentialScorers;
 
   private final DisiWrapper[] allScorers;
 
   // sum of max scores of scorers in nonEssentialScorers list
-  private long nonEssentialMaxScoreSum;
+  private float nonEssentialMaxScoreSum;
 
   private long cost;
 
   private final MaxScoreSumPropagator maxScoreSumPropagator;
 
   // scaled min competitive score
-  private long minCompetitiveScore = 0;
+  private float minCompetitiveScore = 0;
 
   /**
    * Constructs a Scorer
@@ -71,29 +65,21 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
     this.scoreMode = scoreMode;
     this.doc = -1;
-    this.cost =
-        costWithMinShouldMatch(
-            scorers.stream().map(Scorer::iterator).mapToLong(DocIdSetIterator::cost),
-            scorers.size(),
-            1);
 
-    essentialsScorers = new DisiPriorityQueue(scorers.size());
-    maxScoreSortedEssentialScorers = new LinkedList<>();
-    nonEssentialScorers = new ArrayList<>(scorers.size());
+    this.allScorers = new DisiWrapper[scorers.size()];
+    int i = 0;
+    this.essentialsScorers = new DisiPriorityQueue(scorers.size());
+    this.maxScoreSortedEssentialScorers = new LinkedList<>();
 
-    // this logic copied the one used in WANDScorer - may need to be extracted out from WANDScorer
-    double maxScoreSumDouble = 0;
+    long cost = 0;
     for (Scorer scorer : scorers) {
-      scorer.advanceShallow(0);
-      float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
-      maxScoreSumDouble += maxScore;
+      DisiWrapper w = new DisiWrapper(scorer);
+      cost += w.cost;
+      allScorers[i++] = w;
     }
-    maxScoreSumPropagator = new MaxScoreSumPropagator(scorers);
-    final float maxScoreSum = maxScoreSumPropagator.scoreSumUpperBound(maxScoreSumDouble);
-    scalingFactor = WANDScorer.scalingFactor(maxScoreSum);
 
-    allScorers = scorers.stream().map(DisiWrapper::new).toArray(DisiWrapper[]::new);
-    Collections.addAll(nonEssentialScorers, allScorers);
+    this.cost = cost;
+    maxScoreSumPropagator = new MaxScoreSumPropagator(scorers);
   }
 
   @Override
@@ -153,22 +139,21 @@ public class BlockMaxMaxscoreScorer extends Scorer {
                 } else if (top.doc > upTo) {
                   target = upTo + 1;
                 } else {
-                  long matchedMaxScoreSum = nonEssentialMaxScoreSum;
-
-                  for (DisiWrapper w : nonEssentialScorers) {
-                    if (w.doc > top.doc) {
-                      // this scorer won't be able to contribute score on top.doc, hence taking off
-                      // maxScore
-                      matchedMaxScoreSum -= w.maxScore;
-                    }
-                  }
+                  float matchedMaxScoreSum = nonEssentialMaxScoreSum;
 
                   for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
-                    matchedMaxScoreSum += WANDScorer.scaleMaxScore(w.scorer.score(), scalingFactor);
+                    matchedMaxScoreSum += w.scorer.score();
                   }
 
                   if (matchedMaxScoreSum < minCompetitiveScore) {
-                    target = top.doc + 1;
+                    // skip straight to next candidate doc from essential scorer
+                    int docId = top.doc;
+                    do {
+                      top.doc = top.iterator.nextDoc();
+                      top = essentialsScorers.updateTop();
+                    } while (top.doc == docId);
+
+                    target = top.doc;
                   } else {
                     return doc = top.doc;
                   }
@@ -178,18 +163,16 @@ public class BlockMaxMaxscoreScorer extends Scorer {
           }
 
           private void movePotentiallyNonCompetitiveScorers() {
-            boolean isListAdjusted = false;
             while (maxScoreSortedEssentialScorers.size() > 0
-                && nonEssentialMaxScoreSum + maxScoreSortedEssentialScorers.get(0).maxScore
+                && nonEssentialMaxScoreSum + maxScoreSortedEssentialScorers.get(0).maxScoreFloat
                     < minCompetitiveScore) {
-              DisiWrapper nextLeastContributingScorer = maxScoreSortedEssentialScorers.remove(0);
-              nonEssentialMaxScoreSum += nextLeastContributingScorer.maxScore;
-              nonEssentialScorers.add(nextLeastContributingScorer);
-
-              isListAdjusted = true;
+              DisiWrapper nextLeastContributingScorer =
+                  maxScoreSortedEssentialScorers.removeFirst();
+              nonEssentialMaxScoreSum += nextLeastContributingScorer.maxScoreFloat;
             }
 
-            if (isListAdjusted) {
+            // list adjusted
+            if (essentialsScorers.size() != maxScoreSortedEssentialScorers.size()) {
               essentialsScorers.clear();
               for (DisiWrapper w : maxScoreSortedEssentialScorers) {
                 essentialsScorers.add(w);
@@ -219,11 +202,11 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
             for (DisiWrapper w : allScorers) {
               if (w.doc <= upTo) {
-                w.maxScore = WANDScorer.scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
+                w.maxScoreFloat = w.scorer.getMaxScore(upTo);
               } else {
                 // This scorer won't be able to contribute to match for target, setting its maxScore
                 // to 0 so it goes into nonEssentialList
-                w.maxScore = 0;
+                w.maxScoreFloat = 0;
               }
             }
           }
@@ -231,16 +214,14 @@ public class BlockMaxMaxscoreScorer extends Scorer {
           private void repartitionLists() {
             essentialsScorers.clear();
             maxScoreSortedEssentialScorers.clear();
-            nonEssentialScorers.clear();
-            Arrays.sort(allScorers, (w1, w2) -> Long.compare(w1.maxScore, w2.maxScore));
+            Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxScoreFloat));
 
             // Re-partition the scorers into non-essential list and essential list, as defined in
             // the "Optimizing Top-k Document Retrieval Strategies for Block-Max Indexes" paper.
             nonEssentialMaxScoreSum = 0;
             for (DisiWrapper w : allScorers) {
-              if (nonEssentialMaxScoreSum + w.maxScore < minCompetitiveScore) {
-                nonEssentialScorers.add(w);
-                nonEssentialMaxScoreSum += w.maxScore;
+              if (nonEssentialMaxScoreSum + w.maxScoreFloat < minCompetitiveScore) {
+                nonEssentialMaxScoreSum += w.maxScoreFloat;
               } else {
                 maxScoreSortedEssentialScorers.add(w);
                 essentialsScorers.add(w);
@@ -258,13 +239,13 @@ public class BlockMaxMaxscoreScorer extends Scorer {
     return new TwoPhaseIterator(approximation) {
       @Override
       public boolean matches() throws IOException {
-        return WANDScorer.scaleMaxScore(score(), scalingFactor) >= minCompetitiveScore;
+        return score() >= minCompetitiveScore;
       }
 
       @Override
       public float matchCost() {
         // maximum number of scorer that matches() might advance
-        return nonEssentialScorers.size();
+        return allScorers.length - essentialsScorers.size();
       }
     };
   }
@@ -293,18 +274,16 @@ public class BlockMaxMaxscoreScorer extends Scorer {
   public float score() throws IOException {
     double sum = 0;
 
-    for (DisiWrapper s = essentialsScorers.topList(); s != null; s = s.next) {
-      assert s.doc == doc : s.doc + " " + doc;
-      sum += s.scorer.score();
-    }
-    for (DisiWrapper s : nonEssentialScorers) {
-      if (s.doc < doc) {
-        s.doc = s.iterator.advance(doc);
+    for (DisiWrapper w : allScorers) {
+      if (w.doc < doc) {
+        w.doc = w.iterator.advance(doc);
       }
-      if (s.doc == doc) {
-        sum += s.scorer.score();
+
+      if (w.doc == doc) {
+        sum += w.scorer.score();
       }
     }
+
     return (float) sum;
   }
 
@@ -329,10 +308,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
     assert scoreMode == ScoreMode.TOP_SCORES
         : "minCompetitiveScore can only be set for ScoreMode.TOP_SCORES, but got: " + scoreMode;
     assert minScore >= 0;
-    long scaledMinScore = WANDScorer.scaleMinScore(minScore, scalingFactor);
-    // minScore increases monotonically
-    assert scaledMinScore >= minCompetitiveScore;
-    minCompetitiveScore = scaledMinScore;
+    minCompetitiveScore = minScore;
     maxScoreSumPropagator.setMinCompetitiveScore(minScore);
   }
 }

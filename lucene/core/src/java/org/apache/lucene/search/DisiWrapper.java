@@ -39,6 +39,9 @@ public class DisiWrapper {
   // For WANDScorer
   long maxScore;
 
+  // For BMMScorer
+  float maxScoreFloat;
+
   public DisiWrapper(Scorer scorer) {
     this.scorer = scorer;
     this.iterator = scorer.iterator();

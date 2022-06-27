@@ -118,6 +118,21 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
           leadCost);
     }
 
+    // pure two terms disjunction
+    if (scoreMode == ScoreMode.TOP_SCORES
+        && minShouldMatch == 0
+        && subs.get(Occur.FILTER).isEmpty()
+        && subs.get(Occur.MUST).isEmpty()
+        && subs.get(Occur.MUST_NOT).isEmpty()
+        && subs.get(Occur.SHOULD).size() == 2) {
+
+      final List<Scorer> optionalScorers = new ArrayList<>();
+      for (ScorerSupplier scorer : subs.get(Occur.SHOULD)) {
+        optionalScorers.add(scorer.get(leadCost));
+      }
+      return new BlockMaxMaxscoreScorer(weight, optionalScorers, scoreMode);
+    }
+
     // pure disjunction
     if (subs.get(Occur.FILTER).isEmpty() && subs.get(Occur.MUST).isEmpty()) {
       return excl(
@@ -238,9 +253,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
       //
       // However, as WANDScorer uses more complex algorithm and data structure, we would like to
       // still use DisjunctionSumScorer to handle exhaustive pure disjunctions, which may be faster
-      if (optionalScorers.size() == 2 && scoreMode == ScoreMode.TOP_SCORES && minShouldMatch == 0) {
-        return new BlockMaxMaxscoreScorer(weight, optionalScorers, scoreMode);
-      } else if (scoreMode == ScoreMode.TOP_SCORES || minShouldMatch > 1) {
+      if (scoreMode == ScoreMode.TOP_SCORES || minShouldMatch > 1) {
         return new WANDScorer(weight, optionalScorers, minShouldMatch, scoreMode);
       } else {
         return new DisjunctionSumScorer(weight, optionalScorers, scoreMode);

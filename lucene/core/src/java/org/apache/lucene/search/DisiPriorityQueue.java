@@ -124,10 +124,8 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
   }
 
   /** Clear the heap. */
-  void clear() {
-    for (int i = 0; i < size; ++i) {
-      heap[i] = null;
-    }
+  public void clear() {
+    Arrays.fill(heap, null);
     size = 0;
   }
 
