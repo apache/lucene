@@ -352,6 +352,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     private final DocOrds ords;
     private int docID = -1;
     private long ordUpto;
+    private long limit;
     private int count;
 
     SortingSortedSetDocValues(SortedSetDocValues in, DocOrds ords) {
@@ -372,7 +373,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
           return docID = NO_MORE_DOCS;
         }
       } while (ords.offsets[docID] <= 0);
-      ordUpto = ords.offsets[docID] - 1;
       initCount();
       return docID;
     }
@@ -387,13 +387,16 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       // needed in IndexSorter#StringSorter
       docID = target;
       initCount();
-      ordUpto = ords.offsets[docID] - 1;
       return ords.offsets[docID] > 0;
     }
 
     @Override
     public long nextOrd() {
-      return ords.ords.get(ordUpto++);
+      if (limit == ordUpto) {
+        return NO_MORE_ORDS;
+      } else {
+        return ords.ords.get(ordUpto++);
+      }
     }
 
     @Override
@@ -419,7 +422,9 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     private void initCount() {
       assert docID >= 0;
+      ordUpto = ords.offsets[docID] - 1;
       count = (int) ords.docValueCounts.get(docID);
+      limit = ordUpto + count;
     }
   }
 

@@ -836,8 +836,9 @@ public abstract class DocValuesConsumer implements Closeable {
         int docID;
         while ((docID = dv.nextDoc()) != NO_MORE_DOCS) {
           if (liveDocs.get(docID)) {
-            for (int i = 0; i < dv.docValueCount(); i++) {
-              bitset.set(dv.nextOrd());
+            long ord;
+            while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+              bitset.set(ord);
             }
           }
         }
