@@ -126,7 +126,7 @@ public class FieldExistsQuery extends Query {
           break;
         }
       } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
-        if (leaf.getVectorValues(field).size() != reader.maxDoc()) {
+        if (leaf.getVectorValues(field).size() != leaf.maxDoc()) {
           allReadersRewritable = false;
           break;
         }
