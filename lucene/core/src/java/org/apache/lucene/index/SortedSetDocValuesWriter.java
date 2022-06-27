@@ -419,14 +419,14 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     private void initCount() {
       assert docID >= 0;
-      count = (int) ords.growableWriter.get(docID);
+      count = (int) ords.docValueCounts.get(docID);
     }
   }
 
   static final class DocOrds {
     final long[] offsets;
     final PackedLongValues ords;
-    final GrowableWriter growableWriter;
+    final GrowableWriter docValueCounts;
 
     public static final int START_BITS_PER_VALUE = 2;
 
@@ -439,7 +439,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
         throws IOException {
       offsets = new long[maxDoc];
       PackedLongValues.Builder builder = PackedLongValues.packedBuilder(acceptableOverheadRatio);
-      growableWriter = new GrowableWriter(bitsPerValue, maxDoc, acceptableOverheadRatio);
+      docValueCounts = new GrowableWriter(bitsPerValue, maxDoc, acceptableOverheadRatio);
       long ordOffset = 1;
       int docID;
       while ((docID = oldValues.nextDoc()) != NO_MORE_DOCS) {
@@ -450,7 +450,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
           builder.add(ord);
           ordOffset++;
         }
-        growableWriter.set(newDocID, ordOffset - startOffset);
+        docValueCounts.set(newDocID, ordOffset - startOffset);
         if (startOffset != ordOffset) { // do we have any values?
           offsets[newDocID] = startOffset;
         }
