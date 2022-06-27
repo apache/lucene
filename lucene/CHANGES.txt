@@ -131,6 +131,8 @@ Bug Fixes
 
 * LUCENE-10607: Fix potential integer overflow in maxArcs computions (Tang Donghai)
 
+* GITHUB#986: Fix FieldExistsQuery rewrite when all docs have vectors. (Julie Tibshirani)
+
 Other
 ---------------------
 
