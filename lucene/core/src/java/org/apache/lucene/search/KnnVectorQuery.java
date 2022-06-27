@@ -125,17 +125,15 @@ public class KnnVectorQuery extends Query {
     int maxDoc = ctx.reader().maxDoc();
 
     if (filterWeight == null) {
-      // If there is no prefilter
       return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
     if (scorer == null) {
-      // If there are no matching docs
       return NO_RESULTS;
     }
 
-    BitSet bitSet = cacheIntoBitSet(scorer.iterator(), liveDocs, maxDoc);
+    BitSet bitSet = createBitSet(scorer.iterator(), liveDocs, maxDoc);
     BitSetIterator filterIterator = new BitSetIterator(bitSet, bitSet.cardinality());
 
     if (filterIterator.cost() <= k) {
@@ -154,7 +152,7 @@ public class KnnVectorQuery extends Query {
     }
   }
 
-  private BitSet cacheIntoBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
+  private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
       throws IOException {
     if (liveDocs == null && iterator instanceof BitSetIterator bitSetIterator) {
       // If we already have a BitSet and no deletions, reuse the BitSet

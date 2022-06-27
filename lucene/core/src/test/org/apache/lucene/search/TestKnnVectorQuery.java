@@ -702,6 +702,36 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /**
+   * Test that KnnVectorQuery optimizes the case where the filter query is backed by {@link
+   * BitSetIterator}.
+   */
+  public void testBitSetQuery() throws IOException {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, iwc)) {
+      final int numDocs = 100;
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new KnnVectorField("vector", randomVector(dim)));
+        w.addDocument(d);
+      }
+      w.commit();
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
+        expectThrows(
+            UnsupportedOperationException.class,
+            () ->
+                searcher.search(
+                    new KnnVectorQuery("vector", randomVector(dim), 10, filter), numDocs));
+      }
+    }
+  }
+
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   private Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
@@ -798,32 +828,6 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     @Override
     public CacheHelper getCoreCacheHelper() {
       return in.getCoreCacheHelper();
-    }
-  }
-
-  public void testBitSetQuery() throws IOException {
-    IndexWriterConfig iwc = newIndexWriterConfig();
-    try (Directory dir = newDirectory();
-        IndexWriter w = new IndexWriter(dir, iwc)) {
-      final int numDocs = 100;
-      final int dim = 30;
-      for (int i = 0; i < numDocs; ++i) {
-        Document d = new Document();
-        d.add(new KnnVectorField("vector", randomVector(dim)));
-        w.addDocument(d);
-      }
-      w.commit();
-
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-
-        Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
-        expectThrows(
-            UnsupportedOperationException.class,
-            () ->
-                searcher.search(
-                    new KnnVectorQuery("vector", randomVector(dim), 10, filter), numDocs));
-      }
     }
   }
 

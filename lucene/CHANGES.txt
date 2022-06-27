@@ -102,7 +102,7 @@ Optimizations
 
 * LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
 
-* LUCENE-10606: Optimize prefilter hit collection for BitSet backed queries (Kaival Parikh)
+* LUCENE-10606: For KnnVectorQuery, optimize case where filter is backed by BitSetIterator (Kaival Parikh)
 
 Bug Fixes
 ---------------------
