@@ -23,14 +23,15 @@ public final class Constants {
   /** JVM vendor info. */
   public static final String JVM_VENDOR = System.getProperty("java.vm.vendor");
 
+  /** JVM vendor name. */
+  public static final String JVM_NAME = System.getProperty("java.vm.name");
+
   /**
    * Get the full version string of the current runtime.
    *
    * @deprecated To detect Java versions use {@link Runtime#version()}
    */
   @Deprecated public static final String JVM_VERSION = Runtime.version().toString();
-
-  public static final String JVM_NAME = System.getProperty("java.vm.name");
 
   /**
    * Gets the specification version of the current runtime. This is the feature version converted to
@@ -42,8 +43,12 @@ public final class Constants {
   @Deprecated
   public static final String JVM_SPEC_VERSION = Integer.toString(Runtime.version().feature());
 
-  /** The value of <code>System.getProperty("java.version")</code>. * */
-  public static final String JAVA_VERSION = System.getProperty("java.version");
+  /**
+   * The value of <code>System.getProperty("java.version")</code>.
+   *
+   * @deprecated To detect Java versions use {@link Runtime#version()}
+   */
+  @Deprecated public static final String JAVA_VERSION = System.getProperty("java.version");
 
   /** The value of <code>System.getProperty("os.name")</code>. * */
   public static final String OS_NAME = System.getProperty("os.name");
@@ -58,8 +63,13 @@ public final class Constants {
   /** True iff running on FreeBSD */
   public static final boolean FREE_BSD = OS_NAME.startsWith("FreeBSD");
 
+  /** The value of <code>System.getProperty("os.arch") */
   public static final String OS_ARCH = System.getProperty("os.arch");
+
+  /** The value of <code>System.getProperty("os.version") */
   public static final String OS_VERSION = System.getProperty("os.version");
+
+  /** The value of <code>System.getProperty("java.vendor") */
   public static final String JAVA_VENDOR = System.getProperty("java.vendor");
 
   /** True iff running on a 64bit JVM */
