@@ -129,6 +129,8 @@ Bug Fixes
 
 * GITHUB#986: Fix FieldExistsQuery rewrite when all docs have vectors. (Julie Tibshirani)
 
+* LUCENE-10623: Error implementation of docValueCount for SortingSortedSetDocValues (Lu Xugang)
+
 Other
 ---------------------
 
