@@ -91,7 +91,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     boolean thresholdCheck(int doc) throws IOException {
       if (collectedAllCompetitiveHits || reverseMul * comparator.compareBottom(doc) <= 0) {
         // since docs are visited in doc Id order, if compare is 0, it means
-        // this document is largest than anything else in the queue, and
+        // this document is larger than anything else in the queue, and
         // therefore not competitive.
         if (searchSortPartOfIndexSort) {
           if (hitsThresholdChecker.isThresholdReached()) {

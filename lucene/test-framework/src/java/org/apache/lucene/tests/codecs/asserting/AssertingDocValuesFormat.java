@@ -189,11 +189,8 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
         }
 
         long lastOrd = -1;
-        while (true) {
+        for (int i = 0; i < values.docValueCount(); i++) {
           long ord = values.nextOrd();
-          if (ord == SortedSetDocValues.NO_MORE_ORDS) {
-            break;
-          }
           assert ord >= 0 && ord < valueCount
               : "ord=" + ord + " is not in bounds 0 .." + (valueCount - 1);
           assert ord > lastOrd : "ord=" + ord + ",lastOrd=" + lastOrd;

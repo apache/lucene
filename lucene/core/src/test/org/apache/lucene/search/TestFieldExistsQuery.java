@@ -626,13 +626,18 @@ public class TestFieldExistsQuery extends LuceneTestCase {
   public void testKnnVectorAllDocsHaveField() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
-      Document doc = new Document();
-      doc.add(new KnnVectorField("vector", randomVector(3)));
-      iw.addDocument(doc);
+      for (int i = 0; i < 100; ++i) {
+        Document doc = new Document();
+        doc.add(new KnnVectorField("vector", randomVector(5)));
+        iw.addDocument(doc);
+      }
       iw.commit();
+
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = newSearcher(reader);
-        assertEquals(1, searcher.count(new FieldExistsQuery("vector")));
+        Query query = new FieldExistsQuery("vector");
+        assertTrue(searcher.rewrite(query) instanceof MatchAllDocsQuery);
+        assertEquals(100, searcher.count(query));
       }
     }
   }
