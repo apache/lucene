@@ -63,13 +63,13 @@ public final class Constants {
   /** True iff running on FreeBSD */
   public static final boolean FREE_BSD = OS_NAME.startsWith("FreeBSD");
 
-  /** The value of <code>System.getProperty("os.arch") */
+  /** The value of <code>System.getProperty("os.arch")</code>. */
   public static final String OS_ARCH = System.getProperty("os.arch");
 
-  /** The value of <code>System.getProperty("os.version") */
+  /** The value of <code>System.getProperty("os.version")</code>. */
   public static final String OS_VERSION = System.getProperty("os.version");
 
-  /** The value of <code>System.getProperty("java.vendor") */
+  /** The value of <code>System.getProperty("java.vendor")</code>. */
   public static final String JAVA_VENDOR = System.getProperty("java.vendor");
 
   /** True iff running on a 64bit JVM */
