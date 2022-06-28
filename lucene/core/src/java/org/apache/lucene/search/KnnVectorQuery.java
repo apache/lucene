@@ -197,7 +197,7 @@ public class KnnVectorQuery extends Query {
       assert vectorDoc == doc;
       float[] vector = vectorValues.vectorValue();
 
-      float score = similarityFunction.convertToScore(similarityFunction.compare(vector, target));
+      float score = similarityFunction.compare(vector, target);
       if (score >= topDoc.score) {
         topDoc.score = score;
         topDoc.doc = doc;
