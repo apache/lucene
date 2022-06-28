@@ -226,12 +226,14 @@ public class SortedSetSelector {
 
     private void setOrd() throws IOException {
       if (docID() != NO_MORE_DOCS) {
-        while (true) {
-          long nextOrd = in.nextOrd();
-          if (nextOrd == NO_MORE_ORDS) {
-            break;
+        int docValueCount = in.docValueCount();
+        if (docValueCount == 0) {
+          ord = (int) NO_MORE_ORDS;
+        } else {
+          for (int i = 0; i < docValueCount - 1; i++) {
+            in.nextOrd();
           }
-          ord = (int) nextOrd;
+          ord = (int) in.nextOrd();
         }
       } else {
         ord = (int) NO_MORE_ORDS;
@@ -304,25 +306,19 @@ public class SortedSetSelector {
 
     private void setOrd() throws IOException {
       if (docID() != NO_MORE_DOCS) {
-        int upto = 0;
-        while (true) {
-          long nextOrd = in.nextOrd();
-          if (nextOrd == NO_MORE_ORDS) {
-            break;
-          }
-          if (upto == ords.length) {
-            ords = ArrayUtil.grow(ords);
-          }
-          ords[upto++] = (int) nextOrd;
-        }
-
-        if (upto == 0) {
+        int docValueCount = in.docValueCount();
+        if (docValueCount == 0) {
           // iterator should not have returned this docID if it has no ords:
           assert false;
           ord = (int) NO_MORE_ORDS;
-        } else {
-          ord = ords[(upto - 1) >>> 1];
+          return;
         }
+
+        ords = ArrayUtil.grow(ords, docValueCount);
+        for (int i = 0; i < docValueCount; i++) {
+          ords[i] = (int) in.nextOrd();
+        }
+        ord = ords[(docValueCount - 1) >>> 1];
       } else {
         ord = (int) NO_MORE_ORDS;
       }
@@ -394,25 +390,19 @@ public class SortedSetSelector {
 
     private void setOrd() throws IOException {
       if (docID() != NO_MORE_DOCS) {
-        int upto = 0;
-        while (true) {
-          long nextOrd = in.nextOrd();
-          if (nextOrd == NO_MORE_ORDS) {
-            break;
-          }
-          if (upto == ords.length) {
-            ords = ArrayUtil.grow(ords);
-          }
-          ords[upto++] = (int) nextOrd;
-        }
-
-        if (upto == 0) {
+        int docValueCount = in.docValueCount();
+        if (docValueCount == 0) {
           // iterator should not have returned this docID if it has no ords:
           assert false;
           ord = (int) NO_MORE_ORDS;
-        } else {
-          ord = ords[upto >>> 1];
+          return;
         }
+
+        ords = ArrayUtil.grow(ords, docValueCount);
+        for (int i = 0; i < docValueCount; i++) {
+          ords[i] = (int) in.nextOrd();
+        }
+        ord = ords[docValueCount >>> 1];
       } else {
         ord = (int) NO_MORE_ORDS;
       }

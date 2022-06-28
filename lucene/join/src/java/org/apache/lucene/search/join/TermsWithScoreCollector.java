@@ -214,8 +214,8 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
     public void collect(int doc) throws IOException {
       if (docValues.advanceExact(doc)) {
         long ord;
-        while ((ord = docValues.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          int termID = collectedTerms.add(docValues.lookupOrd(ord));
+        for (int i = 0; i < docValues.docValueCount(); i++) {
+          int termID = collectedTerms.add(docValues.lookupOrd(docValues.nextOrd()));
           if (termID < 0) {
             termID = -termID - 1;
           } else {
@@ -261,8 +261,8 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
       public void collect(int doc) throws IOException {
         if (docValues.advanceExact(doc)) {
           long ord;
-          while ((ord = docValues.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-            int termID = collectedTerms.add(docValues.lookupOrd(ord));
+          for (int i = 0; i < docValues.docValueCount(); i++) {
+            int termID = collectedTerms.add(docValues.lookupOrd(docValues.nextOrd()));
             if (termID < 0) {
               termID = -termID - 1;
             } else {

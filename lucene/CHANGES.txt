@@ -93,7 +93,7 @@ Improvements
 * LUCENE-10585: Facet module code cleanup (copy/paste scrubbing, simplification and some very minor
   optimization tweaks). (Greg Miller)
 
-* LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
+* LUCENE-10603: Update SortedSetDocValues iteration within production code to use
   SortedSetDocValues#docValueCount(). (Greg Miller)
 
 Optimizations

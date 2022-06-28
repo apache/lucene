@@ -67,8 +67,8 @@ abstract class TermsCollector<DV> extends DocValuesTermsCollector<DV> {
         docValues.advance(doc);
       }
       if (doc == docValues.docID()) {
-        while ((ord = docValues.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-          final BytesRef term = docValues.lookupOrd(ord);
+        for (int i = 0; i < docValues.docValueCount(); i++) {
+          final BytesRef term = docValues.lookupOrd(docValues.nextOrd());
           collectorTerms.add(term);
         }
       }

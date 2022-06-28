@@ -3354,9 +3354,9 @@ public final class CheckIndex implements Closeable {
             "advanceExact reports different value count: " + count + " != " + count2);
       }
       long lastOrd = -1;
-      long ord;
+      long ord = -1;
       int ordCount = 0;
-      while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+      for (int i = 0; i < count; i++) {
         if (count != dv.docValueCount()) {
           throw new CheckIndexException(
               "value count changed from "
@@ -3365,6 +3365,7 @@ public final class CheckIndex implements Closeable {
                   + dv.docValueCount()
                   + " during iterating over all values");
         }
+        ord = dv.nextOrd();
         long ord2 = dv2.nextOrd();
         if (ord != ord2) {
           throw new CheckIndexException(
@@ -3382,6 +3383,7 @@ public final class CheckIndex implements Closeable {
         seenOrds.set(ord);
         ordCount++;
       }
+
       if (dv.docValueCount() != dv2.docValueCount()) {
         throw new CheckIndexException(
             "dv and dv2 report different values count after iterating over all values: "
