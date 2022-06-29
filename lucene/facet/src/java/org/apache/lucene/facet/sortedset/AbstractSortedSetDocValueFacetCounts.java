@@ -76,48 +76,16 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   @Override
   public FacetResult getAllChildren(String dim, String... path) throws IOException {
     FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
-
-    // Determine the path ord and resolve an iterator to its immediate children. The logic for this
-    // depends on whether-or-not the dimension is configured as hierarchical:
-    final int pathOrd;
-    final PrimitiveIterator.OfInt childIterator;
-    if (dimConfig.hierarchical) {
-      DimTree dimTree = state.getDimTree(dim);
-      if (path.length > 0) {
-        pathOrd = (int) dv.lookupTerm(new BytesRef(FacetsConfig.pathToString(dim, path)));
-      } else {
-        // If there's no path, this is a little more efficient to just look up the dim:
-        pathOrd = dimTree.dimStartOrd;
-      }
-      if (pathOrd < 0) {
-        // path was never indexed
-        return null;
-      }
-      childIterator = dimTree.iterator(pathOrd);
-    } else {
-      if (path.length > 0) {
-        throw new IllegalArgumentException(
-            "Field is not configured as hierarchical, path should be 0 length");
-      }
-      OrdRange ordRange = state.getOrdRange(dim);
-      if (ordRange == null) {
-        // means dimension was never indexed
-        return null;
-      }
-      pathOrd = ordRange.start;
-      childIterator = ordRange.iterator();
-      if (dimConfig.multiValued && dimConfig.requireDimCount) {
-        // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
-        // the dimension and we need to skip past it so the iterator is positioned on the first
-        // child:
-        childIterator.next();
-      }
+    ChildIterationCursor iterationCursor = prepareChildIteration(dim, dimConfig, path);
+    if (iterationCursor == null) {
+      return null;
     }
+
     // Compute the actual results:
     int pathCount = 0;
     List<LabelAndValue> labelValues = new ArrayList<>();
-    while (childIterator.hasNext()) {
-      int ord = childIterator.next();
+    while (iterationCursor.childIterator.hasNext()) {
+      int ord = iterationCursor.childIterator.next();
       int count = getCount(ord);
       if (count > 0) {
         pathCount += count;
@@ -127,18 +95,8 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       }
     }
 
-    if (dimConfig.hierarchical) {
-      pathCount = getCount(pathOrd);
-    } else {
-      // see if pathCount is actually reliable or needs to be reset
-      if (dimConfig.multiValued) {
-        if (dimConfig.requireDimCount) {
-          pathCount = getCount(pathOrd);
-        } else {
-          pathCount = -1; // pathCount is inaccurate at this point, so set it to -1
-        }
-      }
-    }
+    pathCount = adjustPathCountIfNecessary(dimConfig, iterationCursor.pathOrd, pathCount);
+
     return new FacetResult(
         dim, path, pathCount, labelValues.toArray(new LabelAndValue[0]), labelValues.size());
   }
@@ -277,69 +235,11 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   abstract int getCount(int ord);
 
   /**
-   * Compute the top-n children for the given path and iterator of all immediate children of the
-   * path. This returns an intermediate result that does the minimal required work, avoiding the
-   * cost of looking up string labels, etc.
+   * Determine the path ord and resolve an iterator to its immediate children. The logic for this
+   * depends on whether-or-not the dimension is configured as hierarchical.
    */
-  TopChildrenForPath computeTopChildren(
-      PrimitiveIterator.OfInt childOrds, int topN, DimConfig dimConfig, int pathOrd) {
-    TopOrdAndIntQueue q = null;
-    int bottomCount = 0;
-    int pathCount = 0;
-    int childCount = 0;
-
-    TopOrdAndIntQueue.OrdAndValue reuse = null;
-    while (childOrds.hasNext()) {
-      int ord = childOrds.next();
-      int count = getCount(ord);
-      if (count > 0) {
-        pathCount += count;
-        childCount++;
-        if (count > bottomCount) {
-          if (reuse == null) {
-            reuse = new TopOrdAndIntQueue.OrdAndValue();
-          }
-          reuse.ord = ord;
-          reuse.value = count;
-          if (q == null) {
-            // Lazy init, so we don't create this for the
-            // sparse case unnecessarily
-            q = new TopOrdAndIntQueue(topN);
-          }
-          reuse = q.insertWithOverflow(reuse);
-          if (q.size() == topN) {
-            bottomCount = q.top().value;
-          }
-        }
-      }
-    }
-
-    if (dimConfig.hierarchical) {
-      pathCount = getCount(pathOrd);
-    } else {
-      // see if pathCount is actually reliable or needs to be reset
-      if (dimConfig.multiValued) {
-        if (dimConfig.requireDimCount) {
-          pathCount = getCount(pathOrd);
-        } else {
-          pathCount = -1; // pathCount is inaccurate at this point, so set it to -1
-        }
-      }
-    }
-
-    return new TopChildrenForPath(pathCount, childCount, q);
-  }
-
-  /**
-   * Determine the top-n children for a specified dimension + path. Results are in an intermediate
-   * form.
-   */
-  TopChildrenForPath getTopChildrenForPath(int topN, String dim, String... path)
-      throws IOException {
-    FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
-
-    // Determine the path ord and resolve an iterator to its immediate children. The logic for this
-    // depends on whether-or-not the dimension is configured as hierarchical:
+  private ChildIterationCursor prepareChildIteration(
+      String dim, DimConfig dimConfig, String... path) throws IOException {
     final int pathOrd;
     final PrimitiveIterator.OfInt childIterator;
     if (dimConfig.hierarchical) {
@@ -375,16 +275,96 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       }
     }
 
+    return new ChildIterationCursor(pathOrd, childIterator);
+  }
+
+  /**
+   * Determine the top-n children for a specified dimension + path. Results are in an intermediate
+   * form.
+   */
+  private TopChildrenForPath getTopChildrenForPath(int topN, String dim, String... path)
+      throws IOException {
+    FacetsConfig.DimConfig dimConfig = stateConfig.getDimConfig(dim);
+    ChildIterationCursor iterationCursor = prepareChildIteration(dim, dimConfig, path);
+    if (iterationCursor == null) {
+      return null;
+    }
+
     // Compute the actual results:
-    return computeTopChildren(childIterator, topN, dimConfig, pathOrd);
+    return computeTopChildren(
+        iterationCursor.childIterator, topN, dimConfig, iterationCursor.pathOrd);
+  }
+
+  /**
+   * Compute the top-n children for the given path and iterator of all immediate children of the
+   * path. This returns an intermediate result that does the minimal required work, avoiding the
+   * cost of looking up string labels, etc.
+   */
+  private TopChildrenForPath computeTopChildren(
+      PrimitiveIterator.OfInt childOrds, int topN, DimConfig dimConfig, int pathOrd) {
+    TopOrdAndIntQueue q = null;
+    int bottomCount = 0;
+    int pathCount = 0;
+    int childCount = 0;
+
+    TopOrdAndIntQueue.OrdAndValue reuse = null;
+    while (childOrds.hasNext()) {
+      int ord = childOrds.next();
+      int count = getCount(ord);
+      if (count > 0) {
+        pathCount += count;
+        childCount++;
+        if (count > bottomCount) {
+          if (reuse == null) {
+            reuse = new TopOrdAndIntQueue.OrdAndValue();
+          }
+          reuse.ord = ord;
+          reuse.value = count;
+          if (q == null) {
+            // Lazy init, so we don't create this for the
+            // sparse case unnecessarily
+            q = new TopOrdAndIntQueue(topN);
+          }
+          reuse = q.insertWithOverflow(reuse);
+          if (q.size() == topN) {
+            bottomCount = q.top().value;
+          }
+        }
+      }
+    }
+
+    pathCount = adjustPathCountIfNecessary(dimConfig, pathOrd, pathCount);
+
+    return new TopChildrenForPath(pathCount, childCount, q);
+  }
+
+  private int adjustPathCountIfNecessary(DimConfig dimConfig, int pathOrd, int computedCount) {
+    if (dimConfig.hierarchical) {
+      // hierarchical dims index all path counts directly:
+      return getCount(pathOrd);
+    } else {
+      if (dimConfig.multiValued) {
+        if (dimConfig.requireDimCount) {
+          // multi-value dims configured to "require dim counts" also index path counts directly:
+          return getCount(pathOrd);
+        } else {
+          // we're unable to produce accurate counts for multi-value dims that are _not_ configured
+          // to "require dim counts":
+          return -1;
+        }
+      } else {
+        // aggregated counts are correct for single-valued, non-hierarchical dims:
+        return computedCount;
+      }
+    }
   }
 
   /**
    * Create a FacetResult for the provided dim + path and intermediate results. Does the extra work
    * of resolving ordinals -> labels, etc. Will return null if there are no children.
    */
-  FacetResult createFacetResult(TopChildrenForPath topChildrenForPath, String dim, String... path)
-      throws IOException {
+  private FacetResult createFacetResult(
+      TopChildrenForPath topChildrenForPath, String dim, String... path) throws IOException {
     // If the intermediate result is null or there are no children, we return null:
     if (topChildrenForPath == null || topChildrenForPath.childCount == 0) {
       return null;
@@ -426,6 +406,16 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     DimValue(String dim, int value) {
       this.dim = dim;
       this.value = value;
+    }
+  }
+
+  static final class ChildIterationCursor {
+    final int pathOrd;
+    final PrimitiveIterator.OfInt childIterator;
+
+    ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {
+      this.pathOrd = pathOrd;
+      this.childIterator = childIterator;
     }
   }
 }
