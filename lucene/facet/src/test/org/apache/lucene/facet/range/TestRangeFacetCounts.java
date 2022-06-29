@@ -458,6 +458,9 @@ public class TestRangeFacetCounts extends FacetTestCase {
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
     IndexSearcher s = newSearcher(r, false, false);
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    s.setTimeout(null);
 
     if (VERBOSE) {
       System.out.println("TEST: searcher=" + s);
@@ -1555,6 +1558,9 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = writer.getReader();
 
     IndexSearcher s = newSearcher(r, false, false);
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    s.setTimeout(null);
     FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     final DoubleRange[] ranges =

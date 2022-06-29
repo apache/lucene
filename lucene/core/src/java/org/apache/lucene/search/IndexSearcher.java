@@ -85,7 +85,11 @@ public class IndexSearcher {
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
   private QueryTimeout queryTimeout = null;
-  private boolean partialResult = false;
+  // TODO: does partialResult need to be volatile? It can be set on one of the threads of the
+  // executor, but maybe the fact that we join threads guarantees that changes to this variable
+  // become visible on the main thread? In any case, a volatile read in #timedOut shouldn't have a
+  // significant performance impact.
+  private volatile boolean partialResult = false;
 
   static {
     final int maxCachedQueries = 1000;
@@ -487,7 +491,8 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
-  public void setTimeout(QueryTimeout queryTimeout) throws IOException {
+  /** Set a {@link QueryTimeout} for all searches that run through this {@link IndexSearcher}. */
+  public void setTimeout(QueryTimeout queryTimeout) {
     this.queryTimeout = queryTimeout;
   }
 
@@ -514,9 +519,11 @@ public class IndexSearcher {
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
   }
 
+  /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
   public boolean timedOut() {
     return partialResult;
   }
+
   /**
    * Search implementation with arbitrary sorting, plus control over whether hit scores and max
    * score should be computed. Finds the top <code>n</code> hits for <code>query</code>, and sorting
@@ -730,29 +737,25 @@ public class IndexSearcher {
       }
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
-        if (queryTimeout != null) {
-          TimeLimitingBulkScorer timeLimitingBulkScorer =
-              new TimeLimitingBulkScorer(scorer, queryTimeout);
-          try {
-            timeLimitingBulkScorer.score(leafCollector, ctx.reader().getLiveDocs());
-          } catch (
-              @SuppressWarnings("unused")
-              TimeLimitingBulkScorer.TimeExceededException e) {
-            partialResult = true;
-          }
-        } else {
-          try {
-            scorer.score(leafCollector, ctx.reader().getLiveDocs());
-          } catch (
-              @SuppressWarnings("unused")
-              CollectionTerminatedException e) {
-            // collection was terminated prematurely
-            // continue with the following leaf
-          }
+        if (queryTimeout != null && queryTimeout.isTimeoutEnabled()) {
+          scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
+        }
+        try {
+          scorer.score(leafCollector, ctx.reader().getLiveDocs());
+        } catch (
+            @SuppressWarnings("unused")
+            CollectionTerminatedException e) {
+          // collection was terminated prematurely
+          // continue with the following leaf
+        } catch (
+            @SuppressWarnings("unused")
+            TimeLimitingBulkScorer.TimeExceededException e) {
+          partialResult = true;
         }
       }
     }
   }
+
   /**
    * Expert: called to re-write queries into primitive queries.
    *
