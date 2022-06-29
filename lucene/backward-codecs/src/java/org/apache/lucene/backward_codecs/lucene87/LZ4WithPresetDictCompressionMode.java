@@ -22,6 +22,8 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -84,7 +86,14 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     }
 
     @Override
-    public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+    public void decompress(
+        DataInput in,
+        int originalLength,
+        int offset,
+        int length,
+        BytesRef bytes,
+        FieldInfos fieldInfos,
+        StoredFieldVisitor visitor)
         throws IOException {
       assert offset + length <= originalLength;
 

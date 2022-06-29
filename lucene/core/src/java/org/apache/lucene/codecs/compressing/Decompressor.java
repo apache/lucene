@@ -17,6 +17,8 @@
 package org.apache.lucene.codecs.compressing;
 
 import java.io.IOException;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BytesRef;
 
@@ -40,7 +42,14 @@ public abstract class Decompressor implements Cloneable {
    * @param bytes a {@link BytesRef} where to store the decompressed data
    */
   public abstract void decompress(
-      DataInput in, int originalLength, int offset, int length, BytesRef bytes) throws IOException;
+      DataInput in,
+      int originalLength,
+      int offset,
+      int length,
+      BytesRef bytes,
+      FieldInfos fieldInfos,
+      StoredFieldVisitor visitor)
+      throws IOException;
 
   @Override
   public abstract Decompressor clone();

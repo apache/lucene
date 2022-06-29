@@ -69,7 +69,7 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
       throws IOException {
     final BytesRef bytes = new BytesRef();
     decompressor.decompress(
-        new ByteArrayDataInput(compressed), originalLength, 0, originalLength, bytes);
+        new ByteArrayDataInput(compressed), originalLength, 0, originalLength, bytes, null, null);
     return BytesRef.deepCopyOf(bytes).bytes;
   }
 
@@ -78,7 +78,7 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
     Decompressor decompressor = mode.newDecompressor();
     final BytesRef bytes = new BytesRef();
     decompressor.decompress(
-        new ByteArrayDataInput(compressed), originalLength, offset, length, bytes);
+        new ByteArrayDataInput(compressed), originalLength, offset, length, bytes, null, null);
     return BytesRef.deepCopyOf(bytes).bytes;
   }
 

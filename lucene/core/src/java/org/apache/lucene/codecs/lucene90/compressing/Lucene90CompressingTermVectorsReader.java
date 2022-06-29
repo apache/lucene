@@ -683,7 +683,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         totalLen + totalPayloadLength,
         docOff + payloadOff,
         docLen + payloadLen,
-        suffixBytes);
+        suffixBytes,
+        null,
+        null);
     suffixBytes.length = docLen;
     final BytesRef payloadBytes =
         new BytesRef(suffixBytes.bytes, suffixBytes.offset + docLen, payloadLen);

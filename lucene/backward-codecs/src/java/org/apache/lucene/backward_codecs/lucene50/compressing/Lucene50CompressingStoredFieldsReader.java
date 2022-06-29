@@ -578,14 +578,14 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
           bytes.offset = bytes.length = 0;
           for (int decompressed = 0; decompressed < totalLength; ) {
             final int toDecompress = Math.min(totalLength - decompressed, chunkSize);
-            decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, spare);
+            decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, spare, null, null);
             bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + spare.length);
             System.arraycopy(spare.bytes, spare.offset, bytes.bytes, bytes.length, spare.length);
             bytes.length += spare.length;
             decompressed += toDecompress;
           }
         } else {
-          decompressor.decompress(fieldsStream, totalLength, 0, totalLength, bytes);
+          decompressor.decompress(fieldsStream, totalLength, 0, totalLength, bytes, null, null);
         }
         if (bytes.length != totalLength) {
           throw new CorruptIndexException(
@@ -627,7 +627,13 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
       } else if (sliced) {
         fieldsStream.seek(startPointer);
         decompressor.decompress(
-            fieldsStream, chunkSize, offset, Math.min(length, chunkSize - offset), bytes);
+            fieldsStream,
+            chunkSize,
+            offset,
+            Math.min(length, chunkSize - offset),
+            bytes,
+            null,
+            null);
         documentInput =
             new DataInput() {
 
@@ -639,7 +645,8 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
                   throw new EOFException();
                 }
                 final int toDecompress = Math.min(length - decompressed, chunkSize);
-                decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, bytes);
+                decompressor.decompress(
+                    fieldsStream, toDecompress, 0, toDecompress, bytes, null, null);
                 decompressed += toDecompress;
               }
 
@@ -680,7 +687,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
             };
       } else {
         fieldsStream.seek(startPointer);
-        decompressor.decompress(fieldsStream, totalLength, offset, length, bytes);
+        decompressor.decompress(fieldsStream, totalLength, offset, length, bytes, null, null);
         assert bytes.length == length;
         documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset, bytes.length);
       }

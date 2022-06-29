@@ -262,7 +262,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  private static void skipField(DataInput in, int bits) throws IOException {
+  public static void skipField(DataInput in, int bits) throws IOException {
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
       case STRING:
@@ -490,14 +490,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           bytes.offset = bytes.length = 0;
           for (int decompressed = 0; decompressed < totalLength; ) {
             final int toDecompress = Math.min(totalLength - decompressed, chunkSize);
-            decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, spare);
+            decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, spare, null, null);
             bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + spare.length);
             System.arraycopy(spare.bytes, spare.offset, bytes.bytes, bytes.length, spare.length);
             bytes.length += spare.length;
             decompressed += toDecompress;
           }
         } else {
-          decompressor.decompress(fieldsStream, totalLength, 0, totalLength, bytes);
+          decompressor.decompress(fieldsStream, totalLength, 0, totalLength, bytes, null, null);
         }
         if (bytes.length != totalLength) {
           throw new CorruptIndexException(
@@ -512,6 +512,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
      * current block.
      */
     SerializedDocument document(int docID) throws IOException {
+      return document(docID, null, null);
+    }
+
+    SerializedDocument document(int docID, FieldInfos fieldInfos, StoredFieldVisitor visitor)
+        throws IOException {
       if (contains(docID) == false) {
         throw new IllegalArgumentException();
       }
@@ -539,7 +544,13 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       } else if (sliced) {
         fieldsStream.seek(startPointer);
         decompressor.decompress(
-            fieldsStream, chunkSize, offset, Math.min(length, chunkSize - offset), bytes);
+            fieldsStream,
+            chunkSize,
+            offset,
+            Math.min(length, chunkSize - offset),
+            bytes,
+            null,
+            null);
         documentInput =
             new DataInput() {
 
@@ -551,7 +562,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
                   throw new EOFException();
                 }
                 final int toDecompress = Math.min(length - decompressed, chunkSize);
-                decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, bytes);
+                decompressor.decompress(
+                    fieldsStream, toDecompress, 0, toDecompress, bytes, null, null);
                 decompressed += toDecompress;
               }
 
@@ -592,7 +604,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
             };
       } else {
         fieldsStream.seek(startPointer);
-        decompressor.decompress(fieldsStream, totalLength, offset, length, bytes);
+        decompressor.decompress(
+            fieldsStream, totalLength, offset, length, bytes, fieldInfos, visitor);
         assert bytes.length == length;
         documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset, bytes.length);
       }
@@ -601,13 +614,17 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  SerializedDocument document(int docID) throws IOException {
+  SerializedDocument document(int docID, StoredFieldVisitor visitor) throws IOException {
     if (state.contains(docID) == false) {
       fieldsStream.seek(indexReader.getStartPointer(docID));
       state.reset(docID);
     }
     assert state.contains(docID);
-    return state.document(docID);
+    return state.document(docID, fieldInfos, visitor);
+  }
+
+  SerializedDocument document(int docID) throws IOException {
+    return document(docID, null);
   }
 
   /** Checks if a given docID was loaded in the current block state. */
@@ -625,8 +642,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   @Override
   public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
 
-    final SerializedDocument doc = document(docID);
+    final SerializedDocument doc = document(docID, visitor);
 
+    int fieldsVisited = 0;
     for (int fieldIDX = 0; fieldIDX < doc.numStoredFields; fieldIDX++) {
       final long infoAndBits = doc.in.readVLong();
       final int fieldNumber = (int) (infoAndBits >>> TYPE_BITS);
@@ -635,8 +653,10 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       final int bits = (int) (infoAndBits & TYPE_MASK);
       assert bits <= NUMERIC_DOUBLE : "bits=" + Integer.toHexString(bits);
 
-      switch (visitor.needsField(fieldInfo)) {
+      StoredFieldVisitor.Status needsField = visitor.needsField(fieldInfo);
+      switch (needsField) {
         case YES:
+          fieldsVisited++;
           readField(doc.in, visitor, fieldInfo, bits);
           break;
         case NO:
@@ -648,6 +668,10 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           break;
         case STOP:
           return;
+      }
+
+      if (!visitor.hasMoreFieldsToVisit(fieldsVisited)) {
+        return;
       }
     }
   }

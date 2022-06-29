@@ -62,7 +62,13 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
           return new Decompressor() {
             @Override
             public void decompress(
-                DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+                DataInput in,
+                int originalLength,
+                int offset,
+                int length,
+                BytesRef bytes,
+                FieldInfos fieldInfos,
+                StoredFieldVisitor visitor)
                 throws IOException {
               bytes.bytes = ArrayUtil.grow(bytes.bytes, length);
               in.skipBytes(offset);

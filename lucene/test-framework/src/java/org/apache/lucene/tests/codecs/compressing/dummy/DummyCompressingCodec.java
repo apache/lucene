@@ -20,6 +20,8 @@ import java.io.IOException;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
@@ -55,7 +57,13 @@ public class DummyCompressingCodec extends CompressingCodec {
 
         @Override
         public void decompress(
-            DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+            DataInput in,
+            int originalLength,
+            int offset,
+            int length,
+            BytesRef bytes,
+            FieldInfos fieldInfos,
+            StoredFieldVisitor visitor)
             throws IOException {
           assert offset + length <= originalLength;
           if (bytes.bytes.length < originalLength) {
