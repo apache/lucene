@@ -213,7 +213,6 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
     @Override
     public void collect(int doc) throws IOException {
       if (docValues.advanceExact(doc)) {
-        long ord;
         for (int i = 0; i < docValues.docValueCount(); i++) {
           int termID = collectedTerms.add(docValues.lookupOrd(docValues.nextOrd()));
           if (termID < 0) {
@@ -260,7 +259,6 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
       @Override
       public void collect(int doc) throws IOException {
         if (docValues.advanceExact(doc)) {
-          long ord;
           for (int i = 0; i < docValues.docValueCount(); i++) {
             int termID = collectedTerms.add(docValues.lookupOrd(docValues.nextOrd()));
             if (termID < 0) {

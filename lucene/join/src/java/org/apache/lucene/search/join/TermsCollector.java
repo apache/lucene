@@ -62,7 +62,6 @@ abstract class TermsCollector<DV> extends DocValuesTermsCollector<DV> {
 
     @Override
     public void collect(int doc) throws IOException {
-      long ord;
       if (doc > docValues.docID()) {
         docValues.advance(doc);
       }

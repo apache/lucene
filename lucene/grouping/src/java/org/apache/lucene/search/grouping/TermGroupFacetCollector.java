@@ -275,7 +275,6 @@ public abstract class TermGroupFacetCollector extends GroupFacetCollector {
       }
       boolean empty = true;
       if (doc == facetFieldDocTermOrds.docID()) {
-        long ord;
         for (int i = 0; i < facetFieldDocTermOrds.docValueCount(); i++) {
           process(groupOrd, (int) facetFieldDocTermOrds.nextOrd());
           empty = false;
