@@ -26,8 +26,6 @@ import java.util.List;
 
 /** Scorer implementing Block-Max Maxscore algorithm */
 public class BlockMaxMaxscoreScorer extends Scorer {
-  private final ScoreMode scoreMode;
-
   // current doc ID of the leads
   private int doc;
 
@@ -51,31 +49,30 @@ public class BlockMaxMaxscoreScorer extends Scorer {
   // scaled min competitive score
   private float minCompetitiveScore = 0;
 
+  private int cachedScoredDoc = -1;
+  private float cachedScore = 0;
+
   /**
-   * Constructs a Scorer
+   * Constructs a Scorer that scores doc based on Block-Max-Maxscore (BMM) algorithm
+   * http://engineering.nyu.edu/~suel/papers/bmm.pdf . This algorithm has lower overhead compared to
+   * WANDScorer, and could be used for simple disjunction queries.
    *
    * @param weight The weight to be used.
    * @param scorers The sub scorers this Scorer should iterate on for optional clauses
-   * @param scoreMode The scoreMode
    */
-  public BlockMaxMaxscoreScorer(Weight weight, List<Scorer> scorers, ScoreMode scoreMode)
-      throws IOException {
+  public BlockMaxMaxscoreScorer(Weight weight, List<Scorer> scorers) throws IOException {
     super(weight);
-    assert scoreMode == ScoreMode.TOP_SCORES;
 
-    this.scoreMode = scoreMode;
     this.doc = -1;
-
     this.allScorers = new DisiWrapper[scorers.size()];
-    int i = 0;
     this.essentialsScorers = new DisiPriorityQueue(scorers.size());
     this.maxScoreSortedEssentialScorers = new LinkedList<>();
 
     long cost = 0;
-    for (Scorer scorer : scorers) {
-      DisiWrapper w = new DisiWrapper(scorer);
+    for (int i = 0; i < scorers.size(); i++) {
+      DisiWrapper w = new DisiWrapper(scorers.get(i));
       cost += w.cost;
-      allScorers[i++] = w;
+      allScorers[i] = w;
     }
 
     this.cost = cost;
@@ -139,13 +136,13 @@ public class BlockMaxMaxscoreScorer extends Scorer {
                 } else if (top.doc > upTo) {
                   target = upTo + 1;
                 } else {
-                  float matchedMaxScoreSum = nonEssentialMaxScoreSum;
+                  double matchedMaxScoreSum = nonEssentialMaxScoreSum;
 
                   for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
                     matchedMaxScoreSum += w.scorer.score();
                   }
 
-                  if (matchedMaxScoreSum < minCompetitiveScore) {
+                  if ((float) matchedMaxScoreSum < minCompetitiveScore) {
                     // skip straight to next candidate doc from essential scorer
                     int docId = top.doc;
                     do {
@@ -196,6 +193,11 @@ public class BlockMaxMaxscoreScorer extends Scorer {
             // reset upTo
             upTo = -1;
             for (DisiWrapper w : allScorers) {
+              // using Math.max here is a good approach when there are only two clauses,
+              // but when this scorer is used for more than two clauses, we may need to
+              // consider other approaches such as avg, as the further out the boundary,
+              // the higher maxScore would be for a scorer, which makes skipping based on
+              // comparison with minCompetitiveScore harder / less effective.
               upTo = Math.max(w.scorer.advanceShallow(Math.max(w.doc, target)), upTo);
             }
             assert target <= upTo;
@@ -237,6 +239,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
         };
 
     return new TwoPhaseIterator(approximation) {
+
       @Override
       public boolean matches() throws IOException {
         return score() >= minCompetitiveScore;
@@ -244,8 +247,8 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
       @Override
       public float matchCost() {
-        // maximum number of scorer that matches() might advance
-        return allScorers.length - essentialsScorers.size();
+        // over-estimate
+        return allScorers.length;
       }
     };
   }
@@ -272,19 +275,26 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
   @Override
   public float score() throws IOException {
-    double sum = 0;
+    if (doc == cachedScoredDoc) {
+      return cachedScore;
+    } else {
+      double sum = 0;
 
-    for (DisiWrapper w : allScorers) {
-      if (w.doc < doc) {
-        w.doc = w.iterator.advance(doc);
+      for (DisiWrapper w : allScorers) {
+        if (w.doc < doc) {
+          w.doc = w.iterator.advance(doc);
+        }
+
+        if (w.doc == doc) {
+          sum += w.scorer.score();
+        }
       }
 
-      if (w.doc == doc) {
-        sum += w.scorer.score();
-      }
+      cachedScoredDoc = doc;
+      cachedScore = (float) sum;
+
+      return cachedScore;
     }
-
-    return (float) sum;
   }
 
   @Override
@@ -305,8 +315,6 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
   @Override
   public void setMinCompetitiveScore(float minScore) throws IOException {
-    assert scoreMode == ScoreMode.TOP_SCORES
-        : "minCompetitiveScore can only be set for ScoreMode.TOP_SCORES, but got: " + scoreMode;
     assert minScore >= 0;
     minCompetitiveScore = minScore;
     maxScoreSumPropagator.setMinCompetitiveScore(minScore);

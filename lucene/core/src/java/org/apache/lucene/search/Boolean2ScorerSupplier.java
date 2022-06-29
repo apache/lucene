@@ -130,7 +130,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
       for (ScorerSupplier scorer : subs.get(Occur.SHOULD)) {
         optionalScorers.add(scorer.get(leadCost));
       }
-      return new BlockMaxMaxscoreScorer(weight, optionalScorers, scoreMode);
+      return new BlockMaxMaxscoreScorer(weight, optionalScorers);
     }
 
     // pure disjunction
