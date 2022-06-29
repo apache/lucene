@@ -51,14 +51,14 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *
  * @lucene.experimental
  */
-public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
+public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
 
-  Lucene92HnswVectorsReader(SegmentReadState state) throws IOException {
+  Lucene93HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;

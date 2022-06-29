@@ -146,7 +146,7 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene92HnswVectorsReader(state);
+    return new Lucene93HnswVectorsReader(state);
   }
 
   @Override
