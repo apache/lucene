@@ -37,6 +37,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Term;
@@ -83,6 +84,8 @@ public class IndexSearcher {
   static int maxClauseCount = 1024;
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
+  private QueryTimeout queryTimeout = null;
+  private boolean partialResult = false;
 
   static {
     final int maxCachedQueries = 1000;
@@ -484,6 +487,10 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
+  public void setTimeout(QueryTimeout queryTimeout) throws IOException {
+    this.queryTimeout = queryTimeout;
+  }
+
   /**
    * Finds the top <code>n</code> hits for <code>query</code>.
    *
@@ -507,6 +514,9 @@ public class IndexSearcher {
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
   }
 
+  public boolean timedOut() {
+    return partialResult;
+  }
   /**
    * Search implementation with arbitrary sorting, plus control over whether hit scores and max
    * score should be computed. Finds the top <code>n</code> hits for <code>query</code>, and sorting
@@ -720,18 +730,29 @@ public class IndexSearcher {
       }
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
-        try {
-          scorer.score(leafCollector, ctx.reader().getLiveDocs());
-        } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
-          // collection was terminated prematurely
-          // continue with the following leaf
+        if (queryTimeout != null) {
+          TimeLimitingBulkScorer timeLimitingBulkScorer =
+              new TimeLimitingBulkScorer(scorer, queryTimeout);
+          try {
+            timeLimitingBulkScorer.score(leafCollector, ctx.reader().getLiveDocs());
+          } catch (
+              @SuppressWarnings("unused")
+              TimeLimitingBulkScorer.TimeExceededException e) {
+            partialResult = true;
+          }
+        } else {
+          try {
+            scorer.score(leafCollector, ctx.reader().getLiveDocs());
+          } catch (
+              @SuppressWarnings("unused")
+              CollectionTerminatedException e) {
+            // collection was terminated prematurely
+            // continue with the following leaf
+          }
         }
       }
     }
   }
-
   /**
    * Expert: called to re-write queries into primitive queries.
    *
