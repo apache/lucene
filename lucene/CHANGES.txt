@@ -21,6 +21,8 @@ New Features
 * LUCENE-10274: Added facetsets module for high dimensional (hyper-rectangle) faceting
 (Shai Erera, Marc D'Mello, Greg Miller)
 
+* LUCENE-10151 Enable timeout support in IndexSearcher. (Deepika Sharma)
+
 Improvements
 ---------------------
 
