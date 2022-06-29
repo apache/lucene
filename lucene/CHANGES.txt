@@ -95,6 +95,8 @@ Optimizations
 
 * LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
 
+* LUCENE-10480: Implement Block-Max-Maxscore scorer for 2 clauses disjunction. (Zach Chen, Adrien Grand)
+
 Bug Fixes
 ---------------------
 
