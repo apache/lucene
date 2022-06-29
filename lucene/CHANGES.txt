@@ -98,6 +98,8 @@ Improvements
 * LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
   SortedSetDocValues#docValueCount(). (Greg Miller)
 
+* GITHUB#983: AbstractSortedSetDocValueFacetCounts internal code cleanup/refactoring. (Greg Miller)
+
 Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
@@ -110,6 +112,9 @@ Optimizations
 * LUCENE-10606: For KnnVectorQuery, optimize case where filter is backed by BitSetIterator (Kaival Parikh)
 
 * LUCENE-10593: Vector similarity function and NeighborQueue reverse removal. (Alessandro Benedetti)
+
+* GITHUB#984: Use primitive type data structures in FloatTaxonomyFacets and IntTaxonomyFacets
+  #getAllChildren() internal implementation to avoid some garbage creation. (Greg Miller)
 
 Bug Fixes
 ---------------------
