@@ -19,14 +19,15 @@ package org.apache.lucene.search;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Tests the {@link TimeLimitingBulkScorer}. */
-@LuceneTestCase.SuppressSysoutChecks(
-    bugUrl = "http://test.is.timing.sensitive.so.it.prints.instead.of.failing")
 public class TestTimeLimitingBulkScorer extends LuceneTestCase {
 
   public void testTimeLimitingBulkScorer() throws Exception {
@@ -51,7 +52,7 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
     Query query = new TermQuery(new Term("default", "ones"));
     directoryReader = DirectoryReader.open(directory);
     searcher = new IndexSearcher(directoryReader);
-    searcher.setTimeout(CountingQueryTimeout(10));
+    searcher.setTimeout(countingQueryTimeout(10));
     top = searcher.search(query, n);
     hits = top.scoreDocs;
     assertTrue(
@@ -61,10 +62,10 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
     directory.close();
   }
 
-  public static QueryTimeout CountingQueryTimeout(int timeallowed) {
+  private static QueryTimeout countingQueryTimeout(int timeallowed) {
 
     return new QueryTimeout() {
-      public static int counter = 0;
+      static int counter = 0;
 
       @Override
       public boolean shouldExit() {
