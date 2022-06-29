@@ -3383,7 +3383,7 @@ public final class CheckIndex implements Closeable {
         seenOrds.set(ord);
         ordCount++;
       }
-
+      assert ord != -1;
       if (dv.docValueCount() != dv2.docValueCount()) {
         throw new CheckIndexException(
             "dv and dv2 report different values count after iterating over all values: "
@@ -3394,11 +3394,6 @@ public final class CheckIndex implements Closeable {
       if (ordCount == 0) {
         throw new CheckIndexException(
             "dv for field: " + fieldName + " returned docID=" + docID + " yet has no ordinals");
-      }
-      long ord2 = dv2.nextOrd();
-      if (ord != ord2) {
-        throw new CheckIndexException(
-            "nextDoc and advanceExact report different ords: " + ord + " != " + ord2);
       }
     }
     if (maxOrd != maxOrd2) {
