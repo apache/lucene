@@ -136,13 +136,13 @@ public class BlockMaxMaxscoreScorer extends Scorer {
                 } else if (top.doc > upTo) {
                   target = upTo + 1;
                 } else {
-                  double matchedMaxScoreSum = nonEssentialMaxScoreSum;
+                  double docScoreUpperBound = nonEssentialMaxScoreSum;
 
                   for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
-                    matchedMaxScoreSum += w.scorer.score();
+                    docScoreUpperBound += w.scorer.score();
                   }
 
-                  if ((float) matchedMaxScoreSum < minCompetitiveScore) {
+                  if ((float) docScoreUpperBound < minCompetitiveScore) {
                     // skip straight to next candidate doc from essential scorer
                     int docId = top.doc;
                     do {
