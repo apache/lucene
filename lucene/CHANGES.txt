@@ -34,6 +34,8 @@ New Features
 
 * LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
 
+* LUCENE-10151 Enable timeout support in IndexSearcher. (Deepika Sharma)
+
 Improvements
 ---------------------
 
