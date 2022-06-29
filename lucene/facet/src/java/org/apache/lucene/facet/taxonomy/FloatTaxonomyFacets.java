@@ -16,8 +16,9 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import com.carrotsearch.hppc.FloatArrayList;
+import com.carrotsearch.hppc.IntArrayList;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -137,8 +138,8 @@ public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     int ord = children[dimOrd];
     float aggregatedValue = 0;
 
-    List<Integer> ordinals = new ArrayList<>();
-    List<Float> ordValues = new ArrayList<>();
+    IntArrayList ordinals = new IntArrayList();
+    FloatArrayList ordValues = new FloatArrayList();
 
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       if (values[ord] > 0) {
@@ -164,15 +165,11 @@ public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       // Our sum'd dim count is accurate, so we keep it
     }
 
-    // TODO: It would be nice if TaxonomyReader could directly support List in addition to an array
-    // so that we don't need to do this copy just to look up bulk paths
-    int[] ordinalArray = new int[ordinals.size()];
-    for (int i = 0; i < ordinals.size(); i++) {
-      ordinalArray[i] = ordinals.get(i);
-    }
+    // TODO: It would be nice if TaxonomyReader let us pass in a buffer + size so we didn't have to
+    // do an array copy here:
+    FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals.toArray());
 
     LabelAndValue[] labelValues = new LabelAndValue[ordValues.size()];
-    FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinalArray);
     for (int i = 0; i < labelValues.length; i++) {
       labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
     }
