@@ -19,7 +19,6 @@ package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -156,7 +155,7 @@ abstract class TaxonomyFacets extends Facets {
     }
 
     // Sort by highest value, tie break by dim:
-    Collections.sort(results, BY_VALUE_THEN_DIM);
+    results.sort(BY_VALUE_THEN_DIM);
     return results;
   }
 }

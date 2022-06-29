@@ -87,7 +87,7 @@ abstract class OffHeapVectorValues extends VectorValues
   public abstract int ordToDoc(int ord);
 
   static OffHeapVectorValues load(
-          Lucene93HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
+      Lucene93HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
@@ -164,7 +164,7 @@ abstract class OffHeapVectorValues extends VectorValues
     }
   }
 
-  static class SparseOffHeapVectorValues extends OffHeapVectorValues {
+ static class SparseOffHeapVectorValues extends OffHeapVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
@@ -172,7 +172,7 @@ abstract class OffHeapVectorValues extends VectorValues
     private final Lucene93HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-            Lucene93HnswVectorsReader.FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
+        Lucene93HnswVectorsReader.FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
         throws IOException {
 
       super(fieldEntry.dimension, fieldEntry.size, slice);

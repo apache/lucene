@@ -25,7 +25,9 @@ API Changes
 * LUCENE-10436: Remove deprecated DocValuesFieldExistsQuery, NormsFieldExistsQuery and
   KnnVectorFieldExistsQuery. (Zach Chen, Adrien Grand)
 
-* LUCENE-10561 Reduce class/member visibility of all normalizer and stemmer classes. (Rushabh Shah)
+* LUCENE-10561: Reduce class/member visibility of all normalizer and stemmer classes. (Rushabh Shah)
+
+* LUCENE-10266: Move nearest-neighbor search on points to core. (Rushabh Shah)
 
 New Features
 ---------------------
@@ -44,7 +46,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
+  they reach the maximum merge size. (Adrien Grand)
 
 Other
 ---------------------
@@ -63,32 +67,93 @@ Other
 
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
 
+* GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
+
 ======================== Lucene 9.3.0 =======================
 
 API Changes
 ---------------------
-(No changes)
+
+* LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
+  SortedSetDocValues#docValueCount(). (Greg Miller)
 
 New Features
 ---------------------
-(No changes)
+* LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
+
+* LUCENE-10274: Added facetsets module for high dimensional (hyper-rectangle) faceting
+(Shai Erera, Marc D'Mello, Greg Miller)
 
 Improvements
 ---------------------
-(No changes)
+
+* LUCENE-10078: Merge on full flush is now enabled by default with a timeout of
+  500ms. (Adrien Grand)
+
+* LUCENE-10585: Facet module code cleanup (copy/paste scrubbing, simplification and some very minor
+  optimization tweaks). (Greg Miller)
+
+* LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
+  SortedSetDocValues#docValueCount(). (Greg Miller)
 
 Optimizations
 ---------------------
-(No changes)
+* LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
+
+* GITHUB#961: BooleanQuery can return quick counts for simple boolean queries.
+  (Adrien Grand)
+
+* LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
+
+* LUCENE-10606: For KnnVectorQuery, optimize case where filter is backed by BitSetIterator (Kaival Parikh)
+
+* LUCENE-10593: Vector similarity function and NeighborQueue reverse removal. (Alessandro Benedetti)
 
 Bug Fixes
 ---------------------
 
 * LUCENE-10574: Prevent pathological O(N^2) merging. (Adrien Grand)
 
+* LUCENE-10584: Properly support #getSpecificValue for hierarchical dims in SSDV faceting.
+  (Greg Miller)
+
+* LUCENE-10582: Fix merging of overridden CollectionStatistics in CombinedFieldQuery (Yannick Welsch)
+
+* LUCENE-10598: SortedSetDocValues#docValueCount() should be always greater than zero. (Lu Xugang)
+
+* LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
+
+* LUCENE-10605: Fix error in 32bit jvm object alignment gap calculation (Sun Wuqiang)
+
+* GITHUB#956: Make sure KnnVectorQuery applies search boost. (Julie Tibshirani)
+
+* LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
+
+* LUCENE-10611: Fix failure when KnnVectorQuery has very selective filter (Kaival Parikh)
+
+* LUCENE-10607: Fix potential integer overflow in maxArcs computions (Tang Donghai)
+
+* GITHUB#986: Fix FieldExistsQuery rewrite when all docs have vectors. (Julie Tibshirani)
+
+* LUCENE-10623: Error implementation of docValueCount for SortingSortedSetDocValues (Lu Xugang)
+
 Other
 ---------------------
-(No changes)
+
+* GITHUB#991: Update randomizedtesting to 2.8.0, hppc to 0.9.1, morfologik to 2.1.9. (Dawid Weiss)
+
+* LUCENE-10370: pass proper classpath/module arguments for forking jvms from within tests. (Dawid Weiss)
+
+* LUCENE-10604: Improve ability to test and debug triangulation algorithm in Tessellator.
+  (Craig Taverner)
+
+* GITHUB#922: Remove unused and confusing FacetField indexing options (Gautam Worah)
+
+Build
+---------------------
+
+* GITHUB#976: Exclude Lucene's own JAR files from classpath entries in Eclipse config.
+  (Uwe Schindler)
 
 ======================= Lucene 9.2.0 =======================
 
@@ -1005,6 +1070,20 @@ Other
 
 * LUCENE-10024: Catch NoSuchFileException when opening index directory with Luke.
   (Michael Wechner, Tomoko Uchida)
+
+======================= Lucene 8.11.2 =======================
+
+Bug Fixes
+---------------------
+* LUCENE-10564: Make sure SparseFixedBitSet#or updates ramBytesUsed. (Julie Tibshirani)
+
+* LUCENE-10477: Highlighter: WeightedSpanTermExtractor.extractWeightedSpanTerms to Query#rewrite
+  multiple times if necessary. (Christine Poerschke, Adrien Grand)
+
+Optimizations
+---------------------
+
+* LUCENE-10481: FacetsCollector will not request scores if it does not use them. (Mike Drob)
 
 ======================= Lucene 8.11.1 =======================
 

@@ -29,7 +29,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.2 vector format, which encodes numeric vector values and an optional associated graph
+ * Lucene 9.3 vector format, which encodes numeric vector values and an optional associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
  * consists of three files:
  *
@@ -97,9 +97,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  */
 public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
 
-  static final String META_CODEC_NAME = "lucene92HnswVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "lucene92HnswVectorsFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "lucene92HnswVectorsFormatIndex";
+  static final String META_CODEC_NAME = "lucene93HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "lucene93HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "lucene93HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -129,12 +129,19 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int beamWidth;
 
+  /** Constructs a format using default graph construction parameters */
   public Lucene93HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
+  /**
+   * Constructs a format using the given graph construction parameters.
+   *
+   * @param maxConn the maximum number of connections to a node in the HNSW graph
+   * @param beamWidth the size of the queue maintained during graph construction.
+   */
   public Lucene93HnswVectorsFormat(int maxConn, int beamWidth) {
-    super("lucene92HnswVectorsFormat");
+    super("lucene93HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
   }
@@ -151,7 +158,7 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "lucene92HnswVectorsFormat(name = lucene92HnswVectorsFormat, maxConn = "
+    return "lucene93HnswVectorsFormat(name = lucene93HnswVectorsFormat, maxConn = "
         + maxConn
         + ", beamWidth="
         + beamWidth

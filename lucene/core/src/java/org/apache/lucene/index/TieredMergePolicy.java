@@ -62,6 +62,10 @@ import java.util.Set;
  *
  * <p>findForcedDeletesMerges should never produce segments greater than maxSegmentSize.
  *
+ * <p><b>NOTE</b>: This policy returns natural merges whose size is below the {@link
+ * #setFloorSegmentMB(double) floor segment size} for {@link #findFullFlushMerges full-flush
+ * merges}.
+ *
  * @lucene.experimental
  */
 
@@ -168,9 +172,16 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   /**
-   * Segments smaller than this are "rounded up" to this size, ie treated as equal (floor) size for
-   * merge selection. This is to prevent frequent flushing of tiny segments from allowing a long
-   * tail in the index. Default is 2 MB.
+   * Segments smaller than this size are merged more aggressively:
+   *
+   * <ul>
+   *   <li>They are candidates for full-flush merges, in order to reduce the number of segments in
+   *       the index prior to opening a new point-in-time view of the index.
+   *   <li>For background merges, smaller segments are "rounded up" to this size.
+   * </ul>
+   *
+   * In both cases, this helps prevent frequent flushing of tiny segments to create a long tail of
+   * small segments in the index. Default is 2MB.
    */
   public TieredMergePolicy setFloorSegmentMB(double v) {
     if (v <= 0.0) {
@@ -188,6 +199,11 @@ public class TieredMergePolicy extends MergePolicy {
    */
   public double getFloorSegmentMB() {
     return floorSegmentBytes / (1024 * 1024.);
+  }
+
+  @Override
+  protected long maxFullFlushMergeSize() {
+    return floorSegmentBytes;
   }
 
   /**
@@ -536,11 +552,16 @@ public class TieredMergePolicy extends MergePolicy {
         SegmentSizeAndDocs maxCandidateSegmentSize = segInfosSizes.get(candidate.get(0));
         if (hitTooLarge == false
             && mergeType == MERGE_TYPE.NATURAL
-            && bytesThisMerge < maxCandidateSegmentSize.sizeInBytes * 1.5) {
+            && bytesThisMerge < maxCandidateSegmentSize.sizeInBytes * 1.5
+            && maxCandidateSegmentSize.delCount
+                < maxCandidateSegmentSize.maxDoc * deletesPctAllowed / 100) {
           // Ignore any merge where the resulting segment is not at least 50% larger than the
           // biggest input segment.
           // Otherwise we could run into pathological O(N^2) merging where merges keep rewriting
           // again and again the biggest input segment into a segment that is barely bigger.
+          // The only exception we make is when the merge would reclaim lots of deletes in the
+          // biggest segment. This is important for cases when lots of documents get deleted at once
+          // without introducing new segments of a similar size for instance.
           continue;
         }
 

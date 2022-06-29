@@ -14,16 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.backward_codecs.lucene90;
 
 /**
  * A helper class for an hnsw graph that serves as a comparator of the currently set bound value
  * with a new value.
  */
-public abstract class BoundsChecker {
+public abstract class Lucene90BoundsChecker {
 
   float bound;
+
+  /** Default Constructor */
+  public Lucene90BoundsChecker() {}
 
   /** Update the bound if sample is better */
   public abstract void update(float sample);
@@ -33,10 +35,21 @@ public abstract class BoundsChecker {
     bound = sample;
   }
 
-  /** @return whether the sample exceeds (is worse than) the bound */
+  /**
+   * Check the sample
+   *
+   * @param sample a score
+   * @return whether the sample exceeds (is worse than) the bound
+   */
   public abstract boolean check(float sample);
 
-  public static BoundsChecker create(boolean reversed) {
+  /**
+   * Create a min or max bound checker
+   *
+   * @param reversed true for the min and false for the max
+   * @return the bound checker
+   */
+  public static Lucene90BoundsChecker create(boolean reversed) {
     if (reversed) {
       return new Min();
     } else {
@@ -48,7 +61,7 @@ public abstract class BoundsChecker {
    * A helper class for an hnsw graph that serves as a comparator of the currently set maximum value
    * with a new value.
    */
-  public static class Max extends BoundsChecker {
+  public static class Max extends Lucene90BoundsChecker {
     Max() {
       bound = Float.NEGATIVE_INFINITY;
     }
@@ -70,7 +83,7 @@ public abstract class BoundsChecker {
    * A helper class for an hnsw graph that serves as a comparator of the currently set minimum value
    * with a new value.
    */
-  public static class Min extends BoundsChecker {
+  public static class Min extends Lucene90BoundsChecker {
 
     Min() {
       bound = Float.POSITIVE_INFINITY;

@@ -36,7 +36,10 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
@@ -142,6 +145,29 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       assertIdMatches(reader, "id2", scoreDocs[0]);
       assertIdMatches(reader, "id0", scoreDocs[1]);
       assertIdMatches(reader, "id1", scoreDocs[2]);
+    }
+  }
+
+  public void testSearchBoost() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      Query vectorQuery = new KnnVectorQuery("field", new float[] {0, 0}, 10);
+      ScoreDoc[] scoreDocs = searcher.search(vectorQuery, 3).scoreDocs;
+
+      Query boostQuery = new BoostQuery(vectorQuery, 3.0f);
+      ScoreDoc[] boostScoreDocs = searcher.search(boostQuery, 3).scoreDocs;
+      assertEquals(scoreDocs.length, boostScoreDocs.length);
+
+      for (int i = 0; i < scoreDocs.length; i++) {
+        ScoreDoc scoreDoc = scoreDocs[i];
+        ScoreDoc boostScoreDoc = boostScoreDocs[i];
+
+        assertEquals(scoreDoc.doc, boostScoreDoc.doc);
+        assertEquals(scoreDoc.score * 3.0f, boostScoreDoc.score, 0.001f);
+      }
     }
   }
 
@@ -531,7 +557,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   /** Tests with random vectors and a random filter. Uses RandomIndexWriter. */
   public void testRandomWithFilter() throws IOException {
-    int numDocs = 200;
+    int numDocs = 1000;
     int dimension = atLeast(5);
     int numIters = atLeast(10);
     try (Directory d = newDirectory()) {
@@ -553,7 +579,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = newSearcher(reader);
         for (int i = 0; i < numIters; i++) {
-          int lower = random().nextInt(50);
+          int lower = random().nextInt(500);
 
           // Test a filter with cost less than k and check we use exact search
           Query filter1 = IntPoint.newRangeQuery("tag", lower, lower + 8);
@@ -584,7 +610,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
                       numDocs));
 
           // Test an unrestrictive filter and check we use approximate search
-          Query filter3 = IntPoint.newRangeQuery("tag", lower, lower + 150);
+          Query filter3 = IntPoint.newRangeQuery("tag", lower, numDocs);
           results =
               searcher.search(
                   new ThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
@@ -598,8 +624,17 @@ public class TestKnnVectorQuery extends LuceneTestCase {
             assertEquals(1, fieldDoc.fields.length);
 
             int tag = (int) fieldDoc.fields[0];
-            assertTrue(lower <= tag && tag <= lower + 150);
+            assertTrue(lower <= tag && tag <= numDocs);
           }
+
+          // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
+          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
+          expectThrows(
+              UnsupportedOperationException.class,
+              () ->
+                  searcher.search(
+                      new ThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
+                      numDocs));
         }
       }
     }
@@ -696,6 +731,36 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs);
         TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
+  /**
+   * Test that KnnVectorQuery optimizes the case where the filter query is backed by {@link
+   * BitSetIterator}.
+   */
+  public void testBitSetQuery() throws IOException {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, iwc)) {
+      final int numDocs = 100;
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new KnnVectorField("vector", randomVector(dim)));
+        w.addDocument(d);
+      }
+      w.commit();
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
+        expectThrows(
+            UnsupportedOperationException.class,
+            () ->
+                searcher.search(
+                    new KnnVectorQuery("vector", randomVector(dim), 10, filter), numDocs));
       }
     }
   }
@@ -820,6 +885,56 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     @Override
     public CacheHelper getCoreCacheHelper() {
       return in.getCoreCacheHelper();
+    }
+  }
+
+  private static class ThrowingBitSetQuery extends Query {
+
+    private final FixedBitSet docs;
+
+    ThrowingBitSetQuery(FixedBitSet docs) {
+      this.docs = docs;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      return new ConstantScoreWeight(this, boost) {
+        @Override
+        public Scorer scorer(LeafReaderContext context) throws IOException {
+          BitSetIterator bitSetIterator =
+              new BitSetIterator(docs, docs.approximateCardinality()) {
+                @Override
+                public BitSet getBitSet() {
+                  throw new UnsupportedOperationException("reusing BitSet is not supported");
+                }
+              };
+          return new ConstantScoreScorer(this, score(), scoreMode, bitSetIterator);
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return false;
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {}
+
+    @Override
+    public String toString(String field) {
+      return "throwingBitSetQuery";
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return sameClassAs(other) && docs.equals(((ThrowingBitSetQuery) other).docs);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + docs.hashCode();
     }
   }
 }

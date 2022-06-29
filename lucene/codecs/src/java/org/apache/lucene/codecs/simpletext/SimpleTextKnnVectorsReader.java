@@ -171,7 +171,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       }
 
       float[] vector = values.vectorValue();
-      float score = vectorSimilarity.convertToScore(vectorSimilarity.compare(vector, target));
+      float score = vectorSimilarity.compare(vector, target);
       topK.insertWithOverflow(new ScoreDoc(doc, score));
       numVisited++;
     }

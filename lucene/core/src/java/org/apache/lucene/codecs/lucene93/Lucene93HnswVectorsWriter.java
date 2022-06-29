@@ -17,6 +17,11 @@
 
 package org.apache.lucene.codecs.lucene93;
 
+import static org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -144,14 +149,14 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
 
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
-      // we use Lucene92HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
-      // doesn't need to know docIds
-      // TODO: separate random access vector values from DocIdSetIterator?
-      //for writing the graph, it's fine it's dense, in the graph, we are just adding the vectorIds
-      OffHeapVectorValues offHeapVectors =
-          new OffHeapVectorValues.DenseOffHeapVectorValues(
-                vectors.dimension(), vectors.size(), vectorDataInput);
-      OnHeapHnswGraph graph =
+      // we use Lucene93HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
+        // doesn't need to know docIds
+        // TODO: separate random access vector values from DocIdSetIterator?
+        //for writing the graph, it's fine it's dense, in the graph, we are just adding the vectorIds
+        OffHeapVectorValues offHeapVectors =
+                new OffHeapVectorValues.DenseOffHeapVectorValues(
+                        vectors.dimension(), vectors.size(), vectorDataInput);
+        OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
               : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarityFunction());
@@ -186,15 +191,10 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     Stack<Integer> valuesPerDocumemts = new Stack<>();
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-      int valuesPerDocument = 0;
-      for(long vectorId = vectors.nextOrd();vectorId!=-1;vectorId = vectors.nextOrd()) {
-        // write vector
-        BytesRef binaryValue = vectors.binaryValue();
-        assert binaryValue.length == vectors.dimension() * Float.BYTES;
-        output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-        valuesPerDocument++;
-      }
-      valuesPerDocumemts.push(valuesPerDocument);
+      // write vector
+      BytesRef binaryValue = vectors.binaryValue();
+      assert binaryValue.length == vectors.dimension() * Float.BYTES;
+      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
       docsWithField.add(docV);
     }
     int[] valuesPerDocument = new int[docsWithField.cardinality()];
@@ -251,16 +251,16 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
       // dense case and empty case do not need to store ordToMap mapping
       final DirectMonotonicWriter ordToDocWriter =
-          DirectMonotonicWriter.getInstance(meta, vectorData, vectors.size(), DIRECT_MONOTONIC_BLOCK_SHIFT);
+              DirectMonotonicWriter.getInstance(meta, vectorData, vectors.size(), DIRECT_MONOTONIC_BLOCK_SHIFT);
       DocIdSetIterator iterator = docsWithField.iterator();
       int[] valuesPerDocument = docsWithField.getValuesPerDocument();
-      for (int doc = iterator.nextDoc();
-           doc != DocIdSetIterator.NO_MORE_DOCS;
-           doc = iterator.nextDoc()) {
-        int documentVectorsCount = valuesPerDocument[doc];
-        for (int i = 0; i < documentVectorsCount; i++) {
-          ordToDocWriter.add(doc);
-        }
+        for (int doc = iterator.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = iterator.nextDoc()) {
+            int documentVectorsCount = valuesPerDocument[doc];
+            for (int i = 0; i < documentVectorsCount; i++) {
+                ordToDocWriter.add(doc);
+            }
       }
       ordToDocWriter.finish();
       meta.writeLong(vectorData.getFilePointer() - start);

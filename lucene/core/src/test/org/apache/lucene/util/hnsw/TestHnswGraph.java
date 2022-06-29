@@ -309,30 +309,6 @@ public class TestHnswGraph extends LuceneTestCase {
     assertTrue(nn.visitedCount() <= visitedLimit);
   }
 
-  public void testBoundsCheckerMax() {
-    BoundsChecker max = BoundsChecker.create(false);
-    float f = random().nextFloat() - 0.5f;
-    // any float > -MAX_VALUE is in bounds
-    assertFalse(max.check(f));
-    // f is now the bound (minus some delta)
-    max.update(f);
-    assertFalse(max.check(f)); // f is not out of bounds
-    assertFalse(max.check(f + 1)); // anything greater than f is in bounds
-    assertTrue(max.check(f - 1e-5f)); // delta is zero initially
-  }
-
-  public void testBoundsCheckerMin() {
-    BoundsChecker min = BoundsChecker.create(true);
-    float f = random().nextFloat() - 0.5f;
-    // any float < MAX_VALUE is in bounds
-    assertFalse(min.check(f));
-    // f is now the bound (minus some delta)
-    min.update(f);
-    assertFalse(min.check(f)); // f is not out of bounds
-    assertFalse(min.check(f - 1)); // anything less than f is in bounds
-    assertTrue(min.check(f + 1e-5f)); // delta is zero initially
-  }
-
   public void testHnswGraphBuilderInvalid() {
     expectThrows(NullPointerException.class, () -> new HnswGraphBuilder(null, null, 0, 0, 0));
     expectThrows(
@@ -441,7 +417,7 @@ public class TestHnswGraph extends LuceneTestCase {
       while (actual.size() > topK) {
         actual.pop();
       }
-      NeighborQueue expected = new NeighborQueue(topK, similarityFunction.reversed);
+      NeighborQueue expected = new NeighborQueue(topK, false);
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
           expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)), HnswGraphSearcher.Multivalued.NONE);

@@ -108,17 +108,22 @@ public final class HnswGraphSearcher {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            new NeighborQueue(topK, !similarityFunction.reversed),
+            new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, strategy);
-      eps[0] = results.pop();
 
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
+
+      if (results.incomplete()) {
+        results.setVisitedCount(numVisited);
+        return results;
+      }
+      eps[0] = results.pop();
     }
     results =
         graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, strategy);
@@ -163,7 +168,7 @@ public final class HnswGraphSearcher {
       Multivalued strategy)
       throws IOException {
     int size = graph.size();
-    NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
+    NeighborQueue results = new NeighborQueue(topK, false);
     clearScratchState();
 
     int numVisited = 0;
@@ -185,14 +190,14 @@ public final class HnswGraphSearcher {
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    BoundsChecker maxDistance = BoundsChecker.create(similarityFunction.reversed);
+    float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
     if (results.size() >= topK) {
-      maxDistance.set(results.topScore());
+      minAcceptedSimilarity = results.topScore();
     }
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
-      float topCandidateScore = candidates.topScore();
-      if (maxDistance.check(topCandidateScore)) {
+      float topCandidateSimilarity = candidates.topScore();
+      if (topCandidateSimilarity < minAcceptedSimilarity) {
         break;
       }
 
@@ -209,13 +214,13 @@ public final class HnswGraphSearcher {
           results.markIncomplete();
           break;
         }
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendVectorId));
+        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendVectorId));
         numVisited++;
-        if (maxDistance.check(score) == false) {
-          candidates.add(friendVectorId, score);
+        if (friendSimilarity >= minAcceptedSimilarity) {
+          candidates.add(friendVectorId, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendVectorId)) {
             if (results.insertWithOverflow(vectors.ordToDoc(friendVectorId), score, strategy) && results.size() >= topK) {
-              maxDistance.set(results.topScore());
+              minAcceptedSimilarity = results.topScore();
             }
           }
         }

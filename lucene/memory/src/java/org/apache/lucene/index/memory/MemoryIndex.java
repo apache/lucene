@@ -1158,7 +1158,7 @@ public class MemoryIndex {
       }
 
       @Override
-      public long docValueCount() {
+      public int docValueCount() {
         return values.size();
       }
 

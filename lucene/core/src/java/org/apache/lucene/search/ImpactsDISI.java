@@ -34,7 +34,6 @@ public final class ImpactsDISI extends DocIdSetIterator {
   private final DocIdSetIterator in;
   private final ImpactsSource impactsSource;
   private final MaxScoreCache maxScoreCache;
-  private final float globalMaxScore;
   private float minCompetitiveScore = 0;
   private int upTo = DocIdSetIterator.NO_MORE_DOCS;
   private float maxScore = Float.MAX_VALUE;
@@ -50,7 +49,6 @@ public final class ImpactsDISI extends DocIdSetIterator {
     this.in = in;
     this.impactsSource = impactsSource;
     this.maxScoreCache = new MaxScoreCache(impactsSource, scorer);
-    this.globalMaxScore = scorer.score(Float.MAX_VALUE, 1L);
   }
 
   /**
@@ -88,12 +86,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
    * @see Scorer#getMaxScore(int)
    */
   public float getMaxScore(int upTo) throws IOException {
-    final int level = maxScoreCache.getLevel(upTo);
-    if (level == -1) {
-      return globalMaxScore;
-    } else {
-      return maxScoreCache.getMaxScoreForLevel(level);
-    }
+    return maxScoreCache.getMaxScore(upTo);
   }
 
   private int advanceTarget(int target) throws IOException {
@@ -104,7 +97,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
     }
 
     upTo = advanceShallow(target);
-    maxScore = maxScoreCache.getMaxScoreForLevel(0);
+    maxScore = maxScoreCache.getMaxScoreForLevelZero();
 
     while (true) {
       assert upTo >= target;
@@ -126,7 +119,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
         target = skipUpTo + 1;
       }
       upTo = advanceShallow(target);
-      maxScore = maxScoreCache.getMaxScoreForLevel(0);
+      maxScore = maxScoreCache.getMaxScoreForLevelZero();
     }
   }
 

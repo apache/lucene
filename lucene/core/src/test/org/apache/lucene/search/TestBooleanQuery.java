@@ -29,10 +29,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
@@ -41,6 +45,7 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -768,6 +773,260 @@ public class TestBooleanQuery extends LuceneTestCase {
     assertEquals(weight.count(reader.leaves().get(0)), -1);
 
     IOUtils.close(reader, w, dir);
+  }
+
+  public void testConjunctionMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    LongPoint longPoint = new LongPoint("long", 3L);
+    doc.add(longPoint);
+    StringField stringField = new StringField("string", "abc", Store.NO);
+    doc.add(stringField);
+    writer.addDocument(doc);
+    longPoint.setLongValue(10);
+    stringField.setStringValue("xyz");
+    writer.addDocument(doc);
+    IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 3L), Occur.FILTER)
+            .build();
+    Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // Both queries match a single doc, BooleanWeight can't figure out the count of the conjunction
+    assertEquals(-1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "missing")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 3L), Occur.FILTER)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // One query has a count of 0, the conjunction has a count of 0 too
+    assertEquals(0, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 5L), Occur.FILTER)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // One query has a count of 0, the conjunction has a count of 0 too
+    assertEquals(0, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newRangeQuery("long", 0L, 10L), Occur.FILTER)
+            .build();
+    // One query matches all docs, the count of the conjunction is the count of the other query
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    assertEquals(1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new MatchAllDocsQuery(), Occur.MUST)
+            .add(LongPoint.newRangeQuery("long", 1L, 5L), Occur.FILTER)
+            .build();
+    // One query matches all docs, the count of the conjunction is the count of the other query
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    assertEquals(1, weight.count(reader.leaves().get(0)));
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testDisjunctionMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    LongPoint longPoint = new LongPoint("long", 3L);
+    doc.add(longPoint);
+    StringField stringField = new StringField("string", "abc", Store.NO);
+    doc.add(stringField);
+    writer.addDocument(doc);
+    longPoint.setLongValue(10);
+    stringField.setStringValue("xyz");
+    writer.addDocument(doc);
+    IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.SHOULD)
+            .add(LongPoint.newExactQuery("long", 3L), Occur.SHOULD)
+            .build();
+    Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // Both queries match a single doc, BooleanWeight can't figure out the count of the disjunction
+    assertEquals(-1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "missing")), Occur.SHOULD)
+            .add(LongPoint.newExactQuery("long", 3L), Occur.SHOULD)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // One query has a count of 0, the disjunction count is the other count
+    assertEquals(1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.SHOULD)
+            .add(LongPoint.newExactQuery("long", 5L), Occur.SHOULD)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // One query has a count of 0, the disjunction count is the other count
+    assertEquals(1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.SHOULD)
+            .add(LongPoint.newRangeQuery("long", 0L, 10L), Occur.SHOULD)
+            .build();
+    // One query matches all docs, the count of the disjunction is the number of docs
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    assertEquals(2, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new MatchAllDocsQuery(), Occur.SHOULD)
+            .add(LongPoint.newRangeQuery("long", 1L, 5L), Occur.SHOULD)
+            .build();
+    // One query matches all docs, the count of the disjunction is the number of docs
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    assertEquals(2, weight.count(reader.leaves().get(0)));
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testProhibitedMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    LongPoint longPoint = new LongPoint("long", 3L);
+    doc.add(longPoint);
+    StringField stringField = new StringField("string", "abc", Store.NO);
+    doc.add(stringField);
+    writer.addDocument(doc);
+    longPoint.setLongValue(10);
+    stringField.setStringValue("xyz");
+    writer.addDocument(doc);
+    IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 3L), Occur.MUST_NOT)
+            .build();
+    Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // Both queries match a single doc, BooleanWeight can't figure out the count of the query
+    assertEquals(-1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "missing")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 3L), Occur.MUST_NOT)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // the positive clause doesn't match any docs, so the overall query doesn't either
+    assertEquals(0, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newExactQuery("long", 5L), Occur.MUST_NOT)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // the negative clause doesn't match any docs, so the overall count is the count of the positive
+    // clause
+    assertEquals(1, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST)
+            .add(LongPoint.newRangeQuery("long", 0L, 10L), Occur.MUST_NOT)
+            .build();
+    // the negative clause matches all docs, so the query doesn't match any docs
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    assertEquals(0, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(LongPoint.newRangeQuery("long", 0L, 10L), Occur.MUST)
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST_NOT)
+            .build();
+    // The positive clause matches all docs, so we can subtract the number of matches of the
+    // negative clause
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    assertEquals(1, weight.count(reader.leaves().get(0)));
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testRandomBooleanQueryMatchesCount() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    LongPoint longPoint = new LongPoint("long", 3L);
+    doc.add(longPoint);
+    StringField stringField = new StringField("string", "abc", Store.NO);
+    doc.add(stringField);
+    writer.addDocument(doc);
+    longPoint.setLongValue(10);
+    stringField.setStringValue("xyz");
+    writer.addDocument(doc);
+    IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    for (int iter = 0; iter < 1000; ++iter) {
+      final int numClauses = TestUtil.nextInt(random(), 2, 5);
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      int numShouldClauses = 0;
+      for (int i = 0; i < numClauses; ++i) {
+        Query query;
+        switch (random().nextInt(6)) {
+          case 0:
+            query = new TermQuery(new Term("string", "abc"));
+            break;
+          case 1:
+            query = LongPoint.newExactQuery("long", 3L);
+            break;
+          case 2:
+            query = new TermQuery(new Term("string", "missing"));
+            break;
+          case 3:
+            query = LongPoint.newExactQuery("long", 5L);
+            break;
+          case 4:
+            query = new MatchAllDocsQuery();
+            break;
+          default:
+            query = LongPoint.newRangeQuery("long", 0L, 10L);
+            break;
+        }
+        Occur occur = RandomPicks.randomFrom(random(), Occur.values());
+        if (occur == Occur.SHOULD) {
+          numShouldClauses++;
+        }
+        builder.add(query, occur);
+      }
+      builder.setMinimumNumberShouldMatch(TestUtil.nextInt(random(), 0, numShouldClauses));
+      Query booleanQuery = builder.build();
+      assertEquals(
+          (int) searcher.search(booleanQuery, DummyTotalHitCountCollector.createManager()),
+          searcher.count(booleanQuery));
+    }
+    reader.close();
+    dir.close();
   }
 
   public void testToString() {

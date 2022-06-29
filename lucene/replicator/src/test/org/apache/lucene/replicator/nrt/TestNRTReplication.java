@@ -35,7 +35,6 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TestRuleIgnoreTestSuites;
@@ -44,7 +43,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.SuppressForbidden;
 
 // MockRandom's .sd file has no index header/footer:
-@AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-10370")
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
 public class TestNRTReplication extends LuceneTestCase {
@@ -105,8 +103,9 @@ public class TestNRTReplication extends LuceneTestCase {
     long seed = random().nextLong() * nodeStartCounter.incrementAndGet();
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(seed));
     cmd.add("-ea");
-    cmd.add("-cp");
-    cmd.add(System.getProperty("java.class.path"));
+
+    cmd.addAll(getJvmForkArguments());
+
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(TestSimpleServer.class.getName());
 
@@ -355,7 +354,6 @@ public class TestNRTReplication extends LuceneTestCase {
   // Start up, index 10 docs, replicate, but crash and restart the replica without committing it:
   @Nightly
   public void testReplicaCrashNoCommit() throws Exception {
-
     Path primaryPath = createTempDir("primary");
     NodeProcess primary = startNode(-1, 0, primaryPath, -1, false);
 

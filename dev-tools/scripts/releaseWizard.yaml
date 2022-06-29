@@ -1424,7 +1424,7 @@ groups:
       - !Command
         cmd: "{{ gradle_cmd }} clean"
       - !Command
-        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py --no-cleanup  --temp-dir {{ temp_dir }} {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/index/
+        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py --no-cleanup  --temp-dir {{ temp_dir }} {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/backward_index/
         logfile: add-backcompat.log
       - !Command
         cmd: git diff --staged
@@ -1453,7 +1453,7 @@ groups:
       - !Command
         cmd: "{{ gradle_cmd }} clean"
       - !Command
-        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py --no-cleanup  --temp-dir {{ temp_dir }} {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/index/  
+        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py --no-cleanup  --temp-dir {{ temp_dir }} {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/backward_index/  
         logfile: add-backcompat.log
       - !Command
         cmd: git diff --staged
@@ -1484,7 +1484,7 @@ groups:
       - !Command
         cmd: "{{ gradle_cmd }} clean"
       - !Command
-        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py  --temp-dir {{ temp_dir }}  {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/index/  
+        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py  --temp-dir {{ temp_dir }}  {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/backward_index/  
         logfile: add-backcompat.log
       - !Command
         cmd: git diff --staged
