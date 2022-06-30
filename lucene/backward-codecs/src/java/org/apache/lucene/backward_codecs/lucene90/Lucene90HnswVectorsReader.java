@@ -262,7 +262,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
             getGraphValues(fieldEntry),
             getAcceptOrds(acceptDocs, fieldEntry),
             visitedLimit,
-            random, strategy);
+            random);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
@@ -406,6 +406,11 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek((long) ord * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;
+    }
+
+    @Override
+    public long nextOrd() throws IOException {
+      return 0;
     }
 
     @Override

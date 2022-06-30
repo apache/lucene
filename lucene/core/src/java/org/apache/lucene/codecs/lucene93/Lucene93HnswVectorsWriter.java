@@ -17,11 +17,6 @@
 
 package org.apache.lucene.codecs.lucene93;
 
-import static org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
-import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -191,10 +186,15 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     Stack<Integer> valuesPerDocumemts = new Stack<>();
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
+            int valuesPerDocument = 0;
+            for(long vectorId = vectors.nextOrd();vectorId!=-1;vectorId = vectors.nextOrd()) {
       // write vector
       BytesRef binaryValue = vectors.binaryValue();
       assert binaryValue.length == vectors.dimension() * Float.BYTES;
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+                valuesPerDocument++;
+            }
+            valuesPerDocumemts.push(valuesPerDocument);
       docsWithField.add(docV);
     }
     int[] valuesPerDocument = new int[docsWithField.cardinality()];

@@ -219,7 +219,7 @@ public final class HnswGraphSearcher {
         if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendVectorId, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendVectorId)) {
-            if (results.insertWithOverflow(vectors.ordToDoc(friendVectorId), score, strategy) && results.size() >= topK) {
+            if (results.insertWithOverflow(vectors.ordToDoc(friendVectorId), friendSimilarity, strategy) && results.size() >= topK) {
               minAcceptedSimilarity = results.topScore();
             }
           }
