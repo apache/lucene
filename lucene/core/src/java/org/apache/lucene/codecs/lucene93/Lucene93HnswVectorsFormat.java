@@ -141,7 +141,7 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene93HnswVectorsFormat(int maxConn, int beamWidth) {
-    super("lucene93HnswVectorsFormat");
+    super("Lucene93HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
   }
@@ -158,7 +158,7 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "lucene93HnswVectorsFormat(name = lucene93HnswVectorsFormat, maxConn = "
+    return "Lucene93HnswVectorsFormat(name=Lucene93HnswVectorsFormat, maxConn="
         + maxConn
         + ", beamWidth="
         + beamWidth
