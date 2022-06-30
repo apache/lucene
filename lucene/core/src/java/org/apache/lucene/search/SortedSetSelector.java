@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 /** Selects a value from the document's set to use as the representative value */
@@ -226,13 +225,11 @@ public class SortedSetSelector {
 
     private void setOrd() throws IOException {
       if (docID() != NO_MORE_DOCS) {
-        while (true) {
-          long nextOrd = in.nextOrd();
-          if (nextOrd == NO_MORE_ORDS) {
-            break;
-          }
-          ord = (int) nextOrd;
+        int docValueCount = in.docValueCount();
+        for (int i = 0; i < docValueCount - 1; i++) {
+          in.nextOrd();
         }
+        ord = (int) in.nextOrd();
       } else {
         ord = (int) NO_MORE_ORDS;
       }
@@ -243,7 +240,6 @@ public class SortedSetSelector {
   static class MiddleMinValue extends SortedDocValues {
     final SortedSetDocValues in;
     private int ord;
-    private int[] ords = new int[8];
 
     MiddleMinValue(SortedSetDocValues in) {
       this.in = in;
@@ -304,25 +300,12 @@ public class SortedSetSelector {
 
     private void setOrd() throws IOException {
       if (docID() != NO_MORE_DOCS) {
-        int upto = 0;
-        while (true) {
-          long nextOrd = in.nextOrd();
-          if (nextOrd == NO_MORE_ORDS) {
-            break;
-          }
-          if (upto == ords.length) {
-            ords = ArrayUtil.grow(ords);
-          }
-          ords[upto++] = (int) nextOrd;
+        int docValueCount = in.docValueCount();
+        int targetIdx = (docValueCount - 1) >>> 1;
+        for (int i = 0; i < targetIdx; i++) {
+          in.nextOrd();
         }
-
-        if (upto == 0) {
-          // iterator should not have returned this docID if it has no ords:
-          assert false;
-          ord = (int) NO_MORE_ORDS;
-        } else {
-          ord = ords[(upto - 1) >>> 1];
-        }
+        ord = (int) in.nextOrd();
       } else {
         ord = (int) NO_MORE_ORDS;
       }
@@ -333,7 +316,6 @@ public class SortedSetSelector {
   static class MiddleMaxValue extends SortedDocValues {
     final SortedSetDocValues in;
     private int ord;
-    private int[] ords = new int[8];
 
     MiddleMaxValue(SortedSetDocValues in) {
       this.in = in;
@@ -394,25 +376,12 @@ public class SortedSetSelector {
 
     private void setOrd() throws IOException {
       if (docID() != NO_MORE_DOCS) {
-        int upto = 0;
-        while (true) {
-          long nextOrd = in.nextOrd();
-          if (nextOrd == NO_MORE_ORDS) {
-            break;
-          }
-          if (upto == ords.length) {
-            ords = ArrayUtil.grow(ords);
-          }
-          ords[upto++] = (int) nextOrd;
+        int docValueCount = in.docValueCount();
+        int targetIdx = docValueCount >>> 1;
+        for (int i = 0; i < targetIdx; i++) {
+          in.nextOrd();
         }
-
-        if (upto == 0) {
-          // iterator should not have returned this docID if it has no ords:
-          assert false;
-          ord = (int) NO_MORE_ORDS;
-        } else {
-          ord = ords[upto >>> 1];
-        }
+        ord = (int) in.nextOrd();
       } else {
         ord = (int) NO_MORE_ORDS;
       }
