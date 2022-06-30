@@ -66,7 +66,7 @@ public abstract class Scorable {
   }
 
   /**
-   * A child Scorer and its relationship to its parent. the meaning of the relationship depends upon
+   * A child Scorer and its relationship to its parent. The meaning of the relationship depends upon
    * the parent query.
    *
    * @lucene.experimental
@@ -80,7 +80,7 @@ public abstract class Scorable {
     /**
      * Creates a new ChildScorer node with the specified relationship.
      *
-     * <p>The relationship can be any be any string that makes sense to the parent Scorer.
+     * <p>The relationship can be any string that makes sense to the parent Scorer.
      */
     public ChildScorable(Scorable child, String relationship) {
       this.child = child;
