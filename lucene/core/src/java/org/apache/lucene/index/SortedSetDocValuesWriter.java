@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.index.SortedSetDocValues.NO_MORE_ORDS;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
@@ -450,10 +449,10 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       while ((docID = oldValues.nextDoc()) != NO_MORE_DOCS) {
         int newDocID = sortMap.oldToNew(docID);
         long startOffset = ordOffset;
-        long ord;
-        while ((ord = oldValues.nextOrd()) != NO_MORE_ORDS) {
-          builder.add(ord);
-          ordOffset++;
+        int docValueCount = oldValues.docValueCount();
+        ordOffset += docValueCount;
+        for (int i = 0; i < docValueCount; i++) {
+          builder.add(oldValues.nextOrd());
         }
         docValueCounts.set(newDocID, ordOffset - startOffset);
         if (startOffset != ordOffset) { // do we have any values?
