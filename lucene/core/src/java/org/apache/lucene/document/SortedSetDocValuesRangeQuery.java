@@ -176,9 +176,8 @@ abstract class SortedSetDocValuesRangeQuery extends Query {
               new TwoPhaseIterator(values) {
                 @Override
                 public boolean matches() throws IOException {
-                  for (long ord = values.nextOrd();
-                      ord != SortedSetDocValues.NO_MORE_ORDS;
-                      ord = values.nextOrd()) {
+                  for (int i = 0; i < values.docValueCount(); i++) {
+                    long ord = values.nextOrd();
                     if (ord < minOrd) {
                       continue;
                     }
