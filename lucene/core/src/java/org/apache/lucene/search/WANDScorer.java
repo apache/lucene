@@ -102,8 +102,8 @@ final class WANDScorer extends Scorer {
     return (long) Math.ceil(scaled); // round up, cast is accurate since value is < 2^24
   }
 
-  static float unscaleScore(long scaledMaxScore, int scalingFactor) {
-    return Math.scalb(scaledMaxScore, -scalingFactor);
+  static double unscaleScore(long scaledMaxScore, int scalingFactor) {
+    return Math.scalb((double) scaledMaxScore, -scalingFactor);
   }
 
   /**
