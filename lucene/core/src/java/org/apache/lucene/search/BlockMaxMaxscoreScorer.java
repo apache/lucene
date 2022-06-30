@@ -30,27 +30,28 @@ public class BlockMaxMaxscoreScorer extends Scorer {
   private int doc;
 
   // doc id boundary that all scorers maxScore are valid
-  private int upTo = -1;
+  private int upTo;
 
   // heap of scorers ordered by doc ID
   private final DisiPriorityQueue essentialsScorers;
+
   // list of scorers ordered by maxScore
   private final LinkedList<DisiWrapper> maxScoreSortedEssentialScorers;
 
   private final DisiWrapper[] allScorers;
 
   // sum of max scores of scorers in nonEssentialScorers list
-  private float nonEssentialMaxScoreSum;
+  private double nonEssentialMaxScoreSum;
 
   private long cost;
 
   private final MaxScoreSumPropagator maxScoreSumPropagator;
 
-  // scaled min competitive score
-  private float minCompetitiveScore = 0;
+  private float minCompetitiveScore;
 
-  private int cachedScoredDoc = -1;
-  private float cachedScore = 0;
+  private int cachedScoredDoc;
+
+  private float cachedScore;
 
   /**
    * Constructs a Scorer that scores doc based on Block-Max-Maxscore (BMM) algorithm
@@ -58,12 +59,16 @@ public class BlockMaxMaxscoreScorer extends Scorer {
    * WANDScorer, and could be used for simple disjunction queries.
    *
    * @param weight The weight to be used.
-   * @param scorers The sub scorers this Scorer should iterate on for optional clauses
+   * @param scorers The sub scorers this Scorer should iterate on for optional clauses.
    */
   public BlockMaxMaxscoreScorer(Weight weight, List<Scorer> scorers) throws IOException {
     super(weight);
 
+    this.upTo = -1;
     this.doc = -1;
+    this.minCompetitiveScore = 0;
+    this.cachedScoredDoc = -1;
+    this.cachedScore = 0;
     this.allScorers = new DisiWrapper[scorers.size()];
     this.essentialsScorers = new DisiPriorityQueue(scorers.size());
     this.maxScoreSortedEssentialScorers = new LinkedList<>();
@@ -142,7 +147,8 @@ public class BlockMaxMaxscoreScorer extends Scorer {
                     docScoreUpperBound += w.scorer.score();
                   }
 
-                  if ((float) docScoreUpperBound < minCompetitiveScore) {
+                  if (maxScoreSumPropagator.scoreSumUpperBound(docScoreUpperBound)
+                      < minCompetitiveScore) {
                     // skip straight to next candidate doc from essential scorer
                     int docId = top.doc;
                     do {
@@ -161,7 +167,9 @@ public class BlockMaxMaxscoreScorer extends Scorer {
 
           private void movePotentiallyNonCompetitiveScorers() {
             while (maxScoreSortedEssentialScorers.size() > 0
-                && nonEssentialMaxScoreSum + maxScoreSortedEssentialScorers.get(0).maxScoreFloat
+                && maxScoreSumPropagator.scoreSumUpperBound(
+                        nonEssentialMaxScoreSum
+                            + maxScoreSortedEssentialScorers.get(0).maxScoreFloat)
                     < minCompetitiveScore) {
               DisiWrapper nextLeastContributingScorer =
                   maxScoreSortedEssentialScorers.removeFirst();
@@ -183,8 +191,9 @@ public class BlockMaxMaxscoreScorer extends Scorer {
             // Find next interval boundary.
             // Block boundary alignment strategy is adapted from "Optimizing Top-k Document
             // Retrieval Strategies for Block-Max Indexes" by Dimopoulos, Nepomnyachiy and Suel.
-            // Find the block interval boundary that is the minimum of all participating scorer's
-            // block boundary. Then run BMM within each interval.
+            // Find the block interval boundary by computing statistics (max, avg etc.) from all
+            // participating scorer's
+            // block boundary. Then run BMM within the boundary.
             updateUpToAndMaxScore(target);
             repartitionLists();
           }
@@ -222,7 +231,9 @@ public class BlockMaxMaxscoreScorer extends Scorer {
             // the "Optimizing Top-k Document Retrieval Strategies for Block-Max Indexes" paper.
             nonEssentialMaxScoreSum = 0;
             for (DisiWrapper w : allScorers) {
-              if (nonEssentialMaxScoreSum + w.maxScoreFloat < minCompetitiveScore) {
+              if (maxScoreSumPropagator.scoreSumUpperBound(
+                      nonEssentialMaxScoreSum + w.maxScoreFloat)
+                  < minCompetitiveScore) {
                 nonEssentialMaxScoreSum += w.maxScoreFloat;
               } else {
                 maxScoreSortedEssentialScorers.add(w);

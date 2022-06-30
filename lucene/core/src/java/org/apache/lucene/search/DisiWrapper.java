@@ -39,7 +39,7 @@ public class DisiWrapper {
   // For WANDScorer
   long maxScore;
 
-  // For BMMScorer
+  // For BlockMaxMaxscoreScorer
   float maxScoreFloat;
 
   public DisiWrapper(Scorer scorer) {
