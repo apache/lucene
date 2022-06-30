@@ -34,6 +34,8 @@ New Features
 
 * LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
 
+* LUCENE-10151 Enable timeout support in IndexSearcher. (Deepika Sharma)
+
 Improvements
 ---------------------
 
@@ -69,6 +71,8 @@ Other
 
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
 
+* GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
+
 ======================== Lucene 9.3.0 =======================
 
 API Changes
@@ -80,6 +84,9 @@ API Changes
 New Features
 ---------------------
 * LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
+
+* LUCENE-10274: Added facetsets module for high dimensional (hyper-rectangle) faceting
+(Shai Erera, Marc D'Mello, Greg Miller)
 
 Improvements
 ---------------------
@@ -93,6 +100,8 @@ Improvements
 * LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
   SortedSetDocValues#docValueCount(). (Greg Miller)
 
+* GITHUB#983: AbstractSortedSetDocValueFacetCounts internal code cleanup/refactoring. (Greg Miller)
+
 Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
@@ -101,6 +110,13 @@ Optimizations
   (Adrien Grand)
 
 * LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
+
+* LUCENE-10606: For KnnVectorQuery, optimize case where filter is backed by BitSetIterator (Kaival Parikh)
+
+* LUCENE-10593: Vector similarity function and NeighborQueue reverse removal. (Alessandro Benedetti)
+
+* GITHUB#984: Use primitive type data structures in FloatTaxonomyFacets and IntTaxonomyFacets
+  #getAllChildren() internal implementation to avoid some garbage creation. (Greg Miller)
 
 Bug Fixes
 ---------------------
@@ -126,8 +142,14 @@ Bug Fixes
 
 * LUCENE-10607: Fix potential integer overflow in maxArcs computions (Tang Donghai)
 
+* GITHUB#986: Fix FieldExistsQuery rewrite when all docs have vectors. (Julie Tibshirani)
+
+* LUCENE-10623: Error implementation of docValueCount for SortingSortedSetDocValues (Lu Xugang)
+
 Other
 ---------------------
+
+* GITHUB#991: Update randomizedtesting to 2.8.0, hppc to 0.9.1, morfologik to 2.1.9. (Dawid Weiss)
 
 * LUCENE-10370: pass proper classpath/module arguments for forking jvms from within tests. (Dawid Weiss)
 
@@ -135,6 +157,12 @@ Other
   (Craig Taverner)
 
 * GITHUB#922: Remove unused and confusing FacetField indexing options (Gautam Worah)
+
+Build
+---------------------
+
+* GITHUB#976: Exclude Lucene's own JAR files from classpath entries in Eclipse config.
+  (Uwe Schindler)
 
 ======================= Lucene 9.2.0 =======================
 
