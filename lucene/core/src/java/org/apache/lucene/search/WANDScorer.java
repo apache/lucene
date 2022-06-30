@@ -102,6 +102,10 @@ final class WANDScorer extends Scorer {
     return (long) Math.ceil(scaled); // round up, cast is accurate since value is < 2^24
   }
 
+  static float unscaleScore(long scaledMaxScore, int scalingFactor) {
+    return Math.scalb(scaledMaxScore, -scalingFactor);
+  }
+
   /**
    * Scale min competitive scores the same way as max scores but this time by rounding down in order
    * to make sure that we do not miss any matches.
@@ -120,6 +124,7 @@ final class WANDScorer extends Scorer {
   private final int scalingFactor;
   // scaled min competitive score
   private long minCompetitiveScore = 0;
+  private float unscaledMinCompetitiveScore = 0;
 
   // list of scorers which 'lead' the iteration and are currently
   // positioned on 'doc'. This is sometimes called the 'pivot' in
@@ -147,6 +152,9 @@ final class WANDScorer extends Scorer {
   int freq;
 
   final ScoreMode scoreMode;
+
+  // The score of the current doc
+  float score;
 
   WANDScorer(Weight weight, Collection<Scorer> scorers, int minShouldMatch, ScoreMode scoreMode)
       throws IOException {
@@ -244,6 +252,7 @@ final class WANDScorer extends Scorer {
     assert minScore >= 0;
     long scaledMinScore = scaleMinScore(minScore, scalingFactor);
     assert scaledMinScore >= minCompetitiveScore;
+    unscaledMinCompetitiveScore = minScore;
     minCompetitiveScore = scaledMinScore;
     maxScorePropagator.setMinCompetitiveScore(minScore);
   }
@@ -251,7 +260,9 @@ final class WANDScorer extends Scorer {
   @Override
   public final Collection<ChildScorable> getChildren() throws IOException {
     List<ChildScorable> matchingChildren = new ArrayList<>();
-    advanceAllTail();
+    while (tailSize > 0) {
+      advanceTail();
+    }
     for (DisiWrapper s = lead; s != null; s = s.next) {
       matchingChildren.add(new ChildScorable(s.scorer, "SHOULD"));
     }
@@ -321,7 +332,34 @@ final class WANDScorer extends Scorer {
           }
         }
 
-        return true;
+        if (scoreMode.needsScores() == false) {
+          // this scorer is only used for `minShouldMatch`, not scoring
+          return true;
+        }
+
+        // It is often faster to compute a score to get a better approximation of the maximum score
+        // of the current document than to advance a scorer from `tail`, since the latter often
+        // requires decompressing a full block of postings.
+        double score = 0;
+        for (DisiWrapper s = lead; s != null; s = s.next) {
+          score += s.scorer.score();
+        }
+
+        while (true) {
+          if (MaxScoreSumPropagator.scoreSumUpperBound(
+                  score + unscaleScore(tailMaxScore, scalingFactor), tailSize + 1)
+              < unscaledMinCompetitiveScore) {
+            return false;
+          }
+          if (tailSize == 0) {
+            WANDScorer.this.score = (float) score;
+            return true;
+          }
+          DisiWrapper next = advanceTail();
+          if (next != null) {
+            score += next.scorer.score();
+          }
+        }
       }
 
       @Override
@@ -368,12 +406,14 @@ final class WANDScorer extends Scorer {
     }
   }
 
-  private void advanceTail(DisiWrapper disi) throws IOException {
+  private DisiWrapper advanceTail(DisiWrapper disi) throws IOException {
     disi.doc = disi.iterator.advance(doc);
     if (disi.doc == doc) {
       addLead(disi);
+      return disi;
     } else {
       head.add(disi);
+      return null;
     }
   }
 
@@ -381,9 +421,9 @@ final class WANDScorer extends Scorer {
    * Pop the entry from the 'tail' that has the greatest score contribution, advance it to the
    * current doc and then add it to 'lead' or 'head' depending on whether it matches.
    */
-  private void advanceTail() throws IOException {
+  private DisiWrapper advanceTail() throws IOException {
     final DisiWrapper top = popTail();
-    advanceTail(top);
+    return advanceTail(top);
   }
 
   private void updateMaxScores(int target) throws IOException {
@@ -503,30 +543,9 @@ final class WANDScorer extends Scorer {
     return doc;
   }
 
-  /** Advance all entries from the tail to know about all matches on the current doc. */
-  private void advanceAllTail() throws IOException {
-    // we return the next doc when the sum of the scores of the potential
-    // matching clauses is high enough but some of the clauses in 'tail' might
-    // match as well
-    // since we are advancing all clauses in tail, we just iterate the array
-    // without reorganizing the PQ
-    for (int i = tailSize - 1; i >= 0; --i) {
-      advanceTail(tail[i]);
-    }
-    tailSize = 0;
-    tailMaxScore = 0;
-    assert ensureConsistent();
-  }
-
   @Override
   public float score() throws IOException {
-    // we need to know about all matches
-    advanceAllTail();
-    double score = 0;
-    for (DisiWrapper s = lead; s != null; s = s.next) {
-      score += s.scorer.score();
-    }
-    return (float) score;
+    return score;
   }
 
   @Override
