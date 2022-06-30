@@ -580,7 +580,7 @@ final class FrozenBufferedUpdates {
         this.field = field;
 
         Terms terms = provider.terms(field);
-        if (terms != null) {
+        if (terms != null && terms != Terms.EMPTY) {
           termsEnum = terms.iterator();
           if (sortedTerms) {
             // need to reset otherwise we fail the assertSorted below since we sort per field
@@ -595,7 +595,7 @@ final class FrozenBufferedUpdates {
 
     DocIdSetIterator nextTerm(String field, BytesRef term) throws IOException {
       setField(field);
-      if (termsEnum != null && termsEnum != TermsEnum.EMPTY) {
+      if (termsEnum != null) {
         if (sortedTerms) {
           assert assertSorted(term);
           // in the sorted case we can take advantage of the "seeking forward" property
