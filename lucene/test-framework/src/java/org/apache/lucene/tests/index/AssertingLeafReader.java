@@ -104,7 +104,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   @Override
   public Terms terms(String field) throws IOException {
     Terms terms = super.terms(field);
-    return (terms == null || terms == Terms.EMPTY) ? Terms.EMPTY : new AssertingTerms(terms);
+    return terms == null ? Terms.EMPTY : new AssertingTerms(terms);
   }
 
   @Override
@@ -163,9 +163,7 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public int getDocCount() throws IOException {
-      final int docCount = in.getDocCount();
-      assert docCount > 0;
-      return docCount;
+      return in.getDocCount();
     }
 
     @Override

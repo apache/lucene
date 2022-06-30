@@ -130,9 +130,6 @@ public final class AssertingPostingsFormat extends PostingsFormat {
         lastField = field;
 
         Terms terms = fields.terms(field);
-        if (terms == null || terms == Terms.EMPTY) {
-          continue;
-        }
         assert terms != null;
 
         TermsEnum termsEnum = terms.iterator();
