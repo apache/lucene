@@ -192,8 +192,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
             // Block boundary alignment strategy is adapted from "Optimizing Top-k Document
             // Retrieval Strategies for Block-Max Indexes" by Dimopoulos, Nepomnyachiy and Suel.
             // Find the block interval boundary by computing statistics (max, avg etc.) from all
-            // participating scorer's
-            // block boundary. Then run BMM within the boundary.
+            // participating scorer's block boundary. Then run BMM within the boundary.
             updateUpToAndMaxScore(target);
             repartitionLists();
           }
