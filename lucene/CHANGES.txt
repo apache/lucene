@@ -109,7 +109,6 @@ Optimizations
 
 * LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
 
-
 * LUCENE-10480: Implement Block-Max-Maxscore scorer for 2 clauses disjunction. (Zach Chen, Adrien Grand)
 
 * LUCENE-10606: For KnnVectorQuery, optimize case where filter is backed by BitSetIterator (Kaival Parikh)
