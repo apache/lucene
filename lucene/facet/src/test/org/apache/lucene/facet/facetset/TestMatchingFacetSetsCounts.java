@@ -17,7 +17,6 @@
 package org.apache.lucene.facet.facetset;
 
 import java.io.IOException;
-
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.FacetResult;
@@ -120,22 +119,24 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
     FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     // Test without fastMatchQuery. First 2 docs will match, the 3rd will not.
-    Facets facets = new MatchingFacetSetsCounts(
-        "field",
-        fc,
-        FacetSetDecoder::decodeLongs,
-        new ExactFacetSetMatcher("Test", new LongFacetSet(123, 456)));
+    Facets facets =
+        new MatchingFacetSetsCounts(
+            "field",
+            fc,
+            FacetSetDecoder::decodeLongs,
+            new ExactFacetSetMatcher("Test", new LongFacetSet(123, 456)));
 
     FacetResult facetResult = facets.getAllChildren("field");
     assertEquals(2, facetResult.value);
 
     // Test with fastMatchQuery. First 2 docs will match. 2nd doc will be filtered out.
-    facets = new MatchingFacetSetsCounts(
-        "field",
-        new FieldExistsQuery("pass-filter"),
-        fc,
-        FacetSetDecoder::decodeLongs,
-        new ExactFacetSetMatcher("Test", new LongFacetSet(123, 456)));
+    facets =
+        new MatchingFacetSetsCounts(
+            "field",
+            new FieldExistsQuery("pass-filter"),
+            fc,
+            FacetSetDecoder::decodeLongs,
+            new ExactFacetSetMatcher("Test", new LongFacetSet(123, 456)));
 
     facetResult = facets.getAllChildren("field");
     assertEquals(1, facetResult.value);

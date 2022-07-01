@@ -19,7 +19,6 @@ package org.apache.lucene.facet.range;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.lucene.facet.FacetCountsWithFilterQuery;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetsCollector;

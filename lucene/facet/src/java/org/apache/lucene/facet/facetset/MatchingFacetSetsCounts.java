@@ -46,8 +46,8 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
   private final int totCount;
 
   /**
-   * Constructs a new instance of {@code MatchingFacetSetsCounts} which calculates the counts for each
-   * given facet set matcher.
+   * Constructs a new instance of {@code MatchingFacetSetsCounts} which calculates the counts for
+   * each given facet set matcher.
    */
   public MatchingFacetSetsCounts(
       String field,
@@ -71,8 +71,8 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
   }
 
   /**
-   * Constructs a new instance of {@code MatchingFacetSetsCounts} which calculates the counts for each
-   * given facet set matcher.
+   * Constructs a new instance of {@code MatchingFacetSetsCounts} which calculates the counts for
+   * each given facet set matcher.
    */
   public MatchingFacetSetsCounts(
       String field,
