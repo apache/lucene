@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import java.util.StringTokenizer;
-
 /** Some useful constants. */
 public final class Constants {
   private Constants() {} // can't construct
@@ -25,12 +23,32 @@ public final class Constants {
   /** JVM vendor info. */
   public static final String JVM_VENDOR = System.getProperty("java.vm.vendor");
 
-  public static final String JVM_VERSION = System.getProperty("java.vm.version");
+  /** JVM vendor name. */
   public static final String JVM_NAME = System.getProperty("java.vm.name");
-  public static final String JVM_SPEC_VERSION = System.getProperty("java.specification.version");
 
-  /** The value of <code>System.getProperty("java.version")</code>. * */
-  public static final String JAVA_VERSION = System.getProperty("java.version");
+  /**
+   * Get the full version string of the current runtime.
+   *
+   * @deprecated To detect Java versions use {@link Runtime#version()}
+   */
+  @Deprecated public static final String JVM_VERSION = Runtime.version().toString();
+
+  /**
+   * Gets the specification version of the current runtime. This is the feature version converted to
+   * String.
+   *
+   * @see java.lang.Runtime.Version#feature()
+   * @deprecated To detect Java versions use {@link Runtime#version()}
+   */
+  @Deprecated
+  public static final String JVM_SPEC_VERSION = Integer.toString(Runtime.version().feature());
+
+  /**
+   * The value of <code>System.getProperty("java.version")</code>.
+   *
+   * @deprecated To detect Java versions use {@link Runtime#version()}
+   */
+  @Deprecated public static final String JAVA_VERSION = System.getProperty("java.version");
 
   /** The value of <code>System.getProperty("os.name")</code>. * */
   public static final String OS_NAME = System.getProperty("os.name");
@@ -45,24 +63,19 @@ public final class Constants {
   /** True iff running on FreeBSD */
   public static final boolean FREE_BSD = OS_NAME.startsWith("FreeBSD");
 
+  /** The value of <code>System.getProperty("os.arch")</code>. */
   public static final String OS_ARCH = System.getProperty("os.arch");
-  public static final String OS_VERSION = System.getProperty("os.version");
-  public static final String JAVA_VENDOR = System.getProperty("java.vendor");
 
-  private static final int JVM_MAJOR_VERSION;
-  private static final int JVM_MINOR_VERSION;
+  /** The value of <code>System.getProperty("os.version")</code>. */
+  public static final String OS_VERSION = System.getProperty("os.version");
+
+  /** The value of <code>System.getProperty("java.vendor")</code>. */
+  public static final String JAVA_VENDOR = System.getProperty("java.vendor");
 
   /** True iff running on a 64bit JVM */
   public static final boolean JRE_IS_64BIT;
 
   static {
-    final StringTokenizer st = new StringTokenizer(JVM_SPEC_VERSION, ".");
-    JVM_MAJOR_VERSION = Integer.parseInt(st.nextToken());
-    if (st.hasMoreTokens()) {
-      JVM_MINOR_VERSION = Integer.parseInt(st.nextToken());
-    } else {
-      JVM_MINOR_VERSION = 0;
-    }
     boolean is64Bit = false;
     String datamodel = null;
     try {
@@ -84,10 +97,27 @@ public final class Constants {
     JRE_IS_64BIT = is64Bit;
   }
 
-  public static final boolean JRE_IS_MINIMUM_JAVA8 =
-      JVM_MAJOR_VERSION > 1 || (JVM_MAJOR_VERSION == 1 && JVM_MINOR_VERSION >= 8);
-  public static final boolean JRE_IS_MINIMUM_JAVA9 =
-      JVM_MAJOR_VERSION > 1 || (JVM_MAJOR_VERSION == 1 && JVM_MINOR_VERSION >= 9);
-  public static final boolean JRE_IS_MINIMUM_JAVA11 =
-      JVM_MAJOR_VERSION > 1 || (JVM_MAJOR_VERSION == 1 && JVM_MINOR_VERSION >= 11);
+  /**
+   * Always true.
+   *
+   * @deprecated This constant is useless and always {@code true}. To detect Java versions use
+   *     {@link Runtime#version()}
+   */
+  @Deprecated public static final boolean JRE_IS_MINIMUM_JAVA8 = true;
+
+  /**
+   * Always true.
+   *
+   * @deprecated This constant is useless and always {@code true}. To detect Java versions use
+   *     {@link Runtime#version()}
+   */
+  @Deprecated public static final boolean JRE_IS_MINIMUM_JAVA9 = true;
+
+  /**
+   * Always true.
+   *
+   * @deprecated This constant is useless and always {@code true}. To detect Java versions use
+   *     {@link Runtime#version()}
+   */
+  @Deprecated public static final boolean JRE_IS_MINIMUM_JAVA11 = true;
 }

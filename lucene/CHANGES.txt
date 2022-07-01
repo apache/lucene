@@ -73,6 +73,9 @@ API Changes
 * LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
   SortedSetDocValues#docValueCount(). (Greg Miller)
 
+* GITHUB#978: Deprecate (remove in Lucene 10) obsolete constants in oal.util.Constants; remove
+  code which is no longer executed after Java 9. (Uwe Schindler)
+
 New Features
 ---------------------
 * LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
@@ -109,6 +112,12 @@ Optimizations
 
 * GITHUB#984: Use primitive type data structures in FloatTaxonomyFacets and IntTaxonomyFacets
   #getAllChildren() internal implementation to avoid some garbage creation. (Greg Miller)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#978: IndexWriter diagnostics written to index only contain java's runtime version
+  and vendor. (Uwe Schindler)
 
 Bug Fixes
 ---------------------
