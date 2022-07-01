@@ -79,6 +79,9 @@ API Changes
 * LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
   SortedSetDocValues#docValueCount(). (Greg Miller)
 
+* GITHUB#978: Deprecate (remove in Lucene 10) obsolete constants in oal.util.Constants; remove
+  code which is no longer executed after Java 9. (Uwe Schindler)
+
 New Features
 ---------------------
 * LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
