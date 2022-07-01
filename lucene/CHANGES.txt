@@ -119,6 +119,12 @@ Optimizations
 * GITHUB#984: Use primitive type data structures in FloatTaxonomyFacets and IntTaxonomyFacets
   #getAllChildren() internal implementation to avoid some garbage creation. (Greg Miller)
 
+Changes in runtime behavior
+---------------------
+
+* GITHUB#978: IndexWriter diagnostics written to index only contain java's runtime version
+  and vendor. (Uwe Schindler)
+
 Bug Fixes
 ---------------------
 
