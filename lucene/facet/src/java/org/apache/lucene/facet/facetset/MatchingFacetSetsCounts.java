@@ -21,14 +21,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.facet.FacetCountsWithFilterQuery;
 import org.apache.lucene.facet.FacetResult;
-import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -36,7 +37,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public class MatchingFacetSetsCounts extends Facets {
+public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
 
   private final FacetSetMatcher[] facetSetMatchers;
   private final int[] counts;
@@ -45,15 +46,17 @@ public class MatchingFacetSetsCounts extends Facets {
   private final int totCount;
 
   /**
-   * Constructs a new instance of matching facet set counts which calculates the counts for each
+   * Constructs a new instance of {@code MatchingFacetSetsCounts} which calculates the counts for each
    * given facet set matcher.
    */
   public MatchingFacetSetsCounts(
       String field,
+      Query fastMatchQuery,
       FacetsCollector hits,
       FacetSetDecoder facetSetDecoder,
       FacetSetMatcher... facetSetMatchers)
       throws IOException {
+    super(fastMatchQuery);
     if (facetSetMatchers == null || facetSetMatchers.length == 0) {
       throw new IllegalArgumentException("facetSetMatchers cannot be null or empty");
     }
@@ -67,6 +70,19 @@ public class MatchingFacetSetsCounts extends Facets {
     this.totCount = count(field, hits.getMatchingDocs());
   }
 
+  /**
+   * Constructs a new instance of {@code MatchingFacetSetsCounts} which calculates the counts for each
+   * given facet set matcher.
+   */
+  public MatchingFacetSetsCounts(
+      String field,
+      FacetsCollector hits,
+      FacetSetDecoder facetSetDecoder,
+      FacetSetMatcher... facetSetMatchers)
+      throws IOException {
+    this(field, null, hits, facetSetDecoder, facetSetMatchers);
+  }
+
   /** Counts from the provided field. */
   private int count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
       throws IOException {
@@ -76,8 +92,12 @@ public class MatchingFacetSetsCounts extends Facets {
 
       BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context.reader(), field);
 
-      final DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), binaryDocValues));
+      DocIdSetIterator it = createIterator(hits);
+      if (it == null) {
+        continue;
+      }
+
+      it = ConjunctionUtils.intersectIterators(Arrays.asList(it, binaryDocValues));
       if (it == null) {
         continue;
       }

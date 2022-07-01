@@ -17,16 +17,21 @@
 package org.apache.lucene.facet.facetset;
 
 import java.io.IOException;
+
+import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.util.BytesRef;
 
 public class TestMatchingFacetSetsCounts extends FacetTestCase {
 
@@ -83,6 +88,57 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
                 fc,
                 FacetSetDecoder::decodeLongs,
                 new ExactFacetSetMatcher("Test", new LongFacetSet(1))));
+
+    r.close();
+    d.close();
+  }
+
+  public void testFastMatchQuery() throws IOException {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+
+    // This doc will match and go through the filter.
+    Document doc = new Document();
+    doc.add(FacetSetsField.create("field", new LongFacetSet(123, 456)));
+    doc.add(new BinaryDocValuesField("pass-filter", new BytesRef("yes")));
+    w.addDocument(doc);
+
+    // This doc will match and get caught by the filter.
+    doc = new Document();
+    doc.add(FacetSetsField.create("field", new LongFacetSet(123, 456)));
+    w.addDocument(doc);
+
+    // This doc will not match.
+    doc = new Document();
+    doc.add(FacetSetsField.create("field", new LongFacetSet(123, 789)));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    // Test without fastMatchQuery. First 2 docs will match, the 3rd will not.
+    Facets facets = new MatchingFacetSetsCounts(
+        "field",
+        fc,
+        FacetSetDecoder::decodeLongs,
+        new ExactFacetSetMatcher("Test", new LongFacetSet(123, 456)));
+
+    FacetResult facetResult = facets.getAllChildren("field");
+    assertEquals(2, facetResult.value);
+
+    // Test with fastMatchQuery. First 2 docs will match. 2nd doc will be filtered out.
+    facets = new MatchingFacetSetsCounts(
+        "field",
+        new FieldExistsQuery("pass-filter"),
+        fc,
+        FacetSetDecoder::decodeLongs,
+        new ExactFacetSetMatcher("Test", new LongFacetSet(123, 456)));
+
+    facetResult = facets.getAllChildren("field");
+    assertEquals(1, facetResult.value);
 
     r.close();
     d.close();
