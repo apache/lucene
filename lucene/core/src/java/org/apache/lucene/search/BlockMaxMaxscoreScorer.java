@@ -25,7 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /** Scorer implementing Block-Max Maxscore algorithm */
-public class BlockMaxMaxscoreScorer extends Scorer {
+class BlockMaxMaxscoreScorer extends Scorer {
   // current doc ID of the leads
   private int doc;
 
@@ -43,7 +43,7 @@ public class BlockMaxMaxscoreScorer extends Scorer {
   // sum of max scores of scorers in nonEssentialScorers list
   private double nonEssentialMaxScoreSum;
 
-  private long cost;
+  private final long cost;
 
   private final MaxScoreSumPropagator maxScoreSumPropagator;
 
@@ -168,12 +168,11 @@ public class BlockMaxMaxscoreScorer extends Scorer {
           private void movePotentiallyNonCompetitiveScorers() {
             while (maxScoreSortedEssentialScorers.size() > 0
                 && maxScoreSumPropagator.scoreSumUpperBound(
-                        nonEssentialMaxScoreSum
-                            + maxScoreSortedEssentialScorers.get(0).maxScoreFloat)
+                        nonEssentialMaxScoreSum + maxScoreSortedEssentialScorers.get(0).maxScore)
                     < minCompetitiveScore) {
               DisiWrapper nextLeastContributingScorer =
                   maxScoreSortedEssentialScorers.removeFirst();
-              nonEssentialMaxScoreSum += nextLeastContributingScorer.maxScoreFloat;
+              nonEssentialMaxScoreSum += nextLeastContributingScorer.maxScore;
             }
 
             // list adjusted
@@ -211,29 +210,26 @@ public class BlockMaxMaxscoreScorer extends Scorer {
             assert target <= upTo;
 
             for (DisiWrapper w : allScorers) {
-              if (w.doc <= upTo) {
-                w.maxScoreFloat = w.scorer.getMaxScore(upTo);
-              } else {
-                // This scorer won't be able to contribute to match for target, setting its maxScore
-                // to 0 so it goes into nonEssentialList
-                w.maxScoreFloat = 0;
-              }
+              // The assertion below will hold as long as upTo was computed using Math.max
+              // However, when the upTo computation method changes (to Math.avg etc),
+              // we may need to also handle the scenario where w.doc > upTo
+              assert w.doc <= upTo;
+              w.maxScore = w.scorer.getMaxScore(upTo);
             }
           }
 
           private void repartitionLists() {
             essentialsScorers.clear();
             maxScoreSortedEssentialScorers.clear();
-            Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxScoreFloat));
+            Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxScore));
 
             // Re-partition the scorers into non-essential list and essential list, as defined in
             // the "Optimizing Top-k Document Retrieval Strategies for Block-Max Indexes" paper.
             nonEssentialMaxScoreSum = 0;
             for (DisiWrapper w : allScorers) {
-              if (maxScoreSumPropagator.scoreSumUpperBound(
-                      nonEssentialMaxScoreSum + w.maxScoreFloat)
+              if (maxScoreSumPropagator.scoreSumUpperBound(nonEssentialMaxScoreSum + w.maxScore)
                   < minCompetitiveScore) {
-                nonEssentialMaxScoreSum += w.maxScoreFloat;
+                nonEssentialMaxScoreSum += w.maxScore;
               } else {
                 maxScoreSortedEssentialScorers.add(w);
                 essentialsScorers.add(w);

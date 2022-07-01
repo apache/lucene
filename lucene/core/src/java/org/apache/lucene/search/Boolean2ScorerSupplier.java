@@ -120,7 +120,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
 
     // pure two terms disjunction
     if (scoreMode == ScoreMode.TOP_SCORES
-        && minShouldMatch == 0
+        && minShouldMatch <= 1
         && subs.get(Occur.FILTER).isEmpty()
         && subs.get(Occur.MUST).isEmpty()
         && subs.get(Occur.MUST_NOT).isEmpty()
