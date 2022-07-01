@@ -4775,14 +4775,9 @@ public class IndexWriter
     diagnostics.put("os", Constants.OS_NAME);
     diagnostics.put("os.arch", Constants.OS_ARCH);
     diagnostics.put("os.version", Constants.OS_VERSION);
-    final var jv = Runtime.version().toString();
-    diagnostics.put("java.version", jv);
+    diagnostics.put("java.runtime.version", Runtime.version().toString());
     diagnostics.put("java.vendor", Constants.JAVA_VENDOR);
     diagnostics.put("timestamp", Long.toString(Instant.now().toEpochMilli()));
-    // TODO: Can we remove those duplicates?
-    // Backwards compatibility:
-    diagnostics.put("java.runtime.version", jv);
-    diagnostics.put("java.vm.version", jv);
     if (details != null) {
       diagnostics.putAll(details);
     }
