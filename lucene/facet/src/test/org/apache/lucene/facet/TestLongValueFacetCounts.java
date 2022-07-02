@@ -69,6 +69,18 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
         "dim=field path=[] value=101 childCount=6\n  0 (20)\n  1 (20)\n  2 (20)\n  3 (20)\n  "
             + "4 (20)\n  9223372036854775807 (1)\n",
         result.toString());
+
+    FacetResult topChildrenResult = facets.getTopChildren(2, "field");
+    assertEquals(
+        "dim=field path=[] value=101 childCount=6\n  0 (20)\n  1 (20)\n",
+        topChildrenResult.toString());
+
+    FacetResult allChildrenResult = facets.getAllChildren("field");
+    assertEquals(
+        "dim=field path=[] value=101 childCount=6\n  0 (20)\n  1 (20)\n  2 (20)\n  3 (20)\n  "
+            + "4 (20)\n  9223372036854775807 (1)\n",
+        allChildrenResult.toString());
+
     r.close();
     d.close();
   }
@@ -94,6 +106,11 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
 
     FacetResult result = facets.getAllChildrenSortByValue();
     assertEquals("dim=field path=[] value=9 childCount=2\n  0 (4)\n  1 (5)\n", result.toString());
+    result = facets.getTopChildren(10, "field");
+    assertEquals("dim=field path=[] value=9 childCount=2\n  1 (5)\n  0 (4)\n", result.toString());
+    result = facets.getAllChildren("field");
+    assertEquals("dim=field path=[] value=9 childCount=2\n  0 (4)\n  1 (5)\n", result.toString());
+
     r.close();
     d.close();
   }
@@ -116,6 +133,22 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     LongValueFacetCounts facets = new LongValueFacetCounts("field", fc);
 
     FacetResult result = facets.getAllChildrenSortByValue();
+    assertEquals(
+        "dim=field path=[] value=3 childCount=3\n  9223372036854775805 (1)\n  "
+            + "9223372036854775806 (1)\n  9223372036854775807 (1)\n",
+        result.toString());
+
+    // test getAllChildren
+    result = facets.getAllChildren("field");
+
+    // since we have no insight into the value order in the hashMap, we sort labels by value and
+    // count in
+    // ascending order in order to compare with expected results
+    Arrays.sort(
+        result.labelValues,
+        Comparator.comparing((LabelAndValue a) -> a.label)
+            .thenComparingLong(a -> a.value.longValue()));
+
     assertEquals(
         "dim=field path=[] value=3 childCount=3\n  9223372036854775805 (1)\n  "
             + "9223372036854775806 (1)\n  9223372036854775807 (1)\n",
@@ -302,6 +335,24 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
       FacetResult actual = facetCounts.getAllChildrenSortByValue();
       assertSame(
           "all docs, sort facets by value",
+          expectedCounts,
+          expectedChildCount,
+          docCount - missingCount,
+          actual,
+          Integer.MAX_VALUE);
+
+      // test getAllChildren
+      expectedCounts.sort(
+          Comparator.comparing((Map.Entry<Long, Integer> a) -> a.getKey())
+              .thenComparingLong(Map.Entry::getValue));
+      FacetResult allChildren = facetCounts.getAllChildren("field");
+      // sort labels by value, count in ascending order
+      Arrays.sort(
+          allChildren.labelValues,
+          Comparator.comparing((LabelAndValue a) -> a.label)
+              .thenComparingLong(a -> a.value.longValue()));
+      assertSame(
+          "test getAllChildren",
           expectedCounts,
           expectedChildCount,
           docCount - missingCount,
@@ -553,6 +604,24 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
           actual,
           Integer.MAX_VALUE);
 
+      // test getAllChildren
+      expectedCounts.sort(
+          Comparator.comparing((Map.Entry<Long, Integer> a) -> a.getKey())
+              .thenComparingLong(Map.Entry::getValue));
+      FacetResult allChildren = facetCounts.getAllChildren("field");
+      // sort labels by value, count in ascending order
+      Arrays.sort(
+          allChildren.labelValues,
+          Comparator.comparing((LabelAndValue a) -> a.label)
+              .thenComparingLong(a -> a.value.longValue()));
+      assertSame(
+          "test getAllChildren",
+          expectedCounts,
+          expectedChildCount,
+          expectedTotalCount,
+          actual,
+          Integer.MAX_VALUE);
+
       // sort by count
       expectedCounts.sort(
           (a, b) -> {
@@ -736,6 +805,8 @@ public class TestLongValueFacetCounts extends LuceneTestCase {
     for (LabelAndValue labelAndValue : fr.labelValues) {
       assert labelAndValue.value.equals(1);
     }
+    FacetResult result = facetCounts.getAllChildren("field");
+    assertEquals("dim=field path=[] value=2 childCount=2\n  42 (1)\n  43 (1)\n", result.toString());
 
     r.close();
     dir.close();
