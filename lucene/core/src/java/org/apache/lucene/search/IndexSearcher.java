@@ -85,10 +85,10 @@ public class IndexSearcher {
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
   private QueryTimeout queryTimeout = null;
-  // TODO: does partialResult need to be volatile? It can be set on one of the threads of the
-  // executor, but maybe the fact that we join threads guarantees that changes to this variable
-  // become visible on the main thread? In any case, a volatile read in #timedOut shouldn't have a
-  // significant performance impact.
+  // partialResult may be set on one of the threads of the executor. It may be correct to not make
+  // this variable volatile since joining these threads should ensure a happens-before relationship
+  // that guarantees that writes become visible on the main thread, but making the variable volatile
+  // shouldn't hurt either.
   private volatile boolean partialResult = false;
 
   static {
