@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 
 /** Scorer implementing Block-Max Maxscore algorithm */
@@ -35,10 +34,12 @@ class BlockMaxMaxscoreScorer extends Scorer {
   // heap of scorers ordered by doc ID
   private final DisiPriorityQueue essentialsScorers;
 
-  // list of scorers ordered by maxScore
-  private final LinkedList<DisiWrapper> maxScoreSortedEssentialScorers;
-
+  // array of scorers ordered by maxScore
   private final DisiWrapper[] allScorers;
+
+  // index of the first essential scorer is the `allScorers` array. All scorers before this index
+  // are non-essential. All scorers on and after this index are essential.
+  private int firstEssentialScorerIndex;
 
   // sum of max scores of scorers in nonEssentialScorers list
   private double nonEssentialMaxScoreSum;
@@ -49,9 +50,7 @@ class BlockMaxMaxscoreScorer extends Scorer {
 
   private float minCompetitiveScore;
 
-  private int cachedScoredDoc;
-
-  private float cachedScore;
+  private double score;
 
   /**
    * Constructs a Scorer that scores doc based on Block-Max-Maxscore (BMM) algorithm
@@ -67,11 +66,9 @@ class BlockMaxMaxscoreScorer extends Scorer {
     this.upTo = -1;
     this.doc = -1;
     this.minCompetitiveScore = 0;
-    this.cachedScoredDoc = -1;
-    this.cachedScore = 0;
     this.allScorers = new DisiWrapper[scorers.size()];
     this.essentialsScorers = new DisiPriorityQueue(scorers.size());
-    this.maxScoreSortedEssentialScorers = new LinkedList<>();
+    this.firstEssentialScorerIndex = 0;
 
     long cost = 0;
     for (int i = 0; i < scorers.size(); i++) {
@@ -141,12 +138,15 @@ class BlockMaxMaxscoreScorer extends Scorer {
                 } else if (top.doc > upTo) {
                   target = upTo + 1;
                 } else {
-                  double docScoreUpperBound = nonEssentialMaxScoreSum;
-
+                  // Start evaluating the score of the new document. It only includes essential
+                  // clauses here, scores of non-essential clauses get added later on in
+                  // TwoPhaseIterator#matches.
+                  score = 0;
                   for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
-                    docScoreUpperBound += w.scorer.score();
+                    score += w.scorer.score();
                   }
 
+                  final double docScoreUpperBound = score + nonEssentialMaxScoreSum;
                   if (maxScoreSumPropagator.scoreSumUpperBound(docScoreUpperBound)
                       < minCompetitiveScore) {
                     // skip straight to next candidate doc from essential scorer
@@ -166,20 +166,21 @@ class BlockMaxMaxscoreScorer extends Scorer {
           }
 
           private void movePotentiallyNonCompetitiveScorers() {
-            while (maxScoreSortedEssentialScorers.size() > 0
+            boolean removedEssentialScorer = false;
+            while (firstEssentialScorerIndex < allScorers.length
                 && maxScoreSumPropagator.scoreSumUpperBound(
-                        nonEssentialMaxScoreSum + maxScoreSortedEssentialScorers.get(0).maxScore)
+                        nonEssentialMaxScoreSum + allScorers[firstEssentialScorerIndex].maxScore)
                     < minCompetitiveScore) {
-              DisiWrapper nextLeastContributingScorer =
-                  maxScoreSortedEssentialScorers.removeFirst();
+              DisiWrapper nextLeastContributingScorer = allScorers[firstEssentialScorerIndex++];
               nonEssentialMaxScoreSum += nextLeastContributingScorer.maxScore;
+              removedEssentialScorer = true;
             }
 
             // list adjusted
-            if (essentialsScorers.size() != maxScoreSortedEssentialScorers.size()) {
+            if (removedEssentialScorer) {
               essentialsScorers.clear();
-              for (DisiWrapper w : maxScoreSortedEssentialScorers) {
-                essentialsScorers.add(w);
+              for (int i = firstEssentialScorerIndex; i < allScorers.length; ++i) {
+                essentialsScorers.add(allScorers[i]);
               }
             }
           }
@@ -220,7 +221,7 @@ class BlockMaxMaxscoreScorer extends Scorer {
 
           private void repartitionLists() {
             essentialsScorers.clear();
-            maxScoreSortedEssentialScorers.clear();
+            firstEssentialScorerIndex = 0;
             Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxScore));
 
             // Re-partition the scorers into non-essential list and essential list, as defined in
@@ -228,12 +229,14 @@ class BlockMaxMaxscoreScorer extends Scorer {
             nonEssentialMaxScoreSum = 0;
             for (DisiWrapper w : allScorers) {
               if (maxScoreSumPropagator.scoreSumUpperBound(nonEssentialMaxScoreSum + w.maxScore)
-                  < minCompetitiveScore) {
-                nonEssentialMaxScoreSum += w.maxScore;
-              } else {
-                maxScoreSortedEssentialScorers.add(w);
-                essentialsScorers.add(w);
+                  >= minCompetitiveScore) {
+                break;
               }
+              firstEssentialScorerIndex++;
+              nonEssentialMaxScoreSum += w.maxScore;
+            }
+            for (int i = firstEssentialScorerIndex; i < allScorers.length; ++i) {
+              essentialsScorers.add(allScorers[i]);
             }
           }
 
@@ -248,6 +251,17 @@ class BlockMaxMaxscoreScorer extends Scorer {
 
       @Override
       public boolean matches() throws IOException {
+        // Only sum up scores of non-essential scorers, essential scores were already folded into
+        // the score.
+        for (int i = 0; i < firstEssentialScorerIndex; ++i) {
+          DisiWrapper w = allScorers[i];
+          if (w.doc < doc) {
+            w.doc = w.iterator.advance(doc);
+          }
+          if (w.doc == doc) {
+            score += allScorers[i].scorer.score();
+          }
+        }
         return score() >= minCompetitiveScore;
       }
 
@@ -281,26 +295,7 @@ class BlockMaxMaxscoreScorer extends Scorer {
 
   @Override
   public float score() throws IOException {
-    if (doc == cachedScoredDoc) {
-      return cachedScore;
-    } else {
-      double sum = 0;
-
-      for (DisiWrapper w : allScorers) {
-        if (w.doc < doc) {
-          w.doc = w.iterator.advance(doc);
-        }
-
-        if (w.doc == doc) {
-          sum += w.scorer.score();
-        }
-      }
-
-      cachedScoredDoc = doc;
-      cachedScore = (float) sum;
-
-      return cachedScore;
-    }
+    return (float) score;
   }
 
   @Override
