@@ -406,6 +406,10 @@ final class WANDScorer extends Scorer {
     }
   }
 
+  /**
+   * Advance the given {@link DisiWrapper} and return it if, and only if, it matches the current
+   * candidate document. Otherwise return {@code null}.
+   */
   private DisiWrapper advanceTail(DisiWrapper disi) throws IOException {
     disi.doc = disi.iterator.advance(doc);
     if (disi.doc == doc) {
