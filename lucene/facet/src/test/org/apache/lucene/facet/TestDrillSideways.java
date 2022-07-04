@@ -132,7 +132,11 @@ public class TestDrillSideways extends FacetTestCase {
   private IndexSearcher getNewSearcher(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
-    return newSearcher(reader, true, false, random().nextBoolean());
+    IndexSearcher searcher = newSearcher(reader, true, false, random().nextBoolean());
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    searcher.setTimeout(null);
+    return searcher;
   }
 
   // See LUCENE-10060:
