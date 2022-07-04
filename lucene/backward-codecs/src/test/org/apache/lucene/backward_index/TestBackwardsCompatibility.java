@@ -1205,6 +1205,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(id, dvShort.longValue());
 
       assertEquals(i, dvSortedSet.nextDoc());
+      assertEquals(1, dvSortedSet.docValueCount());
       long ord = dvSortedSet.nextOrd();
       assertEquals(SortedSetDocValues.NO_MORE_ORDS, dvSortedSet.nextOrd());
       term = dvSortedSet.lookupOrd(ord);
