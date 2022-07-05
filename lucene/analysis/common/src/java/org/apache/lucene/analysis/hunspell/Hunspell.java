@@ -178,7 +178,7 @@ public class Hunspell {
         offset,
         length,
         context,
-        (stem, formID, morphDataId) -> {
+        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
           if (checkCase && !acceptCase(originalCase, formID, stem)) {
             return dictionary.hasFlag(formID, Dictionary.HIDDEN_FLAG);
           }
@@ -316,6 +316,52 @@ public class Hunspell {
         .collect(Collectors.toList());
   }
 
+  /**
+   * @return all possible analyses of the given word with stems, prefixes, suffixed and
+   *     morphological data. Note that the order of the returned objects might not correspond to the
+   *     *.dic file order!
+   */
+  public List<AffixedWord> analyzeSimpleWord(String word) {
+    List<AffixedWord> result = new ArrayList<>();
+    stemmer.analyze(
+        word.toCharArray(),
+        word.length(),
+        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
+          List<AffixedWord.Affix> prefixes = new ArrayList<>();
+          List<AffixedWord.Affix> suffixes = new ArrayList<>();
+          if (outerPrefix >= 0) prefixes.add(new AffixedWord.Affix(dictionary, outerPrefix));
+          if (innerPrefix >= 0) prefixes.add(new AffixedWord.Affix(dictionary, innerPrefix));
+          if (outerSuffix >= 0) suffixes.add(new AffixedWord.Affix(dictionary, outerSuffix));
+          if (innerSuffix >= 0) suffixes.add(new AffixedWord.Affix(dictionary, innerSuffix));
+
+          DictEntry entry = dictionary.dictEntry(stem.toString(), formID, morphDataId);
+          result.add(new AffixedWord(word, entry, prefixes, suffixes));
+          return true;
+        });
+    return result;
+  }
+
+  /**
+   * Generate all word forms for all dictionary entries with the given root word. The result order
+   * is stable but not specified. This is equivalent to "unmunch" from the "hunspell-tools" package.
+   *
+   * @see WordFormGenerator for finer-grained APIs
+   */
+  public List<AffixedWord> getAllWordForms(String root) {
+    return new WordFormGenerator(dictionary).getAllWordForms(root, checkCanceled);
+  }
+
+  /**
+   * Given a list of words, try to produce a smaller set of dictionary entries (with some flags)
+   * that would generate these words. This is equivalent to "munch" from the "hunspell-tools"
+   * package.
+   *
+   * @see WordFormGenerator#compress for more details and control
+   */
+  public EntrySuggestion compress(List<String> words) {
+    return new WordFormGenerator(dictionary).compress(words, Set.of(), checkCanceled);
+  }
+
   private class CompoundPart {
     final CompoundPart prev;
     final int index, length;
@@ -433,7 +479,7 @@ public class Hunspell {
     words.add(ref);
 
     Stemmer.RootProcessor stopOnMatching =
-        (stem, formID, morphDataId) -> {
+        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
           ref.ints[0] = formID;
           return dictionary.compoundRules.stream().noneMatch(r -> r.fullyMatches(words));
         };
