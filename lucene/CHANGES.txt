@@ -36,6 +36,9 @@ New Features
 
 * LUCENE-10151 Enable timeout support in IndexSearcher. (Deepika Sharma)
 
+* LUCENE-10626 Hunspell: add tools to aid dictionary editing:
+  analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
+
 Improvements
 ---------------------
 
@@ -81,6 +84,9 @@ API Changes
 * LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
   SortedSetDocValues#docValueCount(). (Greg Miller)
 
+* GITHUB#978: Deprecate (remove in Lucene 10) obsolete constants in oal.util.Constants; remove
+  code which is no longer executed after Java 9. (Uwe Schindler)
+
 New Features
 ---------------------
 * LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
@@ -111,12 +117,20 @@ Optimizations
 
 * LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
 
+* LUCENE-10480: Implement Block-Max-Maxscore scorer for 2 clauses disjunction. (Zach Chen, Adrien Grand)
+
 * LUCENE-10606: For KnnVectorQuery, optimize case where filter is backed by BitSetIterator (Kaival Parikh)
 
 * LUCENE-10593: Vector similarity function and NeighborQueue reverse removal. (Alessandro Benedetti)
 
 * GITHUB#984: Use primitive type data structures in FloatTaxonomyFacets and IntTaxonomyFacets
   #getAllChildren() internal implementation to avoid some garbage creation. (Greg Miller)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#978: IndexWriter diagnostics written to index only contain java's runtime version
+  and vendor. (Uwe Schindler)
 
 Bug Fixes
 ---------------------

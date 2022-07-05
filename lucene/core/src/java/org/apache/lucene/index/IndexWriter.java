@@ -21,12 +21,12 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -4775,14 +4775,9 @@ public class IndexWriter
     diagnostics.put("os", Constants.OS_NAME);
     diagnostics.put("os.arch", Constants.OS_ARCH);
     diagnostics.put("os.version", Constants.OS_VERSION);
-    diagnostics.put("java.version", Constants.JAVA_VERSION);
+    diagnostics.put("java.runtime.version", Runtime.version().toString());
     diagnostics.put("java.vendor", Constants.JAVA_VENDOR);
-    // On IBM J9 JVM this is better than java.version which is just 1.7.0 (no update level):
-    diagnostics.put(
-        "java.runtime.version", System.getProperty("java.runtime.version", "undefined"));
-    // Hotspot version, e.g. 2.8 for J9:
-    diagnostics.put("java.vm.version", System.getProperty("java.vm.version", "undefined"));
-    diagnostics.put("timestamp", Long.toString(new Date().getTime()));
+    diagnostics.put("timestamp", Long.toString(Instant.now().toEpochMilli()));
     if (details != null) {
       diagnostics.putAll(details);
     }
