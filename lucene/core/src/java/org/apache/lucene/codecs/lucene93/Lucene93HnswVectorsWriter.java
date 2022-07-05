@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
@@ -40,7 +41,6 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -119,7 +119,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void addField(FieldInfo fieldInfo) throws IOException {
+  public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
     if (fields == null) {
       fields = new FieldData[1];
     } else {
@@ -127,19 +127,9 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       System.arraycopy(fields, 0, newFields, 0, fields.length);
       fields = newFields;
     }
-    fields[fields.length - 1] =
-        new FieldData(fieldInfo, M, beamWidth, segmentWriteState.infoStream);
-  }
-
-  @Override
-  public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue) throws IOException {
-    for (FieldData field : fields) {
-      if (field.fieldInfo.name.equals(fieldInfo.getName())) {
-        field.addValue(docID, vectorValue);
-        return;
-      }
-    }
-    throw new AssertionError("Attempt to index uninitalized vector field [" + fieldInfo.name + "]");
+    FieldData newField = new FieldData(fieldInfo, M, beamWidth, segmentWriteState.infoStream);
+    fields[fields.length - 1] = newField;
+    return newField;
   }
 
   @Override
@@ -305,7 +295,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+  public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
@@ -501,7 +491,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
     IOUtils.close(meta, vectorData, vectorIndex);
   }
 
-  private static class FieldData implements Accountable {
+  private static class FieldData extends KnnFieldVectorsWriter {
     private final FieldInfo fieldInfo;
     private final int dim;
     private final DocsWithFieldSet docsWithField;
@@ -528,7 +518,8 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       hnswGraphBuilder.setInfoStream(infoStream);
     }
 
-    void addValue(int docID, float[] vectorValue) throws IOException {
+    @Override
+    public void addValue(int docID, float[] vectorValue) throws IOException {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""

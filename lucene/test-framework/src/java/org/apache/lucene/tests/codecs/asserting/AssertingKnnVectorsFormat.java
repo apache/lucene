@@ -18,6 +18,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -60,13 +61,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void addField(FieldInfo fieldInfo) throws IOException {
-      delegate.addField(fieldInfo);
-    }
-
-    @Override
-    public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue) throws IOException {
-      delegate.addValue(fieldInfo, docID, vectorValue);
+    public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
+      return delegate.addField(fieldInfo);
     }
 
     @Override
@@ -75,7 +71,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+    public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
         throws IOException {
       assert fieldInfo != null;
       assert knnVectorsReader != null;
@@ -83,7 +79,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       // calls
       assert knnVectorsReader.getVectorValues(fieldInfo.name)
           != knnVectorsReader.getVectorValues(fieldInfo.name);
-      delegate.writeFieldForMerging(fieldInfo, knnVectorsReader);
+      delegate.mergeOneField(fieldInfo, knnVectorsReader);
     }
 
     @Override

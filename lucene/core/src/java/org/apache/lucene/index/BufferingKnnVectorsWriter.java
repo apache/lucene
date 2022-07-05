@@ -22,11 +22,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -38,14 +38,14 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * @lucene.experimental
  */
-public abstract class VectorValuesWriter extends KnnVectorsWriter {
+public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   private FieldData[] fields;
 
   /** Sole constructor */
-  protected VectorValuesWriter() {}
+  protected BufferingKnnVectorsWriter() {}
 
   @Override
-  public void addField(FieldInfo fieldInfo) throws IOException {
+  public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
     if (fields == null) {
       fields = new FieldData[1];
     } else {
@@ -53,18 +53,9 @@ public abstract class VectorValuesWriter extends KnnVectorsWriter {
       System.arraycopy(fields, 0, newFields, 0, fields.length);
       fields = newFields;
     }
-    fields[fields.length - 1] = new FieldData(fieldInfo);
-  }
-
-  @Override
-  public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue) throws IOException {
-    for (FieldData field : fields) {
-      if (field.fieldInfo.name.equals(fieldInfo.getName())) {
-        field.addValue(docID, vectorValue);
-        return;
-      }
-    }
-    throw new AssertionError("Attempt to index to undefined vector field");
+    FieldData newField = new FieldData(fieldInfo);
+    fields[fields.length - 1] = newField;
+    return newField;
   }
 
   @Override
@@ -120,7 +111,7 @@ public abstract class VectorValuesWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+  public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException {
     writeField(fieldInfo, knnVectorsReader, -1);
   }
@@ -129,7 +120,7 @@ public abstract class VectorValuesWriter extends KnnVectorsWriter {
   protected abstract void writeField(
       FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc) throws IOException;
 
-  private static class FieldData implements Accountable {
+  private static class FieldData extends KnnFieldVectorsWriter {
     private final FieldInfo fieldInfo;
     private final int dim;
     private final DocsWithFieldSet docsWithField;
@@ -144,7 +135,8 @@ public abstract class VectorValuesWriter extends KnnVectorsWriter {
       vectors = new ArrayList<>();
     }
 
-    void addValue(int docID, float[] vectorValue) {
+    @Override
+    public void addValue(int docID, float[] vectorValue) {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""

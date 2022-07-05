@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.BufferingKnnVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -30,7 +31,6 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.index.VectorValuesWriter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -43,7 +43,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
  *
  * @lucene.experimental
  */
-public final class Lucene91HnswVectorsWriter extends VectorValuesWriter {
+public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;

@@ -30,6 +30,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
@@ -660,7 +661,7 @@ final class IndexingChain implements Accountable {
     }
     if (fi.getVectorDimension() != 0) {
       try {
-        vectorValuesConsumer.addField(fi);
+        pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
       } catch (Throwable th) {
         onAbortingException(th);
         throw th;
@@ -711,7 +712,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      vectorValuesConsumer.addValue(pf.fieldInfo, docID, ((KnnVectorField) field).vectorValue());
+      pf.knnFieldVectorsWriter.addValue(docID, ((KnnVectorField) field).vectorValue());
     }
     return indexedField;
   }
@@ -985,6 +986,9 @@ final class IndexingChain implements Accountable {
 
     // Non-null if this field ever had points in this segment:
     PointValuesWriter pointValuesWriter;
+
+    // Non-null if this field had vectors in this segment
+    KnnFieldVectorsWriter knnFieldVectorsWriter;
 
     /** We use this to know when a PerField is seen for the first time in the current document. */
     long fieldGen = -1;

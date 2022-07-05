@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -177,15 +178,9 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       return new KnnVectorsWriter() {
 
         @Override
-        public void addField(FieldInfo fieldInfo) throws IOException {
+        public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.addField(fieldInfo);
-        }
-
-        @Override
-        public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue)
-            throws IOException {
-          writer.addValue(fieldInfo, docID, vectorValue);
+          return writer.addField(fieldInfo);
         }
 
         @Override
@@ -194,10 +189,10 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         }
 
         @Override
-        public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+        public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
             throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.writeFieldForMerging(fieldInfo, knnVectorsReader);
+          writer.mergeOneField(fieldInfo, knnVectorsReader);
         }
 
         @Override

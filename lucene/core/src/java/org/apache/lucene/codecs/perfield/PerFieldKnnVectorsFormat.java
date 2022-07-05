@@ -26,6 +26,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.TreeMap;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -95,12 +96,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   private class FieldsWriter extends KnnVectorsWriter {
     private final Map<KnnVectorsFormat, WriterAndSuffix> formats;
     private final Map<String, Integer> suffixes = new HashMap<>();
-    private final Map<KnnVectorsWriter, Collection<String>> writersForFields =
-        new IdentityHashMap<>();
     private final SegmentWriteState segmentWriteState;
-
-    // if there is a single writer, cache it for faster indexing
-    private KnnVectorsWriter singleWriter;
 
     FieldsWriter(SegmentWriteState segmentWriteState) {
       this.segmentWriteState = segmentWriteState;
@@ -108,35 +104,9 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void addField(FieldInfo fieldInfo) throws IOException {
+    public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
       KnnVectorsWriter writer = getInstance(fieldInfo);
-      writer.addField(fieldInfo);
-
-      Collection<String> fields = writersForFields.computeIfAbsent(writer, k -> new ArrayList<>());
-      fields.add(fieldInfo.name);
-      if (writersForFields.size() == 1) {
-        singleWriter = writer;
-      } else {
-        singleWriter = null;
-      }
-    }
-
-    @Override
-    public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue) throws IOException {
-      if (singleWriter != null) {
-        singleWriter.addValue(fieldInfo, docID, vectorValue);
-      } else {
-        for (Map.Entry<KnnVectorsWriter, Collection<String>> e : writersForFields.entrySet()) {
-          for (String field : e.getValue()) {
-            if (field.equals(fieldInfo.getName())) {
-              e.getKey().addValue(fieldInfo, docID, vectorValue);
-              return;
-            }
-          }
-        }
-        throw new AssertionError(
-            "Attempt to index uninitalized vector field [" + fieldInfo.name + "]");
-      }
+      return writer.addField(fieldInfo);
     }
 
     @Override
@@ -147,9 +117,9 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+    public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
         throws IOException {
-      getInstance(fieldInfo).writeFieldForMerging(fieldInfo, knnVectorsReader);
+      getInstance(fieldInfo).mergeOneField(fieldInfo, knnVectorsReader);
     }
 
     @Override
@@ -232,8 +202,8 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public long ramBytesUsed() {
       long total = 0;
-      for (KnnVectorsWriter writer : writersForFields.keySet()) {
-        total += writer.ramBytesUsed();
+      for (WriterAndSuffix was : formats.values()) {
+        total += was.writer.ramBytesUsed();
       }
       return total;
     }

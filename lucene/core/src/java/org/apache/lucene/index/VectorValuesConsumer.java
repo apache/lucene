@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.store.Directory;
@@ -64,13 +65,9 @@ class VectorValuesConsumer {
     }
   }
 
-  public void addField(FieldInfo fieldInfo) throws IOException {
+  public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
     initKnnVectorsWriter(fieldInfo.name);
-    writer.addField(fieldInfo);
-  }
-
-  public void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue) throws IOException {
-    writer.addValue(fieldInfo, docID, vectorValue);
+    return writer.addField(fieldInfo);
   }
 
   void flush(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {

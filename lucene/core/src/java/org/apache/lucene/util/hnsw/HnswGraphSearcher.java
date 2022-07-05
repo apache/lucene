@@ -141,7 +141,7 @@ public final class HnswGraphSearcher {
       throws IOException {
     int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, false);
-    clearScratchState(vectors.size());
+    prepareScratchState(vectors.size());
 
     int numVisited = 0;
     for (int ep : eps) {
@@ -204,7 +204,7 @@ public final class HnswGraphSearcher {
     return results;
   }
 
-  private void clearScratchState(int capacity) {
+  private void prepareScratchState(int capacity) {
     candidates.clear();
     if (visited.length() < capacity) {
       visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);

@@ -38,17 +38,13 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   protected KnnVectorsWriter() {}
 
   /** Add new field for indexing */
-  public abstract void addField(FieldInfo fieldInfo) throws IOException;
-
-  /** Add new docID with its vector value to the given field for indexing */
-  public abstract void addValue(FieldInfo fieldInfo, int docID, float[] vectorValue)
-      throws IOException;
+  public abstract KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException;
 
   /** Flush all buffered data on disk * */
   public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 
   /** Write field for merging */
-  public abstract void writeFieldForMerging(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+  public abstract void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException;
 
   /** Called once at the end before close */
@@ -56,8 +52,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
   /**
    * Merges the segment vectors for all fields. This default implementation delegates to {@link
-   * #writeFieldForMerging}, passing a {@link KnnVectorsReader} that combines the vector values and
-   * ignores deleted documents.
+   * #mergeOneField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
+   * deleted documents.
    */
   public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
@@ -74,7 +70,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
         }
 
-        writeFieldForMerging(
+        mergeOneField(
             fieldInfo,
             new KnnVectorsReader() {
               @Override
