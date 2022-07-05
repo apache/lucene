@@ -37,7 +37,7 @@ class BlockMaxMaxscoreScorer extends Scorer {
   // array of scorers ordered by maxScore
   private final DisiWrapper[] allScorers;
 
-  // index of the first essential scorer is the `allScorers` array. All scorers before this index
+  // index of the first essential scorer in the `allScorers` array. All scorers before this index
   // are non-essential. All scorers on and after this index are essential.
   private int firstEssentialScorerIndex;
 
