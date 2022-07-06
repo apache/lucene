@@ -45,6 +45,9 @@ Improvements
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
 
+* LUCENE-10216: Use MergePolicy to define and MergeScheduler to trigger the reader merges
+  required by addIndexes(CodecReader[]) API. (Vigya Sharma, Michael McCandless)
+
 Optimizations
 ---------------------
 (No changes)

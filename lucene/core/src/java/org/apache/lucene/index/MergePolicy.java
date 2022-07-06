@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -193,6 +194,7 @@ public abstract class MergePolicy {
     long mergeGen; // used by IndexWriter
     boolean isExternal; // used by IndexWriter
     int maxNumSegments = -1; // used by IndexWriter
+    boolean usesPooledReaders; // used by IndexWriter to drop readers while closing
 
     /** Estimated size in bytes of the merged segment. */
     public volatile long estimatedMergeBytes; // used by IndexWriter
@@ -229,6 +231,28 @@ public abstract class MergePolicy {
       totalMaxDoc = segments.stream().mapToInt(i -> i.info.maxDoc()).sum();
       mergeProgress = new OneMergeProgress();
       mergeReaders = List.of();
+      usesPooledReaders = true;
+    }
+
+    /**
+     * Create a OneMerge directly from CodecReaders. Used to merge incoming readers in {@link
+     * IndexWriter#addIndexes(CodecReader...)}. This OneMerge works directly on readers and has an
+     * empty segments list.
+     *
+     * @param codecReaders Codec readers to merge
+     */
+    public OneMerge(CodecReader... codecReaders) {
+      List<MergeReader> readers = new ArrayList<>(codecReaders.length);
+      int totalDocs = 0;
+      for (CodecReader r : codecReaders) {
+        readers.add(new MergeReader(r, r.getLiveDocs()));
+        totalDocs += r.numDocs();
+      }
+      mergeReaders = List.copyOf(readers);
+      segments = List.of();
+      totalMaxDoc = totalDocs;
+      mergeProgress = new OneMergeProgress();
+      usesPooledReaders = false;
     }
 
     /**
@@ -472,15 +496,31 @@ public abstract class MergePolicy {
       return b.toString();
     }
 
+    CompletableFuture<Void> getMergeCompletedFutures() {
+      return CompletableFuture.allOf(
+          merges.stream()
+              .map(m -> m.mergeCompleted)
+              .collect(Collectors.toList())
+              .toArray(CompletableFuture<?>[]::new));
+    }
+
+    /** Waits, until interrupted, for all merges to complete. */
+    boolean await() {
+      try {
+        CompletableFuture<Void> future = getMergeCompletedFutures();
+        future.get();
+        return true;
+      } catch (InterruptedException e) {
+        throw new ThreadInterruptedException(e);
+      } catch (@SuppressWarnings("unused") ExecutionException | CancellationException e) {
+        return false;
+      }
+    }
+
     /** Waits if necessary for at most the given time for all merges. */
     boolean await(long timeout, TimeUnit unit) {
       try {
-        CompletableFuture<Void> future =
-            CompletableFuture.allOf(
-                merges.stream()
-                    .map(m -> m.mergeCompleted)
-                    .collect(Collectors.toList())
-                    .toArray(CompletableFuture<?>[]::new));
+        CompletableFuture<Void> future = getMergeCompletedFutures();
         future.get(timeout, unit);
         return true;
       } catch (InterruptedException e) {
@@ -568,6 +608,24 @@ public abstract class MergePolicy {
   public abstract MergeSpecification findMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException;
+
+  /**
+   * Define the set of merge operations to perform on provided codec readers in {@link
+   * IndexWriter#addIndexes(CodecReader...)}.
+   *
+   * <p>The merge operation is required to convert provided readers into segments that can be added
+   * to the writer. This API can be overridden in custom merge policies to control the concurrency
+   * for addIndexes. Default implementation creates a single merge operation for all provided
+   * readers (lowest concurrency). Creating a merge for each reader, would provide the highest level
+   * of concurrency possible with the configured merge scheduler.
+   *
+   * @param readers CodecReader(s) to merge into the main index
+   */
+  public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+    MergeSpecification mergeSpec = new MergeSpecification();
+    mergeSpec.add(new OneMerge(readers));
+    return mergeSpec;
+  }
 
   /**
    * Determine what set of merge operations is necessary in order to merge to {@code <=} the
@@ -844,11 +902,23 @@ public abstract class MergePolicy {
   }
 
   static final class MergeReader {
+    final CodecReader codecReader;
     final SegmentReader reader;
     final Bits hardLiveDocs;
 
     MergeReader(SegmentReader reader, Bits hardLiveDocs) {
+      this.codecReader = reader;
       this.reader = reader;
+      this.hardLiveDocs = hardLiveDocs;
+    }
+
+    MergeReader(CodecReader reader, Bits hardLiveDocs) {
+      if (SegmentReader.class.isAssignableFrom(reader.getClass())) {
+        this.reader = (SegmentReader) reader;
+      } else {
+        this.reader = null;
+      }
+      this.codecReader = reader;
       this.hardLiveDocs = hardLiveDocs;
     }
   }
