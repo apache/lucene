@@ -399,6 +399,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.11.0-nocfs",
     "8.11.1-cfs",
     "8.11.1-nocfs",
+    "8.11.2-cfs",
+    "8.11.2-nocfs",
     "9.0.0-cfs",
     "9.0.0-nocfs",
     "9.1.0-cfs",
@@ -436,6 +438,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.8.10.1",
     "sorted.8.11.0",
     "sorted.8.11.1",
+    "sorted.8.11.2",
     "sorted.9.0.0",
     "sorted.9.1.0",
     "sorted.9.2.0"
