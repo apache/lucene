@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.index;
 
+import static org.apache.lucene.index.SortedSetDocValues.NO_MORE_ORDS;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
@@ -1811,6 +1812,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -1836,6 +1838,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -1845,6 +1848,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("world"), bytes);
@@ -1879,6 +1883,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(0, dv.nextDoc());
     assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -1886,6 +1891,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(1, dv.nextDoc());
     assertEquals(1, dv.docValueCount());
     assertEquals(1, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     bytes = dv.lookupOrd(1);
     assertEquals(newBytesRef("world"), bytes);
@@ -1912,6 +1918,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(2, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(1, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -1941,6 +1948,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(2, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(1, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -1981,11 +1989,13 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(2, dv.docValueCount());
     assertEquals(1, dv.nextOrd());
     assertEquals(2, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     assertEquals(1, dv.nextDoc());
     assertEquals(2, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(1, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("beer"), bytes);
@@ -2023,6 +2033,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -2056,6 +2067,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -2088,6 +2100,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -2121,6 +2134,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
+    assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     BytesRef bytes = dv.lookupOrd(0);
     assertEquals(newBytesRef("hello"), bytes);
@@ -2327,6 +2341,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
             BytesRef scratch = docValues.lookupOrd(ord);
             assertEquals(stringValue, scratch.utf8ToString());
           }
+          assertEquals(NO_MORE_ORDS, docValues.nextOrd());
         }
       }
     }
@@ -2359,6 +2374,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
             BytesRef scratch = docValues.lookupOrd(ord);
             assertEquals(stringValue, scratch.utf8ToString());
           }
+          assertEquals(NO_MORE_ORDS, docValues.nextOrd());
         }
       }
     }
@@ -2895,6 +2911,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
                         BytesRef value = sortedSet.lookupOrd(ord);
                         assertEquals(s, value.utf8ToString());
                       }
+                      assertEquals(NO_MORE_ORDS, sortedSet.nextOrd());
                     }
 
                     String[] numValues = r.document(j).getValues("storedSortedNumeric");
