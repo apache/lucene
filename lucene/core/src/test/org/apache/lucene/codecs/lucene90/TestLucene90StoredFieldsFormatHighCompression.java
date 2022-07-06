@@ -17,6 +17,8 @@
 package org.apache.lucene.codecs.lucene90;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene94.Lucene94Codec;
 import org.apache.lucene.codecs.lucene94.Lucene94Codec.Mode;
@@ -60,6 +62,61 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
       Document doc = ir.document(i);
       assertEquals("value1", doc.get("field1"));
       assertEquals("value2", doc.get("field2"));
+    }
+    ir.close();
+    // checkindex
+    dir.close();
+  }
+
+  public void testBestSpeedCompressions() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setCodec(new Lucene93Codec(Mode.BEST_SPEED));
+    IndexWriter iw = new IndexWriter(dir, iwc);
+
+    StringBuilder longValueBuilder = new StringBuilder();
+    String shortValue = "value";
+    longValueBuilder.append(shortValue.repeat(20 * 1024));
+    String longValue = longValueBuilder.toString();
+
+    for (int i = 0; i < 1; i++) {
+      Document doc = new Document();
+      doc.add(new StoredField("field1", "value1"));
+      doc.add(new StoredField("field2", longValue));
+      doc.add(new StoredField("field3", "value3"));
+      iw.addDocument(doc);
+    }
+
+    iw.commit();
+    iw.close();
+
+    DirectoryReader ir = DirectoryReader.open(dir);
+    assertEquals(1, ir.numDocs());
+    Set<String> fields = new HashSet<>();
+    fields.add("field1");
+    for (int i = 0; i < 1; i++) {
+      Document doc = ir.document(i, fields);
+      assertEquals("value1", doc.get("field1"));
+      assertEquals(null, doc.get("field2"));
+      assertEquals(null, doc.get("field3"));
+    }
+
+    fields.add("field2");
+    for (int i = 0; i < 1; i++) {
+      Document doc = ir.document(i, fields);
+      assertEquals("value1", doc.get("field1"));
+      assertEquals(longValue, doc.get("field2"));
+      assertEquals(null, doc.get("field3"));
+    }
+
+    fields = new HashSet<>();
+    fields.add("field1");
+    fields.add("field3");
+    for (int i = 0; i < 1; i++) {
+      Document doc = ir.document(i, fields);
+      assertEquals("value1", doc.get("field1"));
+      assertEquals(null, doc.get("field2"));
+      assertEquals("value3", doc.get("field3"));
     }
     ir.close();
     // checkindex

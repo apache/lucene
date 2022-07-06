@@ -40,10 +40,12 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Decompressor;
+import org.apache.lucene.codecs.lucene90.LZ4WithPresetDictCompressionMode;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -51,13 +53,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.*;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -490,14 +486,35 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           bytes.offset = bytes.length = 0;
           for (int decompressed = 0; decompressed < totalLength; ) {
             final int toDecompress = Math.min(totalLength - decompressed, chunkSize);
-            decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, spare);
-            bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + spare.length);
-            System.arraycopy(spare.bytes, spare.offset, bytes.bytes, bytes.length, spare.length);
-            bytes.length += spare.length;
+            if (decompressor
+                instanceof LZ4WithPresetDictCompressionMode.LZ4WithPresetDictDecompressor) {
+              InputStream inputStream =
+                  decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress);
+              byte[] allBytes = inputStream.readAllBytes();
+              bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + toDecompress);
+              System.arraycopy(allBytes, 0, bytes.bytes, bytes.length, toDecompress);
+              bytes.length += toDecompress;
+            } else {
+              decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, spare);
+              bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + spare.length);
+              System.arraycopy(spare.bytes, spare.offset, bytes.bytes, bytes.length, spare.length);
+              bytes.length += spare.length;
+            }
             decompressed += toDecompress;
           }
         } else {
-          decompressor.decompress(fieldsStream, totalLength, 0, totalLength, bytes);
+          if (decompressor
+              instanceof LZ4WithPresetDictCompressionMode.LZ4WithPresetDictDecompressor) {
+            InputStream inputStream =
+                decompressor.decompress(fieldsStream, totalLength, 0, totalLength);
+            byte[] allBytes = inputStream.readAllBytes();
+            bytes.bytes = ArrayUtil.grow(bytes.bytes, totalLength);
+            System.arraycopy(allBytes, 0, bytes.bytes, 0, totalLength);
+            bytes.offset = 0;
+            bytes.length = totalLength;
+          } else {
+            decompressor.decompress(fieldsStream, totalLength, 0, totalLength, bytes);
+          }
         }
         if (bytes.length != totalLength) {
           throw new CorruptIndexException(
@@ -538,63 +555,139 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset + offset, length);
       } else if (sliced) {
         fieldsStream.seek(startPointer);
-        decompressor.decompress(
-            fieldsStream, chunkSize, offset, Math.min(length, chunkSize - offset), bytes);
-        documentInput =
-            new DataInput() {
 
-              int decompressed = bytes.length;
+        if (decompressor
+            instanceof LZ4WithPresetDictCompressionMode.LZ4WithPresetDictDecompressor) {
+          int toDecompress = Math.min(length, chunkSize - offset);
+          InputStream inputStream =
+              decompressor.decompress(fieldsStream, chunkSize, offset, toDecompress);
+          documentInput =
+              new DataInput() {
 
-              void fillBuffer() throws IOException {
-                assert decompressed <= length;
-                if (decompressed == length) {
-                  throw new EOFException();
+                InputStream input = inputStream;
+                int decompressed = toDecompress;
+
+                void fillBuffer() throws IOException {
+                  final int toDecompress = Math.min(length - decompressed, chunkSize);
+                  input = decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress);
+                  decompressed += toDecompress;
                 }
-                final int toDecompress = Math.min(length - decompressed, chunkSize);
-                decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, bytes);
-                decompressed += toDecompress;
-              }
 
-              @Override
-              public byte readByte() throws IOException {
-                if (bytes.length == 0) {
+                @Override
+                public byte readByte() throws IOException {
+                  int b = input.read();
+                  if (b != -1) {
+                    return (byte) b;
+                  }
+
+                  // read next slice when there are no more bytes
                   fillBuffer();
-                }
-                --bytes.length;
-                return bytes.bytes[bytes.offset++];
-              }
+                  b = input.read();
+                  if (b == -1) {
+                    throw new EOFException();
+                  }
 
-              @Override
-              public void readBytes(byte[] b, int offset, int len) throws IOException {
-                while (len > bytes.length) {
-                  System.arraycopy(bytes.bytes, bytes.offset, b, offset, bytes.length);
-                  len -= bytes.length;
-                  offset += bytes.length;
-                  fillBuffer();
+                  return (byte) b;
                 }
-                System.arraycopy(bytes.bytes, bytes.offset, b, offset, len);
-                bytes.offset += len;
-                bytes.length -= len;
-              }
 
-              @Override
-              public void skipBytes(long numBytes) throws IOException {
-                if (numBytes < 0) {
-                  throw new IllegalArgumentException("numBytes must be >= 0, got " + numBytes);
+                @Override
+                public void readBytes(byte[] b, int offset, int len) throws IOException {
+                  int actualRead = input.read(b, offset, len);
+                  offset += actualRead;
+                  len -= actualRead;
+                  while (len > 0) {
+                    fillBuffer();
+                    actualRead = input.read(b, offset, len);
+                    if (actualRead == 0) {
+                      throw new EOFException();
+                    }
+
+                    offset += actualRead;
+                    len -= actualRead;
+                  }
                 }
-                while (numBytes > bytes.length) {
-                  numBytes -= bytes.length;
-                  fillBuffer();
+
+                @Override
+                public void skipBytes(long numBytes) throws IOException {
+                  long actualSkipped = input.skip(numBytes);
+                  numBytes -= actualSkipped;
+                  while (numBytes > 0) {
+                    fillBuffer();
+                    actualSkipped = input.skip(numBytes);
+                    if (actualSkipped == 0) {
+                      throw new EOFException();
+                    }
+
+                    numBytes -= actualSkipped;
+                  }
                 }
-                bytes.offset += numBytes;
-                bytes.length -= numBytes;
-              }
-            };
+              };
+        } else {
+          decompressor.decompress(
+              fieldsStream, chunkSize, offset, Math.min(length, chunkSize - offset), bytes);
+          documentInput =
+              new DataInput() {
+
+                int decompressed = bytes.length;
+
+                void fillBuffer() throws IOException {
+                  assert decompressed <= length;
+                  if (decompressed == length) {
+                    throw new EOFException();
+                  }
+                  final int toDecompress = Math.min(length - decompressed, chunkSize);
+                  decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, bytes);
+                  decompressed += toDecompress;
+                }
+
+                @Override
+                public byte readByte() throws IOException {
+                  if (bytes.length == 0) {
+                    fillBuffer();
+                  }
+                  --bytes.length;
+                  return bytes.bytes[bytes.offset++];
+                }
+
+                @Override
+                public void readBytes(byte[] b, int offset, int len) throws IOException {
+                  while (len > bytes.length) {
+                    System.arraycopy(bytes.bytes, bytes.offset, b, offset, bytes.length);
+                    len -= bytes.length;
+                    offset += bytes.length;
+                    fillBuffer();
+                  }
+                  System.arraycopy(bytes.bytes, bytes.offset, b, offset, len);
+                  bytes.offset += len;
+                  bytes.length -= len;
+                }
+
+                @Override
+                public void skipBytes(long numBytes) throws IOException {
+                  if (numBytes < 0) {
+                    throw new IllegalArgumentException("numBytes must be >= 0, got " + numBytes);
+                  }
+                  while (numBytes > bytes.length) {
+                    numBytes -= bytes.length;
+                    fillBuffer();
+                  }
+                  bytes.offset += numBytes;
+                  bytes.length -= numBytes;
+                }
+              };
+        }
       } else {
         fieldsStream.seek(startPointer);
-        decompressor.decompress(fieldsStream, totalLength, offset, length, bytes);
-        assert bytes.length == length;
-        documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset, bytes.length);
+        if (decompressor
+            instanceof LZ4WithPresetDictCompressionMode.LZ4WithPresetDictDecompressor) {
+          InputStream inputStream =
+              decompressor.decompress(fieldsStream, totalLength, offset, length);
+          documentInput = new InputStreamDataInput(inputStream);
+        } else {
+          decompressor.decompress(fieldsStream, totalLength, offset, length, bytes);
+          assert bytes.length == length;
+          documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset, bytes.length);
+        }
       }
 
       return new SerializedDocument(documentInput, length, numStoredFields);

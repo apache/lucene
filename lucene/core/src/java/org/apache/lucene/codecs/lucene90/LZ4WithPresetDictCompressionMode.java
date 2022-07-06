@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
+import java.io.InputStream;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
@@ -59,7 +60,13 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     return "BEST_SPEED";
   }
 
-  private static final class LZ4WithPresetDictDecompressor extends Decompressor {
+  /**
+   * A compression mode that compromises on the compression ratio to provide fast compression and
+   * decompression.
+   *
+   * @lucene.internal
+   */
+  public static final class LZ4WithPresetDictDecompressor extends Decompressor {
 
     private int[] compressedLengths;
     private byte[] buffer;
@@ -139,6 +146,163 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       bytes.offset = offsetInBytesRef;
       bytes.length = length;
       assert bytes.isValid();
+    }
+
+    @Override
+    public InputStream decompress(DataInput in, int originalLength, int offset, int length)
+        throws IOException {
+      assert offset + length <= originalLength;
+
+      if (length == 0) {
+        return InputStream.nullInputStream();
+      }
+
+      final int dictLength = in.readVInt();
+      final int blockLength = in.readVInt();
+
+      final int numBlocks = readCompressedLengths(in, originalLength, dictLength, blockLength);
+
+      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
+      final BytesRef bytes = new BytesRef();
+      bytes.length = 0;
+      // Read the dictionary
+      if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
+        throw new CorruptIndexException("Illegal dict length", in);
+      }
+
+      int offsetInBlock = dictLength;
+      int offsetInBytesRef = offset;
+      if (offset >= dictLength) {
+        offsetInBytesRef -= dictLength;
+
+        // Skip unneeded blocks
+        int numBytesToSkip = 0;
+        for (int i = 0; i < numBlocks && offsetInBlock + blockLength < offset; ++i) {
+          int compressedBlockLength = compressedLengths[i];
+          numBytesToSkip += compressedBlockLength;
+          offsetInBlock += blockLength;
+          offsetInBytesRef -= blockLength;
+        }
+        in.skipBytes(numBytesToSkip);
+      } else {
+        // The dictionary contains some bytes we need, copy its content to the BytesRef
+        bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, dictLength);
+        System.arraycopy(buffer, 0, bytes.bytes, 0, dictLength);
+        bytes.length = dictLength;
+      }
+
+      int finalOffsetInBytesRef = offsetInBytesRef;
+      int finalOffsetInBlock = offsetInBlock;
+      return new InputStream() {
+        int decompressed = bytes.length;
+        // need to decompress length + finalOffsetInBytesRef bytes
+        int totalDecompressedLength = finalOffsetInBytesRef + length;
+        int offsetInBlock = finalOffsetInBlock;
+
+        {
+          skip(finalOffsetInBytesRef);
+        }
+
+        private void fillBuffer() throws IOException {
+          assert decompressed <= totalDecompressedLength;
+          // no more bytes to decompress
+          if (decompressed == totalDecompressedLength) {
+            return;
+          }
+
+          final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
+          assert bytesToDecompress > 0;
+          LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
+          bytes.bytes = ArrayUtil.grow(bytes.bytes, decompressed + bytesToDecompress);
+          System.arraycopy(buffer, dictLength, bytes.bytes, decompressed, bytesToDecompress);
+          bytes.length += bytesToDecompress;
+          decompressed += bytesToDecompress;
+          offsetInBlock += bytesToDecompress;
+        }
+
+        @Override
+        public int read() throws IOException {
+          if (bytes.length == 0) {
+            fillBuffer();
+          }
+
+          // no more bytes
+          if (bytes.length == 0) {
+            return -1;
+          }
+
+          --bytes.length;
+          int b = bytes.bytes[bytes.offset++];
+          // correct auto converting of byte ff
+          if (b == -1) {
+            b = 255;
+          }
+          return b;
+        }
+
+        @Override
+        public int read(byte b[], int off, int len) throws IOException {
+          int bytesRead = 0;
+          while (len > bytes.length) {
+            System.arraycopy(bytes.bytes, bytes.offset, b, off, bytes.length);
+            bytes.offset += bytes.length;
+            len -= bytes.length;
+            off += bytes.length;
+            bytesRead += bytes.length;
+            bytes.length = 0;
+
+            fillBuffer();
+            // return actual read bytes count when there are not enough bytes
+            if (bytes.length == 0) {
+              return bytesRead;
+            }
+          }
+
+          System.arraycopy(bytes.bytes, bytes.offset, b, off, len);
+          bytes.offset += len;
+          bytes.length -= len;
+          bytesRead += len;
+
+          return bytesRead;
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+          if (n < 0) {
+            throw new IllegalArgumentException("numBytes must be >= 0, got " + n);
+          }
+          while (n > bytes.length) {
+            int actualSkipped = bytes.length;
+            fillBuffer();
+            // return actual skipped bytes when there are not enough bytes
+            if (actualSkipped == bytes.length) {
+              return actualSkipped;
+            }
+          }
+          bytes.offset += n;
+          bytes.length -= n;
+          return n;
+        }
+
+        @Override
+        public byte[] readAllBytes() throws IOException {
+          byte[] buf = new byte[0];
+          int totalRead = 0;
+          if (bytes.length == 0) {
+            fillBuffer();
+          }
+          while (bytes.length != 0) {
+            buf = ArrayUtil.grow(buf, totalRead + bytes.length);
+            System.arraycopy(bytes.bytes, bytes.offset, buf, totalRead, bytes.length);
+            bytes.offset += bytes.length;
+            totalRead += bytes.length;
+            bytes.length = 0;
+            fillBuffer();
+          }
+
+          return buf;
+        }
+      };
     }
 
     @Override
