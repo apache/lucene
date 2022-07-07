@@ -21,8 +21,6 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -126,13 +124,7 @@ public abstract class CompressionMode {
 
         @Override
         public void decompress(
-            DataInput in,
-            int originalLength,
-            int offset,
-            int length,
-            BytesRef bytes,
-            FieldInfos fieldInfos,
-            StoredFieldVisitor visitor)
+            DataInput in, int originalLength, int offset, int length, BytesRef bytes)
             throws IOException {
           assert offset + length <= originalLength;
           // add 7 padding bytes, this is not necessary but can help decompression run faster
@@ -201,14 +193,7 @@ public abstract class CompressionMode {
     }
 
     @Override
-    public void decompress(
-        DataInput in,
-        int originalLength,
-        int offset,
-        int length,
-        BytesRef bytes,
-        FieldInfos fieldInfos,
-        StoredFieldVisitor visitor)
+    public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
         throws IOException {
       assert offset + length <= originalLength;
       if (length == 0) {

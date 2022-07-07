@@ -68,10 +68,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   static final int NUMERIC_INT = 0x02;
   static final int NUMERIC_FLOAT = 0x03;
   static final int NUMERIC_LONG = 0x04;
-  public static final int NUMERIC_DOUBLE = 0x05;
+  static final int NUMERIC_DOUBLE = 0x05;
 
-  public static final int TYPE_BITS = PackedInts.bitsRequired(NUMERIC_DOUBLE);
-  public static final int TYPE_MASK = (int) PackedInts.maxValue(TYPE_BITS);
+  static final int TYPE_BITS = PackedInts.bitsRequired(NUMERIC_DOUBLE);
+  static final int TYPE_MASK = (int) PackedInts.maxValue(TYPE_BITS);
 
   static final int VERSION_START = 1;
   static final int VERSION_CURRENT = VERSION_START;

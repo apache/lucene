@@ -209,13 +209,7 @@ public class Lucene50StoredFieldsFormat extends StoredFieldsFormat {
 
         @Override
         public void decompress(
-            DataInput in,
-            int originalLength,
-            int offset,
-            int length,
-            BytesRef bytes,
-            FieldInfos fieldInfos,
-            StoredFieldVisitor visitor)
+            DataInput in, int originalLength, int offset, int length, BytesRef bytes)
             throws IOException {
           assert offset + length <= originalLength;
           // add 7 padding bytes, this is not necessary but can help decompression run faster

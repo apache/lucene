@@ -101,11 +101,6 @@ public class DocumentStoredFieldVisitor extends StoredFieldVisitor {
     return fieldsToAdd == null || fieldsToAdd.contains(fieldInfo.name) ? Status.YES : Status.NO;
   }
 
-  @Override
-  public boolean hasMoreFieldsToVisit(int hasVisitedFieldsCount) {
-    return fieldsToAdd == null || fieldsToAdd.size() > hasVisitedFieldsCount;
-  }
-
   /**
    * Retrieve the visited document.
    *

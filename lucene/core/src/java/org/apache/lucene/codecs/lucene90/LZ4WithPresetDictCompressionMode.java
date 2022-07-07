@@ -16,19 +16,11 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsReader.skipField;
-import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.*;
-import static org.apache.lucene.index.StoredFieldVisitor.Status.YES;
-
 import java.io.IOException;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -92,14 +84,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     }
 
     @Override
-    public void decompress(
-        DataInput in,
-        int originalLength,
-        int offset,
-        int length,
-        BytesRef bytes,
-        FieldInfos fieldInfos,
-        StoredFieldVisitor visitor)
+    public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
         throws IOException {
       assert offset + length <= originalLength;
 
@@ -141,8 +126,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         bytes.length = dictLength;
       }
 
-      int fieldOffset = offsetInBytesRef;
-      int fieldsVisited = 0;
       // Read blocks that intersect with the interval we need
       while (offsetInBlock < offset + length) {
         final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
@@ -151,36 +134,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         System.arraycopy(buffer, dictLength, bytes.bytes, bytes.length, bytesToDecompress);
         bytes.length += bytesToDecompress;
         offsetInBlock += blockLength;
-
-        if (visitor == null || fieldInfos == null) {
-          continue;
-        }
-        // leave some space for reading infoAndBits
-        if (fieldOffset + 9 >= bytes.length) {
-          continue;
-        }
-
-        ByteArrayDataInput documentInput =
-            new ByteArrayDataInput(bytes.bytes, fieldOffset, bytes.length);
-        try {
-          final long infoAndBits = documentInput.readVLong();
-          final int fieldNumber = (int) (infoAndBits >>> TYPE_BITS);
-          final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber);
-
-          final int bits = (int) (infoAndBits & TYPE_MASK);
-          assert bits <= NUMERIC_DOUBLE : "bits=" + Integer.toHexString(bits);
-
-          skipField(documentInput, bits);
-          fieldOffset += documentInput.getPosition();
-          if (YES.equals(visitor.needsField(fieldInfo))) {
-            fieldsVisited += 1;
-            if (!visitor.hasMoreFieldsToVisit(fieldsVisited)) {
-              // return;
-            }
-          }
-        } catch (Exception e) {
-          // just ignore
-        }
       }
 
       bytes.offset = offsetInBytesRef;
