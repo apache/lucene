@@ -233,8 +233,6 @@ class BlockMaxMaxscoreScorer extends Scorer {
         // Start evaluating the score of the new document. It initially only includes essential
         // clauses and abort / return early if a match is not possible.
         // Scores of non-essential clauses get added later on to determine actual matches.
-        DisiWrapper top = essentialsScorers.top();
-
         score = 0;
         for (DisiWrapper w = essentialsScorers.topList(); w != null; w = w.next) {
           score += w.scorer.score();
@@ -243,14 +241,6 @@ class BlockMaxMaxscoreScorer extends Scorer {
         final double docScoreUpperBound = score + nonEssentialMaxScoreSum;
 
         if (maxScoreSumPropagator.scoreSumUpperBound(docScoreUpperBound) < minCompetitiveScore) {
-          // This doc is not competitive enough.
-          // Skip straight to next candidate doc from essential scorer
-          int docId = top.doc;
-          do {
-            top.doc = top.iterator.nextDoc();
-            top = essentialsScorers.updateTop();
-          } while (top.doc == docId);
-
           return false;
         }
 
