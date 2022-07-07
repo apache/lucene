@@ -46,6 +46,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
@@ -240,7 +241,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
     // write graph
     long vectorIndexOffset = vectorIndex.getFilePointer();
     OnHeapHnswGraph graph = fieldData.getGraph();
-    reconstructAndWriteGraph(graph, ordMap, oldOrdMap);
+    HnswGraph mockGraph = reconstructAndWriteGraph(graph, ordMap, oldOrdMap);
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
@@ -251,17 +252,28 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexOffset,
         vectorIndexLength,
         newDocsWithField,
-        graph);
+        mockGraph);
   }
 
-  // reconstruct graph substituting new ordinals with old ordinals
-  private void reconstructAndWriteGraph(OnHeapHnswGraph graph, int[] newToOldMap, int[] oldToNewMap)
-      throws IOException {
-    if (graph == null) return;
-    // write vectors' neighbours on each level into the vectorIndex file
-    int countOnLevel0 = graph.size();
-    for (int level = 0; level < graph.numLevels(); level++) {
-      int maxConnOnLevel = level == 0 ? (M * 2) : M;
+  // reconstruct graph substituting old ordinals with new ordinals
+  private HnswGraph reconstructAndWriteGraph(
+      OnHeapHnswGraph graph, int[] newToOldMap, int[] oldToNewMap) throws IOException {
+    if (graph == null) return null;
+
+    List<int[]> nodesByLevel = new ArrayList<>(graph.numLevels());
+    nodesByLevel.add(null);
+
+    int maxOrd = graph.size();
+    int maxConnOnLevel = M * 2;
+    NodesIterator nodesOnLevel0 = graph.getNodesOnLevel(0);
+    while (nodesOnLevel0.hasNext()) {
+      int node = nodesOnLevel0.nextInt();
+      NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
+      reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+    }
+
+    maxConnOnLevel = M;
+    for (int level = 1; level < graph.numLevels(); level++) {
       NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
       int[] newNodes = new int[nodesOnLevel.size()];
       int n = 0;
@@ -269,28 +281,70 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
         newNodes[n++] = oldToNewMap[nodesOnLevel.nextInt()];
       }
       Arrays.sort(newNodes);
-
+      nodesByLevel.add(newNodes);
       for (int node : newNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
-        int size = neighbors.size();
-        vectorIndex.writeInt(size);
-        // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
-        for (int j = 0; j < nnodes.length; j++) {
-          nnodes[j] = oldToNewMap[nnodes[j]];
-        }
-        Arrays.sort(nnodes, 0, size);
-        for (int i = 0; i < size; i++) {
-          int nnode = nnodes[i];
-          assert nnode < countOnLevel0 : "node too large: " + nnode + ">=" + countOnLevel0;
-          vectorIndex.writeInt(nnode);
-        }
-        // if number of connections < maxConn, add bogus values up to maxConn to have predictable
-        // offsets
-        for (int i = size; i < maxConnOnLevel; i++) {
-          vectorIndex.writeInt(0);
+        reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+      }
+    }
+    return new HnswGraph() {
+      @Override
+      public int nextNeighbor() {
+        throw new UnsupportedOperationException("Not supported on a mock graph");
+      }
+
+      @Override
+      public void seek(int level, int target) {
+        throw new UnsupportedOperationException("Not supported on a mock graph");
+      }
+
+      @Override
+      public int size() {
+        return graph.size();
+      }
+
+      @Override
+      public int numLevels() {
+        return graph.numLevels();
+      }
+
+      @Override
+      public int entryNode() {
+        throw new UnsupportedOperationException("Not supported on a mock graph");
+      }
+
+      @Override
+      public NodesIterator getNodesOnLevel(int level) {
+        if (level == 0) {
+          return graph.getNodesOnLevel(0);
+        } else {
+          return new NodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
         }
       }
+    };
+  }
+
+  private void reconstructAndWriteNeigbours(
+      NeighborArray neighbors, int[] oldToNewMap, int maxConnOnLevel, int maxOrd)
+      throws IOException {
+    int size = neighbors.size();
+    vectorIndex.writeInt(size);
+
+    // Destructively modify; it's ok we are discarding it after this
+    int[] nnodes = neighbors.node();
+    for (int i = 0; i < size; i++) {
+      nnodes[i] = oldToNewMap[nnodes[i]];
+    }
+    Arrays.sort(nnodes, 0, size);
+    for (int i = 0; i < size; i++) {
+      int nnode = nnodes[i];
+      assert nnode < maxOrd : "node too large: " + nnode + ">=" + maxOrd;
+      vectorIndex.writeInt(nnode);
+    }
+    // if number of connections < maxConn,
+    // add bogus values up to maxConn to have predictable offsets
+    for (int i = size; i < maxConnOnLevel; i++) {
+      vectorIndex.writeInt(0);
     }
   }
 
@@ -401,7 +455,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       long vectorIndexOffset,
       long vectorIndexLength,
       DocsWithFieldSet docsWithField,
-      OnHeapHnswGraph graph)
+      HnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
