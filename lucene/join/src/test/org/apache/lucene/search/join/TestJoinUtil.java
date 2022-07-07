@@ -1760,7 +1760,8 @@ public class TestJoinUtil extends LuceneTestCase {
                 }
                 if (doc == docTermOrds.docID()) {
                   long ord;
-                  while ((ord = docTermOrds.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+                  for (int j = 0; j < docTermOrds.docValueCount(); j++) {
+                    ord = docTermOrds.nextOrd();
                     final BytesRef joinValue = docTermOrds.lookupOrd(ord);
                     JoinScore joinScore = joinValueToJoinScores.get(joinValue);
                     if (joinScore == null) {
