@@ -1454,6 +1454,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           private int doc = -1;
           private long start;
           private long end;
+          private int count;
 
           @Override
           public long nextOrd() throws IOException {
@@ -1467,8 +1468,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public boolean advanceExact(int target) throws IOException {
             start = addresses.get(target);
             end = addresses.get(target + 1L);
+            count = (int) (end - start);
             doc = target;
             return true;
+          }
+
+          @Override
+          public int docValueCount() {
+            return count;
           }
 
           @Override
@@ -1488,6 +1495,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             }
             start = addresses.get(target);
             end = addresses.get(target + 1L);
+            count = (int) (end - start);
             return doc = target;
           }
 
@@ -1510,6 +1518,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           boolean set;
           long start, end;
+          int count;
 
           @Override
           public long nextOrd() throws IOException {
@@ -1524,6 +1533,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public boolean advanceExact(int target) throws IOException {
             set = false;
             return disi.advanceExact(target);
+          }
+
+          @Override
+          public int docValueCount() {
+            set();
+            return count;
           }
 
           @Override
@@ -1553,6 +1568,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               final int index = disi.index();
               start = addresses.get(index);
               end = addresses.get(index + 1L);
+              count = (int) (end - start);
               set = true;
             }
           }
@@ -1560,7 +1576,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
     }
 
-    final SortedNumericDocValues ords = getSortedNumeric(entry.ordsEntry);
+    final SortedNumericDocValues ords = getSortedNumeric(ordsEntry);
     return new BaseSortedSetDocValues(entry, data) {
 
       int i = 0;
