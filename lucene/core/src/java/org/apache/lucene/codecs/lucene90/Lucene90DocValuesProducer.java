@@ -1432,6 +1432,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.singleton(getSorted(entry.singleValueEntry));
     }
 
+    // Specialize the common case for ordinals: single block of packed integers.
     SortedNumericEntry ordsEntry = entry.ordsEntry;
     if (ordsEntry.blockShift < 0 && ordsEntry.bitsPerValue > 0) {
       if (ordsEntry.gcd != 1 || ordsEntry.minValue != 0 || ordsEntry.table != null) {

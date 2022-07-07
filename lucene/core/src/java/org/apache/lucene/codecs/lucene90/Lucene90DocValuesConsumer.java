@@ -702,8 +702,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     doAddSortedNumericField(field, valuesProducer, false);
   }
 
-  private void doAddSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
-      throws IOException {
+  private void doAddSortedNumericField(
+      FieldInfo field, DocValuesProducer valuesProducer, boolean ords) throws IOException {
     long[] stats = writeValues(field, valuesProducer, ords);
     int numDocsWithField = Math.toIntExact(stats[0]);
     long numValues = stats[1];
