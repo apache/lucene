@@ -3427,7 +3427,8 @@ public class IndexWriter
       TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(mergeDirectory);
       // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
       // createCompoundFile tries to cleanup, but it might not always be able to...
-      createCompoundFile(infoStream, trackingCFSDir, merge.getMergeInfo().info, context, this::deleteNewFiles);
+      createCompoundFile(
+          infoStream, trackingCFSDir, merge.getMergeInfo().info, context, this::deleteNewFiles);
 
       // creating cfs resets the files tracked in SegmentInfo. if it succeeds, we
       // delete the non cfs files directly as they are not tracked anymore.
