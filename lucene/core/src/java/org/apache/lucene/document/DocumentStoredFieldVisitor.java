@@ -102,6 +102,7 @@ public class DocumentStoredFieldVisitor extends StoredFieldVisitor {
   public Status needsField(FieldInfo fieldInfo) throws IOException {
     // return stop after collected all needed fields
     if (fieldsToAdd != null
+        && !fieldsToAdd.contains(fieldInfo.name)
         && fieldsToAdd.size()
             == doc.getFields().stream()
                 .map(IndexableField::name)
