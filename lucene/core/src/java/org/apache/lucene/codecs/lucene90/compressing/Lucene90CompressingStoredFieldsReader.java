@@ -568,14 +568,12 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
                 if (b != -1) {
                   return (byte) b;
                 }
-
                 // read next slice when there are no more bytes
                 fillBuffer();
                 b = input.read();
                 if (b == -1) {
                   throw new EOFException();
                 }
-
                 return (byte) b;
               }
 

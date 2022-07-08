@@ -188,9 +188,10 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       int finalOffsetInBytesRef = offsetInBytesRef;
       int finalOffsetInBlock = offsetInBlock;
       return new InputStream() {
-        int decompressed = bytes.length;
         // need to decompress length + finalOffsetInBytesRef bytes
-        int totalDecompressedLength = finalOffsetInBytesRef + length;
+        final int totalDecompressedLength = finalOffsetInBytesRef + length;
+        // already decompressed bytes count
+        int decompressed = bytes.length;
         int offsetInBlock = finalOffsetInBlock;
 
         {
@@ -219,15 +220,13 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
           if (bytes.length == 0) {
             fillBuffer();
           }
-
           // no more bytes
           if (bytes.length == 0) {
             return -1;
           }
-
           --bytes.length;
           int b = bytes.bytes[bytes.offset++];
-          // correct auto converting of byte ff
+          // correct int auto converting from byte ff
           if (b == -1) {
             b = 255;
           }
@@ -244,19 +243,19 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
             off += bytes.length;
             bytesRead += bytes.length;
             bytes.length = 0;
-
+            // decompress more when buffer is empty
             fillBuffer();
             // return actual read bytes count when there are not enough bytes
             if (bytes.length == 0) {
-              return bytesRead;
+              // return -1 when read nothing
+              return bytesRead == 0 ? -1 : bytesRead;
             }
           }
-
+          // copy the rest from the buffer
           System.arraycopy(bytes.bytes, bytes.offset, b, off, len);
           bytes.offset += len;
           bytes.length -= len;
           bytesRead += len;
-
           return bytesRead;
         }
 
