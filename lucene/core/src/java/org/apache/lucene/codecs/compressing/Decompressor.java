@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.compressing;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import org.apache.lucene.store.DataInput;
@@ -45,7 +46,9 @@ public abstract class Decompressor implements Cloneable {
 
   public InputStream decompress(DataInput in, int originalLength, int offset, int length)
       throws IOException {
-    return null;
+    final BytesRef bytes = new BytesRef();
+    decompress(in, originalLength, offset, length, bytes);
+    return new ByteArrayInputStream(bytes.bytes, bytes.offset, bytes.length);
   }
 
   @Override

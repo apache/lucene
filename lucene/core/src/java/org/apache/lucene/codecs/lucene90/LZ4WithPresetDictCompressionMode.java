@@ -60,13 +60,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     return "BEST_SPEED";
   }
 
-  /**
-   * A compression mode that compromises on the compression ratio to provide fast compression and
-   * decompression.
-   *
-   * @lucene.internal
-   */
-  public static final class LZ4WithPresetDictDecompressor extends Decompressor {
+  private static final class LZ4WithPresetDictDecompressor extends Decompressor {
 
     private int[] compressedLengths;
     private byte[] buffer;
