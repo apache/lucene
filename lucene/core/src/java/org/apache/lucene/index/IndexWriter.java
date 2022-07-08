@@ -3423,6 +3423,7 @@ public class IndexWriter
 
     // Now create the compound file if needed
     if (useCompoundFile) {
+      boolean createCFSSuccess = false;
       Collection<String> filesToDelete = merge.getMergeInfo().files();
       TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(mergeDirectory);
       // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
@@ -3430,10 +3431,13 @@ public class IndexWriter
       try {
         createCompoundFile(
             infoStream, trackingCFSDir, merge.getMergeInfo().info, context, this::deleteNewFiles);
+        createCFSSuccess = true;
       } finally {
-        // delete new non cfs files directly: they were never
-        // registered with IFD
-        deleteNewFiles(filesToDelete);
+        if (createCFSSuccess) {
+          // creating cfs resets the files tracked in SegmentInfo. if it succeeds, we
+          // delete the non cfs files directly as they are not tracked anymore.
+          deleteNewFiles(filesToDelete);
+        }
       }
       merge.getMergeInfo().info.setUseCompoundFile(true);
     }
