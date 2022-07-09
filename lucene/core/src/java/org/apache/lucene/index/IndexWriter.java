@@ -3425,7 +3425,6 @@ public class IndexWriter
     if (useCompoundFile) {
       Collection<String> filesToDelete = merge.getMergeInfo().files();
       TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(mergeDirectory);
-      // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
       // createCompoundFile tries to cleanup, but it might not always be able to...
       createCompoundFile(
           infoStream, trackingCFSDir, merge.getMergeInfo().info, context, this::deleteNewFiles);
