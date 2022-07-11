@@ -40,6 +40,13 @@ with the new one during object instantiation.
 Except for a few exceptions, almost all normalizer and stemmer classes are now package private. If your code depends on
 constants defined in them, copy the constant values and re-define them in your code.
 
+### LongRangeFacetCounts / DoubleRangeFacetCounts #getTopChildren behavior change (LUCENE-10614)
+
+The behavior of `LongRangeFacetCounts`/`DoubleRangeFacetCounts` `#getTopChildren` actually returns
+the top-n ranges ordered by count from 10.0 onwards (as described in the `Facets` API) instead
+of returning all ranges ordered by constructor-specified range order. The pre-existing behavior in 
+9.x and earlier can be retained by migrating to the new `Facets#getAllChildren` API (LUCENE-10550).
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

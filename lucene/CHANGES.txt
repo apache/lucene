@@ -48,6 +48,8 @@ Improvements
 * LUCENE-10216: Use MergePolicy to define and MergeScheduler to trigger the reader merges
   required by addIndexes(CodecReader[]) API. (Vigya Sharma, Michael McCandless)
 
+* LUCENE-10614: Properly support getTopChildren in RangeFacetCounts. (Yuting Gan)
+
 Optimizations
 ---------------------
 (No changes)
@@ -108,8 +110,6 @@ Improvements
   (Greg Miller, Stefan Vodita)
 
 * GITHUB#983: AbstractSortedSetDocValueFacetCounts internal code cleanup/refactoring. (Greg Miller)
-
-* LUCENE-10614: Properly support getTopChildren in RangeFacetCounts. (Yuting Gan)
 
 Optimizations
 ---------------------
