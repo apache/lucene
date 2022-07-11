@@ -21,21 +21,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.facet.FacetCountsWithFilterQuery;
 import org.apache.lucene.facet.FacetResult;
-import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.IndexReaderContext;
-import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -43,13 +36,12 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public class MatchingFacetSetsCounts extends Facets {
+public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
 
   private final FacetSetMatcher[] facetSetMatchers;
   private final int[] counts;
   private final String field;
   private final FacetSetDecoder facetSetDecoder;
-  private final Query fastMatchQuery;
   private final int totCount;
 
   /**
@@ -63,6 +55,7 @@ public class MatchingFacetSetsCounts extends Facets {
       Query fastMatchQuery,
       FacetSetMatcher... facetSetMatchers)
       throws IOException {
+    super(fastMatchQuery);
     if (facetSetMatchers == null || facetSetMatchers.length == 0) {
       throw new IllegalArgumentException("facetSetMatchers cannot be null or empty");
     }
@@ -71,7 +64,6 @@ public class MatchingFacetSetsCounts extends Facets {
     }
     this.field = field;
     this.facetSetDecoder = facetSetDecoder;
-    this.fastMatchQuery = fastMatchQuery;
     this.facetSetMatchers = facetSetMatchers;
     this.counts = new int[facetSetMatchers.length];
     this.totCount = count(field, hits.getMatchingDocs());
@@ -129,32 +121,6 @@ public class MatchingFacetSetsCounts extends Facets {
       }
     }
     return totCount;
-  }
-
-  /**
-   * Create a {@link DocIdSetIterator} from the provided {@code hits} and {@code binaryDocValues}
-   * that relies on {@code fastMatchQuery} if available for first-pass filtering. A null response
-   * indicates no documents will match.
-   */
-  private DocIdSetIterator createIterator(
-      FacetsCollector.MatchingDocs hits, BinaryDocValues binaryDocValues) throws IOException {
-    if (fastMatchQuery != null) {
-      final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(hits.context);
-      final IndexSearcher searcher = new IndexSearcher(topLevelContext);
-      searcher.setQueryCache(null);
-      final Weight fastMatchWeight =
-          searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
-      final Scorer s = fastMatchWeight.scorer(hits.context);
-      if (s == null) {
-        return null; // no hits from the fastMatchQuery; return null
-      } else {
-        return ConjunctionUtils.intersectIterators(
-            Arrays.asList(hits.bits.iterator(), s.iterator(), binaryDocValues));
-      }
-    } else {
-      return ConjunctionUtils.intersectIterators(
-          Arrays.asList(hits.bits.iterator(), binaryDocValues));
-    }
   }
 
   @Override
