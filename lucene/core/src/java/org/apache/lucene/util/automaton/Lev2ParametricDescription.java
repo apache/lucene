@@ -22,7 +22,11 @@ package org.apache.lucene.util.automaton;
 
 import org.apache.lucene.util.automaton.LevenshteinAutomata.ParametricDescription;
 
-/** Parametric description for generating a Levenshtein automaton of degree 2 */
+/**
+ * Parametric description for generating a Levenshtein automaton of degree 2
+ *
+ * @see Lev1ParametricDescription
+ */
 class Lev2ParametricDescription extends ParametricDescription {
 
   @Override

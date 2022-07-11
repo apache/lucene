@@ -19,10 +19,12 @@ package org.apache.lucene.util.automaton;
 // import java.io.IOException;
 // import java.io.PrintWriter;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
@@ -576,8 +578,6 @@ public class Automaton implements Accountable, TransitionAccessor {
    * visualizing the automaton.
    */
   public String toDot() {
-    // TODO: breadth first search so we can get layered output...
-
     StringBuilder b = new StringBuilder();
     b.append("digraph Automaton {\n");
     b.append("  rankdir = LR\n");
@@ -589,8 +589,15 @@ public class Automaton implements Accountable, TransitionAccessor {
     }
 
     Transition t = new Transition();
-
-    for (int state = 0; state < numStates; state++) {
+    Queue<Integer> queue = new ArrayDeque<>();
+    Set<Integer> meet = new HashSet<>();
+    queue.add(0);
+    while (!queue.isEmpty()) {
+      int state = queue.poll();
+      if (meet.contains(state)) {
+        continue;
+      }
+      meet.add(state);
       b.append("  ");
       b.append(state);
       if (isAccept(state)) {
@@ -599,11 +606,9 @@ public class Automaton implements Accountable, TransitionAccessor {
         b.append(" [shape=circle,label=\"").append(state).append("\"]\n");
       }
       int numTransitions = initTransition(state, t);
-      // System.out.println("toDot: state " + state + " has " + numTransitions + " transitions;
-      // t.nextTrans=" + t.transitionUpto);
+
       for (int i = 0; i < numTransitions; i++) {
         getNextTransition(t);
-        // System.out.println("  t.nextTrans=" + t.transitionUpto + " t=" + t);
         assert t.max >= t.min;
         b.append("  ");
         b.append(state);
@@ -616,7 +621,7 @@ public class Automaton implements Accountable, TransitionAccessor {
           appendCharString(t.max, b);
         }
         b.append("\"]\n");
-        // System.out.println("  t=" + t);
+        queue.add(t.dest);
       }
     }
     b.append('}');

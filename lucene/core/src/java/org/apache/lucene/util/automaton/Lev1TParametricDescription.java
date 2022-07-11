@@ -25,6 +25,8 @@ import org.apache.lucene.util.automaton.LevenshteinAutomata.ParametricDescriptio
 /**
  * Parametric description for generating a Levenshtein automaton of degree 1, with transpositions as
  * primitive edits
+ *
+ * @see Lev1ParametricDescription
  */
 class Lev1TParametricDescription extends ParametricDescription {
 
