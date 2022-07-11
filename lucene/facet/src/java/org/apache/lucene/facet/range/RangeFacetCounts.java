@@ -36,6 +36,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Base class for range faceting.
@@ -232,20 +233,43 @@ abstract class RangeFacetCounts extends Facets {
     return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
   }
 
-  // The current getTopChildren method is not returning "top" ranges. Instead, it returns all
-  // user-provided ranges in
-  // the order the user specified them when instantiating. This concept is being introduced and
-  // supported in the
-  // getAllChildren functionality in LUCENE-10550. getTopChildren is temporarily calling
-  // getAllChildren to maintain its
-  // current behavior, and the current implementation will be replaced by an actual "top children"
-  // implementation
-  // in LUCENE-10614
-  // TODO: fix getTopChildren in LUCENE-10614
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
-    return getAllChildren(dim, path);
+    validateDimAndPathForGetChildren(dim, path);
+
+    PriorityQueue<Entry> pq =
+        new PriorityQueue<>(Math.min(topN, counts.length)) {
+          @Override
+          protected boolean lessThan(Entry a, Entry b) {
+            int cmp = Integer.compare(a.count, b.count);
+            if (cmp == 0) {
+              cmp = b.label.compareTo(a.label);
+            }
+            return cmp < 0;
+          }
+        };
+
+    int childCount = 0;
+    Entry e = null;
+    for (int i = 0; i < counts.length; i++) {
+      if (counts[i] != 0) {
+        childCount++;
+        if (e == null) {
+          e = new Entry();
+        }
+        e.label = ranges[i].label;
+        e.count = counts[i];
+        e = pq.insertWithOverflow(e);
+      }
+    }
+
+    LabelAndValue[] results = new LabelAndValue[pq.size()];
+    while (pq.size() != 0) {
+      Entry entry = pq.pop();
+      results[pq.size()] = new LabelAndValue(entry.label, entry.count);
+    }
+    return new FacetResult(dim, path, totCount, results, childCount);
   }
 
   @Override
@@ -284,5 +308,11 @@ abstract class RangeFacetCounts extends Facets {
     if (path.length != 0) {
       throw new IllegalArgumentException("path.length should be 0");
     }
+  }
+
+  /** Reusable entry to hold range label and int count. */
+  private static final class Entry {
+    int count;
+    String label;
   }
 }

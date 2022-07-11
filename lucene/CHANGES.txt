@@ -109,6 +109,8 @@ Improvements
 
 * GITHUB#983: AbstractSortedSetDocValueFacetCounts internal code cleanup/refactoring. (Greg Miller)
 
+* LUCENE-10614: Properly support getTopChildren in RangeFacetCounts. (Yuting Gan)
+
 Optimizations
 ---------------------
 * LUCENE-8519: MultiDocValues.getNormValues should not call getMergedFieldInfos (Rushabh Shah)
