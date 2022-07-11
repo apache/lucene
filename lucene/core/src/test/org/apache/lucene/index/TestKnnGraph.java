@@ -40,6 +40,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -67,6 +68,7 @@ public class TestKnnGraph extends LuceneTestCase {
   private static int M = Lucene93HnswVectorsFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
+  private VectorEncoding vectorEncoding;
   private VectorSimilarityFunction similarityFunction;
 
   @Before
@@ -86,6 +88,11 @@ public class TestKnnGraph extends LuceneTestCase {
 
     int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
     similarityFunction = VectorSimilarityFunction.values()[similarity];
+    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+      vectorEncoding = random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
+    } else {
+      vectorEncoding = VectorEncoding.FLOAT32;
+    }
   }
 
   @After
@@ -257,7 +264,7 @@ public class TestKnnGraph extends LuceneTestCase {
       value[j] = random().nextFloat();
     }
     VectorUtil.l2normalize(value);
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+    if (vectorEncoding == VectorEncoding.BYTE) {
       for (int j = 0; j < dimension; j++) {
         value[j] = (byte) (value[j] * 127);
       }

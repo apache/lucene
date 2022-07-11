@@ -27,6 +27,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -111,6 +112,11 @@ public class TestIndexableField extends LuceneTestCase {
           @Override
           public int vectorDimension() {
             return 0;
+          }
+
+          @Override
+          public VectorEncoding vectorEncoding() {
+            return VectorEncoding.FLOAT32;
           }
 
           @Override

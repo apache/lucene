@@ -27,6 +27,7 @@ import java.util.SplittableRandom;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
@@ -53,6 +54,7 @@ public final class HnswGraphBuilder<T> {
   private final NeighborArray scratch;
 
   private final VectorSimilarityFunction similarityFunction;
+  private final VectorEncoding vectorEncoding;
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
   private final BoundsChecker bound;
@@ -68,16 +70,19 @@ public final class HnswGraphBuilder<T> {
 
   public static HnswGraphBuilder<?> create(
       RandomAccessVectorValuesProducer vectors,
+      VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
       int beamWidth,
       long seed)
       throws IOException {
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      return new HnswGraphBuilder<BytesRef>(vectors, similarityFunction, M, beamWidth, seed);
-    } else {
-      return new HnswGraphBuilder<float[]>(vectors, similarityFunction, M, beamWidth, seed);
-    }
+    return switch (vectorEncoding) {
+      case BYTE -> new HnswGraphBuilder<BytesRef>(
+          vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+      case FLOAT32 -> new HnswGraphBuilder<float[]>(
+          vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+      default -> throw new AssertionError("unknown vector encoding " + vectorEncoding);
+    };
   }
 
   /**
@@ -94,6 +99,7 @@ public final class HnswGraphBuilder<T> {
    */
   private HnswGraphBuilder(
       RandomAccessVectorValuesProducer vectors,
+      VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
       int beamWidth,
@@ -101,12 +107,18 @@ public final class HnswGraphBuilder<T> {
       throws IOException {
     vectorValues = vectors.randomAccess();
     buildVectors = vectors.randomAccess();
+    this.vectorEncoding = Objects.requireNonNull(vectorEncoding);
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
     if (beamWidth <= 0) {
       throw new IllegalArgumentException("beamWidth must be positive");
+    }
+    if (vectorEncoding == VectorEncoding.BYTE
+        && similarityFunction != VectorSimilarityFunction.DOT_PRODUCT) {
+      throw new IllegalArgumentException(
+          "Vector encoding BYTE must only be used with DOT_PRODUCT similarity function.");
     }
     this.M = M;
     this.beamWidth = beamWidth;
@@ -117,6 +129,7 @@ public final class HnswGraphBuilder<T> {
     this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode, similarityFunction.reversed);
     this.graphSearcher =
         new HnswGraphSearcher<T>(
+            vectorEncoding,
             similarityFunction,
             new NeighborQueue(beamWidth, similarityFunction.reversed == false),
             new FixedBitSet(vectorValues.size()));
@@ -190,11 +203,11 @@ public final class HnswGraphBuilder<T> {
 
   @SuppressWarnings("unchecked")
   private T getValue(int node, RandomAccessVectorValues values) throws IOException {
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      return (T) values.binaryValue(node);
-    } else {
-      return (T) values.vectorValue(node);
-    }
+    return switch (vectorEncoding) {
+      case BYTE -> (T) values.binaryValue(node);
+      case FLOAT32 -> (T) values.vectorValue(node);
+      default -> throw new AssertionError("unknown vector encoding " + vectorEncoding);
+    };
   }
 
   private long printGraphBuildStatus(int node, long start, long t) {
@@ -276,11 +289,11 @@ public final class HnswGraphBuilder<T> {
   }
 
   private boolean isDiverse(int candidate, NeighborArray neighbors) throws IOException {
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      return isDiverse(vectorValues.binaryValue(candidate), neighbors);
-    } else {
-      return isDiverse(vectorValues.vectorValue(candidate), neighbors);
-    }
+    return switch (vectorEncoding) {
+      case BYTE -> isDiverse(vectorValues.binaryValue(candidate), neighbors);
+      case FLOAT32 -> isDiverse(vectorValues.vectorValue(candidate), neighbors);
+      default -> throw new AssertionError("unknown vector encoding " + vectorEncoding);
+    };
   }
 
   private boolean isDiverse(float[] candidate, NeighborArray neighbors) throws IOException {
@@ -324,11 +337,11 @@ public final class HnswGraphBuilder<T> {
   }
 
   private boolean isWorstNonDiverse(int candidate, NeighborArray neighbors) throws IOException {
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      return isWorstNonDiverse(candidate, vectorValues.binaryValue(candidate), neighbors);
-    } else {
-      return isWorstNonDiverse(candidate, vectorValues.vectorValue(candidate), neighbors);
-    }
+    return switch (vectorEncoding) {
+      case BYTE -> isWorstNonDiverse(candidate, vectorValues.binaryValue(candidate), neighbors);
+      case FLOAT32 -> isWorstNonDiverse(candidate, vectorValues.vectorValue(candidate), neighbors);
+      default -> throw new AssertionError("unknown vector encoding " + vectorEncoding);
+    };
   }
 
   private boolean isWorstNonDiverse(int candidateIndex, float[] candidate, NeighborArray neighbors)

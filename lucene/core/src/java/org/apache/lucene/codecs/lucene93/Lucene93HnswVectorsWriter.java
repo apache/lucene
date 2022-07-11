@@ -33,6 +33,7 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -120,7 +121,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
-    if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.DOT_PRODUCT8) {
+    if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
       vectors = new CompressingVectorValues(vectors);
     }
 
@@ -133,10 +134,11 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       // write the vector data to a temporary file
       DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, vectors);
       int byteSize;
-      if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.DOT_PRODUCT8) {
-        byteSize = vectors.dimension();
-      } else {
-        byteSize = vectors.dimension() * Float.BYTES;
+      switch (fieldInfo.getVectorEncoding()) {
+        case BYTE -> byteSize = vectors.dimension();
+        case FLOAT32 -> byteSize = vectors.dimension() * Float.BYTES;
+        default -> throw new AssertionError(
+            "unknown vector encoding " + fieldInfo.getVectorEncoding());
       }
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -160,7 +162,10 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
-              : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarityFunction());
+              : writeGraph(
+                  offHeapVectors,
+                  fieldInfo.getVectorEncoding(),
+                  fieldInfo.getVectorSimilarityFunction());
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
@@ -208,6 +213,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       OnHeapHnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
+    meta.writeInt(field.getVectorEncoding().ordinal());
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
@@ -275,13 +281,20 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValuesProducer vectorValues,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph
     HnswGraphBuilder<?> hnswGraphBuilder =
         HnswGraphBuilder.create(
-            vectorValues, similarityFunction, M, beamWidth, HnswGraphBuilder.randSeed);
+            vectorValues,
+            vectorEncoding,
+            similarityFunction,
+            M,
+            beamWidth,
+            HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 

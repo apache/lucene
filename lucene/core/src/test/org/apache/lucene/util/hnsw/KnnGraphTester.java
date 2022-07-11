@@ -56,6 +56,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -91,6 +92,7 @@ public class KnnGraphTester {
   private int beamWidth;
   private int maxConn;
   private VectorSimilarityFunction similarityFunction;
+  private VectorEncoding vectorEncoding;
 
   @SuppressForbidden(reason = "uses Random()")
   private KnnGraphTester() {
@@ -101,6 +103,7 @@ public class KnnGraphTester {
     topK = 100;
     fanout = topK;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    vectorEncoding = VectorEncoding.FLOAT32;
   }
 
   public static void main(String... args) throws Exception {
@@ -191,7 +194,8 @@ public class KnnGraphTester {
               similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
               break;
             case "angular8":
-              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT8;
+              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+              vectorEncoding = VectorEncoding.BYTE;
               break;
             default:
               throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
@@ -269,7 +273,8 @@ public class KnnGraphTester {
       RandomAccessVectorValues values = vectors.randomAccess();
       HnswGraphBuilder<float[]> builder =
           (HnswGraphBuilder<float[]>)
-              HnswGraphBuilder.create(vectors, similarityFunction, maxConn, beamWidth, 0);
+              HnswGraphBuilder.create(
+                  vectors, vectorEncoding, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
         builder.addGraphNode(i, values);

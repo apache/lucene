@@ -72,27 +72,6 @@ public enum VectorSimilarityFunction {
     public float convertToScore(float similarity) {
       return (1 + similarity) / 2;
     }
-  },
-
-  /**
-   * Dot product using 8 bits of precision. NOTE: this similarity is intended as an optimized way to
-   * perform cosine similarity and can enable significant storage savings and faster searches, at
-   * the cost of some possible loss of precision. In order to use it, all vectors must be of the
-   * same length, as measured by the sum of the squares of the scalar values, and those values must
-   * be in the range [-128, 127]. This applies to both document and query vectors. Using
-   * nonconforming vectors can result in errors or poor search results.
-   */
-  DOT_PRODUCT8 {
-
-    @Override
-    public float compare(float[] v1, float[] v2) {
-      return dotProduct(v1, v2);
-    }
-
-    @Override
-    public float convertToScore(float similarity) {
-      return (1 + similarity) / 2;
-    }
   };
 
   /**

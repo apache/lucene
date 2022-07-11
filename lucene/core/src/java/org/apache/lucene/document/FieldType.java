@@ -26,6 +26,7 @@ import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {
@@ -44,6 +45,7 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
+  private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private Map<String, String> attributes;
 
@@ -62,6 +64,7 @@ public class FieldType implements IndexableFieldType {
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
     this.vectorDimension = ref.vectorDimension();
+    this.vectorEncoding = ref.vectorEncoding();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
@@ -391,6 +394,11 @@ public class FieldType implements IndexableFieldType {
   @Override
   public int vectorDimension() {
     return vectorDimension;
+  }
+
+  @Override
+  public VectorEncoding vectorEncoding() {
+    return vectorEncoding;
   }
 
   @Override

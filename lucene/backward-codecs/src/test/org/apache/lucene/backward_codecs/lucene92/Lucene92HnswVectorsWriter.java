@@ -33,6 +33,7 @@ import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -151,7 +152,8 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
-              : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarityFunction());
+              : writeGraph(
+                  offHeapVectors, VectorEncoding.FLOAT32, fieldInfo.getVectorSimilarityFunction());
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
@@ -267,13 +269,20 @@ public final class Lucene92HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValuesProducer vectorValues,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph
     HnswGraphBuilder<?> hnswGraphBuilder =
         HnswGraphBuilder.create(
-            vectorValues, similarityFunction, M, beamWidth, HnswGraphBuilder.randSeed);
+            vectorValues,
+            vectorEncoding,
+            similarityFunction,
+            M,
+            beamWidth,
+            HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
     OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 

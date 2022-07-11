@@ -1243,9 +1243,6 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
           case DOT_PRODUCT:
             sb.append("dot");
             break;
-          case DOT_PRODUCT8:
-            sb.append("dot8");
-            break;
           case EUCLIDEAN:
             sb.append("euc");
             break;

@@ -20,9 +20,9 @@ package org.apache.lucene.codecs.lucene93;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -95,10 +95,11 @@ abstract class OffHeapVectorValues extends VectorValues
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     int byteSize;
-    if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
-      byteSize = fieldEntry.dimension;
-    } else {
-      byteSize = fieldEntry.dimension * Float.BYTES;
+    switch (fieldEntry.vectorEncoding) {
+      case BYTE -> byteSize = fieldEntry.dimension;
+      case FLOAT32 -> byteSize = fieldEntry.dimension * Float.BYTES;
+      default -> throw new CorruptIndexException(
+          "unknown vector encoding " + fieldEntry.vectorEncoding, vectorData);
     }
     if (fieldEntry.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(

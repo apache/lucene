@@ -29,6 +29,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -68,7 +69,8 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   static final BytesRef INDEX_DIM_COUNT = new BytesRef("  index dimensional count ");
   static final BytesRef DIM_NUM_BYTES = new BytesRef("  dimensional num bytes ");
   static final BytesRef VECTOR_NUM_DIMS = new BytesRef("  vector number of dimensions ");
-  static final BytesRef VECTOR_SEARCH_STRATEGY = new BytesRef("  vector search strategy ");
+  static final BytesRef VECTOR_ENCODING = new BytesRef("  vector encoding ");
+  static final BytesRef VECTOR_SIMILARITY = new BytesRef("  vector similarity ");
   static final BytesRef SOFT_DELETES = new BytesRef("  soft-deletes ");
 
   @Override
@@ -156,8 +158,13 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         int vectorNumDimensions = Integer.parseInt(readString(VECTOR_NUM_DIMS.length, scratch));
 
         SimpleTextUtil.readLine(input, scratch);
-        assert StringHelper.startsWith(scratch.get(), VECTOR_SEARCH_STRATEGY);
-        String scoreFunction = readString(VECTOR_SEARCH_STRATEGY.length, scratch);
+        assert StringHelper.startsWith(scratch.get(), VECTOR_ENCODING);
+        String encoding = readString(VECTOR_ENCODING.length, scratch);
+        VectorEncoding vectorEncoding = vectorEncoding(encoding);
+
+        SimpleTextUtil.readLine(input, scratch);
+        assert StringHelper.startsWith(scratch.get(), VECTOR_SIMILARITY);
+        String scoreFunction = readString(VECTOR_SIMILARITY.length, scratch);
         VectorSimilarityFunction vectorDistFunc = distanceFunction(scoreFunction);
 
         SimpleTextUtil.readLine(input, scratch);
@@ -179,6 +186,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 indexDimensionalCount,
                 dimensionalNumBytes,
                 vectorNumDimensions,
+                vectorEncoding,
                 vectorDistFunc,
                 isSoftDeletesField);
       }
@@ -199,6 +207,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
   public DocValuesType docValuesType(String dvType) {
     return DocValuesType.valueOf(dvType);
+  }
+
+  public VectorEncoding vectorEncoding(String vectorEncoding) {
+    return VectorEncoding.valueOf(vectorEncoding);
   }
 
   public VectorSimilarityFunction distanceFunction(String scoreFunction) {
@@ -297,7 +309,11 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.write(out, Integer.toString(fi.getVectorDimension()), scratch);
         SimpleTextUtil.writeNewline(out);
 
-        SimpleTextUtil.write(out, VECTOR_SEARCH_STRATEGY);
+        SimpleTextUtil.write(out, VECTOR_ENCODING);
+        SimpleTextUtil.write(out, fi.getVectorEncoding().name(), scratch);
+        SimpleTextUtil.writeNewline(out);
+
+        SimpleTextUtil.write(out, VECTOR_SIMILARITY);
         SimpleTextUtil.write(out, fi.getVectorSimilarityFunction().name(), scratch);
         SimpleTextUtil.writeNewline(out);
 

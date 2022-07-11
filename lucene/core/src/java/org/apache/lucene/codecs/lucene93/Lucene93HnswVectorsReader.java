@@ -32,6 +32,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -169,9 +170,11 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
               + fieldEntry.dimension);
     }
 
-    long numBytes = (long) fieldEntry.size() * dimension;
-    if (info.getVectorSimilarityFunction() != VectorSimilarityFunction.DOT_PRODUCT8) {
-      numBytes *= Float.BYTES;
+    long numBytes;
+    switch (info.getVectorEncoding()) {
+      case BYTE -> numBytes = (long) fieldEntry.size() * dimension;
+      case FLOAT32 -> numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
+      default -> throw new AssertionError("unknown vector encoding " + info.getVectorEncoding());
     }
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
@@ -196,9 +199,18 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
     return VectorSimilarityFunction.values()[similarityFunctionId];
   }
 
+  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
+    int encodingId = input.readInt();
+    if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
+      throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
+    }
+    return VectorEncoding.values()[encodingId];
+  }
+
   private FieldEntry readField(IndexInput input) throws IOException {
+    VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, similarityFunction);
+    return new FieldEntry(input, vectorEncoding, similarityFunction);
   }
 
   @Override
@@ -220,7 +232,7 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     VectorValues values = OffHeapVectorValues.load(fieldEntry, vectorData);
-    if (fieldEntry.similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+    if (fieldEntry.vectorEncoding == VectorEncoding.BYTE) {
       return new ExpandingVectorValues(values);
     } else {
       return values;
@@ -245,6 +257,7 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
             target,
             k,
             vectorValues,
+            fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
@@ -294,6 +307,7 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
   static class FieldEntry {
 
     final VectorSimilarityFunction similarityFunction;
+    final VectorEncoding vectorEncoding;
     final long vectorDataOffset;
     final long vectorDataLength;
     final long vectorIndexOffset;
@@ -323,8 +337,13 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
     final DirectMonotonicReader.Meta meta;
     final long addressesLength;
 
-    FieldEntry(IndexInput input, VectorSimilarityFunction similarityFunction) throws IOException {
+    FieldEntry(
+        IndexInput input,
+        VectorEncoding vectorEncoding,
+        VectorSimilarityFunction similarityFunction)
+        throws IOException {
       this.similarityFunction = similarityFunction;
+      this.vectorEncoding = vectorEncoding;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
       vectorIndexOffset = input.readVLong();

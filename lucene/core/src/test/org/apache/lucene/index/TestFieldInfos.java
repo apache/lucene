@@ -26,6 +26,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -260,6 +261,7 @@ public class TestFieldInfos extends LuceneTestCase {
               0,
               0,
               0,
+              VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false));
     }
@@ -279,6 +281,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 0,
                 0,
+                VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
@@ -300,6 +303,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 0,
                 0,
+                VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);

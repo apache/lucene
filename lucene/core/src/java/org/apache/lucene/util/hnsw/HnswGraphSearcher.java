@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -35,6 +36,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
  */
 public class HnswGraphSearcher<T> {
   private final VectorSimilarityFunction similarityFunction;
+  private final VectorEncoding vectorEncoding;
 
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
@@ -52,7 +54,11 @@ public class HnswGraphSearcher<T> {
    * @param visited bit set that will track nodes that have already been visited
    */
   public HnswGraphSearcher(
-      VectorSimilarityFunction similarityFunction, NeighborQueue candidates, BitSet visited) {
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      NeighborQueue candidates,
+      BitSet visited) {
+    this.vectorEncoding = vectorEncoding;
     this.similarityFunction = similarityFunction;
     this.candidates = candidates;
     this.visited = visited;
@@ -76,17 +82,26 @@ public class HnswGraphSearcher<T> {
       float[] query,
       int topK,
       RandomAccessVectorValues vectors,
+      VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+    if (vectorEncoding == VectorEncoding.BYTE) {
       return search(
-          toBytesRef(query), topK, vectors, similarityFunction, graph, acceptOrds, visitedLimit);
+          toBytesRef(query),
+          topK,
+          vectors,
+          vectorEncoding,
+          similarityFunction,
+          graph,
+          acceptOrds,
+          visitedLimit);
     }
     HnswGraphSearcher<float[]> graphSearcher =
         new HnswGraphSearcher<>(
+            vectorEncoding,
             similarityFunction,
             new NeighborQueue(topK, similarityFunction.reversed == false),
             new SparseFixedBitSet(vectors.size()));
@@ -110,6 +125,7 @@ public class HnswGraphSearcher<T> {
       BytesRef query,
       int topK,
       RandomAccessVectorValues vectors,
+      VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
       Bits acceptOrds,
@@ -117,6 +133,7 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     HnswGraphSearcher<BytesRef> graphSearcher =
         new HnswGraphSearcher<>(
+            vectorEncoding,
             similarityFunction,
             new NeighborQueue(topK, similarityFunction.reversed == false),
             new SparseFixedBitSet(vectors.size()));
@@ -237,7 +254,7 @@ public class HnswGraphSearcher<T> {
   }
 
   private float compare(T query, RandomAccessVectorValues vectors, int ord) throws IOException {
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT8) {
+    if (vectorEncoding == VectorEncoding.BYTE) {
       return dotProduct((BytesRef) query, 0, vectors.binaryValue(ord), 0, vectors.dimension());
     } else {
       return similarityFunction.compare((float[]) query, vectors.vectorValue(ord));
