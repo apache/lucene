@@ -49,6 +49,7 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeLongs,
+            null,
             new ExactFacetSetMatcher("Test", new LongFacetSet(123, 456)));
 
     expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
@@ -82,6 +83,7 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
                 "field",
                 fc,
                 FacetSetDecoder::decodeLongs,
+                null,
                 new ExactFacetSetMatcher("Test", new LongFacetSet(1))));
 
     r.close();
