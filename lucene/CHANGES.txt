@@ -33,6 +33,9 @@ Improvements
 * LUCENE-10603: Update SortedSetDocValues iteration to use SortedSetDocValues#docValueCount().
   (Greg Miller, Stefan Vodita)
 
+
+* LUCENE-10619: Optimize the writeBytes in TermsHashPerField. (Tang Donghai)
+
 * GITHUB#983: AbstractSortedSetDocValueFacetCounts internal code cleanup/refactoring. (Greg Miller)
 
 Optimizations
