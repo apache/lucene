@@ -68,6 +68,7 @@ public class TestKnnGraph extends LuceneTestCase {
   private static int M = Lucene93HnswVectorsFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
+  private Codec float32Codec;
   private VectorEncoding vectorEncoding;
   private VectorSimilarityFunction similarityFunction;
 
@@ -94,6 +95,19 @@ public class TestKnnGraph extends LuceneTestCase {
                 M, Lucene93HnswVectorsFormat.DEFAULT_BEAM_WIDTH, vectorEncoding);
           }
         };
+
+    if (vectorEncoding == VectorEncoding.FLOAT32) {
+      float32Codec = codec;
+    } else {
+      float32Codec =
+          new Lucene93Codec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return new Lucene93HnswVectorsFormat(
+                  M, Lucene93HnswVectorsFormat.DEFAULT_BEAM_WIDTH, VectorEncoding.FLOAT32);
+            }
+          };
+    }
   }
 
   @After
@@ -124,6 +138,11 @@ public class TestKnnGraph extends LuceneTestCase {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
       if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
         VectorUtil.l2normalize(values[0]);
+      }
+      if (vectorEncoding == VectorEncoding.BYTE) {
+        for (int i = 0; i < 3; i++) {
+          values[0][i] = (float) Math.floor(values[0][i] * 127);
+        }
       }
       add(iw, 0, values[0]);
       assertConsistentGraph(iw, values);
@@ -299,7 +318,7 @@ public class TestKnnGraph extends LuceneTestCase {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
-    config.setCodec(codec); // test is not compatible with simpletext
+    config.setCodec(float32Codec);
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, config)) {
       indexData(iw);
@@ -355,7 +374,7 @@ public class TestKnnGraph extends LuceneTestCase {
   public void testMultiThreadedSearch() throws Exception {
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
-    config.setCodec(codec);
+    config.setCodec(float32Codec);
     Directory dir = newDirectory();
     IndexWriter iw = new IndexWriter(dir, config);
     indexData(iw);
