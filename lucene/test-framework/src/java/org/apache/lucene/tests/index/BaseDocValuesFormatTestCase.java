@@ -1809,6 +1809,8 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(0, dv.nextDoc());
+
+    assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -1834,6 +1836,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(0, dv.nextDoc());
 
+    assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -1841,8 +1844,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(newBytesRef("hello"), bytes);
 
     dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field2");
-
     assertEquals(0, dv.nextDoc());
+
+    assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -1877,6 +1881,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(2, dv.getValueCount());
 
     assertEquals(0, dv.nextDoc());
+    assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -1884,6 +1889,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(newBytesRef("hello"), bytes);
 
     assertEquals(1, dv.nextDoc());
+    assertEquals(1, dv.docValueCount());
     assertEquals(1, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -1909,6 +1915,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(0, dv.nextDoc());
 
+    assertEquals(2, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(1, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
@@ -1938,6 +1945,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(0, dv.nextDoc());
 
+    assertEquals(2, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(1, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
@@ -1978,11 +1986,13 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(3, dv.getValueCount());
 
     assertEquals(0, dv.nextDoc());
+    assertEquals(2, dv.docValueCount());
     assertEquals(1, dv.nextOrd());
     assertEquals(2, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
     assertEquals(1, dv.nextDoc());
+    assertEquals(2, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(1, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
@@ -2019,8 +2029,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(1, dv.getValueCount());
-
     assertEquals(0, dv.nextDoc());
+
+    assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -2052,8 +2063,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(1, dv.getValueCount());
-
     assertEquals(0, dv.nextDoc());
+
+    assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -2084,8 +2096,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(1, dv.getValueCount());
-
     assertEquals(1, dv.nextDoc());
+
+    assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -2117,8 +2130,9 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
 
     SortedSetDocValues dv = getOnlyLeafReader(ireader).getSortedSetDocValues("field");
     assertEquals(1, dv.getValueCount());
-
     assertEquals(1, dv.nextDoc());
+
+    assertEquals(1, dv.docValueCount());
     assertEquals(0, dv.nextOrd());
     assertEquals(NO_MORE_ORDS, dv.nextOrd());
 
@@ -2320,12 +2334,12 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         }
         if (docValues != null && stringValues.length > 0) {
           assertEquals(i, docValues.docID());
-          for (int j = 0; j < stringValues.length; j++) {
+          assertEquals(stringValues.length, docValues.docValueCount());
+          for (String stringValue : stringValues) {
             assert docValues != null;
             long ord = docValues.nextOrd();
-            assert ord != NO_MORE_ORDS;
             BytesRef scratch = docValues.lookupOrd(ord);
-            assertEquals(stringValues[j], scratch.utf8ToString());
+            assertEquals(stringValue, scratch.utf8ToString());
           }
           assertEquals(NO_MORE_ORDS, docValues.nextOrd());
         }
@@ -2353,12 +2367,12 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
         }
         if (stringValues.length > 0) {
           assertEquals(i, docValues.docID());
-          for (int j = 0; j < stringValues.length; j++) {
+          assertEquals(stringValues.length, docValues.docValueCount());
+          for (String stringValue : stringValues) {
             assert docValues != null;
             long ord = docValues.nextOrd();
-            assert ord != NO_MORE_ORDS;
             BytesRef scratch = docValues.lookupOrd(ord);
-            assertEquals(stringValues[j], scratch.utf8ToString());
+            assertEquals(stringValue, scratch.utf8ToString());
           }
           assertEquals(NO_MORE_ORDS, docValues.nextOrd());
         }
@@ -2891,13 +2905,13 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
                     if (values.length > 0) {
                       assertNotNull(sortedSet);
                       assertEquals(j, sortedSet.nextDoc());
-                      for (int k = 0; k < values.length; k++) {
+                      assertEquals(values.length, sortedSet.docValueCount());
+                      for (String s : values) {
                         long ord = sortedSet.nextOrd();
-                        assertTrue(ord != SortedSetDocValues.NO_MORE_ORDS);
                         BytesRef value = sortedSet.lookupOrd(ord);
-                        assertEquals(values[k], value.utf8ToString());
+                        assertEquals(s, value.utf8ToString());
                       }
-                      assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSet.nextOrd());
+                      assertEquals(NO_MORE_ORDS, sortedSet.nextOrd());
                     }
 
                     String[] numValues = r.document(j).getValues("storedSortedNumeric");

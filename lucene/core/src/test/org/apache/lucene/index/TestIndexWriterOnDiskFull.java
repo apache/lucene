@@ -352,7 +352,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               done = true;
             }
 
-          } catch (IllegalStateException | IOException e) {
+          } catch (IllegalStateException | IOException | MergePolicy.MergeException e) {
             success = false;
             err = e;
             if (VERBOSE) {
@@ -360,7 +360,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               e.printStackTrace(System.out);
             }
 
-            if (1 == x) {
+            if (1 == x && (e instanceof MergePolicy.MergeException == false)) {
               e.printStackTrace(System.out);
               fail(methodName + " hit IOException after disk space was freed up");
             }
