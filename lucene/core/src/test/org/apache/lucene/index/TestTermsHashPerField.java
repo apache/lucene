@@ -310,7 +310,12 @@ public class TestTermsHashPerField extends LuceneTestCase {
       int size = TestUtil.nextInt(random(), 50000, 100000);
       byte[] randomData = new byte[size];
       random().nextBytes(randomData);
-      hash.writeBytes(0, randomData, 0, randomData.length);
+      int offset = 0;
+      while (offset < randomData.length) {
+        int writeLength = Math.min(randomData.length - offset, TestUtil.nextInt(random(), 1, 200));
+        hash.writeBytes(0, randomData, offset, writeLength);
+        offset += writeLength;
+      }
       ByteSliceReader reader = new ByteSliceReader();
       reader.init(hash.bytePool, 0, hash.bytePool.byteOffset + hash.bytePool.byteUpto);
       for (byte expected : randomData) {
