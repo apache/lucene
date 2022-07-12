@@ -39,7 +39,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
-  private FieldData[] fields;
+  private FieldWriter[] fields;
 
   /** Sole constructor */
   protected BufferingKnnVectorsWriter() {}
@@ -47,20 +47,20 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   @Override
   public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
     if (fields == null) {
-      fields = new FieldData[1];
+      fields = new FieldWriter[1];
     } else {
-      FieldData[] newFields = new FieldData[fields.length + 1];
+      FieldWriter[] newFields = new FieldWriter[fields.length + 1];
       System.arraycopy(fields, 0, newFields, 0, fields.length);
       fields = newFields;
     }
-    FieldData newField = new FieldData(fieldInfo);
+    FieldWriter newField = new FieldWriter(fieldInfo);
     fields[fields.length - 1] = newField;
     return newField;
   }
 
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
-    for (FieldData fieldData : fields) {
+    for (FieldWriter fieldData : fields) {
       KnnVectorsReader knnVectorsReader =
           new KnnVectorsReader() {
             @Override
@@ -104,7 +104,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = 0;
-    for (FieldData field : fields) {
+    for (FieldWriter field : fields) {
       total += field.ramBytesUsed();
     }
     return total;
@@ -120,7 +120,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   protected abstract void writeField(
       FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc) throws IOException;
 
-  private static class FieldData extends KnnFieldVectorsWriter {
+  private static class FieldWriter extends KnnFieldVectorsWriter {
     private final FieldInfo fieldInfo;
     private final int dim;
     private final DocsWithFieldSet docsWithField;
@@ -128,7 +128,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
     private int lastDocID = -1;
 
-    public FieldData(FieldInfo fieldInfo) {
+    public FieldWriter(FieldInfo fieldInfo) {
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();

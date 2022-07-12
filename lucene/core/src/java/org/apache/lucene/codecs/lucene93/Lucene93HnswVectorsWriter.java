@@ -64,7 +64,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
   private final int M;
   private final int beamWidth;
 
-  private FieldData[] fields;
+  private FieldWriter[] fields;
   private boolean finished;
 
   Lucene93HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth) throws IOException {
@@ -122,20 +122,20 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
     if (fields == null) {
-      fields = new FieldData[1];
+      fields = new FieldWriter[1];
     } else {
-      FieldData[] newFields = new FieldData[fields.length + 1];
+      FieldWriter[] newFields = new FieldWriter[fields.length + 1];
       System.arraycopy(fields, 0, newFields, 0, fields.length);
       fields = newFields;
     }
-    FieldData newField = new FieldData(fieldInfo, M, beamWidth, segmentWriteState.infoStream);
+    FieldWriter newField = new FieldWriter(fieldInfo, M, beamWidth, segmentWriteState.infoStream);
     fields[fields.length - 1] = newField;
     return newField;
   }
 
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
-    for (FieldData field : fields) {
+    for (FieldWriter field : fields) {
       if (sortMap == null) {
         writeField(field, maxDoc);
       } else {
@@ -165,13 +165,13 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = 0;
-    for (FieldData field : fields) {
+    for (FieldWriter field : fields) {
       total += field.ramBytesUsed();
     }
     return total;
   }
 
-  private void writeField(FieldData fieldData, int maxDoc) throws IOException {
+  private void writeField(FieldWriter fieldData, int maxDoc) throws IOException {
     // write vector values
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     final ByteBuffer buffer =
@@ -200,7 +200,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
         graph);
   }
 
-  private void writeSortingField(FieldData fieldData, int maxDoc, Sorter.DocMap sortMap)
+  private void writeSortingField(FieldWriter fieldData, int maxDoc, Sorter.DocMap sortMap)
       throws IOException {
     final int[] docIdOffsets = new int[sortMap.size()];
     int offset = 1; // 0 means no vector for this (field, document)
@@ -545,7 +545,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
     IOUtils.close(meta, vectorData, vectorIndex);
   }
 
-  private static class FieldData extends KnnFieldVectorsWriter {
+  private static class FieldWriter extends KnnFieldVectorsWriter {
     private final FieldInfo fieldInfo;
     private final int dim;
     private final DocsWithFieldSet docsWithField;
@@ -556,7 +556,8 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
     private int lastDocID = -1;
     private int node = 0;
 
-    FieldData(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream) throws IOException {
+    FieldWriter(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
+        throws IOException {
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
