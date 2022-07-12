@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.geo;
 
+/** Base class for {@link LatLonGeometry} and {@link XYGeometry} */
 public abstract class Geometry {
   /** get a Component2D from the geometry object */
   protected abstract Component2D toComponent2D();

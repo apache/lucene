@@ -39,7 +39,7 @@ import org.apache.lucene.util.BytesRef;
 public final class ShapeDocValuesField extends Field {
   private final ShapeComparator shapeComparator;
 
-  public static final FieldType FIELD_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE = new FieldType();
 
   static {
     FIELD_TYPE.setDocValuesType(DocValuesType.BINARY);
@@ -99,6 +99,7 @@ public final class ShapeDocValuesField extends Field {
     return null;
   }
 
+  /** Returns the number of terms (tessellated triangles) for this shape */
   public int numberOfTerms() {
     return shapeComparator.numberOfTerms();
   }
@@ -111,19 +112,26 @@ public final class ShapeDocValuesField extends Field {
     //  return new ShapeDocValuesQuery(field, relation, geometries);
   }
 
+  /** Compute the spatial relation of this shape and a bounding box (in encoded space) */
   public Relation relate(final int minX, final int maxX, final int minY, final int maxY)
       throws IOException {
     return shapeComparator.relate(minX, maxX, minY, maxY);
   }
 
+  /** Retrieves the x centroid location for the geometry(s) */
   public int getCentroidX() {
     return shapeComparator.getCentroidX();
   }
 
+  /** Retrieves the y centroid location for the geometry(s) */
   public int getCentroidY() {
     return shapeComparator.getCentroidY();
   }
 
+  /**
+   * Retrieves the highest dimensional type (POINT, LINE, TRIANGLE) for computing the geometry(s)
+   * centroid
+   */
   public TYPE getHighestDimensionType() {
     return shapeComparator.getHighestDimension();
   }
@@ -511,6 +519,7 @@ public final class ShapeDocValuesField extends Field {
       return new Reader(ShapeDocValuesField.this.binaryValue());
     }
 
+    /** rewinds the buffer to the beginning */
     protected void rewind() {
       this.data.rewind();
     }
