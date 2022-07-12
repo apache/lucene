@@ -90,7 +90,8 @@ public class TestKnnGraph extends LuceneTestCase {
         new Lucene93Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene93HnswVectorsFormat(M, Lucene93HnswVectorsFormat.DEFAULT_BEAM_WIDTH, vectorEncoding);
+            return new Lucene93HnswVectorsFormat(
+                M, Lucene93HnswVectorsFormat.DEFAULT_BEAM_WIDTH, vectorEncoding);
           }
         };
   }

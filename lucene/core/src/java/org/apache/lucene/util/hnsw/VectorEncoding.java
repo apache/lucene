@@ -24,9 +24,9 @@ public enum VectorEncoding {
    * Encodes vector using 8 bits of precision per sample. Use only with DOT_PRODUCT similarity.
    * NOTE: this can enable significant storage savings and faster searches, at the cost of some
    * possible loss of precision. In order to use it, all vectors must be of the same norm, as
-   * measured by the sum of the squares of the scalar values, and those values must be in the
-   * range [-128, 127]. This applies to both document and query vectors. Using nonconforming
-   * vectors can result in errors or poor search results.
+   * measured by the sum of the squares of the scalar values, and those values must be in the range
+   * [-128, 127]. This applies to both document and query vectors. Using nonconforming vectors can
+   * result in errors or poor search results.
    */
   BYTE,
 

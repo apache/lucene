@@ -39,9 +39,9 @@ import org.apache.lucene.util.hnsw.VectorEncoding;
  * <p>For each field:
  *
  * <ul>
- *   <li>Vector data ordered by field, document ordinal, and vector dimension. When the vectorEncoding is BYTE,
- *       each sample is stored as a single byte. When it is FLOAT32, each sample is stored as an IEEE
- *       float in little-endian byte order.
+ *   <li>Vector data ordered by field, document ordinal, and vector dimension. When the
+ *       vectorEncoding is BYTE, each sample is stored as a single byte. When it is FLOAT32, each
+ *       sample is stored as an IEEE float in little-endian byte order.
  *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
  *       note that only in sparse case
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
@@ -132,9 +132,7 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int beamWidth;
 
-  /**
-   * The storage format of the vectors' scalars, a primitive numeric type.
-   */
+  /** The storage format of the vectors' scalars, a primitive numeric type. */
   private final VectorEncoding vectorEncoding;
 
   /** Constructs a format using default graph construction parameters */
@@ -179,5 +177,4 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
         + beamWidth
         + ")";
   }
-
 }

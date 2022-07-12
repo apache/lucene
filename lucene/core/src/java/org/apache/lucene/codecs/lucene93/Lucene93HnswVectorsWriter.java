@@ -62,7 +62,9 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
 
   private boolean finished;
 
-  Lucene93HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth, VectorEncoding vectorEncoding) throws IOException {
+  Lucene93HnswVectorsWriter(
+      SegmentWriteState state, int M, int beamWidth, VectorEncoding vectorEncoding)
+      throws IOException {
     this.M = M;
     this.beamWidth = beamWidth;
     this.vectorEncoding = vectorEncoding;
@@ -140,8 +142,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       switch (vectorEncoding) {
         case BYTE -> byteSize = vectors.dimension();
         case FLOAT32 -> byteSize = vectors.dimension() * Float.BYTES;
-        default -> throw new AssertionError(
-            "unknown vector encoding " + vectorEncoding);
+        default -> throw new AssertionError("unknown vector encoding " + vectorEncoding);
       }
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -165,10 +166,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
-              : writeGraph(
-                  offHeapVectors,
-                  vectorEncoding,
-                  fieldInfo.getVectorSimilarityFunction());
+              : writeGraph(offHeapVectors, vectorEncoding, fieldInfo.getVectorSimilarityFunction());
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,

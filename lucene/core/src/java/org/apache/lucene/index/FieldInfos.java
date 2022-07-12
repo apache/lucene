@@ -310,9 +310,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     final int numDimensions;
     final VectorSimilarityFunction similarityFunction;
 
-    FieldVectorProperties(
-        int numDimensions,
-        VectorSimilarityFunction similarityFunction) {
+    FieldVectorProperties(int numDimensions, VectorSimilarityFunction similarityFunction) {
       this.numDimensions = numDimensions;
       this.similarityFunction = similarityFunction;
     }
@@ -395,8 +393,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 fi.getPointNumBytes()));
         vectorProps.put(
             fieldName,
-            new FieldVectorProperties(
-                fi.getVectorDimension(), fi.getVectorSimilarityFunction()));
+            new FieldVectorProperties(fi.getVectorDimension(), fi.getVectorSimilarityFunction()));
       }
       return fieldNumber.intValue();
     }
