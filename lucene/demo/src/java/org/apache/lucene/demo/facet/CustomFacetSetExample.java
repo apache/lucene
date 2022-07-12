@@ -135,7 +135,6 @@ public class CustomFacetSetExample {
               "temperature",
               fc,
               TemperatureReadingFacetSet::decodeTemperatureReading,
-              null,
               new ExactFacetSetMatcher(
                   "May 2022 (100f)",
                   new TemperatureReadingFacetSet(MAY_SECOND_2022, HUNDRED_DEGREES)),
@@ -217,7 +216,6 @@ public class CustomFacetSetExample {
               "temperature",
               fc,
               TemperatureReadingFacetSet::decodeTemperatureReading,
-              null,
               new RangeFacetSetMatcher(
                   "Eighty to Hundred Degrees",
                   DimRange.fromLongs(Long.MIN_VALUE, true, Long.MAX_VALUE, true),
@@ -248,7 +246,6 @@ public class CustomFacetSetExample {
               "temperature",
               fc,
               TemperatureReadingFacetSet::decodeTemperatureReading,
-              null,
               new TemperatureOnlyFacetSetMatcher(
                   "Eighty to Hundred Degrees",
                   DimRange.fromFloats(EIGHTY_DEGREES, true, HUNDRED_DEGREES, true)));

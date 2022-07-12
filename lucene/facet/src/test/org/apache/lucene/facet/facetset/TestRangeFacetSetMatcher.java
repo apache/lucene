@@ -102,7 +102,6 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeLongs,
-            null,
             new RangeFacetSetMatcher(
                 "Ford [2010-2014]", singleLong(FORD_ORD), longRange(2010, true, 2014, true)),
             new RangeFacetSetMatcher(
@@ -187,7 +186,6 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeInts,
-            null,
             new RangeFacetSetMatcher(
                 "Ford [2010-2014]", singleLong(FORD_ORD), longRange(2010, true, 2014, true)),
             new RangeFacetSetMatcher(
@@ -272,7 +270,6 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeLongs,
-            null,
             new RangeFacetSetMatcher(
                 "Ford [2010-2015]",
                 singleDouble(FORD_ORD),
@@ -365,7 +362,6 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeInts,
-            null,
             new RangeFacetSetMatcher(
                 "Ford [2010-2015]",
                 singleFloat(FORD_ORD),

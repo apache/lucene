@@ -75,7 +75,6 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeLongs,
-            null,
             new ExactFacetSetMatcher("Ford 2010", new LongFacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new LongFacetSet(CHEVY_ORD, 2011)));
 
@@ -138,7 +137,6 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeLongs,
-            null,
             new ExactFacetSetMatcher("Ford 2010", new LongFacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new LongFacetSet(CHEVY_ORD, 2011)));
 
@@ -201,7 +199,6 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeInts,
-            null,
             new ExactFacetSetMatcher("Ford 2010", new IntFacetSet(FORD_ORD, 2010)),
             new ExactFacetSetMatcher("Chevy 2011", new IntFacetSet(CHEVY_ORD, 2011)));
 
@@ -264,7 +261,6 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeLongs,
-            null,
             new ExactFacetSetMatcher("Ford 2010", new DoubleFacetSet(FORD_ORD, 2010.5)),
             new ExactFacetSetMatcher("Chevy 2011", new DoubleFacetSet(CHEVY_ORD, 2011.5)));
 
@@ -327,7 +323,6 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
             "field",
             fc,
             FacetSetDecoder::decodeInts,
-            null,
             new ExactFacetSetMatcher("Ford 2010", new FloatFacetSet(FORD_ORD, 2010.5f)),
             new ExactFacetSetMatcher("Chevy 2011", new FloatFacetSet(CHEVY_ORD, 2011.5f)));
 

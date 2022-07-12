@@ -52,6 +52,20 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
       String field,
       FacetsCollector hits,
       FacetSetDecoder facetSetDecoder,
+      FacetSetMatcher... facetSetMatchers)
+      throws IOException {
+    this(field, hits, facetSetDecoder, null, facetSetMatchers);
+  }
+
+  /**
+   * Constructs a new instance of matching facet set counts which calculates the counts for each
+   * given facet set matcher. If {@code fastMatchQuery} is not {@code null}, then only documents
+   * which are matched by it will be counted.
+   */
+  public MatchingFacetSetsCounts(
+      String field,
+      FacetsCollector hits,
+      FacetSetDecoder facetSetDecoder,
       Query fastMatchQuery,
       FacetSetMatcher... facetSetMatchers)
       throws IOException {
