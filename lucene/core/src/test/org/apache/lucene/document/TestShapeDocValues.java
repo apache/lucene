@@ -38,7 +38,7 @@ public class TestShapeDocValues extends LuceneTestCase {
     ShapeDocValuesField dvField = new ShapeDocValuesField("field", t);
     assertEquals(
         dvField.relate(-21458726, -21456626, -10789313, -10629313),
-        PointValues.Relation.CELL_CROSSES_QUERY);
+        PointValues.Relation.CELL_OUTSIDE_QUERY);
     assertNotEquals(
         dvField.relate(21456626, 21458726, 10629313, 10789313),
         PointValues.Relation.CELL_CROSSES_QUERY);
