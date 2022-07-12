@@ -32,7 +32,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -45,6 +44,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.VectorEncoding;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -171,10 +171,10 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
     }
 
     long numBytes;
-    switch (info.getVectorEncoding()) {
+    switch (fieldEntry.vectorEncoding) {
       case BYTE -> numBytes = (long) fieldEntry.size() * dimension;
       case FLOAT32 -> numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
-      default -> throw new AssertionError("unknown vector encoding " + info.getVectorEncoding());
+      default -> throw new AssertionError("unknown vector encoding " + fieldEntry.vectorEncoding);
     }
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(

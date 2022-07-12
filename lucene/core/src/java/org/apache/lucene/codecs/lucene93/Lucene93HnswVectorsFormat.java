@@ -27,6 +27,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.VectorEncoding;
 
 /**
  * Lucene 9.3 vector format, which encodes numeric vector values and an optional associated graph
@@ -38,8 +39,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  * <p>For each field:
  *
  * <ul>
- *   <li>Floating-point vector data ordered by field, document ordinal, and vector dimension. The
- *       floats are stored in little-endian byte order
+ *   <li>Vector data ordered by field, document ordinal, and vector dimension. When the vectorEncoding is BYTE,
+ *       each sample is stored as a single byte. When it is FLOAT32, each sample is stored as an IEEE
+ *       float in little-endian byte order.
  *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
  *       note that only in sparse case
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
@@ -71,6 +73,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * <ul>
  *   <li><b>[int32]</b> field number
+ *   <li><b>[int32]</b> vector encoding ordinal
  *   <li><b>[int32]</b> vector similarity function ordinal
  *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
@@ -129,9 +132,14 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int beamWidth;
 
+  /**
+   * The storage format of the vectors' scalars, a primitive numeric type.
+   */
+  private final VectorEncoding vectorEncoding;
+
   /** Constructs a format using default graph construction parameters */
   public Lucene93HnswVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, VectorEncoding.FLOAT32);
   }
 
   /**
@@ -139,16 +147,18 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
    *
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
+   * @param vectorEncoding the primitive numeric type of the vector data
    */
-  public Lucene93HnswVectorsFormat(int maxConn, int beamWidth) {
+  public Lucene93HnswVectorsFormat(int maxConn, int beamWidth, VectorEncoding vectorEncoding) {
     super("lucene93HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
+    this.vectorEncoding = vectorEncoding;
   }
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene93HnswVectorsWriter(state, maxConn, beamWidth);
+    return new Lucene93HnswVectorsWriter(state, maxConn, beamWidth, vectorEncoding);
   }
 
   @Override
@@ -169,4 +179,5 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
         + beamWidth
         + ")";
   }
+
 }

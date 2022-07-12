@@ -25,7 +25,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.store.BufferedIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
@@ -65,7 +64,6 @@ public class TestFieldsReader extends LuceneTestCase {
               0,
               0,
               0,
-              VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               field.name().equals(softDeletesFieldName)));
     }

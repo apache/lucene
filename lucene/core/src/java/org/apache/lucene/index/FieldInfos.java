@@ -35,7 +35,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -309,15 +308,12 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
   static final class FieldVectorProperties {
     final int numDimensions;
-    final VectorEncoding vectorEncoding;
     final VectorSimilarityFunction similarityFunction;
 
     FieldVectorProperties(
         int numDimensions,
-        VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction) {
       this.numDimensions = numDimensions;
-      this.vectorEncoding = vectorEncoding;
       this.similarityFunction = similarityFunction;
     }
   }
@@ -400,7 +396,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
         vectorProps.put(
             fieldName,
             new FieldVectorProperties(
-                fi.getVectorDimension(), fi.getVectorEncoding(), fi.getVectorSimilarityFunction()));
+                fi.getVectorDimension(), fi.getVectorSimilarityFunction()));
       }
       return fieldNumber.intValue();
     }
@@ -458,10 +454,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
       verifySameVectorOptions(
           fieldName,
           props.numDimensions,
-          props.vectorEncoding,
           props.similarityFunction,
           fi.getVectorDimension(),
-          fi.getVectorEncoding(),
           fi.getVectorSimilarityFunction());
     }
 
@@ -504,7 +498,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   0,
                   0,
                   0,
-                  VectorEncoding.FLOAT32,
                   VectorSimilarityFunction.EUCLIDEAN,
                   (softDeletesFieldName != null && softDeletesFieldName.equals(fieldName)));
           addOrGet(fi);
@@ -586,7 +579,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
           0,
           0,
           0,
-          VectorEncoding.FLOAT32,
           VectorSimilarityFunction.EUCLIDEAN,
           isSoftDeletesField);
     }
@@ -701,7 +693,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
               fi.getPointIndexDimensionCount(),
               fi.getPointNumBytes(),
               fi.getVectorDimension(),
-              fi.getVectorEncoding(),
               fi.getVectorSimilarityFunction(),
               fi.isSoftDeletesField());
       byName.put(fiNew.getName(), fiNew);

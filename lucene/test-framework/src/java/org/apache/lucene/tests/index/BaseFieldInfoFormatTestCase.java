@@ -38,7 +38,6 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.Directory;
@@ -306,7 +305,6 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.pointIndexDimensionCount(),
               fieldType.pointNumBytes(),
               fieldType.vectorDimension(),
-              fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
               field.equals(softDeletesField));
       addAttributes(fi);
@@ -424,7 +422,6 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         0,
         0,
-        VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
         false);
   }

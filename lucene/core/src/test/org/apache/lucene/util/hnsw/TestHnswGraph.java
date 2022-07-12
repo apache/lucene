@@ -44,7 +44,6 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
@@ -100,7 +99,7 @@ public class TestHnswGraph extends LuceneTestCase {
                   new Lucene93Codec() {
                     @Override
                     public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene93HnswVectorsFormat(M, beamWidth);
+                      return new Lucene93HnswVectorsFormat(M, beamWidth, vectorEncoding);
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {

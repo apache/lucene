@@ -56,7 +56,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -598,7 +597,7 @@ public class KnnGraphTester {
         new Lucene93Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene93HnswVectorsFormat(maxConn, beamWidth);
+            return new Lucene93HnswVectorsFormat(maxConn, beamWidth, vectorEncoding);
           }
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);

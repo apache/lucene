@@ -40,7 +40,6 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -57,6 +56,7 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
+import org.apache.lucene.util.hnsw.VectorEncoding;
 import org.junit.After;
 import org.junit.Before;
 
@@ -78,14 +78,6 @@ public class TestKnnGraph extends LuceneTestCase {
       M = random().nextInt(256) + 3;
     }
 
-    codec =
-        new Lucene93Codec() {
-          @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene93HnswVectorsFormat(M, Lucene93HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
-          }
-        };
-
     int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
     similarityFunction = VectorSimilarityFunction.values()[similarity];
     if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
@@ -93,6 +85,14 @@ public class TestKnnGraph extends LuceneTestCase {
     } else {
       vectorEncoding = VectorEncoding.FLOAT32;
     }
+
+    codec =
+        new Lucene93Codec() {
+          @Override
+          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+            return new Lucene93HnswVectorsFormat(M, Lucene93HnswVectorsFormat.DEFAULT_BEAM_WIDTH, vectorEncoding);
+          }
+        };
   }
 
   @After

@@ -42,7 +42,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
@@ -204,7 +203,6 @@ public class TestSTBlockReader extends LuceneTestCase {
         0,
         0,
         0,
-        VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
         false);
   }

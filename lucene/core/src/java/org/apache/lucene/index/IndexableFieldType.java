@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.util.Map;
 import org.apache.lucene.analysis.Analyzer; // javadocs
-import org.apache.lucene.index.VectorValues.VectorEncoding;
 
 /**
  * Describes the properties of a field.
@@ -101,9 +100,6 @@ public interface IndexableFieldType {
 
   /** The number of dimensions of the field's vector value */
   int vectorDimension();
-
-  /** The {@link VectorEncoding} of the field's vector value */
-  VectorEncoding vectorEncoding();
 
   /** The {@link VectorSimilarityFunction} of the field's vector value */
   VectorSimilarityFunction vectorSimilarityFunction();
