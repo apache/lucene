@@ -1453,23 +1453,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
           private int doc = -1;
-          private long start;
-          private long end;
+          private long curr;
           private int count;
 
           @Override
           public long nextOrd() throws IOException {
-            if (start == end) {
-              return NO_MORE_ORDS;
-            }
-            return values.get(start++);
+            return values.get(curr++);
           }
 
           @Override
           public boolean advanceExact(int target) throws IOException {
-            start = addresses.get(target);
-            end = addresses.get(target + 1L);
-            count = (int) (end - start);
+            curr = addresses.get(target);
+            long end = addresses.get(target + 1L);
+            count = (int) (end - curr);
             doc = target;
             return true;
           }
@@ -1494,9 +1490,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             if (target >= maxDoc) {
               return doc = NO_MORE_DOCS;
             }
-            start = addresses.get(target);
-            end = addresses.get(target + 1L);
-            count = (int) (end - start);
+            curr = addresses.get(target);
+            long end = addresses.get(target + 1L);
+            count = (int) (end - curr);
             return doc = target;
           }
 
@@ -1518,16 +1514,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         return new BaseSortedSetDocValues(entry, data) {
 
           boolean set;
-          long start, end;
+          long curr;
           int count;
 
           @Override
           public long nextOrd() throws IOException {
             set();
-            if (start == end) {
-              return NO_MORE_ORDS;
-            }
-            return values.get(start++);
+            return values.get(curr++);
           }
 
           @Override
@@ -1567,9 +1560,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           private void set() {
             if (set == false) {
               final int index = disi.index();
-              start = addresses.get(index);
-              end = addresses.get(index + 1L);
-              count = (int) (end - start);
+              curr = addresses.get(index);
+              long end = addresses.get(index + 1L);
+              count = (int) (end - curr);
               set = true;
             }
           }
@@ -1580,20 +1573,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final SortedNumericDocValues ords = getSortedNumeric(ordsEntry);
     return new BaseSortedSetDocValues(entry, data) {
 
-      int i = 0;
-      int count = 0;
-      boolean set = false;
-
       @Override
       public long nextOrd() throws IOException {
-        if (set == false) {
-          set = true;
-          i = 0;
-          count = ords.docValueCount();
-        }
-        if (i++ == count) {
-          return NO_MORE_ORDS;
-        }
         return ords.nextValue();
       }
 
@@ -1604,7 +1585,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        set = false;
         return ords.advanceExact(target);
       }
 
@@ -1615,13 +1595,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public int nextDoc() throws IOException {
-        set = false;
         return ords.nextDoc();
       }
 
       @Override
       public int advance(int target) throws IOException {
-        set = false;
         return ords.advance(target);
       }
 

@@ -29,6 +29,8 @@ API Changes
 
 * LUCENE-10266: Move nearest-neighbor search on points to core. (Rushabh Shah)
 
+* LUCENE-10603: Remove SortedSetDocValues#NO_MORE_ORDS definition. (Greg Miller)
+
 New Features
 ---------------------
 
