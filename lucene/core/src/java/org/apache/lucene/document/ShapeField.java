@@ -430,6 +430,7 @@ public final class ShapeField {
     /** default xtor */
     public DecodedTriangle() {}
 
+    /** Sets the values of the DecodedTriangle */
     protected void setValues(
         int aX, int aY, boolean ab, int bX, int bY, boolean bc, int cX, int cY, boolean ca) {
       this.aX = aX;
