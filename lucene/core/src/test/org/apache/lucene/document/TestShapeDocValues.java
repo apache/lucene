@@ -33,9 +33,11 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 /** Simple tests for {@link org.apache.lucene.document.ShapeDocValuesField} */
 public class TestShapeDocValues extends LuceneTestCase {
 
+  private static final String FIELD_NAME = "field";
+
   public void testSimpleDocValueField() throws Exception {
-    List<ShapeField.DecodedTriangle> t = getTessellation(getTestPolygonWithHole());
-    ShapeDocValuesField dvField = new ShapeDocValuesField("field", t);
+    ShapeDocValuesField dvField =
+        LatLonShape.createDocValueField(FIELD_NAME, getTestPolygonWithHole());
     assertEquals(
         dvField.relate(-21458726, -21456626, -10789313, -10629313),
         PointValues.Relation.CELL_OUTSIDE_QUERY);
@@ -44,11 +46,29 @@ public class TestShapeDocValues extends LuceneTestCase {
         PointValues.Relation.CELL_CROSSES_QUERY);
   }
 
+  public void testLatLonPolygonBBox() {
+    Polygon p = GeoTestUtil.nextPolygon();
+    ShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
+    assertEquals(GeoEncodingUtils.encodeLongitude(p.minLon), dv.getMinX());
+    assertEquals(GeoEncodingUtils.encodeLongitude(p.maxLon), dv.getMaxX());
+    assertEquals(GeoEncodingUtils.encodeLatitude(p.minLat), dv.getMinY());
+    assertEquals(GeoEncodingUtils.encodeLatitude(p.maxLat), dv.getMaxY());
+  }
+
+  public void testXYPolygonBBox() {
+    XYPolygon p = (XYPolygon) BaseXYShapeTestCase.ShapeType.POLYGON.nextShape();
+    ShapeDocValuesField dv = XYShape.createDocValueField(FIELD_NAME, p);
+    assertEquals(XYEncodingUtils.encode(p.minX), dv.getMinX());
+    assertEquals(XYEncodingUtils.encode(p.maxX), dv.getMaxX());
+    assertEquals(XYEncodingUtils.encode(p.minY), dv.getMinY());
+    assertEquals(XYEncodingUtils.encode(p.maxY), dv.getMaxY());
+  }
+
   public void testLatLonPolygonCentroid() {
     Polygon p = GeoTestUtil.nextPolygon();
     Point expected = (Point) computeCentroid(p);
     List<ShapeField.DecodedTriangle> tess = getTessellation(p);
-    ShapeDocValuesField dvField = new ShapeDocValuesField("field", tess);
+    ShapeDocValuesField dvField = new ShapeDocValuesField(FIELD_NAME, tess);
     assertEquals(tess.size(), dvField.numberOfTerms());
     assertEquals(expected.getLat(), GeoEncodingUtils.decodeLatitude(dvField.getCentroidY()), 1E-8);
     assertEquals(expected.getLon(), GeoEncodingUtils.decodeLongitude(dvField.getCentroidX()), 1E-8);
@@ -58,7 +78,7 @@ public class TestShapeDocValues extends LuceneTestCase {
   public void testXYPolygonCentroid() {
     XYPolygon p = (XYPolygon) BaseXYShapeTestCase.ShapeType.POLYGON.nextShape();
     XYPoint expected = (XYPoint) computeCentroid(p);
-    ShapeDocValuesField dvField = new ShapeDocValuesField("field", getTessellation(p));
+    ShapeDocValuesField dvField = new ShapeDocValuesField(FIELD_NAME, getTessellation(p));
     assertEquals(expected.getX(), XYEncodingUtils.decode(dvField.getCentroidX()), 1E-8);
     assertEquals(expected.getY(), XYEncodingUtils.decode(dvField.getCentroidY()), 1E-8);
     assertEquals(ShapeField.DecodedTriangle.TYPE.TRIANGLE, dvField.getHighestDimensionType());
@@ -138,7 +158,7 @@ public class TestShapeDocValues extends LuceneTestCase {
   }
 
   private List<ShapeField.DecodedTriangle> getTessellation(Polygon p) {
-    Field[] fields = LatLonShape.createIndexableFields("test", p);
+    Field[] fields = LatLonShape.createIndexableFields(FIELD_NAME, p);
     List<ShapeField.DecodedTriangle> tess = new ArrayList<>(fields.length);
     for (Field f : fields) {
       ShapeField.DecodedTriangle d = new ShapeField.DecodedTriangle();
@@ -149,7 +169,7 @@ public class TestShapeDocValues extends LuceneTestCase {
   }
 
   private List<ShapeField.DecodedTriangle> getTessellation(XYPolygon p) {
-    Field[] fields = XYShape.createIndexableFields("test", p, true);
+    Field[] fields = XYShape.createIndexableFields(FIELD_NAME, p, true);
     List<ShapeField.DecodedTriangle> tess = new ArrayList<>(fields.length);
     for (Field f : fields) {
       ShapeField.DecodedTriangle d = new ShapeField.DecodedTriangle();

@@ -23,12 +23,6 @@ import org.apache.lucene.index.IndexReader;
 public class TestLatLonPolygonShapeDVQueries extends BaseLatLonShapeDocValueTestCase {
 
   @Override
-  public Field[] getIndexableTessellation(Object shape) {
-    Polygon polygon = (Polygon) shape;
-    return LatLonShape.createIndexableFields(FIELD_NAME, polygon);
-  }
-
-  @Override
   protected ShapeType getShapeType() {
     return ShapeType.POLYGON;
   }
@@ -37,7 +31,7 @@ public class TestLatLonPolygonShapeDVQueries extends BaseLatLonShapeDocValueTest
   protected Field[] createIndexableFields(String field, Object shape) {
     Polygon polygon = (Polygon) shape;
     Field[] fields = new Field[1];
-    fields[0] = new ShapeDocValuesField(FIELD_NAME, getTessellation(polygon));
+    fields[0] = LatLonShape.createDocValueField(FIELD_NAME, polygon);
     return fields;
   }
 

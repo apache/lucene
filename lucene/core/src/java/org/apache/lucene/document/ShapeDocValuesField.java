@@ -99,6 +99,21 @@ public final class ShapeDocValuesField extends Field {
     return null;
   }
 
+  /** create a shape docvalue field from indexable fields */
+  public static ShapeDocValuesField createDocValueField(String fieldName, Field[] indexableFields) {
+    ArrayList<ShapeField.DecodedTriangle> tess = new ArrayList<>(indexableFields.length);
+    final byte[] scratch = new byte[7 * Integer.BYTES];
+    for (Field f : indexableFields) {
+      BytesRef br = f.binaryValue();
+      assert br.length == 7 * ShapeField.BYTES;
+      System.arraycopy(br.bytes, br.offset, scratch, 0, 7 * ShapeField.BYTES);
+      ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
+      ShapeField.decodeTriangle(scratch, t);
+      tess.add(t);
+    }
+    return new ShapeDocValuesField(fieldName, tess);
+  }
+
   /** Returns the number of terms (tessellated triangles) for this shape */
   public int numberOfTerms() {
     return shapeComparator.numberOfTerms();
@@ -116,6 +131,26 @@ public final class ShapeDocValuesField extends Field {
   public Relation relate(final int minX, final int maxX, final int minY, final int maxY)
       throws IOException {
     return shapeComparator.relate(minX, maxX, minY, maxY);
+  }
+
+  /** returns the min x value for the shape's bounding box */
+  public int getMinX() {
+    return shapeComparator.getMinX();
+  }
+
+  /** returns the min y value for the shape's bounding box */
+  public int getMinY() {
+    return shapeComparator.getMinY();
+  }
+
+  /** returns the max x value for the shape's bounding box */
+  public int getMaxX() {
+    return shapeComparator.getMaxX();
+  }
+
+  /** returns the max y value for the shape's bounding box */
+  public int getMaxY() {
+    return shapeComparator.getMaxY();
   }
 
   /** Retrieves the x centroid location for the geometry(s) */
@@ -604,6 +639,7 @@ public final class ShapeDocValuesField extends Field {
   private final class ShapeComparator {
     private Reader dvReader;
     private final int numberOfTerms;
+    private final EncodedRectangle boundingBox;
     private final int centroidX;
     private final int centroidY;
     private final TYPE highestDimension;
@@ -611,27 +647,43 @@ public final class ShapeDocValuesField extends Field {
     ShapeComparator(final BytesRef bytes) throws IOException {
       this.dvReader = new Reader(bytes);
       this.numberOfTerms = Math.toIntExact(dvReader.readVInt());
-      dvReader.readBBox();
-      centroidX = Math.toIntExact(dvReader.readVLong() + Integer.MIN_VALUE);
-      centroidY = Math.toIntExact(dvReader.readVLong() + Integer.MIN_VALUE);
-      highestDimension = TYPE.values()[dvReader.readVInt()];
+      this.boundingBox = dvReader.readBBox();
+      this.centroidX = Math.toIntExact(dvReader.readVLong() + Integer.MIN_VALUE);
+      this.centroidY = Math.toIntExact(dvReader.readVLong() + Integer.MIN_VALUE);
+      this.highestDimension = TYPE.values()[dvReader.readVInt()];
       this.dvReader.rewind();
     }
 
-    public int numberOfTerms() {
-      return numberOfTerms;
+    private int numberOfTerms() {
+      return this.numberOfTerms;
+    }
+
+    private int getMinX() {
+      return this.boundingBox.minX;
+    }
+
+    private int getMinY() {
+      return this.boundingBox.minY;
+    }
+
+    private int getMaxX() {
+      return this.boundingBox.maxX;
+    }
+
+    private int getMaxY() {
+      return this.boundingBox.maxY;
     }
 
     public TYPE getHighestDimension() {
-      return highestDimension;
+      return this.highestDimension;
     }
 
     public int getCentroidX() {
-      return centroidX;
+      return this.centroidX;
     }
 
     public int getCentroidY() {
-      return centroidY;
+      return this.centroidY;
     }
 
     private void skipCentroid() throws IOException {

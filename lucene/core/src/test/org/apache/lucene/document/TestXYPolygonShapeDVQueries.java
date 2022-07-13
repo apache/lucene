@@ -19,13 +19,8 @@ package org.apache.lucene.document;
 import org.apache.lucene.geo.XYPolygon;
 import org.apache.lucene.index.IndexReader;
 
+/** Test queries over {@link org.apache.lucene.geo.XYPolygon} doc value geometries */
 public class TestXYPolygonShapeDVQueries extends BaseXYShapeDocValueTestCase {
-
-  @Override
-  public Field[] getIndexableTessellation(Object shape) {
-    XYPolygon polygon = (XYPolygon) shape;
-    return XYShape.createIndexableFields(FIELD_NAME, polygon);
-  }
 
   @Override
   protected ShapeType getShapeType() {
@@ -36,7 +31,7 @@ public class TestXYPolygonShapeDVQueries extends BaseXYShapeDocValueTestCase {
   protected Field[] createIndexableFields(String field, Object shape) {
     XYPolygon polygon = (XYPolygon) shape;
     Field[] fields = new Field[1];
-    fields[0] = new ShapeDocValuesField(FIELD_NAME, getTessellation(polygon));
+    fields[0] = XYShape.createDocValueField(FIELD_NAME, polygon);
     return fields;
   }
 

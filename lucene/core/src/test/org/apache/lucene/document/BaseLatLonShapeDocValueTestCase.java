@@ -23,8 +23,7 @@ import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.search.Query;
 
 /** Base test class for LatLonShape doc values */
-public abstract class BaseLatLonShapeDocValueTestCase extends BaseLatLonSpatialTestCase
-    implements ShapeDocValueTestInterface {
+public abstract class BaseLatLonShapeDocValueTestCase extends BaseLatLonSpatialTestCase {
 
   @Override
   protected ShapeField.QueryRelation[] getSupportedQueryRelations() {

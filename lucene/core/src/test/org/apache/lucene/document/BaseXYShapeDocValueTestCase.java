@@ -23,8 +23,7 @@ import org.apache.lucene.geo.XYPolygon;
 import org.apache.lucene.search.Query;
 
 /** Base test class for XYShape doc values */
-public abstract class BaseXYShapeDocValueTestCase extends BaseXYShapeTestCase
-    implements ShapeDocValueTestInterface {
+public abstract class BaseXYShapeDocValueTestCase extends BaseXYShapeTestCase {
   @Override
   protected ShapeField.QueryRelation[] getSupportedQueryRelations() {
     return new ShapeField.QueryRelation[] {
