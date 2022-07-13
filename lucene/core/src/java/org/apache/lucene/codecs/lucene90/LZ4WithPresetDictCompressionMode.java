@@ -169,7 +169,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
     @Override
     public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
-      final int len = (int) buffersInput.size();
+      final int len = (int) (buffersInput.size() - buffersInput.position());
       final int end = (int) buffersInput.size();
       final int dictLength = len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR);
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
