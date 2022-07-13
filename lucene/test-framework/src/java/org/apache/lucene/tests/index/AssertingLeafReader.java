@@ -977,6 +977,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     private final int maxDoc;
     private final long valueCount;
     private int lastDocID = -1;
+    private int ordsRetrieved;
     private boolean exists;
 
     private AssertingSortedSetDocValues(SortedSetDocValues in, int maxDoc) {
@@ -1011,6 +1012,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert docID == in.docID();
       lastDocID = docID;
       exists = docID != NO_MORE_DOCS;
+      ordsRetrieved = 0;
       return docID;
     }
 
@@ -1025,6 +1027,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert docID == NO_MORE_DOCS || docID < maxDoc;
       lastDocID = docID;
       exists = docID != NO_MORE_DOCS;
+      ordsRetrieved = 0;
       return docID;
     }
 
@@ -1037,6 +1040,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       exists = in.advanceExact(target);
       assert in.docID() == target;
       lastDocID = target;
+      ordsRetrieved = 0;
       return exists;
     }
 
@@ -1052,6 +1056,8 @@ public class AssertingLeafReader extends FilterLeafReader {
     public long nextOrd() throws IOException {
       assertThread("Sorted set doc values", creationThread);
       assert exists;
+      assert ordsRetrieved < docValueCount();
+      ordsRetrieved++;
       long ord = in.nextOrd();
       assert ord < valueCount;
       return ord;
