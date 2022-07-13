@@ -182,35 +182,35 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               final TwoPhaseIterator iterator;
               if (singleton != null) {
                 iterator =
-                  new TwoPhaseIterator(singleton) {
-                    @Override
-                    public boolean matches() throws IOException {
-                      return termSet.get(singleton.ordValue());
-                    }
+                    new TwoPhaseIterator(singleton) {
+                      @Override
+                      public boolean matches() throws IOException {
+                        return termSet.get(singleton.ordValue());
+                      }
 
-                    @Override
-                    public float matchCost() {
-                      return 3; // lookup in a bitset
-                    }
-                  };
+                      @Override
+                      public float matchCost() {
+                        return 3; // lookup in a bitset
+                      }
+                    };
               } else {
                 iterator =
-                  new TwoPhaseIterator(values) {
-                    @Override
-                    public boolean matches() throws IOException {
-                      for (int i = 0; i < values.docValueCount(); i++) {
-                        if (termSet.get(values.nextOrd())) {
-                          return true;
+                    new TwoPhaseIterator(values) {
+                      @Override
+                      public boolean matches() throws IOException {
+                        for (int i = 0; i < values.docValueCount(); i++) {
+                          if (termSet.get(values.nextOrd())) {
+                            return true;
+                          }
                         }
+                        return false;
                       }
-                      return false;
-                    }
 
-                    @Override
-                    public float matchCost() {
-                      return 3; // lookup in a bitset
-                    }
-                  };
+                      @Override
+                      public float matchCost() {
+                        return 3; // lookup in a bitset
+                      }
+                    };
               }
 
               return new ConstantScoreScorer(weight, score(), scoreMode, iterator);

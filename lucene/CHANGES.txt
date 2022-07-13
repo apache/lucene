@@ -170,6 +170,8 @@ Optimizations
 
 * LUCENE-10653: BlockMaxMaxscoreScorer uses heapify instead of individual adds. (Greg Miller)
 
+* GITHUB#1020: Support #scoreSupplier and small optimizations to DocValuesRewriteMethod. (Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
