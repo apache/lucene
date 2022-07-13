@@ -64,12 +64,12 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 
 public class TestLRUQueryCache extends LuceneTestCase {
@@ -168,8 +168,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
                         RandomPicks.randomFrom(
                             random(), new String[] {"blue", "red", "yellow", "green"});
                     final Query q = new TermQuery(new Term("color", value));
-                    TotalHitCountCollectorManager collectorManager =
-                        new TotalHitCountCollectorManager();
+                    CollectorManager<DummyTotalHitCountCollector, Integer> collectorManager =
+                        DummyTotalHitCountCollector.createManager();
                     // will use the cache
                     final int totalHits1 = searcher.search(q, collectorManager);
                     final long totalHits2 =
@@ -177,8 +177,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
                             q,
                             new CollectorManager<FilterCollector, Integer>() {
                               @Override
-                              public FilterCollector newCollector() {
-                                return new FilterCollector(new TotalHitCountCollector()) {
+                              public FilterCollector newCollector() throws IOException {
+                                return new FilterCollector(collectorManager.newCollector()) {
                                   @Override
                                   public ScoreMode scoreMode() {
                                     // will not use the cache because of scores
@@ -194,7 +194,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
                                     collectors.stream()
                                         .map(
                                             filterCollector ->
-                                                (TotalHitCountCollector) filterCollector.in)
+                                                (DummyTotalHitCountCollector) filterCollector.in)
                                         .collect(Collectors.toList()));
                               }
                             });
@@ -355,11 +355,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
   // This test makes sure that by making the same assumptions as LRUQueryCache, RAMUsageTester
   // computes the same memory usage.
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7595")
   public void testRamBytesUsedAgreesWithRamUsageTester() throws IOException {
-    assumeFalse(
-        "LUCENE-7595: RamUsageTester does not work exact in Java 9 (estimations for maps and lists)",
-        Constants.JRE_IS_MINIMUM_JAVA9);
-
     final LRUQueryCache queryCache =
         new LRUQueryCache(
             1 + random().nextInt(5),
@@ -495,11 +492,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
   // that require very little memory. In that case most of the memory is taken
   // by the cache itself, not cache entries, and we want to make sure that
   // memory usage is not grossly underestimated.
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7595")
   public void testRamBytesUsedConstantEntryOverhead() throws IOException {
-    assumeFalse(
-        "LUCENE-7595: RamUsageTester does not work exact in Java 9 (estimations for maps and lists)",
-        Constants.JRE_IS_MINIMUM_JAVA9);
-
     final LRUQueryCache queryCache =
         new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
 
@@ -963,7 +957,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(policy);
-    searcher.search(query.build(), new TotalHitCountCollectorManager());
+    searcher.search(query.build(), DummyTotalHitCountCollector.createManager());
 
     reader.close();
     dir.close();
@@ -1170,10 +1164,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
   }
 
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7604")
   public void testDetectMutatedQueries() throws IOException {
-    LuceneTestCase.assumeFalse(
-        "LUCENE-7604: For some unknown reason the non-constant BadQuery#hashCode() does not trigger ConcurrentModificationException on Java 9 b150",
-        Constants.JRE_IS_MINIMUM_JAVA9);
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     w.addDocument(new Document());
@@ -1187,12 +1179,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
     BadQuery query = new BadQuery();
-    searcher.search(query, new TotalHitCountCollectorManager());
+    searcher.search(query, DummyTotalHitCountCollector.createManager());
     query.i[0] += 1; // change the hashCode!
 
     try {
       // trigger an eviction
-      searcher.search(new MatchAllDocsQuery(), new TotalHitCountCollectorManager());
+      searcher.search(new MatchAllDocsQuery(), DummyTotalHitCountCollector.createManager());
       fail();
     } catch (
         @SuppressWarnings("unused")
@@ -1273,7 +1265,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
           query.add(bar, Occur.FILTER);
           query.add(foo, Occur.FILTER);
         }
-        indexSearcher.count(query.build());
+        indexSearcher.search(query.build(), DummyTotalHitCountCollector.createManager());
         assertEquals(1, policy.frequency(query.build()));
         assertEquals(1, policy.frequency(foo));
         assertEquals(1, policy.frequency(bar));

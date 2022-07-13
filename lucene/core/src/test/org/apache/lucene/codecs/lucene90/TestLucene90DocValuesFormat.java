@@ -265,17 +265,12 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
             assertTrue(valueSet.contains(sortedNumeric.nextValue()));
           }
           assertEquals(i, sortedSet.nextDoc());
+
           assertEquals(valueSet.size(), sortedSet.docValueCount());
-          int sortedSetCount = 0;
-          while (true) {
+          for (int j = 0; j < sortedSet.docValueCount(); ++j) {
             long ord = sortedSet.nextOrd();
-            if (ord == SortedSetDocValues.NO_MORE_ORDS) {
-              break;
-            }
             assertTrue(valueSet.contains(Long.parseLong(sortedSet.lookupOrd(ord).utf8ToString())));
-            sortedSetCount++;
           }
-          assertEquals(valueSet.size(), sortedSetCount);
         }
       }
     }

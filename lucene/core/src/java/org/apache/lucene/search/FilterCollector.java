@@ -39,6 +39,11 @@ public abstract class FilterCollector implements Collector {
   }
 
   @Override
+  public void setWeight(Weight weight) {
+    in.setWeight(weight);
+  }
+
+  @Override
   public String toString() {
     return getClass().getSimpleName() + "(" + in + ")";
   }

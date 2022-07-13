@@ -86,6 +86,11 @@ public final class Tessellator {
   private Tessellator() {}
 
   public static List<Triangle> tessellate(final Polygon polygon, boolean checkSelfIntersections) {
+    return tessellate(polygon, checkSelfIntersections, null);
+  }
+
+  public static List<Triangle> tessellate(
+      final Polygon polygon, boolean checkSelfIntersections, Monitor monitor) {
     // Attempt to establish a doubly-linked list of the provided shell points (should be CCW, but
     // this will correct);
     // then filter instances of intersections.
@@ -131,16 +136,24 @@ public final class Tessellator {
     }
     // Calculate the tessellation using the doubly LinkedList.
     List<Triangle> result =
-        earcutLinkedList(polygon, outerNode, new ArrayList<>(), State.INIT, mortonOptimized);
+        earcutLinkedList(
+            polygon, outerNode, new ArrayList<>(), State.INIT, mortonOptimized, monitor, 0);
     if (result.size() == 0) {
+      notifyMonitor(Monitor.FAILED, monitor, null, result);
       throw new IllegalArgumentException(
           "Unable to Tessellate shape. Possible malformed shape detected.");
     }
+    notifyMonitor(Monitor.COMPLETED, monitor, null, result);
 
     return result;
   }
 
   public static List<Triangle> tessellate(final XYPolygon polygon, boolean checkSelfIntersections) {
+    return tessellate(polygon, checkSelfIntersections, null);
+  }
+
+  public static List<Triangle> tessellate(
+      final XYPolygon polygon, boolean checkSelfIntersections, Monitor monitor) {
     // Attempt to establish a doubly-linked list of the provided shell points (should be CCW, but
     // this will correct);
     // then filter instances of intersections.0
@@ -186,11 +199,14 @@ public final class Tessellator {
     }
     // Calculate the tessellation using the doubly LinkedList.
     List<Triangle> result =
-        earcutLinkedList(polygon, outerNode, new ArrayList<>(), State.INIT, mortonOptimized);
+        earcutLinkedList(
+            polygon, outerNode, new ArrayList<>(), State.INIT, mortonOptimized, monitor, 0);
     if (result.size() == 0) {
+      notifyMonitor(Monitor.FAILED, monitor, null, result);
       throw new IllegalArgumentException(
           "Unable to Tessellate shape. Possible malformed shape detected.");
     }
+    notifyMonitor(Monitor.COMPLETED, monitor, null, result);
 
     return result;
   }
@@ -512,7 +528,9 @@ public final class Tessellator {
       Node currEar,
       final List<Triangle> tessellation,
       State state,
-      final boolean mortonOptimized) {
+      final boolean mortonOptimized,
+      final Monitor monitor,
+      int depth) {
     earcut:
     do {
       if (currEar == null || currEar.previous == currEar.next) {
@@ -525,6 +543,7 @@ public final class Tessellator {
 
       // Iteratively slice ears
       do {
+        notifyMonitor(state, depth, monitor, currEar, tessellation);
         prevNode = currEar.previous;
         nextNode = currEar.next;
         // Determine whether the current triangle must be cut off.
@@ -570,8 +589,10 @@ public final class Tessellator {
               continue earcut;
             case SPLIT:
               // as a last resort, try splitting the remaining polygon into two
-              if (splitEarcut(polygon, currEar, tessellation, mortonOptimized) == false) {
+              if (splitEarcut(polygon, currEar, tessellation, mortonOptimized, monitor, depth + 1)
+                  == false) {
                 // we could not process all points. Tessellation failed
+                notifyMonitor(state.name() + "[FAILED]", monitor, currEar, tessellation);
                 throw new IllegalArgumentException(
                     "Unable to Tessellate shape. Possible malformed shape detected.");
               }
@@ -797,12 +818,13 @@ public final class Tessellator {
       final Object polygon,
       final Node start,
       final List<Triangle> tessellation,
-      final boolean mortonOptimized) {
+      final boolean mortonOptimized,
+      final Monitor monitor,
+      int depth) {
     // Search for a valid diagonal that divides the polygon into two.
     Node searchNode = start;
-    Node nextNode;
     do {
-      nextNode = searchNode.next;
+      Node nextNode = searchNode.next;
       Node diagonal = nextNode.next;
       while (diagonal != searchNode.previous) {
         if (searchNode.idx != diagonal.idx && isValidDiagonal(searchNode, diagonal)) {
@@ -818,8 +840,12 @@ public final class Tessellator {
             sortByMortonWithReset(searchNode);
             sortByMortonWithReset(splitNode);
           }
-          earcutLinkedList(polygon, searchNode, tessellation, State.INIT, mortonOptimized);
-          earcutLinkedList(polygon, splitNode, tessellation, State.INIT, mortonOptimized);
+          notifyMonitorSplit(depth, monitor, searchNode, splitNode);
+          earcutLinkedList(
+              polygon, searchNode, tessellation, State.INIT, mortonOptimized, monitor, depth);
+          earcutLinkedList(
+              polygon, splitNode, tessellation, State.INIT, mortonOptimized, monitor, depth);
+          notifyMonitorSplitEnd(depth, monitor);
           // Finish the iterative search
           return true;
         }
@@ -1093,6 +1119,8 @@ public final class Tessellator {
         && isIntersectingPolygon(a, a.getX(), a.getY(), b.getX(), b.getY()) == false
         && isLocallyInside(a, b)
         && isLocallyInside(b, a)
+        && isLocallyInside(a.previous, b)
+        && isLocallyInside(b.next, a)
         && middleInsert(a, a.getX(), a.getY(), b.getX(), b.getY())
         // make sure we don't introduce collinear lines
         && area(a.previous.getX(), a.previous.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
@@ -1441,6 +1469,71 @@ public final class Tessellator {
       }
     }
     return false;
+  }
+
+  /**
+   * Implementation of this interface will receive calls with internal data at each step of the
+   * triangulation algorithm. This is of use for debugging complex cases, as well as gaining insight
+   * into the way the algorithm works. Data provided includes a status string containing the current
+   * mode, list of points representing the current linked-list of internal nodes used for
+   * triangulation, and a list of triangles so far created by the algorithm.
+   */
+  public interface Monitor {
+    String FAILED = "FAILED";
+    String COMPLETED = "COMPLETED";
+
+    /** Each loop of the main earclip algorithm will call this with the current state */
+    void currentState(String status, List<Point> points, List<Triangle> tessellation);
+
+    /** When a new polygon split is entered for mode=SPLIT, this is called. */
+    void startSplit(String status, List<Point> leftPolygon, List<Point> rightPolygon);
+
+    /** When a polygon split is completed, this is called. */
+    void endSplit(String status);
+  }
+
+  private static List<Point> getPoints(Node start) {
+    Node node = start;
+    ArrayList<Point> points = new ArrayList<>();
+    do {
+      points.add(new Point(node.getY(), node.getX()));
+      node = node.next;
+    } while (node != start);
+    return points;
+  }
+
+  private static void notifyMonitorSplit(
+      int depth, Monitor monitor, Node searchNode, Node diagonalNode) {
+    if (monitor != null) {
+      if (searchNode == null || diagonalNode == null)
+        throw new IllegalStateException("Invalid split provided to monitor");
+      monitor.startSplit("SPLIT[" + depth + "]", getPoints(searchNode), getPoints(diagonalNode));
+    }
+  }
+
+  private static void notifyMonitorSplitEnd(int depth, Monitor monitor) {
+    if (monitor != null) {
+      monitor.endSplit("SPLIT[" + depth + "]");
+    }
+  }
+
+  private static void notifyMonitor(
+      State state, int depth, Monitor monitor, Node start, List<Triangle> tessellation) {
+    if (monitor != null) {
+      notifyMonitor(
+          state.name() + (depth == 0 ? "" : "[" + depth + "]"), monitor, start, tessellation);
+    }
+  }
+
+  private static void notifyMonitor(
+      String status, Monitor monitor, Node start, List<Triangle> tessellation) {
+    if (monitor != null) {
+      if (start == null) {
+        monitor.currentState(status, null, tessellation);
+      } else {
+        monitor.currentState(status, getPoints(start), tessellation);
+      }
+    }
   }
 
   /** Circular Doubly-linked list used for polygon coordinates */

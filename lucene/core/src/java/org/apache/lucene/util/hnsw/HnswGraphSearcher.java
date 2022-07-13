@@ -102,17 +102,20 @@ public class HnswGraphSearcher<T> {
         new HnswGraphSearcher<>(
             vectorEncoding,
             similarityFunction,
-            new NeighborQueue(topK, similarityFunction.reversed == false),
+            new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
-      eps[0] = results.pop();
-
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
+      if (results.incomplete()) {
+        results.setVisitedCount(numVisited);
+        return results;
+      }
+      eps[0] = results.pop();
     }
     results =
         graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
@@ -134,17 +137,22 @@ public class HnswGraphSearcher<T> {
         new HnswGraphSearcher<>(
             vectorEncoding,
             similarityFunction,
-            new NeighborQueue(topK, similarityFunction.reversed == false),
+            new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
-      eps[0] = results.pop();
 
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
+
+      if (results.incomplete()) {
+        results.setVisitedCount(numVisited);
+        return results;
+      }
+      eps[0] = results.pop();
     }
     results =
         graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
@@ -188,7 +196,7 @@ public class HnswGraphSearcher<T> {
       int visitedLimit)
       throws IOException {
     int size = graph.size();
-    NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
+    NeighborQueue results = new NeighborQueue(topK, false);
     clearScratchState();
 
     int numVisited = 0;
@@ -209,14 +217,14 @@ public class HnswGraphSearcher<T> {
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
+    float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
     if (results.size() >= topK) {
-      bound.set(results.topScore());
+      minAcceptedSimilarity = results.topScore();
     }
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
-      float topCandidateScore = candidates.topScore();
-      if (bound.check(topCandidateScore)) {
+      float topCandidateSimilarity = candidates.topScore();
+      if (topCandidateSimilarity < minAcceptedSimilarity) {
         break;
       }
 
@@ -233,13 +241,13 @@ public class HnswGraphSearcher<T> {
           results.markIncomplete();
           break;
         }
-        float score = compare(query, vectors, friendOrd);
+        float friendSimilarity = compare(query, vectors, friendOrd);
         numVisited++;
-        if (bound.check(score) == false) {
-          candidates.add(friendOrd, score);
+        if (friendSimilarity >= minAcceptedSimilarity) {
+          candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
-              bound.set(results.topScore());
+            if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.size() >= topK) {
+              minAcceptedSimilarity = results.topScore();
             }
           }
         }
@@ -254,7 +262,7 @@ public class HnswGraphSearcher<T> {
 
   private float compare(T query, RandomAccessVectorValues vectors, int ord) throws IOException {
     if (vectorEncoding == VectorEncoding.BYTE) {
-      return dotProduct((BytesRef) query, 0, vectors.binaryValue(ord), 0, vectors.dimension());
+      return dotProductScore((BytesRef) query, 0, vectors.binaryValue(ord), 0, vectors.dimension());
     } else {
       return similarityFunction.compare((float[]) query, vectors.vectorValue(ord));
     }
@@ -265,12 +273,12 @@ public class HnswGraphSearcher<T> {
     visited.clear(0, visited.length());
   }
 
-  static float dotProduct(BytesRef a, int aOffset, BytesRef b, int bOffset, int len) {
+  static float dotProductScore(BytesRef a, int aOffset, BytesRef b, int bOffset, int len) {
     int total = 0;
     for (int i = 0; i < len; i++) {
       total += a.bytes[aOffset++] * b.bytes[bOffset++];
     }
-    return total;
+    return (1 + total) / 2;
   }
 
   static BytesRef toBytesRef(float[] vector) {

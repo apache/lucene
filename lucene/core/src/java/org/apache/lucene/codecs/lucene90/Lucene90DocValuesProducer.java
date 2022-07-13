@@ -1453,7 +1453,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
 
       @Override
-      public long docValueCount() {
+      public int docValueCount() {
         return ords.docValueCount();
       }
 

@@ -121,10 +121,9 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
         for (int doc = multiValues.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = multiValues.nextDoc()) {
-          int term = (int) multiValues.nextOrd();
-          while (term != SortedSetDocValues.NO_MORE_ORDS) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             segCounts[term]++;
-            term = (int) multiValues.nextOrd();
           }
         }
       }
@@ -150,10 +149,9 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
         for (int doc = multiValues.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = multiValues.nextDoc()) {
-          int term = (int) multiValues.nextOrd();
-          while (term != SortedSetDocValues.NO_MORE_ORDS) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             counts[term]++;
-            term = (int) multiValues.nextOrd();
           }
         }
       }
@@ -204,10 +202,9 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
           }
         } else {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
+            for (int i = 0; i < multiValues.docValueCount(); i++) {
+              int term = (int) multiValues.nextOrd();
               counts[(int) ordMap.get(term)]++;
-              term = (int) multiValues.nextOrd();
             }
           }
         }
@@ -220,10 +217,9 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
           }
         } else {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
+            for (int i = 0; i < multiValues.docValueCount(); i++) {
+              int term = (int) multiValues.nextOrd();
               segCounts[term]++;
-              term = (int) multiValues.nextOrd();
             }
           }
         }
@@ -246,10 +242,9 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
         }
       } else {
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-          int term = (int) multiValues.nextOrd();
-          while (term != SortedSetDocValues.NO_MORE_ORDS) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             counts[term]++;
-            term = (int) multiValues.nextOrd();
           }
         }
       }

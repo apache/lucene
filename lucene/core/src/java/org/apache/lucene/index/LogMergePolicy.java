@@ -35,6 +35,9 @@ import java.util.Set;
  * specifies how a segment's size is determined. {@link LogDocMergePolicy} is one subclass that
  * measures size by document count in the segment. {@link LogByteSizeMergePolicy} is another
  * subclass that measures size as the total byte size of the file(s) for the segment.
+ *
+ * <p><b>NOTE</b>: This policy returns natural merges whose size is below the {@link #minMergeSize
+ * minimum merge size} for {@link #findFullFlushMerges full-flush merges}.
  */
 public abstract class LogMergePolicy extends MergePolicy {
 
@@ -65,8 +68,8 @@ public abstract class LogMergePolicy extends MergePolicy {
   protected int mergeFactor = DEFAULT_MERGE_FACTOR;
 
   /**
-   * Any segments whose size is smaller than this value will be rounded up to this value. This
-   * ensures that tiny segments are aggressively merged.
+   * Any segments whose size is smaller than this value will be candidates for full-flush merges and
+   * merged more aggressively.
    */
   protected long minMergeSize;
 
@@ -179,6 +182,11 @@ public abstract class LogMergePolicy extends MergePolicy {
 
     return numToMerge <= maxNumSegments
         && (numToMerge != 1 || !segmentIsOriginal || isMerged(infos, mergeInfo, mergeContext));
+  }
+
+  @Override
+  protected long maxFullFlushMergeSize() {
+    return minMergeSize;
   }
 
   /**
@@ -440,12 +448,10 @@ public abstract class LogMergePolicy extends MergePolicy {
 
   private static class SegmentInfoAndLevel implements Comparable<SegmentInfoAndLevel> {
     final SegmentCommitInfo info;
-    final long size;
     final float level;
 
-    public SegmentInfoAndLevel(SegmentCommitInfo info, long size, float level) {
+    public SegmentInfoAndLevel(SegmentCommitInfo info, float level) {
       this.info = info;
-      this.size = size;
       this.level = level;
     }
 
@@ -488,7 +494,7 @@ public abstract class LogMergePolicy extends MergePolicy {
       }
 
       final SegmentInfoAndLevel infoLevel =
-          new SegmentInfoAndLevel(info, size, (float) Math.log(size) / norm);
+          new SegmentInfoAndLevel(info, (float) Math.log(size) / norm);
       levels.add(infoLevel);
 
       if (verbose(mergeContext)) {
@@ -540,16 +546,21 @@ public abstract class LogMergePolicy extends MergePolicy {
       // Now search backwards for the rightmost segment that
       // falls into this level:
       float levelBottom;
-      if (maxLevel <= levelFloor) {
-        // All remaining segments fall into the min level
-        levelBottom = -1.0F;
-      } else {
+      if (maxLevel > levelFloor) {
+        // With a merge factor of 10, this means that the biggest segment and the smallest segment
+        // that take part of a merge have a size difference of at most 5.6x.
         levelBottom = (float) (maxLevel - LEVEL_LOG_SPAN);
 
         // Force a boundary at the level floor
         if (levelBottom < levelFloor && maxLevel >= levelFloor) {
           levelBottom = levelFloor;
         }
+      } else {
+        // For segments below the floor size, we allow more unbalanced merges, but still somewhat
+        // balanced to avoid running into O(n^2) merging.
+        // With a merge factor of 10, this means that the biggest segment and the smallest segment
+        // that take part of a merge have a size difference of at most 31.6x.
+        levelBottom = (float) (maxLevel - 2 * LEVEL_LOG_SPAN);
       }
 
       int upto = numMergeableSegments - 1;
@@ -568,60 +579,60 @@ public abstract class LogMergePolicy extends MergePolicy {
       // Finally, record all merges that are viable at this level:
       int end = start + mergeFactor;
       while (end <= 1 + upto) {
-        boolean anyTooLarge = false;
         boolean anyMerging = false;
         long mergeSize = 0;
-        long maxSegmentSize = 0;
+        long mergeDocs = 0;
         for (int i = start; i < end; i++) {
           final SegmentInfoAndLevel segLevel = levels.get(i);
-          mergeSize += segLevel.size;
-          maxSegmentSize = Math.max(maxSegmentSize, segLevel.size);
           final SegmentCommitInfo info = segLevel.info;
-          anyTooLarge |=
-              (size(info, mergeContext) >= maxMergeSize
-                  || sizeDocs(info, mergeContext) >= maxMergeDocs);
           if (mergingSegments.contains(info)) {
             anyMerging = true;
             break;
           }
+          long segmentSize = size(info, mergeContext);
+          long segmentDocs = sizeDocs(info, mergeContext);
+          if (mergeSize + segmentSize > maxMergeSize || mergeDocs + segmentDocs > maxMergeDocs) {
+            // This merge is full, stop adding more segments to it
+            if (i == start) {
+              // This segment alone is too large, return a singleton merge
+              if (verbose(mergeContext)) {
+                message(
+                    "    " + i + " is larger than the max merge size/docs; ignoring", mergeContext);
+              }
+              end = i + 1;
+            } else {
+              // Previous segments are under the max merge size, return them
+              end = i;
+            }
+            break;
+          }
+          mergeSize += segmentSize;
+          mergeDocs += segmentDocs;
         }
 
-        if (anyMerging) {
-          // skip
-        } else if (!anyTooLarge) {
-          if (mergeSize >= maxSegmentSize * 1.5) {
-            // Ignore any merge where the resulting segment is not at least 50% larger than the
-            // biggest input segment.
-            // Otherwise we could run into pathological O(N^2) merging where merges keep rewriting
-            // again and again the biggest input segment into a segment that is barely bigger.
-            if (spec == null) {
-              spec = new MergeSpecification();
-            }
-            final List<SegmentCommitInfo> mergeInfos = new ArrayList<>(end - start);
-            for (int i = start; i < end; i++) {
-              mergeInfos.add(levels.get(i).info);
-              assert infos.contains(levels.get(i).info);
-            }
-            if (verbose(mergeContext)) {
-              message(
-                  "  add merge="
-                      + segString(mergeContext, mergeInfos)
-                      + " start="
-                      + start
-                      + " end="
-                      + end,
-                  mergeContext);
-            }
-            spec.add(new OneMerge(mergeInfos));
-          } // else skip
-        } else if (verbose(mergeContext)) {
-          message(
-              "    "
-                  + start
-                  + " to "
-                  + end
-                  + ": contains segment over maxMergeSize or maxMergeDocs; skipping",
-              mergeContext);
+        if (anyMerging || end - start <= 1) {
+          // skip: there is an ongoing merge at the current level or the computed merge has a single
+          // segment and this merge policy doesn't do singleton merges
+        } else {
+          if (spec == null) {
+            spec = new MergeSpecification();
+          }
+          final List<SegmentCommitInfo> mergeInfos = new ArrayList<>(end - start);
+          for (int i = start; i < end; i++) {
+            mergeInfos.add(levels.get(i).info);
+            assert infos.contains(levels.get(i).info);
+          }
+          if (verbose(mergeContext)) {
+            message(
+                "  add merge="
+                    + segString(mergeContext, mergeInfos)
+                    + " start="
+                    + start
+                    + " end="
+                    + end,
+                mergeContext);
+          }
+          spec.add(new OneMerge(mergeInfos));
         }
 
         start = end;

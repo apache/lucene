@@ -533,14 +533,14 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
         controlLeafReader.getSortedSetDocValues("sorted_set");
     assertEquals(0, controlSortedSetDocValues.nextDoc());
     assertEquals(controlSortedSetDocValues.getValueCount(), sortedSetDocValues.getValueCount());
-    for (long controlOrd = controlSortedSetDocValues.nextOrd();
-        controlOrd != SortedSetDocValues.NO_MORE_ORDS;
-        controlOrd = controlSortedSetDocValues.nextOrd()) {
+    for (int i = 0; i < controlSortedSetDocValues.docValueCount(); i++) {
+      long controlOrd = controlSortedSetDocValues.nextOrd();
       assertEquals(controlOrd, sortedSetDocValues.nextOrd());
       assertEquals(
           controlSortedSetDocValues.lookupOrd(controlOrd),
           sortedSetDocValues.lookupOrd(controlOrd));
     }
+    assertEquals(SortedSetDocValues.NO_MORE_ORDS, controlSortedSetDocValues.nextOrd());
     assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSetDocValues.nextOrd());
 
     indexReader.close();

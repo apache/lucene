@@ -18,6 +18,7 @@ package org.apache.lucene.facet.range;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,9 +100,14 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new LongRange("90 or above", 90L, true, 100L, false),
             new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, true));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
     assertEquals(
         "dim=field path=[] value=22 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
+        result.toString());
+
+    result = facets.getTopChildren(4, "field");
+    assertEquals(
+        "dim=field path=[] value=22 childCount=5\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
         result.toString());
 
     // test getTopChildren(0, dim)
@@ -151,10 +157,22 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new LongRange("90 or above", 90L, true, 100L, false),
             new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, true));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
     assertEquals(
         "dim=field path=[] value=22 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
         result.toString());
+
+    result = facets.getTopChildren(4, "field");
+    assertEquals(
+        "dim=field path=[] value=22 childCount=5\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
+        result.toString());
+
+    // test getTopChildren(0, dim)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(0, "field");
+        });
 
     r.close();
     d.close();
@@ -201,9 +219,14 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new LongRange("90 or above", 90L, true, 100L, false),
             new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, true));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
     assertEquals(
         "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        result.toString());
+
+    result = facets.getTopChildren(4, "field");
+    assertEquals(
+        "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
         result.toString());
 
     r.close();
@@ -244,23 +267,23 @@ public class TestRangeFacetCounts extends FacetTestCase {
     List<FacetResult> result = facets.getAllDims(10);
     assertEquals(1, result.size());
     assertEquals(
-        "dim=field path=[] value=22 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
+        "dim=field path=[] value=22 childCount=5\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n  over 1000 (1)\n",
         result.get(0).toString());
 
     // test getAllDims(1)
-    List<FacetResult> test1Child = facets.getAllDims(1);
-    assertEquals(1, test1Child.size());
+    result = facets.getAllDims(1);
+    assertEquals(1, result.size());
     assertEquals(
-        "dim=field path=[] value=22 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (1)\n",
-        test1Child.get(0).toString());
+        "dim=field path=[] value=22 childCount=5\n  less than or equal to 10 (11)\n",
+        result.get(0).toString());
 
     // test default implementation of getTopDims
     List<FacetResult> topNDimsResult = facets.getTopDims(1, 1);
-    assertEquals(test1Child, topNDimsResult);
+    assertEquals(result, topNDimsResult);
 
     // test getTopDims(0, 1)
-    List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
-    assertEquals(0, topDimsResults2.size());
+    topNDimsResult = facets.getTopDims(0, 1);
+    assertEquals(0, topNDimsResult.size());
 
     // test getAllDims(0)
     expectThrows(
@@ -327,9 +350,14 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new LongRange("all2", Long.MIN_VALUE, true, Long.MAX_VALUE, false),
             new LongRange("all3", Long.MIN_VALUE, false, Long.MAX_VALUE, false));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
     assertEquals(
         "dim=field path=[] value=3 childCount=6\n  min (1)\n  max (1)\n  all0 (3)\n  all1 (2)\n  all2 (2)\n  all3 (1)\n",
+        result.toString());
+
+    result = facets.getTopChildren(5, "field");
+    assertEquals(
+        "dim=field path=[] value=3 childCount=6\n  all0 (3)\n  all1 (2)\n  all2 (2)\n  all3 (1)\n  max (1)\n",
         result.toString());
 
     r.close();
@@ -364,9 +392,14 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new LongRange("20-30", 20L, true, 30L, true),
             new LongRange("30-40", 30L, true, 40L, true));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
     assertEquals(
         "dim=field path=[] value=41 childCount=4\n  0-10 (11)\n  10-20 (11)\n  20-30 (11)\n  30-40 (11)\n",
+        result.toString());
+
+    result = facets.getTopChildren(3, "field");
+    assertEquals(
+        "dim=field path=[] value=41 childCount=4\n  0-10 (11)\n  10-20 (11)\n  20-30 (11)\n",
         result.toString());
     r.close();
     d.close();
@@ -391,7 +424,9 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     Facets facets = new LongRangeFacetCounts("field", fc);
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
+    assertEquals("dim=field path=[] value=0 childCount=0\n", result.toString());
+    result = facets.getTopChildren(1, "field");
     assertEquals("dim=field path=[] value=0 childCount=0\n", result.toString());
 
     r.close();
@@ -420,7 +455,9 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     Facets facets = new LongRangeFacetCounts("field", fc);
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
+    assertEquals("dim=field path=[] value=0 childCount=0\n", result.toString());
+    result = facets.getTopChildren(1, "field");
     assertEquals("dim=field path=[] value=0 childCount=0\n", result.toString());
 
     r.close();
@@ -458,6 +495,9 @@ public class TestRangeFacetCounts extends FacetTestCase {
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
     IndexSearcher s = newSearcher(r, false, false);
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    s.setTimeout(null);
 
     if (VERBOSE) {
       System.out.println("TEST: searcher=" + s);
@@ -515,7 +555,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
     assertEquals(
-        "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
         dsr.facets.getTopChildren(10, "field").toString());
 
     // Second search, drill down on dim=b:
@@ -528,7 +568,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
     assertEquals(
-        "dim=field path=[] value=16 childCount=5\n  less than 10 (7)\n  less than or equal to 10 (8)\n  over 90 (7)\n  90 or above (8)\n  over 1000 (0)\n",
+        "dim=field path=[] value=16 childCount=4\n  90 or above (8)\n  less than or equal to 10 (8)\n  less than 10 (7)\n  over 90 (7)\n",
         dsr.facets.getTopChildren(10, "field").toString());
 
     // Third search, drill down on "less than or equal to 10":
@@ -541,7 +581,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
         "dim=dim path=[] value=11 childCount=2\n  b (8)\n  a (3)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
     assertEquals(
-        "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
         dsr.facets.getTopChildren(10, "field").toString());
     w.close();
     IOUtils.close(tw, tr, td, r, d);
@@ -574,7 +614,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     assertEquals(
         "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-        facets.getTopChildren(10, "field").toString());
+        facets.getAllChildren("field").toString());
+    assertEquals(
+        "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
+        facets.getTopChildren(4, "field").toString());
     w.close();
     IOUtils.close(r, d);
   }
@@ -608,9 +651,14 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new DoubleRange("90 or above", 90.0, true, 100.0, false),
             new DoubleRange("over 1000", 1000.0, false, Double.POSITIVE_INFINITY, false));
 
+    facets.getTopChildren(4, "field");
     assertEquals(
         "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
-        facets.getTopChildren(10, "field").toString());
+        facets.getAllChildren("field").toString());
+    assertEquals(
+        "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
+        facets.getTopChildren(4, "field").toString());
+    facets.getTopChildren(4, "field");
     w.close();
     IOUtils.close(r, d);
   }
@@ -656,9 +704,13 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new DoubleRange("90 or above", 90.0, true, 100.0, false),
             new DoubleRange("over 1000", 1000.0, false, Double.POSITIVE_INFINITY, false));
 
-    FacetResult result = facets.getTopChildren(10, "field");
+    FacetResult result = facets.getAllChildren("field");
     assertEquals(
         "dim=field path=[] value=21 childCount=5\n  less than 10 (10)\n  less than or equal to 10 (11)\n  over 90 (9)\n  90 or above (10)\n  over 1000 (0)\n",
+        result.toString());
+    result = facets.getTopChildren(4, "field");
+    assertEquals(
+        "dim=field path=[] value=21 childCount=4\n  less than or equal to 10 (11)\n  90 or above (10)\n  less than 10 (10)\n  over 90 (9)\n",
         result.toString());
 
     r.close();
@@ -699,6 +751,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
       int numRange = TestUtil.nextInt(random(), 1, 100);
       LongRange[] ranges = new LongRange[numRange];
       int[] expectedCounts = new int[numRange];
+      int[] expectedTopNChildrenCounts = new int[numRange];
       long minAcceptedValue = Long.MAX_VALUE;
       long maxAcceptedValue = Long.MIN_VALUE;
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
@@ -766,6 +819,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
           }
           if (accept) {
             expectedCounts[rangeID]++;
+            expectedTopNChildrenCounts[rangeID]++;
             minAcceptedValue = Math.min(minAcceptedValue, values[i]);
             maxAcceptedValue = Math.max(maxAcceptedValue, values[i]);
           }
@@ -797,8 +851,11 @@ public class TestRangeFacetCounts extends FacetTestCase {
               new LongRangeFacetCounts(
                   "field", MultiLongValuesSource.fromSingleValued(vs), sfc, fastMatchQuery, ranges);
         }
-        FacetResult result = facets.getTopChildren(10, "field");
+        FacetResult result = facets.getAllChildren("field");
         assertEquals(numRange, result.labelValues.length);
+        FacetResult topNResult = facets.getTopChildren(numRange, "field");
+        Arrays.sort(expectedTopNChildrenCounts);
+
         for (int rangeID = 0; rangeID < numRange; rangeID++) {
           if (VERBOSE) {
             System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
@@ -806,6 +863,12 @@ public class TestRangeFacetCounts extends FacetTestCase {
           LabelAndValue subNode = result.labelValues[rangeID];
           assertEquals("r" + rangeID, subNode.label);
           assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+          // test topNChildren and assert topNResults are sorted by count
+          if (rangeID < topNResult.labelValues.length) {
+            LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
+            assertEquals(
+                expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+          }
 
           LongRange range = ranges[rangeID];
 
@@ -823,8 +886,11 @@ public class TestRangeFacetCounts extends FacetTestCase {
       } else {
         MultiLongValuesSource vs = MultiLongValuesSource.fromLongField("field");
         Facets facets = new LongRangeFacetCounts("field", vs, sfc, fastMatchQuery, ranges);
-        FacetResult result = facets.getTopChildren(10, "field");
+        FacetResult result = facets.getAllChildren("field");
         assertEquals(numRange, result.labelValues.length);
+        FacetResult topNResult = facets.getTopChildren(numRange, "field");
+        Arrays.sort(expectedTopNChildrenCounts);
+
         for (int rangeID = 0; rangeID < numRange; rangeID++) {
           if (VERBOSE) {
             System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
@@ -832,6 +898,13 @@ public class TestRangeFacetCounts extends FacetTestCase {
           LabelAndValue subNode = result.labelValues[rangeID];
           assertEquals("r" + rangeID, subNode.label);
           assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+
+          // test topNChildren and assert topNResults are sorted by count
+          if (rangeID < topNResult.labelValues.length) {
+            LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
+            assertEquals(
+                expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+          }
 
           LongRange range = ranges[rangeID];
 
@@ -892,6 +965,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
       int numRange = TestUtil.nextInt(random(), 1, 100);
       LongRange[] ranges = new LongRange[numRange];
       int[] expectedCounts = new int[numRange];
+      int[] expectedTopNChildrenCounts = new int[numRange];
       long minAcceptedValue = Long.MAX_VALUE;
       long maxAcceptedValue = Long.MIN_VALUE;
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
@@ -960,6 +1034,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
             }
             if (accept) {
               expectedCounts[rangeID]++;
+              expectedTopNChildrenCounts[rangeID]++;
               minAcceptedValue = Math.min(minAcceptedValue, values[i][j]);
               maxAcceptedValue = Math.max(maxAcceptedValue, values[i][j]);
               break; // ensure each doc can contribute at most 1 count to each range
@@ -989,8 +1064,11 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new LongRangeFacetCounts(
                 "field", (MultiLongValuesSource) null, sfc, fastMatchQuery, ranges);
       }
-      FacetResult result = facets.getTopChildren(10, "field");
+      FacetResult result = facets.getAllChildren("field");
       assertEquals(numRange, result.labelValues.length);
+      FacetResult topNResult = facets.getTopChildren(numRange, "field");
+      Arrays.sort(expectedTopNChildrenCounts);
+
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
         if (VERBOSE) {
           System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
@@ -998,6 +1076,12 @@ public class TestRangeFacetCounts extends FacetTestCase {
         LabelAndValue subNode = result.labelValues[rangeID];
         assertEquals("r" + rangeID, subNode.label);
         assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        // test topNChildren and assert topNResults are sorted by count
+        if (rangeID < topNResult.labelValues.length) {
+          LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
+          assertEquals(
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+        }
 
         LongRange range = ranges[rangeID];
 
@@ -1049,6 +1133,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
       int numRange = TestUtil.nextInt(random(), 1, 5);
       DoubleRange[] ranges = new DoubleRange[numRange];
       int[] expectedCounts = new int[numRange];
+      int[] expectedTopNChildrenCounts = new int[numRange];
       double minAcceptedValue = Double.POSITIVE_INFINITY;
       double maxAcceptedValue = Double.NEGATIVE_INFINITY;
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
@@ -1114,6 +1199,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
           }
           if (accept) {
             expectedCounts[rangeID]++;
+            expectedTopNChildrenCounts[rangeID]++;
             minAcceptedValue = Math.min(minAcceptedValue, values[i]);
             maxAcceptedValue = Math.max(maxAcceptedValue, values[i]);
           }
@@ -1147,8 +1233,11 @@ public class TestRangeFacetCounts extends FacetTestCase {
       } else {
         facets = new DoubleRangeFacetCounts("field", mvs, sfc, fastMatchFilter, ranges);
       }
-      FacetResult result = facets.getTopChildren(10, "field");
+      FacetResult result = facets.getAllChildren("field");
       assertEquals(numRange, result.labelValues.length);
+      FacetResult topNResult = facets.getTopChildren(numRange, "field");
+      Arrays.sort(expectedTopNChildrenCounts);
+
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
         if (VERBOSE) {
           System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
@@ -1156,6 +1245,12 @@ public class TestRangeFacetCounts extends FacetTestCase {
         LabelAndValue subNode = result.labelValues[rangeID];
         assertEquals("r" + rangeID, subNode.label);
         assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        // test topNChildren and assert topNResults are sorted by count
+        if (rangeID < topNResult.labelValues.length) {
+          LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
+          assertEquals(
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+        }
 
         DoubleRange range = ranges[rangeID];
 
@@ -1215,6 +1310,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
       int numRange = TestUtil.nextInt(random(), 1, 5);
       DoubleRange[] ranges = new DoubleRange[numRange];
       int[] expectedCounts = new int[numRange];
+      int[] expectedTopNChildrenCounts = new int[numRange];
       double minAcceptedValue = Double.POSITIVE_INFINITY;
       double maxAcceptedValue = Double.NEGATIVE_INFINITY;
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
@@ -1281,6 +1377,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
             }
             if (accept) {
               expectedCounts[rangeID]++;
+              expectedTopNChildrenCounts[rangeID]++;
               minAcceptedValue = Math.min(minAcceptedValue, values[i][j]);
               maxAcceptedValue = Math.max(maxAcceptedValue, values[i][j]);
               break; // ensure each doc can contribute at most 1 count to each range
@@ -1314,8 +1411,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
             new DoubleRangeFacetCounts(
                 "field", (MultiDoubleValuesSource) null, sfc, fastMatchFilter, ranges);
       }
-      FacetResult result = facets.getTopChildren(10, "field");
+      FacetResult result = facets.getAllChildren("field");
       assertEquals(numRange, result.labelValues.length);
+      FacetResult topNResult = facets.getTopChildren(numRange, "field");
+      Arrays.sort(expectedTopNChildrenCounts);
       for (int rangeID = 0; rangeID < numRange; rangeID++) {
         if (VERBOSE) {
           System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
@@ -1323,6 +1422,12 @@ public class TestRangeFacetCounts extends FacetTestCase {
         LabelAndValue subNode = result.labelValues[rangeID];
         assertEquals("r" + rangeID, subNode.label);
         assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        // test topNChildren and assert topNResults are sorted by count
+        if (rangeID < topNResult.labelValues.length) {
+          LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
+          assertEquals(
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+        }
 
         DoubleRange range = ranges[rangeID];
 
@@ -1378,7 +1483,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     assertEquals(
         "dim=field path=[] value=16 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
-        facets.getTopChildren(10, "field").toString());
+        facets.getAllChildren("field").toString());
+    assertEquals(
+        "dim=field path=[] value=16 childCount=4\n  90 or above (8)\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n",
+        facets.getTopChildren(4, "field").toString());
 
     w.close();
     IOUtils.close(r, d);
@@ -1420,7 +1528,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     assertEquals(
         "dim=field path=[] value=16 childCount=5\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n  90 or above (8)\n  over 1000 (0)\n",
-        facets.getTopChildren(10, "field").toString());
+        facets.getAllChildren("field").toString());
+    assertEquals(
+        "dim=field path=[] value=16 childCount=4\n  90 or above (8)\n  less than 10 (8)\n  less than or equal to 10 (8)\n  over 90 (8)\n",
+        facets.getTopChildren(4, "field").toString());
 
     w.close();
     IOUtils.close(r, d);
@@ -1555,6 +1666,9 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IndexReader r = writer.getReader();
 
     IndexSearcher s = newSearcher(r, false, false);
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    s.setTimeout(null);
     FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     final DoubleRange[] ranges =
@@ -1592,7 +1706,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
 
     assertEquals(
         "dim=field path=[] value=3 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
-        facets.getTopChildren(10, "field").toString());
+        facets.getAllChildren("field").toString());
+    assertEquals(
+        "dim=field path=[] value=3 childCount=5\n  < 10 (3)\n  < 20 (3)\n  < 5 (3)\n  < 50 (3)\n  < 2 (1)\n",
+        facets.getTopChildren(5, "field").toString());
     assertTrue(fastMatchFilter == null || filterWasUsed.get());
 
     DrillDownQuery ddq = new DrillDownQuery(config);
@@ -1636,7 +1753,10 @@ public class TestRangeFacetCounts extends FacetTestCase {
     assertEquals(1, dsr.hits.totalHits.value);
     assertEquals(
         "dim=field path=[] value=3 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
-        dsr.facets.getTopChildren(10, "field").toString());
+        dsr.facets.getAllChildren("field").toString());
+    assertEquals(
+        "dim=field path=[] value=3 childCount=5\n  < 10 (3)\n  < 20 (3)\n  < 5 (3)\n  < 50 (3)\n  < 2 (1)\n",
+        dsr.facets.getTopChildren(5, "field").toString());
 
     writer.close();
     IOUtils.close(r, dir);

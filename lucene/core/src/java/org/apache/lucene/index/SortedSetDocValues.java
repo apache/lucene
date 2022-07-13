@@ -32,12 +32,21 @@ public abstract class SortedSetDocValues extends DocValuesIterator {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected SortedSetDocValues() {}
 
-  /** When returned by {@link #nextOrd()} it means there are no more ordinals for the document. */
-  public static final long NO_MORE_ORDS = -1;
+  /**
+   * When returned by {@link #nextOrd()} it means there are no more ordinals for the document.
+   *
+   * @deprecated Will be removed in a future version. Please use {@link #docValueCount()} to know
+   *     the number of doc values for the current document up-front.
+   */
+  @Deprecated public static final long NO_MORE_ORDS = -1;
 
   /**
    * Returns the next ordinal for the current document. It is illegal to call this method after
    * {@link #advanceExact(int)} returned {@code false}.
+   *
+   * <p>Note: Returns {@link #NO_MORE_ORDS} when the current document has no more ordinals. This
+   * behavior will be removed in a future version. Callers should use {@link #docValueCount()} to
+   * determine the number of values for the current document up-front.
    *
    * @return next ordinal for the document, or {@link #NO_MORE_ORDS}. ordinals are dense, start at
    *     0, then increment by 1 for the next value in sorted order.
@@ -49,7 +58,7 @@ public abstract class SortedSetDocValues extends DocValuesIterator {
    * zero. It is illegal to call this method after {@link #advanceExact(int)} returned {@code
    * false}.
    */
-  public abstract long docValueCount();
+  public abstract int docValueCount();
 
   /**
    * Retrieves the value for the specified ordinal. The returned {@link BytesRef} may be re-used

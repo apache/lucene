@@ -17,6 +17,11 @@ github:
     merge:  false
     rebase: false
 
+  features:
+    wiki: false
+    issues: true  # temporarily enabled for testing
+    projects: false
+
 notifications:
   commits:      commits@lucene.apache.org
   issues:       issues@lucene.apache.org

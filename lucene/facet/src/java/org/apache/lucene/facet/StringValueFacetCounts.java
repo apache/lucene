@@ -19,6 +19,7 @@ package org.apache.lucene.facet;
 import com.carrotsearch.hppc.IntIntHashMap;
 import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -131,15 +132,39 @@ public class StringValueFacetCounts extends Facets {
   }
 
   @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    validateDimAndPathForGetChildren(dim, path);
+
+    List<LabelAndValue> labelValues = new ArrayList<>();
+
+    if (sparseCounts != null) {
+      for (IntIntCursor cursor : sparseCounts) {
+        int count = cursor.value;
+        final BytesRef term = docValues.lookupOrd(cursor.key);
+        labelValues.add(new LabelAndValue(term.utf8ToString(), count));
+      }
+    } else {
+      for (int i = 0; i < denseCounts.length; i++) {
+        int count = denseCounts[i];
+        if (count != 0) {
+          final BytesRef term = docValues.lookupOrd(i);
+          labelValues.add(new LabelAndValue(term.utf8ToString(), count));
+        }
+      }
+    }
+
+    return new FacetResult(
+        field,
+        new String[0],
+        totalDocCount,
+        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.size());
+  }
+
+  @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+    validateDimAndPathForGetChildren(dim, path);
 
     topN = Math.min(topN, cardinality);
     TopOrdAndIntQueue q = null;
@@ -374,15 +399,14 @@ public class StringValueFacetCounts extends Facets {
         }
       } else {
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-          int term = (int) multiValues.nextOrd();
           boolean countedDocInTotal = false;
-          while (term != SortedSetDocValues.NO_MORE_ORDS) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             increment(term);
             if (countedDocInTotal == false) {
               totalDocCount++;
               countedDocInTotal = true;
             }
-            term = (int) multiValues.nextOrd();
           }
         }
       }
@@ -402,15 +426,14 @@ public class StringValueFacetCounts extends Facets {
           }
         } else {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
             boolean countedDocInTotal = false;
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
+            for (int i = 0; i < multiValues.docValueCount(); i++) {
+              int term = (int) multiValues.nextOrd();
               increment((int) ordMap.get(term));
               if (countedDocInTotal == false) {
                 totalDocCount++;
                 countedDocInTotal = true;
               }
-              term = (int) multiValues.nextOrd();
             }
           }
         }
@@ -427,15 +450,14 @@ public class StringValueFacetCounts extends Facets {
           }
         } else {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-            int term = (int) multiValues.nextOrd();
             boolean countedDocInTotal = false;
-            while (term != SortedSetDocValues.NO_MORE_ORDS) {
+            for (int i = 0; i < multiValues.docValueCount(); i++) {
+              int term = (int) multiValues.nextOrd();
               segCounts[term]++;
               if (countedDocInTotal == false) {
                 totalDocCount++;
                 countedDocInTotal = true;
               }
-              term = (int) multiValues.nextOrd();
             }
           }
         }
@@ -474,9 +496,8 @@ public class StringValueFacetCounts extends Facets {
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = multiValues.nextDoc()) {
           boolean countedDocInTotal = false;
-          for (int term = (int) multiValues.nextOrd();
-              term != SortedSetDocValues.NO_MORE_ORDS;
-              term = (int) multiValues.nextOrd()) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             increment(term);
             if (countedDocInTotal == false) {
               totalDocCount++;
@@ -509,9 +530,8 @@ public class StringValueFacetCounts extends Facets {
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = multiValues.nextDoc()) {
           boolean countedDocInTotal = false;
-          for (int term = (int) multiValues.nextOrd();
-              term != SortedSetDocValues.NO_MORE_ORDS;
-              term = (int) multiValues.nextOrd()) {
+          for (int i = 0; i < multiValues.docValueCount(); i++) {
+            int term = (int) multiValues.nextOrd();
             segCounts[term]++;
             if (countedDocInTotal == false) {
               totalDocCount++;
@@ -551,6 +571,16 @@ public class StringValueFacetCounts extends Facets {
     if (ReaderUtil.getTopLevelContext(context).reader() != reader) {
       throw new IllegalStateException(
           "the SortedSetDocValuesReaderState provided to this class does not match the reader being searched; you must create a new SortedSetDocValuesReaderState every time you open a new IndexReader");
+    }
+  }
+
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
     }
   }
 }

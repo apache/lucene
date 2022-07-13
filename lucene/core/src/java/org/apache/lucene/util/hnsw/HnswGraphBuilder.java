@@ -18,7 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
-import static org.apache.lucene.util.hnsw.HnswGraphSearcher.dotProduct;
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.dotProductScore;
 
 import java.io.IOException;
 import java.util.Locale;
@@ -56,7 +56,6 @@ public final class HnswGraphBuilder<T> {
   private final VectorEncoding vectorEncoding;
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
-  private final BoundsChecker bound;
   private final HnswGraphSearcher<T> graphSearcher;
 
   final OnHeapHnswGraph hnsw;
@@ -125,16 +124,15 @@ public final class HnswGraphBuilder<T> {
     this.ml = 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode, similarityFunction.reversed);
+    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode);
     this.graphSearcher =
         new HnswGraphSearcher<T>(
             vectorEncoding,
             similarityFunction,
-            new NeighborQueue(beamWidth, similarityFunction.reversed == false),
+            new NeighborQueue(beamWidth, true),
             new FixedBitSet(vectorValues.size()));
-    bound = BoundsChecker.create(similarityFunction.reversed);
     // in scratch we store candidates in reverse order: worse candidates are first
-    scratch = new NeighborArray(Math.max(beamWidth, M + 1), similarityFunction.reversed);
+    scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
   }
 
   /**
@@ -269,8 +267,8 @@ public final class HnswGraphBuilder<T> {
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float score = candidates.topScore();
-      scratch.add(candidates.pop(), score);
+      float maxSimilarity = candidates.topScore();
+      scratch.add(candidates.pop(), maxSimilarity);
     }
   }
 
@@ -283,39 +281,41 @@ public final class HnswGraphBuilder<T> {
    */
   private boolean diversityCheck(int candidate, float score, NeighborArray neighbors)
       throws IOException {
-    bound.set(score);
-    return isDiverse(candidate, neighbors);
+    return isDiverse(candidate, neighbors, score);
   }
 
-  private boolean isDiverse(int candidate, NeighborArray neighbors) throws IOException {
+  private boolean isDiverse(int candidate, NeighborArray neighbors, float score)
+      throws IOException {
     return switch (vectorEncoding) {
-      case BYTE -> isDiverse(vectorValues.binaryValue(candidate), neighbors);
-      case FLOAT32 -> isDiverse(vectorValues.vectorValue(candidate), neighbors);
+      case BYTE -> isDiverse(vectorValues.binaryValue(candidate), neighbors, score);
+      case FLOAT32 -> isDiverse(vectorValues.vectorValue(candidate), neighbors, score);
       default -> throw new AssertionError("unknown vector encoding " + vectorEncoding);
     };
   }
 
-  private boolean isDiverse(float[] candidate, NeighborArray neighbors) throws IOException {
+  private boolean isDiverse(float[] candidate, NeighborArray neighbors, float score)
+      throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
-      float diversityCheck =
+      float neighborSimilarity =
           similarityFunction.compare(candidate, buildVectors.vectorValue(neighbors.node[i]));
-      if (bound.check(diversityCheck) == false) {
+      if (neighborSimilarity >= score) {
         return false;
       }
     }
     return true;
   }
 
-  private boolean isDiverse(BytesRef candidate, NeighborArray neighbors) throws IOException {
+  private boolean isDiverse(BytesRef candidate, NeighborArray neighbors, float score)
+      throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
-      float diversityCheck =
-          dotProduct(
+      float neighborSimilarity =
+          dotProductScore(
               candidate,
               0,
               buildVectors.binaryValue(neighbors.node[i]),
               0,
               buildVectors.dimension());
-      if (bound.check(diversityCheck) == false) {
+      if (neighborSimilarity >= score) {
         return false;
       }
     }
@@ -328,44 +328,51 @@ public final class HnswGraphBuilder<T> {
    */
   private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
     for (int i = neighbors.size() - 1; i > 0; i--) {
-      if (isWorstNonDiverse(i, neighbors)) {
+      if (isWorstNonDiverse(i, neighbors, neighbors.score[i])) {
         return i;
       }
     }
     return neighbors.size() - 1;
   }
 
-  private boolean isWorstNonDiverse(int candidate, NeighborArray neighbors) throws IOException {
+  private boolean isWorstNonDiverse(
+      int candidate, NeighborArray neighbors, float minAcceptedSimilarity) throws IOException {
     return switch (vectorEncoding) {
-      case BYTE -> isWorstNonDiverse(candidate, vectorValues.binaryValue(candidate), neighbors);
-      case FLOAT32 -> isWorstNonDiverse(candidate, vectorValues.vectorValue(candidate), neighbors);
+      case BYTE -> isWorstNonDiverse(
+          candidate, vectorValues.binaryValue(candidate), neighbors, minAcceptedSimilarity);
+      case FLOAT32 -> isWorstNonDiverse(
+          candidate, vectorValues.vectorValue(candidate), neighbors, minAcceptedSimilarity);
       default -> throw new AssertionError("unknown vector encoding " + vectorEncoding);
     };
   }
 
-  private boolean isWorstNonDiverse(int candidateIndex, float[] candidate, NeighborArray neighbors)
+  private boolean isWorstNonDiverse(
+      int candidateIndex, float[] candidate, NeighborArray neighbors, float minAcceptedSimilarity)
       throws IOException {
     for (int i = candidateIndex - 1; i > -0; i--) {
-      float diversityCheck =
+      float neighborSimilarity =
           similarityFunction.compare(candidate, buildVectors.vectorValue(neighbors.node[i]));
-      if (bound.check(diversityCheck) == false) {
+      // node i is too similar to node j given its score relative to the base node
+      if (neighborSimilarity >= minAcceptedSimilarity) {
         return false;
       }
     }
     return true;
   }
 
-  private boolean isWorstNonDiverse(int candidateIndex, BytesRef candidate, NeighborArray neighbors)
+  private boolean isWorstNonDiverse(
+      int candidateIndex, BytesRef candidate, NeighborArray neighbors, float minAcceptedSimilarity)
       throws IOException {
     for (int i = candidateIndex - 1; i > -0; i--) {
-      float diversityCheck =
-          dotProduct(
+      float neighborSimilarity =
+          dotProductScore(
               candidate,
               0,
               buildVectors.binaryValue(neighbors.node[i]),
               0,
               buildVectors.dimension());
-      if (bound.check(diversityCheck) == false) {
+      // node i is too similar to node j given its score relative to the base node
+      if (neighborSimilarity >= minAcceptedSimilarity) {
         return false;
       }
     }

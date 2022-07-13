@@ -617,7 +617,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.11.0-cfs",
     "8.11.0-nocfs",
     "8.11.1-cfs",
-    "8.11.1-nocfs"
+    "8.11.1-nocfs",
+    "8.11.2-cfs",
+    "8.11.2-nocfs"
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
@@ -1203,6 +1205,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(id, dvShort.longValue());
 
       assertEquals(i, dvSortedSet.nextDoc());
+      assertEquals(1, dvSortedSet.docValueCount());
       long ord = dvSortedSet.nextOrd();
       assertEquals(SortedSetDocValues.NO_MORE_ORDS, dvSortedSet.nextOrd());
       term = dvSortedSet.lookupOrd(ord);

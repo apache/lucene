@@ -3337,7 +3337,7 @@ public final class CheckIndex implements Closeable {
     LongBitSet seenOrds = new LongBitSet(dv.getValueCount());
     long maxOrd2 = -1;
     for (int docID = dv.nextDoc(); docID != NO_MORE_DOCS; docID = dv.nextDoc()) {
-      long count = dv.docValueCount();
+      int count = dv.docValueCount();
       if (count == 0) {
         throw new CheckIndexException(
             "sortedset dv for field: "
@@ -3348,15 +3348,23 @@ public final class CheckIndex implements Closeable {
       if (dv2.advanceExact(docID) == false) {
         throw new CheckIndexException("advanceExact did not find matching doc ID: " + docID);
       }
-      long count2 = dv2.docValueCount();
+      int count2 = dv2.docValueCount();
       if (count != count2) {
         throw new CheckIndexException(
             "advanceExact reports different value count: " + count + " != " + count2);
       }
       long lastOrd = -1;
-      long ord;
       int ordCount = 0;
-      while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+      for (int i = 0; i < count; i++) {
+        if (count != dv.docValueCount()) {
+          throw new CheckIndexException(
+              "value count changed from "
+                  + count
+                  + " to "
+                  + dv.docValueCount()
+                  + " during iterating over all values");
+        }
+        long ord = dv.nextOrd();
         long ord2 = dv2.nextOrd();
         if (ord != ord2) {
           throw new CheckIndexException(
@@ -3374,14 +3382,16 @@ public final class CheckIndex implements Closeable {
         seenOrds.set(ord);
         ordCount++;
       }
+      if (dv.docValueCount() != dv2.docValueCount()) {
+        throw new CheckIndexException(
+            "dv and dv2 report different values count after iterating over all values: "
+                + dv.docValueCount()
+                + " != "
+                + dv2.docValueCount());
+      }
       if (ordCount == 0) {
         throw new CheckIndexException(
             "dv for field: " + fieldName + " returned docID=" + docID + " yet has no ordinals");
-      }
-      long ord2 = dv2.nextOrd();
-      if (ord != ord2) {
-        throw new CheckIndexException(
-            "nextDoc and advanceExact report different ords: " + ord + " != " + ord2);
       }
     }
     if (maxOrd != maxOrd2) {

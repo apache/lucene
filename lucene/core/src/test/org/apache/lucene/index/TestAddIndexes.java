@@ -20,7 +20,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -683,6 +685,290 @@ public class TestAddIndexes extends LuceneTestCase {
     writer.addDocument(doc);
   }
 
+  private class ConcurrentAddIndexesMergePolicy extends TieredMergePolicy {
+
+    @Override
+    public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+      // create a oneMerge for each reader to let them get concurrently processed by addIndexes()
+      MergeSpecification mergeSpec = new MergeSpecification();
+      for (CodecReader reader : readers) {
+        mergeSpec.add(new OneMerge(reader));
+      }
+      if (VERBOSE) {
+        System.out.println(
+            "No. of addIndexes merges returned by MergePolicy: " + mergeSpec.merges.size());
+      }
+      return mergeSpec;
+    }
+  }
+
+  private class AddIndexesWithReadersSetup {
+    Directory dir, destDir;
+    IndexWriter destWriter;
+    final DirectoryReader[] readers;
+    final int ADDED_DOCS_PER_READER = 15;
+    final int INIT_DOCS = 25;
+    final int NUM_READERS = 15;
+
+    public AddIndexesWithReadersSetup(MergeScheduler ms, MergePolicy mp) throws IOException {
+      dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
+      IndexWriter writer =
+          new IndexWriter(
+              dir, new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(2));
+      for (int i = 0; i < ADDED_DOCS_PER_READER; i++) addDoc(writer);
+      writer.close();
+
+      destDir = newDirectory();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setMergePolicy(mp);
+      iwc.setMergeScheduler(ms);
+      destWriter = new IndexWriter(destDir, iwc);
+      for (int i = 0; i < INIT_DOCS; i++) addDoc(destWriter);
+      destWriter.commit();
+
+      readers = new DirectoryReader[NUM_READERS];
+      for (int i = 0; i < NUM_READERS; i++) readers[i] = DirectoryReader.open(dir);
+    }
+
+    public void closeAll() throws IOException {
+      destWriter.close();
+      for (int i = 0; i < NUM_READERS; i++) readers[i].close();
+      destDir.close();
+      dir.close();
+    }
+  }
+
+  public void testAddIndexesWithConcurrentMerges() throws Exception {
+    ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+    AddIndexesWithReadersSetup c =
+        new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
+    TestUtil.addIndexesSlowly(c.destWriter, c.readers);
+    c.destWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(c.destDir)) {
+      assertEquals(c.INIT_DOCS + c.NUM_READERS * c.ADDED_DOCS_PER_READER, reader.numDocs());
+    }
+    c.closeAll();
+  }
+
+  private class PartialMergeScheduler extends MergeScheduler {
+
+    int mergesToDo;
+    int mergesTriggered = 0;
+
+    public PartialMergeScheduler(int mergesToDo) {
+      this.mergesToDo = mergesToDo;
+      if (VERBOSE) {
+        System.out.println(
+            "PartialMergeScheduler configured to mark all merges as failed, "
+                + "after triggering ["
+                + mergesToDo
+                + "] merges.");
+      }
+    }
+
+    @Override
+    public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
+      while (true) {
+        MergePolicy.OneMerge merge = mergeSource.getNextMerge();
+        if (merge == null) {
+          break;
+        }
+        if (mergesTriggered >= mergesToDo) {
+          merge.close(false, false, mr -> {});
+          mergeSource.onMergeFinished(merge);
+        } else {
+          mergeSource.merge(merge);
+          mergesTriggered++;
+        }
+      }
+    }
+
+    @Override
+    public void close() throws IOException {}
+  }
+
+  public void testAddIndexesWithPartialMergeFailures() throws Exception {
+    final List<MergePolicy.OneMerge> merges = new ArrayList<>();
+    ConcurrentAddIndexesMergePolicy mp =
+        new ConcurrentAddIndexesMergePolicy() {
+          @Override
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+            MergeSpecification spec = super.findMerges(readers);
+            merges.addAll(spec.merges);
+            return spec;
+          }
+        };
+    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(new PartialMergeScheduler(2), mp);
+    assertThrows(RuntimeException.class, () -> TestUtil.addIndexesSlowly(c.destWriter, c.readers));
+    c.destWriter.commit();
+
+    // verify no docs got added and all interim files from successful merges have been deleted
+    try (IndexReader reader = DirectoryReader.open(c.destDir)) {
+      assertEquals(c.INIT_DOCS, reader.numDocs());
+    }
+    for (MergePolicy.OneMerge merge : merges) {
+      if (merge.getMergeInfo() != null) {
+        assertFalse(
+            Arrays.stream(c.destDir.listAll())
+                .collect(Collectors.toSet())
+                .containsAll(merge.getMergeInfo().files()));
+      }
+    }
+    c.closeAll();
+  }
+
+  public void testAddIndexesWithNullMergeSpec() throws Exception {
+    MergePolicy mp =
+        new TieredMergePolicy() {
+          @Override
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+            return null;
+          }
+        };
+    AddIndexesWithReadersSetup c =
+        new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
+    TestUtil.addIndexesSlowly(c.destWriter, c.readers);
+    c.destWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(c.destDir)) {
+      assertEquals(c.INIT_DOCS, reader.numDocs());
+    }
+    c.closeAll();
+  }
+
+  public void testAddIndexesWithEmptyMergeSpec() throws Exception {
+    MergePolicy mp =
+        new TieredMergePolicy() {
+          @Override
+          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+            return new MergeSpecification();
+          }
+        };
+    AddIndexesWithReadersSetup c =
+        new AddIndexesWithReadersSetup(new ConcurrentMergeScheduler(), mp);
+    TestUtil.addIndexesSlowly(c.destWriter, c.readers);
+    c.destWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(c.destDir)) {
+      assertEquals(c.INIT_DOCS, reader.numDocs());
+    }
+    c.closeAll();
+  }
+
+  private class CountingSerialMergeScheduler extends MergeScheduler {
+
+    int explicitMerges = 0;
+    int addIndexesMerges = 0;
+
+    @Override
+    public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
+      while (true) {
+        MergePolicy.OneMerge merge = mergeSource.getNextMerge();
+        if (merge == null) {
+          break;
+        }
+        mergeSource.merge(merge);
+        if (trigger == MergeTrigger.EXPLICIT) {
+          explicitMerges++;
+        }
+        if (trigger == MergeTrigger.ADD_INDEXES) {
+          addIndexesMerges++;
+        }
+      }
+    }
+
+    @Override
+    public void close() throws IOException {}
+  }
+
+  public void testAddIndexesWithEmptyReaders() throws Exception {
+    Directory destDir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setMergePolicy(new ConcurrentAddIndexesMergePolicy());
+    CountingSerialMergeScheduler ms = new CountingSerialMergeScheduler();
+    iwc.setMergeScheduler(ms);
+    IndexWriter destWriter = new IndexWriter(destDir, iwc);
+    final int initialDocs = 15;
+    for (int i = 0; i < initialDocs; i++) addDoc(destWriter);
+    destWriter.commit();
+
+    // create empty readers
+    Directory dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    writer.close();
+    final int numReaders = 20;
+    DirectoryReader[] readers = new DirectoryReader[numReaders];
+    for (int i = 0; i < numReaders; i++) readers[i] = DirectoryReader.open(dir);
+
+    TestUtil.addIndexesSlowly(destWriter, readers);
+    destWriter.commit();
+
+    // verify no docs were added
+    try (IndexReader reader = DirectoryReader.open(destDir)) {
+      assertEquals(initialDocs, reader.numDocs());
+    }
+    // verify no merges were triggered
+    assertEquals(0, ms.addIndexesMerges);
+
+    destWriter.close();
+    for (int i = 0; i < numReaders; i++) readers[i].close();
+    destDir.close();
+    dir.close();
+  }
+
+  public void testCascadingMergesTriggered() throws Exception {
+    ConcurrentAddIndexesMergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+    CountingSerialMergeScheduler ms = new CountingSerialMergeScheduler();
+    AddIndexesWithReadersSetup c = new AddIndexesWithReadersSetup(ms, mp);
+    TestUtil.addIndexesSlowly(c.destWriter, c.readers);
+    assertTrue(ms.explicitMerges > 0);
+    c.closeAll();
+  }
+
+  public void testAddIndexesHittingMaxDocsLimit() throws Exception {
+    final int writerMaxDocs = 15;
+    IndexWriter.setMaxDocs(writerMaxDocs);
+
+    // create destination writer
+    Directory destDir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setMergePolicy(new ConcurrentAddIndexesMergePolicy());
+    CountingSerialMergeScheduler ms = new CountingSerialMergeScheduler();
+    iwc.setMergeScheduler(ms);
+    IndexWriter destWriter = new IndexWriter(destDir, iwc);
+    for (int i = 0; i < writerMaxDocs; i++) addDoc(destWriter);
+    destWriter.commit();
+
+    // create readers to add
+    Directory dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    for (int i = 0; i < 10; i++) addDoc(writer);
+    writer.close();
+    final int numReaders = 20;
+    DirectoryReader[] readers = new DirectoryReader[numReaders];
+    for (int i = 0; i < numReaders; i++) readers[i] = DirectoryReader.open(dir);
+
+    boolean success = false;
+    try {
+      TestUtil.addIndexesSlowly(destWriter, readers);
+      success = true;
+    } catch (IllegalArgumentException e) {
+      assertTrue(
+          e.getMessage()
+              .contains("number of documents in the index cannot exceed " + writerMaxDocs));
+    }
+    assertFalse(success);
+
+    // verify no docs were added
+    destWriter.commit();
+    try (IndexReader reader = DirectoryReader.open(destDir)) {
+      assertEquals(writerMaxDocs, reader.numDocs());
+    }
+
+    destWriter.close();
+    for (int i = 0; i < numReaders; i++) readers[i].close();
+    destDir.close();
+    dir.close();
+  }
+
   private abstract class RunAddIndexesThreads {
 
     Directory dir, dir2;
@@ -704,7 +990,10 @@ public class TestAddIndexes extends LuceneTestCase {
       writer.close();
 
       dir2 = newDirectory();
-      writer2 = new IndexWriter(dir2, new IndexWriterConfig(new MockAnalyzer(random())));
+      MergePolicy mp = new ConcurrentAddIndexesMergePolicy();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setMergePolicy(mp);
+      writer2 = new IndexWriter(dir2, iwc);
       writer2.commit();
 
       readers = new DirectoryReader[NUM_COPY];
@@ -985,7 +1274,6 @@ public class TestAddIndexes extends LuceneTestCase {
       System.out.println("TEST: done join threads");
     }
     c.closeDir();
-
     assertTrue(c.failures.size() == 0);
   }
 
@@ -1014,7 +1302,6 @@ public class TestAddIndexes extends LuceneTestCase {
     }
 
     c.closeDir();
-
     assertTrue(c.failures.size() == 0);
   }
 
@@ -1488,7 +1775,9 @@ public class TestAddIndexes extends LuceneTestCase {
     }
     writer.commit();
     writer.close();
+
     DirectoryReader reader = DirectoryReader.open(dir1);
+    // wrappedReader filters out soft deleted docs
     DirectoryReader wrappedReader = new SoftDeletesDirectoryReaderWrapper(reader, "soft_delete");
     Directory dir2 = newDirectory();
     int numDocs = reader.numDocs();
@@ -1504,9 +1793,13 @@ public class TestAddIndexes extends LuceneTestCase {
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().numDocs);
     assertEquals(maxDoc, writer.getDocStats().maxDoc);
     writer.commit();
-    SegmentCommitInfo commitInfo = writer.cloneSegmentInfos().info(0);
-    assertEquals(maxDoc - wrappedReader.numDocs(), commitInfo.getSoftDelCount());
+    int softDeleteCount =
+        writer.cloneSegmentInfos().asList().stream()
+            .mapToInt(SegmentCommitInfo::getSoftDelCount)
+            .sum();
+    assertEquals(maxDoc - wrappedReader.numDocs(), softDeleteCount);
     writer.close();
+
     Directory dir3 = newDirectory();
     iwc1 = newIndexWriterConfig(new MockAnalyzer(random())).setSoftDeletesField("soft_delete");
     writer = new IndexWriter(dir3, iwc1);
@@ -1517,6 +1810,7 @@ public class TestAddIndexes extends LuceneTestCase {
     }
     writer.addIndexes(readers);
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().numDocs);
+    // soft deletes got filtered out when wrappedReader(s) were added.
     assertEquals(wrappedReader.numDocs(), writer.getDocStats().maxDoc);
     IOUtils.close(reader, writer, dir3, dir2, dir1);
   }

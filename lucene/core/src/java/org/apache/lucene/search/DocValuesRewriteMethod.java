@@ -169,10 +169,8 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
 
                 @Override
                 public boolean matches() throws IOException {
-                  for (long ord = fcsi.nextOrd();
-                      ord != SortedSetDocValues.NO_MORE_ORDS;
-                      ord = fcsi.nextOrd()) {
-                    if (termSet.get(ord)) {
+                  for (int i = 0; i < fcsi.docValueCount(); i++) {
+                    if (termSet.get(fcsi.nextOrd())) {
                       return true;
                     }
                   }
