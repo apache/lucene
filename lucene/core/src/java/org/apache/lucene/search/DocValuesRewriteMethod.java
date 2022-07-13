@@ -162,9 +162,10 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               // query with the values present in the doc values:
               TermsEnum termsEnum = getTermsEnum(values);
               assert termsEnum != null;
+
               if (termsEnum.next() == null) {
                 // no matching terms
-                return null;
+                return new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty());
               }
 
               // Create a bit set for the "term set" ordinals (these are the terms provided by the
