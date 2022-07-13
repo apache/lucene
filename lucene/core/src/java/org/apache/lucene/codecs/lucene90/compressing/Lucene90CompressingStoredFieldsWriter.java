@@ -520,7 +520,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     startDocument();
 
     if (doc.in instanceof ByteArrayDataInput) {
-      //reuse ByteArrayDataInput to reduce memory copy
+      // reuse ByteArrayDataInput to reduce memory copy
       bufferedDocs.copyBytes((ByteArrayDataInput) doc.in, doc.length);
     } else {
       bufferedDocs.copyBytes(doc.in, doc.length);
