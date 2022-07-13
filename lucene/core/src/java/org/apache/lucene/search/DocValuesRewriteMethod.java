@@ -165,7 +165,8 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
 
               if (termsEnum.next() == null) {
                 // no matching terms
-                return new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty());
+                return new ConstantScoreScorer(
+                    weight, score(), scoreMode, DocIdSetIterator.empty());
               }
 
               // Create a bit set for the "term set" ordinals (these are the terms provided by the
