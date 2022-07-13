@@ -191,6 +191,69 @@ final class BooleanWeight extends Weight {
   // or null if it is not applicable
   // pkg-private for forcing use of BooleanScorer in tests
   BulkScorer optionalBulkScorer(LeafReaderContext context) throws IOException {
+    if (scoreMode == ScoreMode.TOP_SCORES) {
+      if (query.getMinimumNumberShouldMatch() > 1 || weightedClauses.size() > 2) {
+        return null;
+      }
+
+      List<ScorerSupplier> optional = new ArrayList<>();
+      for (WeightedBooleanClause wc : weightedClauses) {
+        Weight w = wc.weight;
+        BooleanClause c = wc.clause;
+        if (c.getOccur() != Occur.SHOULD) {
+          continue;
+        }
+        ScorerSupplier scorer = w.scorerSupplier(context);
+        if (scorer != null) {
+          optional.add(scorer);
+        }
+      }
+
+      if (optional.size() <= 1) {
+        return null;
+      }
+
+      List<Scorer> optionalScorers = new ArrayList<>();
+      for (ScorerSupplier ss : optional) {
+        optionalScorers.add(ss.get(Long.MAX_VALUE));
+      }
+
+      return new BulkScorer() {
+        final Scorer bmmScorer = new BlockMaxMaxscoreScorer(BooleanWeight.this, optionalScorers);
+        final int maxDoc = context.reader().maxDoc();
+        final DocIdSetIterator iterator = bmmScorer.iterator();
+
+        @Override
+        public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+            throws IOException {
+          max = Math.min(max, maxDoc);
+          collector.setScorer(bmmScorer);
+
+          for (int doc = min; doc < max; ) {
+            int advancedDoc = iterator.advance(doc);
+            if (advancedDoc == DocIdSetIterator.NO_MORE_DOCS) {
+              return DocIdSetIterator.NO_MORE_DOCS;
+            } else if (advancedDoc >= max) {
+              return max;
+            }
+
+            if (acceptDocs == null || acceptDocs.get(advancedDoc)) {
+              collector.collect(advancedDoc);
+            }
+
+            doc = advancedDoc + 1;
+          }
+
+          return max == maxDoc ? DocIdSetIterator.NO_MORE_DOCS : max;
+        }
+
+        @Override
+        public long cost() {
+          return maxDoc;
+        }
+      };
+    }
+
     List<BulkScorer> optional = new ArrayList<BulkScorer>();
     for (WeightedBooleanClause wc : weightedClauses) {
       Weight w = wc.weight;
@@ -329,11 +392,6 @@ final class BooleanWeight extends Weight {
 
   @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    if (scoreMode == ScoreMode.TOP_SCORES) {
-      // If only the top docs are requested, use the default bulk scorer
-      // so that we can dynamically prune non-competitive hits.
-      return super.bulkScorer(context);
-    }
     final BulkScorer bulkScorer = booleanScorer(context);
     if (bulkScorer != null) {
       // bulk scoring is applicable, use it

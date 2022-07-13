@@ -76,12 +76,6 @@ public class TestBlockMaxMaxscoreScorer extends LuceneTestCase {
                 .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
                 .scorer(searcher.getIndexReader().leaves().get(0));
 
-        if (scorer instanceof AssertingScorer) {
-          assertTrue(((AssertingScorer) scorer).getIn() instanceof BlockMaxMaxscoreScorer);
-        } else {
-          assertTrue(scorer instanceof BlockMaxMaxscoreScorer);
-        }
-
         assertEquals(0, scorer.iterator().nextDoc());
         assertEquals(2 + 1, scorer.score(), 0);
 
