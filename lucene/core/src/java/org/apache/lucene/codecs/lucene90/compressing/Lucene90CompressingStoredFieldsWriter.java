@@ -35,6 +35,8 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -247,21 +249,18 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     writeHeader(docBase, numBufferedDocs, numStoredFields, lengths, sliced, dirtyChunk);
 
     // compress stored fields to fieldsStream.
-    //
-    // TODO: do we need to slice it since we already have the slices in the buffer? Perhaps
-    // we should use max-block-bits restriction on the buffer itself, then we won't have to check it
-    // here.
-    byte[] content = bufferedDocs.toArrayCopy();
-    bufferedDocs.reset();
-
     if (sliced) {
-      // big chunk, slice it
-      for (int compressed = 0; compressed < content.length; compressed += chunkSize) {
-        compressor.compress(
-            content, compressed, Math.min(chunkSize, content.length - compressed), fieldsStream);
+      // big chunk, slice it, using ByteBuffersDataInput ignore memory copy
+      ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
+      final int capacity = (int) bytebuffers.size();
+      for (int compressed = 0; compressed < capacity; compressed += chunkSize) {
+        int l = Math.min(chunkSize, capacity - compressed);
+        ByteBuffersDataInput bbdi = bytebuffers.slice(compressed, l);
+        compressor.compress(bbdi, fieldsStream);
       }
     } else {
-      compressor.compress(content, 0, content.length, fieldsStream);
+      ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
+      compressor.compress(bytebuffers, fieldsStream);
     }
 
     // reset
@@ -519,7 +518,13 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     assert reader.getVersion() == VERSION_CURRENT;
     SerializedDocument doc = reader.document(docID);
     startDocument();
-    bufferedDocs.copyBytes(doc.in, doc.length);
+
+    if (doc.in instanceof ByteArrayDataInput) {
+      //reuse ByteArrayDataInput to reduce memory copy
+      bufferedDocs.copyBytes((ByteArrayDataInput) doc.in, doc.length);
+    } else {
+      bufferedDocs.copyBytes(doc.in, doc.length);
+    }
     numStoredFieldsInDoc = doc.numStoredFields;
     finishDocument();
   }

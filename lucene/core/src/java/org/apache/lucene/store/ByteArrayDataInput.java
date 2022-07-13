@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.store;
 
+import java.nio.ByteBuffer;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
@@ -171,5 +172,9 @@ public final class ByteArrayDataInput extends DataInput {
   public void readBytes(byte[] b, int offset, int len) {
     System.arraycopy(bytes, pos, b, offset, len);
     pos += len;
+  }
+
+  public ByteBuffer toByteBuffer(int length) {
+    return ByteBuffer.wrap(bytes, pos, length).asReadOnlyBuffer();
   }
 }
