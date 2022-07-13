@@ -225,31 +225,84 @@ public abstract class Terms {
     return sb.toString();
   }
 
+  public Terms empty(FieldInfo fieldInfo) {
+    return new Terms() {
+      @Override
+      public TermsEnum iterator() {
+        return TermsEnum.EMPTY;
+      }
+
+      @Override
+      public long size() {
+        return 0;
+      }
+
+      @Override
+      public long getSumTotalTermFreq() {
+        return 0;
+      }
+
+      @Override
+      public long getSumDocFreq() {
+        return 0;
+      }
+
+      @Override
+      public int getDocCount() {
+        return 0;
+      }
+
+      @Override
+      public boolean hasFreqs() {
+        return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      }
+
+      @Override
+      public boolean hasOffsets() {
+        return fieldInfo
+                .getIndexOptions()
+                .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
+            >= 0;
+      }
+
+      @Override
+      public boolean hasPositions() {
+        return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
+            >= 0;
+      }
+
+      @Override
+      public boolean hasPayloads() {
+        return fieldInfo.hasPayloads();
+      }
+    };
+  }
+
   /** An empty {@link Terms} which returns no terms */
   public static final Terms EMPTY =
       new Terms() {
         @Override
-        public TermsEnum iterator() throws IOException {
+        public TermsEnum iterator() {
           return TermsEnum.EMPTY;
         }
 
         @Override
-        public long size() throws IOException {
+        public long size() {
           return 0;
         }
 
         @Override
-        public long getSumTotalTermFreq() throws IOException {
+        public long getSumTotalTermFreq() {
           return 0;
         }
 
         @Override
-        public long getSumDocFreq() throws IOException {
+        public long getSumDocFreq() {
           return 0;
         }
 
         @Override
-        public int getDocCount() throws IOException {
+        public int getDocCount() {
           return 0;
         }
 

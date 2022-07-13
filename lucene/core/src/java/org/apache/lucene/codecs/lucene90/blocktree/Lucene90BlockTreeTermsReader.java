@@ -291,6 +291,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   public Terms terms(String field) throws IOException {
     assert field != null;
     Terms terms = fieldMap.get(field);
+    // fieldMap is empty. There is no way to get hold of FieldInfo object for field string.
     return terms == null ? Terms.EMPTY : terms;
   }
 
