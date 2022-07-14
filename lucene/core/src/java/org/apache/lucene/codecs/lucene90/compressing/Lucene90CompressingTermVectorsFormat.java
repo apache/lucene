@@ -38,7 +38,7 @@ public class Lucene90CompressingTermVectorsFormat extends TermVectorsFormat {
 
   private final String formatName;
   private final String segmentSuffix;
-  private final CompressionMode compressionMode;
+  private final Lucene90CompressionMode compressionMode;
   private final int chunkSize;
   private final int blockSize;
   private final int maxDocsPerChunk;
@@ -71,7 +71,7 @@ public class Lucene90CompressingTermVectorsFormat extends TermVectorsFormat {
   public Lucene90CompressingTermVectorsFormat(
       String formatName,
       String segmentSuffix,
-      CompressionMode compressionMode,
+      Lucene90CompressionMode compressionMode,
       int chunkSize,
       int maxDocsPerChunk,
       int blockSize) {

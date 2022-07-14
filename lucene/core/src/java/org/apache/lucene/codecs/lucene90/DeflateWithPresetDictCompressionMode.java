@@ -16,13 +16,15 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
-import org.apache.lucene.codecs.compressing.Decompressor;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Compressor;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Decompressor;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -36,7 +38,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.internal
  */
-public final class DeflateWithPresetDictCompressionMode extends CompressionMode {
+public final class DeflateWithPresetDictCompressionMode extends Lucene90CompressionMode {
 
   // Shoot for 10 sub blocks
   private static final int NUM_SUB_BLOCKS = 10;
@@ -47,7 +49,7 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
   public DeflateWithPresetDictCompressionMode() {}
 
   @Override
-  public Compressor newCompressor() {
+  public Lucene90Compressor newCompressor() {
     // notes:
     // 3 is the highest level that doesn't have lazy match evaluation
     // 6 is the default, higher than that is just a waste of cpu
@@ -55,7 +57,7 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
   }
 
   @Override
-  public Decompressor newDecompressor() {
+  public Lucene90Decompressor newDecompressor() {
     return new DeflateWithPresetDictDecompressor();
   }
 
@@ -64,7 +66,7 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     return "BEST_COMPRESSION";
   }
 
-  private static final class DeflateWithPresetDictDecompressor extends Decompressor {
+  private static final class DeflateWithPresetDictDecompressor extends Lucene90Decompressor {
 
     byte[] compressed;
 
@@ -103,8 +105,8 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
       }
     }
 
-    @Override
-    public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+    private void decompress(
+        DataInput in, int originalLength, int offset, int length, BytesRef bytes)
         throws IOException {
       assert offset + length <= originalLength;
       if (length == 0) {
@@ -153,12 +155,20 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     }
 
     @Override
-    public Decompressor clone() {
+    public InputStream decompress(DataInput in, int originalLength, int offset, int length)
+        throws IOException {
+      final BytesRef bytes = new BytesRef();
+      decompress(in, originalLength, offset, length, bytes);
+      return new ByteArrayInputStream(bytes.bytes, bytes.offset, bytes.length);
+    }
+
+    @Override
+    public Lucene90Decompressor clone() {
       return new DeflateWithPresetDictDecompressor();
     }
   }
 
-  private static class DeflateWithPresetDictCompressor extends Compressor {
+  private static class DeflateWithPresetDictCompressor extends Lucene90Compressor {
 
     final Deflater compressor;
     byte[] compressed;

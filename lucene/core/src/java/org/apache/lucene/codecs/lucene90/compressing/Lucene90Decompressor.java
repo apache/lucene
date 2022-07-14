@@ -14,17 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.compressing;
+package org.apache.lucene.codecs.lucene90.compressing;
 
 import java.io.IOException;
+import java.io.InputStream;
 import org.apache.lucene.store.DataInput;
-import org.apache.lucene.util.BytesRef;
 
 /** A decompressor. */
-public abstract class Decompressor implements Cloneable {
-
+public abstract class Lucene90Decompressor implements Cloneable {
   /** Sole constructor, typically called from sub-classes. */
-  protected Decompressor() {}
+  protected Lucene90Decompressor() {}
 
   /**
    * Decompress bytes that were stored between offsets <code>offset</code> and <code>offset+length
@@ -37,11 +36,10 @@ public abstract class Decompressor implements Cloneable {
    * @param originalLength the length of the original data (before compression)
    * @param offset bytes before this offset do not need to be decompressed
    * @param length bytes after <code>offset+length</code> do not need to be decompressed
-   * @param bytes a {@link BytesRef} where to store the decompressed data
    */
-  public abstract void decompress(
-      DataInput in, int originalLength, int offset, int length, BytesRef bytes) throws IOException;
+  public abstract InputStream decompress(DataInput in, int originalLength, int offset, int length)
+      throws IOException;
 
   @Override
-  public abstract Decompressor clone();
+  public abstract Lucene90Decompressor clone();
 }

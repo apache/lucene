@@ -43,8 +43,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -79,8 +77,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long maxPointer;
   private final IndexInput fieldsStream;
   private final int chunkSize;
-  private final CompressionMode compressionMode;
-  private final Decompressor decompressor;
+  private final Lucene90CompressionMode compressionMode;
+  private final Lucene90Decompressor decompressor;
   private final int numDocs;
   private final boolean merging;
   private final BlockState state;
@@ -117,7 +115,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       FieldInfos fn,
       IOContext context,
       String formatName,
-      CompressionMode compressionMode)
+      Lucene90CompressionMode compressionMode)
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
@@ -689,7 +687,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     return version;
   }
 
-  CompressionMode getCompressionMode() {
+  Lucene90CompressionMode getCompressionMode() {
     return compressionMode;
   }
 

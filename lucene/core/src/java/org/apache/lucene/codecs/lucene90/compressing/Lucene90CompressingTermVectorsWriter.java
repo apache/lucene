@@ -31,8 +31,6 @@ import java.util.TreeSet;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.MatchingReaders;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocIDMerger;
@@ -83,8 +81,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   private FieldsIndexWriter indexWriter;
   private IndexOutput metaStream, vectorsStream;
 
-  private final CompressionMode compressionMode;
-  private final Compressor compressor;
+  private final Lucene90CompressionMode compressionMode;
+  private final Lucene90Compressor compressor;
   private final int chunkSize;
 
   private long numChunks; // number of chunks
@@ -235,7 +233,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       String segmentSuffix,
       IOContext context,
       String formatName,
-      CompressionMode compressionMode,
+      Lucene90CompressionMode compressionMode,
       int chunkSize,
       int maxDocsPerChunk,
       int blockShift)

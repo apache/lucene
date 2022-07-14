@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.tests.codecs.compressing.dummy;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
-import org.apache.lucene.codecs.compressing.Decompressor;
+import java.io.InputStream;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Compressor;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Decompressor;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
@@ -31,16 +33,16 @@ import org.apache.lucene.util.BytesRef;
 // visible enough to let people write their own CompressionMode
 public class DummyCompressingCodec extends CompressingCodec {
 
-  public static final CompressionMode DUMMY =
-      new CompressionMode() {
+  public static final Lucene90CompressionMode DUMMY =
+      new Lucene90CompressionMode() {
 
         @Override
-        public Compressor newCompressor() {
+        public Lucene90Compressor newCompressor() {
           return DUMMY_COMPRESSOR;
         }
 
         @Override
-        public Decompressor newDecompressor() {
+        public Lucene90Decompressor newDecompressor() {
           return DUMMY_DECOMPRESSOR;
         }
 
@@ -50,30 +52,30 @@ public class DummyCompressingCodec extends CompressingCodec {
         }
       };
 
-  private static final Decompressor DUMMY_DECOMPRESSOR =
-      new Decompressor() {
+  private static final Lucene90Decompressor DUMMY_DECOMPRESSOR =
+      new Lucene90Decompressor() {
 
         @Override
-        public void decompress(
-            DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+        public InputStream decompress(DataInput in, int originalLength, int offset, int length)
             throws IOException {
           assert offset + length <= originalLength;
-          if (bytes.bytes.length < originalLength) {
-            bytes.bytes = new byte[ArrayUtil.oversize(originalLength, 1)];
-          }
+          final BytesRef bytes = new BytesRef();
+          bytes.bytes = new byte[ArrayUtil.oversize(originalLength, 1)];
           in.readBytes(bytes.bytes, 0, offset + length);
           bytes.offset = offset;
           bytes.length = length;
+
+          return new ByteArrayInputStream(bytes.bytes, bytes.offset, bytes.length);
         }
 
         @Override
-        public Decompressor clone() {
+        public Lucene90Decompressor clone() {
           return this;
         }
       };
 
-  private static final Compressor DUMMY_COMPRESSOR =
-      new Compressor() {
+  private static final Lucene90Compressor DUMMY_COMPRESSOR =
+      new Lucene90Compressor() {
 
         @Override
         public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {

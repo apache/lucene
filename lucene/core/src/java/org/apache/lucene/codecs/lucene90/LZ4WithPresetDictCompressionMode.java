@@ -18,9 +18,9 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import java.io.InputStream;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
-import org.apache.lucene.codecs.compressing.Decompressor;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Compressor;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Decompressor;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
@@ -35,7 +35,7 @@ import org.apache.lucene.util.compress.LZ4;
  *
  * @lucene.internal
  */
-public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
+public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionMode {
 
   // Shoot for 10 sub blocks
   private static final int NUM_SUB_BLOCKS = 10;
@@ -46,12 +46,12 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
   public LZ4WithPresetDictCompressionMode() {}
 
   @Override
-  public Compressor newCompressor() {
+  public Lucene90Compressor newCompressor() {
     return new LZ4WithPresetDictCompressor();
   }
 
   @Override
-  public Decompressor newDecompressor() {
+  public Lucene90Decompressor newDecompressor() {
     return new LZ4WithPresetDictDecompressor();
   }
 
@@ -60,7 +60,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     return "BEST_SPEED";
   }
 
-  private static final class LZ4WithPresetDictDecompressor extends Decompressor {
+  private static final class LZ4WithPresetDictDecompressor extends Lucene90Decompressor {
 
     private int[] compressedLengths;
     private byte[] buffer;
@@ -82,64 +82,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         totalLength += blockLength;
       }
       return i;
-    }
-
-    @Override
-    public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
-        throws IOException {
-      assert offset + length <= originalLength;
-
-      if (length == 0) {
-        bytes.length = 0;
-        return;
-      }
-
-      final int dictLength = in.readVInt();
-      final int blockLength = in.readVInt();
-
-      final int numBlocks = readCompressedLengths(in, originalLength, dictLength, blockLength);
-
-      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
-      bytes.length = 0;
-      // Read the dictionary
-      if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
-        throw new CorruptIndexException("Illegal dict length", in);
-      }
-
-      int offsetInBlock = dictLength;
-      int offsetInBytesRef = offset;
-      if (offset >= dictLength) {
-        offsetInBytesRef -= dictLength;
-
-        // Skip unneeded blocks
-        int numBytesToSkip = 0;
-        for (int i = 0; i < numBlocks && offsetInBlock + blockLength < offset; ++i) {
-          int compressedBlockLength = compressedLengths[i];
-          numBytesToSkip += compressedBlockLength;
-          offsetInBlock += blockLength;
-          offsetInBytesRef -= blockLength;
-        }
-        in.skipBytes(numBytesToSkip);
-      } else {
-        // The dictionary contains some bytes we need, copy its content to the BytesRef
-        bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, dictLength);
-        System.arraycopy(buffer, 0, bytes.bytes, 0, dictLength);
-        bytes.length = dictLength;
-      }
-
-      // Read blocks that intersect with the interval we need
-      while (offsetInBlock < offset + length) {
-        final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
-        LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
-        bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + bytesToDecompress);
-        System.arraycopy(buffer, dictLength, bytes.bytes, bytes.length, bytesToDecompress);
-        bytes.length += bytesToDecompress;
-        offsetInBlock += blockLength;
-      }
-
-      bytes.offset = offsetInBytesRef;
-      bytes.length = length;
-      assert bytes.isValid();
     }
 
     @Override
@@ -299,12 +241,12 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     }
 
     @Override
-    public Decompressor clone() {
+    public Lucene90Decompressor clone() {
       return new LZ4WithPresetDictDecompressor();
     }
   }
 
-  private static class LZ4WithPresetDictCompressor extends Compressor {
+  private static class LZ4WithPresetDictCompressor extends Lucene90Compressor {
 
     final ByteBuffersDataOutput compressed;
     final LZ4.FastCompressionHashTable hashTable;

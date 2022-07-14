@@ -24,8 +24,6 @@ import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.MatchingReaders;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsReader.SerializedDocument;
 import org.apache.lucene.index.CorruptIndexException;
@@ -81,8 +79,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private FieldsIndexWriter indexWriter;
   private IndexOutput metaStream, fieldsStream;
 
-  private Compressor compressor;
-  private final CompressionMode compressionMode;
+  private Lucene90Compressor compressor;
+  private final Lucene90CompressionMode compressionMode;
   private final int chunkSize;
   private final int maxDocsPerChunk;
 
@@ -103,7 +101,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       String segmentSuffix,
       IOContext context,
       String formatName,
-      CompressionMode compressionMode,
+      Lucene90CompressionMode compressionMode,
       int chunkSize,
       int maxDocsPerChunk,
       int blockShift)
