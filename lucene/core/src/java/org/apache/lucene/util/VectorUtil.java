@@ -213,4 +213,38 @@ public final class VectorUtil {
       u[i] += v[i];
     }
   }
+
+  /**
+   * Dot product score computed over signed bytes, scaled to be in [0, 1].
+   *
+   * @param a bytes containing a vector
+   * @param aOffset offset of the vector in a
+   * @param b bytes containing another vector, of the same dimension
+   * @param len the length (aka dimension) of the vectors
+   * @param bOffset offset of the vector in b
+   * @return the value of the similarity function applied to the two vectors
+   */
+  public static float dotProductScore(BytesRef a, int aOffset, BytesRef b, int bOffset, int len) {
+    int total = 0;
+    for (int i = 0; i < len; i++) {
+      total += a.bytes[aOffset++] * b.bytes[bOffset++];
+    }
+    // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+    return (1 + total) / (float) (len * (1 << 15));
+  }
+
+  /**
+   * Convert a floating point vector to an array of bytes using casting; the vector values should be
+   * in [-128,127]
+   *
+   * @param vector a vector
+   * @return a new BytesRef containing the vector's values cast to byte.
+   */
+  public static BytesRef toBytesRef(float[] vector) {
+    BytesRef b = new BytesRef(vector.length);
+    for (int i = 0; i < vector.length; i++) {
+      b.bytes[i] = (byte) vector[i];
+    }
+    return b;
+  }
 }

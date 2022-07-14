@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.util.Bits;
@@ -111,6 +112,12 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             @Override
             public TopDocs search(
                 String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+              return TopDocsCollector.EMPTY_TOPDOCS;
+            }
+
+            @Override
+            public TopDocs searchExhaustively(
+                String field, float[] target, int k, DocIdSetIterator acceptDocs) {
               return TopDocsCollector.EMPTY_TOPDOCS;
             }
 

@@ -25,6 +25,7 @@ import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -88,6 +89,12 @@ public abstract class KnnVectorsWriter implements Closeable {
               @Override
               public TopDocs search(
                   String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public TopDocs searchExhaustively(
+                  String field, float[] target, int k, DocIdSetIterator acceptDocs) {
                 throw new UnsupportedOperationException();
               }
             });

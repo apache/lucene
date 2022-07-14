@@ -18,6 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.VectorUtil.dotProductScore;
+import static org.apache.lucene.util.VectorUtil.toBytesRef;
 
 import java.io.IOException;
 import org.apache.lucene.index.RandomAccessVectorValues;
@@ -271,21 +273,5 @@ public class HnswGraphSearcher<T> {
   private void clearScratchState() {
     candidates.clear();
     visited.clear(0, visited.length());
-  }
-
-  static float dotProductScore(BytesRef a, int aOffset, BytesRef b, int bOffset, int len) {
-    int total = 0;
-    for (int i = 0; i < len; i++) {
-      total += a.bytes[aOffset++] * b.bytes[bOffset++];
-    }
-    return (1 + total) / 2;
-  }
-
-  static BytesRef toBytesRef(float[] vector) {
-    BytesRef b = new BytesRef(vector.length);
-    for (int i = 0; i < vector.length; i++) {
-      b.bytes[i] = (byte) vector[i];
-    }
-    return b;
   }
 }

@@ -18,8 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.hnsw.HnswGraphSearcher.dotProductScore;
-import static org.apache.lucene.util.hnsw.HnswGraphSearcher.toBytesRef;
+import static org.apache.lucene.util.VectorUtil.dotProductScore;
+import static org.apache.lucene.util.VectorUtil.toBytesRef;
 
 import java.io.IOException;
 import java.util.Arrays;

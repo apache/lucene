@@ -118,12 +118,12 @@ class VectorValuesWriter {
           }
 
           @Override
-          public void close() throws IOException {
+          public void close() {
             throw new UnsupportedOperationException();
           }
 
           @Override
-          public void checkIntegrity() throws IOException {
+          public void checkIntegrity() {
             throw new UnsupportedOperationException();
           }
 
@@ -136,8 +136,13 @@ class VectorValuesWriter {
 
           @Override
           public TopDocs search(
-              String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
-              throws IOException {
+              String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public TopDocs searchExhaustively(
+              String field, float[] target, int k, DocIdSetIterator acceptDocs) {
             throw new UnsupportedOperationException();
           }
         };

@@ -34,6 +34,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -270,6 +271,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
         return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
       } else {
         return knnVectorsReader.search(field, target, k, acceptDocs, visitedLimit);
+      }
+    }
+
+    @Override
+    public TopDocs searchExhaustively(
+        String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
+      KnnVectorsReader knnVectorsReader = fields.get(field);
+      if (knnVectorsReader == null) {
+        return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+      } else {
+        return knnVectorsReader.searchExhaustively(field, target, k, acceptDocs);
       }
     }
 
