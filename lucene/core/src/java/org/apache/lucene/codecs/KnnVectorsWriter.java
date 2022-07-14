@@ -55,7 +55,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
    * #mergeOneField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
    * deleted documents.
    */
-  public void merge(MergeState mergeState) throws IOException {
+  public final void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
       KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
