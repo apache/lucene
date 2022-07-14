@@ -157,7 +157,8 @@ class BlockMaxMaxscoreScorer extends Scorer {
 
             // list adjusted
             if (removedEssentialScorer) {
-              essentialsScorers.replaceWith(
+              essentialsScorers.clear();
+              essentialsScorers.addAll(
                   allScorers,
                   firstEssentialScorerIndex,
                   allScorers.length - firstEssentialScorerIndex);
@@ -213,7 +214,8 @@ class BlockMaxMaxscoreScorer extends Scorer {
               firstEssentialScorerIndex++;
               nonEssentialMaxScoreSum += w.maxScore;
             }
-            essentialsScorers.replaceWith(
+            essentialsScorers.clear();
+            essentialsScorers.addAll(
                 allScorers,
                 firstEssentialScorerIndex,
                 allScorers.length - firstEssentialScorerIndex);

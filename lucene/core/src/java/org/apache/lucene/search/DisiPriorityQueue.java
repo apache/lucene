@@ -103,24 +103,24 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
     return heap[0];
   }
 
-  public void replaceWith(DisiWrapper[] entries, int offset, int len) {
-    // Fail early if we're going to over-fill:
-    if (len > heap.length) {
-      throw new IndexOutOfBoundsException(
-          "Cannot add " + len + " elements to a heap with max capacity of " + heap.length);
-    }
-
-    // Reset the size and null-out any references beyond the new size:
-    size = len;
-    Arrays.fill(heap, len, entries.length, null);
-
-    // Nothing more to do for zero-length:
+  public void addAll(DisiWrapper[] entries, int offset, int len) {
+    // Nothing to do if empty:
     if (len == 0) {
       return;
     }
 
+    // Fail early if we're going to over-fill:
+    if (size + len > heap.length) {
+      throw new IndexOutOfBoundsException(
+          "Cannot add "
+              + len
+              + " elements to a queue with remaining capacity "
+              + (heap.length - size));
+    }
+
     // Copy the entries over to our heap array:
-    System.arraycopy(entries, offset, heap, 0, len);
+    System.arraycopy(entries, offset, heap, size, len);
+    size += len;
 
     // Heapify in bulk:
     final int firstLeafIndex = size >>> 1;
