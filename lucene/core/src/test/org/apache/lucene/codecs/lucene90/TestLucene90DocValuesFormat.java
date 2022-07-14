@@ -492,8 +492,6 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
           in.readBytes(b.bytes(), 0, b.length());
           assertEquals(b.get(), values.lookupOrd(values.nextOrd()));
         }
-
-        assertEquals(SortedSetDocValues.NO_MORE_ORDS, values.nextOrd());
       }
       r.close();
       dir.close();
