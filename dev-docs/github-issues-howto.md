@@ -21,13 +21,13 @@ under the License.
 
 ## Issue labels
 
-There are four pre-fixed label families to organize/search issues.
+There are a few pre-fixed label families to organize/search issues.
 
 - `type` : issue type
   - `type:bug` is attached to bug reports
   - `type:enhancement` is attached to enhancement requests or suggestions
-  - `type:testFailure` is attached to test failure reports
-  - `type:task` is attached to various tasks
+  - `type:test` is attached to test improvements or failure reports
+  - `type:task` is attached to general tasks
   - `type:documentation` is attached to tasks relate to documentation
 - `fixVersion` : the versions in which a bug or enhancement is planned to be released
   - this may be used for release planning
@@ -37,10 +37,12 @@ There are four pre-fixed label families to organize/search issues.
   - (example) `affectsVersion:9.1.0`
 - `component` : Lucene components
   - (example) `components:module/core/index`, `component:module/analysis`
-- uncategorized labels
-  - `good first issue`
-  - `discuss`
-  - `duplicate`
+
+If necessary, uncategorized labels may also be used.
+
+- `good first issue`
+- `discuss`
+- `duplicate`
 
 Committers can add/edit labels manually or programmatically using [Labels API](https://docs.github.com/en/rest/issues/labels).
 
@@ -49,8 +51,8 @@ Committers can add/edit labels manually or programmatically using [Labels API](h
 Each issue template (web form) is associated with one `type` label. You should add an issue template when adding a new `type` label and vice versa.
 
 - `Bug Report` is associated with `type:bug` label
-- `Enhancement Request` is associated with `type:enhancement` label
-- `Test Failure Report` is associated with `type:testFailure` label
+- `Enhancement Request/Suggestion` is associated with `type:enhancement` label
+- `Test Improvement / Failure Report` is associated with `type:test` label
 - `Task` is associated with `type:task` label
 - `Documentation` is associated with `type:documentation` label
 

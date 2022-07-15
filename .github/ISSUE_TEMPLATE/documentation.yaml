@@ -1,4 +1,4 @@
-name: Documentation Task
+name: Documentation Improvement
 description: File a task relates to documentation
 labels: ["type:documentation"]
 body:

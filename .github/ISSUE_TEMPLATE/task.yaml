@@ -1,5 +1,5 @@
 name: Task
-description: File a task
+description: File a general task
 labels: ["type:task"]
 body:
   - type: textarea

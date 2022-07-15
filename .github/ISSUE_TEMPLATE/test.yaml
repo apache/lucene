@@ -1,6 +1,6 @@
-name: Test Failure Report
-description: File a test failure report
-labels: ["type:testFailure"]
+name: Test Improvement / Failure Report
+description: File a task relates to test
+labels: ["type:test"]
 body:
   - type: textarea
     id: description
