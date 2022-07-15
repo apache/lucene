@@ -53,6 +53,5 @@ Each issue template (web form) is associated with one `type` label. You should a
 - `Test Failure Report` is associated with `type:testFailure` label
 - `Task` is associated with `type:task` label
 - `Documentation` is associated with `type:documentation` label
-- `Question` creates no issues; is used to guide users to mailing lists
 
 Issue templates are written in YAML format and committed in `.github/ISSUE_TEMPLATE`. See [GitHub documentation](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms) for details.

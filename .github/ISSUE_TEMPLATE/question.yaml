@@ -1,7 +1,0 @@
-name: Question
-description: Question
-body:
-  - type: markdown
-    attributes:
-      value: |
-        Please send your question to [mailing lists](https://lucene.apache.org/core/discussion.html).
