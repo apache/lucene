@@ -1,0 +1,15 @@
+name: Test Failure Report
+description: File a test failure report
+labels: ["type:testFailure"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Gradle command to reproduce
+      placeholder: Specify the gradle command to reproduce the failure
