@@ -38,6 +38,8 @@ There are a few pre-fixed label families to organize/search issues.
 - `component` : Lucene components
   - (example) `components:module/core/index`, `component:module/analysis`
 
+A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `component` may be manually added by committers.
+
 If necessary, uncategorized labels may also be used.
 
 - `good first issue`
