@@ -226,25 +226,22 @@ final class BooleanWeight extends Weight {
         @Override
         public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
             throws IOException {
-          max = Math.min(max, maxDoc);
           collector.setScorer(bmmScorer);
 
-          for (int doc = min; doc < max; ) {
-            int advancedDoc = iterator.advance(doc);
-            if (advancedDoc == DocIdSetIterator.NO_MORE_DOCS) {
-              return DocIdSetIterator.NO_MORE_DOCS;
-            } else if (advancedDoc >= max) {
-              return max;
+          int doc = min;
+          while (true) {
+            doc = iterator.advance(doc);
+
+            if (doc >= max) {
+              return doc;
             }
 
-            if (acceptDocs == null || acceptDocs.get(advancedDoc)) {
-              collector.collect(advancedDoc);
+            if (acceptDocs == null || acceptDocs.get(doc)) {
+              collector.collect(doc);
             }
 
-            doc = advancedDoc + 1;
+            doc++;
           }
-
-          return max == maxDoc ? DocIdSetIterator.NO_MORE_DOCS : max;
         }
 
         @Override
