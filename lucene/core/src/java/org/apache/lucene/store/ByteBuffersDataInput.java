@@ -165,6 +165,36 @@ public final class ByteBuffersDataInput extends DataInput
       }
     }
   }
+  /**
+   * ReadBytes from position with length, if [pos, pos + len] stay in one ByteBuffer can ignore
+   * memory copy, otherwise return a new ByteBuffer with continuous byte array
+   *
+   * @param length from position to length
+   * @return ByteBuffer which bytes read from [pos, pos + length]
+   */
+  public ByteBuffer readBytes(int length) throws EOFException {
+    final long pos = this.pos;
+    if (length < 0 || length > this.size) {
+      throw new EOFException(
+          String.format(
+              Locale.ROOT, "read(pos=%s, length=%s) is out of bounds: %s", pos, length, this));
+    }
+
+    final int blockIndex = blockIndex(pos);
+    final int blockOffset = blockOffset(pos);
+    ByteBuffer block = blocks[blockIndex].duplicate();
+    block.position(blockOffset);
+    // if [pos, pos + len] stay in one ByteBuffer, we can ignore memory copy,
+    // otherwise need to copy bytes into a new ByteBuffer
+    if (block.remaining() >= length) {
+      this.pos += length;
+      return block.slice(blockOffset, length);
+    } else {
+      ByteBuffer copyBuffer = ByteBuffer.allocate(length);
+      readBytes(copyBuffer, length);
+      return copyBuffer.rewind().order(ByteOrder.LITTLE_ENDIAN);
+    }
+  }
 
   @Override
   public short readShort() throws IOException {
@@ -382,35 +412,6 @@ public final class ByteBuffersDataInput extends DataInput
     }
 
     return new ByteBuffersDataInput(sliceBufferList(Arrays.asList(this.blocks), offset, length));
-  }
-
-  /**
-   * From position with length can slice into one Bytebuffer
-   *
-   * @param offset abs position
-   * @param length from position to length
-   * @return if in ByteBuffer return it, else return null
-   */
-  public ByteBuffer sliceOne(long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.size) {
-      throw new IllegalArgumentException(
-          String.format(
-              Locale.ROOT,
-              "slice(offset=%s, length=%s) is out of bounds: %s",
-              offset,
-              length,
-              this));
-    }
-    long absPos = offset + this.offset;
-    int blockIndex = blockIndex(absPos);
-    int blockOffset = blockOffset(absPos);
-    ByteBuffer block = blocks[blockIndex].duplicate();
-    block.position(blockOffset).order(ByteOrder.LITTLE_ENDIAN);
-    if (block.remaining() >= length) {
-      return block.slice(blockOffset, (int) length);
-    } else {
-      return null;
-    }
   }
 
   @Override
