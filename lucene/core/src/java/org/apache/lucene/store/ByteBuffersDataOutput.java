@@ -317,13 +317,12 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
       if (!currentBlock.hasRemaining()) {
         appendBlock();
       }
-      if (currentBlock.isDirect()) {
+      if (!currentBlock.hasArray()) {
         break;
       }
       int chunk = Math.min(currentBlock.remaining(), length);
       final int pos = currentBlock.position();
-      byte[] blockArray = currentBlock.array();
-      input.readBytes(blockArray, pos, chunk);
+      input.readBytes(currentBlock.array(), Math.addExact(currentBlock.arrayOffset(), pos), chunk);
       length -= chunk;
       currentBlock.position(pos + chunk);
     }
