@@ -34,7 +34,7 @@ final class BooleanWeight extends Weight {
 
   final BooleanQuery query;
 
-  private static class WeightedBooleanClause {
+  protected static class WeightedBooleanClause {
     final BooleanClause clause;
     final Weight weight;
 
