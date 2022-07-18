@@ -385,7 +385,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       this.strictlyConsistent = indexCreatedVersionMajor >= 9;
     }
 
-    void verifyFieldInfo(FieldInfo fi) {
+    synchronized void verifyFieldInfo(FieldInfo fi) {
       String fieldName = fi.getName();
       verifySoftDeletedFieldName(fieldName, fi.isSoftDeletesField());
       if (nameToNumber.containsKey(fieldName)) {
