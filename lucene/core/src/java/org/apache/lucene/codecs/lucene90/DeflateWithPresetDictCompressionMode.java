@@ -166,7 +166,6 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     final BugfixDeflater_JDK8252739 deflaterBugfix;
     byte[] compressed;
     byte[] bufferDict;
-    byte[] bufferBlock;
     boolean closed;
 
     DeflateWithPresetDictCompressor(int level) {
@@ -174,35 +173,6 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
       deflaterBugfix = BugfixDeflater_JDK8252739.createBugfix(compressor);
       compressed = new byte[64];
       bufferDict = BytesRef.EMPTY_BYTES;
-      bufferBlock = BytesRef.EMPTY_BYTES;
-    }
-
-    private void doCompress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
-      if (len == 0) {
-        out.writeVInt(0);
-        return;
-      }
-      compressor.setInput(bytes, off, len);
-      compressor.finish();
-      if (compressor.needsInput()) {
-        throw new IllegalStateException();
-      }
-
-      int totalCount = 0;
-      for (; ; ) {
-        final int count =
-            compressor.deflate(compressed, totalCount, compressed.length - totalCount);
-        totalCount += count;
-        assert totalCount <= compressed.length;
-        if (compressor.finished()) {
-          break;
-        } else {
-          compressed = ArrayUtil.grow(compressed);
-        }
-      }
-
-      out.writeVInt(totalCount);
-      out.writeBytes(compressed, totalCount);
     }
 
     private void doCompress(ByteBuffer bytes, int len, DataOutput out) throws IOException {
@@ -236,7 +206,6 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     @Override
     public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
       final int len = (int) (buffersInput.size() - buffersInput.position());
-      final int end = (int) buffersInput.size();
       final int dictLength = len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR);
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
       out.writeVInt(dictLength);
@@ -246,24 +215,17 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
       compressor.reset();
       bufferDict = ArrayUtil.growNoCopy(bufferDict, dictLength);
       buffersInput.readBytes(bufferDict, 0, dictLength);
-      doCompress(bufferDict, 0, dictLength, out);
+      doCompress(ByteBuffer.wrap(bufferDict, 0, dictLength), dictLength, out);
 
       // And then sub blocks
-      for (int start = dictLength; start < end; start += blockLength) {
+      for (int start = dictLength; start < len; start += blockLength) {
         compressor.reset();
         deflaterBugfix.setDictionary(bufferDict, 0, dictLength);
         int l = Math.min(blockLength, len - start);
         // if [start,start + len] stay in one ByteBuffer, we can ignore memory copy
         // otherwise need to copy bytes into on continuous byte array
-        ByteBuffer bb = buffersInput.sliceOne(start, l);
-        if (bb != null) {
-          doCompress(bb, l, out);
-          buffersInput.skipBytes(l);
-        } else {
-          bufferBlock = ArrayUtil.growNoCopy(bufferBlock, l);
-          buffersInput.readBytes(bufferBlock, 0, l);
-          doCompress(bufferBlock, 0, l, out);
-        }
+        ByteBuffer bufferBlock = buffersInput.readBytes(l);
+        doCompress(bufferBlock, l, out);
       }
     }
 

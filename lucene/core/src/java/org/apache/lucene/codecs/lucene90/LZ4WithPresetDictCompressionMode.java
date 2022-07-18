@@ -170,7 +170,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     @Override
     public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
       final int len = (int) (buffersInput.size() - buffersInput.position());
-      final int end = (int) buffersInput.size();
       final int dictLength = len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR);
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
       buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
@@ -183,7 +182,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       doCompress(buffer, 0, dictLength, out);
 
       // And then sub blocks
-      for (int start = dictLength; start < end; start += blockLength) {
+      for (int start = dictLength; start < len; start += blockLength) {
         int l = Math.min(blockLength, len - start);
         buffersInput.readBytes(buffer, dictLength, l);
         doCompress(buffer, dictLength, l, out);

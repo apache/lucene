@@ -35,7 +35,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -247,11 +246,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     final boolean sliced = bufferedDocs.size() >= 2 * chunkSize;
     final boolean dirtyChunk = force;
     writeHeader(docBase, numBufferedDocs, numStoredFields, lengths, sliced, dirtyChunk);
-
+    ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
     // compress stored fields to fieldsStream.
     if (sliced) {
       // big chunk, slice it, using ByteBuffersDataInput ignore memory copy
-      ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
       final int capacity = (int) bytebuffers.size();
       for (int compressed = 0; compressed < capacity; compressed += chunkSize) {
         int l = Math.min(chunkSize, capacity - compressed);
@@ -259,7 +257,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         compressor.compress(bbdi, fieldsStream);
       }
     } else {
-      ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
       compressor.compress(bytebuffers, fieldsStream);
     }
 
@@ -518,13 +515,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     assert reader.getVersion() == VERSION_CURRENT;
     SerializedDocument doc = reader.document(docID);
     startDocument();
-
-    if (doc.in instanceof ByteArrayDataInput) {
-      // reuse ByteArrayDataInput to reduce memory copy
-      bufferedDocs.copyBytes((ByteArrayDataInput) doc.in, doc.length);
-    } else {
-      bufferedDocs.copyBytes(doc.in, doc.length);
-    }
+    bufferedDocs.copyBytes(doc.in, doc.length);
     numStoredFieldsInDoc = doc.numStoredFields;
     finishDocument();
   }
