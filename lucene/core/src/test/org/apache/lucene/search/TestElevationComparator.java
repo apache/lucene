@@ -37,12 +37,15 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestElevationComparator extends LuceneTestCase {
-
+  private Directory directory;
+  private IndexReader reader;
+  private IndexSearcher searcher;
   private final Map<BytesRef, Integer> priority = new HashMap<>();
 
-  // @Test
-  public void testSorting() throws Throwable {
-    Directory directory = newDirectory();
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    directory = newDirectory();
     IndexWriter writer =
         new IndexWriter(
             directory,
@@ -58,20 +61,29 @@ public class TestElevationComparator extends LuceneTestCase {
     writer.addDocument(
         adoc(new String[] {"id", "z", "title", "boosted boosted boosted", "str_s", "z"}));
 
-    IndexReader r = DirectoryReader.open(writer);
+    reader = DirectoryReader.open(writer);
     writer.close();
 
-    IndexSearcher searcher = newSearcher(r);
+    searcher = newSearcher(reader);
     searcher.setSimilarity(new BM25Similarity());
+  }
 
-    runTest(searcher, true);
-    runTest(searcher, false);
-
-    r.close();
+  @Override
+  public void tearDown() throws Exception {
+    super.tearDown();
+    reader.close();
     directory.close();
   }
 
-  private void runTest(IndexSearcher searcher, boolean reversed) throws Throwable {
+  public void testSorting() throws Throwable {
+    runTest(false);
+  }
+
+  public void testSortingReversed() throws Throwable {
+    runTest(true);
+  }
+
+  private void runTest(boolean reversed) throws Throwable {
 
     BooleanQuery.Builder newq = new BooleanQuery.Builder();
     TermQuery query = new TermQuery(new Term("title", "ipod"));

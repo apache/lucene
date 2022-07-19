@@ -63,7 +63,7 @@ configure(rootProject) {
             sourceFolder.setExcludes(["module-info.java"])
             return sourceFolder
           }
-          classpath.entries += jars.unique().findAll { location -> location.isFile() }.collect { location ->
+          classpath.entries += jars.unique().findAll { location -> location.isFile() && !(location.name ==~ /lucene-.*\.jar/) }.collect { location ->
             new LibEntry(location.toString())
           }
         }

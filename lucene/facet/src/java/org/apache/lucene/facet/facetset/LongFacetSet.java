@@ -14,13 +14,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
+package org.apache.lucene.facet.facetset;
 
-import org.apache.lucene.tests.util.LuceneTestCase;
+/**
+ * A {@link FacetSet} which encodes long dimension values.
+ *
+ * @lucene.experimental
+ */
+public class LongFacetSet extends FacetSet {
 
-public class TestSortedSetDocValues extends LuceneTestCase {
+  /** The raw dimension values of this facet set. */
+  public final long[] values;
 
-  public void testNoMoreOrdsConstant() {
-    assertEquals(SortedSetDocValues.NO_MORE_ORDS, -1);
+  /** Constructs a new instance of a facet set which stores {@code long} dimension values. */
+  public LongFacetSet(long... values) {
+    super(validateValuesAndGetNumDims(values));
+
+    this.values = values;
+  }
+
+  @Override
+  public long[] getComparableValues() {
+    return values;
+  }
+
+  private static int validateValuesAndGetNumDims(long... values) {
+    if (values == null || values.length == 0) {
+      throw new IllegalArgumentException("values cannot be null or empty");
+    }
+    return values.length;
   }
 }

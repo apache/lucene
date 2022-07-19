@@ -240,7 +240,15 @@ public final class ByteBlockPool implements Accountable {
    * pool.
    */
   public int allocSlice(final byte[] slice, final int upto) {
+    return allocKnownSizeSlice(slice, upto) >> 8;
+  }
 
+  /**
+   * Create a new byte slice with the given starting size return the slice offset in the pool and
+   * length. The lower 8 bits of the returned int represent the length of the slice, and the upper
+   * 24 bits represent the offset.
+   */
+  public int allocKnownSizeSlice(final byte[] slice, final int upto) {
     final int level = slice[upto] & 15;
     final int newLevel = NEXT_LEVEL_ARRAY[level];
     final int newSize = LEVEL_SIZE_ARRAY[newLevel];
@@ -268,7 +276,7 @@ public final class ByteBlockPool implements Accountable {
     // Write new level:
     buffer[byteUpto - 1] = (byte) (16 | newLevel);
 
-    return newUpto + 3;
+    return ((newUpto + 3) << 8) | (newSize - 3);
   }
 
   /**

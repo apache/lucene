@@ -37,6 +37,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Term;
@@ -83,6 +84,12 @@ public class IndexSearcher {
   static int maxClauseCount = 1024;
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
+  private QueryTimeout queryTimeout = null;
+  // partialResult may be set on one of the threads of the executor. It may be correct to not make
+  // this variable volatile since joining these threads should ensure a happens-before relationship
+  // that guarantees that writes become visible on the main thread, but making the variable volatile
+  // shouldn't hurt either.
+  private volatile boolean partialResult = false;
 
   static {
     final int maxCachedQueries = 1000;
@@ -484,6 +491,11 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
+  /** Set a {@link QueryTimeout} for all searches that run through this {@link IndexSearcher}. */
+  public void setTimeout(QueryTimeout queryTimeout) {
+    this.queryTimeout = queryTimeout;
+  }
+
   /**
    * Finds the top <code>n</code> hits for <code>query</code>.
    *
@@ -505,6 +517,11 @@ public class IndexSearcher {
   public void search(Query query, Collector results) throws IOException {
     query = rewrite(query, results.scoreMode().needsScores());
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
+  }
+
+  /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
+  public boolean timedOut() {
+    return partialResult;
   }
 
   /**
@@ -720,6 +737,9 @@ public class IndexSearcher {
       }
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
+        if (queryTimeout != null && queryTimeout.isTimeoutEnabled()) {
+          scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
+        }
         try {
           scorer.score(leafCollector, ctx.reader().getLiveDocs());
         } catch (
@@ -727,6 +747,10 @@ public class IndexSearcher {
             CollectionTerminatedException e) {
           // collection was terminated prematurely
           // continue with the following leaf
+        } catch (
+            @SuppressWarnings("unused")
+            TimeLimitingBulkScorer.TimeExceededException e) {
+          partialResult = true;
         }
       }
     }
