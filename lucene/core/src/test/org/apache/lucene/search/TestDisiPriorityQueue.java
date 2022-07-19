@@ -58,7 +58,8 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
       Arrays.sort(all, Comparator.comparingInt(w -> w.doc));
       DisiWrapper top = pq.top();
       assertEquals(all[0].doc, top.doc);
-      if (top.iterator.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
+      top.doc = top.iterator.nextDoc();
+      if (top.doc == DocIdSetIterator.NO_MORE_DOCS) {
         pq.pop();
       } else {
         pq.updateTop();
