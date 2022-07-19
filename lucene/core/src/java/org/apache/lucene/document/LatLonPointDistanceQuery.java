@@ -271,10 +271,7 @@ final class LatLonPointDistanceQuery extends Query {
           @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue)) {
-              int docID;
-              while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                visit(docID);
-              }
+              adder.add(iterator);
             }
           }
 
@@ -311,10 +308,7 @@ final class LatLonPointDistanceQuery extends Query {
           @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue) == false) {
-              int docID;
-              while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-                visit(docID);
-              }
+              visit(iterator);
             }
           }
 
