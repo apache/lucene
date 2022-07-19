@@ -39,22 +39,15 @@ import org.apache.lucene.util.RamUsageEstimator;
  * @lucene.experimental
  */
 public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
-  private FieldWriter[] fields;
+  private final List<FieldWriter> fields = new ArrayList<>();
 
   /** Sole constructor */
   protected BufferingKnnVectorsWriter() {}
 
   @Override
   public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
-    if (fields == null) {
-      fields = new FieldWriter[1];
-    } else {
-      FieldWriter[] newFields = new FieldWriter[fields.length + 1];
-      System.arraycopy(fields, 0, newFields, 0, fields.length);
-      fields = newFields;
-    }
     FieldWriter newField = new FieldWriter(fieldInfo);
-    fields[fields.length - 1] = newField;
+    fields.add(newField);
     return newField;
   }
 
@@ -121,12 +114,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
           }
 
           @Override
-          public void close() throws IOException {}
+          public void close() {}
 
           @Override
           public TopDocs search(
-              String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
-              throws IOException {
+              String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
             throw new UnsupportedOperationException();
           }
 
@@ -136,7 +128,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
           }
 
           @Override
-          public void checkIntegrity() throws IOException {}
+          public void checkIntegrity() {}
         };
     writeField(fieldInfo, knnVectorsReader, mergeState.segmentInfo.maxDoc());
   }

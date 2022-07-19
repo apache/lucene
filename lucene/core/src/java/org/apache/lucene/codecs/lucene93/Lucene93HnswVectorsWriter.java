@@ -64,7 +64,7 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
   private final int M;
   private final int beamWidth;
 
-  private FieldWriter[] fields;
+  private final List<FieldWriter> fields = new ArrayList<>();
   private boolean finished;
 
   Lucene93HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth) throws IOException {
@@ -121,15 +121,8 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
-    if (fields == null) {
-      fields = new FieldWriter[1];
-    } else {
-      FieldWriter[] newFields = new FieldWriter[fields.length + 1];
-      System.arraycopy(fields, 0, newFields, 0, fields.length);
-      fields = newFields;
-    }
     FieldWriter newField = new FieldWriter(fieldInfo, M, beamWidth, segmentWriteState.infoStream);
-    fields[fields.length - 1] = newField;
+    fields.add(newField);
     return newField;
   }
 
