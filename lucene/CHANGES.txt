@@ -60,6 +60,8 @@ Optimizations
 
 * GITHUB#1010: Specialize ordinal encoding for common case in SortedSetDocValues. (Greg Miller)
 
+* LUCENE-10657: CopyBytes now saves one memory copy on ByteBuffersDataOutput. (luyuncheng)
+
 Changes in runtime behavior
 ---------------------
 
