@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene90.compressing;
 
-import static org.apache.lucene.index.SortedSetDocValues.NO_MORE_ORDS;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
@@ -430,11 +430,10 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
           for (int j = 0; j < stringValues.length; j++) {
             assert docValues != null;
             long ord = docValues.nextOrd();
-            assert ord != NO_MORE_ORDS;
+            assert ord != NO_MORE_DOCS;
             BytesRef scratch = docValues.lookupOrd(ord);
             assertEquals(stringValues[j], scratch.utf8ToString());
           }
-          assertEquals(NO_MORE_ORDS, docValues.nextOrd());
         }
       }
     }
@@ -463,11 +462,10 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
           for (int j = 0; j < stringValues.length; j++) {
             assert docValues != null;
             long ord = docValues.nextOrd();
-            assert ord != NO_MORE_ORDS;
+            assert ord != NO_MORE_DOCS;
             BytesRef scratch = docValues.lookupOrd(ord);
             assertEquals(stringValues[j], scratch.utf8ToString());
           }
-          assertEquals(NO_MORE_ORDS, docValues.nextOrd());
         }
       }
     }
