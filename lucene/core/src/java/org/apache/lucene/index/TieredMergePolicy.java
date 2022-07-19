@@ -878,7 +878,7 @@ public class TieredMergePolicy extends MergePolicy {
       // segments or that create a segment close to the
       // maximum allowed segment sized are permitted
       if (candidateSize > 1
-          && (forceMergeRunning == false || candidateSize > 0.7 * maxMergeBytes)) {
+          && (forceMergeRunning == false || currentCandidateBytes > 0.7 * maxMergeBytes)) {
         final OneMerge merge = new OneMerge(candidate);
         if (verbose(mergeContext)) {
           message("add merge=" + segString(mergeContext, merge.segments), mergeContext);

@@ -94,6 +94,8 @@ Bug Fixes
 
 * LUCENE-10623: Error implementation of docValueCount for SortingSortedSetDocValues (Lu Xugang)
 
+* GITHUB#1028: Fix error in TieredMergePolicy (Lin Jian)
+
 Other
 ---------------------
 
