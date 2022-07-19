@@ -141,6 +141,8 @@ Optimizations
 * GITHUB#1007: Optimize IntersectVisitor#visit implementations for certain bulk-add cases.
   (Greg Miller)
 
+* LUCENE-10653: BlockMaxMaxscoreScorer uses heapify instead of individual adds. (Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
