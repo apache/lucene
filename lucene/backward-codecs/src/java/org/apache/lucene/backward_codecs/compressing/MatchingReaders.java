@@ -36,6 +36,7 @@ public class MatchingReaders {
   /** How many {@link #matchingReaders} are set. */
   final int count;
 
+  /** Sole constructor constructor */
   public MatchingReaders(MergeState mergeState) {
     // If the i'th reader is a SegmentReader and has
     // identical fieldName -> number mapping, then this
