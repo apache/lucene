@@ -54,8 +54,7 @@ Improvements
 
 Optimizations
 ---------------------
-
-* LUCENE-10657: CopyBytes now saves one memory copy on ByteBuffersDataOutput. (luyuncheng)
+(No changes)
 
 Bug Fixes
 ---------------------
@@ -136,6 +135,8 @@ Optimizations
   #getAllChildren() internal implementation to avoid some garbage creation. (Greg Miller)
 
 * GITHUB#1010: Specialize ordinal encoding for common case in SortedSetDocValues. (Greg Miller)
+
+* LUCENE-10657: CopyBytes now saves one memory copy on ByteBuffersDataOutput. (luyuncheng)
 
 Changes in runtime behavior
 ---------------------
