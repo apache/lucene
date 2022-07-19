@@ -174,7 +174,7 @@ public final class ByteBuffersDataInput extends DataInput
    */
   public ByteBuffer readBytes(int length) throws EOFException {
     final long pos = this.pos;
-    if (length < 0 || length > this.size) {
+    if (length < 0 || (pos - offset + length) > this.size) {
       throw new EOFException(
           String.format(
               Locale.ROOT, "read(pos=%s, length=%s) is out of bounds: %s", pos, length, this));

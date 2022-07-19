@@ -42,7 +42,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10627: Using ByteBuffersDataInput reduce memory copy on compressing data. (luyuncheng)
 
 Bug Fixes
 ---------------------
