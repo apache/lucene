@@ -26,6 +26,9 @@ public abstract class KnnFieldVectorsWriter implements Accountable {
   /** Sole constructor */
   protected KnnFieldVectorsWriter() {}
 
-  /** Add new docID with its vector value to the given field for indexing */
+  /**
+   * Add new docID with its vector value to the given field for indexing. Doc IDs must be added in
+   * increasing order.
+   */
   public abstract void addValue(int docID, float[] vectorValue) throws IOException;
 }

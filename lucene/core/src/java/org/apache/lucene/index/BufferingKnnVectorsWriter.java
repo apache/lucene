@@ -111,9 +111,34 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-      throws IOException {
-    writeField(fieldInfo, knnVectorsReader, -1);
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    KnnVectorsReader knnVectorsReader =
+        new KnnVectorsReader() {
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
+
+          @Override
+          public void close() throws IOException {}
+
+          @Override
+          public TopDocs search(
+              String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+              throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public VectorValues getVectorValues(String field) throws IOException {
+            return MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+          }
+
+          @Override
+          public void checkIntegrity() throws IOException {}
+        };
+    writeField(fieldInfo, knnVectorsReader, mergeState.segmentInfo.maxDoc());
   }
 
   /** Write the provided field */

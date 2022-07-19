@@ -152,7 +152,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
-          maxDoc >= 0 ? maxDoc : segmentWriteState.segmentInfo.maxDoc(),
+          maxDoc,
           vectorDataOffset,
           vectorDataLength,
           vectorIndexOffset,

@@ -38,6 +38,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -188,10 +189,9 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         }
 
         @Override
-        public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-            throws IOException {
+        public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.mergeOneField(fieldInfo, knnVectorsReader);
+          writer.mergeOneField(fieldInfo, mergeState);
         }
 
         @Override

@@ -26,9 +26,8 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
@@ -44,8 +43,15 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 
   /** Write field for merging */
-  public abstract void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-      throws IOException;
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    KnnFieldVectorsWriter writer = addField(fieldInfo);
+    VectorValues mergedValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+    for (int doc = mergedValues.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = mergedValues.nextDoc()) {
+      writer.addValue(doc, mergedValues.vectorValue());
+    }
+  }
 
   /** Called once at the end before close */
   public abstract void finish() throws IOException;
@@ -70,35 +76,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
         }
 
-        mergeOneField(
-            fieldInfo,
-            new KnnVectorsReader() {
-              @Override
-              public long ramBytesUsed() {
-                return 0;
-              }
-
-              @Override
-              public void close() {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public void checkIntegrity() {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public VectorValues getVectorValues(String field) throws IOException {
-                return MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
-              }
-
-              @Override
-              public TopDocs search(
-                  String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-                throw new UnsupportedOperationException();
-              }
-            });
+        mergeOneField(fieldInfo, mergeState);
 
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
@@ -126,7 +104,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   }
 
   /** View over multiple VectorValues supporting iterator-style access via DocIdMerger. */
-  private static class MergedVectorValues extends VectorValues {
+  protected static class MergedVectorValues extends VectorValues {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
     private final int cost;
@@ -136,7 +114,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     private VectorValuesSub current;
 
     /** Returns a merged view over all the segment's {@link VectorValues}. */
-    static MergedVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+    public static MergedVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
 

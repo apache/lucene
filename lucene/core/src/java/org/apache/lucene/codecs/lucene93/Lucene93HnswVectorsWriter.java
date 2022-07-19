@@ -28,12 +28,12 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
-import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
@@ -349,10 +349,9 @@ public final class Lucene93HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-      throws IOException {
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
+    VectorValues vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
 
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(

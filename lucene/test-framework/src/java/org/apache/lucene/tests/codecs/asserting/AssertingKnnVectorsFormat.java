@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
@@ -70,15 +71,10 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void mergeOneField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-        throws IOException {
+    public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       assert fieldInfo != null;
-      assert knnVectorsReader != null;
-      // assert that knnVectorsReader#getVectorValues returns different instances upon repeated
-      // calls
-      assert knnVectorsReader.getVectorValues(fieldInfo.name)
-          != knnVectorsReader.getVectorValues(fieldInfo.name);
-      delegate.mergeOneField(fieldInfo, knnVectorsReader);
+      assert mergeState != null;
+      delegate.mergeOneField(fieldInfo, mergeState);
     }
 
     @Override
