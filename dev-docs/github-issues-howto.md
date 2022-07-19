@@ -21,7 +21,7 @@ under the License.
 
 ## Issue labels
 
-There are a few pre-fixed label families to organize/search issues.
+There are a few pre-defined label families to organize/search issues.
 
 - `type` : issue type
   - `type:bug` is attached to bug reports
