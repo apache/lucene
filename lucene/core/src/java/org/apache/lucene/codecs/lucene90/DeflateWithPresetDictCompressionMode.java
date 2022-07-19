@@ -163,16 +163,12 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
   private static class DeflateWithPresetDictCompressor extends Compressor {
 
     final Deflater compressor;
-    final BugfixDeflater_JDK8252739 deflaterBugfix;
     byte[] compressed;
-    byte[] bufferDict;
     boolean closed;
 
     DeflateWithPresetDictCompressor(int level) {
       compressor = new Deflater(level, true);
-      deflaterBugfix = BugfixDeflater_JDK8252739.createBugfix(compressor);
       compressed = new byte[64];
-      bufferDict = BytesRef.EMPTY_BYTES;
     }
 
     private void doCompress(ByteBuffer bytes, int len, DataOutput out) throws IOException {
@@ -213,17 +209,14 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
 
       // Compress the dictionary first
       compressor.reset();
-      bufferDict = ArrayUtil.growNoCopy(bufferDict, dictLength);
-      buffersInput.readBytes(bufferDict, 0, dictLength);
-      doCompress(ByteBuffer.wrap(bufferDict, 0, dictLength), dictLength, out);
+      ByteBuffer bufferDict = buffersInput.readBytes(dictLength);
+      doCompress(bufferDict, dictLength, out);
 
       // And then sub blocks
       for (int start = dictLength; start < len; start += blockLength) {
         compressor.reset();
-        deflaterBugfix.setDictionary(bufferDict, 0, dictLength);
+        compressor.setDictionary(bufferDict);
         int l = Math.min(blockLength, len - start);
-        // if [start,start + len] stay in one ByteBuffer, we can ignore memory copy
-        // otherwise need to copy bytes into on continuous byte array
         ByteBuffer bufferBlock = buffersInput.readBytes(l);
         doCompress(bufferBlock, l, out);
       }
