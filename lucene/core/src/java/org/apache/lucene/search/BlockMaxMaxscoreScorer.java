@@ -158,9 +158,10 @@ class BlockMaxMaxscoreScorer extends Scorer {
             // list adjusted
             if (removedEssentialScorer) {
               essentialsScorers.clear();
-              for (int i = firstEssentialScorerIndex; i < allScorers.length; ++i) {
-                essentialsScorers.add(allScorers[i]);
-              }
+              essentialsScorers.addAll(
+                  allScorers,
+                  firstEssentialScorerIndex,
+                  allScorers.length - firstEssentialScorerIndex);
             }
           }
 
@@ -199,7 +200,6 @@ class BlockMaxMaxscoreScorer extends Scorer {
           }
 
           private void repartitionLists() {
-            essentialsScorers.clear();
             firstEssentialScorerIndex = 0;
             Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxScore));
 
@@ -214,9 +214,11 @@ class BlockMaxMaxscoreScorer extends Scorer {
               firstEssentialScorerIndex++;
               nonEssentialMaxScoreSum += w.maxScore;
             }
-            for (int i = firstEssentialScorerIndex; i < allScorers.length; ++i) {
-              essentialsScorers.add(allScorers[i]);
-            }
+            essentialsScorers.clear();
+            essentialsScorers.addAll(
+                allScorers,
+                firstEssentialScorerIndex,
+                allScorers.length - firstEssentialScorerIndex);
           }
 
           @Override
