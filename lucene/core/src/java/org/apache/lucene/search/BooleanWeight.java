@@ -220,7 +220,6 @@ final class BooleanWeight extends Weight {
 
       return new BulkScorer() {
         final Scorer bmmScorer = new BlockMaxMaxscoreScorer(BooleanWeight.this, optionalScorers);
-        final int maxDoc = context.reader().maxDoc();
         final DocIdSetIterator iterator = bmmScorer.iterator();
 
         @Override
@@ -228,25 +227,23 @@ final class BooleanWeight extends Weight {
             throws IOException {
           collector.setScorer(bmmScorer);
 
-          int doc = min;
-          while (true) {
-            doc = iterator.advance(doc);
-
-            if (doc >= max) {
-              return doc;
-            }
-
+          int doc = bmmScorer.docID();
+          if (doc < min) {
+            doc = iterator.advance(min);
+          }
+          while (doc < max) {
             if (acceptDocs == null || acceptDocs.get(doc)) {
               collector.collect(doc);
             }
 
-            doc++;
+            doc = iterator.nextDoc();
           }
+          return doc;
         }
 
         @Override
         public long cost() {
-          return maxDoc;
+          return iterator.cost();
         }
       };
     }
