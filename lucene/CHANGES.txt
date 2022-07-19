@@ -54,7 +54,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10657: CopyBytes now saves one memory copy on ByteBuffersDataOutput. (luyuncheng)
 
 Bug Fixes
 ---------------------
