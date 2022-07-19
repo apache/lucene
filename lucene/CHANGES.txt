@@ -62,6 +62,9 @@ Optimizations
 
 * LUCENE-10657: CopyBytes now saves one memory copy on ByteBuffersDataOutput. (luyuncheng)
 
+* GITHUB#1007: Optimize IntersectVisitor#visit implementations for certain bulk-add cases.
+  (Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
