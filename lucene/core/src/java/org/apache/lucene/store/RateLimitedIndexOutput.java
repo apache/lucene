@@ -94,6 +94,13 @@ public final class RateLimitedIndexOutput extends IndexOutput {
     delegate.writeLong(i);
   }
 
+  @Override
+  public void copyBytes(DataInput input, long numBytes) throws IOException {
+    bytesSinceLastPause += Integer.BYTES;
+    checkRate();;
+    delegate.copyBytes(input, numBytes);
+  }
+
   private void checkRate() throws IOException {
     if (bytesSinceLastPause > currentMinPauseCheckBytes) {
       rateLimiter.pause(bytesSinceLastPause);
