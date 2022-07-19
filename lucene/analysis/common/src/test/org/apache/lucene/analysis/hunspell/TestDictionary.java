@@ -28,6 +28,7 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -275,7 +276,9 @@ public class TestDictionary extends LuceneTestCase {
     DictEntries simpleNoun = dic.lookupEntries("simplenoun");
     assertEquals(1, simpleNoun.size());
     assertEquals(Collections.emptyList(), simpleNoun.getMorphologicalValues(0, "aa:"));
-    assertEquals(Collections.singletonList("42"), simpleNoun.getMorphologicalValues(0, "fr:"));
+    assertEquals(List.of("42"), simpleNoun.getMorphologicalValues(0, "fr:"));
+    assertEquals(List.of("42"), simpleNoun.get(0).getMorphologicalValues("fr:"));
+    assertEquals("A", simpleNoun.get(0).getFlags());
 
     DictEntries lay = dic.lookupEntries("lay");
     String actual =

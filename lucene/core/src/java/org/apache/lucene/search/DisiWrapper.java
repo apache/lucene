@@ -37,7 +37,10 @@ public class DisiWrapper {
   public final TwoPhaseIterator twoPhaseView;
 
   // For WANDScorer
-  long maxScore;
+  long scaledMaxScore;
+
+  // For BlockMaxMaxscoreScorer
+  float maxScore;
 
   public DisiWrapper(Scorer scorer) {
     this.scorer = scorer;

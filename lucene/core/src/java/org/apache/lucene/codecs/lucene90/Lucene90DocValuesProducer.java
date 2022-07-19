@@ -1432,23 +1432,149 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.singleton(getSorted(entry.singleValueEntry));
     }
 
-    final SortedNumericDocValues ords = getSortedNumeric(entry.ordsEntry);
-    return new BaseSortedSetDocValues(entry, data) {
+    // Specialize the common case for ordinals: single block of packed integers.
+    SortedNumericEntry ordsEntry = entry.ordsEntry;
+    if (ordsEntry.blockShift < 0 && ordsEntry.bitsPerValue > 0) {
+      if (ordsEntry.gcd != 1 || ordsEntry.minValue != 0 || ordsEntry.table != null) {
+        throw new IllegalStateException("Ordinals shouldn't use GCD, offset or table compression");
+      }
 
-      int i = 0;
-      int count = 0;
-      boolean set = false;
+      final RandomAccessInput addressesInput =
+          data.randomAccessSlice(ordsEntry.addressesOffset, ordsEntry.addressesLength);
+      final LongValues addresses =
+          DirectMonotonicReader.getInstance(ordsEntry.addressesMeta, addressesInput);
+
+      final RandomAccessInput slice =
+          data.randomAccessSlice(ordsEntry.valuesOffset, ordsEntry.valuesLength);
+      final LongValues values = DirectReader.getInstance(slice, ordsEntry.bitsPerValue);
+
+      if (ordsEntry.docsWithFieldOffset == -1) { // dense
+        return new BaseSortedSetDocValues(entry, data) {
+
+          private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
+          private int doc = -1;
+          private long curr;
+          private int count;
+
+          @Override
+          public long nextOrd() throws IOException {
+            return values.get(curr++);
+          }
+
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            curr = addresses.get(target);
+            long end = addresses.get(target + 1L);
+            count = (int) (end - curr);
+            doc = target;
+            return true;
+          }
+
+          @Override
+          public int docValueCount() {
+            return count;
+          }
+
+          @Override
+          public int docID() {
+            return doc;
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            return advance(doc + 1);
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            if (target >= maxDoc) {
+              return doc = NO_MORE_DOCS;
+            }
+            curr = addresses.get(target);
+            long end = addresses.get(target + 1L);
+            count = (int) (end - curr);
+            return doc = target;
+          }
+
+          @Override
+          public long cost() {
+            return maxDoc;
+          }
+        };
+      } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
+        final IndexedDISI disi =
+            new IndexedDISI(
+                data,
+                ordsEntry.docsWithFieldOffset,
+                ordsEntry.docsWithFieldLength,
+                ordsEntry.jumpTableEntryCount,
+                ordsEntry.denseRankPower,
+                ordsEntry.numValues);
+
+        return new BaseSortedSetDocValues(entry, data) {
+
+          boolean set;
+          long curr;
+          int count;
+
+          @Override
+          public long nextOrd() throws IOException {
+            set();
+            return values.get(curr++);
+          }
+
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            set = false;
+            return disi.advanceExact(target);
+          }
+
+          @Override
+          public int docValueCount() {
+            set();
+            return count;
+          }
+
+          @Override
+          public int docID() {
+            return disi.docID();
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            set = false;
+            return disi.nextDoc();
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            set = false;
+            return disi.advance(target);
+          }
+
+          @Override
+          public long cost() {
+            return disi.cost();
+          }
+
+          private void set() {
+            if (set == false) {
+              final int index = disi.index();
+              curr = addresses.get(index);
+              long end = addresses.get(index + 1L);
+              count = (int) (end - curr);
+              set = true;
+            }
+          }
+        };
+      }
+    }
+
+    final SortedNumericDocValues ords = getSortedNumeric(ordsEntry);
+    return new BaseSortedSetDocValues(entry, data) {
 
       @Override
       public long nextOrd() throws IOException {
-        if (set == false) {
-          set = true;
-          i = 0;
-          count = ords.docValueCount();
-        }
-        if (i++ == count) {
-          return NO_MORE_ORDS;
-        }
         return ords.nextValue();
       }
 
@@ -1459,7 +1585,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        set = false;
         return ords.advanceExact(target);
       }
 
@@ -1470,13 +1595,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public int nextDoc() throws IOException {
-        set = false;
         return ords.nextDoc();
       }
 
       @Override
       public int advance(int target) throws IOException {
-        set = false;
         return ords.advance(target);
       }
 

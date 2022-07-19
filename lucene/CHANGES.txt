@@ -29,16 +29,28 @@ API Changes
 
 * LUCENE-10266: Move nearest-neighbor search on points to core. (Rushabh Shah)
 
+* LUCENE-10603: Remove SortedSetDocValues#NO_MORE_ORDS definition. (Greg Miller)
+
 New Features
 ---------------------
 
 * LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
+
+* LUCENE-10151 Enable timeout support in IndexSearcher. (Deepika Sharma)
+
+* LUCENE-10626 Hunspell: add tools to aid dictionary editing:
+  analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
 
 Improvements
 ---------------------
 
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
+
+* LUCENE-10216: Use MergePolicy to define and MergeScheduler to trigger the reader merges
+  required by addIndexes(CodecReader[]) API. (Vigya Sharma, Michael McCandless)
+
+* LUCENE-10614: Properly support getTopChildren in RangeFacetCounts. (Yuting Gan)
 
 Optimizations
 ---------------------
@@ -68,6 +80,8 @@ Other
 
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
 
+* GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
+
 ======================== Lucene 9.3.0 =======================
 
 API Changes
@@ -76,9 +90,15 @@ API Changes
 * LUCENE-10603: SortedSetDocValues#NO_MORE_ORDS marked @deprecated in favor of iterating with
   SortedSetDocValues#docValueCount(). (Greg Miller)
 
+* GITHUB#978: Deprecate (remove in Lucene 10) obsolete constants in oal.util.Constants; remove
+  code which is no longer executed after Java 9. (Uwe Schindler)
+
 New Features
 ---------------------
 * LUCENE-10550: Add getAllChildren functionality to facets (Yuting Gan)
+
+* LUCENE-10274: Added facetsets module for high dimensional (hyper-rectangle) faceting
+(Shai Erera, Marc D'Mello, Greg Miller)
 
 Improvements
 ---------------------
@@ -89,8 +109,13 @@ Improvements
 * LUCENE-10585: Facet module code cleanup (copy/paste scrubbing, simplification and some very minor
   optimization tweaks). (Greg Miller)
 
-* LUCENE-10603: Update SortedSetDocValues iteration within faceting implementations to use
-  SortedSetDocValues#docValueCount(). (Greg Miller)
+* LUCENE-10603: Update SortedSetDocValues iteration to use SortedSetDocValues#docValueCount().
+  (Greg Miller, Stefan Vodita)
+
+
+* LUCENE-10619: Optimize the writeBytes in TermsHashPerField. (Tang Donghai)
+
+* GITHUB#983: AbstractSortedSetDocValueFacetCounts internal code cleanup/refactoring. (Greg Miller)
 
 Optimizations
 ---------------------
@@ -100,6 +125,23 @@ Optimizations
   (Adrien Grand)
 
 * LUCENE-10618: Implement BooleanQuery rewrite rules based for minimumShouldMatch. (Fang Hou)
+
+* LUCENE-10480: Implement Block-Max-Maxscore scorer for 2 clauses disjunction. (Zach Chen, Adrien Grand)
+
+* LUCENE-10606: For KnnVectorQuery, optimize case where filter is backed by BitSetIterator (Kaival Parikh)
+
+* LUCENE-10593: Vector similarity function and NeighborQueue reverse removal. (Alessandro Benedetti)
+
+* GITHUB#984: Use primitive type data structures in FloatTaxonomyFacets and IntTaxonomyFacets
+  #getAllChildren() internal implementation to avoid some garbage creation. (Greg Miller)
+
+* GITHUB#1010: Specialize ordinal encoding for common case in SortedSetDocValues. (Greg Miller)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#978: IndexWriter diagnostics written to index only contain java's runtime version
+  and vendor. (Uwe Schindler)
 
 Bug Fixes
 ---------------------
@@ -125,8 +167,14 @@ Bug Fixes
 
 * LUCENE-10607: Fix potential integer overflow in maxArcs computions (Tang Donghai)
 
+* GITHUB#986: Fix FieldExistsQuery rewrite when all docs have vectors. (Julie Tibshirani)
+
+* LUCENE-10623: Error implementation of docValueCount for SortingSortedSetDocValues (Lu Xugang)
+
 Other
 ---------------------
+
+* GITHUB#991: Update randomizedtesting to 2.8.0, hppc to 0.9.1, morfologik to 2.1.9. (Dawid Weiss)
 
 * LUCENE-10370: pass proper classpath/module arguments for forking jvms from within tests. (Dawid Weiss)
 
@@ -134,6 +182,12 @@ Other
   (Craig Taverner)
 
 * GITHUB#922: Remove unused and confusing FacetField indexing options (Gautam Worah)
+
+Build
+---------------------
+
+* GITHUB#976: Exclude Lucene's own JAR files from classpath entries in Eclipse config.
+  (Uwe Schindler)
 
 ======================= Lucene 9.2.0 =======================
 
