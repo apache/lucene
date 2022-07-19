@@ -21,7 +21,7 @@ under the License.
 
 ## Issue labels
 
-There are a few pre-fixed label families to organize/search issues.
+There are a few pre-defined label families to organize/search issues.
 
 - `type` : issue type
   - `type:bug` is attached to bug reports
@@ -29,22 +29,25 @@ There are a few pre-fixed label families to organize/search issues.
   - `type:test` is attached to test improvements or failure reports
   - `type:task` is attached to general tasks
   - `type:documentation` is attached to tasks relate to documentation
-- `fixVersion` : the versions in which a bug or enhancement is planned to be released
+- `fix-version` : the versions in which a bug or enhancement is planned to be released
   - this may be used for release planning
-  - (example) `fixVersion:10.0.0`
-- `affectsVersion` : the versions in which a bug was found 
+  - (example) `fix-version:10.0.0`
+- `affects-version` : the versions in which a bug was found 
   - this may be used with `type:bug` 
-  - (example) `affectsVersion:9.1.0`
-- `component` : Lucene components
-  - (example) `components:module/core/index`, `component:module/analysis`
+  - (example) `affects-version:9.1.0`
+- `module` : Lucene module
+  - (example) `module:core/index`, `module:analysis`
+- `tool` : tooling
+  - (example) `tool:build`, `tool:release-wizard`
 
-A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `component` may be manually added by committers.
+A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `fix-version` may be manually added by committers.
 
 If necessary, uncategorized labels may also be used.
 
 - `good first issue`
 - `discuss`
 - `duplicate`
+- `website`
 
 Committers can add/edit labels manually or programmatically using [Labels API](https://docs.github.com/en/rest/issues/labels).
 
