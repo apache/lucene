@@ -284,4 +284,42 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
       }
     }
   }
+
+  @Test
+  public void testReadNBytes() throws Exception {
+    ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
+    ByteBuffer bytes = ByteBuffer.wrap(randomBytesOfLength(1024 * 8));
+    dst.writeBytes(bytes);
+    ByteBuffersDataInput in = dst.toDataInput();
+    int offset = 0;
+    int window = randomIntBetween(512, 1024);
+    while (offset < bytes.limit()) {
+      int l = Math.min(window, bytes.limit() - offset);
+      ByteBuffer bb = in.readNBytes(l);
+      assertEquals(bytes.slice(offset, l).compareTo(bb), 0);
+      offset += l;
+    }
+    assertEquals(0, in.slice((int) dst.size(), 0).size());
+  }
+
+  @Test
+  public void testEofReadNBytes() throws Exception {
+    ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
+    ByteBuffer bytes = ByteBuffer.wrap(randomBytesOfLength(1024 * 8));
+    dst.writeBytes(bytes);
+    ByteBuffersDataInput in = dst.toDataInput();
+    int offset = 0;
+    int window = randomIntBetween(512, 1024);
+    while (offset < bytes.limit()) {
+      int l = Math.min(window, bytes.limit() - offset);
+      ByteBuffer bb = in.readNBytes(l);
+      assertEquals(bytes.slice(offset, l).compareTo(bb), 0);
+      offset += l;
+    }
+    LuceneTestCase.expectThrows(
+        EOFException.class,
+        () -> {
+          in.readNBytes(window);
+        });
+  }
 }

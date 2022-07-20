@@ -171,7 +171,8 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
       compressed = new byte[64];
     }
 
-    private void doCompress(ByteBuffer bytes, int len, DataOutput out) throws IOException {
+    private void doCompress(ByteBuffer bytes, DataOutput out) throws IOException {
+      int len = bytes.remaining();
       if (len == 0) {
         out.writeVInt(0);
         return;
@@ -209,16 +210,16 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
 
       // Compress the dictionary first
       compressor.reset();
-      ByteBuffer bufferDict = buffersInput.readBytes(dictLength);
-      doCompress(bufferDict, dictLength, out);
+      ByteBuffer bufferDict = buffersInput.readNBytes(dictLength);
+      doCompress(bufferDict, out);
 
       // And then sub blocks
       for (int start = dictLength; start < len; start += blockLength) {
         compressor.reset();
         compressor.setDictionary(bufferDict);
         int l = Math.min(blockLength, len - start);
-        ByteBuffer bufferBlock = buffersInput.readBytes(l);
-        doCompress(bufferBlock, l, out);
+        ByteBuffer bufferBlock = buffersInput.readNBytes(l);
+        doCompress(bufferBlock, out);
       }
     }
 

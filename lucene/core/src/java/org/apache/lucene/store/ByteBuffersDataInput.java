@@ -165,6 +165,7 @@ public final class ByteBuffersDataInput extends DataInput
       }
     }
   }
+
   /**
    * ReadBytes from position with length, if [pos, pos + len] stay in one ByteBuffer can ignore
    * memory copy, otherwise return a new ByteBuffer with continuous byte array
@@ -172,7 +173,7 @@ public final class ByteBuffersDataInput extends DataInput
    * @param length from position to length
    * @return ByteBuffer which bytes read from [pos, pos + length]
    */
-  public ByteBuffer readBytes(int length) throws EOFException {
+  public ByteBuffer readNBytes(int length) throws EOFException {
     final long pos = this.pos;
     if (length < 0 || (pos - offset + length) > this.size) {
       throw new EOFException(
