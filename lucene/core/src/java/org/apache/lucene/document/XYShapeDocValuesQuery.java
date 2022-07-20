@@ -16,21 +16,34 @@
  */
 package org.apache.lucene.document;
 
-import static org.apache.lucene.geo.XYEncodingUtils.encode;
+import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.Geometry;
+import org.apache.lucene.geo.XYGeometry;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * Bounding Box query for {@link ShapeDocValuesField} representing {@link XYShape}
  *
  * @lucene.experimental
  */
-final class XYShapeDocValuesBoundingBoxQuery extends BaseShapeDocValuesBoundingBoxQuery {
-  XYShapeDocValuesBoundingBoxQuery(
-      String field,
-      ShapeField.QueryRelation queryRelation,
-      float minX,
-      float maxX,
-      float minY,
-      float maxY) {
-    super(field, queryRelation, encode(minX), encode(maxX), encode(minY), encode(maxY));
+final class XYShapeDocValuesQuery extends BaseShapeDocValuesQuery {
+  XYShapeDocValuesQuery(
+      String field, ShapeField.QueryRelation queryRelation, XYGeometry... geometries) {
+    super(field, queryRelation, geometries);
+  }
+
+  @Override
+  protected Component2D createComponent2D(Geometry... geometries) {
+    return XYGeometry.create((XYGeometry[]) geometries);
+  }
+
+  @Override
+  protected ShapeDocValuesField getShapeDocValues(String fieldName, BytesRef binaryValue) {
+    return XYShape.createDocValueField(fieldName, binaryValue);
+  }
+
+  @Override
+  protected SpatialVisitor getSpatialVisitor() {
+    return XYShapeQuery.getSpatialVisitor(queryComponent2D);
   }
 }

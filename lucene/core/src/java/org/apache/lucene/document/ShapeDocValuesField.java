@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.ShapeField.DecodedTriangle.TYPE;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.document.SpatialQuery.EncodedRectangle;
+import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues.Relation;
@@ -35,11 +36,25 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
-/** A doc values field representation for {@link LatLonShape} and {@link XYShape} */
-public final class ShapeDocValuesField extends Field {
-  private final ShapeComparator shapeComparator;
+/**
+ * A doc values field representation for {@link LatLonShape} and {@link XYShape}
+ *
+ * <p>Note that this class cannot be instantiated directly due to different encodings {@link
+ * org.apache.lucene.geo.XYEncodingUtils} and {@link org.apache.lucene.geo.GeoEncodingUtils}
+ *
+ * <p>Concrete Implementations include: {@link LatLonShapeDocValueField} and {@link
+ * XYShapeDocValueField}
+ *
+ * @lucene.experimental
+ */
+abstract class ShapeDocValuesField extends Field {
+  /** doc value format version; used to support bwc for any encoding changes */
+  protected static final byte VERSION = 0;
 
-  private static final FieldType FIELD_TYPE = new FieldType();
+  /** the geometry comparator used to check relations */
+  protected final ShapeComparator shapeComparator;
+
+  protected static final FieldType FIELD_TYPE = new FieldType();
 
   static {
     FIELD_TYPE.setDocValuesType(DocValuesType.BINARY);
@@ -99,21 +114,6 @@ public final class ShapeDocValuesField extends Field {
     return null;
   }
 
-  /** create a shape docvalue field from indexable fields */
-  public static ShapeDocValuesField createDocValueField(String fieldName, Field[] indexableFields) {
-    ArrayList<ShapeField.DecodedTriangle> tess = new ArrayList<>(indexableFields.length);
-    final byte[] scratch = new byte[7 * Integer.BYTES];
-    for (Field f : indexableFields) {
-      BytesRef br = f.binaryValue();
-      assert br.length == 7 * ShapeField.BYTES;
-      System.arraycopy(br.bytes, br.offset, scratch, 0, 7 * ShapeField.BYTES);
-      ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
-      ShapeField.decodeTriangle(scratch, t);
-      tess.add(t);
-    }
-    return new ShapeDocValuesField(fieldName, tess);
-  }
-
   /** Returns the number of terms (tessellated triangles) for this shape */
   public int numberOfTerms() {
     return shapeComparator.numberOfTerms();
@@ -127,10 +127,8 @@ public final class ShapeDocValuesField extends Field {
     //  return new ShapeDocValuesQuery(field, relation, geometries);
   }
 
-  /** Compute the spatial relation of this shape and a bounding box (in encoded space) */
-  public Relation relate(final int minX, final int maxX, final int minY, final int maxY)
-      throws IOException {
-    return shapeComparator.relate(minX, maxX, minY, maxY);
+  public Relation relate(final Component2D component) throws IOException {
+    return shapeComparator.relate(component);
   }
 
   /** returns the min x value for the shape's bounding box */
@@ -184,7 +182,7 @@ public final class ShapeDocValuesField extends Field {
   }
 
   /** main entry point to build the tessellation tree * */
-  public TreeNode buildTree(
+  private TreeNode buildTree(
       List<ShapeField.DecodedTriangle> tessellation, List<TreeNode> dfsSerialized)
       throws IOException {
     if (tessellation.size() == 1) {
@@ -309,10 +307,14 @@ public final class ShapeDocValuesField extends Field {
     newNode.right = createTree(triangles, mid + 1, high, !splitX, newNode, dfsSerialized);
     // pull up values to this node
     if (newNode.left != null) {
+      newNode.minX = Math.min(newNode.minX, newNode.left.minX);
+      newNode.minY = Math.min(newNode.minY, newNode.left.minY);
       newNode.maxX = Math.max(newNode.maxX, newNode.left.maxX);
       newNode.maxY = Math.max(newNode.maxY, newNode.left.maxY);
     }
     if (newNode.right != null) {
+      newNode.minX = Math.min(newNode.minX, newNode.right.minX);
+      newNode.minY = Math.min(newNode.minY, newNode.right.minY);
       newNode.maxX = Math.max(newNode.maxX, newNode.right.maxX);
       newNode.maxY = Math.max(newNode.maxY, newNode.right.maxY);
     }
@@ -320,6 +322,8 @@ public final class ShapeDocValuesField extends Field {
     // adjust byteSize based on new parent bbox values
     if (newNode.left != null) {
       // bounding box size
+      newNode.left.byteSize += vLongSize((long) newNode.maxX - newNode.left.minX);
+      newNode.left.byteSize += vLongSize((long) newNode.maxY - newNode.left.minY);
       newNode.left.byteSize += vLongSize((long) newNode.maxX - newNode.left.maxX);
       newNode.left.byteSize += vLongSize((long) newNode.maxY - newNode.left.maxY);
       // component size
@@ -329,6 +333,8 @@ public final class ShapeDocValuesField extends Field {
     }
     if (newNode.right != null) {
       // bounding box size
+      newNode.right.byteSize += vLongSize((long) newNode.maxX - newNode.right.minX);
+      newNode.right.byteSize += vLongSize((long) newNode.maxY - newNode.right.minY);
       newNode.right.byteSize += vLongSize((long) newNode.maxX - newNode.right.maxX);
       newNode.right.byteSize += vLongSize((long) newNode.maxY - newNode.right.maxY);
       // component size
@@ -428,7 +434,7 @@ public final class ShapeDocValuesField extends Field {
   }
 
   /** Writes data from a ShapeDocValues field to a data output array */
-  public final class Writer {
+  private final class Writer {
     private final ByteBuffersDataOutput output;
     private BytesRef bytesRef;
 
@@ -444,6 +450,8 @@ public final class ShapeDocValuesField extends Field {
 
     private void writeTree(List<TreeNode> dfsSerialized) throws IOException {
       assert output != null : "passed null datastream to ShapeDocValuesField tessellation tree";
+      // write encoding version
+      output.writeByte(VERSION);
       // write number of terms (triangles)
       output.writeVInt(dfsSerialized.size());
       // write root
@@ -528,13 +536,15 @@ public final class ShapeDocValuesField extends Field {
     }
 
     private void writeBounds(TreeNode node) throws IOException {
+      output.writeVLong((long) node.parent.maxX - node.minX);
+      output.writeVLong((long) node.parent.maxY - node.minY);
       output.writeVLong((long) node.parent.maxX - node.maxX);
       output.writeVLong((long) node.parent.maxY - node.maxY);
     }
   }
 
   /** Reads values from a ShapeDocValues Field */
-  public final class Reader extends DataInput {
+  private final class Reader extends DataInput {
     /** data input array to read the docvalue data */
     private final ByteArrayDataInput data;
 
@@ -638,6 +648,7 @@ public final class ShapeDocValuesField extends Field {
   /** Shape Comparator class provides tree traversal relation methods */
   private final class ShapeComparator {
     private Reader dvReader;
+    private final byte version;
     private final int numberOfTerms;
     private final EncodedRectangle boundingBox;
     private final int centroidX;
@@ -646,6 +657,8 @@ public final class ShapeDocValuesField extends Field {
 
     ShapeComparator(final BytesRef bytes) throws IOException {
       this.dvReader = new Reader(bytes);
+      this.version = dvReader.readByte();
+      assert this.version == VERSION;
       this.numberOfTerms = Math.toIntExact(dvReader.readVInt());
       this.boundingBox = dvReader.readBBox();
       this.centroidX = Math.toIntExact(dvReader.readVLong() + Integer.MIN_VALUE);
@@ -696,11 +709,13 @@ public final class ShapeDocValuesField extends Field {
     }
 
     /**
-     * Computes a bounding box relation with the doc value shape; main entry point to the root of
+     * Computes a query component relation with the doc value shape; main entry point to the root of
      * the binary tree
      */
-    public Relation relate(int minX, int maxX, int minY, int maxY) throws IOException {
+    public Relation relate(final Component2D query) throws IOException {
       try {
+        // skip version
+        dvReader.readByte();
         // skip number of terms
         dvReader.readVInt();
         // read bbox
@@ -709,15 +724,13 @@ public final class ShapeDocValuesField extends Field {
         int tMaxX = bbox.maxX;
         int tMaxY = bbox.maxY;
 
-        if (bbox.intersectsRectangle(minX, maxX, minY, maxY) == false) {
-          return Relation.CELL_OUTSIDE_QUERY;
-        }
-
-        // the component box is inside the query box; query takes care of coordinate wrapping -
-        // disable here
-        EncodedRectangle query = new EncodedRectangle(minX, maxX, minY, maxY, false);
-        if (query.containsRectangle(bbox.minX, bbox.maxX, bbox.minY, bbox.maxY)) {
-          return Relation.CELL_INSIDE_QUERY;
+        // relate the query to the shape bounding box
+        Relation r;
+        if ((r =
+                query.relate(
+                    decodeX(bbox.minX), decodeX(bbox.maxX), decodeY(bbox.minY), decodeY(bbox.maxY)))
+            != Relation.CELL_CROSSES_QUERY) {
+          return r;
         }
 
         // traverse the tessellation tree
@@ -728,11 +741,12 @@ public final class ShapeDocValuesField extends Field {
         int headerBits = Math.toIntExact(dvReader.readVInt());
         int x = Math.toIntExact(tMaxX - dvReader.readVLong());
         // relate the component
-        if (relateComponent(Reader.Header.readType(headerBits), bbox, tMaxX, tMaxY, x, query)
+        if (relateComponent(
+                Reader.Header.readType(headerBits), bbox, tMaxX, tMaxY, decodeX(x), query)
             == Relation.CELL_CROSSES_QUERY) {
           return Relation.CELL_CROSSES_QUERY;
         }
-        Relation r = Relation.CELL_OUTSIDE_QUERY;
+        r = Relation.CELL_OUTSIDE_QUERY;
 
         // recurse the left subtree
         if (Reader.Header.readHasLeftSubtree(headerBits)) {
@@ -743,7 +757,7 @@ public final class ShapeDocValuesField extends Field {
         }
         // recurse the right subtree
         if (Reader.Header.readHasRightSubtree(headerBits)) {
-          if (maxX >= tMinX) {
+          if (query.getMaxX() >= decodeX(tMinX)) {
             if ((r = relate(query, false, tMaxX, tMaxY, Math.toIntExact(dvReader.readVInt())))
                 == Relation.CELL_CROSSES_QUERY) {
               return Relation.CELL_CROSSES_QUERY;
@@ -756,13 +770,19 @@ public final class ShapeDocValuesField extends Field {
       }
     }
 
-    /** recursive traversal method recurses through all tree nodes */
+    /**
+     * recursive traversal method recurses through tree nodes to compute relation with the query
+     * component
+     */
     private Relation relate(
-        EncodedRectangle query, boolean splitX, int pMaxX, int pMaxY, int nodeSize)
+        Component2D queryComponent2D, boolean splitX, int pMaxX, int pMaxY, int nodeSize)
         throws IOException {
       // mark the data position because we need to subtract the maxX, maxY, and header from node
       // bytesize
       int prePos = dvReader.data.getPosition();
+      // read the minX and minY
+      int tMinX = Math.toIntExact(pMaxX - dvReader.readVLong());
+      int tMinY = Math.toIntExact(pMaxY - dvReader.readVLong());
       // read the maxX and maxY
       int tMaxX = Math.toIntExact(pMaxX - dvReader.readVLong());
       int tMaxY = Math.toIntExact(pMaxY - dvReader.readVLong());
@@ -772,7 +792,8 @@ public final class ShapeDocValuesField extends Field {
       nodeSize -= dvReader.data.getPosition() - prePos;
 
       // base case query is disjoint
-      if (query.minX > tMaxX || query.minY > tMaxY) {
+      if (queryComponent2D.getMinX() > decodeX(tMaxX)
+          || queryComponent2D.getMinY() > decodeY(tMaxY)) {
         // now skip the entire subtree
         dvReader.skipBytes(nodeSize);
         return Relation.CELL_OUTSIDE_QUERY;
@@ -781,17 +802,17 @@ public final class ShapeDocValuesField extends Field {
       // traverse the tessellation tree
       int x = Math.toIntExact(pMaxX - dvReader.readVLong());
       // minY is set in relate component
-      EncodedRectangle bbox =
-          dvReader.resetBBox(dvReader.bbox.minX, tMaxX, dvReader.bbox.minY, tMaxY);
+      EncodedRectangle bbox = dvReader.resetBBox(tMinX, tMaxX, tMinY, tMaxY);
       // relate the component
-      if (relateComponent(Reader.Header.readType(headerBits), bbox, pMaxX, pMaxY, x, query)
+      if (relateComponent(
+              Reader.Header.readType(headerBits), bbox, pMaxX, pMaxY, decodeX(x), queryComponent2D)
           == Relation.CELL_CROSSES_QUERY) {
         return Relation.CELL_CROSSES_QUERY;
       }
 
       // traverse left subtree
       if (Reader.Header.readHasLeftSubtree(headerBits) == true) {
-        if (relate(query, !splitX, tMaxX, tMaxY, Math.toIntExact(dvReader.readVInt()))
+        if (relate(queryComponent2D, !splitX, tMaxX, tMaxY, Math.toIntExact(dvReader.readVInt()))
             == Relation.CELL_CROSSES_QUERY) {
           return Relation.CELL_CROSSES_QUERY;
         }
@@ -800,9 +821,10 @@ public final class ShapeDocValuesField extends Field {
       // traverse right subtree
       if (Reader.Header.readHasRightSubtree(headerBits) == true) {
         int size = Math.toIntExact(dvReader.readVInt());
-        if ((splitX == false && query.maxY >= bbox.minY)
-            || (splitX == true && query.maxX >= bbox.minX)) {
-          if (relate(query, !splitX, tMaxX, tMaxY, size) == Relation.CELL_CROSSES_QUERY) {
+        if ((splitX == false && queryComponent2D.getMaxY() >= decodeY(tMinY))
+            || (splitX == true && queryComponent2D.getMaxX() >= decodeX(tMinX))) {
+          if (relate(queryComponent2D, !splitX, tMaxX, tMaxY, size)
+              == Relation.CELL_CROSSES_QUERY) {
             return Relation.CELL_CROSSES_QUERY;
           }
         } else {
@@ -815,15 +837,20 @@ public final class ShapeDocValuesField extends Field {
 
     /** relates the component based on type (POINT, LINE, TRIANGLE) */
     private Relation relateComponent(
-        final TYPE type, EncodedRectangle bbox, int pMaxX, int pMaxY, int x, EncodedRectangle query)
+        final TYPE type,
+        EncodedRectangle bbox,
+        int pMaxX,
+        int pMaxY,
+        double x,
+        Component2D queryComponent2D)
         throws IOException {
       Relation r = Relation.CELL_OUTSIDE_QUERY;
       if (type == TYPE.POINT) {
-        r = relatePoint(bbox, pMaxY, x, query);
+        r = relatePoint(bbox, pMaxY, x, queryComponent2D);
       } else if (type == TYPE.LINE) {
-        r = relateLine(bbox, pMaxX, pMaxY, x, query);
+        r = relateLine(bbox, pMaxX, pMaxY, x, queryComponent2D);
       } else if (type == TYPE.TRIANGLE) {
-        r = relateTriangle(bbox, pMaxX, pMaxY, x, query);
+        r = relateTriangle(bbox, pMaxX, pMaxY, x, queryComponent2D);
       }
       if (r == Relation.CELL_CROSSES_QUERY) {
         return Relation.CELL_CROSSES_QUERY;
@@ -831,48 +858,46 @@ public final class ShapeDocValuesField extends Field {
       return Relation.CELL_OUTSIDE_QUERY;
     }
 
-    /** relates a point to the query box */
-    private Relation relatePoint(EncodedRectangle bbox, int pMaxY, int ax, EncodedRectangle query)
+    private Relation relatePoint(EncodedRectangle bbox, int pMaxY, double ax, Component2D query)
         throws IOException {
       int y = Math.toIntExact(pMaxY - dvReader.readVLong());
-      if (query.contains(ax, y)) {
+      if (query.contains(ax, decodeY(y))) {
         return Relation.CELL_CROSSES_QUERY;
       }
-      bbox.minY = y;
       return Relation.CELL_OUTSIDE_QUERY;
     }
 
-    /** relates a line to the query box */
     private Relation relateLine(
-        EncodedRectangle bbox, int pMaxX, int pMaxY, int ax, EncodedRectangle query)
+        EncodedRectangle bbox, int pMaxX, int pMaxY, double ax, Component2D query)
         throws IOException {
       int ay = Math.toIntExact(pMaxY - dvReader.readVLong());
-      int bx = Math.toIntExact(pMaxX - dvReader.readVLong());
+      double bx = decodeX(Math.toIntExact(pMaxX - dvReader.readVLong()));
       int by = Math.toIntExact(pMaxY - dvReader.readVLong());
-      if (query.intersectsLine(ax, ay, bx, by)) {
+      if (query.intersectsLine(ax, decodeY(ay), bx, decodeY(by))) {
         return Relation.CELL_CROSSES_QUERY;
       }
-      bbox.minY = Math.min(ay, by);
       return Relation.CELL_OUTSIDE_QUERY;
     }
 
-    /** relates a triangle to the query box */
     private Relation relateTriangle(
-        EncodedRectangle bbox, int pMaxX, int pMaxY, int ax, EncodedRectangle query)
+        EncodedRectangle bbox, int pMaxX, int pMaxY, double ax, Component2D queryComponent2D)
         throws IOException {
       int ay = Math.toIntExact(pMaxY - dvReader.readVLong());
-      int bx = Math.toIntExact(pMaxX - dvReader.readVLong());
+      double bx = decodeX(Math.toIntExact(pMaxX - dvReader.readVLong()));
       int by = Math.toIntExact(pMaxY - dvReader.readVLong());
-      int cx = Math.toIntExact(pMaxX - dvReader.readVLong());
+      double cx = decodeX(Math.toIntExact(pMaxX - dvReader.readVLong()));
       int cy = Math.toIntExact(pMaxY - dvReader.readVLong());
 
-      if (query.intersectsTriangle(ax, ay, bx, by, cx, cy)) {
+      if (queryComponent2D.intersectsTriangle(ax, decodeY(ay), bx, decodeY(by), cx, decodeY(cy))) {
         return Relation.CELL_CROSSES_QUERY;
       }
-      bbox.minY = Math.min(bbox.minY, Math.min(Math.min(ay, by), cy));
       return Relation.CELL_OUTSIDE_QUERY;
     }
   }
+
+  protected abstract double decodeX(int encoded);
+
+  protected abstract double decodeY(int encoded);
 
   /** Computes the variable Long size in bytes */
   protected static int vLongSize(long i) {

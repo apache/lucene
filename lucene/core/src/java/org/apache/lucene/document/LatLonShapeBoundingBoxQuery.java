@@ -28,6 +28,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.Geometry;
+import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.ArrayUtil;
@@ -38,13 +40,21 @@ import org.apache.lucene.util.NumericUtils;
  *
  * <p>The field must be indexed using {@link
  * org.apache.lucene.document.LatLonShape#createIndexableFields} added per document.
+ *
+ * @lucene.internal
  */
 final class LatLonShapeBoundingBoxQuery extends SpatialQuery {
   private final Rectangle rectangle;
 
   LatLonShapeBoundingBoxQuery(String field, QueryRelation queryRelation, Rectangle rectangle) {
-    super(field, queryRelation);
+    super(field, queryRelation, rectangle);
     this.rectangle = rectangle;
+  }
+
+  @Override
+  protected Component2D createComponent2D(Geometry... geometries) {
+    // todo: this isn't actually used by the query so maybe we can just return null?
+    return LatLonGeometry.create((Rectangle) geometries[0]);
   }
 
   @Override

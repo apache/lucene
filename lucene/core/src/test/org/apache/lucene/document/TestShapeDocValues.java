@@ -20,8 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.Geometry;
+import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
+import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.geo.XYEncodingUtils;
 import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.geo.XYPolygon;
@@ -38,11 +40,12 @@ public class TestShapeDocValues extends LuceneTestCase {
   public void testSimpleDocValueField() throws Exception {
     ShapeDocValuesField dvField =
         LatLonShape.createDocValueField(FIELD_NAME, getTestPolygonWithHole());
+    // tests geometry inside a hole and crossing
     assertEquals(
-        dvField.relate(-21458726, -21456626, -10789313, -10629313),
+        dvField.relate(LatLonGeometry.create(new Rectangle(-0.25, -0.24, -3.8, -3.7))),
         PointValues.Relation.CELL_OUTSIDE_QUERY);
     assertNotEquals(
-        dvField.relate(21456626, 21458726, 10629313, 10789313),
+        dvField.relate(LatLonGeometry.create(new Rectangle(-1.2, 1.2, -1.5, 1.7))),
         PointValues.Relation.CELL_CROSSES_QUERY);
   }
 
@@ -68,7 +71,7 @@ public class TestShapeDocValues extends LuceneTestCase {
     Polygon p = GeoTestUtil.nextPolygon();
     Point expected = (Point) computeCentroid(p);
     List<ShapeField.DecodedTriangle> tess = getTessellation(p);
-    ShapeDocValuesField dvField = new ShapeDocValuesField(FIELD_NAME, tess);
+    ShapeDocValuesField dvField = LatLonShape.createDocValueField(FIELD_NAME, tess);
     assertEquals(tess.size(), dvField.numberOfTerms());
     assertEquals(expected.getLat(), GeoEncodingUtils.decodeLatitude(dvField.getCentroidY()), 1E-8);
     assertEquals(expected.getLon(), GeoEncodingUtils.decodeLongitude(dvField.getCentroidX()), 1E-8);
@@ -78,7 +81,7 @@ public class TestShapeDocValues extends LuceneTestCase {
   public void testXYPolygonCentroid() {
     XYPolygon p = (XYPolygon) BaseXYShapeTestCase.ShapeType.POLYGON.nextShape();
     XYPoint expected = (XYPoint) computeCentroid(p);
-    ShapeDocValuesField dvField = new ShapeDocValuesField(FIELD_NAME, getTessellation(p));
+    ShapeDocValuesField dvField = LatLonShape.createDocValueField(FIELD_NAME, getTessellation(p));
     assertEquals(expected.getX(), XYEncodingUtils.decode(dvField.getCentroidX()), 1E-8);
     assertEquals(expected.getY(), XYEncodingUtils.decode(dvField.getCentroidY()), 1E-8);
     assertEquals(ShapeField.DecodedTriangle.TYPE.TRIANGLE, dvField.getHighestDimensionType());

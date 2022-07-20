@@ -71,7 +71,7 @@ import org.apache.lucene.util.BytesRef;
  * from the original {@code double} values.
  *
  * @see PointValues
- * @see LatLonDocValuesField
+ * @see XYDocValuesField
  */
 public class XYShape {
 
@@ -125,7 +125,7 @@ public class XYShape {
           t.isEdgefromPolygon(2));
       triangles.add(dt);
     }
-    return new ShapeDocValuesField(fieldName, triangles);
+    return new XYShapeDocValueField(fieldName, triangles);
   }
 
   /** create indexable fields for cartesian line geometry */
@@ -148,7 +148,7 @@ public class XYShape {
   }
 
   /** create doc value field for x, y line geometry without creating indexable fields. */
-  public static ShapeDocValuesField createDocValueField(String fieldName, XYLine line) {
+  public static XYShapeDocValueField createDocValueField(String fieldName, XYLine line) {
     int numPoints = line.numPoints();
     List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(numPoints - 1);
     // create "flat" triangles
@@ -167,7 +167,7 @@ public class XYShape {
           true);
       triangles.add(t);
     }
-    return new ShapeDocValuesField(fieldName, triangles);
+    return new XYShapeDocValueField(fieldName, triangles);
   }
 
   /** create indexable fields for cartesian point geometry */
@@ -177,19 +177,27 @@ public class XYShape {
     };
   }
 
-  /** create doc value field for lat lon line geometry without creating indexable fields. */
+  /**
+   * create a {@link XYShapeDocValueField} for cartesian points without creating indexable fields.
+   */
   public static ShapeDocValuesField createDocValueField(String fieldName, float x, float y) {
     List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(1);
     ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
     t.type = ShapeField.DecodedTriangle.TYPE.POINT;
     t.setValues(encode(x), encode(y), true, encode(x), encode(y), true, encode(x), encode(y), true);
     triangles.add(t);
-    return new ShapeDocValuesField(fieldName, triangles);
+    return new XYShapeDocValueField(fieldName, triangles);
   }
 
-  /** create a LatLonShape docvalue field from an existing encoded representation */
+  /** create a {@link XYShapeDocValueField} from an existing encoded representation */
   public static ShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
-    return new ShapeDocValuesField(fieldName, binaryValue);
+    return new XYShapeDocValueField(fieldName, binaryValue);
+  }
+
+  /** create a {@link XYShapeDocValueField} from a precomputed tessellation */
+  public static XYShapeDocValueField createDocValueField(
+      String fieldName, List<ShapeField.DecodedTriangle> tessellation) {
+    return new XYShapeDocValueField(fieldName, tessellation);
   }
 
   /** create a query to find all cartesian shapes that intersect a defined bounding box * */
@@ -202,7 +210,7 @@ public class XYShape {
   /** create a docvalu query to find all cartesian shapes that intersect a defined bounding box * */
   public static Query newDocValuesBoxQuery(
       String field, QueryRelation queryRelation, float minX, float maxX, float minY, float maxY) {
-    return new XYShapeDocValuesBoundingBoxQuery(field, queryRelation, minX, maxX, minY, maxY);
+    return new XYShapeDocValuesQuery(field, queryRelation, new XYRectangle(minX, maxX, minY, maxY));
   }
 
   /**

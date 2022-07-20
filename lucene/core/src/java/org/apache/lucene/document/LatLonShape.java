@@ -127,7 +127,7 @@ public class LatLonShape {
           t.isEdgefromPolygon(2));
       triangles.add(dt);
     }
-    return new ShapeDocValuesField(fieldName, triangles);
+    return new LatLonShapeDocValueField(fieldName, triangles);
   }
 
   /** create indexable fields for line geometry */
@@ -169,7 +169,7 @@ public class LatLonShape {
           true);
       triangles.add(t);
     }
-    return new ShapeDocValuesField(fieldName, triangles);
+    return new LatLonShapeDocValueField(fieldName, triangles);
   }
 
   /** create indexable fields for point geometry */
@@ -202,12 +202,33 @@ public class LatLonShape {
         encodeLatitude(lat),
         true);
     triangles.add(t);
-    return new ShapeDocValuesField(fieldName, triangles);
+    return new LatLonShapeDocValueField(fieldName, triangles);
   }
 
   /** create a LatLonShape docvalue field from an existing encoded representation */
   public static ShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
-    return new ShapeDocValuesField(fieldName, binaryValue);
+    return new LatLonShapeDocValueField(fieldName, binaryValue);
+  }
+
+  public static LatLonShapeDocValueField createDocValueField(
+      String fieldName, List<ShapeField.DecodedTriangle> tessellation) {
+    return new LatLonShapeDocValueField(fieldName, tessellation);
+  }
+
+  /** create a shape docvalue field from indexable fields */
+  public static LatLonShapeDocValueField createDocValueField(
+      String fieldName, Field[] indexableFields) {
+    ArrayList<ShapeField.DecodedTriangle> tess = new ArrayList<>(indexableFields.length);
+    final byte[] scratch = new byte[7 * Integer.BYTES];
+    for (Field f : indexableFields) {
+      BytesRef br = f.binaryValue();
+      assert br.length == 7 * ShapeField.BYTES;
+      System.arraycopy(br.bytes, br.offset, scratch, 0, 7 * ShapeField.BYTES);
+      ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
+      ShapeField.decodeTriangle(scratch, t);
+      tess.add(t);
+    }
+    return new LatLonShapeDocValueField(fieldName, tess);
   }
 
   /** create a query to find all indexed geo shapes that intersect a defined bounding box * */
@@ -242,8 +263,20 @@ public class LatLonShape {
       double maxLatitude,
       double minLongitude,
       double maxLongitude) {
-    return new LatLonShapeDocValuesBoundingBoxQuery(
-        field, queryRelation, minLatitude, maxLatitude, minLongitude, maxLongitude);
+    if (queryRelation == QueryRelation.CONTAINS && minLongitude > maxLongitude) {
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      builder.add(
+          newBoxQuery(
+              field, queryRelation, minLatitude, maxLatitude, minLongitude, GeoUtils.MAX_LON_INCL),
+          BooleanClause.Occur.MUST);
+      builder.add(
+          newBoxQuery(
+              field, queryRelation, minLatitude, maxLatitude, GeoUtils.MIN_LON_INCL, maxLongitude),
+          BooleanClause.Occur.MUST);
+      return builder.build();
+    }
+    return new LatLonShapeDocValuesQuery(
+        field, queryRelation, new Rectangle(minLatitude, maxLatitude, minLongitude, maxLongitude));
   }
 
   /**
