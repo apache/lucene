@@ -118,21 +118,6 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
           leadCost);
     }
 
-    // pure two terms disjunction
-    if (scoreMode == ScoreMode.TOP_SCORES
-        && minShouldMatch <= 1
-        && subs.get(Occur.FILTER).isEmpty()
-        && subs.get(Occur.MUST).isEmpty()
-        && subs.get(Occur.MUST_NOT).isEmpty()
-        && subs.get(Occur.SHOULD).size() == 2) {
-
-      final List<Scorer> optionalScorers = new ArrayList<>();
-      for (ScorerSupplier scorer : subs.get(Occur.SHOULD)) {
-        optionalScorers.add(scorer.get(leadCost));
-      }
-      return new BlockMaxMaxscoreScorer(weight, optionalScorers);
-    }
-
     // pure disjunction
     if (subs.get(Occur.FILTER).isEmpty() && subs.get(Occur.MUST).isEmpty()) {
       return excl(
