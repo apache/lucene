@@ -81,8 +81,9 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
 
     for (int i = 0; i < 10; i++) {
       Document doc = new Document();
-      doc.add(new StoredField("field1", "value1"));
+      doc.add(new StoredField("field1", "value1_1"));
       doc.add(new StoredField("field2", longValue));
+      doc.add(new StoredField("field1", "value1_2"));
       doc.add(new StoredField("field3", "value3"));
       iw.addDocument(doc);
     }
@@ -96,7 +97,9 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     fields.add("field1");
     for (int i = 0; i < 10; i++) {
       Document doc = ir.document(i, fields);
-      assertEquals("value1", doc.get("field1"));
+      assertEquals(2, doc.getFields("field1").length);
+      assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
+      assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
       assertEquals(null, doc.get("field2"));
       assertEquals(null, doc.get("field3"));
     }
@@ -104,7 +107,9 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     fields.add("field2");
     for (int i = 0; i < 10; i++) {
       Document doc = ir.document(i, fields);
-      assertEquals("value1", doc.get("field1"));
+      assertEquals(2, doc.getValues("field1").length);
+      assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
+      assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
       assertEquals(longValue, doc.get("field2"));
       assertEquals(null, doc.get("field3"));
     }
@@ -114,7 +119,18 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     fields.add("field3");
     for (int i = 0; i < 10; i++) {
       Document doc = ir.document(i, fields);
-      assertEquals("value1", doc.get("field1"));
+      assertEquals(2, doc.getValues("field1").length);
+      assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
+      assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
+      assertEquals(null, doc.get("field2"));
+      assertEquals("value3", doc.get("field3"));
+    }
+
+    fields = new HashSet<>();
+    fields.add("field3");
+    for (int i = 0; i < 10; i++) {
+      Document doc = ir.document(i, fields);
+      assertEquals(0, doc.getValues("field1").length);
       assertEquals(null, doc.get("field2"));
       assertEquals("value3", doc.get("field3"));
     }
