@@ -205,11 +205,12 @@ public class LatLonShape {
     return new LatLonShapeDocValueField(fieldName, triangles);
   }
 
-  /** create a LatLonShape docvalue field from an existing encoded representation */
+  /** create a {@link LatLonShapeDocValueField} from an existing encoded representation */
   public static ShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
     return new LatLonShapeDocValueField(fieldName, binaryValue);
   }
 
+  /** create a {@link LatLonShapeDocValueField} from an existing tessellation */
   public static LatLonShapeDocValueField createDocValueField(
       String fieldName, List<ShapeField.DecodedTriangle> tessellation) {
     return new LatLonShapeDocValueField(fieldName, tessellation);
