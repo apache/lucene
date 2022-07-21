@@ -25,9 +25,9 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene93.Lucene93Codec;
-import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsReader;
+import org.apache.lucene.codecs.lucene92.Lucene92Codec;
+import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnVectorField;
@@ -81,10 +81,10 @@ public class TestHnswGraph extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new Lucene93Codec() {
+                  new Lucene92Codec() {
                     @Override
                     public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene93HnswVectorsFormat(M, beamWidth);
+                      return new Lucene92HnswVectorsFormat(M, beamWidth);
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
@@ -111,7 +111,7 @@ public class TestHnswGraph extends LuceneTestCase {
           assertEquals(indexedDoc, ctx.reader().numDocs());
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
-              ((Lucene93HnswVectorsReader)
+              ((Lucene92HnswVectorsReader)
                       ((PerFieldKnnVectorsFormat.FieldsReader)
                               ((CodecReader) ctx.reader()).getVectorReader())
                           .getFieldReader("field"))
