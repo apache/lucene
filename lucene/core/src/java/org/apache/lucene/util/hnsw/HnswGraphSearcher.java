@@ -22,9 +22,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.SparseFixedBitSet;
+import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
@@ -38,20 +37,18 @@ public final class HnswGraphSearcher {
    */
   private final NeighborQueue candidates;
 
-  private final BitSet visited;
+  private final IntIntHashMap visited = new IntIntHashMap();
 
   /**
    * Creates a new graph searcher.
    *
    * @param similarityFunction the similarity function to compare vectors
    * @param candidates max heap that will track the candidate nodes to explore
-   * @param visited bit set that will track nodes that have already been visited
    */
   public HnswGraphSearcher(
-      VectorSimilarityFunction similarityFunction, NeighborQueue candidates, BitSet visited) {
+      VectorSimilarityFunction similarityFunction, NeighborQueue candidates) {
     this.similarityFunction = similarityFunction;
     this.candidates = candidates;
-    this.visited = visited;
   }
 
   /**
@@ -65,7 +62,6 @@ public final class HnswGraphSearcher {
    *     graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
-   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
    */
   public static NeighborQueue search(
@@ -80,8 +76,7 @@ public final class HnswGraphSearcher {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            new NeighborQueue(topK, true),
-            new SparseFixedBitSet(vectors.size()));
+            new NeighborQueue(topK, true));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
@@ -144,7 +139,7 @@ public final class HnswGraphSearcher {
 
     int numVisited = 0;
     for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
+      if (visited.putIfAbsent(ep, 1)) {
         if (numVisited >= visitedLimit) {
           results.markIncomplete();
           break;
@@ -176,7 +171,7 @@ public final class HnswGraphSearcher {
       int friendOrd;
       while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd)) {
+        if (visited.putIfAbsent(friendOrd, 1) == false) {
           continue;
         }
 
@@ -205,6 +200,6 @@ public final class HnswGraphSearcher {
 
   private void clearScratchState() {
     candidates.clear();
-    visited.clear(0, visited.length());
+    visited.clear();
   }
 }

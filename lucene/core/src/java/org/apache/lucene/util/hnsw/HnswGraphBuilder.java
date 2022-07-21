@@ -99,8 +99,7 @@ public final class HnswGraphBuilder {
     this.graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            new NeighborQueue(beamWidth, true),
-            new FixedBitSet(vectorValues.size()));
+            new NeighborQueue(beamWidth, true));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
   }
