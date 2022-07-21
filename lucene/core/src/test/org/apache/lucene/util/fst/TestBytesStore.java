@@ -16,13 +16,18 @@
  */
 package org.apache.lucene.util.fst;
 
+import java.io.IOException;
 import java.util.Arrays;
+
+import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 
 public class TestBytesStore extends LuceneTestCase {
 
@@ -234,6 +239,21 @@ public class TestBytesStore extends LuceneTestCase {
 
       verify(bytesToVerify, expected, numBytes);
     }
+  }
+
+  public void testCopyBytesOnByteStore() throws IOException {
+    byte[] bytes = new byte[1024 * 8 + 10];
+    byte[] bytesout = new byte[bytes.length];
+    random().nextBytes(bytes);
+    int offset = TestUtil.nextInt(random(), 0, 100);
+    int len = bytes.length - offset;
+    ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
+    final int blockBits = TestUtil.nextInt(random(), 8, 15);
+    final BytesStore o = new BytesStore(blockBits);
+    o.copyBytes(in, len);
+    o.copyBytes(0, bytesout, 0, len);
+    assertArrayEquals(ArrayUtil.copyOfSubArray(bytesout, 0, len),
+            ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
   }
 
   private void verify(BytesStore bytes, byte[] expected, int totalLength) throws Exception {
