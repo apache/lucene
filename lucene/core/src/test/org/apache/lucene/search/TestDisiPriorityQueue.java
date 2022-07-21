@@ -30,7 +30,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
   public void testRandom() throws Exception {
     Random r = random();
 
-    int size = r.nextInt(TEST_NIGHTLY ? 1000 : 10);
+    int size = RandomNumbers.randomIntBetween(random(), 1, TEST_NIGHTLY ? 1000 : 10);
     DisiWrapper[] all = new DisiWrapper[size];
     for (int i = 0; i < size; i++) {
       DocIdSetIterator it = randomDisi(r);
