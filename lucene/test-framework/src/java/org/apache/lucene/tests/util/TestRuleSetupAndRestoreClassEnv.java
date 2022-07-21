@@ -38,7 +38,7 @@ import java.util.TimeZone;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.lucene92.Lucene92Codec;
+import org.apache.lucene.codecs.lucene94.Lucene94Codec;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
@@ -193,9 +193,9 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     } else if ("Compressing".equals(TEST_CODEC)
         || ("random".equals(TEST_CODEC) && randomVal == 6 && !shouldAvoidCodec("Compressing"))) {
       codec = CompressingCodec.randomInstance(random);
-    } else if ("Lucene92".equals(TEST_CODEC)
-        || ("random".equals(TEST_CODEC) && randomVal == 5 && !shouldAvoidCodec("Lucene92"))) {
-      codec = new Lucene92Codec(RandomPicks.randomFrom(random, Lucene92Codec.Mode.values()));
+    } else if ("Lucene94".equals(TEST_CODEC)
+        || ("random".equals(TEST_CODEC) && randomVal == 5 && !shouldAvoidCodec("Lucene94"))) {
+      codec = new Lucene94Codec(RandomPicks.randomFrom(random, Lucene94Codec.Mode.values()));
     } else if (!"random".equals(TEST_CODEC)) {
       codec = Codec.forName(TEST_CODEC);
     } else if ("random".equals(TEST_POSTINGSFORMAT)) {
