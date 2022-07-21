@@ -179,6 +179,30 @@ class BytesStore extends DataOutput implements Accountable {
     }
   }
 
+  @Override
+  public void copyBytes(DataInput input, long numBytes) throws IOException {
+    assert numBytes >= 0 : "numBytes=" + numBytes;
+    assert input != null;
+    int len = (int) numBytes;
+    while (len > 0) {
+      int chunk = blockSize - nextWrite;
+      if (len <= chunk) {
+        assert current != null;
+        input.readBytes(current, nextWrite, len);
+        nextWrite += len;
+        break;
+      } else {
+        if (chunk > 0) {
+          input.readBytes(current, nextWrite, chunk);
+          len -= chunk;
+        }
+        current = new byte[blockSize];
+        blocks.add(current);
+        nextWrite = 0;
+      }
+    }
+  }
+
   /**
    * Absolute copy bytes self to self, without changing the position. Note: this cannot "grow" the
    * bytes, so must only call it on already written parts.
