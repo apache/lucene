@@ -94,46 +94,57 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
 
     DirectoryReader ir = DirectoryReader.open(dir);
     assertEquals(numDocs, ir.numDocs());
-    Set<String> fields = new HashSet<>();
-    fields.add("field1");
-    for (int i = 0; i < numDocs; i++) {
-      Document doc = ir.document(i, fields);
-      assertEquals(2, doc.getFields("field1").length);
-      assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
-      assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
-      assertEquals(null, doc.get("field2"));
-      assertEquals(null, doc.get("field3"));
+
+    {
+      Set<String> fields = new HashSet<>();
+      fields.add("field1");
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = ir.document(i, fields);
+        assertEquals(2, doc.getFields("field1").length);
+        assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
+        assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
+        assertEquals(null, doc.get("field2"));
+        assertEquals(null, doc.get("field3"));
+      }
     }
 
-    fields.add("field2");
-    for (int i = 0; i < numDocs; i++) {
-      Document doc = ir.document(i, fields);
-      assertEquals(2, doc.getValues("field1").length);
-      assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
-      assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
-      assertEquals(longValue, doc.get("field2"));
-      assertEquals(null, doc.get("field3"));
+    {
+      Set<String> fields = new HashSet<>();
+      fields.add("field1");
+      fields.add("field2");
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = ir.document(i, fields);
+        assertEquals(2, doc.getValues("field1").length);
+        assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
+        assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
+        assertEquals(longValue, doc.get("field2"));
+        assertEquals(null, doc.get("field3"));
+      }
     }
 
-    fields = new HashSet<>();
-    fields.add("field1");
-    fields.add("field3");
-    for (int i = 0; i < numDocs; i++) {
-      Document doc = ir.document(i, fields);
-      assertEquals(2, doc.getValues("field1").length);
-      assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
-      assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
-      assertEquals(null, doc.get("field2"));
-      assertEquals("value3", doc.get("field3"));
+    {
+      Set<String> fields = new HashSet<>();
+      fields.add("field1");
+      fields.add("field3");
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = ir.document(i, fields);
+        assertEquals(2, doc.getValues("field1").length);
+        assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
+        assertEquals("value1_2", doc.getFields("field1")[1].stringValue());
+        assertEquals(null, doc.get("field2"));
+        assertEquals("value3", doc.get("field3"));
+      }
     }
 
-    fields = new HashSet<>();
-    fields.add("field3");
-    for (int i = 0; i < numDocs; i++) {
-      Document doc = ir.document(i, fields);
-      assertEquals(0, doc.getValues("field1").length);
-      assertEquals(null, doc.get("field2"));
-      assertEquals("value3", doc.get("field3"));
+    {
+      Set<String> fields = new HashSet<>();
+      fields.add("field3");
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = ir.document(i, fields);
+        assertEquals(0, doc.getValues("field1").length);
+        assertEquals(null, doc.get("field2"));
+        assertEquals("value3", doc.get("field3"));
+      }
     }
     ir.close();
     // checkindex
