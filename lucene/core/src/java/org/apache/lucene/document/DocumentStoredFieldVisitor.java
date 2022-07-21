@@ -20,10 +20,8 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.StoredFieldVisitor;
 
 /**
@@ -100,16 +98,6 @@ public class DocumentStoredFieldVisitor extends StoredFieldVisitor {
 
   @Override
   public Status needsField(FieldInfo fieldInfo) throws IOException {
-    // return stop after collected all needed fields
-    if (fieldsToAdd != null
-        && !fieldsToAdd.contains(fieldInfo.name)
-        && fieldsToAdd.size()
-            == doc.getFields().stream()
-                .map(IndexableField::name)
-                .collect(Collectors.toSet())
-                .size()) {
-      return Status.STOP;
-    }
     return fieldsToAdd == null || fieldsToAdd.contains(fieldInfo.name) ? Status.YES : Status.NO;
   }
 

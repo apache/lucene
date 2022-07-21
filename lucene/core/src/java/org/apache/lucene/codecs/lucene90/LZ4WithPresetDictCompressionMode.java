@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
+import static java.lang.Math.min;
+
 import java.io.IOException;
 import java.io.InputStream;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
@@ -108,6 +110,7 @@ public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionM
 
       int offsetInBlock = dictLength;
       int offsetInBytesRef = offset;
+      int numBlocksSkipped = 0;
       if (offset >= dictLength) {
         offsetInBytesRef -= dictLength;
 
@@ -115,6 +118,7 @@ public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionM
         int numBytesToSkip = 0;
         for (int i = 0; i < numBlocks && offsetInBlock + blockLength < offset; ++i) {
           int compressedBlockLength = compressedLengths[i];
+          numBlocksSkipped++;
           numBytesToSkip += compressedBlockLength;
           offsetInBlock += blockLength;
           offsetInBytesRef -= blockLength;
@@ -129,12 +133,14 @@ public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionM
 
       int finalOffsetInBytesRef = offsetInBytesRef;
       int finalOffsetInBlock = offsetInBlock;
+      int finalNumBlocksSkipped = numBlocksSkipped;
       return new InputStream() {
         // need to decompress length + finalOffsetInBytesRef bytes
         final int totalDecompressedLength = finalOffsetInBytesRef + length;
         // already decompressed bytes count
         int decompressed = bytes.length;
         int offsetInBlock = finalOffsetInBlock;
+        int numBlocksConsumed = finalNumBlocksSkipped;
 
         {
           skip(finalOffsetInBytesRef);
@@ -147,9 +153,10 @@ public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionM
             return;
           }
 
-          final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
+          final int bytesToDecompress = min(blockLength, offset + length - offsetInBlock);
           assert bytesToDecompress > 0;
           LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
+          numBlocksConsumed += 1;
           bytes.bytes = ArrayUtil.grow(bytes.bytes, decompressed + bytesToDecompress);
           System.arraycopy(buffer, dictLength, bytes.bytes, decompressed, bytesToDecompress);
           bytes.length += bytesToDecompress;
@@ -206,17 +213,36 @@ public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionM
           if (n < 0) {
             throw new IllegalArgumentException("numBytes must be >= 0, got " + n);
           }
-          while (n > bytes.length) {
-            int actualSkipped = bytes.length;
-            fillBuffer();
-            // return actual skipped bytes when there are not enough bytes
-            if (actualSkipped == bytes.length) {
-              return actualSkipped;
+
+          // no more actions when there are enough bytes
+          if (n <= bytes.length) {
+            bytes.offset += n;
+            bytes.length -= n;
+            return n;
+          }
+
+          int actualSkipped = bytes.length;
+          // skip the rest of buffer first
+          bytes.offset += bytes.length;
+          bytes.length = 0;
+          for (; numBlocksConsumed < numBlocks; numBlocksConsumed++) {
+            int currentBlockLength = min(blockLength, offset + length - offsetInBlock);
+            if (currentBlockLength + actualSkipped < n) {
+              actualSkipped += currentBlockLength;
+              offsetInBlock += currentBlockLength;
+              in.skipBytes(compressedLengths[numBlocksConsumed]);
+            } else {
+              // current slice has enough bytes for skipping
+              fillBuffer();
+              long offsetInLastBlock = n - actualSkipped;
+              bytes.offset += offsetInLastBlock;
+              bytes.length -= offsetInLastBlock;
+              return n;
             }
           }
-          bytes.offset += n;
-          bytes.length -= n;
-          return n;
+
+          // need more slice for skipping, return actual skipped bytes count
+          return actualSkipped;
         }
 
         @Override
@@ -281,7 +307,7 @@ public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionM
 
       // And then sub blocks
       for (int start = off + dictLength; start < end; start += blockLength) {
-        int l = Math.min(blockLength, off + len - start);
+        int l = min(blockLength, off + len - start);
         System.arraycopy(bytes, start, buffer, dictLength, l);
         doCompress(buffer, dictLength, l, out);
       }

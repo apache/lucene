@@ -74,12 +74,13 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     iwc.setCodec(new Lucene93Codec(Mode.BEST_SPEED));
     IndexWriter iw = new IndexWriter(dir, iwc);
 
+    final int numDocs = atLeast(10000);
     StringBuilder longValueBuilder = new StringBuilder();
     String shortValue = "value";
     longValueBuilder.append(shortValue.repeat(20 * 1024));
     String longValue = longValueBuilder.toString();
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       doc.add(new StoredField("field1", "value1_1"));
       doc.add(new StoredField("field2", longValue));
@@ -92,10 +93,10 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     iw.close();
 
     DirectoryReader ir = DirectoryReader.open(dir);
-    assertEquals(10, ir.numDocs());
+    assertEquals(numDocs, ir.numDocs());
     Set<String> fields = new HashSet<>();
     fields.add("field1");
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < numDocs; i++) {
       Document doc = ir.document(i, fields);
       assertEquals(2, doc.getFields("field1").length);
       assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
@@ -105,7 +106,7 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     }
 
     fields.add("field2");
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < numDocs; i++) {
       Document doc = ir.document(i, fields);
       assertEquals(2, doc.getValues("field1").length);
       assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
@@ -117,7 +118,7 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     fields = new HashSet<>();
     fields.add("field1");
     fields.add("field3");
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < numDocs; i++) {
       Document doc = ir.document(i, fields);
       assertEquals(2, doc.getValues("field1").length);
       assertEquals("value1_1", doc.getFields("field1")[0].stringValue());
@@ -128,7 +129,7 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
 
     fields = new HashSet<>();
     fields.add("field3");
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < numDocs; i++) {
       Document doc = ir.document(i, fields);
       assertEquals(0, doc.getValues("field1").length);
       assertEquals(null, doc.get("field2"));
