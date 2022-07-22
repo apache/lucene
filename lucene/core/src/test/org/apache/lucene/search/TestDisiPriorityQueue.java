@@ -43,7 +43,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
         pq.add(w);
       }
     } else {
-      if (r.nextInt(10) < 2) {
+      if (r.nextInt(10) < 2 && size > 1) {
         int len = random().nextInt(1, size);
         for (int i = 0; i < len; i++) {
           pq.add(all[i]);
