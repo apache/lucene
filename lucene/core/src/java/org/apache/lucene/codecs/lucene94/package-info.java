@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 9.2 file format.
+ * Lucene 9.3 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *
@@ -180,7 +180,7 @@
  *       of files, recording dimensionally indexed fields, to enable fast numeric range filtering
  *       and large numeric values like BigInteger and BigDecimal (1D) and geographic shape
  *       intersection (2D, 3D).
- *   <li>{@link org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat Vector values}. The
+ *   <li>{@link org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat Vector values}. The
  *       vector format stores numeric vectors in a format optimized for random access and
  *       computation, supporting high-dimensional nearest-neighbor search.
  * </ul>
@@ -310,7 +310,7 @@
  * <td>Holds indexed points</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene92.Lucene92HnswVectorsFormat Vector values}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat Vector values}</td>
  * <td>.vec, .vem</td>
  * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data, and
  * <code>.vem</code> the vector metadata</td>
@@ -419,4 +419,4 @@
  * <code>UInt64</code> values, or better yet, {@link org.apache.lucene.store.DataOutput#writeVInt
  * VInt} values which have no limit. </div>
  */
-package org.apache.lucene.codecs.lucene92;
+package org.apache.lucene.codecs.lucene94;
