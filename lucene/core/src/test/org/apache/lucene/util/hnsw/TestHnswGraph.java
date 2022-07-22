@@ -20,8 +20,10 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -31,6 +33,7 @@ import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -42,6 +45,12 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
@@ -117,6 +126,94 @@ public class TestHnswGraph extends LuceneTestCase {
                           .getFieldReader("field"))
                   .getGraph("field");
           assertGraphEqual(hnsw, graphValues);
+        }
+      }
+    }
+  }
+
+  // test that sorted index returns the same search results are unsorted
+  public void testSortedAndUnsortedIndicesReturnSameResults() throws IOException {
+    int dim = random().nextInt(10) + 3;
+    int nDoc = random().nextInt(500) + 1;
+    RandomVectorValues vectors = new RandomVectorValues(nDoc, dim, random());
+
+    int M = random().nextInt(10) + 5;
+    int beamWidth = random().nextInt(10) + 5;
+    VectorSimilarityFunction similarityFunction =
+        VectorSimilarityFunction.values()[
+            random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
+    long seed = random().nextLong();
+    HnswGraphBuilder.randSeed = seed;
+    IndexWriterConfig iwc =
+        new IndexWriterConfig()
+            .setCodec(
+                new Lucene94Codec() {
+                  @Override
+                  public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                    return new Lucene94HnswVectorsFormat(M, beamWidth);
+                  }
+                });
+    IndexWriterConfig iwc2 =
+        new IndexWriterConfig()
+            .setCodec(
+                new Lucene94Codec() {
+                  @Override
+                  public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                    return new Lucene94HnswVectorsFormat(M, beamWidth);
+                  }
+                })
+            .setIndexSort(new Sort(new SortField("sortkey", SortField.Type.LONG)));
+    ;
+
+    try (Directory dir = newDirectory();
+        Directory dir2 = newDirectory()) {
+      int indexedDoc = 0;
+      try (IndexWriter iw = new IndexWriter(dir, iwc);
+          IndexWriter iw2 = new IndexWriter(dir2, iwc2)) {
+        while (vectors.nextDoc() != NO_MORE_DOCS) {
+          while (indexedDoc < vectors.docID()) {
+            // increment docId in the index by adding empty documents
+            iw.addDocument(new Document());
+            indexedDoc++;
+          }
+          Document doc = new Document();
+          doc.add(new KnnVectorField("vector", vectors.vectorValue(), similarityFunction));
+          doc.add(new StoredField("id", vectors.docID()));
+          doc.add(new NumericDocValuesField("sortkey", random().nextLong()));
+          iw.addDocument(doc);
+          iw2.addDocument(doc);
+          indexedDoc++;
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(dir);
+          IndexReader reader2 = DirectoryReader.open(dir2)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        IndexSearcher searcher2 = new IndexSearcher(reader2);
+
+        for (int i = 0; i < 10; i++) {
+          // ask to explore a lot of candidates to ensure the same returned hits,
+          // as graphs of 2 indices are organized differently
+          KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(random(), dim), 50);
+          List<String> ids1 = new ArrayList<>();
+          List<Integer> docs1 = new ArrayList<>();
+          List<String> ids2 = new ArrayList<>();
+          List<Integer> docs2 = new ArrayList<>();
+
+          TopDocs topDocs = searcher.search(query, 5);
+          for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+            Document doc = reader.document(scoreDoc.doc, Set.of("id"));
+            ids1.add(doc.get("id"));
+            docs1.add(scoreDoc.doc);
+          }
+          TopDocs topDocs2 = searcher2.search(query, 5);
+          for (ScoreDoc scoreDoc : topDocs2.scoreDocs) {
+            Document doc = reader2.document(scoreDoc.doc, Set.of("id"));
+            ids2.add(doc.get("id"));
+            docs2.add(scoreDoc.doc);
+          }
+          assertEquals(ids1, ids2);
+          // doc IDs are not equal, as in the second sorted index docs are organized differently
+          assertNotEquals(docs1, docs2);
         }
       }
     }

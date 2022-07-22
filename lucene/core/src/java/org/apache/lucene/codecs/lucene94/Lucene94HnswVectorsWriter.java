@@ -21,23 +21,32 @@ import static org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat.DIRECT
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
@@ -53,19 +62,16 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
-  private final int maxDoc;
-
   private final int M;
   private final int beamWidth;
+
+  private final List<FieldWriter> fields = new ArrayList<>();
   private boolean finished;
 
   Lucene94HnswVectorsWriter(SegmentWriteState state, int M, int beamWidth) throws IOException {
     this.M = M;
     this.beamWidth = beamWidth;
-
-    assert state.fieldInfos.hasVectorValues();
     segmentWriteState = state;
-
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene94HnswVectorsFormat.META_EXTENSION);
@@ -106,7 +112,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
           Lucene94HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      maxDoc = state.segmentInfo.maxDoc();
       success = true;
     } finally {
       if (success == false) {
@@ -116,10 +121,231 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-      throws IOException {
+  public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
+    FieldWriter newField = new FieldWriter(fieldInfo, M, beamWidth, segmentWriteState.infoStream);
+    fields.add(newField);
+    return newField;
+  }
+
+  @Override
+  public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+    for (FieldWriter field : fields) {
+      if (sortMap == null) {
+        writeField(field, maxDoc);
+      } else {
+        writeSortingField(field, maxDoc, sortMap);
+      }
+    }
+  }
+
+  @Override
+  public void finish() throws IOException {
+    if (finished) {
+      throw new IllegalStateException("already finished");
+    }
+    finished = true;
+
+    if (meta != null) {
+      // write end of fields marker
+      meta.writeInt(-1);
+      CodecUtil.writeFooter(meta);
+    }
+    if (vectorData != null) {
+      CodecUtil.writeFooter(vectorData);
+      CodecUtil.writeFooter(vectorIndex);
+    }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long total = 0;
+    for (FieldWriter field : fields) {
+      total += field.ramBytesUsed();
+    }
+    return total;
+  }
+
+  private void writeField(FieldWriter fieldData, int maxDoc) throws IOException {
+    // write vector values
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
+    final ByteBuffer buffer =
+        ByteBuffer.allocate(fieldData.dim * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    final BytesRef binaryValue = new BytesRef(buffer.array());
+    for (float[] vector : fieldData.vectors) {
+      buffer.asFloatBuffer().put(vector);
+      vectorData.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+    }
+    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+
+    // write graph
+    long vectorIndexOffset = vectorIndex.getFilePointer();
+    OnHeapHnswGraph graph = fieldData.getGraph();
+    writeGraph(graph);
+    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+
+    writeMeta(
+        fieldData.fieldInfo,
+        maxDoc,
+        vectorDataOffset,
+        vectorDataLength,
+        vectorIndexOffset,
+        vectorIndexLength,
+        fieldData.docsWithField,
+        graph);
+  }
+
+  private void writeSortingField(FieldWriter fieldData, int maxDoc, Sorter.DocMap sortMap)
+      throws IOException {
+    final int[] docIdOffsets = new int[sortMap.size()];
+    int offset = 1; // 0 means no vector for this (field, document)
+    DocIdSetIterator iterator = fieldData.docsWithField.iterator();
+    for (int docID = iterator.nextDoc();
+        docID != DocIdSetIterator.NO_MORE_DOCS;
+        docID = iterator.nextDoc()) {
+      int newDocID = sortMap.oldToNew(docID);
+      docIdOffsets[newDocID] = offset++;
+    }
+    DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
+    final int[] ordMap = new int[offset - 1]; // new ord to old ord
+    final int[] oldOrdMap = new int[offset - 1]; // old ord to new ord
+    int ord = 0;
+    int doc = 0;
+    for (int docIdOffset : docIdOffsets) {
+      if (docIdOffset != 0) {
+        ordMap[ord] = docIdOffset - 1;
+        oldOrdMap[docIdOffset - 1] = ord;
+        newDocsWithField.add(doc);
+        ord++;
+      }
+      doc++;
+    }
+
+    // write vector values
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+    final ByteBuffer buffer =
+        ByteBuffer.allocate(fieldData.dim * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    final BytesRef binaryValue = new BytesRef(buffer.array());
+    for (int ordinal : ordMap) {
+      float[] vector = fieldData.vectors.get(ordinal);
+      buffer.asFloatBuffer().put(vector);
+      vectorData.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+    }
+    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+
+    // write graph
+    long vectorIndexOffset = vectorIndex.getFilePointer();
+    OnHeapHnswGraph graph = fieldData.getGraph();
+    HnswGraph mockGraph = reconstructAndWriteGraph(graph, ordMap, oldOrdMap);
+    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+
+    writeMeta(
+        fieldData.fieldInfo,
+        maxDoc,
+        vectorDataOffset,
+        vectorDataLength,
+        vectorIndexOffset,
+        vectorIndexLength,
+        newDocsWithField,
+        mockGraph);
+  }
+
+  // reconstruct graph substituting old ordinals with new ordinals
+  private HnswGraph reconstructAndWriteGraph(
+      OnHeapHnswGraph graph, int[] newToOldMap, int[] oldToNewMap) throws IOException {
+    if (graph == null) return null;
+
+    List<int[]> nodesByLevel = new ArrayList<>(graph.numLevels());
+    nodesByLevel.add(null);
+
+    int maxOrd = graph.size();
+    int maxConnOnLevel = M * 2;
+    NodesIterator nodesOnLevel0 = graph.getNodesOnLevel(0);
+    while (nodesOnLevel0.hasNext()) {
+      int node = nodesOnLevel0.nextInt();
+      NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
+      reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+    }
+
+    maxConnOnLevel = M;
+    for (int level = 1; level < graph.numLevels(); level++) {
+      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
+      int[] newNodes = new int[nodesOnLevel.size()];
+      int n = 0;
+      while (nodesOnLevel.hasNext()) {
+        newNodes[n++] = oldToNewMap[nodesOnLevel.nextInt()];
+      }
+      Arrays.sort(newNodes);
+      nodesByLevel.add(newNodes);
+      for (int node : newNodes) {
+        NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
+        reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+      }
+    }
+    return new HnswGraph() {
+      @Override
+      public int nextNeighbor() {
+        throw new UnsupportedOperationException("Not supported on a mock graph");
+      }
+
+      @Override
+      public void seek(int level, int target) {
+        throw new UnsupportedOperationException("Not supported on a mock graph");
+      }
+
+      @Override
+      public int size() {
+        return graph.size();
+      }
+
+      @Override
+      public int numLevels() {
+        return graph.numLevels();
+      }
+
+      @Override
+      public int entryNode() {
+        throw new UnsupportedOperationException("Not supported on a mock graph");
+      }
+
+      @Override
+      public NodesIterator getNodesOnLevel(int level) {
+        if (level == 0) {
+          return graph.getNodesOnLevel(0);
+        } else {
+          return new NodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+        }
+      }
+    };
+  }
+
+  private void reconstructAndWriteNeigbours(
+      NeighborArray neighbors, int[] oldToNewMap, int maxConnOnLevel, int maxOrd)
+      throws IOException {
+    int size = neighbors.size();
+    vectorIndex.writeInt(size);
+
+    // Destructively modify; it's ok we are discarding it after this
+    int[] nnodes = neighbors.node();
+    for (int i = 0; i < size; i++) {
+      nnodes[i] = oldToNewMap[nnodes[i]];
+    }
+    Arrays.sort(nnodes, 0, size);
+    for (int i = 0; i < size; i++) {
+      int nnode = nnodes[i];
+      assert nnode < maxOrd : "node too large: " + nnode + ">=" + maxOrd;
+      vectorIndex.writeInt(nnode);
+    }
+    // if number of connections < maxConn,
+    // add bogus values up to maxConn to have predictable offsets
+    for (int i = size; i < maxConnOnLevel; i++) {
+      vectorIndex.writeInt(0);
+    }
+  }
+
+  @Override
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+    VectorValues vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
 
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -148,13 +374,24 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       OffHeapVectorValues offHeapVectors =
           new OffHeapVectorValues.DenseOffHeapVectorValues(
               vectors.dimension(), docsWithField.cardinality(), vectorDataInput);
-      OnHeapHnswGraph graph =
-          offHeapVectors.size() == 0
-              ? null
-              : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarityFunction());
+      OnHeapHnswGraph graph = null;
+      if (offHeapVectors.size() != 0) {
+        // build graph
+        HnswGraphBuilder hnswGraphBuilder =
+            new HnswGraphBuilder(
+                offHeapVectors,
+                fieldInfo.getVectorSimilarityFunction(),
+                M,
+                beamWidth,
+                HnswGraphBuilder.randSeed);
+        hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
+        graph = hnswGraphBuilder.build(offHeapVectors.randomAccess());
+        writeGraph(graph);
+      }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
+          segmentWriteState.segmentInfo.maxDoc(),
           vectorDataOffset,
           vectorDataLength,
           vectorIndexOffset,
@@ -174,30 +411,44 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  /**
-   * Writes the vector values to the output and returns a set of documents that contains vectors.
-   */
-  private static DocsWithFieldSet writeVectorData(IndexOutput output, VectorValues vectors)
-      throws IOException {
-    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-      // write vector
-      BytesRef binaryValue = vectors.binaryValue();
-      assert binaryValue.length == vectors.dimension() * Float.BYTES;
-      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-      docsWithField.add(docV);
+  private void writeGraph(OnHeapHnswGraph graph) throws IOException {
+    if (graph == null) return;
+    // write vectors' neighbours on each level into the vectorIndex file
+    int countOnLevel0 = graph.size();
+    for (int level = 0; level < graph.numLevels(); level++) {
+      int maxConnOnLevel = level == 0 ? (M * 2) : M;
+      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
+      while (nodesOnLevel.hasNext()) {
+        int node = nodesOnLevel.nextInt();
+        NeighborArray neighbors = graph.getNeighbors(level, node);
+        int size = neighbors.size();
+        vectorIndex.writeInt(size);
+        // Destructively modify; it's ok we are discarding it after this
+        int[] nnodes = neighbors.node();
+        Arrays.sort(nnodes, 0, size);
+        for (int i = 0; i < size; i++) {
+          int nnode = nnodes[i];
+          assert nnode < countOnLevel0 : "node too large: " + nnode + ">=" + countOnLevel0;
+          vectorIndex.writeInt(nnode);
+        }
+        // if number of connections < maxConn, add bogus values up to maxConn to have predictable
+        // offsets
+        for (int i = size; i < maxConnOnLevel; i++) {
+          vectorIndex.writeInt(0);
+        }
+      }
     }
-    return docsWithField;
   }
 
   private void writeMeta(
       FieldInfo field,
+      int maxDoc,
       long vectorDataOffset,
       long vectorDataLength,
       long vectorIndexOffset,
       long vectorIndexLength,
       DocsWithFieldSet docsWithField,
-      OnHeapHnswGraph graph)
+      HnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
@@ -266,65 +517,129 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
+  /**
+   * Writes the vector values to the output and returns a set of documents that contains vectors.
+   */
+  private static DocsWithFieldSet writeVectorData(IndexOutput output, VectorValues vectors)
       throws IOException {
-
-    // build graph
-    HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(
-            vectorValues, similarityFunction, M, beamWidth, HnswGraphBuilder.randSeed);
-    hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
-
-    // write vectors' neighbours on each level into the vectorIndex file
-    int countOnLevel0 = graph.size();
-    for (int level = 0; level < graph.numLevels(); level++) {
-      int maxConnOnLevel = level == 0 ? (M * 2) : M;
-      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-      while (nodesOnLevel.hasNext()) {
-        int node = nodesOnLevel.nextInt();
-        NeighborArray neighbors = graph.getNeighbors(level, node);
-        int size = neighbors.size();
-        vectorIndex.writeInt(size);
-        // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
-        Arrays.sort(nnodes, 0, size);
-        for (int i = 0; i < size; i++) {
-          int nnode = nnodes[i];
-          assert nnode < countOnLevel0 : "node too large: " + nnode + ">=" + countOnLevel0;
-          vectorIndex.writeInt(nnode);
-        }
-        // if number of connections < maxConn, add bogus values up to maxConn to have predictable
-        // offsets
-        for (int i = size; i < maxConnOnLevel; i++) {
-          vectorIndex.writeInt(0);
-        }
-      }
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
+      // write vector
+      BytesRef binaryValue = vectors.binaryValue();
+      assert binaryValue.length == vectors.dimension() * Float.BYTES;
+      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      docsWithField.add(docV);
     }
-    return graph;
-  }
-
-  @Override
-  public void finish() throws IOException {
-    if (finished) {
-      throw new IllegalStateException("already finished");
-    }
-    finished = true;
-
-    if (meta != null) {
-      // write end of fields marker
-      meta.writeInt(-1);
-      CodecUtil.writeFooter(meta);
-    }
-    if (vectorData != null) {
-      CodecUtil.writeFooter(vectorData);
-      CodecUtil.writeFooter(vectorIndex);
-    }
+    return docsWithField;
   }
 
   @Override
   public void close() throws IOException {
     IOUtils.close(meta, vectorData, vectorIndex);
+  }
+
+  private static class FieldWriter extends KnnFieldVectorsWriter {
+    private final FieldInfo fieldInfo;
+    private final int dim;
+    private final DocsWithFieldSet docsWithField;
+    private final List<float[]> vectors;
+    private final RAVectorValues raVectorValues;
+    private final HnswGraphBuilder hnswGraphBuilder;
+
+    private int lastDocID = -1;
+    private int node = 0;
+
+    FieldWriter(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
+        throws IOException {
+      this.fieldInfo = fieldInfo;
+      this.dim = fieldInfo.getVectorDimension();
+      this.docsWithField = new DocsWithFieldSet();
+      vectors = new ArrayList<>();
+      raVectorValues = new RAVectorValues(vectors, dim);
+      hnswGraphBuilder =
+          new HnswGraphBuilder(
+              () -> raVectorValues,
+              fieldInfo.getVectorSimilarityFunction(),
+              M,
+              beamWidth,
+              HnswGraphBuilder.randSeed);
+      hnswGraphBuilder.setInfoStream(infoStream);
+    }
+
+    @Override
+    public void addValue(int docID, float[] vectorValue) throws IOException {
+      if (docID == lastDocID) {
+        throw new IllegalArgumentException(
+            "VectorValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
+      }
+      if (vectorValue.length != dim) {
+        throw new IllegalArgumentException(
+            "Attempt to index a vector of dimension "
+                + vectorValue.length
+                + " but \""
+                + fieldInfo.name
+                + "\" has dimension "
+                + dim);
+      }
+      assert docID > lastDocID;
+      docsWithField.add(docID);
+      vectors.add(ArrayUtil.copyOfSubArray(vectorValue, 0, vectorValue.length));
+      if (node > 0) {
+        // start at node 1! node 0 is added implicitly, in the constructor
+        hnswGraphBuilder.addGraphNode(node, vectorValue);
+      }
+      node++;
+      lastDocID = docID;
+    }
+
+    OnHeapHnswGraph getGraph() {
+      if (vectors.size() > 0) {
+        return hnswGraphBuilder.getGraph();
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      if (vectors.size() == 0) return 0;
+      return docsWithField.ramBytesUsed()
+          + vectors.size()
+              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
+          + vectors.size() * vectors.get(0).length * Float.BYTES
+          + hnswGraphBuilder.getGraph().ramBytesUsed();
+    }
+  }
+
+  private static class RAVectorValues implements RandomAccessVectorValues {
+    private final List<float[]> vectors;
+    private final int dim;
+
+    RAVectorValues(List<float[]> vectors, int dim) {
+      this.vectors = vectors;
+      this.dim = dim;
+    }
+
+    @Override
+    public int size() {
+      return vectors.size();
+    }
+
+    @Override
+    public int dimension() {
+      return dim;
+    }
+
+    @Override
+    public float[] vectorValue(int targetOrd) throws IOException {
+      return vectors.get(targetOrd);
+    }
+
+    @Override
+    public BytesRef binaryValue(int targetOrd) throws IOException {
+      throw new UnsupportedOperationException();
+    }
   }
 }
