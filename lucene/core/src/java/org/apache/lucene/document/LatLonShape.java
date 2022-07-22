@@ -127,7 +127,7 @@ public class LatLonShape {
           t.isEdgefromPolygon(2));
       triangles.add(dt);
     }
-    return new LatLonShapeDocValueField(fieldName, triangles);
+    return new LatLonShapeDocValuesField(fieldName, triangles);
   }
 
   /** create indexable fields for line geometry */
@@ -169,7 +169,7 @@ public class LatLonShape {
           true);
       triangles.add(t);
     }
-    return new LatLonShapeDocValueField(fieldName, triangles);
+    return new LatLonShapeDocValuesField(fieldName, triangles);
   }
 
   /** create indexable fields for point geometry */
@@ -202,22 +202,22 @@ public class LatLonShape {
         encodeLatitude(lat),
         true);
     triangles.add(t);
-    return new LatLonShapeDocValueField(fieldName, triangles);
+    return new LatLonShapeDocValuesField(fieldName, triangles);
   }
 
-  /** create a {@link LatLonShapeDocValueField} from an existing encoded representation */
+  /** create a {@link LatLonShapeDocValuesField} from an existing encoded representation */
   public static ShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
-    return new LatLonShapeDocValueField(fieldName, binaryValue);
+    return new LatLonShapeDocValuesField(fieldName, binaryValue);
   }
 
-  /** create a {@link LatLonShapeDocValueField} from an existing tessellation */
-  public static LatLonShapeDocValueField createDocValueField(
+  /** create a {@link LatLonShapeDocValuesField} from an existing tessellation */
+  public static LatLonShapeDocValuesField createDocValueField(
       String fieldName, List<ShapeField.DecodedTriangle> tessellation) {
-    return new LatLonShapeDocValueField(fieldName, tessellation);
+    return new LatLonShapeDocValuesField(fieldName, tessellation);
   }
 
   /** create a shape docvalue field from indexable fields */
-  public static LatLonShapeDocValueField createDocValueField(
+  public static LatLonShapeDocValuesField createDocValueField(
       String fieldName, Field[] indexableFields) {
     ArrayList<ShapeField.DecodedTriangle> tess = new ArrayList<>(indexableFields.length);
     final byte[] scratch = new byte[7 * Integer.BYTES];
@@ -229,7 +229,7 @@ public class LatLonShape {
       ShapeField.decodeTriangle(scratch, t);
       tess.add(t);
     }
-    return new LatLonShapeDocValueField(fieldName, tess);
+    return new LatLonShapeDocValuesField(fieldName, tess);
   }
 
   /** create a query to find all indexed geo shapes that intersect a defined bounding box * */

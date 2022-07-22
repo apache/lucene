@@ -38,8 +38,8 @@ final class XYShapeDocValuesQuery extends BaseShapeDocValuesQuery {
   }
 
   @Override
-  protected ShapeDocValuesField getShapeDocValues(String fieldName, BytesRef binaryValue) {
-    return XYShape.createDocValueField(fieldName, binaryValue);
+  protected ShapeDocValues getShapeDocValues(BytesRef binaryValue) {
+    return new XYShapeDocValues(binaryValue);
   }
 
   @Override

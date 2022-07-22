@@ -125,7 +125,7 @@ public class XYShape {
           t.isEdgefromPolygon(2));
       triangles.add(dt);
     }
-    return new XYShapeDocValueField(fieldName, triangles);
+    return new XYShapeDocValuesField(fieldName, triangles);
   }
 
   /** create indexable fields for cartesian line geometry */
@@ -148,7 +148,7 @@ public class XYShape {
   }
 
   /** create doc value field for x, y line geometry without creating indexable fields. */
-  public static XYShapeDocValueField createDocValueField(String fieldName, XYLine line) {
+  public static XYShapeDocValuesField createDocValueField(String fieldName, XYLine line) {
     int numPoints = line.numPoints();
     List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(numPoints - 1);
     // create "flat" triangles
@@ -167,7 +167,7 @@ public class XYShape {
           true);
       triangles.add(t);
     }
-    return new XYShapeDocValueField(fieldName, triangles);
+    return new XYShapeDocValuesField(fieldName, triangles);
   }
 
   /** create indexable fields for cartesian point geometry */
@@ -178,7 +178,7 @@ public class XYShape {
   }
 
   /**
-   * create a {@link XYShapeDocValueField} for cartesian points without creating indexable fields.
+   * create a {@link XYShapeDocValuesField} for cartesian points without creating indexable fields.
    */
   public static ShapeDocValuesField createDocValueField(String fieldName, float x, float y) {
     List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(1);
@@ -186,18 +186,18 @@ public class XYShape {
     t.type = ShapeField.DecodedTriangle.TYPE.POINT;
     t.setValues(encode(x), encode(y), true, encode(x), encode(y), true, encode(x), encode(y), true);
     triangles.add(t);
-    return new XYShapeDocValueField(fieldName, triangles);
+    return new XYShapeDocValuesField(fieldName, triangles);
   }
 
-  /** create a {@link XYShapeDocValueField} from an existing encoded representation */
+  /** create a {@link XYShapeDocValuesField} from an existing encoded representation */
   public static ShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
-    return new XYShapeDocValueField(fieldName, binaryValue);
+    return new XYShapeDocValuesField(fieldName, binaryValue);
   }
 
-  /** create a {@link XYShapeDocValueField} from a precomputed tessellation */
-  public static XYShapeDocValueField createDocValueField(
+  /** create a {@link XYShapeDocValuesField} from a precomputed tessellation */
+  public static XYShapeDocValuesField createDocValueField(
       String fieldName, List<ShapeField.DecodedTriangle> tessellation) {
-    return new XYShapeDocValueField(fieldName, tessellation);
+    return new XYShapeDocValuesField(fieldName, tessellation);
   }
 
   /** create a query to find all cartesian shapes that intersect a defined bounding box * */

@@ -23,7 +23,7 @@ import org.apache.lucene.geo.Geometry;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.ScoreMode;
@@ -52,8 +52,7 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
     return queryRelation;
   }
 
-  protected abstract ShapeDocValuesField getShapeDocValues(
-      final String fieldName, BytesRef binaryValue);
+  protected abstract ShapeDocValues getShapeDocValues(BytesRef binaryValue);
 
   @Override
   protected ScorerSupplier getScorerSupplier(
@@ -78,8 +77,7 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
         new TwoPhaseIterator(values) {
           @Override
           public boolean matches() throws IOException {
-            ShapeDocValuesField shapeDVField = getShapeDocValues(field, values.binaryValue());
-            return match(shapeDVField);
+            return match(getShapeDocValues(values.binaryValue()));
           }
 
           @Override
@@ -102,7 +100,7 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
   }
 
   /** matches the doc value to the query; overridable to provide custom query logic */
-  protected boolean match(ShapeDocValuesField shapeDocValues) throws IOException {
+  protected boolean match(ShapeDocValues shapeDocValues) throws IOException {
     boolean result = matchesComponent(shapeDocValues, queryRelation, queryComponent2D);
     if (queryRelation == QueryRelation.DISJOINT) {
       return result == false;
@@ -118,14 +116,14 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
   }
 
   protected boolean matchesComponent(
-      final ShapeDocValuesField shapeDVField,
+      final ShapeDocValues dv,
       final ShapeField.QueryRelation queryRelation,
       final Component2D component)
       throws IOException {
-    PointValues.Relation r = shapeDVField.relate(component);
-    if (r != PointValues.Relation.CELL_OUTSIDE_QUERY) {
+    Relation r = dv.relate(component);
+    if (r != Relation.CELL_OUTSIDE_QUERY) {
       if (queryRelation == ShapeField.QueryRelation.WITHIN) {
-        return r == PointValues.Relation.CELL_INSIDE_QUERY;
+        return r == Relation.CELL_INSIDE_QUERY;
       }
       return true;
     }

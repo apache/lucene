@@ -37,15 +37,14 @@ public class TestShapeDocValues extends LuceneTestCase {
 
   private static final String FIELD_NAME = "field";
 
-  public void testSimpleDocValueField() throws Exception {
-    ShapeDocValuesField dvField =
-        LatLonShape.createDocValueField(FIELD_NAME, getTestPolygonWithHole());
+  public void testSimpleDocValue() throws Exception {
+    ShapeDocValues dv = new LatLonShapeDocValues(getTessellation(getTestPolygonWithHole()));
     // tests geometry inside a hole and crossing
     assertEquals(
-        dvField.relate(LatLonGeometry.create(new Rectangle(-0.25, -0.24, -3.8, -3.7))),
+        dv.relate(LatLonGeometry.create(new Rectangle(-0.25, -0.24, -3.8, -3.7))),
         PointValues.Relation.CELL_OUTSIDE_QUERY);
     assertNotEquals(
-        dvField.relate(LatLonGeometry.create(new Rectangle(-1.2, 1.2, -1.5, 1.7))),
+        dv.relate(LatLonGeometry.create(new Rectangle(-1.2, 1.2, -1.5, 1.7))),
         PointValues.Relation.CELL_CROSSES_QUERY);
   }
 
@@ -115,8 +114,8 @@ public class TestShapeDocValues extends LuceneTestCase {
 
   /**
    * ensures consistency between {@link ByteBuffersDataOutput#writeVInt(int)} and {@link
-   * ShapeDocValuesField#vIntSize(int)} and {@link ByteBuffersDataOutput#writeVLong(long)} and
-   * {@link ShapeDocValuesField#vLongSize(long)} so the serialization is valid.
+   * ShapeDocValues#vIntSize(int)} and {@link ByteBuffersDataOutput#writeVLong(long)} and {@link
+   * ShapeDocValues#vLongSize(long)} so the serialization is valid.
    */
   public void testVariableValueSizes() throws Exception {
     // scratch buffer
@@ -128,12 +127,12 @@ public class TestShapeDocValues extends LuceneTestCase {
       long pB = out.size();
       out.writeVInt(testInt);
       long pA = out.size();
-      assertEquals(ShapeDocValuesField.vIntSize(testInt), (int) (pA - pB));
+      assertEquals(ShapeDocValues.vIntSize(testInt), (int) (pA - pB));
 
       // test variable long sizes
       long testLong = random().nextLong(Long.MAX_VALUE);
       out.writeVLong(testLong);
-      assertEquals(ShapeDocValuesField.vLongSize(testLong), out.size() - pA);
+      assertEquals(ShapeDocValues.vLongSize(testLong), out.size() - pA);
     }
   }
 

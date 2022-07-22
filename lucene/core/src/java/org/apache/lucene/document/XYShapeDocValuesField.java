@@ -48,15 +48,15 @@ import org.apache.lucene.util.BytesRef;
  * @see XYDocValuesField
  * @lucene.experimental
  */
-final class XYShapeDocValueField extends ShapeDocValuesField {
+final class XYShapeDocValuesField extends ShapeDocValuesField {
 
-  XYShapeDocValueField(String name, List<ShapeField.DecodedTriangle> tessellation) {
-    super(name, tessellation);
+  XYShapeDocValuesField(String name, List<ShapeField.DecodedTriangle> tessellation) {
+    super(name, new XYShapeDocValues(tessellation));
   }
 
   /** Creates a {@code XYShapeDocValue} field from a given serialized value */
-  XYShapeDocValueField(String name, BytesRef binaryValue) {
-    super(name, binaryValue);
+  XYShapeDocValuesField(String name, BytesRef binaryValue) {
+    super(name, new XYShapeDocValues(binaryValue));
   }
 
   @Override

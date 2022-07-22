@@ -39,8 +39,8 @@ final class LatLonShapeDocValuesQuery extends BaseShapeDocValuesQuery {
   }
 
   @Override
-  protected ShapeDocValuesField getShapeDocValues(String fieldName, BytesRef binaryValue) {
-    return LatLonShape.createDocValueField(fieldName, binaryValue);
+  protected ShapeDocValues getShapeDocValues(BytesRef binaryValue) {
+    return new LatLonShapeDocValues(binaryValue);
   }
 
   /** compute the cost of the query */
