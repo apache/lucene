@@ -15,7 +15,7 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* LUCENE-10592: Build HNSW Graph on indexing. (Mayya Sharipova, Adrien Grand, Julie Tibshirani)
 
 Optimizations
 ---------------------
