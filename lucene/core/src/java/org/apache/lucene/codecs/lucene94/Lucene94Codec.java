@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene92;
+package org.apache.lucene.codecs.lucene94;
 
 import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
@@ -45,14 +45,14 @@ import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
 /**
- * Implements the Lucene 9.2 index format
+ * Implements the Lucene 9.4 index format
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *
- * @see org.apache.lucene.codecs.lucene92 package documentation for file format details.
+ * @see org.apache.lucene.codecs.lucene94 package documentation for file format details.
  * @lucene.experimental
  */
-public class Lucene92Codec extends Codec {
+public class Lucene94Codec extends Codec {
 
   /** Configuration option for the codec. */
   public enum Mode {
@@ -80,7 +80,7 @@ public class Lucene92Codec extends Codec {
       new PerFieldPostingsFormat() {
         @Override
         public PostingsFormat getPostingsFormatForField(String field) {
-          return Lucene92Codec.this.getPostingsFormatForField(field);
+          return Lucene94Codec.this.getPostingsFormatForField(field);
         }
       };
 
@@ -89,7 +89,7 @@ public class Lucene92Codec extends Codec {
       new PerFieldDocValuesFormat() {
         @Override
         public DocValuesFormat getDocValuesFormatForField(String field) {
-          return Lucene92Codec.this.getDocValuesFormatForField(field);
+          return Lucene94Codec.this.getDocValuesFormatForField(field);
         }
       };
 
@@ -98,14 +98,14 @@ public class Lucene92Codec extends Codec {
       new PerFieldKnnVectorsFormat() {
         @Override
         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-          return Lucene92Codec.this.getKnnVectorsFormatForField(field);
+          return Lucene94Codec.this.getKnnVectorsFormatForField(field);
         }
       };
 
   private final StoredFieldsFormat storedFieldsFormat;
 
   /** Instantiates a new codec. */
-  public Lucene92Codec() {
+  public Lucene94Codec() {
     this(Mode.BEST_SPEED);
   }
 
@@ -114,13 +114,13 @@ public class Lucene92Codec extends Codec {
    *
    * @param mode stored fields compression mode to use for newly flushed/merged segments.
    */
-  public Lucene92Codec(Mode mode) {
-    super("Lucene92");
+  public Lucene94Codec(Mode mode) {
+    super("Lucene94");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene90PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
-    this.defaultKnnVectorsFormat = new Lucene92HnswVectorsFormat();
+    this.defaultKnnVectorsFormat = new Lucene94HnswVectorsFormat();
   }
 
   @Override
@@ -196,7 +196,7 @@ public class Lucene92Codec extends Codec {
   /**
    * Returns the vectors format that should be used for writing new segments of <code>field</code>
    *
-   * <p>The default implementation always returns "lucene92".
+   * <p>The default implementation always returns "lucene94".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation.

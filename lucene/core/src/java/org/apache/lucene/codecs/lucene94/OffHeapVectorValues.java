@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene92;
+package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -87,7 +87,7 @@ abstract class OffHeapVectorValues extends VectorValues
   public abstract int ordToDoc(int ord);
 
   static OffHeapVectorValues load(
-      Lucene92HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
+      Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
@@ -164,10 +164,10 @@ abstract class OffHeapVectorValues extends VectorValues
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene92HnswVectorsReader.FieldEntry fieldEntry;
+    private final Lucene94HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene92HnswVectorsReader.FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
+        Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
         throws IOException {
 
       super(fieldEntry.dimension, fieldEntry.size, slice);
