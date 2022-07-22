@@ -147,7 +147,12 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
         if (queryTermsCount == -1) {
           cost = indexTerms.getSumDocFreq();
         } else {
-          cost = queryTermsCount + (indexTerms.getSumDocFreq() - indexTerms.size());
+          long potentialExtraCost = indexTerms.getSumDocFreq();
+          final long indexedTermCount = indexTerms.size();
+          if (indexedTermCount != -1) {
+            potentialExtraCost -= indexedTermCount;
+          }
+          cost = queryTermsCount + potentialExtraCost;
         }
 
         final Weight weight = this;
