@@ -21,8 +21,12 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
@@ -95,6 +99,10 @@ public class TestSpellChecking extends LuceneTestCase {
 
   public void testCompoundFlag() throws Exception {
     doTest("compoundflag");
+  }
+
+  public void testFlagUtf8() throws Exception {
+    doTest("flagutf8");
   }
 
   public void testCheckCompoundCase() throws Exception {
@@ -230,13 +238,15 @@ public class TestSpellChecking extends LuceneTestCase {
   }
 
   protected void doTest(String name) throws Exception {
+    //noinspection ConstantConditions
     checkSpellCheckerExpectations(
         Path.of(getClass().getResource(name + ".aff").toURI()).getParent().resolve(name));
   }
 
   static void checkSpellCheckerExpectations(Path basePath) throws IOException, ParseException {
     InputStream affixStream = Files.newInputStream(Path.of(basePath.toString() + ".aff"));
-    InputStream dictStream = Files.newInputStream(Path.of(basePath.toString() + ".dic"));
+    Path dicFile = Path.of(basePath + ".dic");
+    InputStream dictStream = Files.newInputStream(dicFile);
 
     Hunspell speller;
     try {
@@ -273,5 +283,80 @@ public class TestSpellChecking extends LuceneTestCase {
     } else {
       assertFalse(".sug file without .wrong file!", Files.exists(sug));
     }
+
+    Set<String> everythingGenerated = expandWholeDictionary(dicFile, speller);
+    if (everythingGenerated != null && !speller.dictionary.mayNeedInputCleaning()) {
+      checkGoodSugWordsAreGenerated(speller, good, sug, everythingGenerated);
+    }
+  }
+
+  private static Set<String> expandWholeDictionary(Path dic, Hunspell speller) throws IOException {
+    Set<String> everythingGenerated = new HashSet<>();
+    boolean generatedEverything = true;
+    try (Stream<String> lines = Files.lines(dic, speller.dictionary.decoder.charset())) {
+      for (String line : lines.skip(1).toList()) {
+        int len = (int) line.chars().takeWhile(c -> !Character.isWhitespace(c) && c != '/').count();
+        String word = line.substring(0, len).trim();
+        if (word.isEmpty() || word.contains("\\")) {
+          generatedEverything = false;
+          continue;
+        }
+
+        List<AffixedWord> expanded =
+            checkExpansionGeneratesCorrectWords(speller, word, dic.toString());
+        expanded.forEach(w -> everythingGenerated.add(w.getWord().toLowerCase(Locale.ROOT)));
+      }
+    }
+    return generatedEverything ? everythingGenerated : null;
+  }
+
+  private static void checkGoodSugWordsAreGenerated(
+      Hunspell speller, Path good, Path sug, Set<String> everythingGenerated) throws IOException {
+    Set<String> goodWords = new HashSet<>();
+    if (Files.exists(good)) {
+      Files.readAllLines(good).stream().map(String::trim).forEach(goodWords::add);
+    }
+    if (Files.exists(sug)) {
+      Files.readAllLines(sug).stream()
+          .flatMap(line -> Stream.of(line.split(", ")))
+          .map(String::trim)
+          .filter(s -> !s.contains(" "))
+          .forEach(goodWords::add);
+    }
+
+    goodWords.removeAll(everythingGenerated);
+    goodWords.removeIf(s -> !s.equals(s.toLowerCase(Locale.ROOT)));
+    goodWords.removeIf(s -> speller.analyzeSimpleWord(s).isEmpty());
+
+    assertTrue("Some *.good/sug words weren't generated: " + goodWords, goodWords.isEmpty());
+  }
+
+  static List<AffixedWord> checkExpansionGeneratesCorrectWords(
+      Hunspell hunspell, String stem, String baseName) {
+    List<AffixedWord> expanded = hunspell.getAllWordForms(stem);
+    Set<AffixedWord> misspelled = new HashSet<>();
+    for (AffixedWord word : expanded) {
+      if (!hunspell.spell(word.getWord()) || hunspell.analyzeSimpleWord(word.getWord()).isEmpty()) {
+        misspelled.add(word);
+      }
+    }
+    if (!misspelled.isEmpty()) {
+      fail("Misspelled words generated in " + baseName + ": " + misspelled);
+    }
+
+    if (expanded.stream().anyMatch(e -> e.getWord().equals(stem))) {
+      EntrySuggestion suggestion =
+          hunspell.compress(expanded.stream().map(AffixedWord::getWord).toList());
+      if (suggestion != null) {
+        String message =
+            ("Compression suggests a different stem from the original " + stem)
+                + (" in " + baseName + ":" + suggestion);
+        assertTrue(
+            message,
+            suggestion.getEntriesToEdit().stream().anyMatch(e -> e.getStem().equals(stem)));
+      }
+    }
+
+    return expanded;
   }
 }

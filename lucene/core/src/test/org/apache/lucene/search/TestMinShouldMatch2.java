@@ -409,7 +409,8 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
               continue;
             }
             long ord;
-            while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+            for (int i = 0; i < dv.docValueCount(); i++) {
+              ord = dv.nextOrd();
               if (ords.contains(ord)) {
                 currentMatched++;
                 score += sims[(int) ord].score(currentDoc, 1);

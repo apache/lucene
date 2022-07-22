@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.codecs.lucene93.Lucene93Codec;
-import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene94.Lucene94Codec;
+import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
 
 /** Lucene Core. */
 @SuppressWarnings("module") // the test framework is compiled after the core...
@@ -31,7 +31,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs;
   exports org.apache.lucene.codecs.compressing;
   exports org.apache.lucene.codecs.lucene90;
-  exports org.apache.lucene.codecs.lucene93;
+  exports org.apache.lucene.codecs.lucene94;
   exports org.apache.lucene.codecs.lucene90.blocktree;
   exports org.apache.lucene.codecs.lucene90.compressing;
   exports org.apache.lucene.codecs.perfield;
@@ -63,11 +63,11 @@ module org.apache.lucene.core {
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
   provides org.apache.lucene.codecs.Codec with
-      Lucene93Codec;
+      Lucene94Codec;
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
-      Lucene93HnswVectorsFormat;
+      Lucene94HnswVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with

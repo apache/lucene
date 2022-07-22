@@ -210,10 +210,8 @@ public class DocValuesTermsQuery extends Query implements Accountable {
 
               @Override
               public boolean matches() throws IOException {
-                for (long ord = values.nextOrd();
-                    ord != SortedSetDocValues.NO_MORE_ORDS;
-                    ord = values.nextOrd()) {
-                  if (bits.get(ord)) {
+                for (int i = 0; i < values.docValueCount(); i++) {
+                  if (bits.get(values.nextOrd())) {
                     return true;
                   }
                 }
