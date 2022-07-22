@@ -27,4 +27,5 @@ module org.apache.lucene.facet {
   exports org.apache.lucene.facet.taxonomy;
   exports org.apache.lucene.facet.taxonomy.directory;
   exports org.apache.lucene.facet.taxonomy.writercache;
+  exports org.apache.lucene.facet.facetset;
 }

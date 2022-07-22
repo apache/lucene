@@ -1,0 +1,132 @@
+= FacetSets Overview
+:toc:
+
+This document describes the `FacetSets` capability, which allows to aggregate on multidimensional values. It starts
+with outlining a few example use cases to showcase the motivation for this capability and follows with an API
+walk through.
+
+== Motivation
+
+[#movie-actors]
+=== Movie Actors DB
+
+Suppose that you want to build a search engine for movie actors which allows you to search for actors by name and see
+movie titles they appeared in. You might want to index standard fields such as `actorName`, `genre` and `releaseYear`
+which will let you search by the actor's name or see all actors who appeared in movies during 2021. Similarly, you can
+index facet fields that will let you aggregate by “Genre” and “Year” so that you can show how many actors appeared in
+each year or genre. Few example documents:
+
+[source]
+----
+{ "name": "Tom Hanks", "genre": ["Comedy", "Drama", …], "year": [1988, 2000,…] }
+{ "name": "Harrison Ford", "genre": ["Action", "Adventure", …], "year": [1977, 1981, …] }
+----
+
+However, these facet fields do not allow you to show the following aggregation:
+
+.Number of Actors performing in movies by Genre and Year
+[cols="4*"]
+|===
+|           | 2020 | 2021 | 2022
+| Thriller  | 121  | 43   | 97
+| Action    | 145  | 52   | 130
+| Adventure | 87   | 21   | 32
+|===
+
+The reason is that each “genre” or “releaseYear” facet field is indexed in its own data structure, and therefore if an
+actor appeared in a "Thriller" movie in "2020" and "Action" movie in "2021", there's no way for you to tell that they
+didn't appear in an "Action" movie in "2020".
+
+[#automotive-parts]
+=== Automotive Parts Store
+
+Say you're building a search engine for an automotive parts store where customers can search for different car parts.
+For simplicity let's assume that each item in the catalog contains a searchable “type” field and “car model” it fits
+which consists of two separate fields: “manufacturer” and “year”. This lets you search for parts by their type as well
+as filter parts that fit only a certain manufacturer or year. Few example documents:
+
+[source]
+----
+{
+  "type": "Wiper Blades V1",
+  "models": [
+    { "manufaturer": "Ford", "year": 2010 },
+    { "manufacturer": "Chevy", "year": 2011 }
+  ]
+}
+{
+  "type": "Wiper Blades V2",
+  "models": [
+    { "manufaturer": "Ford", "year": 2011 },
+    { "manufacturer": "Chevy", "year": 2010 }
+  ]
+}
+----
+
+By breaking up the "models" field into its sub-fields "manufacturer" and "year", you can easily aggregate on parts that
+fit a certain manufacturer or year. However, if a user would like to aggregate on parts that can fit either a "Ford
+2010" or "Chevy 2011", then aggregating on the sub-fields will lead to a wrong count of 2 (in the above example) instead
+of 1.
+
+[#movie-awards]
+=== Movie Awards
+
+To showcase a 3-D multidimensional aggregation, lets expand the <<movie-actors>> example with awards an actor has
+received over the years. For this aggregation we will use four dimensions: Award Type ("Oscar", "Grammy", "Emmy"),
+Award Category ("Best Actor", "Best Supporting Actress"), Year and Genre. One interesting aggregation is to show how
+many "Best Actor" vs "Best Supporting Actor" awards one has received in the "Oscar" or "Emmy" for each year. Another
+aggregation is slicing the number of these awards by Genre over all the years.
+
+Building on these examples, one might be able to come up with an interesting use case for an N-dimensional aggregation
+(where `N > 3`). The higher `N` is, the harder it is to aggregate all the dimensions correctly and efficiently without
+`FacetSets`.
+
+== FacetSets API
+
+The `facetset` package consists of few components which allow you to index and aggregate multidimensional facet sets:
+
+=== FacetSet
+
+Holds a set of facet dimension values. Implementations are required to convert the dimensions into comparable long
+representation, as well can implement how the values are packed (encoded). The package offers four implementations:
+`Int/Float/Long/DoubleFacetSet` for `int`, `float`, `long` and `double` values respectively. You can also look at
+`org.apache.lucene.demo.facet.CustomFacetSetExample` in the `lucene/demo` package for a custom implementation of a
+`FacetSet`.
+
+=== FacetSetsField
+
+A `BinaryDocValues` field which lets you index a list of `FacetSet`. This field can be added to a document only once, so
+you will need to construct all the facet sets in advance.
+
+=== FacetSetMatcher
+
+Responsible for matching an encoded `FacetSet` against a given criteria. For example, `ExactFacetSetMatcher` only
+considers an encoded facet set as a match if all dimension values are equal to a given one. `RangeFacetSetMatcher`
+considers an encoded facet set as a match if all dimension values fall within predefined ranges. You can also look at
+`org.apache.lucene.demo.facet.CustomFacetSetExample` in the `lucene/demo` package for a custom implementation of a
+`FacetSetMatcher`.
+
+=== FacetSetDecoder
+
+A functional interface for decoding the packed dimension values back into comparable `long[]` representation. The
+off-the-shelf `Int/FloatFacetSet` can use `FacetSetDecoder::decodeInts` and `Long/DoubleFacetSet` can use
+`FacetSetDecoder::decodeLongs` to decode the indexed dimension values. You can check out
+`org.apache.lucene.demo.facet.CustomFacetSetExample` in the `lucene/demo` package for a custom implementation of a
+`FacetSetDecoder`.
+
+=== MatchingFacetSetCounts
+
+A `Facets` implementation which counts how many documents are matched by each of a list of `FacetSetMatcher`, in
+addition to counting the total number of documents that were matched. It uses the `FacetSetDecoder` to decode the
+dimension values.
+
+== FacetSets Under the Hood
+
+Facet sets are indexed as a `BinaryDocValues` field where the dimension values are encoded as a `byte[]` which consists
+of the number of dimensions in a set (`int`) followed by the packed values of each set (as implemented by
+`packValues()`). At aggregation time the values are decoded by `FacetSetDecoder` into a `long[]` and the matching of the
+values occurs in the `long` space.
+
+All out of the box `FacetSet` implementations pack the dimension values as sortable `long` (`Long/DoubleFacetSet`) or
+`int` (`Int/FloatFacetSet`). If you implement your own `FacetSet` and choose to encode the values differently (e.g. by
+compressing them), you should provide a corresponding implementation of a `FacetSetDecoder`.

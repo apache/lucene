@@ -134,7 +134,13 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
       for (int i = 0; i < 20; i++) {
         writer.addDocument(doc);
       }
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
+      // OK
+    }
 
+    try {
       ((MyMergeScheduler) writer.getConfig().getMergeScheduler()).sync();
     } catch (
         @SuppressWarnings("unused")

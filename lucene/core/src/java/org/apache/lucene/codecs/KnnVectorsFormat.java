@@ -84,7 +84,8 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
       new KnnVectorsFormat("EMPTY") {
         @Override
         public KnnVectorsWriter fieldsWriter(SegmentWriteState state) {
-          throw new UnsupportedOperationException("Attempt to write EMPTY VectorValues");
+          throw new UnsupportedOperationException(
+              "Attempt to write EMPTY VectorValues: maybe you forgot to use codec=Lucene92");
         }
 
         @Override
