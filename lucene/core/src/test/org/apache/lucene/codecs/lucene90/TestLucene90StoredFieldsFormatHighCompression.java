@@ -71,7 +71,7 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
   public void testBestCompressionsSkipDecompression() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
-    iwc.setCodec(new Lucene92Codec(Mode.BEST_COMPRESSION));
+    iwc.setCodec(new Lucene94Codec(Mode.BEST_COMPRESSION));
     IndexWriter iw = new IndexWriter(dir, iwc);
 
     final int numDocs = atLeast(100);

@@ -19,7 +19,7 @@ package org.apache.lucene.codecs.lucene90;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene92.Lucene92Codec;
+import org.apache.lucene.codecs.lucene94.Lucene94Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
@@ -31,13 +31,13 @@ import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 public class TestLucene90StoredFieldsFormatBestSpeed extends BaseStoredFieldsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene92Codec(Lucene92Codec.Mode.BEST_SPEED);
+    return new Lucene94Codec(Lucene94Codec.Mode.BEST_SPEED);
   }
 
   public void testBestSpeedSkipDecompression() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
-    iwc.setCodec(new Lucene92Codec(Lucene92Codec.Mode.BEST_SPEED));
+    iwc.setCodec(new Lucene94Codec(Lucene94Codec.Mode.BEST_SPEED));
     IndexWriter iw = new IndexWriter(dir, iwc);
 
     final int numDocs = atLeast(100);
