@@ -18,9 +18,7 @@ package org.apache.lucene.util.fst;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -252,8 +250,9 @@ public class TestBytesStore extends LuceneTestCase {
     final BytesStore o = new BytesStore(blockBits);
     o.copyBytes(in, len);
     o.copyBytes(0, bytesout, 0, len);
-    assertArrayEquals(ArrayUtil.copyOfSubArray(bytesout, 0, len),
-            ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
+    assertArrayEquals(
+        ArrayUtil.copyOfSubArray(bytesout, 0, len),
+        ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
   }
 
   private void verify(BytesStore bytes, byte[] expected, int totalLength) throws Exception {
