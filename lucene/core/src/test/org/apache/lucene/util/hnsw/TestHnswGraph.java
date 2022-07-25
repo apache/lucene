@@ -134,7 +134,7 @@ public class TestHnswGraph extends LuceneTestCase {
   // test that sorted index returns the same search results are unsorted
   public void testSortedAndUnsortedIndicesReturnSameResults() throws IOException {
     int dim = random().nextInt(10) + 3;
-    int nDoc = random().nextInt(500) + 1;
+    int nDoc = random().nextInt(200) + 100;
     RandomVectorValues vectors = new RandomVectorValues(nDoc, dim, random());
 
     int M = random().nextInt(10) + 5;
@@ -163,7 +163,6 @@ public class TestHnswGraph extends LuceneTestCase {
                   }
                 })
             .setIndexSort(new Sort(new SortField("sortkey", SortField.Type.LONG)));
-    ;
 
     try (Directory dir = newDirectory();
         Directory dir2 = newDirectory()) {
