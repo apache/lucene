@@ -18,9 +18,7 @@ package org.apache.lucene.util.fst;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
