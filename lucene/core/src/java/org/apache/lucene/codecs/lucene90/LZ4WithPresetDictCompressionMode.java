@@ -156,7 +156,7 @@ public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionM
           final int bytesToDecompress = min(blockLength, offset + length - offsetInBlock);
           assert bytesToDecompress > 0;
           LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
-          numBlocksConsumed += 1;
+          numBlocksConsumed++;
           bytes.bytes = ArrayUtil.grow(bytes.bytes, decompressed + bytesToDecompress);
           System.arraycopy(buffer, dictLength, bytes.bytes, decompressed, bytesToDecompress);
           bytes.length += bytesToDecompress;

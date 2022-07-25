@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import java.io.ByteArrayInputStream;
+import static java.lang.Math.min;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.DataFormatException;
@@ -91,7 +92,10 @@ public final class DeflateWithPresetDictCompressionMode extends Lucene90Compress
       decompressor.setInput(compressed, 0, paddedLength);
       try {
         bytes.length +=
-            decompressor.inflate(bytes.bytes, bytes.length, bytes.bytes.length - bytes.length);
+            decompressor.inflate(
+                bytes.bytes,
+                bytes.length + bytes.offset,
+                bytes.bytes.length - bytes.length - bytes.offset);
       } catch (DataFormatException e) {
         throw new IOException(e);
       }
@@ -105,61 +109,167 @@ public final class DeflateWithPresetDictCompressionMode extends Lucene90Compress
       }
     }
 
-    private void decompress(
-        DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+    @Override
+    public InputStream decompress(DataInput in, int originalLength, int offset, int length)
         throws IOException {
+      final BytesRef bytes = new BytesRef();
       assert offset + length <= originalLength;
       if (length == 0) {
         bytes.length = 0;
-        return;
+        return InputStream.nullInputStream();
       }
+
       final int dictLength = in.readVInt();
       final int blockLength = in.readVInt();
       bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, dictLength);
       bytes.offset = bytes.length = 0;
 
       final Inflater decompressor = new Inflater(true);
-      try {
-        // Read the dictionary
-        doDecompress(in, decompressor, bytes);
-        if (dictLength != bytes.length) {
-          throw new CorruptIndexException("Unexpected dict length", in);
+      // Read the dictionary
+      doDecompress(in, decompressor, bytes);
+      if (dictLength != bytes.length) {
+        throw new CorruptIndexException("Unexpected dict length", in);
+      }
+
+      int offsetInBlock = dictLength;
+      int offsetInBytesRef = offset;
+
+      // Skip unneeded blocks
+      while (offsetInBlock + blockLength < offset) {
+        final int compressedLength = in.readVInt();
+        in.skipBytes(compressedLength);
+        offsetInBlock += blockLength;
+        offsetInBytesRef -= blockLength;
+      }
+
+      int finalOffsetInBytesRef = offsetInBytesRef;
+      int finalOffsetInBlock = offsetInBlock;
+
+      return new InputStream() {
+        int offsetInBlock = finalOffsetInBlock;
+
+        {
+          skip(finalOffsetInBytesRef);
         }
 
-        int offsetInBlock = dictLength;
-        int offsetInBytesRef = offset;
+        private void fillBuffer() throws IOException {
+          // no more bytes to decompress
+          if (offsetInBlock >= offset + length) {
+            return;
+          }
 
-        // Skip unneeded blocks
-        while (offsetInBlock + blockLength < offset) {
-          final int compressedLength = in.readVInt();
-          in.skipBytes(compressedLength);
-          offsetInBlock += blockLength;
-          offsetInBytesRef -= blockLength;
-        }
-
-        // Read blocks that intersect with the interval we need
-        while (offsetInBlock < offset + length) {
-          bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + blockLength);
+          bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + bytes.offset + blockLength);
           decompressor.reset();
           decompressor.setDictionary(bytes.bytes, 0, dictLength);
           doDecompress(in, decompressor, bytes);
           offsetInBlock += blockLength;
         }
 
-        bytes.offset = offsetInBytesRef;
-        bytes.length = length;
-        assert bytes.isValid();
-      } finally {
-        decompressor.end();
-      }
-    }
+        @Override
+        public int read() throws IOException {
+          if (bytes.length == 0) {
+            fillBuffer();
+          }
+          // no more bytes
+          if (bytes.length == 0) {
+            return -1;
+          }
+          --bytes.length;
+          int b = bytes.bytes[bytes.offset++];
+          // correct int auto converting from byte ff
+          if (b == -1) {
+            b = 255;
+          }
+          return b;
+        }
 
-    @Override
-    public InputStream decompress(DataInput in, int originalLength, int offset, int length)
-        throws IOException {
-      final BytesRef bytes = new BytesRef();
-      decompress(in, originalLength, offset, length, bytes);
-      return new ByteArrayInputStream(bytes.bytes, bytes.offset, bytes.length);
+        @Override
+        public int read(byte b[], int off, int len) throws IOException {
+          int bytesRead = 0;
+          while (len > bytes.length) {
+            System.arraycopy(bytes.bytes, bytes.offset, b, off, bytes.length);
+            bytes.offset += bytes.length;
+            len -= bytes.length;
+            off += bytes.length;
+            bytesRead += bytes.length;
+            bytes.length = 0;
+            // decompress more when buffer is empty
+            fillBuffer();
+            // return actual read bytes count when there are not enough bytes
+            if (bytes.length == 0) {
+              // return -1 when read nothing
+              return bytesRead == 0 ? -1 : bytesRead;
+            }
+          }
+          // copy the rest from the buffer
+          System.arraycopy(bytes.bytes, bytes.offset, b, off, len);
+          bytes.offset += len;
+          bytes.length -= len;
+          bytesRead += len;
+          return bytesRead;
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+          if (n < 0) {
+            throw new IllegalArgumentException("numBytes must be >= 0, got " + n);
+          }
+
+          // no more actions when there are enough bytes
+          if (n <= bytes.length) {
+            bytes.offset += n;
+            bytes.length -= n;
+            return n;
+          }
+
+          int actualSkipped = bytes.length;
+          // skip the rest of buffer first
+          bytes.offset += bytes.length;
+          bytes.length = 0;
+
+          // skip as many blocks as possible
+          int bytesRemained = offset + length - offsetInBlock;
+          while (bytesRemained >= blockLength && (n - actualSkipped) >= blockLength) {
+            final int compressedLength = in.readVInt();
+            in.skipBytes(compressedLength);
+            actualSkipped += blockLength;
+            offsetInBlock += blockLength;
+            bytesRemained -= blockLength;
+          }
+
+          fillBuffer();
+          long bytesToSkip = min(n - (long) actualSkipped, min(bytes.length, bytesRemained));
+          bytes.offset += bytesToSkip;
+          bytes.length -= bytesToSkip;
+          actualSkipped += bytesToSkip;
+
+          // need more slice for skipping, return actual skipped bytes count
+          return actualSkipped;
+        }
+
+        @Override
+        public byte[] readAllBytes() throws IOException {
+          byte[] buf = new byte[0];
+          int totalRead = 0;
+
+          // Read blocks that intersect with the interval we need
+          int bytesRemained = offset + length - offsetInBlock;
+          while (bytesRemained > 0) {
+            if (bytes.length == 0) {
+              fillBuffer();
+            }
+            int bytesToRead = min(bytes.length, bytesRemained);
+            buf = ArrayUtil.grow(buf, totalRead + bytesToRead);
+            System.arraycopy(bytes.bytes, bytes.offset, buf, totalRead, bytesToRead);
+            totalRead += bytesToRead;
+            bytes.offset += bytesToRead;
+            bytes.length -= bytesToRead;
+            bytesRemained = offset + length - offsetInBlock;
+          }
+
+          return buf;
+        }
+      };
     }
 
     @Override
