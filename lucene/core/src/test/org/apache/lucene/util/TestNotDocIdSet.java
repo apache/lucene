@@ -33,8 +33,8 @@ public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
   }
 
   @Override
-  public void assertEquals(int numBits, BitSet ds1, NotDocIdSet ds2) throws IOException {
-    super.assertEquals(numBits, ds1, ds2);
+  public void assertEquality(int numBits, BitSet ds1, NotDocIdSet ds2) throws IOException {
+    super.assertEquality(numBits, ds1, ds2);
     final Bits bits2 = ds2.bits();
     assertNotNull(bits2); // since we wrapped a FixedBitSet
     assertEquals(numBits, bits2.length());

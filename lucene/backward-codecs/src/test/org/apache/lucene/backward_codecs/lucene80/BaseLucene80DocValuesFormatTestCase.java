@@ -347,7 +347,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
         assertEquals(terms.size(), ssdv.getValueCount());
         TermsEnum expected = terms.iterator();
         TermsEnum actual = r.getSortedSetDocValues("dv").termsEnum();
-        assertEquals(terms.size(), expected, actual);
+        assertEquality(terms.size(), expected, actual);
 
         doTestSortedSetEnumAdvanceIndependently(ssdv);
       }
@@ -364,7 +364,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
       assertEquals(terms.size(), ar.getSortedSetDocValues("dv").getValueCount());
       TermsEnum expected = terms.iterator();
       TermsEnum actual = ar.getSortedSetDocValues("dv").termsEnum();
-      assertEquals(terms.size(), expected, actual);
+      assertEquality(terms.size(), expected, actual);
     }
     ir.close();
 
@@ -372,7 +372,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     dir.close();
   }
 
-  private void assertEquals(long numOrds, TermsEnum expected, TermsEnum actual) throws Exception {
+  private void assertEquality(long numOrds, TermsEnum expected, TermsEnum actual) throws Exception {
     BytesRef ref;
 
     // sequential next() through all terms

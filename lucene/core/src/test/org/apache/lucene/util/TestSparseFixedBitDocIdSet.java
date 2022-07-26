@@ -49,11 +49,11 @@ public class TestSparseFixedBitDocIdSet extends BaseDocIdSetTestCase<BitDocIdSet
   }
 
   @Override
-  public void assertEquals(int numBits, BitSet ds1, BitDocIdSet ds2) throws IOException {
+  public void assertEquality(int numBits, BitSet ds1, BitDocIdSet ds2) throws IOException {
     for (int i = 0; i < numBits; ++i) {
       assertEquals(ds1.get(i), ds2.bits().get(i));
     }
     assertEquals(ds1.cardinality(), ds2.bits().cardinality());
-    super.assertEquals(numBits, ds1, ds2);
+    super.assertEquality(numBits, ds1, ds2);
   }
 }

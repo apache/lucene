@@ -802,7 +802,7 @@ public class TestPhraseQuery extends LuceneTestCase {
 
     // Merge with empty impacts
     impacts2.reset(new Impact[0][], new int[0]);
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(5, 12), new Impact(8, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
@@ -813,7 +813,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // Merge with dummy impacts
     impacts2.reset(
         new Impact[][] {new Impact[] {new Impact(Integer.MAX_VALUE, 1)}}, new int[] {5000});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(5, 12), new Impact(8, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
@@ -824,7 +824,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // Merge with dummy impacts that we don't special case
     impacts2.reset(
         new Impact[][] {new Impact[] {new Impact(Integer.MAX_VALUE, 2)}}, new int[] {5000});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(5, 12), new Impact(8, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
@@ -839,7 +839,7 @@ public class TestPhraseQuery extends LuceneTestCase {
           new Impact[] {new Impact(3, 9), new Impact(5, 11), new Impact(7, 13)}
         },
         new int[] {90, 1000});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(5, 12), new Impact(7, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(7, 13)}
@@ -854,7 +854,7 @@ public class TestPhraseQuery extends LuceneTestCase {
           new Impact[] {new Impact(3, 9), new Impact(5, 11), new Impact(7, 13)}
         },
         new int[] {150, 900});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(2, 10), new Impact(3, 11), new Impact(5, 12), new Impact(6, 13)},
           new Impact[] {
@@ -877,7 +877,7 @@ public class TestPhraseQuery extends LuceneTestCase {
           }
         },
         new int[] {113, 950});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(4, 12), new Impact(8, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
@@ -900,7 +900,7 @@ public class TestPhraseQuery extends LuceneTestCase {
           new Impact[] {new Impact(3, 9), new Impact(12, -4), new Impact(20, -1)}
         },
         new int[] {150, 960});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(2, 10), new Impact(8, -4)},
           new Impact[] {new Impact(3, 10), new Impact(8, -4), new Impact(12, -3)}
@@ -909,7 +909,7 @@ public class TestPhraseQuery extends LuceneTestCase {
         mergedImpacts.getImpacts());
   }
 
-  private static void assertEquals(Impact[][] impacts, int[] docIdUpTo, Impacts actual) {
+  private static void assertEquality(Impact[][] impacts, int[] docIdUpTo, Impacts actual) {
     assertEquals(impacts.length, actual.numLevels());
     for (int i = 0; i < impacts.length; ++i) {
       assertEquals(docIdUpTo[i], actual.getDocIdUpTo(i));

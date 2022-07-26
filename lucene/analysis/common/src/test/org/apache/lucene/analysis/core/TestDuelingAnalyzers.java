@@ -81,7 +81,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
         };
     for (int i = 0; i < 200; i++) {
       String s = TestUtil.randomSimpleString(random);
-      assertEquals(
+      assertEquality(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -106,7 +106,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
     int numIterations = atLeast(10);
     for (int i = 0; i < numIterations; i++) {
       String s = TestUtil.randomSimpleString(random, maxLength);
-      assertEquals(
+      assertEquality(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -127,7 +127,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
         };
     for (int i = 0; i < 200; i++) {
       String s = TestUtil.randomHtmlishString(random, 20);
-      assertEquals(
+      assertEquality(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -151,7 +151,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
     int numIterations = atLeast(10);
     for (int i = 0; i < numIterations; i++) {
       String s = TestUtil.randomHtmlishString(random, maxLength);
-      assertEquals(
+      assertEquality(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -172,7 +172,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
         };
     for (int i = 0; i < 200; i++) {
       String s = TestUtil.randomUnicodeString(random);
-      assertEquals(
+      assertEquality(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -196,7 +196,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
     int numIterations = atLeast(10);
     for (int i = 0; i < numIterations; i++) {
       String s = TestUtil.randomUnicodeString(random, maxLength);
-      assertEquals(
+      assertEquality(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -206,7 +206,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
 
   // we only check a few core attributes here.
   // TODO: test other things
-  public void assertEquals(String s, TokenStream left, TokenStream right) throws Exception {
+  public void assertEquality(String s, TokenStream left, TokenStream right) throws Exception {
     left.reset();
     right.reset();
     CharTermAttribute leftTerm = left.addAttribute(CharTermAttribute.class);

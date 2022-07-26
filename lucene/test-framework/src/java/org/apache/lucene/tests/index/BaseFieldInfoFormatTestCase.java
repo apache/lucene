@@ -313,7 +313,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
     FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
-    assertEquals(infos, infos2);
+    assertEquality(infos, infos2);
     dir.close();
   }
 
@@ -363,17 +363,17 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
   protected void addAttributes(FieldInfo fi) {}
 
   /** equality for entirety of fieldinfos */
-  protected void assertEquals(FieldInfos expected, FieldInfos actual) {
+  protected void assertEquality(FieldInfos expected, FieldInfos actual) {
     assertEquals(expected.size(), actual.size());
     for (FieldInfo expectedField : expected) {
       FieldInfo actualField = actual.fieldInfo(expectedField.number);
       assertNotNull(actualField);
-      assertEquals(expectedField, actualField);
+      assertEquality(expectedField, actualField);
     }
   }
 
   /** equality for two individual fieldinfo objects */
-  protected void assertEquals(FieldInfo expected, FieldInfo actual) {
+  protected void assertEquality(FieldInfo expected, FieldInfo actual) {
     assertEquals(expected.number, actual.number);
     assertEquals(expected.name, actual.name);
     assertEquals(expected.getDocValuesType(), actual.getDocValuesType());

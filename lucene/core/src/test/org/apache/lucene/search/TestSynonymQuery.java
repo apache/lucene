@@ -266,7 +266,7 @@ public class TestSynonymQuery extends LuceneTestCase {
 
     ImpactsSource mergedImpacts =
         SynonymQuery.mergeImpacts(new ImpactsEnum[] {impacts1, impacts2}, new float[] {1f, 1f});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(5, 10), new Impact(7, 12), new Impact(14, 13)},
           new Impact[] {new Impact(Integer.MAX_VALUE, 1)}
@@ -276,7 +276,7 @@ public class TestSynonymQuery extends LuceneTestCase {
 
     ImpactsSource mergedBoostedImpacts =
         SynonymQuery.mergeImpacts(new ImpactsEnum[] {impacts1, impacts2}, new float[] {0.3f, 0.9f});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(4, 12), new Impact(9, 13)},
           new Impact[] {new Impact(Integer.MAX_VALUE, 1)}
@@ -292,7 +292,7 @@ public class TestSynonymQuery extends LuceneTestCase {
           new Impact[] {new Impact(3, 9), new Impact(5, 11), new Impact(7, 13)}
         },
         new int[] {150, 1000});
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {
             new Impact(3, 10), new Impact(5, 12), new Impact(8, 13)
@@ -304,7 +304,7 @@ public class TestSynonymQuery extends LuceneTestCase {
         new int[] {110, 945},
         mergedImpacts.getImpacts());
 
-    assertEquals(
+    assertEquality(
         new Impact[][] {
           new Impact[] {
             new Impact(1, 10), new Impact(2, 12), new Impact(3, 13)
@@ -315,7 +315,7 @@ public class TestSynonymQuery extends LuceneTestCase {
         mergedBoostedImpacts.getImpacts());
   }
 
-  private static void assertEquals(Impact[][] impacts, int[] docIdUpTo, Impacts actual) {
+  private static void assertEquality(Impact[][] impacts, int[] docIdUpTo, Impacts actual) {
     assertEquals(impacts.length, actual.numLevels());
     for (int i = 0; i < impacts.length; ++i) {
       assertEquals(docIdUpTo[i], actual.getDocIdUpTo(i));

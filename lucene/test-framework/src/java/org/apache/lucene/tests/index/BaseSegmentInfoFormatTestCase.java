@@ -622,13 +622,13 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
       info.setFiles(files);
       codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
       SegmentInfo info2 = codec.segmentInfoFormat().read(dir, name, id, IOContext.DEFAULT);
-      assertEquals(info, info2);
+      assertEquality(info, info2);
 
       dir.close();
     }
   }
 
-  protected final void assertEquals(SegmentInfo expected, SegmentInfo actual) {
+  protected final void assertEquality(SegmentInfo expected, SegmentInfo actual) {
     assertSame(expected.dir, actual.dir);
     assertEquals(expected.name, actual.name);
     assertEquals(expected.files(), actual.files());

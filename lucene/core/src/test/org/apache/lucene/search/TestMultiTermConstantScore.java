@@ -30,7 +30,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.util.automaton.Operations;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -41,10 +40,6 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
   static Directory small;
   static IndexReader reader;
-
-  public static void assertEquals(String m, int e, int a) {
-    Assert.assertEquals(m, e, a);
-  }
 
   @BeforeClass
   public static void beforeClass() throws Exception {

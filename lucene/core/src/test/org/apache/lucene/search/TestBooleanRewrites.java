@@ -409,7 +409,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
       Query query = randomBooleanQuery(random());
       final TopDocs td1 = searcher1.search(query, 100);
       final TopDocs td2 = searcher2.search(query, 100);
-      assertEquals(td1, td2);
+      assertEquality(td1, td2);
     }
 
     searcher1.getIndexReader().close();
@@ -470,7 +470,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     }
   }
 
-  private void assertEquals(TopDocs td1, TopDocs td2) {
+  private void assertEquality(TopDocs td1, TopDocs td2) {
     assertEquals(td1.totalHits.value, td2.totalHits.value);
     assertEquals(td1.scoreDocs.length, td2.scoreDocs.length);
     Map<Integer, Float> expectedScores =

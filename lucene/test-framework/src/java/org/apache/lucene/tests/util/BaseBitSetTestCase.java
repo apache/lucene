@@ -64,7 +64,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     return randomSet(numBits, (int) (percentSet * numBits));
   }
 
-  protected void assertEquals(BitSet set1, T set2, int maxDoc) {
+  protected void assertEquality(BitSet set1, T set2, int maxDoc) {
     for (int i = 0; i < maxDoc; ++i) {
       assertEquals("Different at " + i, set1.get(i), set2.get(i));
     }
@@ -116,7 +116,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       set1.set(index);
       set2.set(index);
     }
-    assertEquals(set1, set2, numBits);
+    assertEquality(set1, set2, numBits);
   }
 
   /** Test the {@link BitSet#getAndSet} method. */
@@ -132,7 +132,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       boolean v2 = set2.getAndSet(index);
       assertEquals(v1, v2);
     }
-    assertEquals(set1, set2, numBits);
+    assertEquality(set1, set2, numBits);
   }
 
   /** Test the {@link BitSet#clear(int)} method. */
@@ -148,7 +148,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
         set1.clear(index);
         set2.clear(index);
       }
-      assertEquals(set1, set2, numBits);
+      assertEquality(set1, set2, numBits);
     }
   }
 
@@ -165,7 +165,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
         final int to = random.nextInt(numBits + 1);
         set1.clear(from, to);
         set2.clear(from, to);
-        assertEquals(set1, set2, numBits);
+        assertEquality(set1, set2, numBits);
       }
     }
   }
@@ -211,7 +211,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       if (otherIterator != null) {
         set1.or(otherIterator);
         set2.or(otherSet.iterator());
-        assertEquals(set1, set2, numBits);
+        assertEquality(set1, set2, numBits);
       }
     }
   }

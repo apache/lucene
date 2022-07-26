@@ -1182,10 +1182,10 @@ public class TestGrouping extends LuceneTestCase {
           }
         }
 
-        assertEquals(docIDToID, expectedGroups, groupsResult, true, true, true);
+        assertEquality(docIDToID, expectedGroups, groupsResult, true, true, true);
 
         // Confirm merged shards match:
-        assertEquals(docIDToID, expectedGroups, topGroupsShards, true, false, true);
+        assertEquality(docIDToID, expectedGroups, topGroupsShards, true, false, true);
         if (topGroupsShards != null) {
           verifyShards(shards.docStarts, topGroupsShards);
         }
@@ -1310,8 +1310,8 @@ public class TestGrouping extends LuceneTestCase {
           }
         }
 
-        assertEquals(docIDToIDBlocks, expectedGroups, groupsResultBlocks, false, true, false);
-        assertEquals(docIDToIDBlocks, expectedGroups, topGroupsBlockShards, false, false, false);
+        assertEquality(docIDToIDBlocks, expectedGroups, groupsResultBlocks, false, true, false);
+        assertEquality(docIDToIDBlocks, expectedGroups, topGroupsBlockShards, false, false, false);
       }
 
       r.close();
@@ -1492,7 +1492,7 @@ public class TestGrouping extends LuceneTestCase {
     }
   }
 
-  private void assertEquals(
+  private void assertEquality(
       int[] docIDtoID,
       TopGroups<BytesRef> expected,
       TopGroups<BytesRef> actual,

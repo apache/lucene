@@ -46,7 +46,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  */
 public class TestSort extends LuceneTestCase {
 
-  private void assertEquals(Sort a, Sort b) {
+  private void assertEquality(Sort a, Sort b) {
     LuceneTestCase.assertEquals(a, b);
     LuceneTestCase.assertEquals(b, a);
     LuceneTestCase.assertEquals(a.hashCode(), b.hashCode());
@@ -61,7 +61,7 @@ public class TestSort extends LuceneTestCase {
   public void testEquals() {
     SortField sortField1 = new SortField("foo", SortField.Type.STRING);
     SortField sortField2 = new SortField("foo", SortField.Type.STRING);
-    assertEquals(new Sort(sortField1), new Sort(sortField2));
+    assertEquality(new Sort(sortField1), new Sort(sortField2));
 
     sortField2 = new SortField("bar", SortField.Type.STRING);
     assertDifferent(new Sort(sortField1), new Sort(sortField2));
@@ -74,7 +74,7 @@ public class TestSort extends LuceneTestCase {
     assertDifferent(new Sort(sortField1), new Sort(sortField2));
 
     sortField2 = new SortField("foo", SortField.Type.STRING, false);
-    assertEquals(new Sort(sortField1), new Sort(sortField2));
+    assertEquality(new Sort(sortField1), new Sort(sortField2));
 
     sortField2 = new SortField("foo", SortField.Type.STRING, true);
     assertDifferent(new Sort(sortField1), new Sort(sortField2));

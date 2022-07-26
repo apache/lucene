@@ -416,7 +416,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     }
   }
 
-  protected void assertEquals(RandomDocument doc, Fields fields) throws IOException {
+  protected void assertEquality(RandomDocument doc, Fields fields) throws IOException {
     // compare field names
     assertNotNull(doc);
     assertNotNull(fields);
@@ -430,7 +430,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     assertEquals(fields1, fields2);
 
     for (int i = 0; i < doc.fieldNames.length; ++i) {
-      assertEquals(doc.tokenStreams[i], doc.fieldTypes[i], fields.terms(doc.fieldNames[i]));
+      assertEquality(doc.tokenStreams[i], doc.fieldTypes[i], fields.terms(doc.fieldNames[i]));
     }
   }
 
@@ -445,7 +445,8 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
   // to test reuse
   private final ThreadLocal<PostingsEnum> docsEnum = new ThreadLocal<>();
 
-  protected void assertEquals(RandomTokenStream tk, FieldType ft, Terms terms) throws IOException {
+  protected void assertEquality(RandomTokenStream tk, FieldType ft, Terms terms)
+      throws IOException {
     assertEquals(1, terms.getDocCount());
     final int termCount = new HashSet<>(Arrays.asList(tk.terms)).size();
     assertEquals(termCount, terms.size());
@@ -580,13 +581,13 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         final int docID = random().nextInt(numDocs);
         final Fields fields = reader.getTermVectors(docID);
         if (docID == docWithVectorsID) {
-          assertEquals(doc, fields);
+          assertEquality(doc, fields);
         } else {
           assertNull(fields);
         }
       }
       final Fields fields = reader.getTermVectors(docWithVectorsID);
-      assertEquals(doc, fields);
+      assertEquality(doc, fields);
       reader.close();
       writer.close();
       dir.close();
@@ -605,7 +606,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           docFactory.newDocument(TestUtil.nextInt(random(), 1, 2), atLeast(2000), options);
       writer.addDocument(doc.toDocument());
       final IndexReader reader = writer.getReader();
-      assertEquals(doc, reader.getTermVectors(0));
+      assertEquality(doc, reader.getTermVectors(0));
       reader.close();
       writer.close();
       dir.close();
@@ -622,7 +623,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           docFactory.newDocument(TestUtil.nextInt(random(), 5, fieldCount), 5, options);
       writer.addDocument(doc.toDocument());
       final IndexReader reader = writer.getReader();
-      assertEquals(doc, reader.getTermVectors(0));
+      assertEquality(doc, reader.getTermVectors(0));
       reader.close();
       writer.close();
       dir.close();
@@ -646,9 +647,9 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         writer.addDocument(addId(doc2.toDocument(), "2"));
         final IndexReader reader = writer.getReader();
         final int doc1ID = docID(reader, "1");
-        assertEquals(doc1, reader.getTermVectors(doc1ID));
+        assertEquality(doc1, reader.getTermVectors(doc1ID));
         final int doc2ID = docID(reader, "2");
-        assertEquals(doc2, reader.getTermVectors(doc2ID));
+        assertEquality(doc2, reader.getTermVectors(doc2ID));
         reader.close();
         writer.close();
         dir.close();
@@ -675,7 +676,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     final IndexReader reader = writer.getReader();
     for (int i = 0; i < numDocs; ++i) {
       final int docID = docID(reader, "" + i);
-      assertEquals(docs[i], reader.getTermVectors(docID));
+      assertEquality(docs[i], reader.getTermVectors(docID));
     }
     reader.close();
     writer.close();
@@ -706,7 +707,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
             try (DirectoryReader reader = maybeWrapWithMergingReader(writer.getReader())) {
               for (String id : liveDocIDs) {
                 final int docID = docID(reader, id);
-                assertEquals(docs.get(id), reader.getTermVectors(docID));
+                assertEquality(docs.get(id), reader.getTermVectors(docID));
               }
             } catch (IOException e) {
               throw new UncheckedIOException(e);
@@ -800,7 +801,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
       final IndexReader reader = writer.getReader();
       for (int i = 0; i < numDocs; ++i) {
         final int docID = docID(reader, "" + i);
-        assertEquals(docs[i], reader.getTermVectors(docID));
+        assertEquality(docs[i], reader.getTermVectors(docID));
       }
 
       final AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -814,7 +815,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
                   for (int i = 0; i < atLeast(100); ++i) {
                     final int idx = random().nextInt(numDocs);
                     final int docID = docID(reader, "" + idx);
-                    assertEquals(docs[idx], reader.getTermVectors(docID));
+                    assertEquality(docs[idx], reader.getTermVectors(docID));
                   }
                 } catch (Throwable t) {
                   exception.set(t);

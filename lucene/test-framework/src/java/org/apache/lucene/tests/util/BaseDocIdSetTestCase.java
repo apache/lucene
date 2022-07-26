@@ -35,7 +35,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
   public void testNoBit() throws IOException {
     final BitSet bs = new BitSet(1);
     final T copy = copyOf(bs, 1);
-    assertEquals(1, bs, copy);
+    assertEquality(1, bs, copy);
   }
 
   /** Test length=1. */
@@ -45,7 +45,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       bs.set(0);
     }
     final T copy = copyOf(bs, 1);
-    assertEquals(1, bs, copy);
+    assertEquality(1, bs, copy);
   }
 
   /** Test length=2. */
@@ -58,7 +58,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       bs.set(1);
     }
     final T copy = copyOf(bs, 2);
-    assertEquals(2, bs, copy);
+    assertEquality(2, bs, copy);
   }
 
   /** Compare the content of the set against a {@link BitSet}. */
@@ -69,17 +69,17 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
     for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
       final BitSet set = randomSet(numBits, percentSet);
       final T copy = copyOf(set, numBits);
-      assertEquals(numBits, set, copy);
+      assertEquality(numBits, set, copy);
     }
     // test one doc
     BitSet set = new BitSet(numBits);
     set.set(0); // 0 first
     T copy = copyOf(set, numBits);
-    assertEquals(numBits, set, copy);
+    assertEquality(numBits, set, copy);
     set.clear(0);
     set.set(random.nextInt(numBits));
     copy = copyOf(set, numBits); // then random index
-    assertEquals(numBits, set, copy);
+    assertEquality(numBits, set, copy);
     // test regular increments
     int maxIterations = TEST_NIGHTLY ? Integer.MAX_VALUE : 10;
     int iterations = 0;
@@ -95,7 +95,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
         set.set(d);
       }
       copy = copyOf(set, numBits);
-      assertEquals(numBits, set, copy);
+      assertEquality(numBits, set, copy);
     }
   }
 
@@ -120,7 +120,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
    * Assert that the content of the {@link DocIdSet} is the same as the content of the {@link
    * BitSet}.
    */
-  public void assertEquals(int numBits, BitSet ds1, T ds2) throws IOException {
+  public void assertEquality(int numBits, BitSet ds1, T ds2) throws IOException {
     Random random = random();
     // nextDoc
     DocIdSetIterator it2 = ds2.iterator();

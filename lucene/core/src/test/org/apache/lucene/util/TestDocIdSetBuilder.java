@@ -28,10 +28,10 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestDocIdSetBuilder extends LuceneTestCase {
 
   public void testEmpty() throws IOException {
-    assertEquals(null, new DocIdSetBuilder(1 + random().nextInt(1000)).build());
+    assertEquality(null, new DocIdSetBuilder(1 + random().nextInt(1000)).build());
   }
 
-  private void assertEquals(DocIdSet d1, DocIdSet d2) throws IOException {
+  private void assertEquality(DocIdSet d1, DocIdSet d2) throws IOException {
     if (d1 == null) {
       if (d2 != null) {
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, d2.iterator().nextDoc());
@@ -66,7 +66,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
     DocIdSet result = builder.build();
     assertTrue(result instanceof IntArrayDocIdSet);
-    assertEquals(new BitDocIdSet(ref), result);
+    assertEquality(new BitDocIdSet(ref), result);
   }
 
   public void testDense() throws IOException {
@@ -84,7 +84,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
     DocIdSet result = builder.build();
     assertTrue(result instanceof BitDocIdSet);
-    assertEquals(new BitDocIdSet(ref), result);
+    assertEquality(new BitDocIdSet(ref), result);
   }
 
   public void testRandom() throws IOException {
@@ -142,7 +142,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
 
       final DocIdSet expected = new BitDocIdSet(docs);
       final DocIdSet actual = builder.build();
-      assertEquals(expected, actual);
+      assertEquality(expected, actual);
     }
   }
 
@@ -162,7 +162,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
       builder.add(new BitSetIterator(docs, 0L));
     }
 
-    assertEquals(new BitDocIdSet(expected), builder.build());
+    assertEquality(new BitDocIdSet(expected), builder.build());
   }
 
   public void testEmptyPoints() throws IOException {
