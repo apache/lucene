@@ -18,12 +18,16 @@ package org.apache.lucene.document;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.IntFunction;
+import org.apache.lucene.document.ShapeField.DecodedTriangle.TYPE;
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.Geometry;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.geo.Rectangle;
+import org.apache.lucene.geo.SimpleWKTShapeParser;
 import org.apache.lucene.geo.XYEncodingUtils;
 import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.geo.XYPolygon;
@@ -70,20 +74,20 @@ public class TestShapeDocValues extends LuceneTestCase {
     Polygon p = GeoTestUtil.nextPolygon();
     Point expected = (Point) computeCentroid(p);
     List<ShapeField.DecodedTriangle> tess = getTessellation(p);
-    ShapeDocValuesField dvField = LatLonShape.createDocValueField(FIELD_NAME, tess);
+    LatLonShapeDocValuesField dvField = LatLonShape.createDocValueField(FIELD_NAME, tess);
     assertEquals(tess.size(), dvField.numberOfTerms());
-    assertEquals(expected.getLat(), GeoEncodingUtils.decodeLatitude(dvField.getCentroidY()), 1E-8);
-    assertEquals(expected.getLon(), GeoEncodingUtils.decodeLongitude(dvField.getCentroidX()), 1E-8);
-    assertEquals(ShapeField.DecodedTriangle.TYPE.TRIANGLE, dvField.getHighestDimensionType());
+    assertEquals(expected.getLat(), dvField.getCentroid().getLat(), 1E-7);
+    assertEquals(expected.getLon(), dvField.getCentroid().getLon(), 1E-7);
+    assertEquals(TYPE.TRIANGLE, dvField.getHighestDimensionType());
   }
 
   public void testXYPolygonCentroid() {
     XYPolygon p = (XYPolygon) BaseXYShapeTestCase.ShapeType.POLYGON.nextShape();
     XYPoint expected = (XYPoint) computeCentroid(p);
-    ShapeDocValuesField dvField = LatLonShape.createDocValueField(FIELD_NAME, getTessellation(p));
-    assertEquals(expected.getX(), XYEncodingUtils.decode(dvField.getCentroidX()), 1E-8);
-    assertEquals(expected.getY(), XYEncodingUtils.decode(dvField.getCentroidY()), 1E-8);
-    assertEquals(ShapeField.DecodedTriangle.TYPE.TRIANGLE, dvField.getHighestDimensionType());
+    XYShapeDocValuesField dvField = XYShape.createDocValueField(FIELD_NAME, getTessellation(p));
+    assertEquals(expected.getX(), dvField.getCentroid().getX(), 1E-7);
+    assertEquals(expected.getY(), dvField.getCentroid().getY(), 1E-7);
+    assertEquals(TYPE.TRIANGLE, dvField.getHighestDimensionType());
   }
 
   private Geometry computeCentroid(Geometry p) {
@@ -91,25 +95,47 @@ public class TestShapeDocValues extends LuceneTestCase {
     double totalSignedArea = 0;
     double numXPly = 0;
     double numYPly = 0;
+    double ax, bx, cx;
+    double ay, by, cy;
+    IntFunction<Double> decodeX =
+        p instanceof Polygon
+            ? (x) -> GeoEncodingUtils.decodeLongitude(x)
+            : (x) -> (double) XYEncodingUtils.decode(x);
+    IntFunction<Double> decodeY =
+        p instanceof Polygon
+            ? (y) -> GeoEncodingUtils.decodeLatitude(y)
+            : (y) -> (double) XYEncodingUtils.decode(y);
+    BiFunction<Double, Double, Geometry> createPoint =
+        p instanceof Polygon
+            ? (x, y) -> new Point(y, x)
+            : (x, y) -> new XYPoint(x.floatValue(), y.floatValue());
+
     for (ShapeField.DecodedTriangle t : tess) {
-      double signedArea =
-          Math.abs(0.5d * ((t.bX - t.aX) * (t.cY - t.aY) - (t.cX - t.aX) * (t.bY - t.aY)));
+      ax = decodeX.apply(t.aX);
+      ay = decodeY.apply(t.aY);
+      bx = decodeX.apply(t.bX);
+      by = decodeY.apply(t.bY);
+      cx = decodeX.apply(t.cX);
+      cy = decodeY.apply(t.cY);
+
+      double signedArea = Math.abs(0.5d * ((bx - ax) * (cy - ay) - (cx - ax) * (by - ay)));
       // accumulate midPoints and signed area
-      numXPly += (((t.aX + t.bX + t.cX) / 3) * signedArea);
-      numYPly += (((t.aY + t.bY + t.cY) / 3) * signedArea);
+      numXPly += (((ax + bx + cx) / 3) * signedArea);
+      numYPly += (((ay + by + cy) / 3) * signedArea);
       totalSignedArea += signedArea;
     }
 
-    if (p instanceof Polygon) {
-      return new Point(
-          GeoEncodingUtils.decodeLatitude((int) (numYPly / totalSignedArea)),
-          GeoEncodingUtils.decodeLongitude((int) (numXPly / totalSignedArea)));
-    } else if (p instanceof XYPolygon) {
-      return new XYPoint(
-          XYEncodingUtils.decode((int) (numXPly / totalSignedArea)),
-          XYEncodingUtils.decode((int) (numYPly / totalSignedArea)));
-    }
-    throw new IllegalArgumentException("invalid geometry type: " + p.getClass());
+    return createPoint.apply(numXPly / totalSignedArea, numYPly / totalSignedArea);
+  }
+
+  public void testExplicitLatLonPolygonCentroid() throws Exception {
+    String mp = "POLYGON((-80 -10, -40 -10, -40 10, -80 10, -80 -10))";
+    Polygon p = (Polygon) SimpleWKTShapeParser.parse(mp);
+    List<ShapeField.DecodedTriangle> tess = getTessellation(p);
+    LatLonShapeDocValuesField dvField = LatLonShape.createDocValueField(FIELD_NAME, tess);
+    assertEquals(0d, dvField.getCentroid().getLat(), 1E-7);
+    assertEquals(-60.0, dvField.getCentroid().getLon(), 1E-7);
+    assertEquals(TYPE.TRIANGLE, dvField.getHighestDimensionType());
   }
 
   /**

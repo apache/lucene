@@ -20,6 +20,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.ShapeField.DecodedTriangle.TYPE;
 import org.apache.lucene.document.ShapeField.QueryRelation;
+import org.apache.lucene.geo.Geometry;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.search.Query;
@@ -112,14 +113,9 @@ abstract class ShapeDocValuesField extends Field {
     return shapeDocValues.getMaxY();
   }
 
-  /** Retrieves the x centroid location for the geometry(s) */
-  public int getCentroidX() {
-    return shapeDocValues.getCentroidX();
-  }
-
-  /** Retrieves the y centroid location for the geometry(s) */
-  public int getCentroidY() {
-    return shapeDocValues.getCentroidY();
+  /** retrieves the centroid location for the geometry */
+  public Geometry getCentroid() {
+    return shapeDocValues.getCentroid();
   }
 
   /**

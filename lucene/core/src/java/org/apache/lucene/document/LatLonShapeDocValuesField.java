@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import java.util.List;
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.Line;
+import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.util.BytesRef;
@@ -57,6 +58,12 @@ final class LatLonShapeDocValuesField extends ShapeDocValuesField {
   /** Creates a {@code LatLonShapeDocValue} field from a given serialized value */
   LatLonShapeDocValuesField(String name, BytesRef binaryValue) {
     super(name, new LatLonShapeDocValues(binaryValue));
+  }
+
+  /** retrieves the centroid location for the geometry */
+  @Override
+  public Point getCentroid() {
+    return (Point) shapeDocValues.getCentroid();
   }
 
   @Override

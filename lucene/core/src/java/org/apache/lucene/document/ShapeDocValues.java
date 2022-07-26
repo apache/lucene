@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.lucene.document.ShapeField.DecodedTriangle.TYPE;
 import org.apache.lucene.document.SpatialQuery.EncodedRectangle;
 import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.Geometry;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -39,6 +40,12 @@ import org.apache.lucene.util.BytesRef;
  *
  * <p>Concrete Implementations include: {@link LatLonShapeDocValues} and {@link XYShapeDocValues}
  *
+ * <p>ShapeDocValues also does not support Multi Geometries because the area of the original
+ * geometries must be included to compute an accurate centroid. To support multi geometries binary
+ * doc values will need to be updated to support multi values (see: {@link
+ * org.apache.lucene.index.NumericDocValues} and {@link
+ * org.apache.lucene.index.SortedNumericDocValues}
+ *
  * @lucene.experimental
  */
 abstract class ShapeDocValues {
@@ -48,6 +55,8 @@ abstract class ShapeDocValues {
   private final BytesRef data;
   /** the geometry comparator used to check relations */
   protected final ShapeComparator shapeComparator;
+
+  protected final Geometry centroid;
 
   /**
    * Creates a {@ShapeDocValues} instance from a shape tessellation
@@ -61,6 +70,7 @@ abstract class ShapeDocValues {
     } catch (IOException e) {
       throw new IllegalArgumentException("unable to read binary shape doc value field. ", e);
     }
+    this.centroid = computeCentroid();
   }
 
   /** Creates a {@code ShapeDocValues} instance from a given serialized value */
@@ -71,6 +81,7 @@ abstract class ShapeDocValues {
     } catch (IOException e) {
       throw new IllegalArgumentException("unable to read binary shape doc value field. ", e);
     }
+    this.centroid = computeCentroid();
   }
 
   /** returns the encoded doc values field as a {@link BytesRef} */
@@ -103,13 +114,13 @@ abstract class ShapeDocValues {
     return shapeComparator.getMaxY();
   }
 
-  /** Retrieves the x centroid location for the geometry(s) */
-  public int getCentroidX() {
+  /** Retrieves the encoded x centroid location for the geometry(s) */
+  protected int getEncodedCentroidX() {
     return shapeComparator.getCentroidX();
   }
 
-  /** Retrieves the y centroid location for the geometry(s) */
-  public int getCentroidY() {
+  /** Retrieves the encoded y centroid location for the geometry(s) */
+  protected int getEncodedCentroidY() {
     return shapeComparator.getCentroidY();
   }
 
@@ -146,12 +157,20 @@ abstract class ShapeDocValues {
   }
 
   protected interface Encoder {
+    int encodeX(double x);
+
+    int encodeY(double y);
+
     double decodeX(int encoded);
 
     double decodeY(int encoded);
   }
 
   protected abstract Encoder getEncoder();
+
+  protected abstract Geometry computeCentroid();
+
+  public abstract Geometry getCentroid();
 
   /** main entry point to build the tessellation tree * */
   private TreeNode buildTree(
@@ -160,12 +179,16 @@ abstract class ShapeDocValues {
     if (tessellation.size() == 1) {
       ShapeField.DecodedTriangle t = tessellation.get(0);
       TreeNode node = new TreeNode(t);
-      if (t.type == ShapeField.DecodedTriangle.TYPE.LINE) {
-        node.midX /= node.length;
-        node.midY /= node.length;
-      } else if (t.type == ShapeField.DecodedTriangle.TYPE.TRIANGLE) {
-        node.midX /= node.signedArea;
-        node.midY /= node.signedArea;
+      if (t.type == TYPE.LINE) {
+        if (node.length != 0) {
+          node.midX /= node.length;
+          node.midY /= node.length;
+        }
+      } else if (t.type == TYPE.TRIANGLE) {
+        if (node.signedArea != 0) {
+          node.midX /= node.signedArea;
+          node.midY /= node.signedArea;
+        }
       }
       node.highestType = t.type;
       dfsSerialized.add(node);
@@ -187,7 +210,7 @@ abstract class ShapeDocValues {
     double numYLin = 0;
     double numXPly = 0;
     double numYPly = 0;
-    ShapeField.DecodedTriangle.TYPE highestType = ShapeField.DecodedTriangle.TYPE.POINT;
+    TYPE highestType = TYPE.POINT;
 
     for (ShapeField.DecodedTriangle t : tessellation) {
       TreeNode node = new TreeNode(t);
@@ -201,18 +224,18 @@ abstract class ShapeDocValues {
       // compute the running centroid stats
       totalSignedArea += node.signedArea; // non-zero if any components are triangles
       totalLength += node.length; // non-zero if any components are line segments
-      if (t.type == ShapeField.DecodedTriangle.TYPE.POINT) {
+      if (t.type == TYPE.POINT) {
         numXPnt += node.midX;
         numYPnt += node.midY;
-      } else if (t.type == ShapeField.DecodedTriangle.TYPE.LINE) {
-        if (highestType == ShapeField.DecodedTriangle.TYPE.POINT) {
-          highestType = ShapeField.DecodedTriangle.TYPE.LINE;
+      } else if (t.type == TYPE.LINE) {
+        if (highestType == TYPE.POINT) {
+          highestType = TYPE.LINE;
         }
         numXLin += node.midX;
         numYLin += node.midY;
       } else {
-        if (highestType != ShapeField.DecodedTriangle.TYPE.TRIANGLE) {
-          highestType = ShapeField.DecodedTriangle.TYPE.TRIANGLE;
+        if (highestType != TYPE.TRIANGLE) {
+          highestType = TYPE.TRIANGLE;
         }
         numXPly += node.midX;
         numYPly += node.midY;
@@ -228,20 +251,28 @@ abstract class ShapeDocValues {
     root.highestType = highestType;
 
     // compute centroid values for the root node so the centroid is consistent
-    if (highestType == ShapeField.DecodedTriangle.TYPE.POINT) {
+    if (highestType == TYPE.POINT) {
       root.midX = numXPnt / i;
       root.midY = numYPnt / i;
-    } else if (highestType == ShapeField.DecodedTriangle.TYPE.LINE) {
+    } else if (highestType == TYPE.LINE) {
       // numerator is sum of segment midPoints times segment length
       // divide by total length per
       // https://www.ae.msstate.edu/vlsm/shape/centroid_of_a_line/straight.htm
-      root.midX = numXLin / totalLength;
-      root.midY = numYLin / totalLength;
+      root.midX = numXLin;
+      root.midY = numYLin;
+      if (totalLength != 0) {
+        root.midX /= totalLength;
+        root.midY /= totalLength;
+      }
     } else {
       // numerator is sum of triangle centroids times triangle signed area
       // divide by total signed area per http://www.faqs.org/faqs/graphics/algorithms-faq/
-      root.midX = numXPly / totalSignedArea;
-      root.midY = numYPly / totalSignedArea;
+      root.midX = numXPly;
+      root.midY = numYPly;
+      if (totalSignedArea != 0) {
+        root.midX /= totalSignedArea;
+        root.midY /= totalSignedArea;
+      }
     }
 
     return root;
@@ -322,12 +353,11 @@ abstract class ShapeDocValues {
     ShapeField.DecodedTriangle t = node.triangle;
     size += vLongSize((long) maxX - t.aX);
     size += vLongSize((long) maxY - t.aY);
-    if (t.type == ShapeField.DecodedTriangle.TYPE.LINE
-        || t.type == ShapeField.DecodedTriangle.TYPE.TRIANGLE) {
+    if (t.type == TYPE.LINE || t.type == TYPE.TRIANGLE) {
       size += vLongSize((long) maxX - t.bX);
       size += vLongSize((long) maxY - t.bY);
     }
-    if (t.type == ShapeField.DecodedTriangle.TYPE.TRIANGLE) {
+    if (t.type == TYPE.TRIANGLE) {
       size += vLongSize((long) maxX - t.cX);
       size += vLongSize((long) maxY - t.cY);
     }
@@ -360,7 +390,7 @@ abstract class ShapeDocValues {
     // in encoded space. DO NOT USE THIS FOR GEOGRAPHICAL DISTANCE
     // this will always be positive unless the component is a
     // point or triangle
-    private ShapeField.DecodedTriangle.TYPE highestType; // the highest dimensional type
+    private TYPE highestType; // the highest dimensional type
 
     /** the bounding box for the tree */
     private int minX;
@@ -386,22 +416,32 @@ abstract class ShapeDocValues {
       this.right = null;
 
       // compute the component level centroid, encoded area, or length based on type
-      if (t.type == ShapeField.DecodedTriangle.TYPE.POINT) {
-        this.midX = t.aX;
-        this.midY = t.aY;
+      Encoder encoder = getEncoder();
+      double ax = encoder.decodeX(t.aX);
+      double ay = encoder.decodeY(t.aY);
+      if (t.type == TYPE.POINT) {
+        this.midX = ax;
+        this.midY = ay;
         this.signedArea = 0;
         this.length = 0;
-      } else if (t.type == ShapeField.DecodedTriangle.TYPE.LINE) {
-        this.length = Math.hypot(t.aX - t.bX, t.aY - t.bY);
-        this.midX = (0.5d * (t.aX + t.bX)) * length; // weight by length
-        this.midY = (0.5d * (t.aY + t.bY)) * length; // weight by length
-        this.signedArea = 0;
+      } else if (t.type == TYPE.LINE || t.type == TYPE.TRIANGLE) {
+        double bx = encoder.decodeX(t.bX);
+        double by = encoder.decodeY(t.bY);
+        if (t.type == TYPE.LINE) {
+          this.length = Math.hypot(ax - bx, ay - by);
+          this.midX = (0.5d * (ax + bx)) * length; // weight by length
+          this.midY = (0.5d * (ay + by)) * length; // weight by length
+          this.signedArea = 0;
+        } else {
+          double cx = encoder.decodeX(t.cX);
+          double cy = encoder.decodeY(t.cY);
+          this.signedArea = Math.abs(0.5d * ((bx - ax) * (cy - ay) - (cx - ax) * (by - ay)));
+          this.midX = ((ax + bx + cx) / 3D) * signedArea; // weight by signed area
+          this.midY = ((ay + by + cy) / 3D) * signedArea; // weight by signed area
+          this.length = 0;
+        }
       } else {
-        this.signedArea =
-            Math.abs(0.5d * ((t.bX - t.aX) * (t.cY - t.aY) - (t.cX - t.aX) * (t.bY - t.aY)));
-        this.midX = ((t.aX + t.bX + t.cX) / 3) * signedArea; // weight by signed area
-        this.midY = ((t.aY + t.bY + t.cY) / 3) * signedArea; // weight by signed area
-        this.length = 0;
+        throw new IllegalArgumentException("invalid type [" + t.type + "] found");
       }
     }
   }
@@ -430,14 +470,15 @@ abstract class ShapeDocValues {
       // write root
       TreeNode root = dfsSerialized.remove(0);
       // write bounding box; convert to variable long by translating
+      Encoder encoder = getEncoder();
       output.writeVLong((long) root.minX - Integer.MIN_VALUE);
       output.writeVLong((long) root.maxX - Integer.MIN_VALUE);
       output.writeVLong((long) root.minY - Integer.MIN_VALUE);
       output.writeVLong((long) root.maxY - Integer.MIN_VALUE);
 
       // write centroid
-      output.writeVLong((long) root.midX - Integer.MIN_VALUE);
-      output.writeVLong((long) root.midY - Integer.MIN_VALUE);
+      output.writeVLong((long) encoder.encodeX(root.midX) - Integer.MIN_VALUE);
+      output.writeVLong((long) encoder.encodeY(root.midY) - Integer.MIN_VALUE);
       // write highest dimensional type
       output.writeVInt(root.highestType.ordinal());
       // write header
@@ -466,12 +507,11 @@ abstract class ShapeDocValues {
       ShapeField.DecodedTriangle t = node.triangle;
       output.writeVLong((long) pMaxX - t.aX);
       output.writeVLong((long) pMaxY - t.aY);
-      if (t.type == ShapeField.DecodedTriangle.TYPE.LINE
-          || t.type == ShapeField.DecodedTriangle.TYPE.TRIANGLE) {
+      if (t.type == TYPE.LINE || t.type == TYPE.TRIANGLE) {
         output.writeVLong((long) pMaxX - t.bX);
         output.writeVLong((long) pMaxY - t.bY);
       }
-      if (t.type == ShapeField.DecodedTriangle.TYPE.TRIANGLE) {
+      if (t.type == TYPE.TRIANGLE) {
         output.writeVLong((long) pMaxX - t.cX);
         output.writeVLong((long) pMaxY - t.cY);
       }
@@ -489,9 +529,9 @@ abstract class ShapeDocValues {
       }
 
       // write type
-      if (node.triangle.type == ShapeField.DecodedTriangle.TYPE.POINT) {
+      if (node.triangle.type == TYPE.POINT) {
         header |= 0x04;
-      } else if (node.triangle.type == ShapeField.DecodedTriangle.TYPE.LINE) {
+      } else if (node.triangle.type == TYPE.LINE) {
         header |= 0x08;
       }
 
@@ -580,15 +620,15 @@ abstract class ShapeDocValues {
        * reads the component type (POINT, LINE, TRIANGLE) such that triangle gives the highest
        * variable compression
        */
-      private static ShapeField.DecodedTriangle.TYPE readType(int bits) {
+      private static TYPE readType(int bits) {
         if ((bits & 0x04) == 0x04) { // _____1__ : indicates a point type
-          return ShapeField.DecodedTriangle.TYPE.POINT;
+          return TYPE.POINT;
         }
         if ((bits & 0x08) == 0x08) { // ____1___ : indicates a line type
-          return ShapeField.DecodedTriangle.TYPE.LINE;
+          return TYPE.LINE;
         }
         assert (bits & 0x0C) == 0x00 : "invalid component type in ShapeDocValuesField";
-        return ShapeField.DecodedTriangle.TYPE.TRIANGLE; // ________ : indicates a triangle type
+        return TYPE.TRIANGLE; // ________ : indicates a triangle type
       }
 
       /** reads if the left subtree is null */
@@ -628,7 +668,7 @@ abstract class ShapeDocValues {
     private final SpatialQuery.EncodedRectangle boundingBox;
     private final int centroidX;
     private final int centroidY;
-    private final ShapeField.DecodedTriangle.TYPE highestDimension;
+    private final TYPE highestDimension;
 
     ShapeComparator(BytesRef binaryValue) throws IOException {
       this.dvReader = new Reader(binaryValue);
@@ -639,7 +679,7 @@ abstract class ShapeDocValues {
       this.boundingBox = dvReader.readBBox();
       this.centroidX = Math.toIntExact(dvReader.readVLong() + Integer.MIN_VALUE);
       this.centroidY = Math.toIntExact(dvReader.readVLong() + Integer.MIN_VALUE);
-      this.highestDimension = ShapeField.DecodedTriangle.TYPE.values()[dvReader.readVInt()];
+      this.highestDimension = TYPE.values()[dvReader.readVInt()];
       this.dvReader.rewind();
     }
 
@@ -663,15 +703,15 @@ abstract class ShapeDocValues {
       return this.boundingBox.maxY;
     }
 
-    public ShapeField.DecodedTriangle.TYPE getHighestDimension() {
+    public TYPE getHighestDimension() {
       return this.highestDimension;
     }
 
-    public int getCentroidX() {
+    private int getCentroidX() {
       return this.centroidX;
     }
 
-    public int getCentroidY() {
+    private int getCentroidY() {
       return this.centroidY;
     }
 
@@ -821,7 +861,7 @@ abstract class ShapeDocValues {
 
     /** relates the component based on type (POINT, LINE, TRIANGLE) */
     private Relation relateComponent(
-        final ShapeField.DecodedTriangle.TYPE type,
+        final TYPE type,
         SpatialQuery.EncodedRectangle bbox,
         int pMaxX,
         int pMaxY,
@@ -829,11 +869,11 @@ abstract class ShapeDocValues {
         Component2D queryComponent2D)
         throws IOException {
       Relation r = Relation.CELL_OUTSIDE_QUERY;
-      if (type == ShapeField.DecodedTriangle.TYPE.POINT) {
+      if (type == TYPE.POINT) {
         r = relatePoint(bbox, pMaxY, x, queryComponent2D);
-      } else if (type == ShapeField.DecodedTriangle.TYPE.LINE) {
+      } else if (type == TYPE.LINE) {
         r = relateLine(bbox, pMaxX, pMaxY, x, queryComponent2D);
-      } else if (type == ShapeField.DecodedTriangle.TYPE.TRIANGLE) {
+      } else if (type == TYPE.TRIANGLE) {
         r = relateTriangle(bbox, pMaxX, pMaxY, x, queryComponent2D);
       }
       if (r == Relation.CELL_CROSSES_QUERY) {

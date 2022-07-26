@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import java.util.List;
 import org.apache.lucene.geo.XYEncodingUtils;
 import org.apache.lucene.geo.XYLine;
+import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.geo.XYPolygon;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.util.BytesRef;
@@ -57,6 +58,12 @@ final class XYShapeDocValuesField extends ShapeDocValuesField {
   /** Creates a {@code XYShapeDocValue} field from a given serialized value */
   XYShapeDocValuesField(String name, BytesRef binaryValue) {
     super(name, new XYShapeDocValues(binaryValue));
+  }
+
+  /** retrieves the centroid location for the geometry */
+  @Override
+  public XYPoint getCentroid() {
+    return (XYPoint) shapeDocValues.getCentroid();
   }
 
   @Override

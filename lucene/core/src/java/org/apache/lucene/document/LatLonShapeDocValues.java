@@ -18,6 +18,7 @@ package org.apache.lucene.document;
 
 import java.util.List;
 import org.apache.lucene.geo.GeoEncodingUtils;
+import org.apache.lucene.geo.Point;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -44,8 +45,30 @@ final class LatLonShapeDocValues extends ShapeDocValues {
   }
 
   @Override
+  public Point getCentroid() {
+    return (Point) centroid;
+  }
+
+  @Override
+  protected Point computeCentroid() {
+    Encoder encoder = getEncoder();
+    return new Point(
+        encoder.decodeY(getEncodedCentroidY()), encoder.decodeX(getEncodedCentroidX()));
+  }
+
+  @Override
   protected Encoder getEncoder() {
     return new Encoder() {
+      @Override
+      public int encodeX(double x) {
+        return GeoEncodingUtils.encodeLongitude(x);
+      }
+
+      @Override
+      public int encodeY(double y) {
+        return GeoEncodingUtils.encodeLatitude(y);
+      }
+
       @Override
       public double decodeX(int encoded) {
         return GeoEncodingUtils.decodeLongitude(encoded);

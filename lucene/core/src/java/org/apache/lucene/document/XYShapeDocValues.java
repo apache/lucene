@@ -18,6 +18,7 @@ package org.apache.lucene.document;
 
 import java.util.List;
 import org.apache.lucene.geo.XYEncodingUtils;
+import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -44,8 +45,31 @@ final class XYShapeDocValues extends ShapeDocValues {
   }
 
   @Override
+  public XYPoint getCentroid() {
+    return (XYPoint) centroid;
+  }
+
+  @Override
+  protected XYPoint computeCentroid() {
+    Encoder encoder = getEncoder();
+    return new XYPoint(
+        (float) encoder.decodeX(getEncodedCentroidX()),
+        (float) encoder.decodeY(getEncodedCentroidY()));
+  }
+
+  @Override
   protected Encoder getEncoder() {
     return new Encoder() {
+      @Override
+      public int encodeX(double x) {
+        return XYEncodingUtils.encode((float) x);
+      }
+
+      @Override
+      public int encodeY(double y) {
+        return XYEncodingUtils.encode((float) y);
+      }
+
       @Override
       public double decodeX(int encoded) {
         return XYEncodingUtils.decode(encoded);
