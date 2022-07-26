@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene93;
+package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -29,7 +29,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.3 vector format, which encodes numeric vector values and an optional associated graph
+ * Lucene 9.4 vector format, which encodes numeric vector values and an optional associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
  * consists of three files:
  *
@@ -95,11 +95,11 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
+public final class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
 
-  static final String META_CODEC_NAME = "lucene93HnswVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "lucene93HnswVectorsFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "lucene93HnswVectorsFormatIndex";
+  static final String META_CODEC_NAME = "lucene94HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "lucene94HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "lucene94HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -118,19 +118,19 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
-   * {@link Lucene93HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
+   * {@link Lucene94HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
   private final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene93HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
+   * node. Defaults to to {@link Lucene94HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
   private final int beamWidth;
 
   /** Constructs a format using default graph construction parameters */
-  public Lucene93HnswVectorsFormat() {
+  public Lucene94HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
   }
 
@@ -140,25 +140,25 @@ public final class Lucene93HnswVectorsFormat extends KnnVectorsFormat {
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
    */
-  public Lucene93HnswVectorsFormat(int maxConn, int beamWidth) {
-    super("Lucene93HnswVectorsFormat");
+  public Lucene94HnswVectorsFormat(int maxConn, int beamWidth) {
+    super("Lucene94HnswVectorsFormat");
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
   }
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene93HnswVectorsWriter(state, maxConn, beamWidth);
+    return new Lucene94HnswVectorsWriter(state, maxConn, beamWidth);
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene93HnswVectorsReader(state);
+    return new Lucene94HnswVectorsReader(state);
   }
 
   @Override
   public String toString() {
-    return "Lucene93HnswVectorsFormat(name=Lucene93HnswVectorsFormat, maxConn="
+    return "Lucene94HnswVectorsFormat(name=Lucene94HnswVectorsFormat, maxConn="
         + maxConn
         + ", beamWidth="
         + beamWidth

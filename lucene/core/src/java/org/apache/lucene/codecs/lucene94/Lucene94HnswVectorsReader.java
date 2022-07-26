@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene93;
+package org.apache.lucene.codecs.lucene94;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -51,14 +51,14 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *
  * @lucene.experimental
  */
-public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
+public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
 
-  Lucene93HnswVectorsReader(SegmentReadState state) throws IOException {
+  Lucene94HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;
@@ -67,14 +67,14 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene93HnswVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene93HnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
+              Lucene94HnswVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene94HnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
       vectorIndex =
           openDataInput(
               state,
               versionMeta,
-              Lucene93HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
-              Lucene93HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
+              Lucene94HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
+              Lucene94HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
       success = true;
     } finally {
       if (success == false) {
@@ -86,7 +86,7 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
   private int readMetadata(SegmentReadState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene93HnswVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene94HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
       Throwable priorE = null;
@@ -94,9 +94,9 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene93HnswVectorsFormat.META_CODEC_NAME,
-                Lucene93HnswVectorsFormat.VERSION_START,
-                Lucene93HnswVectorsFormat.VERSION_CURRENT,
+                Lucene94HnswVectorsFormat.META_CODEC_NAME,
+                Lucene94HnswVectorsFormat.VERSION_START,
+                Lucene94HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -121,8 +121,8 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene93HnswVectorsFormat.VERSION_START,
-              Lucene93HnswVectorsFormat.VERSION_CURRENT,
+              Lucene94HnswVectorsFormat.VERSION_START,
+              Lucene94HnswVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -200,7 +200,7 @@ public final class Lucene93HnswVectorsReader extends KnnVectorsReader {
 
   @Override
   public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene93HnswVectorsFormat.class);
+    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene94HnswVectorsFormat.class);
     totalBytes +=
         RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));

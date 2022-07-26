@@ -29,6 +29,8 @@ API Changes
 
 * LUCENE-10266: Move nearest-neighbor search on points to core. (Rushabh Shah)
 
+* LUCENE-10603: Remove SortedSetDocValues#NO_MORE_ORDS definition. (Greg Miller)
+
 New Features
 ---------------------
 
@@ -78,6 +80,32 @@ Other
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
+
+======================== Lucene 9.4.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+* LUCENE-10592: Build HNSW Graph on indexing. (Mayya Sharipova, Adrien Grand, Julie Tibshirani)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
 
 ======================== Lucene 9.3.0 =======================
 
@@ -134,6 +162,13 @@ Optimizations
 
 * GITHUB#1010: Specialize ordinal encoding for common case in SortedSetDocValues. (Greg Miller)
 
+* LUCENE-10657: CopyBytes now saves one memory copy on ByteBuffersDataOutput. (luyuncheng)
+
+* GITHUB#1007: Optimize IntersectVisitor#visit implementations for certain bulk-add cases.
+  (Greg Miller)
+
+* LUCENE-10653: BlockMaxMaxscoreScorer uses heapify instead of individual adds. (Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
@@ -167,6 +202,8 @@ Bug Fixes
 * GITHUB#986: Fix FieldExistsQuery rewrite when all docs have vectors. (Julie Tibshirani)
 
 * LUCENE-10623: Error implementation of docValueCount for SortingSortedSetDocValues (Lu Xugang)
+
+* GITHUB#1028: Fix error in TieredMergePolicy (Lin Jian)
 
 Other
 ---------------------
