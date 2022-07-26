@@ -16,11 +16,10 @@
  */
 package org.apache.lucene.util;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
+import org.junit.Assert;
 
 public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
 
@@ -34,8 +33,8 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
   }
 
   @Override
-  public void assertEquality(int numBits, BitSet ds1, RoaringDocIdSet ds2) throws IOException {
-    super.assertEquality(numBits, ds1, ds2);
-    assertEquals(ds1.cardinality(), ds2.cardinality());
+  public void assertEquals(int numBits, BitSet ds1, RoaringDocIdSet ds2) throws IOException {
+    super.assertEquals(numBits, ds1, ds2);
+    Assert.assertEquals(ds1.cardinality(), ds2.cardinality());
   }
 }

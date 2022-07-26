@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.analysis.core;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -38,6 +37,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 
 /**
@@ -85,7 +85,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
         };
     for (int i = 0; i < 200; i++) {
       String s = TestUtil.randomSimpleString(random);
-      assertEquality(
+      assertEquals(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -110,7 +110,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
     int numIterations = atLeast(10);
     for (int i = 0; i < numIterations; i++) {
       String s = TestUtil.randomSimpleString(random, maxLength);
-      assertEquality(
+      assertEquals(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -131,7 +131,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
         };
     for (int i = 0; i < 200; i++) {
       String s = TestUtil.randomHtmlishString(random, 20);
-      assertEquality(
+      assertEquals(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -155,7 +155,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
     int numIterations = atLeast(10);
     for (int i = 0; i < numIterations; i++) {
       String s = TestUtil.randomHtmlishString(random, maxLength);
-      assertEquality(
+      assertEquals(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -176,7 +176,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
         };
     for (int i = 0; i < 200; i++) {
       String s = TestUtil.randomUnicodeString(random);
-      assertEquality(
+      assertEquals(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -200,7 +200,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
     int numIterations = atLeast(10);
     for (int i = 0; i < numIterations; i++) {
       String s = TestUtil.randomUnicodeString(random, maxLength);
-      assertEquality(
+      assertEquals(
           s,
           left.tokenStream("foo", newStringReader(s)),
           right.tokenStream("foo", newStringReader(s)));
@@ -210,7 +210,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
 
   // we only check a few core attributes here.
   // TODO: test other things
-  public void assertEquality(String s, TokenStream left, TokenStream right) throws Exception {
+  public void assertEquals(String s, TokenStream left, TokenStream right) throws Exception {
     left.reset();
     right.reset();
     CharTermAttribute leftTerm = left.addAttribute(CharTermAttribute.class);
@@ -222,23 +222,24 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
 
     while (left.incrementToken()) {
       assertTrue("wrong number of tokens for input: " + s, right.incrementToken());
-      assertEquals("wrong term text for input: " + s, leftTerm.toString(), rightTerm.toString());
-      assertEquals(
+      Assert.assertEquals(
+          "wrong term text for input: " + s, leftTerm.toString(), rightTerm.toString());
+      Assert.assertEquals(
           "wrong position for input: " + s,
           leftPos.getPositionIncrement(),
           rightPos.getPositionIncrement());
-      assertEquals(
+      Assert.assertEquals(
           "wrong start offset for input: " + s,
           leftOffset.startOffset(),
           rightOffset.startOffset());
-      assertEquals(
+      Assert.assertEquals(
           "wrong end offset for input: " + s, leftOffset.endOffset(), rightOffset.endOffset());
     }
     ;
     assertFalse("wrong number of tokens for input: " + s, right.incrementToken());
     left.end();
     right.end();
-    assertEquals(
+    Assert.assertEquals(
         "wrong final offset for input: " + s, leftOffset.endOffset(), rightOffset.endOffset());
     left.close();
     right.close();

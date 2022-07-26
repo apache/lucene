@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -60,6 +59,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 
 /**
@@ -134,14 +134,14 @@ public class TestPhraseQuery extends LuceneTestCase {
   public void testNotCloseEnough() throws Exception {
     query = new PhraseQuery(2, "field", "one", "five");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(0, hits.length);
+    Assert.assertEquals(0, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
   public void testBarelyCloseEnough() throws Exception {
     query = new PhraseQuery(3, "field", "one", "five");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(1, hits.length);
+    Assert.assertEquals(1, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
@@ -150,12 +150,12 @@ public class TestPhraseQuery extends LuceneTestCase {
     // slop is zero by default
     query = new PhraseQuery("field", "four", "five");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("exact match", 1, hits.length);
+    Assert.assertEquals("exact match", 1, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     query = new PhraseQuery("field", "two", "one");
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("reverse not exact", 0, hits.length);
+    Assert.assertEquals("reverse not exact", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
@@ -163,14 +163,14 @@ public class TestPhraseQuery extends LuceneTestCase {
     // Ensures slop of 1 works with terms in order.
     query = new PhraseQuery(1, "field", "one", "two");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("in order", 1, hits.length);
+    Assert.assertEquals("in order", 1, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     // Ensures slop of 1 does not work for phrases out of order;
     // must be at least 2.
     query = new PhraseQuery(1, "field", "two", "one");
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("reversed, slop not 2 or more", 0, hits.length);
+    Assert.assertEquals("reversed, slop not 2 or more", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
@@ -179,12 +179,12 @@ public class TestPhraseQuery extends LuceneTestCase {
     // must be at least two for reverse order match
     query = new PhraseQuery(2, "field", "two", "one");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("just sloppy enough", 1, hits.length);
+    Assert.assertEquals("just sloppy enough", 1, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     query = new PhraseQuery(2, "field", "three", "one");
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("not sloppy enough", 0, hits.length);
+    Assert.assertEquals("not sloppy enough", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
@@ -192,18 +192,18 @@ public class TestPhraseQuery extends LuceneTestCase {
   public void testMultipleTerms() throws Exception {
     query = new PhraseQuery(2, "field", "one", "three", "five");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("two total moves", 1, hits.length);
+    Assert.assertEquals("two total moves", 1, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     // it takes six moves to match this phrase
     query = new PhraseQuery(5, "field", "five", "three", "one");
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("slop of 5 not close enough", 0, hits.length);
+    Assert.assertEquals("slop of 5 not close enough", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     query = new PhraseQuery(6, "field", "five", "three", "one");
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("slop of 6 just right", 1, hits.length);
+    Assert.assertEquals("slop of 6 just right", 1, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
@@ -224,7 +224,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // valid exact phrase query
     PhraseQuery query = new PhraseQuery("field", "stop", "words");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(1, hits.length);
+    Assert.assertEquals(1, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     reader.close();
@@ -251,7 +251,7 @@ public class TestPhraseQuery extends LuceneTestCase {
 
     PhraseQuery phraseQuery = new PhraseQuery("source", "marketing", "info");
     ScoreDoc[] hits = searcher.search(phraseQuery, 1000).scoreDocs;
-    assertEquals(2, hits.length);
+    Assert.assertEquals(2, hits.length);
     QueryUtils.check(random(), phraseQuery, searcher);
 
     TermQuery termQuery = new TermQuery(new Term("contents", "foobar"));
@@ -259,7 +259,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     booleanQuery.add(termQuery, BooleanClause.Occur.MUST);
     booleanQuery.add(phraseQuery, BooleanClause.Occur.MUST);
     hits = searcher.search(booleanQuery.build(), 1000).scoreDocs;
-    assertEquals(1, hits.length);
+    Assert.assertEquals(1, hits.length);
     QueryUtils.check(random(), termQuery, searcher);
 
     reader.close();
@@ -290,21 +290,21 @@ public class TestPhraseQuery extends LuceneTestCase {
     phraseQuery = new PhraseQuery("contents", "map", "entry");
 
     hits = searcher.search(termQuery, 1000).scoreDocs;
-    assertEquals(3, hits.length);
+    Assert.assertEquals(3, hits.length);
     hits = searcher.search(phraseQuery, 1000).scoreDocs;
-    assertEquals(2, hits.length);
+    Assert.assertEquals(2, hits.length);
 
     booleanQuery = new BooleanQuery.Builder();
     booleanQuery.add(termQuery, BooleanClause.Occur.MUST);
     booleanQuery.add(phraseQuery, BooleanClause.Occur.MUST);
     hits = searcher.search(booleanQuery.build(), 1000).scoreDocs;
-    assertEquals(2, hits.length);
+    Assert.assertEquals(2, hits.length);
 
     booleanQuery = new BooleanQuery.Builder();
     booleanQuery.add(phraseQuery, BooleanClause.Occur.MUST);
     booleanQuery.add(termQuery, BooleanClause.Occur.MUST);
     hits = searcher.search(booleanQuery.build(), 1000).scoreDocs;
-    assertEquals(2, hits.length);
+    Assert.assertEquals(2, hits.length);
     QueryUtils.check(random(), booleanQuery.build(), searcher);
 
     reader.close();
@@ -340,15 +340,15 @@ public class TestPhraseQuery extends LuceneTestCase {
     searcher.setSimilarity(new ClassicSimilarity());
     PhraseQuery query = new PhraseQuery(Integer.MAX_VALUE, "field", "firstname", "lastname");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(3, hits.length);
+    Assert.assertEquals(3, hits.length);
     // Make sure that those matches where the terms appear closer to
     // each other get a higher score:
-    assertEquals(1.0, hits[0].score, 0.01);
-    assertEquals(0, hits[0].doc);
-    assertEquals(0.63, hits[1].score, 0.01);
-    assertEquals(1, hits[1].doc);
-    assertEquals(0.47, hits[2].score, 0.01);
-    assertEquals(2, hits[2].doc);
+    Assert.assertEquals(1.0, hits[0].score, 0.01);
+    Assert.assertEquals(0, hits[0].doc);
+    Assert.assertEquals(0.63, hits[1].score, 0.01);
+    Assert.assertEquals(1, hits[1].doc);
+    Assert.assertEquals(0.47, hits[2].score, 0.01);
+    Assert.assertEquals(2, hits[2].doc);
     QueryUtils.check(random(), query, searcher);
     reader.close();
     directory.close();
@@ -356,26 +356,26 @@ public class TestPhraseQuery extends LuceneTestCase {
 
   public void testToString() throws Exception {
     PhraseQuery q = new PhraseQuery("field", new String[0]);
-    assertEquals("\"\"", q.toString());
+    Assert.assertEquals("\"\"", q.toString());
 
     PhraseQuery.Builder builder = new PhraseQuery.Builder();
     builder.add(new Term("field", "hi"), 1);
     q = builder.build();
-    assertEquals("field:\"? hi\"", q.toString());
+    Assert.assertEquals("field:\"? hi\"", q.toString());
 
     builder = new PhraseQuery.Builder();
     builder.add(new Term("field", "hi"), 1);
     builder.add(new Term("field", "test"), 5);
     q = builder.build(); // Query "this hi this is a test is"
 
-    assertEquals("field:\"? hi ? ? ? test\"", q.toString());
+    Assert.assertEquals("field:\"? hi ? ? ? test\"", q.toString());
 
     builder = new PhraseQuery.Builder();
     builder.add(new Term("field", "hi"), 1);
     builder.add(new Term("field", "hello"), 1);
     builder.add(new Term("field", "test"), 5);
     q = builder.build();
-    assertEquals("field:\"? hi|hello ? ? ? test\"", q.toString());
+    Assert.assertEquals("field:\"? hi|hello ? ? ? test\"", q.toString());
 
     builder = new PhraseQuery.Builder();
     builder.add(new Term("field", "hi"), 1);
@@ -383,20 +383,20 @@ public class TestPhraseQuery extends LuceneTestCase {
     builder.add(new Term("field", "test"), 5);
     builder.setSlop(5);
     q = builder.build();
-    assertEquals("field:\"? hi|hello ? ? ? test\"~5", q.toString());
+    Assert.assertEquals("field:\"? hi|hello ? ? ? test\"~5", q.toString());
   }
 
   public void testWrappedPhrase() throws IOException {
     query = new PhraseQuery(100, "repeated", "first", "part", "second", "part");
 
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("slop of 100 just right", 1, hits.length);
+    Assert.assertEquals("slop of 100 just right", 1, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     query = new PhraseQuery(99, "repeated", "first", "part", "second", "part");
 
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("slop of 99 not enough", 0, hits.length);
+    Assert.assertEquals("slop of 99 not enough", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
@@ -406,28 +406,30 @@ public class TestPhraseQuery extends LuceneTestCase {
     query = new PhraseQuery(2, "nonexist", "phrase", "notexist", "found");
 
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("phrase without repetitions exists in 2 docs", 2, hits.length);
+    Assert.assertEquals("phrase without repetitions exists in 2 docs", 2, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     // phrase with repetitions that exists in 2 docs
     query = new PhraseQuery(1, "nonexist", "phrase", "exist", "exist");
 
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("phrase with repetitions exists in two docs", 2, hits.length);
+    Assert.assertEquals("phrase with repetitions exists in two docs", 2, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     // phrase I with repetitions that does not exist in any doc
     query = new PhraseQuery(1000, "nonexist", "phrase", "notexist", "phrase");
 
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("nonexisting phrase with repetitions does not exist in any doc", 0, hits.length);
+    Assert.assertEquals(
+        "nonexisting phrase with repetitions does not exist in any doc", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     // phrase II with repetitions that does not exist in any doc
     query = new PhraseQuery(1000, "nonexist", "phrase", "exist", "exist", "exist");
 
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("nonexisting phrase with repetitions does not exist in any doc", 0, hits.length);
+    Assert.assertEquals(
+        "nonexisting phrase with repetitions does not exist in any doc", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
@@ -443,7 +445,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // search on non palyndrome, find phrase with no slop, using exact phrase scorer
     query = new PhraseQuery("field", "two", "three"); // to use exact phrase scorer
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("phrase found with exact phrase scorer", 1, hits.length);
+    Assert.assertEquals("phrase found with exact phrase scorer", 1, hits.length);
     float score0 = hits[0].score;
     // System.out.println("(exact) field: two three: "+score0);
     QueryUtils.check(random(), query, searcher);
@@ -451,10 +453,10 @@ public class TestPhraseQuery extends LuceneTestCase {
     // search on non palyndrome, find phrase with slop 2, though no slop required here.
     query = new PhraseQuery("field", "two", "three"); // to use sloppy scorer
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("just sloppy enough", 1, hits.length);
+    Assert.assertEquals("just sloppy enough", 1, hits.length);
     float score1 = hits[0].score;
     // System.out.println("(sloppy) field: two three: "+score1);
-    assertEquals(
+    Assert.assertEquals(
         "exact scorer and sloppy scorer score the same when slop does not matter",
         score0,
         score1,
@@ -469,7 +471,7 @@ public class TestPhraseQuery extends LuceneTestCase {
             "two",
             "three"); // must be at least two for both ordered and reversed to match
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("just sloppy enough", 1, hits.length);
+    Assert.assertEquals("just sloppy enough", 1, hits.length);
     // float score2 = hits[0].score;
     // System.out.println("palindrome: two three: "+score2);
     QueryUtils.check(random(), query, searcher);
@@ -485,7 +487,7 @@ public class TestPhraseQuery extends LuceneTestCase {
             "three",
             "two"); // must be at least two for both ordered and reversed to match
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("just sloppy enough", 1, hits.length);
+    Assert.assertEquals("just sloppy enough", 1, hits.length);
     // float score3 = hits[0].score;
     // System.out.println("palindrome: three two: "+score3);
     QueryUtils.check(random(), query, searcher);
@@ -508,7 +510,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // slop=0 to use exact phrase scorer
     query = new PhraseQuery(0, "field", "one", "two", "three");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("phrase found with exact phrase scorer", 1, hits.length);
+    Assert.assertEquals("phrase found with exact phrase scorer", 1, hits.length);
     float score0 = hits[0].score;
     // System.out.println("(exact) field: one two three: "+score0);
     QueryUtils.check(random(), query, searcher);
@@ -520,10 +522,10 @@ public class TestPhraseQuery extends LuceneTestCase {
     // slop=4 to use sloppy scorer
     query = new PhraseQuery(4, "field", "one", "two", "three");
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("just sloppy enough", 1, hits.length);
+    Assert.assertEquals("just sloppy enough", 1, hits.length);
     float score1 = hits[0].score;
     // System.out.println("(sloppy) field: one two three: "+score1);
-    assertEquals(
+    Assert.assertEquals(
         "exact scorer and sloppy scorer score the same when slop does not matter",
         score0,
         score1,
@@ -538,7 +540,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // just make sure no exc:
     searcher.explain(query, 0);
 
-    assertEquals("just sloppy enough", 1, hits.length);
+    Assert.assertEquals("just sloppy enough", 1, hits.length);
     // float score2 = hits[0].score;
     // System.out.println("palindrome: one two three: "+score2);
     QueryUtils.check(random(), query, searcher);
@@ -550,7 +552,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // must be at least four for both ordered and reversed to match
     query = new PhraseQuery(4, "palindrome", "three", "two", "one");
     hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals("just sloppy enough", 1, hits.length);
+    Assert.assertEquals("just sloppy enough", 1, hits.length);
     // float score3 = hits[0].score;
     // System.out.println("palindrome: three two one: "+score3);
     QueryUtils.check(random(), query, searcher);
@@ -600,21 +602,21 @@ public class TestPhraseQuery extends LuceneTestCase {
     PhraseQuery.Builder pqBuilder = new PhraseQuery.Builder();
     pqBuilder.add(new Term("field", "a"), 0);
     pqBuilder.add(new Term("field", "b"), 1);
-    assertEquals(1, searcher.count(pqBuilder.build()));
+    Assert.assertEquals(1, searcher.count(pqBuilder.build()));
 
     // Now with "a|aa b"
     pqBuilder = new PhraseQuery.Builder();
     pqBuilder.add(new Term("field", "a"), 0);
     pqBuilder.add(new Term("field", "aa"), 0);
     pqBuilder.add(new Term("field", "b"), 1);
-    assertEquals(1, searcher.count(pqBuilder.build()));
+    Assert.assertEquals(1, searcher.count(pqBuilder.build()));
 
     // Now with "a|z b" which should not match; this isn't a MultiPhraseQuery
     pqBuilder = new PhraseQuery.Builder();
     pqBuilder.add(new Term("field", "a"), 0);
     pqBuilder.add(new Term("field", "z"), 0);
     pqBuilder.add(new Term("field", "b"), 1);
-    assertEquals(0, searcher.count(pqBuilder.build()));
+    Assert.assertEquals(0, searcher.count(pqBuilder.build()));
 
     r.close();
     dir.close();
@@ -805,7 +807,7 @@ public class TestPhraseQuery extends LuceneTestCase {
 
     // Merge with empty impacts
     impacts2.reset(new Impact[0][], new int[0]);
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(5, 12), new Impact(8, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
@@ -816,7 +818,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // Merge with dummy impacts
     impacts2.reset(
         new Impact[][] {new Impact[] {new Impact(Integer.MAX_VALUE, 1)}}, new int[] {5000});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(5, 12), new Impact(8, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
@@ -827,7 +829,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // Merge with dummy impacts that we don't special case
     impacts2.reset(
         new Impact[][] {new Impact[] {new Impact(Integer.MAX_VALUE, 2)}}, new int[] {5000});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(5, 12), new Impact(8, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
@@ -842,7 +844,7 @@ public class TestPhraseQuery extends LuceneTestCase {
           new Impact[] {new Impact(3, 9), new Impact(5, 11), new Impact(7, 13)}
         },
         new int[] {90, 1000});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(5, 12), new Impact(7, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(7, 13)}
@@ -857,7 +859,7 @@ public class TestPhraseQuery extends LuceneTestCase {
           new Impact[] {new Impact(3, 9), new Impact(5, 11), new Impact(7, 13)}
         },
         new int[] {150, 900});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(2, 10), new Impact(3, 11), new Impact(5, 12), new Impact(6, 13)},
           new Impact[] {
@@ -880,7 +882,7 @@ public class TestPhraseQuery extends LuceneTestCase {
           }
         },
         new int[] {113, 950});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(4, 12), new Impact(8, 13)},
           new Impact[] {new Impact(3, 10), new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
@@ -903,7 +905,7 @@ public class TestPhraseQuery extends LuceneTestCase {
           new Impact[] {new Impact(3, 9), new Impact(12, -4), new Impact(20, -1)}
         },
         new int[] {150, 960});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(2, 10), new Impact(8, -4)},
           new Impact[] {new Impact(3, 10), new Impact(8, -4), new Impact(12, -3)}
@@ -912,11 +914,11 @@ public class TestPhraseQuery extends LuceneTestCase {
         mergedImpacts.getImpacts());
   }
 
-  private static void assertEquality(Impact[][] impacts, int[] docIdUpTo, Impacts actual) {
-    assertEquals(impacts.length, actual.numLevels());
+  private static void assertEquals(Impact[][] impacts, int[] docIdUpTo, Impacts actual) {
+    Assert.assertEquals(impacts.length, actual.numLevels());
     for (int i = 0; i < impacts.length; ++i) {
-      assertEquals(docIdUpTo[i], actual.getDocIdUpTo(i));
-      assertEquals(Arrays.asList(impacts[i]), actual.getImpacts(i));
+      Assert.assertEquals(docIdUpTo[i], actual.getDocIdUpTo(i));
+      Assert.assertEquals(Arrays.asList(impacts[i]), actual.getImpacts(i));
     }
   }
 
@@ -1062,12 +1064,12 @@ public class TestPhraseQuery extends LuceneTestCase {
   public void testNullTerm() {
     NullPointerException e =
         expectThrows(NullPointerException.class, () -> new PhraseQuery.Builder().add(null));
-    assertEquals("Cannot add a null term to PhraseQuery", e.getMessage());
+    Assert.assertEquals("Cannot add a null term to PhraseQuery", e.getMessage());
 
     e = expectThrows(NullPointerException.class, () -> new PhraseQuery("field", (BytesRef) null));
-    assertEquals("Cannot add a null term to PhraseQuery", e.getMessage());
+    Assert.assertEquals("Cannot add a null term to PhraseQuery", e.getMessage());
 
     e = expectThrows(NullPointerException.class, () -> new PhraseQuery("field", (String) null));
-    assertEquals("Cannot add a null term to PhraseQuery", e.getMessage());
+    Assert.assertEquals("Cannot add a null term to PhraseQuery", e.getMessage());
   }
 }

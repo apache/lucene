@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -28,27 +27,28 @@ import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.junit.Assert;
 
 public class TestDocIdSetBuilder extends LuceneTestCase {
 
   public void testEmpty() throws IOException {
-    assertEquality(null, new DocIdSetBuilder(1 + random().nextInt(1000)).build());
+    assertEquals(null, new DocIdSetBuilder(1 + random().nextInt(1000)).build());
   }
 
-  private void assertEquality(DocIdSet d1, DocIdSet d2) throws IOException {
+  private void assertEquals(DocIdSet d1, DocIdSet d2) throws IOException {
     if (d1 == null) {
       if (d2 != null) {
-        assertEquals(DocIdSetIterator.NO_MORE_DOCS, d2.iterator().nextDoc());
+        Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, d2.iterator().nextDoc());
       }
     } else if (d2 == null) {
-      assertEquals(DocIdSetIterator.NO_MORE_DOCS, d1.iterator().nextDoc());
+      Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, d1.iterator().nextDoc());
     } else {
       DocIdSetIterator i1 = d1.iterator();
       DocIdSetIterator i2 = d2.iterator();
       for (int doc = i1.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = i1.nextDoc()) {
-        assertEquals(doc, i2.nextDoc());
+        Assert.assertEquals(doc, i2.nextDoc());
       }
-      assertEquals(DocIdSetIterator.NO_MORE_DOCS, i2.nextDoc());
+      Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, i2.nextDoc());
     }
   }
 
@@ -70,7 +70,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
     DocIdSet result = builder.build();
     assertTrue(result instanceof IntArrayDocIdSet);
-    assertEquality(new BitDocIdSet(ref), result);
+    assertEquals(new BitDocIdSet(ref), result);
   }
 
   public void testDense() throws IOException {
@@ -88,7 +88,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
     DocIdSet result = builder.build();
     assertTrue(result instanceof BitDocIdSet);
-    assertEquality(new BitDocIdSet(ref), result);
+    assertEquals(new BitDocIdSet(ref), result);
   }
 
   public void testRandom() throws IOException {
@@ -114,7 +114,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         array[j++] = doc;
       }
-      assertEquals(numDocs, j);
+      Assert.assertEquals(numDocs, j);
 
       // add some duplicates
       while (j < array.length) {
@@ -146,7 +146,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
 
       final DocIdSet expected = new BitDocIdSet(docs);
       final DocIdSet actual = builder.build();
-      assertEquality(expected, actual);
+      assertEquals(expected, actual);
     }
   }
 
@@ -166,84 +166,84 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
       builder.add(new BitSetIterator(docs, 0L));
     }
 
-    assertEquality(new BitDocIdSet(expected), builder.build());
+    assertEquals(new BitDocIdSet(expected), builder.build());
   }
 
   public void testEmptyPoints() throws IOException {
     PointValues values = new DummyPointValues(0, 0);
     DocIdSetBuilder builder = new DocIdSetBuilder(1, values, "foo");
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1d, builder.numValuesPerDoc, 0d);
   }
 
   public void testLeverageStats() throws IOException {
     // single-valued points
     PointValues values = new DummyPointValues(42, 42);
     DocIdSetBuilder builder = new DocIdSetBuilder(100, values, "foo");
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertFalse(builder.multivalued);
     DocIdSetBuilder.BulkAdder adder = builder.grow(2);
     adder.add(5);
     adder.add(7);
     DocIdSet set = builder.build();
     assertTrue(set instanceof BitDocIdSet);
-    assertEquals(2, set.iterator().cost());
+    Assert.assertEquals(2, set.iterator().cost());
 
     // multi-valued points
     values = new DummyPointValues(42, 63);
     builder = new DocIdSetBuilder(100, values, "foo");
-    assertEquals(1.5, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1.5, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
     adder = builder.grow(2);
     adder.add(5);
     adder.add(7);
     set = builder.build();
     assertTrue(set instanceof BitDocIdSet);
-    assertEquals(1, set.iterator().cost()); // it thinks the same doc was added twice
+    Assert.assertEquals(1, set.iterator().cost()); // it thinks the same doc was added twice
 
     // incomplete stats
     values = new DummyPointValues(42, -1);
     builder = new DocIdSetBuilder(100, values, "foo");
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
 
     values = new DummyPointValues(-1, 84);
     builder = new DocIdSetBuilder(100, values, "foo");
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
 
     // single-valued terms
     Terms terms = new DummyTerms(42, 42);
     builder = new DocIdSetBuilder(100, terms);
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertFalse(builder.multivalued);
     adder = builder.grow(2);
     adder.add(5);
     adder.add(7);
     set = builder.build();
     assertTrue(set instanceof BitDocIdSet);
-    assertEquals(2, set.iterator().cost());
+    Assert.assertEquals(2, set.iterator().cost());
 
     // multi-valued terms
     terms = new DummyTerms(42, 63);
     builder = new DocIdSetBuilder(100, terms);
-    assertEquals(1.5, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1.5, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
     adder = builder.grow(2);
     adder.add(5);
     adder.add(7);
     set = builder.build();
     assertTrue(set instanceof BitDocIdSet);
-    assertEquals(1, set.iterator().cost()); // it thinks the same doc was added twice
+    Assert.assertEquals(1, set.iterator().cost()); // it thinks the same doc was added twice
 
     // incomplete stats
     terms = new DummyTerms(42, -1);
     builder = new DocIdSetBuilder(100, terms);
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
 
     terms = new DummyTerms(-1, 84);
     builder = new DocIdSetBuilder(100, terms);
-    assertEquals(1d, builder.numValuesPerDoc, 0d);
+    Assert.assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
   }
 

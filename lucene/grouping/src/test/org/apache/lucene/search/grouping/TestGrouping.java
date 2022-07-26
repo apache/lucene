@@ -17,7 +17,6 @@
 package org.apache.lucene.search.grouping;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -74,6 +73,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueStr;
+import org.junit.Assert;
 
 // TODO
 //   - should test relevance sort too
@@ -162,9 +162,9 @@ public class TestGrouping extends LuceneTestCase {
     final TopGroups<?> groups = c2.getTopGroups(0);
     assertFalse(Float.isNaN(groups.maxScore));
 
-    assertEquals(7, groups.totalHitCount);
-    assertEquals(7, groups.totalGroupedHitCount);
-    assertEquals(4, groups.groups.length);
+    Assert.assertEquals(7, groups.totalHitCount);
+    Assert.assertEquals(7, groups.totalGroupedHitCount);
+    Assert.assertEquals(4, groups.groups.length);
 
     // relevance order: 5, 0, 3, 4, 1, 2, 6
 
@@ -172,29 +172,29 @@ public class TestGrouping extends LuceneTestCase {
     // value
     GroupDocs<?> group = groups.groups[0];
     compareGroupValue("author3", group);
-    assertEquals(2, group.scoreDocs.length);
-    assertEquals(5, group.scoreDocs[0].doc);
-    assertEquals(4, group.scoreDocs[1].doc);
+    Assert.assertEquals(2, group.scoreDocs.length);
+    Assert.assertEquals(5, group.scoreDocs[0].doc);
+    Assert.assertEquals(4, group.scoreDocs[1].doc);
     assertTrue(group.scoreDocs[0].score > group.scoreDocs[1].score);
 
     group = groups.groups[1];
     compareGroupValue("author1", group);
-    assertEquals(3, group.scoreDocs.length);
-    assertEquals(0, group.scoreDocs[0].doc);
-    assertEquals(1, group.scoreDocs[1].doc);
-    assertEquals(2, group.scoreDocs[2].doc);
+    Assert.assertEquals(3, group.scoreDocs.length);
+    Assert.assertEquals(0, group.scoreDocs[0].doc);
+    Assert.assertEquals(1, group.scoreDocs[1].doc);
+    Assert.assertEquals(2, group.scoreDocs[2].doc);
     assertTrue(group.scoreDocs[0].score >= group.scoreDocs[1].score);
     assertTrue(group.scoreDocs[1].score >= group.scoreDocs[2].score);
 
     group = groups.groups[2];
     compareGroupValue("author2", group);
-    assertEquals(1, group.scoreDocs.length);
-    assertEquals(3, group.scoreDocs[0].doc);
+    Assert.assertEquals(1, group.scoreDocs.length);
+    Assert.assertEquals(3, group.scoreDocs[0].doc);
 
     group = groups.groups[3];
     compareGroupValue(null, group);
-    assertEquals(1, group.scoreDocs.length);
-    assertEquals(6, group.scoreDocs[0].doc);
+    Assert.assertEquals(1, group.scoreDocs.length);
+    Assert.assertEquals(6, group.scoreDocs[0].doc);
 
     indexSearcher.getIndexReader().close();
     dir.close();
@@ -311,11 +311,11 @@ public class TestGrouping extends LuceneTestCase {
     }
 
     if (group.groupValue.getClass().isAssignableFrom(BytesRef.class)) {
-      assertEquals(new BytesRef(expected), group.groupValue);
+      Assert.assertEquals(new BytesRef(expected), group.groupValue);
     } else if (group.groupValue.getClass().isAssignableFrom(MutableValueStr.class)) {
       MutableValueStr v = new MutableValueStr();
       v.value.copyChars(expected);
-      assertEquals(v, group.groupValue);
+      Assert.assertEquals(v, group.groupValue);
     } else {
       fail();
     }
@@ -449,7 +449,7 @@ public class TestGrouping extends LuceneTestCase {
           } else if (sf.getField().equals("sort2")) {
             cmp = d1.sort2.compareTo(d2.sort2);
           } else {
-            assertEquals(sf.getField(), "id");
+            Assert.assertEquals(sf.getField(), "id");
             cmp = d1.id - d2.id;
           }
           if (cmp != 0) {
@@ -477,7 +477,7 @@ public class TestGrouping extends LuceneTestCase {
       } else if (sf.getField().equals("sort2")) {
         c = d.sort2;
       } else {
-        assertEquals("id", sf.getField());
+        Assert.assertEquals("id", sf.getField());
         c = d.id;
       }
       fields[fieldIDX] = c;
@@ -823,7 +823,7 @@ public class TestGrouping extends LuceneTestCase {
       NumericDocValues values = MultiDocValues.getNumericValues(r, "id");
       int[] docIDToID = new int[r.maxDoc()];
       for (int i = 0; i < r.maxDoc(); i++) {
-        assertEquals(i, values.nextDoc());
+        Assert.assertEquals(i, values.nextDoc());
         docIDToID[i] = (int) values.longValue();
       }
       DirectoryReader rBlocks = null;
@@ -850,12 +850,12 @@ public class TestGrouping extends LuceneTestCase {
           seenIDs.add(idValue);
           assertTrue(gd.score == 0.0);
           gd.score = hit.score;
-          assertEquals(gd.id, idValue);
+          Assert.assertEquals(gd.id, idValue);
         }
       }
 
       // make sure all groups were seen across the hits
-      assertEquals(groupDocs.length, seenIDs.size());
+      Assert.assertEquals(groupDocs.length, seenIDs.size());
 
       for (GroupDoc gd : groupDocs) {
         assertTrue(Float.isFinite(gd.score));
@@ -883,7 +883,7 @@ public class TestGrouping extends LuceneTestCase {
       assertNotNull(values);
       int[] docIDToIDBlocks = new int[rBlocks.maxDoc()];
       for (int i = 0; i < rBlocks.maxDoc(); i++) {
-        assertEquals(i, values.nextDoc());
+        Assert.assertEquals(i, values.nextDoc());
         docIDToIDBlocks[i] = (int) values.longValue();
       }
 
@@ -904,7 +904,7 @@ public class TestGrouping extends LuceneTestCase {
           final GroupDoc gd = groupDocsByID[docIDToIDBlocks[hit.doc]];
           assertTrue(gd.score2 == 0.0);
           gd.score2 = hit.score;
-          assertEquals(gd.id, docIDToIDBlocks[hit.doc]);
+          Assert.assertEquals(gd.id, docIDToIDBlocks[hit.doc]);
           // System.out.println("    score=" + gd.score + " score2=" + hit.score + " id=" +
           // docIDToIDBlocks[hit.doc]);
           termScoreMap.put(gd.score, gd.score2);
@@ -1190,10 +1190,10 @@ public class TestGrouping extends LuceneTestCase {
           }
         }
 
-        assertEquality(docIDToID, expectedGroups, groupsResult, true, true, true);
+        assertEquals(docIDToID, expectedGroups, groupsResult, true, true, true);
 
         // Confirm merged shards match:
-        assertEquality(docIDToID, expectedGroups, topGroupsShards, true, false, true);
+        assertEquals(docIDToID, expectedGroups, topGroupsShards, true, false, true);
         if (topGroupsShards != null) {
           verifyShards(shards.docStarts, topGroupsShards);
         }
@@ -1225,7 +1225,7 @@ public class TestGrouping extends LuceneTestCase {
                 c3.getTopGroups(docSort, groupOffset, docOffset, docOffset + docsPerGroup);
         final TopGroups<BytesRef> groupsResultBlocks;
         if (doAllGroups && tempTopGroupsBlocks != null) {
-          assertEquals(
+          Assert.assertEquals(
               (int) tempTopGroupsBlocks.totalGroupCount, allGroupsCollector2.getGroupCount());
           groupsResultBlocks =
               new TopGroups<>(tempTopGroupsBlocks, allGroupsCollector2.getGroupCount());
@@ -1279,7 +1279,7 @@ public class TestGrouping extends LuceneTestCase {
           for (GroupDocs<?> groupDocsHits : expectedGroups.groups) {
             for (ScoreDoc hit : groupDocsHits.scoreDocs) {
               final GroupDoc gd = groupDocsByID[hit.doc];
-              assertEquals(gd.id, hit.doc);
+              Assert.assertEquals(gd.id, hit.doc);
               // System.out.println("fixup score " + hit.score + " to " + gd.score2 + " vs " +
               // gd.score);
               hit.score = gd.score2;
@@ -1318,8 +1318,8 @@ public class TestGrouping extends LuceneTestCase {
           }
         }
 
-        assertEquality(docIDToIDBlocks, expectedGroups, groupsResultBlocks, false, true, false);
-        assertEquality(docIDToIDBlocks, expectedGroups, topGroupsBlockShards, false, false, false);
+        assertEquals(docIDToIDBlocks, expectedGroups, groupsResultBlocks, false, true, false);
+        assertEquals(docIDToIDBlocks, expectedGroups, topGroupsBlockShards, false, false, false);
       }
 
       r.close();
@@ -1334,7 +1334,7 @@ public class TestGrouping extends LuceneTestCase {
     for (GroupDocs<?> group : topGroups.groups) {
       for (int hitIDX = 0; hitIDX < group.scoreDocs.length; hitIDX++) {
         final ScoreDoc sd = group.scoreDocs[hitIDX];
-        assertEquals(
+        Assert.assertEquals(
             "doc=" + sd.doc + " wrong shard",
             ReaderUtil.subIndex(sd.doc, docStarts),
             sd.shardIndex);
@@ -1500,7 +1500,7 @@ public class TestGrouping extends LuceneTestCase {
     }
   }
 
-  private void assertEquality(
+  private void assertEquals(
       int[] docIDtoID,
       TopGroups<BytesRef> expected,
       TopGroups<BytesRef> actual,
@@ -1513,20 +1513,20 @@ public class TestGrouping extends LuceneTestCase {
     }
     assertNotNull(actual);
 
-    assertEquals(
+    Assert.assertEquals(
         "expected.groups.length != actual.groups.length",
         expected.groups.length,
         actual.groups.length);
-    assertEquals(
+    Assert.assertEquals(
         "expected.totalHitCount != actual.totalHitCount",
         expected.totalHitCount,
         actual.totalHitCount);
-    assertEquals(
+    Assert.assertEquals(
         "expected.totalGroupedHitCount != actual.totalGroupedHitCount",
         expected.totalGroupedHitCount,
         actual.totalGroupedHitCount);
     if (expected.totalGroupCount != null && verifyTotalGroupCount) {
-      assertEquals(
+      Assert.assertEquals(
           "expected.totalGroupCount != actual.totalGroupCount",
           expected.totalGroupCount,
           actual.totalGroupCount);
@@ -1543,28 +1543,28 @@ public class TestGrouping extends LuceneTestCase {
           if (actualGroup.groupValue.length == 0) {
             assertNull(expectedGroup.groupValue);
           } else {
-            assertEquals(expectedGroup.groupValue, actualGroup.groupValue);
+            Assert.assertEquals(expectedGroup.groupValue, actualGroup.groupValue);
           }
         } else {
-          assertEquals(expectedGroup.groupValue, actualGroup.groupValue);
+          Assert.assertEquals(expectedGroup.groupValue, actualGroup.groupValue);
         }
       }
       assertArrayEquals(expectedGroup.groupSortValues, actualGroup.groupSortValues);
 
       // TODO
       // assertEquals(expectedGroup.maxScore, actualGroup.maxScore);
-      assertEquals(expectedGroup.totalHits.value, actualGroup.totalHits.value);
+      Assert.assertEquals(expectedGroup.totalHits.value, actualGroup.totalHits.value);
 
       final ScoreDoc[] expectedFDs = expectedGroup.scoreDocs;
       final ScoreDoc[] actualFDs = actualGroup.scoreDocs;
 
-      assertEquals(expectedFDs.length, actualFDs.length);
+      Assert.assertEquals(expectedFDs.length, actualFDs.length);
       for (int docIDX = 0; docIDX < expectedFDs.length; docIDX++) {
         final FieldDoc expectedFD = (FieldDoc) expectedFDs[docIDX];
         final FieldDoc actualFD = (FieldDoc) actualFDs[docIDX];
         // System.out.println("  actual doc=" + docIDtoID[actualFD.doc] + " score=" +
         // actualFD.score);
-        assertEquals(expectedFD.doc, docIDtoID[actualFD.doc]);
+        Assert.assertEquals(expectedFD.doc, docIDtoID[actualFD.doc]);
         assertArrayEquals(expectedFD.fields, actualFD.fields);
       }
     }

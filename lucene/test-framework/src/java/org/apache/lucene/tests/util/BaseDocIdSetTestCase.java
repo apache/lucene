@@ -17,7 +17,6 @@
 package org.apache.lucene.tests.util;
 
 import static org.apache.lucene.tests.util.BaseBitSetTestCase.randomSet;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.BitSet;
@@ -25,6 +24,7 @@ import java.util.Random;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
+import org.junit.Assert;
 
 /** Base test class for {@link DocIdSet}s. */
 public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTestCase {
@@ -36,7 +36,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
   public void testNoBit() throws IOException {
     final BitSet bs = new BitSet(1);
     final T copy = copyOf(bs, 1);
-    assertEquality(1, bs, copy);
+    assertEquals(1, bs, copy);
   }
 
   /** Test length=1. */
@@ -46,7 +46,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       bs.set(0);
     }
     final T copy = copyOf(bs, 1);
-    assertEquality(1, bs, copy);
+    assertEquals(1, bs, copy);
   }
 
   /** Test length=2. */
@@ -59,7 +59,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       bs.set(1);
     }
     final T copy = copyOf(bs, 2);
-    assertEquality(2, bs, copy);
+    assertEquals(2, bs, copy);
   }
 
   /** Compare the content of the set against a {@link BitSet}. */
@@ -70,17 +70,17 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
     for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
       final BitSet set = randomSet(numBits, percentSet);
       final T copy = copyOf(set, numBits);
-      assertEquality(numBits, set, copy);
+      assertEquals(numBits, set, copy);
     }
     // test one doc
     BitSet set = new BitSet(numBits);
     set.set(0); // 0 first
     T copy = copyOf(set, numBits);
-    assertEquality(numBits, set, copy);
+    assertEquals(numBits, set, copy);
     set.clear(0);
     set.set(random.nextInt(numBits));
     copy = copyOf(set, numBits); // then random index
-    assertEquality(numBits, set, copy);
+    assertEquals(numBits, set, copy);
     // test regular increments
     int maxIterations = TEST_NIGHTLY ? Integer.MAX_VALUE : 10;
     int iterations = 0;
@@ -96,7 +96,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
         set.set(d);
       }
       copy = copyOf(set, numBits);
-      assertEquality(numBits, set, copy);
+      assertEquals(numBits, set, copy);
     }
   }
 
@@ -113,7 +113,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       final DocIdSet copy = copyOf(set, maxDoc);
       final long actualBytes = ramBytesUsed(copy, maxDoc);
       final long expectedBytes = copy.ramBytesUsed();
-      assertEquals(expectedBytes, actualBytes);
+      Assert.assertEquals(expectedBytes, actualBytes);
     }
   }
 
@@ -121,26 +121,26 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
    * Assert that the content of the {@link DocIdSet} is the same as the content of the {@link
    * BitSet}.
    */
-  public void assertEquality(int numBits, BitSet ds1, T ds2) throws IOException {
+  public void assertEquals(int numBits, BitSet ds1, T ds2) throws IOException {
     Random random = random();
     // nextDoc
     DocIdSetIterator it2 = ds2.iterator();
     if (it2 == null) {
-      assertEquals(-1, ds1.nextSetBit(0));
+      Assert.assertEquals(-1, ds1.nextSetBit(0));
     } else {
-      assertEquals(-1, it2.docID());
+      Assert.assertEquals(-1, it2.docID());
       for (int doc = ds1.nextSetBit(0); doc != -1; doc = ds1.nextSetBit(doc + 1)) {
-        assertEquals(doc, it2.nextDoc());
-        assertEquals(doc, it2.docID());
+        Assert.assertEquals(doc, it2.nextDoc());
+        Assert.assertEquals(doc, it2.docID());
       }
-      assertEquals(DocIdSetIterator.NO_MORE_DOCS, it2.nextDoc());
-      assertEquals(DocIdSetIterator.NO_MORE_DOCS, it2.docID());
+      Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, it2.nextDoc());
+      Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, it2.docID());
     }
 
     // nextDoc / advance
     it2 = ds2.iterator();
     if (it2 == null) {
-      assertEquals(-1, ds1.nextSetBit(0));
+      Assert.assertEquals(-1, ds1.nextSetBit(0));
     } else {
       for (int doc = -1; doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         if (random.nextBoolean()) {
@@ -148,8 +148,8 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
           if (doc == -1) {
             doc = DocIdSetIterator.NO_MORE_DOCS;
           }
-          assertEquals(doc, it2.nextDoc());
-          assertEquals(doc, it2.docID());
+          Assert.assertEquals(doc, it2.nextDoc());
+          Assert.assertEquals(doc, it2.docID());
         } else {
           final int target =
               doc + 1 + random.nextInt(random.nextBoolean() ? 64 : Math.max(numBits / 8, 1));
@@ -157,8 +157,8 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
           if (doc == -1) {
             doc = DocIdSetIterator.NO_MORE_DOCS;
           }
-          assertEquals(doc, it2.advance(target));
-          assertEquals(doc, it2.docID());
+          Assert.assertEquals(doc, it2.advance(target));
+          Assert.assertEquals(doc, it2.docID());
         }
       }
     }
@@ -171,12 +171,12 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       for (int previousDoc = -1, doc = it2.nextDoc(); ; previousDoc = doc, doc = it2.nextDoc()) {
         final int max = doc == DocIdSetIterator.NO_MORE_DOCS ? bits.length() : doc;
         for (int i = previousDoc + 1; i < max; ++i) {
-          assertEquals(false, bits.get(i));
+          Assert.assertEquals(false, bits.get(i));
         }
         if (doc == DocIdSetIterator.NO_MORE_DOCS) {
           break;
         }
-        assertEquals(true, bits.get(doc));
+        Assert.assertEquals(true, bits.get(doc));
       }
     }
   }

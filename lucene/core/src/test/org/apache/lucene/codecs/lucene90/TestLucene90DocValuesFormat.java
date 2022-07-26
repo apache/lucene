@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene90;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -76,6 +75,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.junit.Assert;
 
 /** Tests Lucene90DocValuesFormat */
 public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
@@ -248,13 +248,14 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
         if (value == null) {
           assertTrue(numeric.docID() + " vs " + i, numeric.docID() < i);
         } else {
-          assertEquals(i, numeric.nextDoc());
-          assertEquals(i, binary.nextDoc());
-          assertEquals(i, sorted.nextDoc());
-          assertEquals(value.longValue(), numeric.longValue());
+          Assert.assertEquals(i, numeric.nextDoc());
+          Assert.assertEquals(i, binary.nextDoc());
+          Assert.assertEquals(i, sorted.nextDoc());
+          Assert.assertEquals(value.longValue(), numeric.longValue());
           assertTrue(sorted.ordValue() >= 0);
-          assertEquals(new BytesRef(Long.toString(value)), sorted.lookupOrd(sorted.ordValue()));
-          assertEquals(new BytesRef(Long.toString(value)), binary.binaryValue());
+          Assert.assertEquals(
+              new BytesRef(Long.toString(value)), sorted.lookupOrd(sorted.ordValue()));
+          Assert.assertEquals(new BytesRef(Long.toString(value)), binary.binaryValue());
         }
 
         final IndexableField[] valuesFields = doc.getFields("values");
@@ -266,14 +267,14 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
             valueSet.add(sf.numericValue().longValue());
           }
 
-          assertEquals(i, sortedNumeric.nextDoc());
-          assertEquals(valuesFields.length, sortedNumeric.docValueCount());
+          Assert.assertEquals(i, sortedNumeric.nextDoc());
+          Assert.assertEquals(valuesFields.length, sortedNumeric.docValueCount());
           for (int j = 0; j < sortedNumeric.docValueCount(); ++j) {
             assertTrue(valueSet.contains(sortedNumeric.nextValue()));
           }
-          assertEquals(i, sortedSet.nextDoc());
+          Assert.assertEquals(i, sortedSet.nextDoc());
 
-          assertEquals(valueSet.size(), sortedSet.docValueCount());
+          Assert.assertEquals(valueSet.size(), sortedSet.docValueCount());
           for (int j = 0; j < sortedSet.docValueCount(); ++j) {
             long ord = sortedSet.nextOrd();
             assertTrue(valueSet.contains(Long.parseLong(sortedSet.lookupOrd(ord).utf8ToString())));
@@ -359,10 +360,10 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       Terms terms = r.terms("indexed");
       if (terms != null) {
         SortedSetDocValues ssdv = r.getSortedSetDocValues("dv");
-        assertEquals(terms.size(), ssdv.getValueCount());
+        Assert.assertEquals(terms.size(), ssdv.getValueCount());
         TermsEnum expected = terms.iterator();
         TermsEnum actual = r.getSortedSetDocValues("dv").termsEnum();
-        assertEquality(terms.size(), expected, actual);
+        assertEquals(terms.size(), expected, actual);
 
         doTestSortedSetEnumAdvanceIndependently(ssdv);
       }
@@ -376,10 +377,10 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     LeafReader ar = getOnlyLeafReader(ir);
     Terms terms = ar.terms("indexed");
     if (terms != null) {
-      assertEquals(terms.size(), ar.getSortedSetDocValues("dv").getValueCount());
+      Assert.assertEquals(terms.size(), ar.getSortedSetDocValues("dv").getValueCount());
       TermsEnum expected = terms.iterator();
       TermsEnum actual = ar.getSortedSetDocValues("dv").termsEnum();
-      assertEquality(terms.size(), expected, actual);
+      assertEquals(terms.size(), expected, actual);
     }
     ir.close();
 
@@ -387,14 +388,14 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     dir.close();
   }
 
-  private void assertEquality(long numOrds, TermsEnum expected, TermsEnum actual) throws Exception {
+  private void assertEquals(long numOrds, TermsEnum expected, TermsEnum actual) throws Exception {
     BytesRef ref;
 
     // sequential next() through all terms
     while ((ref = expected.next()) != null) {
-      assertEquals(ref, actual.next());
-      assertEquals(expected.ord(), actual.ord());
-      assertEquals(expected.term(), actual.term());
+      Assert.assertEquals(ref, actual.next());
+      Assert.assertEquals(expected.ord(), actual.ord());
+      Assert.assertEquals(expected.term(), actual.term());
     }
     assertNull(actual.next());
 
@@ -402,24 +403,24 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     for (long i = 0; i < numOrds; i++) {
       expected.seekExact(i);
       actual.seekExact(i);
-      assertEquals(expected.ord(), actual.ord());
-      assertEquals(expected.term(), actual.term());
+      Assert.assertEquals(expected.ord(), actual.ord());
+      Assert.assertEquals(expected.term(), actual.term());
     }
 
     // sequential seekExact(BytesRef) through all terms
     for (long i = 0; i < numOrds; i++) {
       expected.seekExact(i);
       assertTrue(actual.seekExact(expected.term()));
-      assertEquals(expected.ord(), actual.ord());
-      assertEquals(expected.term(), actual.term());
+      Assert.assertEquals(expected.ord(), actual.ord());
+      Assert.assertEquals(expected.term(), actual.term());
     }
 
     // sequential seekCeil(BytesRef) through all terms
     for (long i = 0; i < numOrds; i++) {
       expected.seekExact(i);
-      assertEquals(SeekStatus.FOUND, actual.seekCeil(expected.term()));
-      assertEquals(expected.ord(), actual.ord());
-      assertEquals(expected.term(), actual.term());
+      Assert.assertEquals(SeekStatus.FOUND, actual.seekCeil(expected.term()));
+      Assert.assertEquals(expected.ord(), actual.ord());
+      Assert.assertEquals(expected.term(), actual.term());
     }
 
     // random seekExact(ord)
@@ -427,8 +428,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       long randomOrd = TestUtil.nextLong(random(), 0, numOrds - 1);
       expected.seekExact(randomOrd);
       actual.seekExact(randomOrd);
-      assertEquals(expected.ord(), actual.ord());
-      assertEquals(expected.term(), actual.term());
+      Assert.assertEquals(expected.ord(), actual.ord());
+      Assert.assertEquals(expected.term(), actual.term());
     }
 
     // random seekExact(BytesRef)
@@ -436,18 +437,18 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       long randomOrd = TestUtil.nextLong(random(), 0, numOrds - 1);
       expected.seekExact(randomOrd);
       actual.seekExact(expected.term());
-      assertEquals(expected.ord(), actual.ord());
-      assertEquals(expected.term(), actual.term());
+      Assert.assertEquals(expected.ord(), actual.ord());
+      Assert.assertEquals(expected.term(), actual.term());
     }
 
     // random seekCeil(BytesRef)
     for (long i = 0; i < numOrds; i++) {
       BytesRef target = new BytesRef(TestUtil.randomUnicodeString(random()));
       SeekStatus expectedStatus = expected.seekCeil(target);
-      assertEquals(expectedStatus, actual.seekCeil(target));
+      Assert.assertEquals(expectedStatus, actual.seekCeil(target));
       if (expectedStatus != SeekStatus.END) {
-        assertEquals(expected.ord(), actual.ord());
-        assertEquals(expected.term(), actual.term());
+        Assert.assertEquals(expected.ord(), actual.ord());
+        Assert.assertEquals(expected.term(), actual.term());
       }
     }
   }
@@ -483,21 +484,21 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       DirectoryReader r = DirectoryReader.open(w);
       w.close();
       LeafReader sr = getOnlyLeafReader(r);
-      assertEquals(maxDoc, sr.maxDoc());
+      Assert.assertEquals(maxDoc, sr.maxDoc());
       SortedSetDocValues values = sr.getSortedSetDocValues("sset");
       assertNotNull(values);
       ByteBuffersDataInput in = out.toDataInput();
       BytesRefBuilder b = new BytesRefBuilder();
       for (int i = 0; i < maxDoc; ++i) {
-        assertEquals(i, values.nextDoc());
+        Assert.assertEquals(i, values.nextDoc());
         final int numValues = in.readVInt();
-        assertEquals(numValues, values.docValueCount());
+        Assert.assertEquals(numValues, values.docValueCount());
 
         for (int j = 0; j < numValues; ++j) {
           b.setLength(in.readVInt());
           b.grow(b.length());
           in.readBytes(b.bytes(), 0, b.length());
-          assertEquals(b.get(), values.lookupOrd(values.nextOrd()));
+          Assert.assertEquals(b.get(), values.lookupOrd(values.nextOrd()));
         }
       }
       r.close();
@@ -533,15 +534,15 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       DirectoryReader r = DirectoryReader.open(w);
       w.close();
       LeafReader sr = getOnlyLeafReader(r);
-      assertEquals(maxDoc, sr.maxDoc());
+      Assert.assertEquals(maxDoc, sr.maxDoc());
       SortedNumericDocValues values = sr.getSortedNumericDocValues("snum");
       assertNotNull(values);
       ByteBuffersDataInput dataInput = buffer.toDataInput();
       for (int i = 0; i < maxDoc; ++i) {
-        assertEquals(i, values.nextDoc());
-        assertEquals(2, values.docValueCount());
-        assertEquals(dataInput.readVLong(), values.nextValue());
-        assertEquals(dataInput.readVLong(), values.nextValue());
+        Assert.assertEquals(i, values.nextDoc());
+        Assert.assertEquals(2, values.docValueCount());
+        Assert.assertEquals(dataInput.readVLong(), values.nextValue());
+        Assert.assertEquals(dataInput.readVLong(), values.nextValue());
       }
       r.close();
       dir.close();
@@ -687,7 +688,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
         }
         String[] expectedStored = r.document(i).getValues("stored");
         if (i < docValues.docID()) {
-          assertEquals(0, expectedStored.length);
+          Assert.assertEquals(0, expectedStored.length);
         } else {
           long[] readValueArray = new long[docValues.docValueCount()];
           String[] actualDocValue = new String[docValues.docValueCount()];
@@ -772,7 +773,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
             assertFalse("There should be no DocValue for " + base, docValues.advanceExact(docID));
           } else {
             assertTrue("There should be a DocValue for " + base, docValues.advanceExact(docID));
-            assertEquals(
+            Assert.assertEquals(
                 "The doc value should be correct for " + base,
                 Long.parseLong(storedValue),
                 docValues.longValue());
@@ -817,7 +818,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       LeafReader reader = getOnlyLeafReader(dReader);
       // Check values count.
       SortedDocValues ssdvMulti = reader.getSortedDocValues("sdv");
-      assertEquals(docValues, ssdvMulti.getValueCount());
+      Assert.assertEquals(docValues, ssdvMulti.getValueCount());
 
       // Seek to first block.
       int ord1 = ssdvMulti.lookupTerm(new BytesRef(values.get(0)));
@@ -861,7 +862,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       LeafReader reader = getOnlyLeafReader(ireader);
       // Check values count.
       SortedDocValues ssdvMulti = reader.getSortedDocValues("sdv");
-      assertEquals(valuesCount, ssdvMulti.getValueCount());
+      Assert.assertEquals(valuesCount, ssdvMulti.getValueCount());
       ireader.close();
     }
   }
@@ -915,19 +916,19 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     // iterate in order
     for (int i = 0; i < terms.size(); ++i) {
       te.seekExact(i);
-      assertEquals(terms.get(i), te.term());
+      Assert.assertEquals(terms.get(i), te.term());
     }
 
     // iterate in reverse order
     for (int i = terms.size() - 1; i >= 0; --i) {
       te.seekExact(i);
-      assertEquals(terms.get(i), te.term());
+      Assert.assertEquals(terms.get(i), te.term());
     }
 
     // iterate in forward order with random gaps
     for (int i = random().nextInt(5); i < terms.size(); i += random().nextInt(5)) {
       te.seekExact(i);
-      assertEquals(terms.get(i), te.term());
+      Assert.assertEquals(terms.get(i), te.term());
     }
   }
 
@@ -952,9 +953,9 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     LeafReader leafReader = getOnlyLeafReader(reader);
     SortedDocValues values = leafReader.getSortedDocValues("field");
     TermsEnum termsEnum = values.termsEnum();
-    assertEquals(new BytesRef("abc0defghijkl"), termsEnum.next());
-    assertEquals(new BytesRef("abc1defghijkl"), termsEnum.next());
-    assertEquals(new BytesRef("abc2defghijkl"), termsEnum.next());
+    Assert.assertEquals(new BytesRef("abc0defghijkl"), termsEnum.next());
+    Assert.assertEquals(new BytesRef("abc1defghijkl"), termsEnum.next());
+    Assert.assertEquals(new BytesRef("abc2defghijkl"), termsEnum.next());
     assertNull(termsEnum.next());
 
     reader.close();

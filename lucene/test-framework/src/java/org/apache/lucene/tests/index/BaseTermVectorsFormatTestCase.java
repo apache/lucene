@@ -22,7 +22,6 @@ import static org.apache.lucene.index.PostingsEnum.NONE;
 import static org.apache.lucene.index.PostingsEnum.OFFSETS;
 import static org.apache.lucene.index.PostingsEnum.PAYLOADS;
 import static org.apache.lucene.index.PostingsEnum.POSITIONS;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -79,6 +78,7 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.junit.Assert;
 
 /**
  * Base class aiming at testing {@link TermVectorsFormat term vectors formats}. To test a new
@@ -420,21 +420,21 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     }
   }
 
-  protected void assertEquality(RandomDocument doc, Fields fields) throws IOException {
+  protected void assertEquals(RandomDocument doc, Fields fields) throws IOException {
     // compare field names
     assertNotNull(doc);
     assertNotNull(fields);
-    assertEquals(doc.fieldNames.length, fields.size());
+    Assert.assertEquals(doc.fieldNames.length, fields.size());
     final Set<String> fields1 = new HashSet<>();
     final Set<String> fields2 = new HashSet<>();
     Collections.addAll(fields1, doc.fieldNames);
     for (String field : fields) {
       fields2.add(field);
     }
-    assertEquals(fields1, fields2);
+    Assert.assertEquals(fields1, fields2);
 
     for (int i = 0; i < doc.fieldNames.length; ++i) {
-      assertEquality(doc.tokenStreams[i], doc.fieldTypes[i], fields.terms(doc.fieldNames[i]));
+      assertEquals(doc.tokenStreams[i], doc.fieldTypes[i], fields.terms(doc.fieldNames[i]));
     }
   }
 
@@ -449,15 +449,14 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
   // to test reuse
   private final ThreadLocal<PostingsEnum> docsEnum = new ThreadLocal<>();
 
-  protected void assertEquality(RandomTokenStream tk, FieldType ft, Terms terms)
-      throws IOException {
-    assertEquals(1, terms.getDocCount());
+  protected void assertEquals(RandomTokenStream tk, FieldType ft, Terms terms) throws IOException {
+    Assert.assertEquals(1, terms.getDocCount());
     final int termCount = new HashSet<>(Arrays.asList(tk.terms)).size();
-    assertEquals(termCount, terms.size());
-    assertEquals(termCount, terms.getSumDocFreq());
-    assertEquals(ft.storeTermVectorPositions(), terms.hasPositions());
-    assertEquals(ft.storeTermVectorOffsets(), terms.hasOffsets());
-    assertEquals(ft.storeTermVectorPayloads() && tk.hasPayloads(), terms.hasPayloads());
+    Assert.assertEquals(termCount, terms.size());
+    Assert.assertEquals(termCount, terms.getSumDocFreq());
+    Assert.assertEquals(ft.storeTermVectorPositions(), terms.hasPositions());
+    Assert.assertEquals(ft.storeTermVectorOffsets(), terms.hasOffsets());
+    Assert.assertEquals(ft.storeTermVectorPayloads() && tk.hasPayloads(), terms.hasPayloads());
     final Set<BytesRef> uniqueTerms = new HashSet<>();
     for (String term : tk.freqs.keySet()) {
       uniqueTerms.add(new BytesRef(term));
@@ -467,17 +466,18 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     final TermsEnum termsEnum = terms.iterator();
     for (int i = 0; i < sortedTerms.length; ++i) {
       final BytesRef nextTerm = termsEnum.next();
-      assertEquals(sortedTerms[i], nextTerm);
-      assertEquals(sortedTerms[i], termsEnum.term());
-      assertEquals(1, termsEnum.docFreq());
+      Assert.assertEquals(sortedTerms[i], nextTerm);
+      Assert.assertEquals(sortedTerms[i], termsEnum.term());
+      Assert.assertEquals(1, termsEnum.docFreq());
 
       PostingsEnum postingsEnum = termsEnum.postings(null);
       postingsEnum = termsEnum.postings(random().nextBoolean() ? null : postingsEnum);
       assertNotNull(postingsEnum);
-      assertEquals(0, postingsEnum.nextDoc());
-      assertEquals(0, postingsEnum.docID());
-      assertEquals(tk.freqs.get(termsEnum.term().utf8ToString()), (Integer) postingsEnum.freq());
-      assertEquals(PostingsEnum.NO_MORE_DOCS, postingsEnum.nextDoc());
+      Assert.assertEquals(0, postingsEnum.nextDoc());
+      Assert.assertEquals(0, postingsEnum.docID());
+      Assert.assertEquals(
+          tk.freqs.get(termsEnum.term().utf8ToString()), (Integer) postingsEnum.freq());
+      Assert.assertEquals(PostingsEnum.NO_MORE_DOCS, postingsEnum.nextDoc());
       this.docsEnum.set(postingsEnum);
 
       PostingsEnum docsAndPositionsEnum = termsEnum.postings(null);
@@ -485,9 +485,9 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           termsEnum.postings(
               random().nextBoolean() ? null : docsAndPositionsEnum, PostingsEnum.POSITIONS);
       if (terms.hasPositions() || terms.hasOffsets()) {
-        assertEquals(0, docsAndPositionsEnum.nextDoc());
+        Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
         final int freq = docsAndPositionsEnum.freq();
-        assertEquals(tk.freqs.get(termsEnum.term().utf8ToString()), (Integer) freq);
+        Assert.assertEquals(tk.freqs.get(termsEnum.term().utf8ToString()), (Integer) freq);
         for (int k = 0; k < freq; ++k) {
           final int position = docsAndPositionsEnum.nextPosition();
           final Set<Integer> indexes;
@@ -533,7 +533,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           }
         }
         expectThrows(getReadPastLastPositionExceptionClass(), docsAndPositionsEnum::nextPosition);
-        assertEquals(PostingsEnum.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+        Assert.assertEquals(PostingsEnum.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
       }
       this.docsEnum.set(docsAndPositionsEnum);
     }
@@ -542,7 +542,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
       if (random().nextBoolean()) {
         assertTrue(termsEnum.seekExact(RandomPicks.randomFrom(random(), tk.termBytes)));
       } else {
-        assertEquals(
+        Assert.assertEquals(
             SeekStatus.FOUND, termsEnum.seekCeil(RandomPicks.randomFrom(random(), tk.termBytes)));
       }
     }
@@ -585,13 +585,13 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         final int docID = random().nextInt(numDocs);
         final Fields fields = reader.getTermVectors(docID);
         if (docID == docWithVectorsID) {
-          assertEquality(doc, fields);
+          assertEquals(doc, fields);
         } else {
           assertNull(fields);
         }
       }
       final Fields fields = reader.getTermVectors(docWithVectorsID);
-      assertEquality(doc, fields);
+      assertEquals(doc, fields);
       reader.close();
       writer.close();
       dir.close();
@@ -610,7 +610,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           docFactory.newDocument(TestUtil.nextInt(random(), 1, 2), atLeast(2000), options);
       writer.addDocument(doc.toDocument());
       final IndexReader reader = writer.getReader();
-      assertEquality(doc, reader.getTermVectors(0));
+      assertEquals(doc, reader.getTermVectors(0));
       reader.close();
       writer.close();
       dir.close();
@@ -627,7 +627,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
           docFactory.newDocument(TestUtil.nextInt(random(), 5, fieldCount), 5, options);
       writer.addDocument(doc.toDocument());
       final IndexReader reader = writer.getReader();
-      assertEquality(doc, reader.getTermVectors(0));
+      assertEquals(doc, reader.getTermVectors(0));
       reader.close();
       writer.close();
       dir.close();
@@ -651,9 +651,9 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         writer.addDocument(addId(doc2.toDocument(), "2"));
         final IndexReader reader = writer.getReader();
         final int doc1ID = docID(reader, "1");
-        assertEquality(doc1, reader.getTermVectors(doc1ID));
+        assertEquals(doc1, reader.getTermVectors(doc1ID));
         final int doc2ID = docID(reader, "2");
-        assertEquality(doc2, reader.getTermVectors(doc2ID));
+        assertEquals(doc2, reader.getTermVectors(doc2ID));
         reader.close();
         writer.close();
         dir.close();
@@ -680,7 +680,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     final IndexReader reader = writer.getReader();
     for (int i = 0; i < numDocs; ++i) {
       final int docID = docID(reader, "" + i);
-      assertEquality(docs[i], reader.getTermVectors(docID));
+      assertEquals(docs[i], reader.getTermVectors(docID));
     }
     reader.close();
     writer.close();
@@ -711,7 +711,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
             try (DirectoryReader reader = maybeWrapWithMergingReader(writer.getReader())) {
               for (String id : liveDocIDs) {
                 final int docID = docID(reader, id);
-                assertEquality(docs.get(id), reader.getTermVectors(docID));
+                assertEquals(docs.get(id), reader.getTermVectors(docID));
               }
             } catch (IOException e) {
               throw new UncheckedIOException(e);
@@ -805,7 +805,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
       final IndexReader reader = writer.getReader();
       for (int i = 0; i < numDocs; ++i) {
         final int docID = docID(reader, "" + i);
-        assertEquality(docs[i], reader.getTermVectors(docID));
+        assertEquals(docs[i], reader.getTermVectors(docID));
       }
 
       final AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -819,7 +819,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
                   for (int i = 0; i < atLeast(100); ++i) {
                     final int idx = random().nextInt(numDocs);
                     final int docID = docID(reader, "" + idx);
-                    assertEquality(docs[idx], reader.getTermVectors(docID));
+                    assertEquals(docs[idx], reader.getTermVectors(docID));
                   }
                 } catch (Throwable t) {
                   exception.set(t);
@@ -861,60 +861,60 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     Terms terms = getOnlyLeafReader(reader).getTermVector(0, "foo");
     TermsEnum termsEnum = terms.iterator();
     assertNotNull(termsEnum);
-    assertEquals(newBytesRef("bar"), termsEnum.next());
+    Assert.assertEquals(newBytesRef("bar"), termsEnum.next());
 
     // simple use (FREQS)
     PostingsEnum postings = termsEnum.postings(null);
-    assertEquals(-1, postings.docID());
-    assertEquals(0, postings.nextDoc());
-    assertEquals(2, postings.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    Assert.assertEquals(-1, postings.docID());
+    Assert.assertEquals(0, postings.nextDoc());
+    Assert.assertEquals(2, postings.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
 
     // termsenum reuse (FREQS)
     PostingsEnum postings2 = termsEnum.postings(postings);
     assertNotNull(postings2);
     // and it had better work
-    assertEquals(-1, postings2.docID());
-    assertEquals(0, postings2.nextDoc());
-    assertEquals(2, postings2.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
+    Assert.assertEquals(-1, postings2.docID());
+    Assert.assertEquals(0, postings2.nextDoc());
+    Assert.assertEquals(2, postings2.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
 
     // asking for docs only: ok
     PostingsEnum docsOnly = termsEnum.postings(null, PostingsEnum.NONE);
-    assertEquals(-1, docsOnly.docID());
-    assertEquals(0, docsOnly.nextDoc());
+    Assert.assertEquals(-1, docsOnly.docID());
+    Assert.assertEquals(0, docsOnly.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly.freq() == 1 || docsOnly.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
     // reuse that too
     PostingsEnum docsOnly2 = termsEnum.postings(docsOnly, PostingsEnum.NONE);
     assertNotNull(docsOnly2);
     // and it had better work
-    assertEquals(-1, docsOnly2.docID());
-    assertEquals(0, docsOnly2.nextDoc());
+    Assert.assertEquals(-1, docsOnly2.docID());
+    Assert.assertEquals(0, docsOnly2.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly.freq() == 1 || docsOnly.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
 
     // asking for any flags: ok
     for (int flag : new int[] {NONE, FREQS, POSITIONS, PAYLOADS, OFFSETS, ALL}) {
       postings = termsEnum.postings(null, flag);
-      assertEquals(-1, postings.docID());
-      assertEquals(0, postings.nextDoc());
+      Assert.assertEquals(-1, postings.docID());
+      Assert.assertEquals(0, postings.nextDoc());
       if (flag != NONE) {
-        assertEquals(2, postings.freq());
+        Assert.assertEquals(2, postings.freq());
       }
-      assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+      Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
       // reuse that too
       postings2 = termsEnum.postings(postings, flag);
       assertNotNull(postings2);
       // and it had better work
-      assertEquals(-1, postings2.docID());
-      assertEquals(0, postings2.nextDoc());
+      Assert.assertEquals(-1, postings2.docID());
+      Assert.assertEquals(0, postings2.nextDoc());
       if (flag != NONE) {
-        assertEquals(2, postings2.freq());
+        Assert.assertEquals(2, postings2.freq());
       }
-      assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
+      Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
     }
 
     iw.close();
@@ -944,159 +944,159 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     Terms terms = getOnlyLeafReader(reader).getTermVector(0, "foo");
     TermsEnum termsEnum = terms.iterator();
     assertNotNull(termsEnum);
-    assertEquals(newBytesRef("bar"), termsEnum.next());
+    Assert.assertEquals(newBytesRef("bar"), termsEnum.next());
 
     // simple use (FREQS)
     PostingsEnum postings = termsEnum.postings(null);
-    assertEquals(-1, postings.docID());
-    assertEquals(0, postings.nextDoc());
-    assertEquals(2, postings.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    Assert.assertEquals(-1, postings.docID());
+    Assert.assertEquals(0, postings.nextDoc());
+    Assert.assertEquals(2, postings.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
 
     // termsenum reuse (FREQS)
     PostingsEnum postings2 = termsEnum.postings(postings);
     assertNotNull(postings2);
     // and it had better work
-    assertEquals(-1, postings2.docID());
-    assertEquals(0, postings2.nextDoc());
-    assertEquals(2, postings2.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
+    Assert.assertEquals(-1, postings2.docID());
+    Assert.assertEquals(0, postings2.nextDoc());
+    Assert.assertEquals(2, postings2.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
 
     // asking for docs only: ok
     PostingsEnum docsOnly = termsEnum.postings(null, PostingsEnum.NONE);
-    assertEquals(-1, docsOnly.docID());
-    assertEquals(0, docsOnly.nextDoc());
+    Assert.assertEquals(-1, docsOnly.docID());
+    Assert.assertEquals(0, docsOnly.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly.freq() == 1 || docsOnly.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
     // reuse that too
     PostingsEnum docsOnly2 = termsEnum.postings(docsOnly, PostingsEnum.NONE);
     assertNotNull(docsOnly2);
     // and it had better work
-    assertEquals(-1, docsOnly2.docID());
-    assertEquals(0, docsOnly2.nextDoc());
+    Assert.assertEquals(-1, docsOnly2.docID());
+    Assert.assertEquals(0, docsOnly2.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly2.freq() == 1 || docsOnly2.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
 
     // asking for positions, ok
     PostingsEnum docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
 
     // now reuse the positions
     PostingsEnum docsAndPositionsEnum2 =
         termsEnum.postings(docsAndPositionsEnum, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     // payloads, offsets, etc don't cause an error if they aren't there
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.PAYLOADS);
     assertNotNull(docsAndPositionsEnum);
     // but make sure they work
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.PAYLOADS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.OFFSETS);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.OFFSETS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.ALL);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     iw.close();
     reader.close();
@@ -1126,171 +1126,171 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     Terms terms = getOnlyLeafReader(reader).getTermVector(0, "foo");
     TermsEnum termsEnum = terms.iterator();
     assertNotNull(termsEnum);
-    assertEquals(newBytesRef("bar"), termsEnum.next());
+    Assert.assertEquals(newBytesRef("bar"), termsEnum.next());
 
     // simple usage (FREQS)
     PostingsEnum postings = termsEnum.postings(null);
-    assertEquals(-1, postings.docID());
-    assertEquals(0, postings.nextDoc());
-    assertEquals(2, postings.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    Assert.assertEquals(-1, postings.docID());
+    Assert.assertEquals(0, postings.nextDoc());
+    Assert.assertEquals(2, postings.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
 
     // termsenum reuse (FREQS)
     PostingsEnum postings2 = termsEnum.postings(postings);
     assertNotNull(postings2);
     // and it had better work
-    assertEquals(-1, postings2.docID());
-    assertEquals(0, postings2.nextDoc());
-    assertEquals(2, postings2.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
+    Assert.assertEquals(-1, postings2.docID());
+    Assert.assertEquals(0, postings2.nextDoc());
+    Assert.assertEquals(2, postings2.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
 
     // asking for docs only: ok
     PostingsEnum docsOnly = termsEnum.postings(null, PostingsEnum.NONE);
-    assertEquals(-1, docsOnly.docID());
-    assertEquals(0, docsOnly.nextDoc());
+    Assert.assertEquals(-1, docsOnly.docID());
+    Assert.assertEquals(0, docsOnly.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly.freq() == 1 || docsOnly.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
     // reuse that too
     PostingsEnum docsOnly2 = termsEnum.postings(docsOnly, PostingsEnum.NONE);
     assertNotNull(docsOnly2);
     // and it had better work
-    assertEquals(-1, docsOnly2.docID());
-    assertEquals(0, docsOnly2.nextDoc());
+    Assert.assertEquals(-1, docsOnly2.docID());
+    Assert.assertEquals(0, docsOnly2.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly2.freq() == 1 || docsOnly2.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
 
     // asking for positions, ok
     PostingsEnum docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 0);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 3);
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 4);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 7);
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
 
     // now reuse the positions
     PostingsEnum docsAndPositionsEnum2 =
         termsEnum.postings(docsAndPositionsEnum, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 0);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 3);
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 4);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 7);
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     // payloads don't cause an error if they aren't there
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.PAYLOADS);
     assertNotNull(docsAndPositionsEnum);
     // but make sure they work
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 0);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 3);
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 4);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 7);
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.PAYLOADS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 0);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 3);
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 4);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 7);
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.OFFSETS);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(0, docsAndPositionsEnum.startOffset());
-    assertEquals(3, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(4, docsAndPositionsEnum.startOffset());
-    assertEquals(7, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.OFFSETS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(0, docsAndPositionsEnum2.startOffset());
-    assertEquals(3, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(4, docsAndPositionsEnum2.startOffset());
-    assertEquals(7, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(0, docsAndPositionsEnum.startOffset());
-    assertEquals(3, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(4, docsAndPositionsEnum.startOffset());
-    assertEquals(7, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.ALL);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(0, docsAndPositionsEnum2.startOffset());
-    assertEquals(3, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(4, docsAndPositionsEnum2.startOffset());
-    assertEquals(7, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     iw.close();
     reader.close();
@@ -1319,171 +1319,171 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     Terms terms = getOnlyLeafReader(reader).getTermVector(0, "foo");
     TermsEnum termsEnum = terms.iterator();
     assertNotNull(termsEnum);
-    assertEquals(newBytesRef("bar"), termsEnum.next());
+    Assert.assertEquals(newBytesRef("bar"), termsEnum.next());
 
     // simple usage (FREQS)
     PostingsEnum postings = termsEnum.postings(null);
-    assertEquals(-1, postings.docID());
-    assertEquals(0, postings.nextDoc());
-    assertEquals(2, postings.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    Assert.assertEquals(-1, postings.docID());
+    Assert.assertEquals(0, postings.nextDoc());
+    Assert.assertEquals(2, postings.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
 
     // termsenum reuse (FREQS)
     PostingsEnum postings2 = termsEnum.postings(postings);
     assertNotNull(postings2);
     // and it had better work
-    assertEquals(-1, postings2.docID());
-    assertEquals(0, postings2.nextDoc());
-    assertEquals(2, postings2.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
+    Assert.assertEquals(-1, postings2.docID());
+    Assert.assertEquals(0, postings2.nextDoc());
+    Assert.assertEquals(2, postings2.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
 
     // asking for docs only: ok
     PostingsEnum docsOnly = termsEnum.postings(null, PostingsEnum.NONE);
-    assertEquals(-1, docsOnly.docID());
-    assertEquals(0, docsOnly.nextDoc());
+    Assert.assertEquals(-1, docsOnly.docID());
+    Assert.assertEquals(0, docsOnly.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly.freq() == 1 || docsOnly.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
     // reuse that too
     PostingsEnum docsOnly2 = termsEnum.postings(docsOnly, PostingsEnum.NONE);
     assertNotNull(docsOnly2);
     // and it had better work
-    assertEquals(-1, docsOnly2.docID());
-    assertEquals(0, docsOnly2.nextDoc());
+    Assert.assertEquals(-1, docsOnly2.docID());
+    Assert.assertEquals(0, docsOnly2.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly2.freq() == 1 || docsOnly2.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
 
     // asking for positions, ok
     PostingsEnum docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(-1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(-1, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 0);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 3);
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(-1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 4);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 7);
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
 
     // now reuse the positions
     PostingsEnum docsAndPositionsEnum2 =
         termsEnum.postings(docsAndPositionsEnum, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(-1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 0);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 3);
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(-1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 4);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 7);
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     // payloads don't cause an error if they aren't there
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.PAYLOADS);
     assertNotNull(docsAndPositionsEnum);
     // but make sure they work
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(-1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(-1, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 0);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 3);
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(-1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 4);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 7);
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.PAYLOADS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(-1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 0);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 3);
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(-1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 4);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 7);
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.OFFSETS);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(-1, docsAndPositionsEnum.nextPosition());
-    assertEquals(0, docsAndPositionsEnum.startOffset());
-    assertEquals(3, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(-1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(-1, docsAndPositionsEnum.nextPosition());
-    assertEquals(4, docsAndPositionsEnum.startOffset());
-    assertEquals(7, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.OFFSETS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(-1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(0, docsAndPositionsEnum2.startOffset());
-    assertEquals(3, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(-1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(4, docsAndPositionsEnum2.startOffset());
-    assertEquals(7, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(-1, docsAndPositionsEnum.nextPosition());
-    assertEquals(0, docsAndPositionsEnum.startOffset());
-    assertEquals(3, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(-1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(-1, docsAndPositionsEnum.nextPosition());
-    assertEquals(4, docsAndPositionsEnum.startOffset());
-    assertEquals(7, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum.endOffset());
     assertNull(docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.ALL);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(-1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(0, docsAndPositionsEnum2.startOffset());
-    assertEquals(3, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(-1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(4, docsAndPositionsEnum2.startOffset());
-    assertEquals(7, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum2.endOffset());
     assertNull(docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     iw.close();
     reader.close();
@@ -1510,182 +1510,182 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     Terms terms = getOnlyLeafReader(reader).getTermVector(0, "foo");
     TermsEnum termsEnum = terms.iterator();
     assertNotNull(termsEnum);
-    assertEquals(newBytesRef("bar"), termsEnum.next());
+    Assert.assertEquals(newBytesRef("bar"), termsEnum.next());
 
     // sugar method (FREQS)
     PostingsEnum postings = termsEnum.postings(null);
-    assertEquals(-1, postings.docID());
-    assertEquals(0, postings.nextDoc());
-    assertEquals(2, postings.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    Assert.assertEquals(-1, postings.docID());
+    Assert.assertEquals(0, postings.nextDoc());
+    Assert.assertEquals(2, postings.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
 
     // termsenum reuse (FREQS)
     PostingsEnum postings2 = termsEnum.postings(postings);
     assertNotNull(postings2);
     // and it had better work
-    assertEquals(-1, postings2.docID());
-    assertEquals(0, postings2.nextDoc());
-    assertEquals(2, postings2.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
+    Assert.assertEquals(-1, postings2.docID());
+    Assert.assertEquals(0, postings2.nextDoc());
+    Assert.assertEquals(2, postings2.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
 
     // asking for docs only: ok
     PostingsEnum docsOnly = termsEnum.postings(null, PostingsEnum.NONE);
-    assertEquals(-1, docsOnly.docID());
-    assertEquals(0, docsOnly.nextDoc());
+    Assert.assertEquals(-1, docsOnly.docID());
+    Assert.assertEquals(0, docsOnly.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly.freq() == 1 || docsOnly.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
     // reuse that too
     PostingsEnum docsOnly2 = termsEnum.postings(docsOnly, PostingsEnum.NONE);
     assertNotNull(docsOnly2);
     // and it had better work
-    assertEquals(-1, docsOnly2.docID());
-    assertEquals(0, docsOnly2.nextDoc());
+    Assert.assertEquals(-1, docsOnly2.docID());
+    Assert.assertEquals(0, docsOnly2.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly2.freq() == 1 || docsOnly2.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
 
     // asking for positions, ok
     PostingsEnum docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum.getPayload() == null
             || newBytesRef("pay1").equals(docsAndPositionsEnum.getPayload()));
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum.getPayload() == null
             || newBytesRef("pay2").equals(docsAndPositionsEnum.getPayload()));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
 
     // now reuse the positions
     PostingsEnum docsAndPositionsEnum2 =
         termsEnum.postings(docsAndPositionsEnum, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.getPayload() == null
             || newBytesRef("pay1").equals(docsAndPositionsEnum2.getPayload()));
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.getPayload() == null
             || newBytesRef("pay2").equals(docsAndPositionsEnum2.getPayload()));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     // payloads
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.PAYLOADS);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
-    assertEquals(newBytesRef("pay1"), docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
-    assertEquals(newBytesRef("pay2"), docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(newBytesRef("pay1"), docsAndPositionsEnum.getPayload());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(newBytesRef("pay2"), docsAndPositionsEnum.getPayload());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.PAYLOADS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
-    assertEquals(newBytesRef("pay1"), docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
-    assertEquals(newBytesRef("pay2"), docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(newBytesRef("pay1"), docsAndPositionsEnum2.getPayload());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(newBytesRef("pay2"), docsAndPositionsEnum2.getPayload());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.OFFSETS);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum.getPayload() == null
             || newBytesRef("pay1").equals(docsAndPositionsEnum.getPayload()));
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum.getPayload() == null
             || newBytesRef("pay2").equals(docsAndPositionsEnum.getPayload()));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.OFFSETS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.getPayload() == null
             || newBytesRef("pay1").equals(docsAndPositionsEnum2.getPayload()));
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.getPayload() == null
             || newBytesRef("pay2").equals(docsAndPositionsEnum2.getPayload()));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
-    assertEquals(newBytesRef("pay1"), docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum.startOffset());
-    assertEquals(-1, docsAndPositionsEnum.endOffset());
-    assertEquals(newBytesRef("pay2"), docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(newBytesRef("pay1"), docsAndPositionsEnum.getPayload());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(newBytesRef("pay2"), docsAndPositionsEnum.getPayload());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.ALL);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
-    assertEquals(newBytesRef("pay1"), docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(-1, docsAndPositionsEnum2.startOffset());
-    assertEquals(-1, docsAndPositionsEnum2.endOffset());
-    assertEquals(newBytesRef("pay2"), docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(newBytesRef("pay1"), docsAndPositionsEnum2.getPayload());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(newBytesRef("pay2"), docsAndPositionsEnum2.getPayload());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     iw.close();
     reader.close();
@@ -1713,47 +1713,47 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     Terms terms = getOnlyLeafReader(reader).getTermVector(0, "foo");
     TermsEnum termsEnum = terms.iterator();
     assertNotNull(termsEnum);
-    assertEquals(newBytesRef("bar"), termsEnum.next());
+    Assert.assertEquals(newBytesRef("bar"), termsEnum.next());
 
     // sugar method (FREQS)
     PostingsEnum postings = termsEnum.postings(null);
-    assertEquals(-1, postings.docID());
-    assertEquals(0, postings.nextDoc());
-    assertEquals(2, postings.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
+    Assert.assertEquals(-1, postings.docID());
+    Assert.assertEquals(0, postings.nextDoc());
+    Assert.assertEquals(2, postings.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings.nextDoc());
 
     // termsenum reuse (FREQS)
     PostingsEnum postings2 = termsEnum.postings(postings);
     assertNotNull(postings2);
     // and it had better work
-    assertEquals(-1, postings2.docID());
-    assertEquals(0, postings2.nextDoc());
-    assertEquals(2, postings2.freq());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
+    Assert.assertEquals(-1, postings2.docID());
+    Assert.assertEquals(0, postings2.nextDoc());
+    Assert.assertEquals(2, postings2.freq());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, postings2.nextDoc());
 
     // asking for docs only: ok
     PostingsEnum docsOnly = termsEnum.postings(null, PostingsEnum.NONE);
-    assertEquals(-1, docsOnly.docID());
-    assertEquals(0, docsOnly.nextDoc());
+    Assert.assertEquals(-1, docsOnly.docID());
+    Assert.assertEquals(0, docsOnly.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly.freq() == 1 || docsOnly.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly.nextDoc());
     // reuse that too
     PostingsEnum docsOnly2 = termsEnum.postings(docsOnly, PostingsEnum.NONE);
     assertNotNull(docsOnly2);
     // and it had better work
-    assertEquals(-1, docsOnly2.docID());
-    assertEquals(0, docsOnly2.nextDoc());
+    Assert.assertEquals(-1, docsOnly2.docID());
+    Assert.assertEquals(0, docsOnly2.nextDoc());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsOnly2.freq() == 1 || docsOnly2.freq() == 2);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsOnly2.nextDoc());
 
     // asking for positions, ok
     PostingsEnum docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 0);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 3);
@@ -1761,7 +1761,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     assertTrue(
         docsAndPositionsEnum.getPayload() == null
             || newBytesRef("pay1").equals(docsAndPositionsEnum.getPayload()));
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 4);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 7);
@@ -1769,15 +1769,15 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     assertTrue(
         docsAndPositionsEnum.getPayload() == null
             || newBytesRef("pay2").equals(docsAndPositionsEnum.getPayload()));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
 
     // now reuse the positions
     PostingsEnum docsAndPositionsEnum2 =
         termsEnum.postings(docsAndPositionsEnum, PostingsEnum.POSITIONS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 0);
@@ -1786,7 +1786,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     assertTrue(
         docsAndPositionsEnum2.getPayload() == null
             || newBytesRef("pay1").equals(docsAndPositionsEnum2.getPayload()));
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 4);
@@ -1795,112 +1795,112 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     assertTrue(
         docsAndPositionsEnum2.getPayload() == null
             || newBytesRef("pay2").equals(docsAndPositionsEnum2.getPayload()));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     // payloads
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.PAYLOADS);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 0);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 3);
-    assertEquals(newBytesRef("pay1"), docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(newBytesRef("pay1"), docsAndPositionsEnum.getPayload());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(docsAndPositionsEnum.startOffset() == -1 || docsAndPositionsEnum.startOffset() == 4);
     assertTrue(docsAndPositionsEnum.endOffset() == -1 || docsAndPositionsEnum.endOffset() == 7);
-    assertEquals(newBytesRef("pay2"), docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(newBytesRef("pay2"), docsAndPositionsEnum.getPayload());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.PAYLOADS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 0);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 3);
-    assertEquals(newBytesRef("pay1"), docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(newBytesRef("pay1"), docsAndPositionsEnum2.getPayload());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.startOffset() == -1 || docsAndPositionsEnum2.startOffset() == 4);
     assertTrue(docsAndPositionsEnum2.endOffset() == -1 || docsAndPositionsEnum2.endOffset() == 7);
-    assertEquals(newBytesRef("pay2"), docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(newBytesRef("pay2"), docsAndPositionsEnum2.getPayload());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.OFFSETS);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(0, docsAndPositionsEnum.startOffset());
-    assertEquals(3, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum.getPayload() == null
             || newBytesRef("pay1").equals(docsAndPositionsEnum.getPayload()));
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(4, docsAndPositionsEnum.startOffset());
-    assertEquals(7, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum.getPayload() == null
             || newBytesRef("pay2").equals(docsAndPositionsEnum.getPayload()));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     // reuse
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.OFFSETS);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(0, docsAndPositionsEnum2.startOffset());
-    assertEquals(3, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum2.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.getPayload() == null
             || newBytesRef("pay1").equals(docsAndPositionsEnum2.getPayload()));
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(4, docsAndPositionsEnum2.startOffset());
-    assertEquals(7, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum2.endOffset());
     // we don't define what it is, but if its something else, we should look into it?
     assertTrue(
         docsAndPositionsEnum2.getPayload() == null
             || newBytesRef("pay2").equals(docsAndPositionsEnum2.getPayload()));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     docsAndPositionsEnum = termsEnum.postings(null, PostingsEnum.ALL);
     assertNotNull(docsAndPositionsEnum);
-    assertEquals(-1, docsAndPositionsEnum.docID());
-    assertEquals(0, docsAndPositionsEnum.nextDoc());
-    assertEquals(2, docsAndPositionsEnum.freq());
-    assertEquals(0, docsAndPositionsEnum.nextPosition());
-    assertEquals(0, docsAndPositionsEnum.startOffset());
-    assertEquals(3, docsAndPositionsEnum.endOffset());
-    assertEquals(newBytesRef("pay1"), docsAndPositionsEnum.getPayload());
-    assertEquals(1, docsAndPositionsEnum.nextPosition());
-    assertEquals(4, docsAndPositionsEnum.startOffset());
-    assertEquals(7, docsAndPositionsEnum.endOffset());
-    assertEquals(newBytesRef("pay2"), docsAndPositionsEnum.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(-1, docsAndPositionsEnum.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(newBytesRef("pay1"), docsAndPositionsEnum.getPayload());
+    Assert.assertEquals(1, docsAndPositionsEnum.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum.endOffset());
+    Assert.assertEquals(newBytesRef("pay2"), docsAndPositionsEnum.getPayload());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
     docsAndPositionsEnum2 = termsEnum.postings(docsAndPositionsEnum, PostingsEnum.ALL);
-    assertEquals(-1, docsAndPositionsEnum2.docID());
-    assertEquals(0, docsAndPositionsEnum2.nextDoc());
-    assertEquals(2, docsAndPositionsEnum2.freq());
-    assertEquals(0, docsAndPositionsEnum2.nextPosition());
-    assertEquals(0, docsAndPositionsEnum2.startOffset());
-    assertEquals(3, docsAndPositionsEnum2.endOffset());
-    assertEquals(newBytesRef("pay1"), docsAndPositionsEnum2.getPayload());
-    assertEquals(1, docsAndPositionsEnum2.nextPosition());
-    assertEquals(4, docsAndPositionsEnum2.startOffset());
-    assertEquals(7, docsAndPositionsEnum2.endOffset());
-    assertEquals(newBytesRef("pay2"), docsAndPositionsEnum2.getPayload());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(-1, docsAndPositionsEnum2.docID());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextDoc());
+    Assert.assertEquals(2, docsAndPositionsEnum2.freq());
+    Assert.assertEquals(0, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(0, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(3, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(newBytesRef("pay1"), docsAndPositionsEnum2.getPayload());
+    Assert.assertEquals(1, docsAndPositionsEnum2.nextPosition());
+    Assert.assertEquals(4, docsAndPositionsEnum2.startOffset());
+    Assert.assertEquals(7, docsAndPositionsEnum2.endOffset());
+    Assert.assertEquals(newBytesRef("pay2"), docsAndPositionsEnum2.getPayload());
+    Assert.assertEquals(DocIdSetIterator.NO_MORE_DOCS, docsAndPositionsEnum2.nextDoc());
 
     iw.close();
     reader.close();

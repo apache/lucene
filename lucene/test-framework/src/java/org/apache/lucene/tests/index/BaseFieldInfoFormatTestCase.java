@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.index;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -53,6 +52,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper.FakeIOException;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
+import org.junit.Assert;
 
 /**
  * Abstract class to do basic tests for fis format. NOTE: This test focuses on the fis impl, nothing
@@ -78,15 +78,15 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
     FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
-    assertEquals(1, infos2.size());
+    Assert.assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
     assertTrue(infos2.fieldInfo("field").getIndexOptions() != IndexOptions.NONE);
     assertFalse(infos2.fieldInfo("field").getDocValuesType() != DocValuesType.NONE);
     assertFalse(infos2.fieldInfo("field").omitsNorms());
     assertFalse(infos2.fieldInfo("field").hasPayloads());
     assertFalse(infos2.fieldInfo("field").hasVectors());
-    assertEquals(0, infos2.fieldInfo("field").getPointDimensionCount());
-    assertEquals(0, infos2.fieldInfo("field").getVectorDimension());
+    Assert.assertEquals(0, infos2.fieldInfo("field").getPointDimensionCount());
+    Assert.assertEquals(0, infos2.fieldInfo("field").getVectorDimension());
     assertFalse(infos2.fieldInfo("field").isSoftDeletesField());
     dir.close();
   }
@@ -106,7 +106,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
 
     FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
-    assertEquals(1, infos2.size());
+    Assert.assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
     Map<String, String> attributes = infos2.fieldInfo("field").attributes();
     // shouldn't be able to modify attributes
@@ -318,7 +318,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfos infos = builder.finish();
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
     FieldInfos infos2 = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
-    assertEquality(infos, infos2);
+    assertEquals(infos, infos2);
     dir.close();
   }
 
@@ -368,26 +368,26 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
   protected void addAttributes(FieldInfo fi) {}
 
   /** equality for entirety of fieldinfos */
-  protected void assertEquality(FieldInfos expected, FieldInfos actual) {
-    assertEquals(expected.size(), actual.size());
+  protected void assertEquals(FieldInfos expected, FieldInfos actual) {
+    Assert.assertEquals(expected.size(), actual.size());
     for (FieldInfo expectedField : expected) {
       FieldInfo actualField = actual.fieldInfo(expectedField.number);
       assertNotNull(actualField);
-      assertEquality(expectedField, actualField);
+      assertEquals(expectedField, actualField);
     }
   }
 
   /** equality for two individual fieldinfo objects */
-  protected void assertEquality(FieldInfo expected, FieldInfo actual) {
-    assertEquals(expected.number, actual.number);
-    assertEquals(expected.name, actual.name);
-    assertEquals(expected.getDocValuesType(), actual.getDocValuesType());
-    assertEquals(expected.getIndexOptions(), actual.getIndexOptions());
-    assertEquals(expected.hasNorms(), actual.hasNorms());
-    assertEquals(expected.hasPayloads(), actual.hasPayloads());
-    assertEquals(expected.hasVectors(), actual.hasVectors());
-    assertEquals(expected.omitsNorms(), actual.omitsNorms());
-    assertEquals(expected.getDocValuesGen(), actual.getDocValuesGen());
+  protected void assertEquals(FieldInfo expected, FieldInfo actual) {
+    Assert.assertEquals(expected.number, actual.number);
+    Assert.assertEquals(expected.name, actual.name);
+    Assert.assertEquals(expected.getDocValuesType(), actual.getDocValuesType());
+    Assert.assertEquals(expected.getIndexOptions(), actual.getIndexOptions());
+    Assert.assertEquals(expected.hasNorms(), actual.hasNorms());
+    Assert.assertEquals(expected.hasPayloads(), actual.hasPayloads());
+    Assert.assertEquals(expected.hasVectors(), actual.hasVectors());
+    Assert.assertEquals(expected.omitsNorms(), actual.omitsNorms());
+    Assert.assertEquals(expected.getDocValuesGen(), actual.getDocValuesGen());
   }
 
   /** Returns a new fake segment */

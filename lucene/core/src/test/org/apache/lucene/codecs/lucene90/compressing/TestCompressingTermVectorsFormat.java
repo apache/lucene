@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene90.compressing;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -42,6 +41,7 @@ import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
 import org.apache.lucene.tests.index.BaseTermVectorsFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
+import org.junit.Assert;
 
 public class TestCompressingTermVectorsFormat extends BaseTermVectorsFormatTestCase {
 
@@ -67,7 +67,7 @@ public class TestCompressingTermVectorsFormat extends BaseTermVectorsFormatTestC
     Terms terms = ir.getTermVector(0, "foo");
     assertNotNull(terms);
     TermsEnum termsEnum = terms.iterator();
-    assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("this")));
+    Assert.assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("this")));
 
     expectThrows(UnsupportedOperationException.class, termsEnum::ord);
     expectThrows(UnsupportedOperationException.class, () -> termsEnum.seekExact(0));
@@ -108,7 +108,7 @@ public class TestCompressingTermVectorsFormat extends BaseTermVectorsFormatTestC
         Lucene90CompressingTermVectorsReader reader =
             (Lucene90CompressingTermVectorsReader) sr.getTermVectorsReader();
         assertTrue(reader.getNumDirtyDocs() > 0);
-        assertEquals(1, reader.getNumDirtyChunks());
+        Assert.assertEquals(1, reader.getNumDirtyChunks());
       }
     }
     iw.getConfig().setMergePolicy(newLogMergePolicy());

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
@@ -28,6 +27,7 @@ import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseBitSetTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.junit.Assert;
 
 public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
@@ -52,11 +52,12 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       set.set(i);
     }
     final int cardinality = set.cardinality();
-    assertEquals(cardinality, set.approximateCardinality(), cardinality / 20); // 5% error at most
+    Assert.assertEquals(
+        cardinality, set.approximateCardinality(), cardinality / 20); // 5% error at most
   }
 
   void doGet(java.util.BitSet a, FixedBitSet b) {
-    assertEquals(a.cardinality(), b.cardinality());
+    Assert.assertEquals(a.cardinality(), b.cardinality());
     int max = b.length();
     for (int i = 0; i < max; i++) {
       if (a.get(i) != b.get(i)) {
@@ -66,7 +67,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   void doNextSetBit(java.util.BitSet a, FixedBitSet b) {
-    assertEquals(a.cardinality(), b.cardinality());
+    Assert.assertEquals(a.cardinality(), b.cardinality());
     int aa = -1;
     int bb = -1;
     do {
@@ -75,12 +76,12 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         aa = DocIdSetIterator.NO_MORE_DOCS;
       }
       bb = bb < b.length() - 1 ? b.nextSetBit(bb + 1) : DocIdSetIterator.NO_MORE_DOCS;
-      assertEquals(aa, bb);
+      Assert.assertEquals(aa, bb);
     } while (aa != DocIdSetIterator.NO_MORE_DOCS);
   }
 
   void doPrevSetBit(java.util.BitSet a, FixedBitSet b) {
-    assertEquals(a.cardinality(), b.cardinality());
+    Assert.assertEquals(a.cardinality(), b.cardinality());
     int aa = a.size() + random().nextInt(100);
     int bb = aa;
     do {
@@ -98,7 +99,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       } else {
         bb = bb >= 1 ? b.prevSetBit(bb - 1) : -1;
       }
-      assertEquals(aa, bb);
+      Assert.assertEquals(aa, bb);
     } while (aa >= 0);
   }
 
@@ -109,7 +110,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   void doIterate1(java.util.BitSet a, FixedBitSet b) throws IOException {
-    assertEquals(a.cardinality(), b.cardinality());
+    Assert.assertEquals(a.cardinality(), b.cardinality());
     int aa = -1, bb = -1;
     DocIdSetIterator iterator = new BitSetIterator(b, 0);
     do {
@@ -118,18 +119,18 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
           (bb < b.length() && random().nextBoolean())
               ? iterator.nextDoc()
               : iterator.advance(bb + 1);
-      assertEquals(aa == -1 ? DocIdSetIterator.NO_MORE_DOCS : aa, bb);
+      Assert.assertEquals(aa == -1 ? DocIdSetIterator.NO_MORE_DOCS : aa, bb);
     } while (aa >= 0);
   }
 
   void doIterate2(java.util.BitSet a, FixedBitSet b) throws IOException {
-    assertEquals(a.cardinality(), b.cardinality());
+    Assert.assertEquals(a.cardinality(), b.cardinality());
     int aa = -1, bb = -1;
     DocIdSetIterator iterator = new BitSetIterator(b, 0);
     do {
       aa = a.nextSetBit(aa + 1);
       bb = random().nextBoolean() ? iterator.nextDoc() : iterator.advance(bb + 1);
-      assertEquals(aa == -1 ? DocIdSetIterator.NO_MORE_DOCS : aa, bb);
+      Assert.assertEquals(aa == -1 ? DocIdSetIterator.NO_MORE_DOCS : aa, bb);
     } while (aa >= 0);
   }
 
@@ -211,7 +212,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       doPrevSetBit(aa, bb);
 
       if (b0 != null && b0.length() <= b.length()) {
-        assertEquals(a.cardinality(), b.cardinality());
+        Assert.assertEquals(a.cardinality(), b.cardinality());
 
         java.util.BitSet a_and = (java.util.BitSet) a.clone();
         a_and.and(a0);
@@ -223,7 +224,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         a_andn.andNot(a0);
 
         FixedBitSet b_and = b.clone();
-        assertEquals(b, b_and);
+        Assert.assertEquals(b, b_and);
         b_and.and(b0);
         FixedBitSet b_or = b.clone();
         b_or.or(b0);
@@ -232,18 +233,18 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         FixedBitSet b_andn = b.clone();
         b_andn.andNot(b0);
 
-        assertEquals(a0.cardinality(), b0.cardinality());
-        assertEquals(a_or.cardinality(), b_or.cardinality());
+        Assert.assertEquals(a0.cardinality(), b0.cardinality());
+        Assert.assertEquals(a_or.cardinality(), b_or.cardinality());
 
         doIterate(a_and, b_and, mode);
         doIterate(a_or, b_or, mode);
         doIterate(a_andn, b_andn, mode);
         doIterate(a_xor, b_xor, mode);
 
-        assertEquals(a_and.cardinality(), b_and.cardinality());
-        assertEquals(a_or.cardinality(), b_or.cardinality());
-        assertEquals(a_xor.cardinality(), b_xor.cardinality());
-        assertEquals(a_andn.cardinality(), b_andn.cardinality());
+        Assert.assertEquals(a_and.cardinality(), b_and.cardinality());
+        Assert.assertEquals(a_or.cardinality(), b_or.cardinality());
+        Assert.assertEquals(a_xor.cardinality(), b_xor.cardinality());
+        Assert.assertEquals(a_andn.cardinality(), b_andn.cardinality());
       }
 
       a0 = a;
@@ -304,8 +305,8 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         assertFalse(b1.equals(b2));
         assertFalse(b1.hashCode() == b2.hashCode());
         b2.set(idx);
-        assertEquals(b1, b2);
-        assertEquals(b1.hashCode(), b2.hashCode());
+        Assert.assertEquals(b1, b2);
+        Assert.assertEquals(b1.hashCode(), b2.hashCode());
       }
     }
   }
@@ -316,13 +317,13 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       FixedBitSet b1 = new FixedBitSet(numBits);
       FixedBitSet b2 = new FixedBitSet(numBits);
       assertTrue(b1.equals(b2));
-      assertEquals(b1.hashCode(), b2.hashCode());
-      assertEquals(0, b1.cardinality());
+      Assert.assertEquals(b1.hashCode(), b2.hashCode());
+      Assert.assertEquals(0, b1.cardinality());
       if (numBits > 0) {
         b1.set(0, numBits);
-        assertEquals(numBits, b1.cardinality());
+        Assert.assertEquals(numBits, b1.cardinality());
         b1.flip(0, numBits);
-        assertEquals(0, b1.cardinality());
+        Assert.assertEquals(0, b1.cardinality());
       }
     }
   }
@@ -407,19 +408,19 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   public void testBits2Words() {
-    assertEquals(0, FixedBitSet.bits2words(0));
-    assertEquals(1, FixedBitSet.bits2words(1));
+    Assert.assertEquals(0, FixedBitSet.bits2words(0));
+    Assert.assertEquals(1, FixedBitSet.bits2words(1));
     // ...
-    assertEquals(1, FixedBitSet.bits2words(64));
-    assertEquals(2, FixedBitSet.bits2words(65));
+    Assert.assertEquals(1, FixedBitSet.bits2words(64));
+    Assert.assertEquals(2, FixedBitSet.bits2words(65));
     // ...
-    assertEquals(2, FixedBitSet.bits2words(128));
-    assertEquals(3, FixedBitSet.bits2words(129));
+    Assert.assertEquals(2, FixedBitSet.bits2words(128));
+    Assert.assertEquals(3, FixedBitSet.bits2words(129));
     // ...
-    assertEquals(1024, FixedBitSet.bits2words(65536));
-    assertEquals(1025, FixedBitSet.bits2words(65537));
+    Assert.assertEquals(1024, FixedBitSet.bits2words(65536));
+    Assert.assertEquals(1025, FixedBitSet.bits2words(65537));
     // ...
-    assertEquals(1 << (31 - 6), FixedBitSet.bits2words(Integer.MAX_VALUE));
+    Assert.assertEquals(1 << (31 - 6), FixedBitSet.bits2words(Integer.MAX_VALUE));
   }
 
   private int[] makeIntArray(Random random, int count, int min, int max) {
@@ -465,7 +466,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
     bitSet1.and(bitSet2);
 
-    assertEquals(bitSet1.cardinality(), intersectionCount);
+    Assert.assertEquals(bitSet1.cardinality(), intersectionCount);
   }
 
   public void testAndNot() throws IOException {
@@ -551,7 +552,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
     bitSet1.or(bitSet2);
 
-    assertEquals(bitSet1.cardinality(), unionCount);
+    Assert.assertEquals(bitSet1.cardinality(), unionCount);
   }
 
   // Demonstrates that the presence of ghost bits in the last used word can cause spurious failures
@@ -587,7 +588,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
     bitSet1.andNot(bitSet2);
 
-    assertEquals(bitSet1.cardinality(), andNotCount);
+    Assert.assertEquals(bitSet1.cardinality(), andNotCount);
   }
 
   public void testCopyOf() {
@@ -603,7 +604,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       Bits bitsToCopy = readOnly ? fixedBitSet.asReadOnlyBits() : fixedBitSet;
       FixedBitSet mutableCopy = FixedBitSet.copyOf(bitsToCopy);
       assertNotSame(mutableCopy, bitsToCopy);
-      assertEquals(mutableCopy, fixedBitSet);
+      Assert.assertEquals(mutableCopy, fixedBitSet);
     }
 
     final Bits bitsToCopy =
@@ -623,7 +624,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
     assertNotSame(bitsToCopy, mutableCopy);
     assertNotSame(fixedBitSet, mutableCopy);
-    assertEquals(mutableCopy, fixedBitSet);
+    Assert.assertEquals(mutableCopy, fixedBitSet);
   }
 
   public void testAsBits() {
@@ -633,9 +634,9 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     set.set(9);
     Bits bits = set.asReadOnlyBits();
     assertFalse(bits instanceof FixedBitSet);
-    assertEquals(set.length(), bits.length());
+    Assert.assertEquals(set.length(), bits.length());
     for (int i = 0; i < set.length(); ++i) {
-      assertEquals(set.get(i), bits.get(i));
+      Assert.assertEquals(set.get(i), bits.get(i));
     }
     // Further changes are reflected
     set.set(5);

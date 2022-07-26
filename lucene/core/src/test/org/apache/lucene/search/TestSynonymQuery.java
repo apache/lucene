@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -45,6 +44,7 @@ import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.junit.Assert;
 
 public class TestSynonymQuery extends LuceneTestCase {
 
@@ -133,12 +133,12 @@ public class TestSynonymQuery extends LuceneTestCase {
   }
 
   public void testToString() {
-    assertEquals("Synonym()", new SynonymQuery.Builder("foo").build().toString());
+    Assert.assertEquals("Synonym()", new SynonymQuery.Builder("foo").build().toString());
     Term t1 = new Term("foo", "bar");
-    assertEquals(
+    Assert.assertEquals(
         "Synonym(foo:bar)", new SynonymQuery.Builder("foo").addTerm(t1).build().toString());
     Term t2 = new Term("foo", "baz");
-    assertEquals(
+    Assert.assertEquals(
         "Synonym(foo:bar foo:baz)",
         new SynonymQuery.Builder("foo").addTerm(t1).addTerm(t2).build().toString());
   }
@@ -175,13 +175,13 @@ public class TestSynonymQuery extends LuceneTestCase {
             Math.min(reader.numDocs(), totalHitsThreshold), null, totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, manager);
     if (topDocs.totalHits.value < totalHitsThreshold) {
-      assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
+      Assert.assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     } else {
-      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      Assert.assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
     }
     // All docs must have the same score
     for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
-      assertEquals(topDocs.scoreDocs[0].score, topDocs.scoreDocs[i].score, 0.0f);
+      Assert.assertEquals(topDocs.scoreDocs[0].score, topDocs.scoreDocs[i].score, 0.0f);
     }
 
     reader.close();
@@ -234,14 +234,14 @@ public class TestSynonymQuery extends LuceneTestCase {
             Math.min(reader.numDocs(), totalHitsThreshold), null, totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, manager);
     if (topDocs.totalHits.value < totalHitsThreshold) {
-      assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
-      assertEquals(22, topDocs.totalHits.value);
+      Assert.assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+      Assert.assertEquals(22, topDocs.totalHits.value);
     } else {
-      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      Assert.assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
     }
     // All docs must have the same score
     for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
-      assertEquals(topDocs.scoreDocs[0].score, topDocs.scoreDocs[i].score, 0.0f);
+      Assert.assertEquals(topDocs.scoreDocs[0].score, topDocs.scoreDocs[i].score, 0.0f);
     }
 
     reader.close();
@@ -269,7 +269,7 @@ public class TestSynonymQuery extends LuceneTestCase {
 
     ImpactsSource mergedImpacts =
         SynonymQuery.mergeImpacts(new ImpactsEnum[] {impacts1, impacts2}, new float[] {1f, 1f});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(5, 10), new Impact(7, 12), new Impact(14, 13)},
           new Impact[] {new Impact(Integer.MAX_VALUE, 1)}
@@ -279,7 +279,7 @@ public class TestSynonymQuery extends LuceneTestCase {
 
     ImpactsSource mergedBoostedImpacts =
         SynonymQuery.mergeImpacts(new ImpactsEnum[] {impacts1, impacts2}, new float[] {0.3f, 0.9f});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(4, 12), new Impact(9, 13)},
           new Impact[] {new Impact(Integer.MAX_VALUE, 1)}
@@ -295,7 +295,7 @@ public class TestSynonymQuery extends LuceneTestCase {
           new Impact[] {new Impact(3, 9), new Impact(5, 11), new Impact(7, 13)}
         },
         new int[] {150, 1000});
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {
             new Impact(3, 10), new Impact(5, 12), new Impact(8, 13)
@@ -307,7 +307,7 @@ public class TestSynonymQuery extends LuceneTestCase {
         new int[] {110, 945},
         mergedImpacts.getImpacts());
 
-    assertEquality(
+    assertEquals(
         new Impact[][] {
           new Impact[] {
             new Impact(1, 10), new Impact(2, 12), new Impact(3, 13)
@@ -318,11 +318,11 @@ public class TestSynonymQuery extends LuceneTestCase {
         mergedBoostedImpacts.getImpacts());
   }
 
-  private static void assertEquality(Impact[][] impacts, int[] docIdUpTo, Impacts actual) {
-    assertEquals(impacts.length, actual.numLevels());
+  private static void assertEquals(Impact[][] impacts, int[] docIdUpTo, Impacts actual) {
+    Assert.assertEquals(impacts.length, actual.numLevels());
     for (int i = 0; i < impacts.length; ++i) {
-      assertEquals(docIdUpTo[i], actual.getDocIdUpTo(i));
-      assertEquals(Arrays.asList(impacts[i]), actual.getImpacts(i));
+      Assert.assertEquals(docIdUpTo[i], actual.getDocIdUpTo(i));
+      Assert.assertEquals(Arrays.asList(impacts[i]), actual.getImpacts(i));
     }
   }
 
@@ -478,21 +478,21 @@ public class TestSynonymQuery extends LuceneTestCase {
     // zero length SynonymQuery is rewritten
     SynonymQuery q = new SynonymQuery.Builder("f").build();
     assertTrue(q.getTerms().isEmpty());
-    assertEquals(searcher.rewrite(q), new MatchNoDocsQuery());
+    Assert.assertEquals(searcher.rewrite(q), new MatchNoDocsQuery());
 
     // non-boosted single term SynonymQuery is rewritten
     q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 1f).build();
-    assertEquals(q.getTerms().size(), 1);
-    assertEquals(searcher.rewrite(q), new TermQuery(new Term("f")));
+    Assert.assertEquals(q.getTerms().size(), 1);
+    Assert.assertEquals(searcher.rewrite(q), new TermQuery(new Term("f")));
 
     // boosted single term SynonymQuery is not rewritten
     q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 0.8f).build();
-    assertEquals(q.getTerms().size(), 1);
-    assertEquals(searcher.rewrite(q), q);
+    Assert.assertEquals(q.getTerms().size(), 1);
+    Assert.assertEquals(searcher.rewrite(q), q);
 
     // multiple term SynonymQuery is not rewritten
     q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 1f).addTerm(new Term("f"), 1f).build();
-    assertEquals(q.getTerms().size(), 2);
-    assertEquals(searcher.rewrite(q), q);
+    Assert.assertEquals(q.getTerms().size(), 2);
+    Assert.assertEquals(searcher.rewrite(q), q);
   }
 }

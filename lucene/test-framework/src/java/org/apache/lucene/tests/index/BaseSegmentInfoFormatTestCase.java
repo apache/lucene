@@ -17,7 +17,6 @@
 package org.apache.lucene.tests.index;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -46,6 +45,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper.FakeIOException;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
+import org.junit.Assert;
 
 /**
  * Abstract class to do basic tests for si format. NOTE: This test focuses on the si impl, nothing
@@ -81,7 +81,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     info.setFiles(Collections.<String>emptySet());
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
-    assertEquals(info.files(), info2.files());
+    Assert.assertEquals(info.files(), info2.files());
     dir.close();
   }
 
@@ -113,7 +113,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
         "did you forget to add yourself to files()", modifiedFiles.size() > originalFiles.size());
 
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
-    assertEquals(info.files(), info2.files());
+    Assert.assertEquals(info.files(), info2.files());
 
     // files set should be immutable
     expectThrows(
@@ -149,7 +149,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     info.setFiles(Collections.<String>emptySet());
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
-    assertEquals(diagnostics, info2.getDiagnostics());
+    Assert.assertEquals(diagnostics, info2.getDiagnostics());
 
     // diagnostics map should be immutable
     expectThrows(
@@ -185,7 +185,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     info.setFiles(Collections.<String>emptySet());
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
-    assertEquals(attributes, info2.getAttributes());
+    Assert.assertEquals(attributes, info2.getAttributes());
 
     // attributes map should be immutable
     expectThrows(
@@ -245,11 +245,11 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
         info.setFiles(Collections.<String>emptySet());
         codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
         SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
-        assertEquals(info2.getVersion(), v);
+        Assert.assertEquals(info2.getVersion(), v);
         if (supportsMinVersion()) {
-          assertEquals(info2.getMinVersion(), minV);
+          Assert.assertEquals(info2.getMinVersion(), minV);
         } else {
-          assertEquals(info2.getMinVersion(), null);
+          Assert.assertEquals(info2.getMinVersion(), null);
         }
         dir.close();
       }
@@ -382,7 +382,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
       info.setFiles(Collections.<String>emptySet());
       codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
       SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
-      assertEquals(sort, info2.getIndexSort());
+      Assert.assertEquals(sort, info2.getIndexSort());
       dir.close();
     }
   }
@@ -628,24 +628,24 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
       info.setFiles(files);
       codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
       SegmentInfo info2 = codec.segmentInfoFormat().read(dir, name, id, IOContext.DEFAULT);
-      assertEquality(info, info2);
+      assertEquals(info, info2);
 
       dir.close();
     }
   }
 
-  protected final void assertEquality(SegmentInfo expected, SegmentInfo actual) {
+  protected final void assertEquals(SegmentInfo expected, SegmentInfo actual) {
     assertSame(expected.dir, actual.dir);
-    assertEquals(expected.name, actual.name);
-    assertEquals(expected.files(), actual.files());
+    Assert.assertEquals(expected.name, actual.name);
+    Assert.assertEquals(expected.files(), actual.files());
     // we don't assert this, because SI format has nothing to do with it... set by SIS
     // assertSame(expected.getCodec(), actual.getCodec());
-    assertEquals(expected.getDiagnostics(), actual.getDiagnostics());
-    assertEquals(expected.maxDoc(), actual.maxDoc());
+    Assert.assertEquals(expected.getDiagnostics(), actual.getDiagnostics());
+    Assert.assertEquals(expected.maxDoc(), actual.maxDoc());
     assertArrayEquals(expected.getId(), actual.getId());
-    assertEquals(expected.getUseCompoundFile(), actual.getUseCompoundFile());
-    assertEquals(expected.getVersion(), actual.getVersion());
-    assertEquals(expected.getAttributes(), actual.getAttributes());
+    Assert.assertEquals(expected.getUseCompoundFile(), actual.getUseCompoundFile());
+    Assert.assertEquals(expected.getVersion(), actual.getVersion());
+    Assert.assertEquals(expected.getAttributes(), actual.getAttributes());
   }
 
   /** Returns the versions this SI should test */

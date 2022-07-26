@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.util;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseBitSetTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.junit.Assert;
 
 public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet> {
 
@@ -38,8 +38,8 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
   }
 
   @Override
-  protected void assertEquality(BitSet set1, SparseFixedBitSet set2, int maxDoc) {
-    super.assertEquality(set1, set2, maxDoc);
+  protected void assertEquals(BitSet set1, SparseFixedBitSet set2, int maxDoc) {
+    super.assertEquals(set1, set2, maxDoc);
     // check invariants of the sparse set
     int nonZeroLongCount = 0;
     for (int i = 0; i < set2.indices.length; ++i) {
@@ -47,11 +47,11 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
       if (n != 0) {
         nonZeroLongCount += n;
         for (int j = n; j < set2.bits[i].length; ++j) {
-          assertEquals(0, set2.bits[i][j]);
+          Assert.assertEquals(0, set2.bits[i][j]);
         }
       }
     }
-    assertEquals(nonZeroLongCount, set2.nonZeroLongCount);
+    Assert.assertEquals(nonZeroLongCount, set2.nonZeroLongCount);
   }
 
   public void testApproximateCardinality() {
@@ -61,7 +61,7 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     for (int i = first; i < set.length(); i += interval) {
       set.set(i);
     }
-    assertEquals(set.cardinality(), set.approximateCardinality(), 20);
+    Assert.assertEquals(set.cardinality(), set.approximateCardinality(), 20);
   }
 
   public void testApproximateCardinalityOnDenseSet() {
@@ -72,7 +72,7 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     for (int i = 0; i < set.length(); ++i) {
       set.set(i);
     }
-    assertEquals(numDocs, set.approximateCardinality());
+    Assert.assertEquals(numDocs, set.approximateCardinality());
   }
 
   public void testRamBytesUsed() throws IOException {
@@ -102,7 +102,7 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     // Check that both "copy" strategies result in bit sets with
     // (roughly) same memory usage as original
     BitSet setCopy = copyOf(original, size);
-    assertEquals(setCopy.ramBytesUsed(), original.ramBytesUsed());
+    Assert.assertEquals(setCopy.ramBytesUsed(), original.ramBytesUsed());
 
     BitSet orCopy = new SparseFixedBitSet(size);
     orCopy.or(new BitSetIterator(original, size));

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.util;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -32,6 +31,7 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RoaringDocIdSet;
 import org.apache.lucene.util.SparseFixedBitSet;
+import org.junit.Assert;
 import org.junit.Ignore;
 
 /** Base test case for BitSets. */
@@ -67,9 +67,9 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     return randomSet(numBits, (int) (percentSet * numBits));
   }
 
-  protected void assertEquality(BitSet set1, T set2, int maxDoc) {
+  protected void assertEquals(BitSet set1, T set2, int maxDoc) {
     for (int i = 0; i < maxDoc; ++i) {
-      assertEquals("Different at " + i, set1.get(i), set2.get(i));
+      Assert.assertEquals("Different at " + i, set1.get(i), set2.get(i));
     }
   }
 
@@ -79,7 +79,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
       BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
       T set2 = copyOf(set1, numBits);
-      assertEquals(set1.cardinality(), set2.cardinality());
+      Assert.assertEquals(set1.cardinality(), set2.cardinality());
     }
   }
 
@@ -90,7 +90,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
       T set2 = copyOf(set1, numBits);
       for (int i = 0; i < numBits; ++i) {
-        assertEquals(Integer.toString(i), set1.prevSetBit(i), set2.prevSetBit(i));
+        Assert.assertEquals(Integer.toString(i), set1.prevSetBit(i), set2.prevSetBit(i));
       }
     }
   }
@@ -102,7 +102,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
       T set2 = copyOf(set1, numBits);
       for (int i = 0; i < numBits; ++i) {
-        assertEquals(set1.nextSetBit(i), set2.nextSetBit(i));
+        Assert.assertEquals(set1.nextSetBit(i), set2.nextSetBit(i));
       }
     }
   }
@@ -119,7 +119,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       set1.set(index);
       set2.set(index);
     }
-    assertEquality(set1, set2, numBits);
+    assertEquals(set1, set2, numBits);
   }
 
   /** Test the {@link BitSet#getAndSet} method. */
@@ -133,9 +133,9 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       final int index = random.nextInt(numBits);
       boolean v1 = set1.getAndSet(index);
       boolean v2 = set2.getAndSet(index);
-      assertEquals(v1, v2);
+      Assert.assertEquals(v1, v2);
     }
-    assertEquality(set1, set2, numBits);
+    assertEquals(set1, set2, numBits);
   }
 
   /** Test the {@link BitSet#clear(int)} method. */
@@ -151,7 +151,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
         set1.clear(index);
         set2.clear(index);
       }
-      assertEquality(set1, set2, numBits);
+      assertEquals(set1, set2, numBits);
     }
   }
 
@@ -168,7 +168,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
         final int to = random.nextInt(numBits + 1);
         set1.clear(from, to);
         set2.clear(from, to);
-        assertEquality(set1, set2, numBits);
+        assertEquals(set1, set2, numBits);
       }
     }
   }
@@ -214,7 +214,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       if (otherIterator != null) {
         set1.or(otherIterator);
         set2.or(otherSet.iterator());
-        assertEquality(set1, set2, numBits);
+        assertEquals(set1, set2, numBits);
       }
     }
   }

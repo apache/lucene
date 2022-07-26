@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.sandbox.search;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import java.util.Arrays;
@@ -25,14 +24,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.Assert;
 
 public class TestLongHashSet extends LuceneTestCase {
 
-  private void assertEquality(Set<Long> set1, LongHashSet set2) {
-    assertEquals(set1, set2);
-    assertEquals(set2, set1);
-    assertEquals(set2, set2);
-    assertEquals(set1.hashCode(), set2.hashCode());
+  private void assertEquals(Set<Long> set1, LongHashSet set2) {
+    Assert.assertEquals(set1, set2);
+    Assert.assertEquals(set2, set1);
+    Assert.assertEquals(set2, set2);
+    Assert.assertEquals(set1.hashCode(), set2.hashCode());
 
     if (set1.isEmpty() == false) {
       Set<Long> set3 = new HashSet<>(set1);
@@ -57,27 +57,27 @@ public class TestLongHashSet extends LuceneTestCase {
   public void testEmpty() {
     Set<Long> set1 = new HashSet<>();
     LongHashSet set2 = new LongHashSet();
-    assertEquality(set1, set2);
+    assertEquals(set1, set2);
   }
 
   public void testOneValue() {
     Set<Long> set1 = new HashSet<>(Arrays.asList(42L));
     LongHashSet set2 = new LongHashSet(42);
-    assertEquality(set1, set2);
+    assertEquals(set1, set2);
 
     set1 = new HashSet<>(Arrays.asList(Long.MIN_VALUE));
     set2 = new LongHashSet(Long.MIN_VALUE);
-    assertEquality(set1, set2);
+    assertEquals(set1, set2);
   }
 
   public void testTwoValues() {
     Set<Long> set1 = new HashSet<>(Arrays.asList(42L, Long.MAX_VALUE));
     LongHashSet set2 = new LongHashSet(42, Long.MAX_VALUE);
-    assertEquality(set1, set2);
+    assertEquals(set1, set2);
 
     set1 = new HashSet<>(Arrays.asList(Long.MIN_VALUE, 42L));
     set2 = new LongHashSet(Long.MIN_VALUE, 42L);
-    assertEquality(set1, set2);
+    assertEquals(set1, set2);
   }
 
   public void testRandom() {
@@ -99,7 +99,7 @@ public class TestLongHashSet extends LuceneTestCase {
               .mapToObj(Long::valueOf)
               .collect(Collectors.toCollection(HashSet::new));
       LongHashSet set2 = new LongHashSet(values);
-      assertEquality(set1, set2);
+      assertEquals(set1, set2);
     }
   }
 }

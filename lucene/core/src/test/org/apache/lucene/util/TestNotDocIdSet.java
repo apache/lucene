@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -24,6 +23,7 @@ import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
+import org.junit.Assert;
 
 public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
 
@@ -37,13 +37,13 @@ public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
   }
 
   @Override
-  public void assertEquality(int numBits, BitSet ds1, NotDocIdSet ds2) throws IOException {
-    super.assertEquality(numBits, ds1, ds2);
+  public void assertEquals(int numBits, BitSet ds1, NotDocIdSet ds2) throws IOException {
+    super.assertEquals(numBits, ds1, ds2);
     final Bits bits2 = ds2.bits();
     assertNotNull(bits2); // since we wrapped a FixedBitSet
-    assertEquals(numBits, bits2.length());
+    Assert.assertEquals(numBits, bits2.length());
     for (int i = 0; i < numBits; ++i) {
-      assertEquals(ds1.get(i), bits2.get(i));
+      Assert.assertEquals(ds1.get(i), bits2.get(i));
     }
   }
 
