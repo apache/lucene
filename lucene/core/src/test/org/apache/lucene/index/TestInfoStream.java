@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;

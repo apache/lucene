@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.benchmark.byTask.feeds;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;

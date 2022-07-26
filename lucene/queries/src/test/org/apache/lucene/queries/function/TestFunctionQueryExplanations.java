@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queries.function;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.queries.function.valuesource.ConstValueSource;
 import org.apache.lucene.queries.function.valuesource.RangeMapFloatFunction;
 import org.apache.lucene.search.BoostQuery;

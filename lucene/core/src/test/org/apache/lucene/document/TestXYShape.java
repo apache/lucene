@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.document;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Random;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;

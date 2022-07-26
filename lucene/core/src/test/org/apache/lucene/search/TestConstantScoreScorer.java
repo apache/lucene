@@ -19,6 +19,8 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.BooleanClause.Occur;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
 import java.util.List;

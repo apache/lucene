@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.analysis.icu;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import com.ibm.icu.text.Normalizer2;
 import java.io.IOException;
 import java.io.Reader;

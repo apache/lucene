@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.bn;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenFilter;

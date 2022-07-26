@@ -17,6 +17,8 @@
 
 package org.apache.lucene.monitor;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;

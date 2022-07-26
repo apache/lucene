@@ -17,6 +17,8 @@
 
 package org.apache.lucene.facet.taxonomy.writercache;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.junit.Test;

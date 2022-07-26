@@ -21,6 +21,9 @@ import static org.apache.lucene.queries.intervals.Intervals.containing;
 import static org.apache.lucene.queries.intervals.Intervals.extend;
 import static org.apache.lucene.queries.intervals.Intervals.or;
 import static org.apache.lucene.queries.intervals.Intervals.term;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import org.apache.lucene.document.Document;

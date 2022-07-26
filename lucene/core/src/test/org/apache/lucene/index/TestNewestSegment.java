@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertNull;
+
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;

@@ -20,6 +20,11 @@ import static org.apache.lucene.analysis.ko.dict.TokenInfoDictionary.FST_FILENAM
 import static org.apache.lucene.analysis.morph.BinaryDictionary.DICT_FILENAME_SUFFIX;
 import static org.apache.lucene.analysis.morph.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
 import static org.apache.lucene.analysis.morph.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;

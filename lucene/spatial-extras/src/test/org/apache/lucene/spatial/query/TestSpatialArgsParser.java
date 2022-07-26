@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.spatial.query;
 
+import static org.junit.Assert.assertEquals;
+
 import java.text.ParseException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;

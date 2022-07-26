@@ -17,6 +17,8 @@
 
 package org.apache.lucene.analysis.miscellaneous;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.Reader;
 import java.io.StringReader;
 import org.apache.lucene.analysis.StopFilter;

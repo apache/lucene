@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.core;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashMap;

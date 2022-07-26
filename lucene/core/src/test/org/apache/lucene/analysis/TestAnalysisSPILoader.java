@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.analysis;
 
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.analysis.standard.StandardTokenizerFactory;

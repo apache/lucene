@@ -17,6 +17,8 @@
 
 package org.apache.lucene.analysis.opennlp;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashMap;

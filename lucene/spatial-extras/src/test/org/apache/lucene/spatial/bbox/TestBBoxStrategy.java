@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.spatial.bbox;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.DocValuesType;

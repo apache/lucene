@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.spatial.vector;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 import java.io.IOException;
 import java.text.ParseException;
 import org.apache.lucene.document.Document;

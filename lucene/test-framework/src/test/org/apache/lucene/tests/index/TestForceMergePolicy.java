@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.index;
 
+import static org.junit.Assert.assertNull;
+
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.tests.util.LuceneTestCase;

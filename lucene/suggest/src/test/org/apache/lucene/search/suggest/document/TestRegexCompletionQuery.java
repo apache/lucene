@@ -19,6 +19,7 @@ package org.apache.lucene.search.suggest.document;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.Entry;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.assertSuggestions;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.iwcWithSuggestField;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;

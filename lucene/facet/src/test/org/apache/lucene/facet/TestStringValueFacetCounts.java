@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.facet;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;

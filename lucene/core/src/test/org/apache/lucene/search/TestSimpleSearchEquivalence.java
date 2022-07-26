@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Arrays;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;

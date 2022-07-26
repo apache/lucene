@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.geo;
 
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestPoint extends LuceneTestCase {

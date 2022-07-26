@@ -39,6 +39,9 @@
 
 package org.apache.lucene.queries.intervals;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+
 import java.io.IOException;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.tests.analysis.CannedTokenStream;

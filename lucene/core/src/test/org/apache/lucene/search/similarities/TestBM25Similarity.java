@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.similarities;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.Random;
 import org.apache.lucene.tests.search.similarities.BaseSimilarityTestCase;
 

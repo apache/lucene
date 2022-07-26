@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;

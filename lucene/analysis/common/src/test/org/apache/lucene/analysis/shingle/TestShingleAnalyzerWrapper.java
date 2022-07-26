@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.shingle;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.StopFilter;

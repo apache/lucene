@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.misc;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.index.LogDocMergePolicy;
 import org.apache.lucene.misc.IndexMergeTool.Options;
 import org.apache.lucene.tests.util.LuceneTestCase;

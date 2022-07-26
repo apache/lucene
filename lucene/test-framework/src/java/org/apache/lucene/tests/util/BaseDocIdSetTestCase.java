@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.util;
 
 import static org.apache.lucene.tests.util.BaseBitSetTestCase.randomSet;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.BitSet;

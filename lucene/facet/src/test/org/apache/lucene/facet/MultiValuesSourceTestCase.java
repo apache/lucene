@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.facet;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import org.apache.lucene.document.Document;

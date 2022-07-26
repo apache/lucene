@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.queryparser.ext;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Testcase for the {@link Extensions} class */

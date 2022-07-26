@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;

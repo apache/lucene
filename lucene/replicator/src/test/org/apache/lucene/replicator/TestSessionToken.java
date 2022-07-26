@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.replicator;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;

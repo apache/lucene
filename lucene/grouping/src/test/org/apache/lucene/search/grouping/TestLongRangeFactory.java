@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search.grouping;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestLongRangeFactory extends LuceneTestCase {

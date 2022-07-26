@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.email;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;

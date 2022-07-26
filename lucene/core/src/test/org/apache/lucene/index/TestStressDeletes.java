@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;

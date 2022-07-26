@@ -26,6 +26,7 @@ import static org.apache.lucene.queryparser.simple.SimpleQueryParser.PHRASE_OPER
 import static org.apache.lucene.queryparser.simple.SimpleQueryParser.PRECEDENCE_OPERATORS;
 import static org.apache.lucene.queryparser.simple.SimpleQueryParser.PREFIX_OPERATOR;
 import static org.apache.lucene.queryparser.simple.SimpleQueryParser.WHITESPACE_OPERATOR;
+import static org.junit.Assert.assertEquals;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;

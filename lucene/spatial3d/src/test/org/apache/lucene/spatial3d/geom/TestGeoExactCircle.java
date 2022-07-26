@@ -17,7 +17,12 @@
 
 package org.apache.lucene.spatial3d.geom;
 
-import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.*;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoAreaShape;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoPoint;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomPlanetModel;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator;

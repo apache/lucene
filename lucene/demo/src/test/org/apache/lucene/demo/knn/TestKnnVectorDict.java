@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.demo.knn;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;

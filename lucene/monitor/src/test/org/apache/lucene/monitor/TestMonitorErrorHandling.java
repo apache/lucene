@@ -17,6 +17,8 @@
 
 package org.apache.lucene.monitor;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.document.Document;

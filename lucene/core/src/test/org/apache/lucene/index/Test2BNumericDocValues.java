@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;

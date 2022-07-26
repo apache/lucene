@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.snowball;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;

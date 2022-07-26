@@ -20,6 +20,10 @@ import static org.apache.lucene.analysis.hunspell.AffixCondition.ALWAYS_FALSE;
 import static org.apache.lucene.analysis.hunspell.AffixCondition.ALWAYS_TRUE_KEY;
 import static org.apache.lucene.analysis.hunspell.AffixKind.PREFIX;
 import static org.apache.lucene.analysis.hunspell.AffixKind.SUFFIX;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 

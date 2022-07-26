@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertTrue;
+
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.demo;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;

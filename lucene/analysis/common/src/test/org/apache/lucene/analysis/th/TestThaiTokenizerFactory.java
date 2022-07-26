@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.th;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.StringReader;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;

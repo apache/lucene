@@ -17,6 +17,10 @@
 package org.apache.lucene.index;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.TokenStream;

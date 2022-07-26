@@ -18,6 +18,7 @@ package org.apache.lucene.search.uhighlight;
 
 import static org.apache.lucene.search.uhighlight.TestWholeBreakIterator.assertSameBreaks;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.text.BreakIterator;

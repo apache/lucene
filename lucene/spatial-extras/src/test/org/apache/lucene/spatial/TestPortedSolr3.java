@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.spatial;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.util.ArrayList;
 import java.util.HashSet;

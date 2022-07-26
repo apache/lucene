@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.stempel;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;

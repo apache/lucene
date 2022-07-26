@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.sandbox.queries;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.HashSet;
 import org.apache.lucene.analysis.Analyzer;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.no;
 
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 

@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.analysis.tests;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.ibm.icu.text.Normalizer2;
 import com.ibm.icu.text.Transliterator;
 import java.io.IOException;

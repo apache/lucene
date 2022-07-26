@@ -29,6 +29,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.SetOnce;
 import org.junit.Assert;
 
@@ -37,7 +38,7 @@ public class BooleanQueryTestFacade {
   final int[] expectedDocNrs;
   SingleFieldTestDb dBase;
   String fieldName;
-  Assert testCase;
+  LuceneTestCase testCase;
   BasicQueryFactory qf;
   boolean verbose = true;
 
@@ -46,7 +47,7 @@ public class BooleanQueryTestFacade {
       int[] expectedDocNrs,
       SingleFieldTestDb dBase,
       String fieldName,
-      Assert testCase,
+      LuceneTestCase testCase,
       BasicQueryFactory qf) {
     this.queryText = queryText;
     this.expectedDocNrs = expectedDocNrs;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Random;

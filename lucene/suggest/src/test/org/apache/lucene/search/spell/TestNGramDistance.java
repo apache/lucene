@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search.spell;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestNGramDistance extends LuceneTestCase {

@@ -17,6 +17,10 @@
 
 package org.apache.lucene.geo;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Random;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.tests.geo.ShapeTestUtil;

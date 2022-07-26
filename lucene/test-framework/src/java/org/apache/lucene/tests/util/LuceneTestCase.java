@@ -22,6 +22,12 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.carrotsearch.randomizedtesting.JUnit4MethodProvider;
 import com.carrotsearch.randomizedtesting.LifecycleScope;
@@ -199,7 +205,6 @@ import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -264,7 +269,7 @@ import org.junit.runner.RunWith;
 @TestRuleLimitSysouts.Limit(
     bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
     hardLimit = TestRuleLimitSysouts.DEFAULT_HARD_LIMIT)
-public abstract class LuceneTestCase extends Assert {
+public abstract class LuceneTestCase {
 
   // --------------------------------------------------------------------
   // Test groups, system properties and other annotations modifying tests

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search.highlight;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;

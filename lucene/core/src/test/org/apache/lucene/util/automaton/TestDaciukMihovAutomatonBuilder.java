@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.automaton;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.lucene.tests.util.LuceneTestCase;

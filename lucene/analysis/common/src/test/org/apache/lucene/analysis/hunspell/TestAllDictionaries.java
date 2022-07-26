@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

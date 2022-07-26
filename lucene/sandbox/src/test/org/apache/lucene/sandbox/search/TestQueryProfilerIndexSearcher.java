@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.search;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.List;

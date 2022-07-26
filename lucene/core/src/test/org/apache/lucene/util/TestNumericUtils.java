@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.math.BigInteger;
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;

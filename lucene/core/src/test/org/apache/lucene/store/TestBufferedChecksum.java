@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 import org.apache.lucene.tests.util.LuceneTestCase;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.index;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;

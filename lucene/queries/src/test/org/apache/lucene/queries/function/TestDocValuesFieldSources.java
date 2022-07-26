@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.queries.function;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import org.apache.lucene.document.BinaryDocValuesField;

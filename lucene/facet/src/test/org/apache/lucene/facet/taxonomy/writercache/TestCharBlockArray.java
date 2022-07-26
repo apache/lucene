@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.facet.taxonomy.writercache;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.nio.ByteBuffer;

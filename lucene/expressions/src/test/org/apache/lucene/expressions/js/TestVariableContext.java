@@ -20,6 +20,7 @@ import static org.apache.lucene.expressions.js.VariableContext.Type.INT_INDEX;
 import static org.apache.lucene.expressions.js.VariableContext.Type.MEMBER;
 import static org.apache.lucene.expressions.js.VariableContext.Type.METHOD;
 import static org.apache.lucene.expressions.js.VariableContext.Type.STR_INDEX;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 

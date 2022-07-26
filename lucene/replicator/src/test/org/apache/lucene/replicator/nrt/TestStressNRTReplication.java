@@ -17,6 +17,8 @@
 
 package org.apache.lucene.replicator.nrt;
 
+import static org.junit.Assert.fail;
+
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.io.BufferedReader;
 import java.io.Closeable;

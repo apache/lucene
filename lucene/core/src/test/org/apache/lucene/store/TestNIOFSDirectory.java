@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.OpenOption;

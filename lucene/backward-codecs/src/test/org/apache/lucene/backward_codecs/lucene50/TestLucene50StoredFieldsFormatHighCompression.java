@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.backward_codecs.lucene50;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.backward_codecs.lucene50.Lucene50StoredFieldsFormat.Mode;
 import org.apache.lucene.backward_codecs.lucene86.Lucene86RWCodec;

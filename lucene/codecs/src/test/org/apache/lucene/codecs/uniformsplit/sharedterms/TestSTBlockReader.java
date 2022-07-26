@@ -17,6 +17,9 @@
 
 package org.apache.lucene.codecs.uniformsplit.sharedterms;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;

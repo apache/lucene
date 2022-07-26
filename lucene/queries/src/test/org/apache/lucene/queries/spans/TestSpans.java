@@ -23,6 +23,7 @@ import static org.apache.lucene.queries.spans.SpanTestUtil.spanNearUnorderedQuer
 import static org.apache.lucene.queries.spans.SpanTestUtil.spanNotQuery;
 import static org.apache.lucene.queries.spans.SpanTestUtil.spanOrQuery;
 import static org.apache.lucene.queries.spans.SpanTestUtil.spanTermQuery;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import org.apache.lucene.document.Document;

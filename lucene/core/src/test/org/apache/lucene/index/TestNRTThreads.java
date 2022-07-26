@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertFalse;
+
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import org.apache.lucene.search.IndexSearcher;

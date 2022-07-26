@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queryparser.flexible.standard;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.DateTools.Resolution;
 import org.apache.lucene.index.Term;

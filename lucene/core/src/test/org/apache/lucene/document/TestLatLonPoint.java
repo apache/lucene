@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.document;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for {@link LatLonPoint} TODO: move this lone test and remove class? */

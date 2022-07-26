@@ -17,6 +17,7 @@
 package org.apache.lucene.spatial.prefix;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.spatial.StrategyTestCase;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
+import org.junit.Assert;
 import org.locationtech.spatial4j.shape.Shape;
 
 /**
@@ -129,7 +131,7 @@ public abstract class RandomSpatialOpStrategyTestCase extends StrategyTestCase {
       List<Shape> indexedShapes,
       Shape queryShape,
       SpatialOperation operation) {
-    fail(
+    Assert.fail(
         ("[" + operation + "] ")
             + (label + " I#" + id + ":" + indexedShapes.get(Integer.parseInt(id)))
             + (" Q:" + queryShape));

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.codecs.lucene90.compressing;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+
 import java.util.Arrays;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;

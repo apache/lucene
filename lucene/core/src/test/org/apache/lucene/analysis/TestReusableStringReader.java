@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis;
 
+import static org.junit.Assert.assertEquals;
+
 import java.nio.CharBuffer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

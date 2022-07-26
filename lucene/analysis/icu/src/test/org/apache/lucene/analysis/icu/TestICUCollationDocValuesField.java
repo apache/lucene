@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.icu;
 
+import static org.junit.Assert.assertEquals;
+
 import com.ibm.icu.text.Collator;
 import com.ibm.icu.util.ULocale;
 import org.apache.lucene.document.Document;

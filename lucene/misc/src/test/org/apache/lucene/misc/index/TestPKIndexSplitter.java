@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.misc.index;
 
+import static org.junit.Assert.assertEquals;
+
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.core;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.Set;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;

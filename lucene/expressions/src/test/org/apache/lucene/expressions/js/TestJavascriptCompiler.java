@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.expressions.js;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.text.ParseException;
 import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.tests.util.LuceneTestCase;

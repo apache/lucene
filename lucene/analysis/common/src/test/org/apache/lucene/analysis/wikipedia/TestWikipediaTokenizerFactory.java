@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.wikipedia;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.StringReader;
 import java.util.HashSet;
 import java.util.Set;

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.document;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.lang.reflect.Method;
 import org.apache.lucene.index.DocValuesType;

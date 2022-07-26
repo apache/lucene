@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.index;
 
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;

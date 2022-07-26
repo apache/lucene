@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search.uhighlight;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.text.BreakIterator;
 import org.apache.lucene.analysis.Analyzer;

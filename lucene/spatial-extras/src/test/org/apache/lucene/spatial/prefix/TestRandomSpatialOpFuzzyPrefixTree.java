@@ -16,8 +16,15 @@
  */
 package org.apache.lucene.spatial.prefix;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.*;
-import static org.locationtech.spatial4j.shape.SpatialRelation.*;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomInt;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.locationtech.spatial4j.shape.SpatialRelation.CONTAINS;
+import static org.locationtech.spatial4j.shape.SpatialRelation.DISJOINT;
+import static org.locationtech.spatial4j.shape.SpatialRelation.INTERSECTS;
+import static org.locationtech.spatial4j.shape.SpatialRelation.WITHIN;
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
@@ -45,6 +52,7 @@ import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
+import org.junit.Assert;
 import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
@@ -442,7 +450,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
       Map<String, Shape> indexedShapesGS,
       Shape queryShape) {
     System.err.println("Ig:" + indexedShapesGS.get(id) + " Qg:" + gridSnap(queryShape));
-    fail(label + " I#" + id + ":" + indexedShapes.get(id) + " Q:" + queryShape);
+    Assert.fail(label + " I#" + id + ":" + indexedShapes.get(id) + " Q:" + queryShape);
   }
 
   //  private Rectangle inset(Rectangle r) {

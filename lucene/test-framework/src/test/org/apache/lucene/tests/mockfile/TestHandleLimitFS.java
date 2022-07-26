@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.mockfile;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.automaton;
 
+import static org.junit.Assert.assertTrue;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;

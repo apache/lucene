@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queryparser.flexible.standard;
 
+import static org.junit.Assert.assertEquals;
+
 import java.text.NumberFormat;
 import java.util.HashMap;
 import java.util.Locale;

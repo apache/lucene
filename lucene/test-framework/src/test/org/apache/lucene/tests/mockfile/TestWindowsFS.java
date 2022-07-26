@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.tests.mockfile;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.FileNotFoundException;
 import java.io.IOException;

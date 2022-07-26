@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.tests.util.LuceneTestCase;

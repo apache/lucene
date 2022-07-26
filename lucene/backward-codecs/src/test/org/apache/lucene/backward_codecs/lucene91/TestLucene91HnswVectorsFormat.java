@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene91;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
 import static org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;

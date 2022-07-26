@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.suggest.analyzing;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.classification.document;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;

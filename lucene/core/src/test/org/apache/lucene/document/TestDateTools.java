@@ -16,9 +16,16 @@
  */
 package org.apache.lucene.document;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.Locale;
+import java.util.TimeZone;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDateTools extends LuceneTestCase {

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.spatial;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;

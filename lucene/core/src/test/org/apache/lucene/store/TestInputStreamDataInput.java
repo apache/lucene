@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;

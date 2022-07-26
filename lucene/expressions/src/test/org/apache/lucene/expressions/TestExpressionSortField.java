@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.expressions;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.SortField;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.benchmark.byTask.tasks.alt;
 
+import static org.junit.Assert.assertNotNull;
+
 import org.apache.lucene.benchmark.BenchmarkTestCase;
 import org.apache.lucene.benchmark.byTask.Benchmark;
 

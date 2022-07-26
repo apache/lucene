@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.text.ParseException;

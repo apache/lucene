@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.morfologik;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.TreeSet;
 import org.apache.lucene.analysis.Analyzer;

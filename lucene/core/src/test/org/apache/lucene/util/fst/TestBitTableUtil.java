@@ -17,6 +17,9 @@
 
 package org.apache.lucene.util.fst;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

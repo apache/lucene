@@ -17,6 +17,8 @@
 
 package org.apache.lucene.codecs.uniformsplit;
 
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.tests.codecs.uniformsplit.UniformSplitRot13PostingsFormat;

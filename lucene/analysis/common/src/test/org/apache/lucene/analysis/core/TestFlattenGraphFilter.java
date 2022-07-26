@@ -17,6 +17,9 @@
 
 package org.apache.lucene.analysis.core;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;

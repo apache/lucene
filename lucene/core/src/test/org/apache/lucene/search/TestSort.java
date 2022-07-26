@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.search;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+
 import java.io.IOException;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -47,9 +52,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestSort extends LuceneTestCase {
 
   private void assertEquality(Sort a, Sort b) {
-    LuceneTestCase.assertEquals(a, b);
-    LuceneTestCase.assertEquals(b, a);
-    LuceneTestCase.assertEquals(a.hashCode(), b.hashCode());
+    assertEquals(a, b);
+    assertEquals(b, a);
+    assertEquals(a.hashCode(), b.hashCode());
   }
 
   private void assertDifferent(Sort a, Sort b) {

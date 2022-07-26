@@ -17,6 +17,7 @@
 package org.apache.lucene.util.automaton;
 
 import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;

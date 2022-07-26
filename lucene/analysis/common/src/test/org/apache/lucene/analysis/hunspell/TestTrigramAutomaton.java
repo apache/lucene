@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.stream.Collectors;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.CharsRef;

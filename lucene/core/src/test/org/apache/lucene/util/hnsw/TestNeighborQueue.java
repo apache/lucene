@@ -17,6 +17,10 @@
 
 package org.apache.lucene.util.hnsw;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestNeighborQueue extends LuceneTestCase {

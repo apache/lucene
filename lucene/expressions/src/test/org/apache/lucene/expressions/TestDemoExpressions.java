@@ -19,6 +19,8 @@ package org.apache.lucene.expressions;
 import static org.apache.lucene.expressions.js.VariableContext.Type.INT_INDEX;
 import static org.apache.lucene.expressions.js.VariableContext.Type.MEMBER;
 import static org.apache.lucene.expressions.js.VariableContext.Type.STR_INDEX;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

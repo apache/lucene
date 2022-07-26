@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.blockterms.TermsIndexReaderBase;
 import org.apache.lucene.codecs.blockterms.TermsIndexWriterBase;
 import org.apache.lucene.codecs.blockterms.VariableGapTermsIndexReader;
 import org.apache.lucene.codecs.blockterms.VariableGapTermsIndexWriter;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat; // javadocs
+import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
 import org.apache.lucene.index.SegmentReadState;

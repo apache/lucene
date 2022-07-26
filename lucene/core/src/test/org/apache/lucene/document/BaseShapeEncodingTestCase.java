@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.document;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;

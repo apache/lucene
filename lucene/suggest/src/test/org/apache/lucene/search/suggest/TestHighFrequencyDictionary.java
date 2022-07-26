@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.suggest;
 
+import static org.junit.Assert.assertNull;
+
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;

@@ -17,7 +17,26 @@
 
 package org.apache.lucene.spatial3d.geom;
 
-import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.*;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.COLLECTION;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.CONCAVE_SIMPLE_POLYGON;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.CONVEX_POLYGON;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.CONVEX_SIMPLE_POLYGON;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.Constraints;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.LINE;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.POINT;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.getEmptyConstraint;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.isConcave;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomConcaveShapeType;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomConvexShapeType;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoAreaShape;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoAreaShapeType;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoPoint;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoShape;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomPlanetModel;
+import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomShapeType;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;

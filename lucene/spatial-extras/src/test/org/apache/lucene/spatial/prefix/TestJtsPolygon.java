@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.spatial.prefix;
 
+import static org.junit.Assert.assertEquals;
+
 import java.text.ParseException;
 import java.util.HashMap;
 import org.apache.lucene.document.Document;

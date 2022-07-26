@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.document;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.util.Arrays;
 import org.apache.lucene.document.ShapeField.QueryRelation;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.backward_index;
 
+import static org.junit.Assert.assertNotNull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;

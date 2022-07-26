@@ -17,7 +17,20 @@
 
 package org.apache.lucene.analysis.wikipedia;
 
-import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.*;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.BOLD;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.BOLD_ITALICS;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.CATEGORY;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.CITATION;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.EXTERNAL_LINK;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.EXTERNAL_LINK_URL;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.HEADING;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.INTERNAL_LINK;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.ITALICS;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.SUB_HEADING;
+import static org.apache.lucene.analysis.wikipedia.WikipediaTokenizer.UNTOKENIZED_TOKEN_FLAG;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.StringReader;

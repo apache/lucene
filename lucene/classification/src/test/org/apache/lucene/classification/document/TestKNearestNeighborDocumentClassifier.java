@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.classification.document;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;

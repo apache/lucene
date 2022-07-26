@@ -17,6 +17,8 @@
 
 package org.apache.lucene.monitor;
 
+import static org.junit.Assert.assertNotNull;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

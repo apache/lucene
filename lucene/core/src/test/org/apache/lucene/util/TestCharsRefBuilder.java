@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 

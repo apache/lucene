@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.net.URL;
 import java.net.URLClassLoader;
 import org.apache.lucene.tests.util.LuceneTestCase;

@@ -17,6 +17,8 @@
 
 package org.apache.lucene.luke.models.overview;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.List;
 import org.junit.Test;
 

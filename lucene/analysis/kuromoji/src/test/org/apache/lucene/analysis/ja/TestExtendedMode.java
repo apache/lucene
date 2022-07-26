@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.ja;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;

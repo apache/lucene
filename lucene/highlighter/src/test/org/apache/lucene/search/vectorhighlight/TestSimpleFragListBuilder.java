@@ -16,8 +16,14 @@
  */
 package org.apache.lucene.search.vectorhighlight;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 
 public class TestSimpleFragListBuilder extends AbstractTestCase {
 

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.backward_codecs.store;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;

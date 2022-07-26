@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queryparser.flexible.core.builders;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.nodes.FieldQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;

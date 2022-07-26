@@ -16,6 +16,8 @@
  */
 package org.apache.lucene;
 
+import static org.junit.Assert.fail;
+
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

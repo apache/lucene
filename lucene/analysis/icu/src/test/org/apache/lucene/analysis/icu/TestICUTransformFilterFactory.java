@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.icu;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;

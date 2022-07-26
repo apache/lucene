@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.expressions.js;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

@@ -17,6 +17,8 @@
 package org.apache.lucene.spatial.prefix;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;

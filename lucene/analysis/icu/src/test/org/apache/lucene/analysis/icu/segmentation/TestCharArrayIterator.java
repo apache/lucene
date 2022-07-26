@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.icu.segmentation;
 
+import static org.junit.Assert.assertEquals;
+
 import java.text.CharacterIterator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

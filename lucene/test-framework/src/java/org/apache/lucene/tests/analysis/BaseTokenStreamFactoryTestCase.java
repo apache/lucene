@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.analysis;
 
+import static org.junit.Assert.assertNull;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;

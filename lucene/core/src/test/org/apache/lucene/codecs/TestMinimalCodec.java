@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import org.apache.lucene.document.Document;

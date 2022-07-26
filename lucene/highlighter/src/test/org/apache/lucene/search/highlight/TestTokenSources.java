@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.search.highlight;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.Arrays;

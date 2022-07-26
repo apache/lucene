@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.benchmark.byTask.feeds;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.StringReader;
 import java.util.Locale;
 import java.util.Properties;

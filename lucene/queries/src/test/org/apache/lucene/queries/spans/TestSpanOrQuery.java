@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queries.spans;
 
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.index.Term;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;

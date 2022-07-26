@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.vectorhighlight;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;

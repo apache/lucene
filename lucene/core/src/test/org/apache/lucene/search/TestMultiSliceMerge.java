@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Random;
 import java.util.concurrent.Executor;
 import org.apache.lucene.document.Document;

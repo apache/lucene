@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.collation;
 
+import static org.junit.Assert.assertEquals;
+
 import java.text.Collator;
 import java.util.Locale;
 import org.apache.lucene.document.Document;

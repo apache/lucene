@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.store;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import org.apache.lucene.tests.util.LuceneTestCase;

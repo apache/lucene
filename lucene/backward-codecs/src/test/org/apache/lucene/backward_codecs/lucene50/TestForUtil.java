@@ -19,6 +19,8 @@ package org.apache.lucene.backward_codecs.lucene50;
 import static org.apache.lucene.backward_codecs.lucene50.ForUtil.MAX_DATA_SIZE;
 import static org.apache.lucene.backward_codecs.lucene50.ForUtil.MAX_ENCODED_SIZE;
 import static org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat.BLOCK_SIZE;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;

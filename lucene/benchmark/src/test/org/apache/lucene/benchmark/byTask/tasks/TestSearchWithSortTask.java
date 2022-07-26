@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.benchmark.byTask.tasks;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Properties;
 import org.apache.lucene.benchmark.BenchmarkTestCase;
 import org.apache.lucene.benchmark.byTask.PerfRunData;

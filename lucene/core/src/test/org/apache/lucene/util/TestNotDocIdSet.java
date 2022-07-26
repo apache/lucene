@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.search.DocIdSet;

@@ -17,6 +17,8 @@
 
 package org.apache.lucene.monitor;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.misc.search;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;

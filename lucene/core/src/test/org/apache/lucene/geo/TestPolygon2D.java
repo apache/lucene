@@ -21,6 +21,9 @@ import static org.apache.lucene.tests.geo.GeoTestUtil.nextLatitude;
 import static org.apache.lucene.tests.geo.GeoTestUtil.nextLongitude;
 import static org.apache.lucene.tests.geo.GeoTestUtil.nextPointNear;
 import static org.apache.lucene.tests.geo.GeoTestUtil.nextPolygon;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import org.apache.lucene.index.PointValues.Relation;

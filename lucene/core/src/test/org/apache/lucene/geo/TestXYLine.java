@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.geo;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Arrays;
 import org.apache.lucene.tests.geo.ShapeTestUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;

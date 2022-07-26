@@ -17,6 +17,8 @@
 
 package org.apache.lucene.analysis;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.analysis.standard.StandardTokenizerFactory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

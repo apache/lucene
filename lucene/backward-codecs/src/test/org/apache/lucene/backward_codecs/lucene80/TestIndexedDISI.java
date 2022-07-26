@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.backward_codecs.lucene80;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;

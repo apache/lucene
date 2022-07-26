@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMaxScoreAccumulator extends LuceneTestCase {

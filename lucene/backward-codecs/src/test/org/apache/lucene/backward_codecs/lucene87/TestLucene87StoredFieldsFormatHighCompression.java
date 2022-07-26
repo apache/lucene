@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.backward_codecs.lucene87;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;

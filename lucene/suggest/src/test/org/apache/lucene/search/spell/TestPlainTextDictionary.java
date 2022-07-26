@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.spell;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.store.Directory;

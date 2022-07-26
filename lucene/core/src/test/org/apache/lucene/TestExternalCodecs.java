@@ -16,6 +16,8 @@
  */
 package org.apache.lucene;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

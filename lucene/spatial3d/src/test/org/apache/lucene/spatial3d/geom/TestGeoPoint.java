@@ -17,6 +17,7 @@
 package org.apache.lucene.spatial3d.geom;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;

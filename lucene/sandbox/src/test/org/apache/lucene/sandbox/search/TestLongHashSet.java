@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.sandbox.search;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -26,9 +29,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestLongHashSet extends LuceneTestCase {
 
   private void assertEquality(Set<Long> set1, LongHashSet set2) {
-    LuceneTestCase.assertEquals(set1, set2);
-    LuceneTestCase.assertEquals(set2, set1);
-    LuceneTestCase.assertEquals(set2, set2);
+    assertEquals(set1, set2);
+    assertEquals(set2, set1);
+    assertEquals(set2, set2);
     assertEquals(set1.hashCode(), set2.hashCode());
 
     if (set1.isEmpty() == false) {

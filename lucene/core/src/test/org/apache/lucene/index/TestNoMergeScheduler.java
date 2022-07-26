@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;

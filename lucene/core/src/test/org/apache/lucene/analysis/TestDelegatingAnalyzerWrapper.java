@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;

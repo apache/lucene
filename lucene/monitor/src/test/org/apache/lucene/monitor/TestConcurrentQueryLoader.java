@@ -17,6 +17,8 @@
 
 package org.apache.lucene.monitor;
 
+import static org.junit.Assert.assertEquals;
+
 public class TestConcurrentQueryLoader extends MonitorTestBase {
 
   public void testLoading() throws Exception {

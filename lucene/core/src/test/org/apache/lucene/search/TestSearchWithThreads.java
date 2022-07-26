@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;

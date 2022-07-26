@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.sandbox.document;
 
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleRange;
 import org.apache.lucene.tests.util.LuceneTestCase;

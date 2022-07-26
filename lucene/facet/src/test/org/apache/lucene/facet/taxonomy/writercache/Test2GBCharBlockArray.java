@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.facet.taxonomy.writercache;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 import org.apache.lucene.tests.util.TestUtil;

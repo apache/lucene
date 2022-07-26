@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.classification.document;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.util.BytesRef;
 import org.junit.Test;
 

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.backward_codecs.packed;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.Random;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;

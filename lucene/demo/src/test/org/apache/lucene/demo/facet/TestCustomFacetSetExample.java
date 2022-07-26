@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.demo.facet;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.tests.util.LuceneTestCase;

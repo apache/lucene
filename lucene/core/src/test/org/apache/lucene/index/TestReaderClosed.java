@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.util.concurrent.RejectedExecutionException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

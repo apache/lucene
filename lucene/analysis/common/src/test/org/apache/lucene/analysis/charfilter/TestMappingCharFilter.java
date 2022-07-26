@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.charfilter;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;

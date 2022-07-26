@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.icu;
 
+import static org.junit.Assert.assertTrue;
+
 import com.ibm.icu.text.Transliterator;
 import com.ibm.icu.text.UnicodeSet;
 import java.io.IOException;

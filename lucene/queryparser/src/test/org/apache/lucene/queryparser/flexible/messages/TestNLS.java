@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queryparser.flexible.messages;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Locale;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.backward_codecs.lucene84;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;

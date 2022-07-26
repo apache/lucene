@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;

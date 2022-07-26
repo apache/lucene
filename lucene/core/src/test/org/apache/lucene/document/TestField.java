@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.document;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import org.apache.lucene.index.IndexReader;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.payloads;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.analysis.TokenFilter;

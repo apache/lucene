@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.BufferedWriter;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;

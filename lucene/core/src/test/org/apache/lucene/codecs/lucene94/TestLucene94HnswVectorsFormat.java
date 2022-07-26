@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene94;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;

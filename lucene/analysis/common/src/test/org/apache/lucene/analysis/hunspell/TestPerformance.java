@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.annotations.TestCaseOrdering;
 import java.io.BufferedReader;
 import java.io.IOException;

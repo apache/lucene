@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.similarities;
 
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestAxiomaticSimilarity extends LuceneTestCase {

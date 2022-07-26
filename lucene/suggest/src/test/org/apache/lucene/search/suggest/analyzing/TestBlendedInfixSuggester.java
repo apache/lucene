@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.search.suggest.analyzing;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;

@@ -18,6 +18,8 @@
 package org.apache.lucene.expressions.js;
 
 import static org.apache.lucene.expressions.js.ExpressionMath.haversinKilometers;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;

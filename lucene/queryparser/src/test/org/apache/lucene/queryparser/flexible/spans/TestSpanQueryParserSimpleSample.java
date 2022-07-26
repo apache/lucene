@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.queryparser.flexible.spans;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.queryparser.flexible.core.config.QueryConfigHandler;

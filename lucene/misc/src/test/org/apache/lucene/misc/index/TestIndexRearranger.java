@@ -17,6 +17,9 @@
 
 package org.apache.lucene.misc.index;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.document.BinaryDocValuesField;

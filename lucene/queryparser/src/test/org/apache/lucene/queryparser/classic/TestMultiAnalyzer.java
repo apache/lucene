@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queryparser.classic;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;

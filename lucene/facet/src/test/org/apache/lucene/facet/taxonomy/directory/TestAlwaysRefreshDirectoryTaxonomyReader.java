@@ -18,6 +18,7 @@ package org.apache.lucene.facet.taxonomy.directory;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.sleep;
 import static org.apache.lucene.tests.mockfile.ExtrasFS.isExtra;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.nio.file.Path;

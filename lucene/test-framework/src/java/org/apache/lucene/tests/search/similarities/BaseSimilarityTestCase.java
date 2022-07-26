@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.tests.search.similarities;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.document.Document;

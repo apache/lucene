@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.suggest.fst;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;

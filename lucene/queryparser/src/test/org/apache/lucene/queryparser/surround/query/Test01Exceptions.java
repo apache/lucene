@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queryparser.surround.query;
 
+import static org.junit.Assert.fail;
+
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 import org.apache.lucene.tests.util.LuceneTestCase;

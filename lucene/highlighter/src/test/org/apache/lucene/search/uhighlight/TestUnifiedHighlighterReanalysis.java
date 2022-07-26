@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.uhighlight;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;

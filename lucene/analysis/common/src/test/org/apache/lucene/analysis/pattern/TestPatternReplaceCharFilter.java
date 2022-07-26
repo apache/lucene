@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.pattern;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;

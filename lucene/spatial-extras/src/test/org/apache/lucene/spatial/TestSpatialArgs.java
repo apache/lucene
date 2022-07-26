@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.spatial;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.spatial4j.Geo3dSpatialContextFactory;
 import org.apache.lucene.tests.util.LuceneTestCase;

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queries.function.docvalues;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.tests.util.LuceneTestCase;

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.analysis.icu.segmentation;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.ibm.icu.lang.UScript;
 import com.ibm.icu.text.UnicodeSet;
 import java.io.IOException;

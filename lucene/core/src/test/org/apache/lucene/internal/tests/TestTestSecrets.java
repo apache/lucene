@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.internal.tests;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTestSecrets extends LuceneTestCase {

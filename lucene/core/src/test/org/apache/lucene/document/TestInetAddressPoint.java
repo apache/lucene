@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.document;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import java.net.InetAddress;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;

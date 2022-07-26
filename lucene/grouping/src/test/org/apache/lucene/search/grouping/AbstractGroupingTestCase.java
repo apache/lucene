@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.grouping;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.search.IndexSearcher;

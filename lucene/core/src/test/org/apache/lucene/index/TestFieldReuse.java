@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Collections;

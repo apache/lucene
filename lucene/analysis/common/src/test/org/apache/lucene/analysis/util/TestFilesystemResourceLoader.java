@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.analysis.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Writer;

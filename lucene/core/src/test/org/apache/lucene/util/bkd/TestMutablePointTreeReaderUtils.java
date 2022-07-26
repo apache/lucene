@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.util.bkd;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import org.apache.lucene.codecs.MutablePointTree;

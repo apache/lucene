@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.util;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.StringReader;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;

@@ -20,6 +20,7 @@ import static org.apache.lucene.geo.GeoEncodingUtils.decodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.geo.Rectangle;

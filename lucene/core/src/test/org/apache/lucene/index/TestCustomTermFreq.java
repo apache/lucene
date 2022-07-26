@@ -18,6 +18,9 @@
 package org.apache.lucene.index;
 
 import static org.apache.lucene.index.PostingsEnum.NO_MORE_DOCS;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;

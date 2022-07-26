@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.benchmark.byTask.feeds;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;

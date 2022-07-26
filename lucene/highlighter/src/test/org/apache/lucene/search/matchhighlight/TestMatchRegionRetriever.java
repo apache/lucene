@@ -17,6 +17,7 @@
 package org.apache.lucene.search.matchhighlight;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.Assert.assertThat;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;

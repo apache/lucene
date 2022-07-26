@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search.uhighlight.visibility;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.text.BreakIterator;
 import java.util.Collections;

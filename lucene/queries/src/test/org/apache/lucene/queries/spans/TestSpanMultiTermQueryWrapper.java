@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queries.spans;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

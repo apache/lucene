@@ -26,6 +26,7 @@ import static org.apache.lucene.geo.GeoUtils.MAX_LAT_INCL;
 import static org.apache.lucene.geo.GeoUtils.MAX_LON_INCL;
 import static org.apache.lucene.geo.GeoUtils.MIN_LAT_INCL;
 import static org.apache.lucene.geo.GeoUtils.MIN_LON_INCL;
+import static org.junit.Assert.assertEquals;
 
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;

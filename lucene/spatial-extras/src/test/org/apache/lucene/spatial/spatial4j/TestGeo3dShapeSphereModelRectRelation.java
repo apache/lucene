@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.spatial.spatial4j;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.spatial3d.geom.GeoArea;

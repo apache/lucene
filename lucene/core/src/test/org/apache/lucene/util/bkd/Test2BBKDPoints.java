@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.bkd;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.PointValues;

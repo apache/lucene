@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;

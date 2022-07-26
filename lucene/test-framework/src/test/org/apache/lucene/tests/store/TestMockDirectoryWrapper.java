@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.store;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.IOException;

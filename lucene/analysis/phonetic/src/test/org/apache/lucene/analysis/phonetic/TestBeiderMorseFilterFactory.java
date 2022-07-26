@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.phonetic;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.analysis.TokenStream;

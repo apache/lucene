@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.Enumeration;
 import java.util.Spliterator;
 import java.util.Spliterators;

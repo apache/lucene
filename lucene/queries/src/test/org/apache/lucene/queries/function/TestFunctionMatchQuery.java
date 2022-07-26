@@ -18,6 +18,7 @@
 package org.apache.lucene.queries.function;
 
 import static org.apache.lucene.queries.function.FunctionMatchQuery.DEFAULT_MATCH_COST;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.function.DoublePredicate;

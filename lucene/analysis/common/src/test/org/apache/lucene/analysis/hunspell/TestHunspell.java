@@ -20,6 +20,11 @@ import static org.apache.lucene.analysis.hunspell.StemmerTestBase.loadDictionary
 import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.NO_TIMEOUT;
 import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.RETURN_PARTIAL_RESULT;
 import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.THROW_EXCEPTION;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.text.ParseException;

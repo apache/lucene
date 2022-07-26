@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.index;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.lucene.codecs.Codec;

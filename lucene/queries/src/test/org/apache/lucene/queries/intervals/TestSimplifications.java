@@ -17,6 +17,8 @@
 
 package org.apache.lucene.queries.intervals;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSimplifications extends LuceneTestCase {

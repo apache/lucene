@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search.uhighlight;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDefaultPassageFormatter extends LuceneTestCase {

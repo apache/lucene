@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util.fst;
 
+import static org.junit.Assert.assertEquals;
+
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
 import java.util.Arrays;
 import java.util.Random;

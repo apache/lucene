@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.junit.Assert.assertFalse;
+
 import java.io.IOException;
 import java.util.Collection;
 import org.apache.lucene.document.Document;

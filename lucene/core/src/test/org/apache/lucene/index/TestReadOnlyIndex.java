@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.FilePermission;
 import java.nio.file.Files;
 import java.nio.file.Path;

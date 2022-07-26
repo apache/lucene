@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.analysis.core;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;

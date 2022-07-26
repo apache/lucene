@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queries.function;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Collections;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -24,7 +26,12 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.queries.function.valuesource.SortedSetFieldSource;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;

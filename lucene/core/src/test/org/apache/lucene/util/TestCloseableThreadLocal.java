@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCloseableThreadLocal extends LuceneTestCase {

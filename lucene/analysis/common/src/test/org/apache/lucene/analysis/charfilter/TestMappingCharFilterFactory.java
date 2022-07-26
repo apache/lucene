@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.analysis.charfilter;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 public class TestMappingCharFilterFactory extends BaseTokenStreamFactoryTestCase {

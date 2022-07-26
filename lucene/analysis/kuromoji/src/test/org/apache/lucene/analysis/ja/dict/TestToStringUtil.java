@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.tests.util.LuceneTestCase;

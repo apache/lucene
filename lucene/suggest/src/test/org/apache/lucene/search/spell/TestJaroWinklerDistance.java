@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.spell;
 
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestJaroWinklerDistance extends LuceneTestCase {

@@ -17,6 +17,9 @@
 
 package org.apache.lucene.luke.models.documents;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.lucene.document.BinaryDocValuesField;

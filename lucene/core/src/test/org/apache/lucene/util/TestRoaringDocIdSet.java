@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.tests.util.BaseDocIdSetTestCase;

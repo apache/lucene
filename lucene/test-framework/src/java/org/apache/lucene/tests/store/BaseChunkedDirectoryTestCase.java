@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.tests.store;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Random;

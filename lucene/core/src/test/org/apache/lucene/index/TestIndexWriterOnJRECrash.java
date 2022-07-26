@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.junit.Assert.fail;
+
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.io.IOException;
 import java.io.InputStream;

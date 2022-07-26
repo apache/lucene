@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queries.spans;
 
+import static org.junit.Assert.fail;
+
 import java.lang.reflect.Method;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;

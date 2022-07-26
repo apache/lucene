@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.spatial.spatial4j;
 
+import static org.junit.Assert.fail;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.locationtech.spatial4j.context.SpatialContext;
 

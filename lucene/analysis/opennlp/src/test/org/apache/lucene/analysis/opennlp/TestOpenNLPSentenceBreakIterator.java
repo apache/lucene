@@ -17,6 +17,8 @@
 
 package org.apache.lucene.analysis.opennlp;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.text.BreakIterator;
 import java.text.CharacterIterator;

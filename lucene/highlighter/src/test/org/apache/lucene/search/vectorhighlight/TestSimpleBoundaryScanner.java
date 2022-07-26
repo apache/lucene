@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.vectorhighlight;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSimpleBoundaryScanner extends LuceneTestCase {

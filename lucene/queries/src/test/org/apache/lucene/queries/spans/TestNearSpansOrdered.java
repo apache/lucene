@@ -18,6 +18,9 @@ package org.apache.lucene.queries.spans;
 
 import static org.apache.lucene.queries.spans.SpanTestUtil.assertFinished;
 import static org.apache.lucene.queries.spans.SpanTestUtil.assertNext;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

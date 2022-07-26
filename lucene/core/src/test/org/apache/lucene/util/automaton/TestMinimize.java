@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util.automaton;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 

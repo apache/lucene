@@ -19,6 +19,10 @@ package org.apache.lucene.geo;
 import static org.apache.lucene.tests.geo.GeoTestUtil.nextBoxNotCrossingDateline;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.text.ParseException;
 import java.util.List;

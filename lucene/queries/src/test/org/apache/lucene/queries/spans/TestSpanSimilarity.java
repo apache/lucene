@@ -17,6 +17,9 @@
 
 package org.apache.lucene.queries.spans;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.document.Document;

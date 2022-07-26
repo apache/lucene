@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;

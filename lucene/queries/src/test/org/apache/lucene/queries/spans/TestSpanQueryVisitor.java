@@ -18,6 +18,7 @@
 package org.apache.lucene.queries.spans;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
 
 import java.util.Arrays;
 import java.util.HashSet;

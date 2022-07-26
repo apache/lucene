@@ -17,6 +17,9 @@
 
 package org.apache.lucene.sandbox.index;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Random;

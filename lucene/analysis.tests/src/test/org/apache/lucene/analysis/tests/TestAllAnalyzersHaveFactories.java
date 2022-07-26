@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.analysis.tests;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Modifier;

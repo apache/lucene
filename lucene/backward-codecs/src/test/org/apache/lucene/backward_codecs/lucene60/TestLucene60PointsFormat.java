@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.backward_codecs.lucene60;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.backward_codecs.lucene60.bkd.BKDWriter60;

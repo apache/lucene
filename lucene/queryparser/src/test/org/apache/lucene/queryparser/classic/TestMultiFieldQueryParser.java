@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.queryparser.classic;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;

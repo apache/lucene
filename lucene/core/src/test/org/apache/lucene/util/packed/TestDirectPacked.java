@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util.packed;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.Random;
 import org.apache.lucene.store.Directory;
