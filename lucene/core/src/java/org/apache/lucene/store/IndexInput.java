@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.store;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 /**
@@ -37,7 +36,7 @@ import java.io.IOException;
  *
  * @see Directory
  */
-public abstract class IndexInput extends DataInput implements Closeable {
+public abstract class IndexInput extends DataInput {
 
   private final String resourceDescription;
 

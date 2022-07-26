@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.store;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -37,7 +38,7 @@ import org.apache.lucene.util.BitUtil;
  * #clone()}, returning a new {@code DataInput} which operates on the same underlying resource, but
  * positioned independently.
  */
-public abstract class DataInput implements Cloneable {
+public abstract class DataInput implements Cloneable, Closeable {
 
   /**
    * Reads and returns a single byte.
@@ -296,6 +297,12 @@ public abstract class DataInput implements Cloneable {
     } catch (CloneNotSupportedException e) {
       throw new Error("This cannot happen: Failing to clone DataInput", e);
     }
+  }
+
+  /** Clean up resources */
+  @Override
+  public void close() throws IOException {
+    // do nothing by default
   }
 
   /**

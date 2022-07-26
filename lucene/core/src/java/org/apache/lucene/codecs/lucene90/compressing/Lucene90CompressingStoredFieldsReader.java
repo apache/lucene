@@ -385,6 +385,10 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       this.length = length;
       this.numStoredFields = numStoredFields;
     }
+
+    public void close() throws IOException {
+      in.close();
+    }
   }
 
   /** Keeps state about the current block of documents. */
@@ -494,8 +498,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
             bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + toDecompress);
             System.arraycopy(allBytes, 0, bytes.bytes, bytes.length, toDecompress);
             bytes.length += toDecompress;
-
             decompressed += toDecompress;
+            inputStream.close();
           }
         } else {
           InputStream inputStream =
@@ -505,6 +509,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           System.arraycopy(allBytes, 0, bytes.bytes, 0, totalLength);
           bytes.offset = 0;
           bytes.length = totalLength;
+          inputStream.close();
         }
         if (bytes.length != totalLength) {
           throw new CorruptIndexException(
@@ -643,31 +648,34 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
   @Override
   public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
-
     final SerializedDocument doc = document(docID);
+    try {
+      for (int fieldIDX = 0; fieldIDX < doc.numStoredFields; fieldIDX++) {
+        final long infoAndBits = doc.in.readVLong();
+        final int fieldNumber = (int) (infoAndBits >>> TYPE_BITS);
+        final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber);
 
-    for (int fieldIDX = 0; fieldIDX < doc.numStoredFields; fieldIDX++) {
-      final long infoAndBits = doc.in.readVLong();
-      final int fieldNumber = (int) (infoAndBits >>> TYPE_BITS);
-      final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber);
+        final int bits = (int) (infoAndBits & TYPE_MASK);
+        assert bits <= NUMERIC_DOUBLE : "bits=" + Integer.toHexString(bits);
 
-      final int bits = (int) (infoAndBits & TYPE_MASK);
-      assert bits <= NUMERIC_DOUBLE : "bits=" + Integer.toHexString(bits);
-
-      switch (visitor.needsField(fieldInfo)) {
-        case YES:
-          readField(doc.in, visitor, fieldInfo, bits);
-          break;
-        case NO:
-          if (fieldIDX
-              == doc.numStoredFields - 1) { // don't skipField on last field value; treat like STOP
+        switch (visitor.needsField(fieldInfo)) {
+          case YES:
+            readField(doc.in, visitor, fieldInfo, bits);
+            break;
+          case NO:
+            if (fieldIDX
+                == doc.numStoredFields
+                    - 1) { // don't skipField on last field value; treat like STOP
+              return;
+            }
+            skipField(doc.in, bits);
+            break;
+          case STOP:
             return;
-          }
-          skipField(doc.in, bits);
-          break;
-        case STOP:
-          return;
+        }
       }
+    } finally {
+      doc.close();
     }
   }
 

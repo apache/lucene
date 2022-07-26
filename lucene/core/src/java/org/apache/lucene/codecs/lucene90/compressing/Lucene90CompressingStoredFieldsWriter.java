@@ -519,6 +519,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     startDocument();
     bufferedDocs.copyBytes(doc.in, doc.length);
     numStoredFieldsInDoc = doc.numStoredFields;
+    doc.close();
     finishDocument();
   }
 

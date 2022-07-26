@@ -269,6 +269,11 @@ public final class DeflateWithPresetDictCompressionMode extends Lucene90Compress
 
           return buf;
         }
+
+        @Override
+        public void close() throws IOException {
+          decompressor.end();
+        }
       };
     }
 
