@@ -969,7 +969,7 @@ public class TestSortOptimization extends LuceneTestCase {
       SortField sortField = new SortField("my_field", SortField.Type.STRING);
       sortField.setMissingValue(SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
-      BytesRef afterValue = new BytesRef("23");
+      BytesRef afterValue = new BytesRef(random().nextBoolean() ? "23" : "230000000");
       FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
       TopDocs topDocs = assertSort(reader, sort, numHits, after);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
@@ -979,7 +979,7 @@ public class TestSortOptimization extends LuceneTestCase {
       SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
       sortField.setMissingValue(SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
-      BytesRef afterValue = new BytesRef("17");
+      BytesRef afterValue = new BytesRef(random().nextBoolean() ? "17" : "170000000");
       FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
       TopDocs topDocs = assertSort(reader, sort, numHits, after);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
@@ -989,7 +989,7 @@ public class TestSortOptimization extends LuceneTestCase {
       SortField sortField = new SortField("my_field", SortField.Type.STRING);
       sortField.setMissingValue(SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
-      BytesRef afterValue = new BytesRef("23");
+      BytesRef afterValue = new BytesRef(random().nextBoolean() ? "23" : "230000000");
       FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
       TopDocs topDocs = assertSort(reader, sort, numHits, after);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
@@ -999,7 +999,7 @@ public class TestSortOptimization extends LuceneTestCase {
       SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
       sortField.setMissingValue(SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
-      BytesRef afterValue = new BytesRef("17");
+      BytesRef afterValue = new BytesRef(random().nextBoolean() ? "17" : "170000000");
       FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
       TopDocs topDocs = assertSort(reader, sort, numHits, after);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);

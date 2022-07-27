@@ -28,6 +28,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.BytesRef;
@@ -260,7 +261,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
         }
       }
       if (enableSkipping) {
-        competitiveIterator = new CompetitiveIterator(context, field, values);
+        competitiveIterator = new CompetitiveIterator(context, field, dense, values.termsEnum());
       } else {
         competitiveIterator = null;
       }
@@ -361,13 +362,12 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       }
 
       if (topSameReader) {
-        // ord is precisely comparable, even in the equal
-        // case
+        // ord is precisely comparable, even in the equal case
         // System.out.println("compareTop doc=" + doc + " ord=" + ord + " ret=" + (topOrd-ord));
         return topOrd - ord;
       } else if (ord <= topOrd) {
         // the equals case always means doc is < value
-        // (because we set lastOrd to the lower bound)
+        // (because we set topOrd to the lower bound)
         return 1;
       } else {
         return -1;
@@ -381,6 +381,8 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       if (competitiveIterator == null || hitsThresholdReached == false || bottomSlot == -1) {
         return;
       }
+      // This logic to figure out min and max ords is quite complex and verbose, can it be made
+      // simpler?
       final int minOrd;
       final int maxOrd;
       if (reverse == false) {
@@ -389,21 +391,29 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           if (topSameReader) {
             minOrd = topOrd;
           } else {
+            // In the case when the top value doesn't exist in the segment, topOrd is set as the
+            // previous ord, and we are only interested in values that compare strictly greater than
+            // this.
             minOrd = topOrd + 1;
           }
         } else if (sortMissingLast || dense) {
           minOrd = 0;
         } else {
+          // Missing values are still competitive.
           minOrd = -1;
         }
 
         if (bottomOrd == Integer.MAX_VALUE) {
+          // The queue still contains missing values.
           if (singleSort) {
+            // If there is no tie breaker, we can start ignoring missing values from now on.
             maxOrd = termsIndex.getValueCount() - 1;
           } else {
-            maxOrd = termsIndex.getValueCount();
+            maxOrd = Integer.MAX_VALUE;
           }
         } else if (bottomSameReader) {
+          // If there is no tie breaker, we can start ignoring values that compare equal to the
+          // current top value too.
           maxOrd = singleSort ? bottomOrd - 1 : bottomOrd;
         } else {
           maxOrd = bottomOrd;
@@ -412,12 +422,16 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       } else {
 
         if (bottomOrd == -1) {
+          // The queue still contains missing values.
           if (singleSort) {
+            // If there is no tie breaker, we can start ignoring missing values from now on.
             minOrd = 0;
           } else {
             minOrd = -1;
           }
         } else if (bottomSameReader) {
+          // If there is no tie breaker, we can start ignoring values that compare equal to the
+          // current top value too.
           minOrd = singleSort ? bottomOrd + 1 : bottomOrd;
         } else {
           minOrd = bottomOrd + 1;
@@ -433,9 +447,11 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       }
 
       if (minOrd == -1 || maxOrd == Integer.MAX_VALUE) {
-        // Missing values are still competitive
+        // Missing values are still competitive, we can't skip yet.
         return;
       }
+      assert minOrd >= 0;
+      assert maxOrd < termsIndex.getValueCount();
       competitiveIterator.update(minOrd, maxOrd);
     }
 
@@ -455,23 +471,27 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
   }
 
-  private static class CompetitiveIterator extends DocIdSetIterator {
+  private class CompetitiveIterator extends DocIdSetIterator {
 
     private static final int MAX_TERMS = 128;
 
     private final LeafReaderContext context;
     private final int maxDoc;
     private final String field;
-    private final SortedDocValues values;
+    private final boolean dense;
+    private final TermsEnum docValuesTerms;
     private int doc = -1;
     private ArrayDeque<PostingsEnumAndOrd> postings;
+    private DocIdSetIterator docsWithField;
     private PriorityQueue<PostingsEnumAndOrd> disjunction;
 
-    CompetitiveIterator(LeafReaderContext context, String field, SortedDocValues values) {
+    CompetitiveIterator(
+        LeafReaderContext context, String field, boolean dense, TermsEnum docValuesTerms) {
       this.context = context;
       this.maxDoc = context.reader().maxDoc();
       this.field = field;
-      this.values = values;
+      this.dense = dense;
+      this.docValuesTerms = docValuesTerms;
     }
 
     @Override
@@ -489,8 +509,14 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       if (target >= maxDoc) {
         return doc = NO_MORE_DOCS;
       } else if (disjunction == null) {
-        // We haven't statred skipping yet
-        return doc = target;
+        if (docsWithField != null) {
+          // The field is sparse and we're only interested in documents that have a value.
+          assert dense == false;
+          return doc = docsWithField.advance(target);
+        } else {
+          // We haven't started skipping yet
+          return doc = target;
+        }
       } else {
         PostingsEnumAndOrd top = disjunction.top();
         if (top == null) {
@@ -514,13 +540,16 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
      * Update this iterator to only match postings whose term has an ordinal between {@code minOrd}
      * included and {@code maxOrd} included.
      */
-    void update(int minOrd, int maxOrd) throws IOException {
-      if (maxOrd - minOrd + 1 > MAX_TERMS) {
-        return;
-      }
-      if (postings == null) {
+    private void update(int minOrd, int maxOrd) throws IOException {
+      final int maxTerms = Math.min(MAX_TERMS, IndexSearcher.getMaxClauseCount());
+      final int size = Math.max(0, maxOrd - minOrd + 1);
+      if (size > maxTerms) {
+        if (dense == false && docsWithField == null) {
+          docsWithField = getSortedDocValues(context, field);
+        }
+      } else if (postings == null) {
         init(minOrd, maxOrd);
-      } else if (maxOrd - minOrd + 1 < postings.size()) {
+      } else if (size < postings.size()) {
         // One or more ords got removed
         assert postings.isEmpty() || postings.getFirst().ord <= minOrd;
         while (postings.isEmpty() == false && postings.getFirst().ord < minOrd) {
@@ -543,8 +572,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     private void init(int minOrd, int maxOrd) throws IOException {
       final int size = Math.max(0, maxOrd - minOrd + 1);
       postings = new ArrayDeque<>(size);
-      if (maxOrd >= minOrd) {
-        TermsEnum docValuesTerms = values.termsEnum();
+      if (size > 0) {
         docValuesTerms.seekExact(minOrd);
         BytesRef minTerm = docValuesTerms.term();
         TermsEnum terms = context.reader().terms(field).iterator();
@@ -557,12 +585,13 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           BytesRef next = terms.next();
           if (next == null) {
             throw new IllegalStateException(
-                "Terms have "
+                "Terms have more than "
                     + ord
-                    + " unique terms while doc values have "
-                    + values.getValueCount()
+                    + " unique terms while doc values have exactly "
+                    + ord
                     + " terms");
           }
+          assert docValuesTerms.seekExact(next) && docValuesTerms.ord() == ord;
           postings.add(new PostingsEnumAndOrd(terms.postings(null, PostingsEnum.NONE), ord));
         }
       }
