@@ -19,7 +19,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* LUCENE-10661: Reduce memory copy in BytesStore. (luyuncheng)
 
 Bug Fixes
 ---------------------
@@ -92,8 +93,6 @@ Optimizations
   (Greg Miller)
 
 * LUCENE-10653: BlockMaxMaxscoreScorer uses heapify instead of individual adds. (Greg Miller)
-
-* LUCENE-10661: Reduce memory copy in BytesStore. (luyuncheng)
 
 Changes in runtime behavior
 ---------------------
