@@ -227,8 +227,8 @@ public class TestBytesStore extends LuceneTestCase {
         bytes.writeTo(out);
         out.close();
         IndexInput in = dir.openInput("bytes", IOContext.DEFAULT);
-        bytesToVerify =
-            new BytesStore(in, numBytes, TestUtil.nextInt(random(), 256, Integer.MAX_VALUE));
+        bytesToVerify = new BytesStore(TestUtil.nextInt(random(), 8, 20));
+        bytesToVerify.copyBytes(in, numBytes);
         in.close();
         dir.close();
       } else {
