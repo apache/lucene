@@ -41,8 +41,6 @@ New Features
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
   analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
 
-* LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
-
 Improvements
 ---------------------
 
@@ -91,7 +89,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
 
 Improvements
 ---------------------

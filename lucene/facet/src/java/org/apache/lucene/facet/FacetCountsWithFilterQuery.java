@@ -31,7 +31,11 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 
-/** Base class for facet counts. It allows for a query to be passed in to filter the match set. */
+/**
+ * Base class for facet counts. It allows for a query to be passed in to filter the match set.
+ *
+ * @lucene.experimental
+ */
 public abstract class FacetCountsWithFilterQuery extends Facets {
 
   /**
@@ -57,6 +61,10 @@ public abstract class FacetCountsWithFilterQuery extends Facets {
     List<DocIdSetIterator> allIterators = new ArrayList<>();
     allIterators.add(hits.bits.iterator());
     allIterators.addAll(Arrays.asList(iterators));
+    if (allIterators.stream().anyMatch(Objects::isNull)) {
+      // if any of the iterators are null, there are no matching docs
+      return null;
+    }
 
     if (fastMatchQuery != null) {
       final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(hits.context);
@@ -65,13 +73,16 @@ public abstract class FacetCountsWithFilterQuery extends Facets {
       final Weight fastMatchWeight =
           searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
       final Scorer s = fastMatchWeight.scorer(hits.context);
-      allIterators.add(s == null ? null : s.iterator());
+      DocIdSetIterator fastMatchQueryIterator = s.iterator();
+      if (fastMatchQueryIterator == null) {
+        // no matching docs by the fast match query
+        return null;
+      } else {
+        allIterators.add(fastMatchQueryIterator);
+      }
     }
 
-    if (allIterators.stream().anyMatch(Objects::isNull)) {
-      // if any of the iterators are null, there are no matching docs
-      return null;
-    } else if (allIterators.size() == 1) {
+    if (allIterators.size() == 1) {
       return allIterators.get(0);
     } else {
       return ConjunctionUtils.intersectIterators(allIterators);
