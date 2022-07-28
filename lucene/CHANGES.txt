@@ -22,6 +22,8 @@ Optimizations
 
 * LUCENE-10661: Reduce memory copy in BytesStore. (luyuncheng)
 
+* GITHUB#1020: Support #scoreSupplier and small optimizations to DocValuesRewriteMethod. (Greg Miller)
+
 Bug Fixes
 ---------------------
 (No changes)
