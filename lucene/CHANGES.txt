@@ -205,6 +205,8 @@ Bug Fixes
 
 * GITHUB#1028: Fix error in TieredMergePolicy (Lin Jian)
 
+* LUCENE-10663: Fix KnnVectorQuery explain incorrect when multiple segments. (Shiming Li)
+
 Other
 ---------------------
 
