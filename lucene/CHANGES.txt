@@ -102,7 +102,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
 
 Other
 ---------------------
