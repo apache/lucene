@@ -100,6 +100,8 @@ Optimizations
 
 * LUCENE-10661: Reduce memory copy in BytesStore. (luyuncheng)
 
+* GITHUB#1020: Support #scoreSupplier and small optimizations to DocValuesRewriteMethod. (Greg Miller)
+
 Bug Fixes
 ---------------------
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
@@ -169,8 +171,6 @@ Optimizations
   (Greg Miller)
 
 * LUCENE-10653: BlockMaxMaxscoreScorer uses heapify instead of individual adds. (Greg Miller)
-
-* GITHUB#1020: Support #scoreSupplier and small optimizations to DocValuesRewriteMethod. (Greg Miller)
 
 Changes in runtime behavior
 ---------------------
