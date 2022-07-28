@@ -101,7 +101,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* LUCENE-10663: Fix KnnVectorQuery explain incorrect when multiple segments. (Shiming Li)
 
 Other
 ---------------------
@@ -204,8 +204,6 @@ Bug Fixes
 * LUCENE-10623: Error implementation of docValueCount for SortingSortedSetDocValues (Lu Xugang)
 
 * GITHUB#1028: Fix error in TieredMergePolicy (Lin Jian)
-
-* LUCENE-10663: Fix KnnVectorQuery explain incorrect when multiple segments. (Shiming Li)
 
 Other
 ---------------------
