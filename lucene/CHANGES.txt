@@ -34,7 +34,7 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* LUCENE-10559: Add Prefilter Option to KnnGraphTester (Kaival Parikh)
 
 ======================== Lucene 9.3.0 =======================
 
