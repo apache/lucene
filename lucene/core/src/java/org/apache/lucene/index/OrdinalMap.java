@@ -22,8 +22,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
+import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -61,6 +63,123 @@ public class OrdinalMap implements Accountable {
     protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
       return a.compareTermTo(b) < 0;
     }
+  }
+
+  private static class PrefixFilteredTermsEnum extends TermsEnum {
+
+    private final TermsEnum in;
+    private int prefixLength;
+    private long maxOrd;
+    private final BytesRef term = new BytesRef(); 
+
+    PrefixFilteredTermsEnum(TermsEnum in, int prefixLength) throws IOException {
+      this.in = in;
+      this.prefixLength = prefixLength;
+      if (prefixLength == 0) {
+        maxOrd = Long.MAX_VALUE;
+      } else {
+        BytesRef currentTerm = in.term();
+        BytesRef prefix = BytesRef.deepCopyOf(currentTerm);
+        prefix.length = prefixLength;
+        BytesRef nextPrefix = BytesRef.deepCopyOf(prefix);
+        while (nextPrefix.length > 0 && nextPrefix.bytes[nextPrefix.offset + nextPrefix.length - 1] == (byte) 0xFF) {
+          nextPrefix.length--;
+        }
+        if (nextPrefix.length > 0) {
+          nextPrefix.bytes[nextPrefix.offset + nextPrefix.length - 1]++;
+        }
+        if (nextPrefix.length == 0) {
+          maxOrd = Long.MAX_VALUE;
+        } else {
+          long currentOrd = in.ord();
+          SeekStatus status = in.seekCeil(nextPrefix);
+          if (status == SeekStatus.END) {
+            maxOrd = Long.MAX_VALUE;
+          } else {
+            maxOrd = in.ord();
+          }
+          in.seekExact(currentOrd);
+        }
+      }
+    }
+
+    @Override
+    public BytesRef next() throws IOException {
+      BytesRef next = in.next();
+      if (next == null || in.ord() >= maxOrd) {
+        return null;
+      }
+      term.bytes = next.bytes;
+      term.offset = next.offset + prefixLength;
+      term.length = next.length - prefixLength;
+      return term;
+    }
+
+    @Override
+    public AttributeSource attributes() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean seekExact(BytesRef text) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public SeekStatus seekCeil(BytesRef text) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void seekExact(long ord) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void seekExact(BytesRef term, TermState state) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public BytesRef term() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long ord() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int docFreq() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long totalTermFreq() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ImpactsEnum impacts(int flags) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public TermState termState() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long size() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
   }
 
   private static class SegmentMap implements Accountable {
@@ -240,54 +359,63 @@ public class OrdinalMap implements Accountable {
     long[] ordDeltaBits = new long[subs.length];
     long[] segmentOrds = new long[subs.length];
 
-    List<TermsEnumIndex> subEnums = new ArrayList<>(subs.length);
-    for (int i = 0; i < subs.length; i++) {
-      TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);
-      if (sub.next() != null) {
-        subEnums.add(sub);
+    TermsEnum[] subEnums = new TermsEnum[subs.length];
+    for (int i = 0; i < subs.length; ++i) {
+      TermsEnum te = subs[segmentMap.newToOld(i)];
+      if (te.next() != null) {
+        subEnums[i] = te;
       }
     }
-    List<TermsEnumIndex> other = new ArrayList<>();
 
-    TermsEnumIndex.TermState topState = new TermsEnumIndex.TermState();
-    BytesRefBuilder scratch = new BytesRefBuilder();
+    final TermsEnumIndex.TermState topState = new TermsEnumIndex.TermState();
+    final BytesRefBuilder scratch = new BytesRefBuilder();
 
     long globalOrd = 0;
-    while (subEnums.isEmpty() == false) {
-
+    while (true) {
       // Compute a number of bytes that the next WINDOW_SIZE terms are guaranteed to share as a
       // prefix with the current term
-      TermsEnumIndex min = null;
-      for (TermsEnumIndex tei : subEnums) {
-        if (min == null || tei.compareTermTo(min) < 0) {
-          min = tei;
+      BytesRef min = null;
+      for (TermsEnum te : subEnums) {
+        if (te != null) {
+          if (min == null || te.term().compareTo(min) < 0) {
+            min = te.term();
+          }
         }
       }
-      scratch.copyBytes(min.term());
+      
+      if (min == null) {
+        // All enums are exhausted
+        break;
+      }
+
+      scratch.copyBytes(min);
       int windowSharedPrefix = 0;
-      for (TermsEnumIndex tei : subEnums) {
-        long currentOrd = tei.termsEnum.ord();
-        if (currentOrd + windowSize <= tei.termsEnum.size()) {
-          tei.seekExact(currentOrd + windowSize - 1);
-          int teiWindowSharedPrefix = StringHelper.bytesDifference(scratch.get(), tei.term());
-          windowSharedPrefix = Math.max(windowSharedPrefix, teiWindowSharedPrefix);
-          tei.seekExact(currentOrd);
+      for (TermsEnum te : subEnums) {
+        if (te != null) {
+          long currentOrd = te.ord();
+          if (currentOrd + windowSize <= te.size()) {
+            te.seekExact(currentOrd + windowSize - 1);
+            int teiWindowSharedPrefix = StringHelper.bytesDifference(scratch.get(), te.term());
+            windowSharedPrefix = Math.max(windowSharedPrefix, teiWindowSharedPrefix);
+            te.seekExact(currentOrd);
+          }
         }
       }
 
-      BytesRef windowPrefix = scratch.get().clone();
-      windowPrefix.length = windowSharedPrefix;
+      scratch.setLength(windowSharedPrefix);
+      BytesRef windowPrefix = scratch.get();
       TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
-      for (TermsEnumIndex tei : subEnums) {
-        if (StringHelper.startsWith(tei.term(), windowPrefix)) {
-          tei.setPrefixLength(windowSharedPrefix);
-          queue.add(tei);
-        } else {
-          other.add(tei);
+      for (int i = 0; i < subEnums.length; ++i) {
+        TermsEnum te = subEnums[i];
+        if (te != null) {
+          if (StringHelper.startsWith(te.term(), windowPrefix)) {
+            if (windowPrefix.length > 0) {
+              te = new PrefixFilteredTermsEnum(te, windowPrefix.length);
+            }
+            queue.add(new TermsEnumIndex(te, i));
+          }
         }
       }
-      subEnums.clear();
-      assert queue.size() > 0;
 
       for (int i = 0; i < windowSize && queue.size() != 0; ++i) {
         TermsEnumIndex top = queue.top();
@@ -343,13 +471,6 @@ public class OrdinalMap implements Accountable {
         globalOrdDeltas.add(globalOrdDelta);
         globalOrd++;
       }
-
-      for (TermsEnumIndex tei : queue) {
-        tei.setPrefixLength(0);
-        subEnums.add(tei);
-      }
-      subEnums.addAll(other);
-      other.clear();
     }
 
     long ramBytesUsed = BASE_RAM_BYTES_USED + segmentMap.ramBytesUsed();

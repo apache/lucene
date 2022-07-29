@@ -176,11 +176,14 @@ public class TestOrdinalMap extends LuceneTestCase {
       switch (random().nextInt(3)) {
         case 0:
           prefix = "";
+          break;
         case 1:
           prefix = "abc";
+          break;
         case 2:
         default:
           prefix = "xyz";
+          break;
       }
       String value = prefix + TestUtil.randomSimpleString(random());
       sdvf.setBytesValue(new BytesRef(value));

@@ -76,7 +76,7 @@ class TermsEnumIndex {
   private int prefixLength;
   private long currentTermPrefix8;
 
-  TermsEnumIndex(TermsEnum termsEnum, int subIndex) {
+  TermsEnumIndex(TermsEnum termsEnum, int subIndex) throws IOException {
     this.termsEnum = termsEnum;
     this.subIndex = subIndex;
   }
