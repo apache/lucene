@@ -659,8 +659,9 @@ public abstract class DocValuesConsumer implements Closeable {
             }
           }
         }
-        liveTerms[sub] = new BitsFilteredTermsEnum(dv.termsEnum(), bitset);
-        weights[sub] = bitset.cardinality();
+        final long numTerms = bitset.cardinality();
+        liveTerms[sub] = new BitsFilteredTermsEnum(dv.termsEnum(), bitset, numTerms);
+        weights[sub] = numTerms;
       }
     }
 
@@ -846,8 +847,9 @@ public abstract class DocValuesConsumer implements Closeable {
             }
           }
         }
-        liveTerms[sub] = new BitsFilteredTermsEnum(dv.termsEnum(), bitset);
-        weights[sub] = bitset.cardinality();
+        final long numTerms = bitset.cardinality();
+        liveTerms[sub] = new BitsFilteredTermsEnum(dv.termsEnum(), bitset, numTerms);
+        weights[sub] = numTerms;
       }
     }
 
@@ -986,11 +988,14 @@ public abstract class DocValuesConsumer implements Closeable {
   // TODO: seek-by-ord to nextSetBit
   static class BitsFilteredTermsEnum extends FilteredTermsEnum {
     final LongBitSet liveTerms;
+    final long numTerms;
 
-    BitsFilteredTermsEnum(TermsEnum in, LongBitSet liveTerms) {
+    BitsFilteredTermsEnum(TermsEnum in, LongBitSet liveTerms, long numTerms) {
       super(in, false); // <-- not passing false here wasted about 3 hours of my time!!!!!!!!!!!!!
       assert liveTerms != null;
       this.liveTerms = liveTerms;
+      this.numTerms = numTerms;
+      assert numTerms == liveTerms.cardinality();
     }
 
     @Override
@@ -1000,6 +1005,11 @@ public abstract class DocValuesConsumer implements Closeable {
       } else {
         return AcceptStatus.NO;
       }
+    }
+
+    @Override
+    public long size() {
+      return numTerms;
     }
   }
 
