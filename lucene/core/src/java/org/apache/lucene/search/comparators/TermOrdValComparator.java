@@ -403,7 +403,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           minOrd = -1;
         }
 
-        if (bottomOrd == Integer.MAX_VALUE) {
+        if (bottomOrd == missingOrd) {
           // The queue still contains missing values.
           if (singleSort) {
             // If there is no tie breaker, we can start ignoring missing values from now on.
@@ -421,7 +421,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
       } else {
 
-        if (bottomOrd == -1) {
+        if (bottomOrd == missingOrd) {
           // The queue still contains missing values.
           if (singleSort) {
             // If there is no tie breaker, we can start ignoring missing values from now on.
