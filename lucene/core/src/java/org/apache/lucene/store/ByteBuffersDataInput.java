@@ -47,7 +47,7 @@ public final class ByteBuffersDataInput extends DataInput
   private final long offset;
 
   private long pos;
-  private byte[] copyBuffer;
+  private byte[] shareBuffer;
 
   /**
    * Read data from a set of contiguous buffers. All data buffers except for the last one must have
@@ -78,7 +78,7 @@ public final class ByteBuffersDataInput extends DataInput
     // The initial "position" of this stream is shifted by the position of the first block.
     this.offset = blocks[0].position();
     this.pos = offset;
-    this.copyBuffer = new byte[0];
+    this.shareBuffer = new byte[0];
   }
 
   public long size() {
@@ -194,8 +194,8 @@ public final class ByteBuffersDataInput extends DataInput
       this.pos += length;
       return block.slice(blockOffset, length);
     } else {
-      copyBuffer = ArrayUtil.growNoCopy(copyBuffer, length);
-      ByteBuffer bb = ByteBuffer.wrap(copyBuffer, 0, length);
+      shareBuffer = ArrayUtil.growNoCopy(shareBuffer, length);
+      ByteBuffer bb = ByteBuffer.wrap(shareBuffer, 0, length);
       readBytes(bb, length);
       return bb.rewind().order(ByteOrder.LITTLE_ENDIAN);
     }
