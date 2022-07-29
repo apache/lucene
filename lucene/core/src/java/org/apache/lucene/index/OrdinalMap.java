@@ -172,13 +172,23 @@ public class OrdinalMap implements Accountable {
   public static OrdinalMap build(
       IndexReader.CacheKey owner, TermsEnum[] subs, long[] weights, float acceptableOverheadRatio)
       throws IOException {
+    return build(owner, subs, weights, acceptableOverheadRatio, WINDOW_SIZE);
+  }
+
+  static OrdinalMap build(
+      IndexReader.CacheKey owner,
+      TermsEnum[] subs,
+      long[] weights,
+      float acceptableOverheadRatio,
+      int windowSize)
+      throws IOException {
     if (subs.length != weights.length) {
       throw new IllegalArgumentException("subs and weights must have the same length");
     }
 
     // enums are not sorted, so let's sort to save memory
     final SegmentMap segmentMap = new SegmentMap(weights);
-    return new OrdinalMap(owner, subs, segmentMap, acceptableOverheadRatio);
+    return new OrdinalMap(owner, subs, segmentMap, acceptableOverheadRatio, windowSize);
   }
 
   private static final long BASE_RAM_BYTES_USED =
@@ -204,7 +214,8 @@ public class OrdinalMap implements Accountable {
       IndexReader.CacheKey owner,
       TermsEnum[] subs,
       SegmentMap segmentMap,
-      float acceptableOverheadRatio)
+      float acceptableOverheadRatio,
+      final int windowSize)
       throws IOException {
     for (TermsEnum te : subs) {
       if (te.size() < 0) {
@@ -256,8 +267,8 @@ public class OrdinalMap implements Accountable {
       int windowSharedPrefix = 0;
       for (TermsEnumIndex tei : subEnums) {
         long currentOrd = tei.termsEnum.ord();
-        if (currentOrd + WINDOW_SIZE <= tei.termsEnum.size()) {
-          tei.seekExact(currentOrd + WINDOW_SIZE - 1);
+        if (currentOrd + windowSize <= tei.termsEnum.size()) {
+          tei.seekExact(currentOrd + windowSize - 1);
           int teiWindowSharedPrefix = StringHelper.bytesDifference(scratch.get(), tei.term());
           windowSharedPrefix = Math.max(windowSharedPrefix, teiWindowSharedPrefix);
           tei.seekExact(currentOrd);
@@ -278,7 +289,7 @@ public class OrdinalMap implements Accountable {
       subEnums.clear();
       assert queue.size() > 0;
 
-      for (int i = 0; i < WINDOW_SIZE && queue.size() != 0; ++i) {
+      for (int i = 0; i < windowSize && queue.size() != 0; ++i) {
         TermsEnumIndex top = queue.top();
         topState.copyFrom(top);
         int firstSegmentIndex = Integer.MAX_VALUE;

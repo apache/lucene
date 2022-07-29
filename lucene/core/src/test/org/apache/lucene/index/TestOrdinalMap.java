@@ -19,6 +19,8 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
@@ -30,6 +32,7 @@ import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
+import org.apache.lucene.util.packed.PackedInts;
 
 public class TestOrdinalMap extends LuceneTestCase {
 
@@ -154,6 +157,74 @@ public class TestOrdinalMap extends LuceneTestCase {
 
     iw.close();
     r.close();
+    dir.close();
+  }
+
+  public void testSharedPrefixes() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig cfg =
+        new IndexWriterConfig(new MockAnalyzer(random()))
+            .setCodec(TestUtil.alwaysDocValuesFormat(TestUtil.getDefaultDocValuesFormat()))
+            .setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter iw = new IndexWriter(dir, cfg);
+    Document doc = new Document();
+    SortedDocValuesField sdvf = new SortedDocValuesField("field", new BytesRef());
+    doc.add(sdvf);
+    final int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; ++i) {
+      String prefix;
+      switch (random().nextInt(3)) {
+        case 0:
+          prefix = "";
+        case 1:
+          prefix = "abc";
+        case 2:
+        default:
+          prefix = "xyz";
+      }
+      String value = prefix + TestUtil.randomSimpleString(random());
+      sdvf.setBytesValue(new BytesRef(value));
+      iw.addDocument(doc);
+      if (i == 500 || random().nextInt(100) == 0) {
+        iw.flush();
+      }
+    }
+
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    TermsEnum[] tes = new TermsEnum[reader.leaves().size()];
+    long[] weights = new long[reader.leaves().size()];
+    for (int i = 0; i < tes.length; ++i) {
+      tes[i] = reader.leaves().get(i).reader().getSortedDocValues("field").termsEnum();
+      weights[i] = TestUtil.nextInt(random(), 1, 10);
+    }
+    final int windowSize = TestUtil.nextInt(random(), 5, 50);
+    OrdinalMap map = OrdinalMap.build(null, tes, weights, PackedInts.DEFAULT, windowSize);
+
+    Set<BytesRef> allValues = new HashSet<>();
+    for (TermsEnum te : tes) {
+      te.seekExact(0);
+      for (BytesRef term = te.term(); term != null; term = te.next()) {
+        allValues.add(BytesRef.deepCopyOf(term));
+      }
+    }
+    // The global map is not missing a value
+    assertEquals(allValues.size(), map.getValueCount());
+
+    // The global map returns values in ascending order
+    BytesRef previous = null;
+    for (int globalOrd = 0; globalOrd < map.getValueCount(); ++globalOrd) {
+      int segIndex = map.getFirstSegmentNumber(globalOrd);
+      int segOrd = (int) map.getFirstSegmentOrd(globalOrd);
+      tes[segIndex].seekExact(segOrd);
+      BytesRef current = BytesRef.deepCopyOf(tes[segIndex].term());
+      if (globalOrd > 0) {
+        assertTrue(previous.compareTo(current) < 0);
+      }
+      previous = current;
+    }
+
+    reader.close();
     dir.close();
   }
 }
