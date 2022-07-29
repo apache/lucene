@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -46,6 +47,7 @@ public final class ByteBuffersDataInput extends DataInput
   private final long offset;
 
   private long pos;
+  private byte[] copyBuffer;
 
   /**
    * Read data from a set of contiguous buffers. All data buffers except for the last one must have
@@ -76,6 +78,7 @@ public final class ByteBuffersDataInput extends DataInput
     // The initial "position" of this stream is shifted by the position of the first block.
     this.offset = blocks[0].position();
     this.pos = offset;
+    this.copyBuffer = new byte[0];
   }
 
   public long size() {
@@ -186,14 +189,15 @@ public final class ByteBuffersDataInput extends DataInput
     ByteBuffer block = blocks[blockIndex].duplicate();
     block.position(blockOffset);
     // if [pos, pos + len] stay in one ByteBuffer, we can ignore memory copy,
-    // otherwise need to copy bytes into a new ByteBuffer
+    // otherwise need to copy bytes into a copyBuffer
     if (block.remaining() >= length) {
       this.pos += length;
       return block.slice(blockOffset, length);
     } else {
-      ByteBuffer copyBuffer = ByteBuffer.allocate(length);
-      readBytes(copyBuffer, length);
-      return copyBuffer.rewind().order(ByteOrder.LITTLE_ENDIAN);
+      copyBuffer = ArrayUtil.growNoCopy(copyBuffer, length);
+      ByteBuffer bb = ByteBuffer.wrap(copyBuffer, 0, length);
+      readBytes(bb, length);
+      return bb.rewind().order(ByteOrder.LITTLE_ENDIAN);
     }
   }
 
