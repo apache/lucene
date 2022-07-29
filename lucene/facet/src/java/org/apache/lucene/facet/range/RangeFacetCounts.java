@@ -36,6 +36,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Base class for range faceting.
@@ -216,21 +217,59 @@ abstract class RangeFacetCounts extends Facets {
     totCount -= missingCount;
   }
 
+  /**
+   * {@inheritDoc}
+   *
+   * <p>NOTE: This implementation guarantees that ranges will be returned in the order specified by
+   * the user when calling the constructor.
+   */
   @Override
-  public FacetResult getTopChildren(int topN, String dim, String... path) {
-    validateTopN(topN);
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    validateDimAndPathForGetChildren(dim, path);
     LabelAndValue[] labelValues = new LabelAndValue[counts.length];
     for (int i = 0; i < counts.length; i++) {
       labelValues[i] = new LabelAndValue(ranges[i].label, counts[i]);
     }
     return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
+  }
+
+  @Override
+  public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
+    validateTopN(topN);
+    validateDimAndPathForGetChildren(dim, path);
+
+    PriorityQueue<Entry> pq =
+        new PriorityQueue<>(Math.min(topN, counts.length)) {
+          @Override
+          protected boolean lessThan(Entry a, Entry b) {
+            int cmp = Integer.compare(a.count, b.count);
+            if (cmp == 0) {
+              cmp = b.label.compareTo(a.label);
+            }
+            return cmp < 0;
+          }
+        };
+
+    int childCount = 0;
+    Entry e = null;
+    for (int i = 0; i < counts.length; i++) {
+      if (counts[i] != 0) {
+        childCount++;
+        if (e == null) {
+          e = new Entry();
+        }
+        e.label = ranges[i].label;
+        e.count = counts[i];
+        e = pq.insertWithOverflow(e);
+      }
+    }
+
+    LabelAndValue[] results = new LabelAndValue[pq.size()];
+    while (pq.size() != 0) {
+      Entry entry = pq.pop();
+      results[pq.size()] = new LabelAndValue(entry.label, entry.count);
+    }
+    return new FacetResult(dim, path, totCount, results, childCount);
   }
 
   @Override
@@ -259,5 +298,21 @@ abstract class RangeFacetCounts extends Facets {
       b.append('\n');
     }
     return b.toString();
+  }
+
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
+    }
+  }
+
+  /** Reusable entry to hold range label and int count. */
+  private static final class Entry {
+    int count;
+    String label;
   }
 }

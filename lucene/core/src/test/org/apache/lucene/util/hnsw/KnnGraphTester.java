@@ -39,9 +39,9 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene93.Lucene93Codec;
-import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsReader;
+import org.apache.lucene.codecs.lucene94.Lucene94Codec;
+import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
@@ -248,7 +248,7 @@ public class KnnGraphTester {
         KnnVectorsReader vectorsReader =
             ((PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) leafReader).getVectorReader())
                 .getFieldReader(KNN_FIELD);
-        HnswGraph knnValues = ((Lucene93HnswVectorsReader) vectorsReader).getGraph(KNN_FIELD);
+        HnswGraph knnValues = ((Lucene94HnswVectorsReader) vectorsReader).getGraph(KNN_FIELD);
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());
       }
@@ -273,8 +273,7 @@ public class KnnGraphTester {
     for (int i = 0; i < hnsw.size(); i++) {
       NeighborArray neighbors = hnsw.getNeighbors(0, i);
       System.out.printf(Locale.ROOT, "%5d", i);
-      NeighborArray sorted =
-          new NeighborArray(neighbors.size(), similarityFunction.reversed == false);
+      NeighborArray sorted = new NeighborArray(neighbors.size(), true);
       for (int j = 0; j < neighbors.size(); j++) {
         int node = neighbors.node[j];
         float score = neighbors.score[j];
@@ -555,7 +554,7 @@ public class KnnGraphTester {
                   .order(ByteOrder.LITTLE_ENDIAN)
                   .asFloatBuffer();
           offset += blockSize;
-          NeighborQueue queue = new NeighborQueue(topK, similarityFunction.reversed);
+          NeighborQueue queue = new NeighborQueue(topK, false);
           for (; j < numDocs && vectors.hasRemaining(); j++) {
             vectors.get(vector);
             float d = similarityFunction.compare(query, vector);
@@ -580,10 +579,10 @@ public class KnnGraphTester {
   private int createIndex(Path docsPath, Path indexPath) throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
     iwc.setCodec(
-        new Lucene93Codec() {
+        new Lucene94Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene93HnswVectorsFormat(maxConn, beamWidth);
+            return new Lucene94HnswVectorsFormat(maxConn, beamWidth);
           }
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);

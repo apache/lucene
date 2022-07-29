@@ -252,10 +252,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
       if (matches(packedValue)) {
-        int docID;
-        while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          visit(docID);
-        }
+        adder.add(iterator);
       }
     }
 
@@ -360,10 +357,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
       assert packedValue.length == pointBytes.length;
       if (Arrays.equals(packedValue, pointBytes)) {
         // The point for this set of docs matches the point we are querying on
-        int docID;
-        while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          visit(docID);
-        }
+        adder.add(iterator);
       }
     }
 

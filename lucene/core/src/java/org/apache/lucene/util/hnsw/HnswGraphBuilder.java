@@ -51,7 +51,6 @@ public final class HnswGraphBuilder {
   private final VectorSimilarityFunction similarityFunction;
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
-  private final BoundsChecker bound;
   private final HnswGraphSearcher graphSearcher;
 
   final OnHeapHnswGraph hnsw;
@@ -96,15 +95,14 @@ public final class HnswGraphBuilder {
     this.ml = 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode, similarityFunction.reversed);
+    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode);
     this.graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            new NeighborQueue(beamWidth, similarityFunction.reversed == false),
+            new NeighborQueue(beamWidth, true),
             new FixedBitSet(vectorValues.size()));
-    bound = BoundsChecker.create(similarityFunction.reversed);
     // in scratch we store candidates in reverse order: worse candidates are first
-    scratch = new NeighborArray(Math.max(beamWidth, M + 1), similarityFunction.reversed);
+    scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
   }
 
   /**
@@ -139,8 +137,12 @@ public final class HnswGraphBuilder {
     this.infoStream = infoStream;
   }
 
+  public OnHeapHnswGraph getGraph() {
+    return hnsw;
+  }
+
   /** Inserts a doc with vector value to the graph */
-  void addGraphNode(int node, float[] value) throws IOException {
+  public void addGraphNode(int node, float[] value) throws IOException {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
@@ -225,8 +227,8 @@ public final class HnswGraphBuilder {
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float score = candidates.topScore();
-      scratch.add(candidates.pop(), score);
+      float maxSimilarity = candidates.topScore();
+      scratch.add(candidates.pop(), maxSimilarity);
     }
   }
 
@@ -245,11 +247,10 @@ public final class HnswGraphBuilder {
       NeighborArray neighbors,
       RandomAccessVectorValues vectorValues)
       throws IOException {
-    bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {
-      float diversityCheck =
+      float neighborSimilarity =
           similarityFunction.compare(candidate, vectorValues.vectorValue(neighbors.node[i]));
-      if (bound.check(diversityCheck) == false) {
+      if (neighborSimilarity >= score) {
         return false;
       }
     }
@@ -261,16 +262,17 @@ public final class HnswGraphBuilder {
    * neighbours
    */
   private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
+    float minAcceptedSimilarity;
     for (int i = neighbors.size() - 1; i > 0; i--) {
       int cNode = neighbors.node[i];
       float[] cVector = vectorValues.vectorValue(cNode);
-      bound.set(neighbors.score[i]);
+      minAcceptedSimilarity = neighbors.score[i];
       // check the candidate against its better-scoring neighbors
       for (int j = i - 1; j >= 0; j--) {
-        float diversityCheck =
+        float neighborSimilarity =
             similarityFunction.compare(cVector, buildVectors.vectorValue(neighbors.node[j]));
         // node i is too similar to node j given its score relative to the base node
-        if (bound.check(diversityCheck) == false) {
+        if (neighborSimilarity >= minAcceptedSimilarity) {
           return i;
         }
       }

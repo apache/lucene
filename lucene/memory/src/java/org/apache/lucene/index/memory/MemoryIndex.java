@@ -1150,7 +1150,6 @@ public class MemoryIndex {
 
       @Override
       public long nextOrd() throws IOException {
-        if (ord >= values.size()) return NO_MORE_ORDS;
         return ord++;
       }
 

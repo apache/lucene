@@ -94,7 +94,7 @@ public class RangeFacetsExample implements Closeable {
     FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
 
     Facets facets = new LongRangeFacetCounts("timestamp", fc, PAST_HOUR, PAST_SIX_HOURS, PAST_DAY);
-    return facets.getTopChildren(10, "timestamp");
+    return facets.getAllChildren("timestamp");
   }
 
   /** User drills down on the specified range. */

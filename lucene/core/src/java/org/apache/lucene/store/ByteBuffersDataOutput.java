@@ -309,6 +309,29 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     return arr;
   }
 
+  @Override
+  public void copyBytes(DataInput input, long numBytes) throws IOException {
+    assert numBytes >= 0 : "numBytes=" + numBytes;
+    int length = (int) numBytes;
+    while (length > 0) {
+      if (!currentBlock.hasRemaining()) {
+        appendBlock();
+      }
+      if (!currentBlock.hasArray()) {
+        break;
+      }
+      int chunk = Math.min(currentBlock.remaining(), length);
+      final int pos = currentBlock.position();
+      input.readBytes(currentBlock.array(), Math.addExact(currentBlock.arrayOffset(), pos), chunk);
+      length -= chunk;
+      currentBlock.position(pos + chunk);
+    }
+    // if current block is Direct, we fall back to super.copyBytes for remaining bytes
+    if (length > 0) {
+      super.copyBytes(input, length);
+    }
+  }
+
   /** Copy the current content of this object into another {@link DataOutput}. */
   public void copyTo(DataOutput output) throws IOException {
     for (ByteBuffer bb : blocks) {

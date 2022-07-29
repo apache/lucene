@@ -45,7 +45,10 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.VectorUtil;
 
 /** TestKnnVectorQuery tests KnnVectorQuery. */
@@ -443,6 +446,34 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  public void testExplainMultipleSegments() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 0; j < 5; j++) {
+          Document doc = new Document();
+          doc.add(new KnnVectorField("field", new float[] {j, j}));
+          w.addDocument(doc);
+          w.commit();
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
+        Explanation matched = searcher.explain(query, 2);
+        assertTrue(matched.isMatch());
+        assertEquals(1 / 2f, matched.getValue());
+        assertEquals(0, matched.getDetails().length);
+        assertEquals("within top 3", matched.getDescription());
+
+        Explanation nomatch = searcher.explain(query, 4);
+        assertFalse(nomatch.isMatch());
+        assertEquals(0f, nomatch.getValue());
+        assertEquals(0, matched.getDetails().length);
+        assertEquals("not in top 3", nomatch.getDescription());
+      }
+    }
+  }
+
   /** Test that when vectors are abnormally distributed among segments, we still find the top K */
   public void testSkewedIndex() throws IOException {
     /* We have to choose the numbers carefully here so that some segment has more than the expected
@@ -699,6 +730,36 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /**
+   * Test that KnnVectorQuery optimizes the case where the filter query is backed by {@link
+   * BitSetIterator}.
+   */
+  public void testBitSetQuery() throws IOException {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, iwc)) {
+      final int numDocs = 100;
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new KnnVectorField("vector", randomVector(dim)));
+        w.addDocument(d);
+      }
+      w.commit();
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
+        expectThrows(
+            UnsupportedOperationException.class,
+            () ->
+                searcher.search(
+                    new KnnVectorQuery("vector", randomVector(dim), 10, filter), numDocs));
+      }
+    }
+  }
+
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   private Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
@@ -795,6 +856,56 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     @Override
     public CacheHelper getCoreCacheHelper() {
       return in.getCoreCacheHelper();
+    }
+  }
+
+  private static class ThrowingBitSetQuery extends Query {
+
+    private final FixedBitSet docs;
+
+    ThrowingBitSetQuery(FixedBitSet docs) {
+      this.docs = docs;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      return new ConstantScoreWeight(this, boost) {
+        @Override
+        public Scorer scorer(LeafReaderContext context) throws IOException {
+          BitSetIterator bitSetIterator =
+              new BitSetIterator(docs, docs.approximateCardinality()) {
+                @Override
+                public BitSet getBitSet() {
+                  throw new UnsupportedOperationException("reusing BitSet is not supported");
+                }
+              };
+          return new ConstantScoreScorer(this, score(), scoreMode, bitSetIterator);
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return false;
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {}
+
+    @Override
+    public String toString(String field) {
+      return "throwingBitSetQuery";
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return sameClassAs(other) && docs.equals(((ThrowingBitSetQuery) other).docs);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + docs.hashCode();
     }
   }
 }

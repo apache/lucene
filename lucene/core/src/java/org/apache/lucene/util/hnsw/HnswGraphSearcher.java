@@ -24,6 +24,7 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
@@ -38,7 +39,7 @@ public final class HnswGraphSearcher {
    */
   private final NeighborQueue candidates;
 
-  private final BitSet visited;
+  private BitSet visited;
 
   /**
    * Creates a new graph searcher.
@@ -80,7 +81,7 @@ public final class HnswGraphSearcher {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             similarityFunction,
-            new NeighborQueue(topK, similarityFunction.reversed == false),
+            new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
@@ -139,8 +140,8 @@ public final class HnswGraphSearcher {
       int visitedLimit)
       throws IOException {
     int size = graph.size();
-    NeighborQueue results = new NeighborQueue(topK, similarityFunction.reversed);
-    clearScratchState();
+    NeighborQueue results = new NeighborQueue(topK, false);
+    prepareScratchState(vectors.size());
 
     int numVisited = 0;
     for (int ep : eps) {
@@ -160,14 +161,14 @@ public final class HnswGraphSearcher {
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
+    float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
     if (results.size() >= topK) {
-      bound.set(results.topScore());
+      minAcceptedSimilarity = results.topScore();
     }
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
-      float topCandidateScore = candidates.topScore();
-      if (bound.check(topCandidateScore)) {
+      float topCandidateSimilarity = candidates.topScore();
+      if (topCandidateSimilarity < minAcceptedSimilarity) {
         break;
       }
 
@@ -184,13 +185,13 @@ public final class HnswGraphSearcher {
           results.markIncomplete();
           break;
         }
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         numVisited++;
-        if (bound.check(score) == false) {
-          candidates.add(friendOrd, score);
+        if (friendSimilarity >= minAcceptedSimilarity) {
+          candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.insertWithOverflow(friendOrd, score) && results.size() >= topK) {
-              bound.set(results.topScore());
+            if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.size() >= topK) {
+              minAcceptedSimilarity = results.topScore();
             }
           }
         }
@@ -203,8 +204,11 @@ public final class HnswGraphSearcher {
     return results;
   }
 
-  private void clearScratchState() {
+  private void prepareScratchState(int capacity) {
     candidates.clear();
+    if (visited.length() < capacity) {
+      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
+    }
     visited.clear(0, visited.length());
   }
 }
