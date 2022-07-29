@@ -446,6 +446,34 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  public void testExplainMultipleSegments() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 0; j < 5; j++) {
+          Document doc = new Document();
+          doc.add(new KnnVectorField("field", new float[] {j, j}));
+          w.addDocument(doc);
+          w.commit();
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
+        Explanation matched = searcher.explain(query, 2);
+        assertTrue(matched.isMatch());
+        assertEquals(1 / 2f, matched.getValue());
+        assertEquals(0, matched.getDetails().length);
+        assertEquals("within top 3", matched.getDescription());
+
+        Explanation nomatch = searcher.explain(query, 4);
+        assertFalse(nomatch.isMatch());
+        assertEquals(0f, nomatch.getValue());
+        assertEquals(0, matched.getDetails().length);
+        assertEquals("not in top 3", nomatch.getDescription());
+      }
+    }
+  }
+
   /** Test that when vectors are abnormally distributed among segments, we still find the top K */
   public void testSkewedIndex() throws IOException {
     /* We have to choose the numbers carefully here so that some segment has more than the expected
