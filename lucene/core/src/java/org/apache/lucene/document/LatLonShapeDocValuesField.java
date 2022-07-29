@@ -50,13 +50,13 @@ import org.apache.lucene.util.BytesRef;
  * @see LatLonDocValuesField
  * @lucene.experimental
  */
-final class LatLonShapeDocValuesField extends ShapeDocValuesField {
-  LatLonShapeDocValuesField(String name, List<ShapeField.DecodedTriangle> tessellation) {
+public final class LatLonShapeDocValuesField extends ShapeDocValuesField {
+  protected LatLonShapeDocValuesField(String name, List<ShapeField.DecodedTriangle> tessellation) {
     super(name, new LatLonShapeDocValues(tessellation));
   }
 
   /** Creates a {@code LatLonShapeDocValue} field from a given serialized value */
-  LatLonShapeDocValuesField(String name, BytesRef binaryValue) {
+  protected LatLonShapeDocValuesField(String name, BytesRef binaryValue) {
     super(name, new LatLonShapeDocValues(binaryValue));
   }
 

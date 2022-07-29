@@ -49,14 +49,14 @@ import org.apache.lucene.util.BytesRef;
  * @see XYDocValuesField
  * @lucene.experimental
  */
-final class XYShapeDocValuesField extends ShapeDocValuesField {
+public final class XYShapeDocValuesField extends ShapeDocValuesField {
 
-  XYShapeDocValuesField(String name, List<ShapeField.DecodedTriangle> tessellation) {
+  protected XYShapeDocValuesField(String name, List<ShapeField.DecodedTriangle> tessellation) {
     super(name, new XYShapeDocValues(tessellation));
   }
 
   /** Creates a {@code XYShapeDocValue} field from a given serialized value */
-  XYShapeDocValuesField(String name, BytesRef binaryValue) {
+  protected XYShapeDocValuesField(String name, BytesRef binaryValue) {
     super(name, new XYShapeDocValues(binaryValue));
   }
 

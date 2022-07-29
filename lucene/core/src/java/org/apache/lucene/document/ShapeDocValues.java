@@ -55,8 +55,10 @@ abstract class ShapeDocValues {
   private final BytesRef data;
   /** the geometry comparator used to check relations */
   protected final ShapeComparator shapeComparator;
-
+  /** the centroid of the shape docvalue */
   protected final Geometry centroid;
+  /** the bounding box of the shape docvalue */
+  protected final Geometry boundingBox;
 
   /**
    * Creates a {@ShapeDocValues} instance from a shape tessellation
@@ -71,6 +73,7 @@ abstract class ShapeDocValues {
       throw new IllegalArgumentException("unable to read binary shape doc value field. ", e);
     }
     this.centroid = computeCentroid();
+    this.boundingBox = computeBoundingBox();
   }
 
   /** Creates a {@code ShapeDocValues} instance from a given serialized value */
@@ -82,6 +85,7 @@ abstract class ShapeDocValues {
       throw new IllegalArgumentException("unable to read binary shape doc value field. ", e);
     }
     this.centroid = computeCentroid();
+    this.boundingBox = computeBoundingBox();
   }
 
   /** returns the encoded doc values field as a {@link BytesRef} */
@@ -95,22 +99,22 @@ abstract class ShapeDocValues {
   }
 
   /** returns the min x value for the shape's bounding box */
-  public int getMinX() {
+  public int getEncodedMinX() {
     return shapeComparator.getMinX();
   }
 
   /** returns the min y value for the shape's bounding box */
-  public int getMinY() {
+  public int getEncodedMinY() {
     return shapeComparator.getMinY();
   }
 
   /** returns the max x value for the shape's bounding box */
-  public int getMaxX() {
+  public int getEncodedMaxX() {
     return shapeComparator.getMaxX();
   }
 
   /** returns the max y value for the shape's bounding box */
-  public int getMaxY() {
+  public int getEncodedMaxY() {
     return shapeComparator.getMaxY();
   }
 
@@ -170,7 +174,11 @@ abstract class ShapeDocValues {
 
   protected abstract Geometry computeCentroid();
 
+  protected abstract Geometry computeBoundingBox();
+
   public abstract Geometry getCentroid();
+
+  public abstract Geometry getBoundingBox();
 
   /** main entry point to build the tessellation tree * */
   private TreeNode buildTree(

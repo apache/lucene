@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import java.util.List;
 import org.apache.lucene.geo.XYEncodingUtils;
 import org.apache.lucene.geo.XYPoint;
+import org.apache.lucene.geo.XYRectangle;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -30,7 +31,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-final class XYShapeDocValues extends ShapeDocValues {
+public final class XYShapeDocValues extends ShapeDocValues {
   /** protected ctor for instantiating a cartesian doc value based on a tessellation */
   protected XYShapeDocValues(List<ShapeField.DecodedTriangle> tessellation) {
     super(tessellation);
@@ -50,11 +51,24 @@ final class XYShapeDocValues extends ShapeDocValues {
   }
 
   @Override
+  public XYRectangle getBoundingBox() {
+    return (XYRectangle) boundingBox;
+  }
+
+  @Override
   protected XYPoint computeCentroid() {
     Encoder encoder = getEncoder();
     return new XYPoint(
         (float) encoder.decodeX(getEncodedCentroidX()),
         (float) encoder.decodeY(getEncodedCentroidY()));
+  }
+
+  @Override
+  protected XYRectangle computeBoundingBox() {
+    Encoder encoder = getEncoder();
+    return new XYRectangle(
+        (float) encoder.decodeX(getEncodedMinX()), (float) encoder.decodeX(getEncodedMaxX()),
+        (float) encoder.decodeY(getEncodedMinY()), (float) encoder.decodeY(getEncodedMaxY()));
   }
 
   @Override

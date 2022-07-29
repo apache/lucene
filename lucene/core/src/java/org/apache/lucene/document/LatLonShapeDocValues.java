@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import java.util.List;
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.Point;
+import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -30,7 +31,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-final class LatLonShapeDocValues extends ShapeDocValues {
+public final class LatLonShapeDocValues extends ShapeDocValues {
   /** protected ctor for instantiating a lat lon doc value based on a tessellation */
   protected LatLonShapeDocValues(List<ShapeField.DecodedTriangle> tessellation) {
     super(tessellation);
@@ -50,10 +51,23 @@ final class LatLonShapeDocValues extends ShapeDocValues {
   }
 
   @Override
+  public Rectangle getBoundingBox() {
+    return (Rectangle) boundingBox;
+  }
+
+  @Override
   protected Point computeCentroid() {
     Encoder encoder = getEncoder();
     return new Point(
         encoder.decodeY(getEncodedCentroidY()), encoder.decodeX(getEncodedCentroidX()));
+  }
+
+  @Override
+  protected Rectangle computeBoundingBox() {
+    Encoder encoder = getEncoder();
+    return new Rectangle(
+        encoder.decodeY(getEncodedMinY()), encoder.decodeY(getEncodedMaxY()),
+        encoder.decodeX(getEncodedMinX()), encoder.decodeX(getEncodedMaxX()));
   }
 
   @Override
