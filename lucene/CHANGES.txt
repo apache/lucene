@@ -89,7 +89,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* LUCENE-10207: Add new "slow" term-in-set query support to SortedDocValuesField / SortedSetDocValuesField.
+  (Robert Muir, Greg Miller)
 
 Improvements
 ---------------------
@@ -127,9 +129,6 @@ New Features
 
 * LUCENE-10274: Added facetsets module for high dimensional (hyper-rectangle) faceting
 (Shai Erera, Marc D'Mello, Greg Miller)
-
-* LUCENE-10207: Add new "slow" term-in-set query support to SortedDocValuesField / SortedSetDocValuesField.
-  (Robert Muir, Greg Miller)
 
 Improvements
 ---------------------
