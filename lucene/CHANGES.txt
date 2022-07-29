@@ -102,6 +102,10 @@ Optimizations
 
 * GITHUB#1020: Support #scoreSupplier and small optimizations to DocValuesRewriteMethod. (Greg Miller)
 
+* LUCENE-10633: Added support for dynamic pruning to queries sorted by a string
+  field that is indexed with terms and SORTED or SORTED_SET doc values.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
