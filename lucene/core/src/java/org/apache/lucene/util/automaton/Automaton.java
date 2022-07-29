@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util.automaton;
 
-
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.BitSet;

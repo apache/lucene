@@ -1,7 +1,7 @@
 {
-    "lucene/core/src/java/org/apache/lucene/util/automaton/Lev1ParametricDescription.java": "a9118d90623cb23211507a1aab92d89dd257e16f",
-    "lucene/core/src/java/org/apache/lucene/util/automaton/Lev1TParametricDescription.java": "14017e5b17af948e2daa1342ddc6d507d15ef8fe",
-    "lucene/core/src/java/org/apache/lucene/util/automaton/Lev2ParametricDescription.java": "a478cc2fb699b9d7f01faf4394733a17e88e0a19",
-    "lucene/core/src/java/org/apache/lucene/util/automaton/Lev2TParametricDescription.java": "2d88cd35a4c7e5b05ffeaa2a7c826004b7d0f13b",
+    "lucene/core/src/java/org/apache/lucene/util/automaton/Lev1ParametricDescription.java": "efa1e1aff2c75f32d5f6b35adb5cb346c50c9fe5",
+    "lucene/core/src/java/org/apache/lucene/util/automaton/Lev1TParametricDescription.java": "cda745cca726a46ec66b5a4ce1c983414d075f7d",
+    "lucene/core/src/java/org/apache/lucene/util/automaton/Lev2ParametricDescription.java": "6e0c90405874800d65e8344b4549cd749e009e90",
+    "lucene/core/src/java/org/apache/lucene/util/automaton/Lev2TParametricDescription.java": "291f6d9b23cf7f8fd963d968eaf6569df806c741",
     "property:source": "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
 }
