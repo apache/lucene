@@ -52,11 +52,12 @@ import org.apache.lucene.util.BytesRef;
  */
 public final class XYShapeDocValuesField extends ShapeDocValuesField {
 
+  /** constructs a {@code XYShapeDocValueField} from a pre-tessellated geometry */
   protected XYShapeDocValuesField(String name, List<ShapeField.DecodedTriangle> tessellation) {
     super(name, new XYShapeDocValues(tessellation));
   }
 
-  /** Creates a {@code XYShapeDocValue} field from a given serialized value */
+  /** Creates a {@code XYShapeDocValueField} from a given serialized value */
   protected XYShapeDocValuesField(String name, BytesRef binaryValue) {
     super(name, new XYShapeDocValues(binaryValue));
   }
