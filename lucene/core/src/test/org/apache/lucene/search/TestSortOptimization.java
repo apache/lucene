@@ -1076,7 +1076,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
     @Override
     public CacheHelper getReaderCacheHelper() {
-      throw new UnsupportedOperationException();
+      return null;
     }
   }
 
