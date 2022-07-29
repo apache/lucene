@@ -84,7 +84,7 @@ public class XYShape {
   }
 
   /** create doc value field for X,Y polygon geometry without creating indexable fields */
-  public static ShapeDocValuesField createDocValueField(String fieldName, XYPolygon polygon) {
+  public static XYShapeDocValuesField createDocValueField(String fieldName, XYPolygon polygon) {
     return createDocValueField(fieldName, polygon, false);
   }
 
@@ -105,7 +105,7 @@ public class XYShape {
   }
 
   /** create doc value field for lat lon polygon geometry without creating indexable fields. */
-  public static ShapeDocValuesField createDocValueField(
+  public static XYShapeDocValuesField createDocValueField(
       String fieldName, XYPolygon polygon, boolean checkSelfIntersections) {
     List<Tessellator.Triangle> tessellation =
         Tessellator.tessellate(polygon, checkSelfIntersections);
@@ -180,7 +180,7 @@ public class XYShape {
   /**
    * create a {@link XYShapeDocValuesField} for cartesian points without creating indexable fields.
    */
-  public static ShapeDocValuesField createDocValueField(String fieldName, float x, float y) {
+  public static XYShapeDocValuesField createDocValueField(String fieldName, float x, float y) {
     List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(1);
     ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
     t.type = ShapeField.DecodedTriangle.TYPE.POINT;
@@ -190,7 +190,7 @@ public class XYShape {
   }
 
   /** create a {@link XYShapeDocValuesField} from an existing encoded representation */
-  public static ShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
+  public static XYShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
     return new XYShapeDocValuesField(fieldName, binaryValue);
   }
 

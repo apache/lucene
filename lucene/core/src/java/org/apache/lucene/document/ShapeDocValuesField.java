@@ -94,29 +94,30 @@ abstract class ShapeDocValuesField extends Field {
   }
 
   /** returns the min x value for the shape's bounding box */
-  public int getMinX() {
-    return shapeDocValues.getMinX();
+  public int getEncodedMinX() {
+    return shapeDocValues.getEncodedMinX();
   }
 
   /** returns the min y value for the shape's bounding box */
-  public int getMinY() {
-    return shapeDocValues.getMinY();
+  public int getEncodedMinY() {
+    return shapeDocValues.getEncodedMinY();
   }
 
   /** returns the max x value for the shape's bounding box */
-  public int getMaxX() {
-    return shapeDocValues.getMaxX();
+  public int getEncodedMaxX() {
+    return shapeDocValues.getEncodedMaxX();
   }
 
   /** returns the max y value for the shape's bounding box */
-  public int getMaxY() {
-    return shapeDocValues.getMaxY();
+  public int getEncodedMaxY() {
+    return shapeDocValues.getEncodedMaxY();
   }
 
   /** retrieves the centroid location for the geometry */
-  public Geometry getCentroid() {
-    return shapeDocValues.getCentroid();
-  }
+  public abstract Geometry getCentroid();
+
+  /** retrieves the bounding box for the geometry */
+  public abstract Geometry getBoundingBox();
 
   /**
    * Retrieves the highest dimensional type (POINT, LINE, TRIANGLE) for computing the geometry(s)

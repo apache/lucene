@@ -86,7 +86,7 @@ public class LatLonShape {
   }
 
   /** create doc value field for lat lon polygon geometry without creating indexable fields */
-  public static ShapeDocValuesField createDocValueField(String fieldName, Polygon polygon) {
+  public static LatLonShapeDocValuesField createDocValueField(String fieldName, Polygon polygon) {
     return createDocValueField(fieldName, polygon, false);
   }
 
@@ -107,7 +107,7 @@ public class LatLonShape {
   }
 
   /** create doc value field for lat lon polygon geometry without creating indexable fields. */
-  public static ShapeDocValuesField createDocValueField(
+  public static LatLonShapeDocValuesField createDocValueField(
       String fieldName, Polygon polygon, boolean checkSelfIntersections) {
     List<Tessellator.Triangle> tessellation =
         Tessellator.tessellate(polygon, checkSelfIntersections);
@@ -150,7 +150,7 @@ public class LatLonShape {
   }
 
   /** create doc value field for lat lon line geometry without creating indexable fields. */
-  public static ShapeDocValuesField createDocValueField(String fieldName, Line line) {
+  public static LatLonShapeDocValuesField createDocValueField(String fieldName, Line line) {
     int numPoints = line.numPoints();
     List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(numPoints - 1);
     // create "flat" triangles
@@ -187,7 +187,8 @@ public class LatLonShape {
   }
 
   /** create doc value field for lat lon line geometry without creating indexable fields. */
-  public static ShapeDocValuesField createDocValueField(String fieldName, double lat, double lon) {
+  public static LatLonShapeDocValuesField createDocValueField(
+      String fieldName, double lat, double lon) {
     List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(1);
     ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
     t.type = ShapeField.DecodedTriangle.TYPE.POINT;
@@ -206,7 +207,8 @@ public class LatLonShape {
   }
 
   /** create a {@link LatLonShapeDocValuesField} from an existing encoded representation */
-  public static ShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
+  public static LatLonShapeDocValuesField createDocValueField(
+      String fieldName, BytesRef binaryValue) {
     return new LatLonShapeDocValuesField(fieldName, binaryValue);
   }
 

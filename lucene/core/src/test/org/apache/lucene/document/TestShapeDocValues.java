@@ -31,6 +31,7 @@ import org.apache.lucene.geo.SimpleWKTShapeParser;
 import org.apache.lucene.geo.XYEncodingUtils;
 import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.geo.XYPolygon;
+import org.apache.lucene.geo.XYRectangle;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.tests.geo.GeoTestUtil;
@@ -38,6 +39,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for {@link org.apache.lucene.document.ShapeDocValuesField} */
 public class TestShapeDocValues extends LuceneTestCase {
+  private static double TOLERANCE = 1E-7;
 
   private static final String FIELD_NAME = "field";
 
@@ -54,30 +56,32 @@ public class TestShapeDocValues extends LuceneTestCase {
 
   public void testLatLonPolygonBBox() {
     Polygon p = GeoTestUtil.nextPolygon();
-    ShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
-    assertEquals(GeoEncodingUtils.encodeLongitude(p.minLon), dv.getMinX());
-    assertEquals(GeoEncodingUtils.encodeLongitude(p.maxLon), dv.getMaxX());
-    assertEquals(GeoEncodingUtils.encodeLatitude(p.minLat), dv.getMinY());
-    assertEquals(GeoEncodingUtils.encodeLatitude(p.maxLat), dv.getMaxY());
+    Rectangle expected = new Rectangle(p.minLat, p.maxLat, p.minLon, p.maxLon);
+    LatLonShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
+    assertEquals(expected.minLat, dv.getBoundingBox().minLat, TOLERANCE);
+    assertEquals(expected.maxLat, dv.getBoundingBox().maxLat, TOLERANCE);
+    assertEquals(expected.minLon, dv.getBoundingBox().minLon, TOLERANCE);
+    assertEquals(expected.maxLon, dv.getBoundingBox().maxLon, TOLERANCE);
   }
 
   public void testXYPolygonBBox() {
     XYPolygon p = (XYPolygon) BaseXYShapeTestCase.ShapeType.POLYGON.nextShape();
-    ShapeDocValuesField dv = XYShape.createDocValueField(FIELD_NAME, p);
-    assertEquals(XYEncodingUtils.encode(p.minX), dv.getMinX());
-    assertEquals(XYEncodingUtils.encode(p.maxX), dv.getMaxX());
-    assertEquals(XYEncodingUtils.encode(p.minY), dv.getMinY());
-    assertEquals(XYEncodingUtils.encode(p.maxY), dv.getMaxY());
+    XYRectangle expected = new XYRectangle(p.minX, p.maxX, p.minY, p.maxY);
+    XYShapeDocValuesField dv = XYShape.createDocValueField(FIELD_NAME, p);
+    assertEquals(expected.minX, dv.getBoundingBox().minX, TOLERANCE);
+    assertEquals(expected.maxX, dv.getBoundingBox().maxX, TOLERANCE);
+    assertEquals(expected.minY, dv.getBoundingBox().minY, TOLERANCE);
+    assertEquals(expected.maxY, dv.getBoundingBox().maxY, TOLERANCE);
   }
 
   public void testLatLonPolygonCentroid() {
     Polygon p = GeoTestUtil.nextPolygon();
     Point expected = (Point) computeCentroid(p);
     List<ShapeField.DecodedTriangle> tess = getTessellation(p);
-    LatLonShapeDocValuesField dvField = LatLonShape.createDocValueField(FIELD_NAME, tess);
+    LatLonShapeDocValuesField dvField = LatLonShape.createDocValueField(FIELD_NAME, p);
     assertEquals(tess.size(), dvField.numberOfTerms());
-    assertEquals(expected.getLat(), dvField.getCentroid().getLat(), 1E-7);
-    assertEquals(expected.getLon(), dvField.getCentroid().getLon(), 1E-7);
+    assertEquals(expected.getLat(), dvField.getCentroid().getLat(), TOLERANCE);
+    assertEquals(expected.getLon(), dvField.getCentroid().getLon(), TOLERANCE);
     assertEquals(TYPE.TRIANGLE, dvField.getHighestDimensionType());
   }
 
@@ -85,8 +89,8 @@ public class TestShapeDocValues extends LuceneTestCase {
     XYPolygon p = (XYPolygon) BaseXYShapeTestCase.ShapeType.POLYGON.nextShape();
     XYPoint expected = (XYPoint) computeCentroid(p);
     XYShapeDocValuesField dvField = XYShape.createDocValueField(FIELD_NAME, getTessellation(p));
-    assertEquals(expected.getX(), dvField.getCentroid().getX(), 1E-7);
-    assertEquals(expected.getY(), dvField.getCentroid().getY(), 1E-7);
+    assertEquals(expected.getX(), dvField.getCentroid().getX(), TOLERANCE);
+    assertEquals(expected.getY(), dvField.getCentroid().getY(), TOLERANCE);
     assertEquals(TYPE.TRIANGLE, dvField.getHighestDimensionType());
   }
 
@@ -120,11 +124,11 @@ public class TestShapeDocValues extends LuceneTestCase {
 
       double signedArea = Math.abs(0.5d * ((bx - ax) * (cy - ay) - (cx - ax) * (by - ay)));
       // accumulate midPoints and signed area
-      numXPly += (((ax + bx + cx) / 3) * signedArea);
-      numYPly += (((ay + by + cy) / 3) * signedArea);
+      numXPly += (((ax + bx + cx) / 3d) * signedArea);
+      numYPly += (((ay + by + cy) / 3d) * signedArea);
       totalSignedArea += signedArea;
     }
-
+    totalSignedArea = totalSignedArea == 0d ? 1 : totalSignedArea;
     return createPoint.apply(numXPly / totalSignedArea, numYPly / totalSignedArea);
   }
 

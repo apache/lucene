@@ -21,6 +21,7 @@ import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
+import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.util.BytesRef;
 
@@ -64,6 +65,12 @@ public final class LatLonShapeDocValuesField extends ShapeDocValuesField {
   @Override
   public Point getCentroid() {
     return (Point) shapeDocValues.getCentroid();
+  }
+
+  /** retrieves the bounding box for the geometry */
+  @Override
+  public Rectangle getBoundingBox() {
+    return (Rectangle) shapeDocValues.getBoundingBox();
   }
 
   @Override

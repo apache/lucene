@@ -21,6 +21,7 @@ import org.apache.lucene.geo.XYEncodingUtils;
 import org.apache.lucene.geo.XYLine;
 import org.apache.lucene.geo.XYPoint;
 import org.apache.lucene.geo.XYPolygon;
+import org.apache.lucene.geo.XYRectangle;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.util.BytesRef;
 
@@ -64,6 +65,11 @@ public final class XYShapeDocValuesField extends ShapeDocValuesField {
   @Override
   public XYPoint getCentroid() {
     return (XYPoint) shapeDocValues.getCentroid();
+  }
+
+  @Override
+  public XYRectangle getBoundingBox() {
+    return (XYRectangle) shapeDocValues.getBoundingBox();
   }
 
   @Override
