@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.util.automaton;
 
-// import java.io.IOException;
-// import java.io.PrintWriter;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import org.apache.lucene.util.Accountable;
@@ -589,39 +588,45 @@ public class Automaton implements Accountable, TransitionAccessor {
     }
 
     Transition t = new Transition();
-    Queue<Integer> queue = new ArrayDeque<>();
-    Set<Integer> meet = new HashSet<>();
-    queue.add(0);
-    while (!queue.isEmpty()) {
-      int state = queue.poll();
-      if (meet.contains(state)) {
-        continue;
-      }
-      meet.add(state);
-      b.append("  ");
-      b.append(state);
-      if (isAccept(state)) {
-        b.append(" [shape=doublecircle,label=\"").append(state).append("\"]\n");
-      } else {
-        b.append(" [shape=circle,label=\"").append(state).append("\"]\n");
-      }
-      int numTransitions = initTransition(state, t);
-
-      for (int i = 0; i < numTransitions; i++) {
-        getNextTransition(t);
-        assert t.max >= t.min;
+    Queue<Integer> shouldCheck = new PriorityQueue<>(numStates);
+    for (int i = 0; i < numStates; i++) {
+      shouldCheck.add(i);
+    }
+    while (shouldCheck.isEmpty() == false) {
+      int startState = shouldCheck.peek();
+      Queue<Integer> queue = new ArrayDeque<>();
+      queue.add(startState);
+      while (queue.isEmpty() == false) {
+        int state = queue.poll();
+        if (shouldCheck.contains(state) == false) {
+          continue;
+        }
+        shouldCheck.remove(state);
         b.append("  ");
         b.append(state);
-        b.append(" -> ");
-        b.append(t.dest);
-        b.append(" [label=\"");
-        appendCharString(t.min, b);
-        if (t.max != t.min) {
-          b.append('-');
-          appendCharString(t.max, b);
+        if (isAccept(state)) {
+          b.append(" [shape=doublecircle,label=\"").append(state).append("\"]\n");
+        } else {
+          b.append(" [shape=circle,label=\"").append(state).append("\"]\n");
         }
-        b.append("\"]\n");
-        queue.add(t.dest);
+        int numTransitions = initTransition(state, t);
+
+        for (int i = 0; i < numTransitions; i++) {
+          getNextTransition(t);
+          assert t.max >= t.min;
+          b.append("  ");
+          b.append(state);
+          b.append(" -> ");
+          b.append(t.dest);
+          b.append(" [label=\"");
+          appendCharString(t.min, b);
+          if (t.max != t.min) {
+            b.append('-');
+            appendCharString(t.max, b);
+          }
+          b.append("\"]\n");
+          queue.add(t.dest);
+        }
       }
     }
     b.append('}');
