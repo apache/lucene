@@ -20,8 +20,12 @@ package org.apache.lucene.codecs;
 import java.io.IOException;
 import org.apache.lucene.util.Accountable;
 
-/** Vectors' writer for a field */
-public abstract class KnnFieldVectorsWriter implements Accountable {
+/**
+ * Vectors' writer for a field
+ *
+ * @param <T> an array type; the type of vectors to be written
+ */
+public abstract class KnnFieldVectorsWriter<T> implements Accountable {
 
   /** Sole constructor */
   protected KnnFieldVectorsWriter() {}
@@ -30,5 +34,16 @@ public abstract class KnnFieldVectorsWriter implements Accountable {
    * Add new docID with its vector value to the given field for indexing. Doc IDs must be added in
    * increasing order.
    */
-  public abstract void addValue(int docID, float[] vectorValue) throws IOException;
+  public abstract void addValue(int docID, Object vectorValue, int offset) throws IOException;
+
+  /**
+   * Used to copy values being indexed to internal storage. The vectorValue will be of an array
+   * type; the value being added starts at offset in the array, and the array must contain at least
+   * offset + dimension.
+   *
+   * @param vectorValue an array containing the vector value to add
+   * @param offset the position of the value in the array
+   * @return a copy of the value; a new array
+   */
+  public abstract T copyValue(T vectorValue, int offset);
 }

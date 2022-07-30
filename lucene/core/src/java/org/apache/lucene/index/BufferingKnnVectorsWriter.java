@@ -45,7 +45,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   protected BufferingKnnVectorsWriter() {}
 
   @Override
-  public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
+  public KnnFieldVectorsWriter<float[]> addField(FieldInfo fieldInfo) throws IOException {
     FieldWriter newField = new FieldWriter(fieldInfo);
     fields.add(newField);
     return newField;
@@ -88,6 +88,12 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
                 String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
               throw new UnsupportedOperationException();
             }
+
+            @Override
+            public TopDocs searchExhaustively(
+                String field, float[] target, int k, DocIdSetIterator acceptDocs) {
+              throw new UnsupportedOperationException();
+            }
           };
 
       writeField(fieldData.fieldInfo, knnVectorsReader, maxDoc);
@@ -123,6 +129,12 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
           }
 
           @Override
+          public TopDocs searchExhaustively(
+              String field, float[] target, int k, DocIdSetIterator acceptDocs) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
           public VectorValues getVectorValues(String field) throws IOException {
             return MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
           }
@@ -137,7 +149,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   protected abstract void writeField(
       FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc) throws IOException;
 
-  private static class FieldWriter extends KnnFieldVectorsWriter {
+  private static class FieldWriter extends KnnFieldVectorsWriter<float[]> {
     private final FieldInfo fieldInfo;
     private final int dim;
     private final DocsWithFieldSet docsWithField;
@@ -153,26 +165,36 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, float[] vectorValue) {
+    public void addValue(int docID, Object value, int offset) {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
                 + fieldInfo.name
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
-      if (vectorValue.length != dim) {
-        throw new IllegalArgumentException(
-            "Attempt to index a vector of dimension "
-                + vectorValue.length
-                + " but \""
-                + fieldInfo.name
-                + "\" has dimension "
-                + dim);
-      }
       assert docID > lastDocID;
+      float[] vectorValue =
+          switch (fieldInfo.getVectorEncoding()) {
+            case FLOAT32 -> (float[]) value;
+            case BYTE -> bytesToFloats((byte[]) value, offset);
+          };
       docsWithField.add(docID);
-      vectors.add(ArrayUtil.copyOfSubArray(vectorValue, 0, vectorValue.length));
+      vectors.add(copyValue(vectorValue, offset));
       lastDocID = docID;
+    }
+
+    private float[] bytesToFloats(byte[] bytes, int offset) {
+      // This is used only by SimpleTextKnnVectorsWriter
+      float[] floats = new float[dim];
+      for (int i = 0; i < dim; i++) {
+        floats[i] = bytes[i + offset];
+      }
+      return floats;
+    }
+
+    @Override
+    public float[] copyValue(float[] vectorValue, int offset) {
+      return ArrayUtil.copyOfSubArray(vectorValue, offset, dim);
     }
 
     @Override
@@ -181,7 +203,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
       return docsWithField.ramBytesUsed()
           + vectors.size()
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-          + vectors.size() * vectors.get(0).length * Float.BYTES;
+          + vectors.size() * dim * Float.BYTES;
     }
   }
 

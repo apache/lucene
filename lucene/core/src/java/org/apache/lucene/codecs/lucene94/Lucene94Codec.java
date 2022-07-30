@@ -100,6 +100,11 @@ public class Lucene94Codec extends Codec {
         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
           return Lucene94Codec.this.getKnnVectorsFormatForField(field);
         }
+
+        @Override
+        public int currentVersion() {
+          return Lucene94HnswVectorsFormat.VERSION_CURRENT;
+        }
       };
 
   private final StoredFieldsFormat storedFieldsFormat;

@@ -121,6 +121,23 @@ public final class VectorUtil {
     return (float) (sum / Math.sqrt(norm1 * norm2));
   }
 
+  /** Returns the cosine similarity between the two vectors. */
+  public static float cosine(byte[] a, int aOffset, byte[] b, int bOffset, int dim) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int sum = 0;
+    int norm1 = 0;
+    int norm2 = 0;
+
+    for (int i = 0; i < dim; i++) {
+      byte elem1 = a[aOffset++];
+      byte elem2 = b[bOffset++];
+      sum += elem1 * elem2;
+      norm1 += elem1 * elem1;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
+  }
+
   /**
    * Returns the sum of squared differences of the two vectors.
    *
@@ -139,6 +156,17 @@ public final class VectorUtil {
     }
     for (; i < dim; i++) {
       float diff = v1[i] - v2[i];
+      squareSum += diff * diff;
+    }
+    return squareSum;
+  }
+
+  /** Returns the sum of squared differences of the two vectors. */
+  public static float squareDistance(byte[] a, int aOffset, byte[] b, int bOffset, int dim) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int squareSum = 0;
+    for (int i = 0; i < dim; i++) {
+      int diff = a[aOffset++] - b[bOffset++];
       squareSum += diff * diff;
     }
     return squareSum;
@@ -212,5 +240,39 @@ public final class VectorUtil {
     for (int i = 0; i < u.length; i++) {
       u[i] += v[i];
     }
+  }
+
+  /**
+   * Dot product score computed over signed bytes, scaled to be in [0, 1].
+   *
+   * @param a bytes containing a vector
+   * @param aOffset offset of the vector in a
+   * @param b bytes containing another vector, of the same dimension
+   * @param len the length (aka dimension) of the vectors
+   * @param bOffset offset of the vector in b
+   * @return the value of the similarity function applied to the two vectors
+   */
+  public static float dotProductScore(byte[] a, int aOffset, byte[] b, int bOffset, int len) {
+    int total = 0;
+    for (int i = 0; i < len; i++) {
+      total += a[aOffset++] * b[bOffset++];
+    }
+    // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+    return (1 + total) / (float) (len * (1 << 15));
+  }
+
+  /**
+   * Convert a floating point vector to an array of bytes using casting; the vector values should be
+   * in [-128,127]
+   *
+   * @param vector a vector
+   * @return a new BytesRef containing the vector's values cast to byte.
+   */
+  public static BytesRef toBytesRef(float[] vector) {
+    BytesRef b = new BytesRef(vector.length);
+    for (int i = 0; i < vector.length; i++) {
+      b.bytes[i] = (byte) vector[i];
+    }
+    return b;
   }
 }

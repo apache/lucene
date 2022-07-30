@@ -18,6 +18,8 @@
 package org.apache.lucene.codecs.lucene94;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
+import static org.apache.lucene.util.VectorUtil.toBytesRef;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -30,8 +32,10 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -169,7 +173,12 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
               + fieldEntry.dimension);
     }
 
-    long numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
+    long numBytes;
+    switch (info.getVectorEncoding()) {
+      case BYTE -> numBytes = (long) fieldEntry.size() * dimension;
+      case FLOAT32 -> numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
+      default -> throw new AssertionError("unknown vector encoding " + info.getVectorEncoding());
+    }
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "Vector data length "
@@ -193,9 +202,18 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     return VectorSimilarityFunction.values()[similarityFunctionId];
   }
 
+  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
+    int encodingId = input.readInt();
+    if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
+      throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
+    }
+    return VectorEncoding.values()[encodingId];
+  }
+
   private FieldEntry readField(IndexInput input) throws IOException {
+    VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, similarityFunction);
+    return new FieldEntry(input, vectorEncoding, similarityFunction);
   }
 
   @Override
@@ -216,7 +234,12 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    return OffHeapVectorValues.load(fieldEntry, vectorData);
+    VectorValues values = OffHeapVectorValues.load(fieldEntry, vectorData);
+    if (fieldEntry.vectorEncoding == VectorEncoding.BYTE) {
+      return new ExpandingVectorValues(values);
+    } else {
+      return values;
+    }
   }
 
   @Override
@@ -237,6 +260,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
             target,
             k,
             vectorValues,
+            fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
@@ -256,6 +280,26 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+  }
+
+  @Override
+  public TopDocs searchExhaustively(
+      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
+    FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null) {
+      // The field does not exist or does not index vectors
+      return EMPTY_TOPDOCS;
+    }
+
+    VectorSimilarityFunction similarityFunction = fieldEntry.similarityFunction;
+    VectorValues vectorValues = getVectorValues(field);
+
+    return switch (fieldEntry.vectorEncoding) {
+      case BYTE -> exhaustiveSearch(
+          vectorValues, acceptDocs, similarityFunction, toBytesRef(target), k);
+      case FLOAT32 -> exhaustiveSearch(vectorValues, acceptDocs, similarityFunction, target, k);
+      default -> throw new AssertionError("unknown vector encoding " + fieldEntry.vectorEncoding);
+    };
   }
 
   /** Get knn graph values; used for testing */
@@ -286,6 +330,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   static class FieldEntry {
 
     final VectorSimilarityFunction similarityFunction;
+    final VectorEncoding vectorEncoding;
     final long vectorDataOffset;
     final long vectorDataLength;
     final long vectorIndexOffset;
@@ -315,8 +360,13 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     final DirectMonotonicReader.Meta meta;
     final long addressesLength;
 
-    FieldEntry(IndexInput input, VectorSimilarityFunction similarityFunction) throws IOException {
+    FieldEntry(
+        IndexInput input,
+        VectorEncoding vectorEncoding,
+        VectorSimilarityFunction similarityFunction)
+        throws IOException {
       this.similarityFunction = similarityFunction;
+      this.vectorEncoding = vectorEncoding;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
       vectorIndexOffset = input.readVLong();

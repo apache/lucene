@@ -628,6 +628,7 @@ final class IndexingChain implements Accountable {
                 s.pointIndexDimensionCount,
                 s.pointNumBytes,
                 s.vectorDimension,
+                s.vectorEncoding,
                 s.vectorSimilarityFunction,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
     pf.setFieldInfo(fi);
@@ -712,7 +713,12 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      pf.knnFieldVectorsWriter.addValue(docID, ((KnnVectorField) field).vectorValue());
+      switch (fieldType.vectorEncoding()) {
+        case BYTE -> pf.knnFieldVectorsWriter.addValue(
+            docID, field.binaryValue().bytes, field.binaryValue().offset);
+        case FLOAT32 -> pf.knnFieldVectorsWriter.addValue(
+            docID, ((KnnVectorField) field).vectorValue(), 0);
+      }
     }
     return indexedField;
   }
@@ -988,7 +994,7 @@ final class IndexingChain implements Accountable {
     PointValuesWriter pointValuesWriter;
 
     // Non-null if this field had vectors in this segment
-    KnnFieldVectorsWriter knnFieldVectorsWriter;
+    KnnFieldVectorsWriter<?> knnFieldVectorsWriter;
 
     /** We use this to know when a PerField is seen for the first time in the current document. */
     long fieldGen = -1;
@@ -1281,6 +1287,7 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
+    private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
     private static String errMsg =
@@ -1391,6 +1398,7 @@ final class IndexingChain implements Accountable {
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
       assertSame(
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
+      assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(

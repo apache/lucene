@@ -114,6 +114,11 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
+          public VectorEncoding vectorEncoding() {
+            return VectorEncoding.FLOAT32;
+          }
+
+          @Override
           public VectorSimilarityFunction vectorSimilarityFunction() {
             return VectorSimilarityFunction.EUCLIDEAN;
           }

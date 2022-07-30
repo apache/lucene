@@ -56,6 +56,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -101,6 +102,7 @@ public class KnnGraphTester {
   private int beamWidth;
   private int maxConn;
   private VectorSimilarityFunction similarityFunction;
+  private VectorEncoding vectorEncoding;
   private FixedBitSet matchDocs;
   private float selectivity;
   private boolean prefilter;
@@ -113,6 +115,7 @@ public class KnnGraphTester {
     topK = 100;
     fanout = topK;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    vectorEncoding = VectorEncoding.FLOAT32;
     selectivity = 1f;
     prefilter = false;
   }
@@ -197,10 +200,19 @@ public class KnnGraphTester {
           break;
         case "-metric":
           String metric = args[++iarg];
-          if (metric.equals("euclidean")) {
-            similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-          } else if (metric.equals("angular") == false) {
-            throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
+          switch (metric) {
+            case "euclidean":
+              similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+              break;
+            case "angular":
+              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+              break;
+            case "angular8":
+              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+              vectorEncoding = VectorEncoding.BYTE;
+              break;
+            default:
+              throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
           }
           break;
         case "-forceMerge":
@@ -285,14 +297,17 @@ public class KnnGraphTester {
     }
   }
 
+  @SuppressWarnings("unchecked")
   private void dumpGraph(Path docsPath) throws IOException {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
-      HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0);
+      HnswGraphBuilder<float[]> builder =
+          (HnswGraphBuilder<float[]>)
+              HnswGraphBuilder.create(
+                  vectors, vectorEncoding, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
-        builder.addGraphNode(i, values.vectorValue(i));
+        builder.addGraphNode(i, values);
         System.out.println("\nITERATION " + i);
         dumpGraph(builder.hnsw);
       }
@@ -651,6 +666,7 @@ public class KnnGraphTester {
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setRAMBufferSizeMB(1994d);
+    iwc.setUseCompoundFile(false);
     // iwc.setMaxBufferedDocs(10000);
 
     FieldType fieldType = KnnVectorField.createFieldType(dim, similarityFunction);
