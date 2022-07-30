@@ -32,6 +32,11 @@ Bug Fixes
 ---------------------
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
 
+Build
+---------------------
+
+* LUCENE-10669: The build should be more helpful when generated resources are touched (Dawid Weiss)
+
 Other
 ---------------------
 * LUCENE-10559: Add Prefilter Option to KnnGraphTester (Kaival Parikh)
