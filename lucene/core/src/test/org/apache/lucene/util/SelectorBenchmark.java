@@ -72,9 +72,10 @@ public class SelectorBenchmark {
 
   public static void main(String[] args) throws Exception {
     assert false : "Disable assertions to run the benchmark";
-    Random random = new Random(System.currentTimeMillis());
+    Random random = new Random(System.nanoTime());
     long seed = random.nextLong();
 
+    System.out.println("SEED: " + seed);
     System.out.println("WARMUP");
     benchmarkSelectors(Strategy.RANDOM, random, seed);
     System.out.println();

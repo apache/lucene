@@ -24,6 +24,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Clock;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -123,13 +124,13 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
 
         System.out.println("Indexing 20 Newsgroups...");
 
-        long startIndex = System.currentTimeMillis();
+        long startIndex = Clock.systemDefaultZone().millis();
         IndexWriter indexWriter = new IndexWriter(directory, new IndexWriterConfig(analyzer));
 
         Path indexDir = Paths.get(INDEX_DIR);
         int docsIndexed = buildIndex(indexDir, indexWriter);
 
-        long endIndex = System.currentTimeMillis();
+        long endIndex = Clock.systemDefaultZone().millis();
         System.out.println(
             "Indexed " + docsIndexed + " docs in " + (endIndex - startIndex) / 1000 + "s");
 
@@ -145,7 +146,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
       if (index && split) {
         System.out.println("Splitting the index...");
 
-        long startSplit = System.currentTimeMillis();
+        long startSplit = Clock.systemDefaultZone().millis();
         DatasetSplitter datasetSplitter = new DatasetSplitter(0.2, 0);
         datasetSplitter.split(
             reader,
@@ -160,7 +161,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
             CATEGORY_FIELD);
         reader.close();
         reader = DirectoryReader.open(train); // using the train index from now on
-        long endSplit = System.currentTimeMillis();
+        long endSplit = Clock.systemDefaultZone().millis();
         System.out.println("Splitting done in " + (endSplit - startSplit) / 1000 + "s");
       }
 
@@ -359,7 +360,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     futures.add(
         service.submit(
             () -> {
-              final long startTime = System.currentTimeMillis();
+              final long startTime = Clock.systemDefaultZone().millis();
               ConfusionMatrixGenerator.ConfusionMatrix confusionMatrix;
               if (split) {
                 confusionMatrix =
@@ -370,7 +371,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
                     ConfusionMatrixGenerator.getConfusionMatrix(
                         ar, classifier, CATEGORY_FIELD, BODY_FIELD, 60000 * 30);
               }
-              final long endTime = System.currentTimeMillis();
+              final long endTime = Clock.systemDefaultZone().millis();
               final int elapse = (int) (endTime - startTime) / 1000;
 
               return " * "
