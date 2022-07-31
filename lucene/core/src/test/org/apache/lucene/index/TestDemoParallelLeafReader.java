@@ -735,6 +735,13 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       }
 
       @Override
+      public MergeSpecification findFullFlushMerges(
+          MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
+          throws IOException {
+        return wrap(in.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext));
+      }
+
+      @Override
       public boolean useCompoundFile(
           SegmentInfos segments, SegmentCommitInfo newSegment, MergeContext mergeContext)
           throws IOException {

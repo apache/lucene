@@ -437,10 +437,7 @@ abstract class SpatialQuery extends Query {
       @Override
       public void visit(DocIdSetIterator iterator, byte[] t) throws IOException {
         if (leafPredicate.test(t)) {
-          int docID;
-          while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            visit(docID);
-          }
+          adder.add(iterator);
         }
       }
 
@@ -486,10 +483,7 @@ abstract class SpatialQuery extends Query {
       @Override
       public void visit(DocIdSetIterator iterator, byte[] t) throws IOException {
         if (leafPredicate.test(t)) {
-          int docID;
-          while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            visit(docID);
-          }
+          visit(iterator);
         }
       }
 
@@ -539,14 +533,10 @@ abstract class SpatialQuery extends Query {
 
       @Override
       public void visit(DocIdSetIterator iterator, byte[] t) throws IOException {
-        boolean matches = leafPredicate.test(t);
-        int docID;
-        while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          if (matches) {
-            visit(docID);
-          } else {
-            excluded.set(docID);
-          }
+        if (leafPredicate.test(t)) {
+          visit(iterator);
+        } else {
+          excluded.or(iterator);
         }
       }
 
@@ -653,10 +643,7 @@ abstract class SpatialQuery extends Query {
       @Override
       public void visit(DocIdSetIterator iterator, byte[] t) throws IOException {
         if (leafPredicate.test(t) == false) {
-          int docID;
-          while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            visit(docID);
-          }
+          visit(iterator);
         }
       }
 

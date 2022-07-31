@@ -137,8 +137,12 @@ public final class HnswGraphBuilder {
     this.infoStream = infoStream;
   }
 
+  public OnHeapHnswGraph getGraph() {
+    return hnsw;
+  }
+
   /** Inserts a doc with vector value to the graph */
-  void addGraphNode(int node, float[] value) throws IOException {
+  public void addGraphNode(int node, float[] value) throws IOException {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;

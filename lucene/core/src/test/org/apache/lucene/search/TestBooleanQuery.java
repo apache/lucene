@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -903,6 +906,113 @@ public class TestBooleanQuery extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  // test BlockMaxMaxscoreScorer
+  public void testDisjunctionTwoClausesMatchesCountAndScore() throws Exception {
+    List<String[]> docContent =
+        Arrays.asList(
+            new String[] {"A", "B"}, // 0
+            new String[] {"A"}, // 1
+            new String[] {}, // 2
+            new String[] {"A", "B", "C"}, // 3
+            new String[] {"B"}, // 4
+            new String[] {"B", "C"} // 5
+            );
+
+    // result sorted by score
+    int[][] matchDocScore = {
+      {0, 2 + 1},
+      {3, 2 + 1},
+      {1, 2},
+      {4, 1},
+      {5, 1}
+    };
+
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+
+        for (String[] values : docContent) {
+          Document doc = new Document();
+          for (String value : values) {
+            doc.add(new StringField("foo", value, Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query query =
+            new BooleanQuery.Builder()
+                .add(
+                    new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2),
+                    BooleanClause.Occur.SHOULD)
+                .add(
+                    new ConstantScoreQuery(new TermQuery(new Term("foo", "B"))),
+                    BooleanClause.Occur.SHOULD)
+                .build();
+
+        TopDocs topDocs = searcher.search(query, 10);
+
+        for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+          ScoreDoc scoreDoc = topDocs.scoreDocs[i];
+          assertEquals(matchDocScore[i][0], scoreDoc.doc);
+          assertEquals(matchDocScore[i][1], scoreDoc.score, 0);
+        }
+      }
+    }
+  }
+
+  public void testDisjunctionRandomClausesMatchesCount() throws Exception {
+    int numFieldValue = RandomNumbers.randomIntBetween(random(), 1, 10);
+    int[] numDocsPerFieldValue = new int[numFieldValue];
+    int allDocsCount = 0;
+
+    for (int i = 0; i < numDocsPerFieldValue.length; i++) {
+      int numDocs = RandomNumbers.randomIntBetween(random(), 10, 50);
+      numDocsPerFieldValue[i] = numDocs;
+      allDocsCount += numDocs;
+    }
+
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+
+        for (int i = 0; i < numFieldValue; i++) {
+          for (int j = 0; j < numDocsPerFieldValue[i]; j++) {
+            Document doc = new Document();
+            doc.add(new StringField("field", String.valueOf(i), Field.Store.NO));
+            w.addDocument(doc);
+          }
+        }
+
+        w.forceMerge(1);
+      }
+
+      int matchedDocsCount = 0;
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+
+        for (int i = 0; i < numFieldValue; i++) {
+          if (randomBoolean()) {
+            matchedDocsCount += numDocsPerFieldValue[i];
+            builder.add(
+                new TermQuery(new Term("field", String.valueOf(i))), BooleanClause.Occur.SHOULD);
+          }
+        }
+
+        Query query = builder.build();
+
+        TopDocs topDocs = searcher.search(query, allDocsCount);
+        assertEquals(matchedDocsCount, topDocs.scoreDocs.length);
+      }
+    }
   }
 
   public void testProhibitedMatchesCount() throws IOException {

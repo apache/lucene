@@ -14,13 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
 
-import org.apache.lucene.tests.util.LuceneTestCase;
+package org.apache.lucene.codecs;
 
-public class TestSortedSetDocValues extends LuceneTestCase {
+import java.io.IOException;
+import org.apache.lucene.util.Accountable;
 
-  public void testNoMoreOrdsConstant() {
-    assertEquals(SortedSetDocValues.NO_MORE_ORDS, -1);
-  }
+/** Vectors' writer for a field */
+public abstract class KnnFieldVectorsWriter implements Accountable {
+
+  /** Sole constructor */
+  protected KnnFieldVectorsWriter() {}
+
+  /**
+   * Add new docID with its vector value to the given field for indexing. Doc IDs must be added in
+   * increasing order.
+   */
+  public abstract void addValue(int docID, float[] vectorValue) throws IOException;
 }

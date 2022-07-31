@@ -47,6 +47,14 @@ the top-n ranges ordered by count from 10.0 onwards (as described in the `Facets
 of returning all ranges ordered by constructor-specified range order. The pre-existing behavior in 
 9.x and earlier can be retained by migrating to the new `Facets#getAllChildren` API (LUCENE-10550).
 
+### SortedSetDocValues#NO_MORE_ORDS removed (LUCENE-10603)
+
+`SortedSetDocValues#nextOrd()` no longer returns `NO_MORE_ORDS` when ordinals are exhausted for the
+currently-positioned document. Callers should instead use `SortedSetDocValues#docValueCount()` to
+determine the number of valid ordinals for the currently-positioned document up-front. It is now
+illegal to call `SortedSetDocValues#nextOrd()` more than `SortedSetDocValues#docValueCount()` times
+for the currently-positioned document (doing so will result in undefined behavior).
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
