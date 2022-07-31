@@ -173,12 +173,11 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
               + fieldEntry.dimension);
     }
 
-    long numBytes;
-    switch (info.getVectorEncoding()) {
-      case BYTE -> numBytes = (long) fieldEntry.size() * dimension;
-      case FLOAT32 -> numBytes = (long) fieldEntry.size() * dimension * Float.BYTES;
-      default -> throw new AssertionError("unknown vector encoding " + info.getVectorEncoding());
-    }
+    long numBytes =
+        switch (info.getVectorEncoding()) {
+          case BYTE -> (long) fieldEntry.size() * dimension;
+          case FLOAT32 -> (long) fieldEntry.size() * dimension * Float.BYTES;
+        };
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "Vector data length "
@@ -298,7 +297,6 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
       case BYTE -> exhaustiveSearch(
           vectorValues, acceptDocs, similarityFunction, toBytesRef(target), k);
       case FLOAT32 -> exhaustiveSearch(vectorValues, acceptDocs, similarityFunction, target, k);
-      default -> throw new AssertionError("unknown vector encoding " + fieldEntry.vectorEncoding);
     };
   }
 
