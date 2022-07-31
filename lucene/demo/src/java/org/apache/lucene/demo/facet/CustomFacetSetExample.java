@@ -19,6 +19,7 @@ package org.apache.lucene.demo.facet;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -42,8 +43,12 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
@@ -85,6 +90,7 @@ public class CustomFacetSetExample {
             new TemperatureReadingFacetSet(MAY_SECOND_2022, HUNDRED_DEGREES),
             new TemperatureReadingFacetSet(JUNE_SECOND_2022, EIGHTY_DEGREES),
             new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
+    addFastMatchFields(doc);
     indexWriter.addDocument(doc);
 
     doc = new Document();
@@ -95,9 +101,22 @@ public class CustomFacetSetExample {
             new TemperatureReadingFacetSet(MAY_SECOND_2022, EIGHTY_DEGREES),
             new TemperatureReadingFacetSet(JUNE_SECOND_2022, HUNDRED_DEGREES),
             new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
+    addFastMatchFields(doc);
     indexWriter.addDocument(doc);
 
     indexWriter.close();
+  }
+
+  private void addFastMatchFields(Document doc) {
+    // day field
+    doc.add(new StringField("day", String.valueOf(MAY_SECOND_2022), Field.Store.NO));
+    doc.add(new StringField("day", String.valueOf(JUNE_SECOND_2022), Field.Store.NO));
+    doc.add(new StringField("day", String.valueOf(JULY_SECOND_2022), Field.Store.NO));
+
+    // temp field
+    doc.add(new StringField("temp", String.valueOf(EIGHTY_DEGREES), Field.Store.NO));
+    doc.add(new StringField("temp", String.valueOf(HUNDRED_DEGREES), Field.Store.NO));
+    doc.add(new StringField("temp", String.valueOf(HUNDRED_TWENTY_DEGREES), Field.Store.NO));
   }
 
   /** Counting documents which exactly match a given {@link FacetSet}. */
@@ -128,6 +147,59 @@ public class CustomFacetSetExample {
     }
   }
 
+  /**
+   * Counting documents which exactly match a given {@link FacetSet}. This example also demonstrates
+   * how to use a fast match query to improve the counting efficiency by skipping over documents
+   * which cannot possibly match a set.
+   */
+  private FacetResult exactMatchingWithFastMatchQuery() throws IOException {
+    try (DirectoryReader indexReader = DirectoryReader.open(indexDir)) {
+      IndexSearcher searcher = new IndexSearcher(indexReader);
+
+      // MatchAllDocsQuery is for "browsing" (counts facets
+      // for all non-deleted docs in the index); normally
+      // you'd use a "normal" query:
+      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+      // Match documents whose "day" field is either "May 2022" or "July 2022"
+      Query dateQuery =
+          new TermInSetQuery(
+              "day",
+              Arrays.asList(
+                  new BytesRef(String.valueOf(MAY_SECOND_2022)),
+                  new BytesRef(String.valueOf(JULY_SECOND_2022))));
+      // Match documents whose "temp" field is either "80" or "120" degrees
+      Query temperatureQuery =
+          new TermInSetQuery(
+              "temp",
+              Arrays.asList(
+                  new BytesRef(String.valueOf(HUNDRED_DEGREES)),
+                  new BytesRef(String.valueOf(HUNDRED_TWENTY_DEGREES))));
+      // Documents must match both clauses
+      Query fastMatchQuery =
+          new BooleanQuery.Builder()
+              .add(dateQuery, BooleanClause.Occur.MUST)
+              .add(temperatureQuery, BooleanClause.Occur.MUST)
+              .build();
+
+      // Count both "May 2022, 100 degrees" and "July 2022, 120 degrees" dimensions
+      Facets facets =
+          new MatchingFacetSetsCounts(
+              "temperature",
+              fc,
+              TemperatureReadingFacetSet::decodeTemperatureReading,
+              fastMatchQuery,
+              new ExactFacetSetMatcher(
+                  "May 2022 (100f)",
+                  new TemperatureReadingFacetSet(MAY_SECOND_2022, HUNDRED_DEGREES)),
+              new ExactFacetSetMatcher(
+                  "July 2022 (120f)",
+                  new TemperatureReadingFacetSet(JULY_SECOND_2022, HUNDRED_TWENTY_DEGREES)));
+
+      // Retrieve results
+      return facets.getAllChildren("temperature");
+    }
+  }
   /** Counting documents which match a certain degrees value for any date. */
   private FacetResult rangeMatching() throws IOException {
     try (DirectoryReader indexReader = DirectoryReader.open(indexDir)) {
@@ -197,6 +269,12 @@ public class CustomFacetSetExample {
     return exactMatching();
   }
 
+  /** Runs the exact matching with fast match query example. */
+  public FacetResult runExactMatchingWithFastMatchQuery() throws IOException {
+    index();
+    return exactMatchingWithFastMatchQuery();
+  }
+
   /** Runs the range matching example. */
   public FacetResult runRangeMatching() throws IOException {
     index();
@@ -216,6 +294,11 @@ public class CustomFacetSetExample {
     System.out.println("Exact Facet Set matching example:");
     System.out.println("-----------------------");
     FacetResult result = example.runExactMatching();
+    System.out.println("Temperature Reading: " + result);
+
+    System.out.println("Exact Facet Set matching with fast match query example:");
+    System.out.println("-----------------------");
+    result = example.runExactMatchingWithFastMatchQuery();
     System.out.println("Temperature Reading: " + result);
 
     System.out.println("Range Facet Set matching example:");

@@ -21,14 +21,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.facet.FacetCountsWithFilterQuery;
 import org.apache.lucene.facet.FacetResult;
-import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -36,7 +36,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public class MatchingFacetSetsCounts extends Facets {
+public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
 
   private final FacetSetMatcher[] facetSetMatchers;
   private final int[] counts;
@@ -54,6 +54,22 @@ public class MatchingFacetSetsCounts extends Facets {
       FacetSetDecoder facetSetDecoder,
       FacetSetMatcher... facetSetMatchers)
       throws IOException {
+    this(field, hits, facetSetDecoder, null, facetSetMatchers);
+  }
+
+  /**
+   * Constructs a new instance of matching facet set counts which calculates the counts for each
+   * given facet set matcher. If {@code fastMatchQuery} is not {@code null}, then only documents
+   * which are matched by it will be counted.
+   */
+  public MatchingFacetSetsCounts(
+      String field,
+      FacetsCollector hits,
+      FacetSetDecoder facetSetDecoder,
+      Query fastMatchQuery,
+      FacetSetMatcher... facetSetMatchers)
+      throws IOException {
+    super(fastMatchQuery);
     if (facetSetMatchers == null || facetSetMatchers.length == 0) {
       throw new IllegalArgumentException("facetSetMatchers cannot be null or empty");
     }
@@ -76,8 +92,7 @@ public class MatchingFacetSetsCounts extends Facets {
 
       BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context.reader(), field);
 
-      final DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), binaryDocValues));
+      final DocIdSetIterator it = createIterator(hits, binaryDocValues);
       if (it == null) {
         continue;
       }
