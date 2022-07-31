@@ -40,10 +40,9 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -58,6 +57,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -77,8 +77,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long maxPointer;
   private final IndexInput fieldsStream;
   private final int chunkSize;
-  private final CompressionMode compressionMode;
-  private final Decompressor decompressor;
+  private final Lucene90CompressionMode compressionMode;
+  private final Lucene90Decompressor decompressor;
   private final int numDocs;
   private final boolean merging;
   private final BlockState state;
@@ -115,7 +115,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       FieldInfos fn,
       IOContext context,
       String formatName,
-      CompressionMode compressionMode)
+      Lucene90CompressionMode compressionMode)
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
@@ -385,6 +385,10 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       this.length = length;
       this.numStoredFields = numStoredFields;
     }
+
+    public void close() throws IOException {
+      in.close();
+    }
   }
 
   /** Keeps state about the current block of documents. */
@@ -401,15 +405,13 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     // the start pointer at which you can read the compressed documents
     private long startPointer;
 
-    private final BytesRef spare;
     private final BytesRef bytes;
 
     BlockState() {
       if (merging) {
-        spare = new BytesRef();
         bytes = new BytesRef();
       } else {
-        spare = bytes = null;
+        bytes = null;
       }
     }
 
@@ -490,14 +492,24 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           bytes.offset = bytes.length = 0;
           for (int decompressed = 0; decompressed < totalLength; ) {
             final int toDecompress = Math.min(totalLength - decompressed, chunkSize);
-            decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, spare);
-            bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + spare.length);
-            System.arraycopy(spare.bytes, spare.offset, bytes.bytes, bytes.length, spare.length);
-            bytes.length += spare.length;
+            InputStream inputStream =
+                decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress);
+            byte[] allBytes = inputStream.readAllBytes();
+            bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + toDecompress);
+            System.arraycopy(allBytes, 0, bytes.bytes, bytes.length, toDecompress);
+            bytes.length += toDecompress;
             decompressed += toDecompress;
+            inputStream.close();
           }
         } else {
-          decompressor.decompress(fieldsStream, totalLength, 0, totalLength, bytes);
+          InputStream inputStream =
+              decompressor.decompress(fieldsStream, totalLength, 0, totalLength);
+          byte[] allBytes = inputStream.readAllBytes();
+          bytes.bytes = ArrayUtil.grow(bytes.bytes, totalLength);
+          System.arraycopy(allBytes, 0, bytes.bytes, 0, totalLength);
+          bytes.offset = 0;
+          bytes.length = totalLength;
+          inputStream.close();
         }
         if (bytes.length != totalLength) {
           throw new CorruptIndexException(
@@ -538,63 +550,75 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset + offset, length);
       } else if (sliced) {
         fieldsStream.seek(startPointer);
-        decompressor.decompress(
-            fieldsStream, chunkSize, offset, Math.min(length, chunkSize - offset), bytes);
+        int toDecompress = Math.min(length, chunkSize - offset);
+        InputStream inputStream =
+            decompressor.decompress(fieldsStream, chunkSize, offset, toDecompress);
         documentInput =
             new DataInput() {
 
-              int decompressed = bytes.length;
+              InputStream input = inputStream;
+              int decompressed = toDecompress;
 
               void fillBuffer() throws IOException {
-                assert decompressed <= length;
-                if (decompressed == length) {
-                  throw new EOFException();
-                }
                 final int toDecompress = Math.min(length - decompressed, chunkSize);
-                decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, bytes);
+                input = decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress);
                 decompressed += toDecompress;
               }
 
               @Override
               public byte readByte() throws IOException {
-                if (bytes.length == 0) {
-                  fillBuffer();
+                int b = input.read();
+                if (b != -1) {
+                  return (byte) b;
                 }
-                --bytes.length;
-                return bytes.bytes[bytes.offset++];
+                // read next slice when there are no more bytes
+                fillBuffer();
+                b = input.read();
+                if (b == -1) {
+                  throw new EOFException();
+                }
+                return (byte) b;
               }
 
               @Override
               public void readBytes(byte[] b, int offset, int len) throws IOException {
-                while (len > bytes.length) {
-                  System.arraycopy(bytes.bytes, bytes.offset, b, offset, bytes.length);
-                  len -= bytes.length;
-                  offset += bytes.length;
-                  fillBuffer();
+                int actualRead = input.read(b, offset, len);
+                if (actualRead > 0) {
+                  offset += actualRead;
+                  len -= actualRead;
                 }
-                System.arraycopy(bytes.bytes, bytes.offset, b, offset, len);
-                bytes.offset += len;
-                bytes.length -= len;
+                while (len > 0) {
+                  fillBuffer();
+                  actualRead = input.read(b, offset, len);
+                  if (actualRead <= 0) {
+                    throw new EOFException();
+                  }
+
+                  offset += actualRead;
+                  len -= actualRead;
+                }
               }
 
               @Override
               public void skipBytes(long numBytes) throws IOException {
-                if (numBytes < 0) {
-                  throw new IllegalArgumentException("numBytes must be >= 0, got " + numBytes);
-                }
-                while (numBytes > bytes.length) {
-                  numBytes -= bytes.length;
+                long actualSkipped = input.skip(numBytes);
+                numBytes -= actualSkipped;
+                while (numBytes > 0) {
                   fillBuffer();
+                  actualSkipped = input.skip(numBytes);
+                  if (actualSkipped == 0) {
+                    throw new EOFException();
+                  }
+
+                  numBytes -= actualSkipped;
                 }
-                bytes.offset += numBytes;
-                bytes.length -= numBytes;
               }
             };
       } else {
         fieldsStream.seek(startPointer);
-        decompressor.decompress(fieldsStream, totalLength, offset, length, bytes);
-        assert bytes.length == length;
-        documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset, bytes.length);
+        InputStream inputStream =
+            decompressor.decompress(fieldsStream, totalLength, offset, length);
+        documentInput = new InputStreamDataInput(inputStream);
       }
 
       return new SerializedDocument(documentInput, length, numStoredFields);
@@ -624,31 +648,34 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
   @Override
   public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
-
     final SerializedDocument doc = document(docID);
+    try {
+      for (int fieldIDX = 0; fieldIDX < doc.numStoredFields; fieldIDX++) {
+        final long infoAndBits = doc.in.readVLong();
+        final int fieldNumber = (int) (infoAndBits >>> TYPE_BITS);
+        final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber);
 
-    for (int fieldIDX = 0; fieldIDX < doc.numStoredFields; fieldIDX++) {
-      final long infoAndBits = doc.in.readVLong();
-      final int fieldNumber = (int) (infoAndBits >>> TYPE_BITS);
-      final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber);
+        final int bits = (int) (infoAndBits & TYPE_MASK);
+        assert bits <= NUMERIC_DOUBLE : "bits=" + Integer.toHexString(bits);
 
-      final int bits = (int) (infoAndBits & TYPE_MASK);
-      assert bits <= NUMERIC_DOUBLE : "bits=" + Integer.toHexString(bits);
-
-      switch (visitor.needsField(fieldInfo)) {
-        case YES:
-          readField(doc.in, visitor, fieldInfo, bits);
-          break;
-        case NO:
-          if (fieldIDX
-              == doc.numStoredFields - 1) { // don't skipField on last field value; treat like STOP
+        switch (visitor.needsField(fieldInfo)) {
+          case YES:
+            readField(doc.in, visitor, fieldInfo, bits);
+            break;
+          case NO:
+            if (fieldIDX
+                == doc.numStoredFields
+                    - 1) { // don't skipField on last field value; treat like STOP
+              return;
+            }
+            skipField(doc.in, bits);
+            break;
+          case STOP:
             return;
-          }
-          skipField(doc.in, bits);
-          break;
-        case STOP:
-          return;
+        }
       }
+    } finally {
+      doc.close();
     }
   }
 
@@ -668,7 +695,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     return version;
   }
 
-  CompressionMode getCompressionMode() {
+  Lucene90CompressionMode getCompressionMode() {
     return compressionMode;
   }
 

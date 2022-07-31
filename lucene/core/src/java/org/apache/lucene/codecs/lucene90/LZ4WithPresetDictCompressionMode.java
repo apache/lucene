@@ -16,10 +16,13 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
+import static java.lang.Math.min;
+
 import java.io.IOException;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
-import org.apache.lucene.codecs.compressing.Decompressor;
+import java.io.InputStream;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Compressor;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Decompressor;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
@@ -34,7 +37,7 @@ import org.apache.lucene.util.compress.LZ4;
  *
  * @lucene.internal
  */
-public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
+public final class LZ4WithPresetDictCompressionMode extends Lucene90CompressionMode {
 
   // Shoot for 10 sub blocks
   private static final int NUM_SUB_BLOCKS = 10;
@@ -45,12 +48,12 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
   public LZ4WithPresetDictCompressionMode() {}
 
   @Override
-  public Compressor newCompressor() {
+  public Lucene90Compressor newCompressor() {
     return new LZ4WithPresetDictCompressor();
   }
 
   @Override
-  public Decompressor newDecompressor() {
+  public Lucene90Decompressor newDecompressor() {
     return new LZ4WithPresetDictDecompressor();
   }
 
@@ -59,7 +62,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     return "BEST_SPEED";
   }
 
-  private static final class LZ4WithPresetDictDecompressor extends Decompressor {
+  private static final class LZ4WithPresetDictDecompressor extends Lucene90Decompressor {
 
     private int[] compressedLengths;
     private byte[] buffer;
@@ -84,13 +87,12 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     }
 
     @Override
-    public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+    public InputStream decompress(DataInput in, int originalLength, int offset, int length)
         throws IOException {
       assert offset + length <= originalLength;
 
       if (length == 0) {
-        bytes.length = 0;
-        return;
+        return InputStream.nullInputStream();
       }
 
       final int dictLength = in.readVInt();
@@ -99,6 +101,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       final int numBlocks = readCompressedLengths(in, originalLength, dictLength, blockLength);
 
       buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
+      final BytesRef bytes = new BytesRef();
       bytes.length = 0;
       // Read the dictionary
       if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
@@ -107,6 +110,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
       int offsetInBlock = dictLength;
       int offsetInBytesRef = offset;
+      int numBlocksSkipped = 0;
       if (offset >= dictLength) {
         offsetInBytesRef -= dictLength;
 
@@ -114,6 +118,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         int numBytesToSkip = 0;
         for (int i = 0; i < numBlocks && offsetInBlock + blockLength < offset; ++i) {
           int compressedBlockLength = compressedLengths[i];
+          numBlocksSkipped++;
           numBytesToSkip += compressedBlockLength;
           offsetInBlock += blockLength;
           offsetInBytesRef -= blockLength;
@@ -126,28 +131,148 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         bytes.length = dictLength;
       }
 
-      // Read blocks that intersect with the interval we need
-      while (offsetInBlock < offset + length) {
-        final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
-        LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
-        bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + bytesToDecompress);
-        System.arraycopy(buffer, dictLength, bytes.bytes, bytes.length, bytesToDecompress);
-        bytes.length += bytesToDecompress;
-        offsetInBlock += blockLength;
-      }
+      int finalOffsetInBytesRef = offsetInBytesRef;
+      int finalOffsetInBlock = offsetInBlock;
+      int finalNumBlocksSkipped = numBlocksSkipped;
+      return new InputStream() {
+        // need to decompress length + finalOffsetInBytesRef bytes
+        final int totalDecompressedLength = finalOffsetInBytesRef + length;
+        // already decompressed bytes count
+        int decompressed = bytes.length;
+        int offsetInBlock = finalOffsetInBlock;
+        int numBlocksConsumed = finalNumBlocksSkipped;
 
-      bytes.offset = offsetInBytesRef;
-      bytes.length = length;
-      assert bytes.isValid();
+        {
+          skip(finalOffsetInBytesRef);
+        }
+
+        private void fillBuffer() throws IOException {
+          assert decompressed <= totalDecompressedLength;
+          // no more bytes to decompress
+          if (decompressed == totalDecompressedLength) {
+            return;
+          }
+
+          final int bytesToDecompress = min(blockLength, offset + length - offsetInBlock);
+          assert bytesToDecompress > 0;
+          LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
+          numBlocksConsumed++;
+          bytes.bytes = ArrayUtil.grow(bytes.bytes, decompressed + bytesToDecompress);
+          System.arraycopy(buffer, dictLength, bytes.bytes, decompressed, bytesToDecompress);
+          bytes.length += bytesToDecompress;
+          decompressed += bytesToDecompress;
+          offsetInBlock += bytesToDecompress;
+        }
+
+        @Override
+        public int read() throws IOException {
+          if (bytes.length == 0) {
+            fillBuffer();
+          }
+          // no more bytes
+          if (bytes.length == 0) {
+            return -1;
+          }
+          --bytes.length;
+          int b = bytes.bytes[bytes.offset++];
+          // correct int auto converting from byte ff
+          if (b == -1) {
+            b = 255;
+          }
+          return b;
+        }
+
+        @Override
+        public int read(byte b[], int off, int len) throws IOException {
+          int bytesRead = 0;
+          while (len > bytes.length) {
+            System.arraycopy(bytes.bytes, bytes.offset, b, off, bytes.length);
+            bytes.offset += bytes.length;
+            len -= bytes.length;
+            off += bytes.length;
+            bytesRead += bytes.length;
+            bytes.length = 0;
+            // decompress more when buffer is empty
+            fillBuffer();
+            // return actual read bytes count when there are not enough bytes
+            if (bytes.length == 0) {
+              // return -1 when read nothing
+              return bytesRead == 0 ? -1 : bytesRead;
+            }
+          }
+          // copy the rest from the buffer
+          System.arraycopy(bytes.bytes, bytes.offset, b, off, len);
+          bytes.offset += len;
+          bytes.length -= len;
+          bytesRead += len;
+          return bytesRead;
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+          if (n < 0) {
+            throw new IllegalArgumentException("numBytes must be >= 0, got " + n);
+          }
+
+          // no more actions when there are enough bytes
+          if (n <= bytes.length) {
+            bytes.offset += n;
+            bytes.length -= n;
+            return n;
+          }
+
+          int actualSkipped = bytes.length;
+          // skip the rest of buffer first
+          bytes.offset += bytes.length;
+          bytes.length = 0;
+          for (; numBlocksConsumed < numBlocks; numBlocksConsumed++) {
+            int currentBlockLength = min(blockLength, offset + length - offsetInBlock);
+            if (currentBlockLength + actualSkipped < n) {
+              actualSkipped += currentBlockLength;
+              offsetInBlock += currentBlockLength;
+              in.skipBytes(compressedLengths[numBlocksConsumed]);
+            } else {
+              // current slice has enough bytes for skipping
+              fillBuffer();
+              long offsetInLastBlock = n - actualSkipped;
+              bytes.offset += offsetInLastBlock;
+              bytes.length -= offsetInLastBlock;
+              return n;
+            }
+          }
+
+          // need more slice for skipping, return actual skipped bytes count
+          return actualSkipped;
+        }
+
+        @Override
+        public byte[] readAllBytes() throws IOException {
+          byte[] buf = new byte[0];
+          int totalRead = 0;
+          if (bytes.length == 0) {
+            fillBuffer();
+          }
+          while (bytes.length != 0) {
+            buf = ArrayUtil.grow(buf, totalRead + bytes.length);
+            System.arraycopy(bytes.bytes, bytes.offset, buf, totalRead, bytes.length);
+            bytes.offset += bytes.length;
+            totalRead += bytes.length;
+            bytes.length = 0;
+            fillBuffer();
+          }
+
+          return buf;
+        }
+      };
     }
 
     @Override
-    public Decompressor clone() {
+    public Lucene90Decompressor clone() {
       return new LZ4WithPresetDictDecompressor();
     }
   }
 
-  private static class LZ4WithPresetDictCompressor extends Compressor {
+  private static class LZ4WithPresetDictCompressor extends Lucene90Compressor {
 
     final ByteBuffersDataOutput compressed;
     final LZ4.FastCompressionHashTable hashTable;
@@ -182,7 +307,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
       // And then sub blocks
       for (int start = off + dictLength; start < end; start += blockLength) {
-        int l = Math.min(blockLength, off + len - start);
+        int l = min(blockLength, off + len - start);
         System.arraycopy(bytes, start, buffer, dictLength, l);
         doCompress(buffer, dictLength, l, out);
       }

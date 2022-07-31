@@ -17,7 +17,9 @@
 
 package org.apache.lucene.index;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
@@ -26,10 +28,10 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
-import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Compressor;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90Decompressor;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -41,11 +43,11 @@ import org.apache.lucene.util.IOUtils;
 
 final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
 
-  static final CompressionMode NO_COMPRESSION =
-      new CompressionMode() {
+  static final Lucene90CompressionMode NO_COMPRESSION =
+      new Lucene90CompressionMode() {
         @Override
-        public Compressor newCompressor() {
-          return new Compressor() {
+        public Lucene90Compressor newCompressor() {
+          return new Lucene90Compressor() {
             @Override
             public void close() throws IOException {}
 
@@ -58,21 +60,23 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
         }
 
         @Override
-        public Decompressor newDecompressor() {
-          return new Decompressor() {
+        public Lucene90Decompressor newDecompressor() {
+          return new Lucene90Decompressor() {
+
             @Override
-            public void decompress(
-                DataInput in, int originalLength, int offset, int length, BytesRef bytes)
+            public InputStream decompress(DataInput in, int originalLength, int offset, int length)
                 throws IOException {
+              final BytesRef bytes = new BytesRef();
               bytes.bytes = ArrayUtil.grow(bytes.bytes, length);
               in.skipBytes(offset);
               in.readBytes(bytes.bytes, 0, length);
               bytes.offset = 0;
               bytes.length = length;
+              return new ByteArrayInputStream(bytes.bytes, bytes.offset, bytes.length);
             }
 
             @Override
-            public Decompressor clone() {
+            public Lucene90Decompressor clone() {
               return this;
             }
           };

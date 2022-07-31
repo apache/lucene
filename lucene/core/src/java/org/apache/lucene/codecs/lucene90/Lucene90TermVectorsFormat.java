@@ -18,9 +18,9 @@ package org.apache.lucene.codecs.lucene90;
 
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.lucene90.compressing.FieldsIndexWriter;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsFormat;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.packed.BlockPackedWriter;
 import org.apache.lucene.util.packed.PackedInts;
@@ -167,6 +167,6 @@ public final class Lucene90TermVectorsFormat extends Lucene90CompressingTermVect
 
   /** Sole constructor. */
   public Lucene90TermVectorsFormat() {
-    super("Lucene90TermVectorsData", "", CompressionMode.FAST, 1 << 12, 128, 10);
+    super("Lucene90TermVectorsData", "", Lucene90CompressionMode.FAST, 1 << 12, 128, 10);
   }
 }

@@ -45,7 +45,7 @@ public class Lucene90CompressingStoredFieldsFormat extends StoredFieldsFormat {
 
   private final String formatName;
   private final String segmentSuffix;
-  private final CompressionMode compressionMode;
+  private final Lucene90CompressionMode compressionMode;
   private final int chunkSize;
   private final int maxDocsPerChunk;
   private final int blockShift;
@@ -54,11 +54,11 @@ public class Lucene90CompressingStoredFieldsFormat extends StoredFieldsFormat {
    * Create a new {@link Lucene90CompressingStoredFieldsFormat} with an empty segment suffix.
    *
    * @see Lucene90CompressingStoredFieldsFormat#Lucene90CompressingStoredFieldsFormat(String,
-   *     String, CompressionMode, int, int, int)
+   *     String, Lucene90CompressionMode, int, int, int)
    */
   public Lucene90CompressingStoredFieldsFormat(
       String formatName,
-      CompressionMode compressionMode,
+      Lucene90CompressionMode compressionMode,
       int chunkSize,
       int maxDocsPerChunk,
       int blockShift) {
@@ -99,7 +99,7 @@ public class Lucene90CompressingStoredFieldsFormat extends StoredFieldsFormat {
   public Lucene90CompressingStoredFieldsFormat(
       String formatName,
       String segmentSuffix,
-      CompressionMode compressionMode,
+      Lucene90CompressionMode compressionMode,
       int chunkSize,
       int maxDocsPerChunk,
       int blockShift) {

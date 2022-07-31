@@ -21,8 +21,8 @@ import java.util.Objects;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldVisitor;
@@ -175,12 +175,13 @@ public class Lucene90StoredFieldsFormat extends StoredFieldsFormat {
   private static final int BEST_COMPRESSION_BLOCK_LENGTH = 10 * 48 * 1024;
 
   /** Compression mode for {@link Mode#BEST_COMPRESSION} */
-  public static final CompressionMode BEST_COMPRESSION_MODE =
+  public static final Lucene90CompressionMode BEST_COMPRESSION_MODE =
       new DeflateWithPresetDictCompressionMode();
 
   // Shoot for 10 sub blocks of 8kB each.
   private static final int BEST_SPEED_BLOCK_LENGTH = 10 * 8 * 1024;
 
   /** Compression mode for {@link Mode#BEST_SPEED} */
-  public static final CompressionMode BEST_SPEED_MODE = new LZ4WithPresetDictCompressionMode();
+  public static final Lucene90CompressionMode BEST_SPEED_MODE =
+      new LZ4WithPresetDictCompressionMode();
 }

@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.codecs.compressing;
 
 import org.apache.lucene.codecs.compressing.CompressionMode;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
 
 /** CompressionCodec that uses {@link CompressionMode#FAST} */
 public class FastCompressingCodec extends CompressingCodec {
@@ -27,7 +28,7 @@ public class FastCompressingCodec extends CompressingCodec {
     super(
         "FastCompressingStoredFieldsData",
         withSegmentSuffix ? "FastCompressingStoredFields" : "",
-        CompressionMode.FAST,
+        Lucene90CompressionMode.FAST,
         chunkSize,
         maxDocsPerChunk,
         blockSize);

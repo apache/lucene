@@ -30,14 +30,13 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingT
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VERSION_START;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -81,8 +80,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   final IndexInput vectorsStream;
   private final int version;
   private final int packedIntsVersion;
-  private final CompressionMode compressionMode;
-  private final Decompressor decompressor;
+  private final Lucene90CompressionMode compressionMode;
+  private final Lucene90Decompressor decompressor;
   private final int chunkSize;
   private final int numDocs;
   private boolean closed;
@@ -121,7 +120,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       FieldInfos fn,
       IOContext context,
       String formatName,
-      CompressionMode compressionMode)
+      Lucene90CompressionMode compressionMode)
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
@@ -225,7 +224,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
   }
 
-  CompressionMode getCompressionMode() {
+  Lucene90CompressionMode getCompressionMode() {
     return compressionMode;
   }
 
@@ -678,12 +677,11 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
     // decompress data
     final BytesRef suffixBytes = new BytesRef();
-    decompressor.decompress(
-        vectorsStream,
-        totalLen + totalPayloadLength,
-        docOff + payloadOff,
-        docLen + payloadLen,
-        suffixBytes);
+    InputStream inputStream =
+        decompressor.decompress(
+            vectorsStream, totalLen + totalPayloadLength, docOff + payloadOff, docLen + payloadLen);
+    suffixBytes.bytes = ArrayUtil.growNoCopy(suffixBytes.bytes, docLen + payloadLen);
+    inputStream.read(suffixBytes.bytes, 0, docLen + payloadLen);
     suffixBytes.length = docLen;
     final BytesRef payloadBytes =
         new BytesRef(suffixBytes.bytes, suffixBytes.offset + docLen, payloadLen);

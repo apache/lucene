@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.codecs.compressing;
 
 import org.apache.lucene.codecs.compressing.CompressionMode;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressionMode;
 
 /** CompressionCodec that uses {@link CompressionMode#HIGH_COMPRESSION} */
 public class HighCompressionCompressingCodec extends CompressingCodec {
@@ -27,7 +28,7 @@ public class HighCompressionCompressingCodec extends CompressingCodec {
     super(
         "HighCompressionCompressingStoredFieldsData",
         withSegmentSuffix ? "HighCompressionCompressingStoredFields" : "",
-        CompressionMode.HIGH_COMPRESSION,
+        Lucene90CompressionMode.HIGH_COMPRESSION,
         chunkSize,
         maxDocsPerChunk,
         blockShift);

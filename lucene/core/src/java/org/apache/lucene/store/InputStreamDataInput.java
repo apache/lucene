@@ -19,7 +19,7 @@ package org.apache.lucene.store;
 import java.io.*;
 
 /** A {@link DataInput} wrapping a plain {@link InputStream}. */
-public class InputStreamDataInput extends DataInput implements Closeable {
+public class InputStreamDataInput extends DataInput {
   private final InputStream is;
 
   public InputStreamDataInput(InputStream is) {
