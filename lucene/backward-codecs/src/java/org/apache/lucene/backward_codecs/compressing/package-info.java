@@ -14,24 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.compressing;
 
-import java.io.Closeable;
-import java.io.IOException;
-import org.apache.lucene.store.ByteBuffersDataInput;
-import org.apache.lucene.store.DataOutput;
-
-/** A data compressor. */
-public abstract class Compressor implements Closeable {
-
-  /** Sole constructor, typically called from sub-classes. */
-  protected Compressor() {}
-
-  /**
-   * Compress bytes into <code>out</code>. It is the responsibility of the compressor to add all
-   * necessary information so that a {@link Decompressor} will know when to stop decompressing bytes
-   * from the stream.
-   */
-  public abstract void compress(ByteBuffersDataInput buffersInput, DataOutput out)
-      throws IOException;
-}
+/** Compressing helper classes. */
+package org.apache.lucene.backward_codecs.compressing;

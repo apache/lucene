@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -50,9 +51,9 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             public void close() throws IOException {}
 
             @Override
-            public void compress(byte[] bytes, int off, int len, DataOutput out)
+            public void compress(ByteBuffersDataInput buffersInput, DataOutput out)
                 throws IOException {
-              out.writeBytes(bytes, off, len);
+              out.copyBytes(buffersInput, buffersInput.size());
             }
           };
         }
