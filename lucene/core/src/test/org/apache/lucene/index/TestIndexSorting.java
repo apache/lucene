@@ -188,6 +188,7 @@ public class TestIndexSorting extends LuceneTestCase {
     assertTrue(codec.numCalls > 0);
 
     // merge sort is needed
+    w.deleteAll();
     codec.numCalls = 0;
     codec.needsIndexSort = true;
     for (int i = 10; i >= 0; i--) {

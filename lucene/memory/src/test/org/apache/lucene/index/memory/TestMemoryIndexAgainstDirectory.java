@@ -540,8 +540,6 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
           controlSortedSetDocValues.lookupOrd(controlOrd),
           sortedSetDocValues.lookupOrd(controlOrd));
     }
-    assertEquals(SortedSetDocValues.NO_MORE_ORDS, controlSortedSetDocValues.nextOrd());
-    assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSetDocValues.nextOrd());
 
     indexReader.close();
     controlIndexReader.close();

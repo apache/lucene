@@ -104,10 +104,7 @@ final class XYPointInGeometryQuery extends Query {
         double x = XYEncodingUtils.decode(packedValue, 0);
         double y = XYEncodingUtils.decode(packedValue, Integer.BYTES);
         if (tree.contains(x, y)) {
-          int docID;
-          while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            visit(docID);
-          }
+          adder.add(iterator);
         }
       }
 

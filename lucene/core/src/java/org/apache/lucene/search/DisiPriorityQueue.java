@@ -103,6 +103,48 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
     return heap[0];
   }
 
+  public void addAll(DisiWrapper[] entries, int offset, int len) {
+    // Nothing to do if empty:
+    if (len == 0) {
+      return;
+    }
+
+    // Fail early if we're going to over-fill:
+    if (size + len > heap.length) {
+      throw new IndexOutOfBoundsException(
+          "Cannot add "
+              + len
+              + " elements to a queue with remaining capacity "
+              + (heap.length - size));
+    }
+
+    // Copy the entries over to our heap array:
+    System.arraycopy(entries, offset, heap, size, len);
+    size += len;
+
+    // Heapify in bulk:
+    final int firstLeafIndex = size >>> 1;
+    for (int rootIndex = firstLeafIndex - 1; rootIndex >= 0; rootIndex--) {
+      int parentIndex = rootIndex;
+      DisiWrapper parent = heap[parentIndex];
+      while (parentIndex < firstLeafIndex) {
+        int childIndex = leftNode(parentIndex);
+        int rightChildIndex = rightNode(childIndex);
+        DisiWrapper child = heap[childIndex];
+        if (rightChildIndex < size && heap[rightChildIndex].doc < child.doc) {
+          child = heap[rightChildIndex];
+          childIndex = rightChildIndex;
+        }
+        if (child.doc >= parent.doc) {
+          break;
+        }
+        heap[parentIndex] = child;
+        parentIndex = childIndex;
+      }
+      heap[parentIndex] = parent;
+    }
+  }
+
   public DisiWrapper pop() {
     final DisiWrapper[] heap = this.heap;
     final DisiWrapper result = heap[0];

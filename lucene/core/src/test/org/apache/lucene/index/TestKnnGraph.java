@@ -30,9 +30,9 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene93.Lucene93Codec;
-import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene93.Lucene93HnswVectorsReader;
+import org.apache.lucene.codecs.lucene94.Lucene94Codec;
+import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -64,7 +64,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int M = Lucene93HnswVectorsFormat.DEFAULT_MAX_CONN;
+  private static int M = Lucene94HnswVectorsFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
   private VectorSimilarityFunction similarityFunction;
@@ -77,10 +77,10 @@ public class TestKnnGraph extends LuceneTestCase {
     }
 
     codec =
-        new Lucene93Codec() {
+        new Lucene94Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene93HnswVectorsFormat(M, Lucene93HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            return new Lucene94HnswVectorsFormat(M, Lucene94HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
           }
         };
 
@@ -90,7 +90,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   @After
   public void cleanup() {
-    M = Lucene93HnswVectorsFormat.DEFAULT_MAX_CONN;
+    M = Lucene94HnswVectorsFormat.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */
@@ -237,8 +237,8 @@ public class TestKnnGraph extends LuceneTestCase {
         PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
             (PerFieldKnnVectorsFormat.FieldsReader)
                 ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
-        Lucene93HnswVectorsReader vectorReader =
-            (Lucene93HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
+        Lucene94HnswVectorsReader vectorReader =
+            (Lucene94HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
         graph = copyGraph(vectorReader.getGraph(KNN_GRAPH_FIELD));
       }
     }
@@ -436,8 +436,8 @@ public class TestKnnGraph extends LuceneTestCase {
         if (perFieldReader == null) {
           continue;
         }
-        Lucene93HnswVectorsReader vectorReader =
-            (Lucene93HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
+        Lucene94HnswVectorsReader vectorReader =
+            (Lucene94HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
         if (vectorReader == null) {
           continue;
         }

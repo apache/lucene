@@ -720,11 +720,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public long nextOrd() throws IOException {
-        if (currentIndex == currentOrds.length) {
-          return NO_MORE_ORDS;
-        } else {
-          return Long.parseLong(currentOrds[currentIndex++]);
-        }
+        return Long.parseLong(currentOrds[currentIndex++]);
       }
 
       @Override

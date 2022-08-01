@@ -355,7 +355,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.1.0-cfs",
     "9.1.0-nocfs",
     "9.2.0-cfs",
-    "9.2.0-nocfs"
+    "9.2.0-nocfs",
+    "9.3.0-cfs",
+    "9.3.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -365,7 +367,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   static final String[] oldSortedNames = {
     "sorted.9.0.0", // Force on separate lines
     "sorted.9.1.0",
-    "sorted.9.2.0"
+    "sorted.9.2.0",
+    "sorted.9.3.0"
   };
 
   public static String[] getOldSortedNames() {
@@ -1207,7 +1210,6 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(i, dvSortedSet.nextDoc());
       assertEquals(1, dvSortedSet.docValueCount());
       long ord = dvSortedSet.nextOrd();
-      assertEquals(SortedSetDocValues.NO_MORE_ORDS, dvSortedSet.nextOrd());
       term = dvSortedSet.lookupOrd(ord);
       assertEquals(expectedRef, term);
 
