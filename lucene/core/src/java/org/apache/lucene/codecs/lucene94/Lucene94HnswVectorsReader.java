@@ -173,20 +173,23 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
               + fieldEntry.dimension);
     }
 
-    long numBytes =
+    int byteSize =
         switch (info.getVectorEncoding()) {
-          case BYTE -> (long) fieldEntry.size() * dimension;
-          case FLOAT32 -> (long) fieldEntry.size() * dimension * Float.BYTES;
+          case BYTE -> Byte.BYTES;
+          case FLOAT32 -> Float.BYTES;
         };
+    int numBytes = fieldEntry.size * dimension * byteSize;
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "Vector data length "
               + fieldEntry.vectorDataLength
               + " not matching size="
-              + fieldEntry.size()
+              + fieldEntry.size
               + " * dim="
               + dimension
-              + " * 4 = "
+              + " * byteSize="
+              + byteSize
+              + " = "
               + numBytes);
     }
   }

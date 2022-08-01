@@ -714,10 +714,9 @@ final class IndexingChain implements Accountable {
     }
     if (fieldType.vectorDimension() != 0) {
       switch (fieldType.vectorEncoding()) {
-        case BYTE -> pf.knnFieldVectorsWriter.addValue(
-            docID, field.binaryValue().bytes, field.binaryValue().offset);
+        case BYTE -> pf.knnFieldVectorsWriter.addValue(docID, field.binaryValue());
         case FLOAT32 -> pf.knnFieldVectorsWriter.addValue(
-            docID, ((KnnVectorField) field).vectorValue(), 0);
+            docID, ((KnnVectorField) field).vectorValue());
       }
     }
     return indexedField;
@@ -782,7 +781,10 @@ final class IndexingChain implements Accountable {
           fieldType.pointNumBytes());
     }
     if (fieldType.vectorDimension() != 0) {
-      schema.setVectors(fieldType.vectorSimilarityFunction(), fieldType.vectorDimension());
+      schema.setVectors(
+          fieldType.vectorEncoding(),
+          fieldType.vectorSimilarityFunction(),
+          fieldType.vectorDimension());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1368,11 +1370,14 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setVectors(VectorSimilarityFunction similarityFunction, int dimension) {
+    void setVectors(
+        VectorEncoding encoding, VectorSimilarityFunction similarityFunction, int dimension) {
       if (vectorDimension == 0) {
-        this.vectorDimension = dimension;
+        this.vectorEncoding = encoding;
         this.vectorSimilarityFunction = similarityFunction;
+        this.vectorDimension = dimension;
       } else {
+        assertSame("vector encoding", vectorEncoding, encoding);
         assertSame("vector similarity function", vectorSimilarityFunction, similarityFunction);
         assertSame("vector dimension", vectorDimension, dimension);
       }
@@ -1388,6 +1393,7 @@ final class IndexingChain implements Accountable {
       pointIndexDimensionCount = 0;
       pointNumBytes = 0;
       vectorDimension = 0;
+      vectorEncoding = VectorEncoding.FLOAT32;
       vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     }
 

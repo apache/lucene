@@ -50,7 +50,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     for (int doc = mergedValues.nextDoc();
         doc != DocIdSetIterator.NO_MORE_DOCS;
         doc = mergedValues.nextDoc()) {
-      writer.addValue(doc, (T) mergedValues.vectorValue(), 0);
+      writer.addValue(doc, mergedValues.vectorValue());
     }
   }
 

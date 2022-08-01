@@ -52,8 +52,10 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
+import org.junit.Before;
 
 /**
  * Base class aiming at testing {@link KnnVectorsFormat vectors formats}. To test a new format, all
@@ -64,9 +66,21 @@ import org.apache.lucene.util.VectorUtil;
  */
 public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTestCase {
 
+  private VectorEncoding vectorEncoding;
+  private VectorSimilarityFunction similarityFunction;
+
+  @Before
+  public void init() {
+    vectorEncoding = randomVectorEncoding();
+    similarityFunction = randomSimilarity();
+  }
+
   @Override
   protected void addRandomFields(Document doc) {
-    doc.add(new KnnVectorField("v2", randomVector(30), VectorSimilarityFunction.EUCLIDEAN));
+    switch (vectorEncoding) {
+      case BYTE -> doc.add(new KnnVectorField("v2", randomVector8(30), similarityFunction));
+      case FLOAT32 -> doc.add(new KnnVectorField("v2", randomVector(30), similarityFunction));
+    }
   }
 
   public void testFieldConstructor() {
@@ -602,7 +616,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     for (int i = 0; i < numFields; i++) {
       fieldDims[i] = random().nextInt(20) + 1;
       fieldSimilarityFunctions[i] = randomSimilarity();
-      fieldVectorEncodings[i] = randomVectorEncoding(fieldSimilarityFunctions[i]);
+      fieldVectorEncodings[i] = randomVectorEncoding();
     }
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
@@ -611,16 +625,19 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         for (int field = 0; field < numFields; field++) {
           String fieldName = "int" + field;
           if (random().nextInt(100) == 17) {
-            float[] v =
-                switch (fieldVectorEncodings[field]) {
-                  case BYTE -> randomVector8(fieldDims[field]);
-                  case FLOAT32 -> randomVector(fieldDims[field]);
-                  default -> throw new AssertionError(
-                      "unknown similarity function " + fieldSimilarityFunctions[field]);
-                };
-            doc.add(new KnnVectorField(fieldName, v, fieldSimilarityFunctions[field]));
+            switch (fieldVectorEncodings[field]) {
+              case BYTE -> {
+                BytesRef b = randomVector8(fieldDims[field]);
+                doc.add(new KnnVectorField(fieldName, b, fieldSimilarityFunctions[field]));
+                fieldTotals[field] += b.bytes[b.offset];
+              }
+              case FLOAT32 -> {
+                float[] v = randomVector(fieldDims[field]);
+                doc.add(new KnnVectorField(fieldName, v, fieldSimilarityFunctions[field]));
+                fieldTotals[field] += v[0];
+              }
+            }
             fieldDocCounts[field]++;
-            fieldTotals[field] += v[0];
           }
         }
         w.addDocument(doc);
@@ -653,7 +670,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         random().nextInt(VectorSimilarityFunction.values().length)];
   }
 
-  private VectorEncoding randomVectorEncoding(VectorSimilarityFunction similarity) {
+  private VectorEncoding randomVectorEncoding() {
     Codec codec = getCodec();
     if (codec.knnVectorsFormat().currentVersion()
         >= Codec.forName("Lucene94").knnVectorsFormat().currentVersion()) {
@@ -798,9 +815,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextBoolean() && values[i] != null) {
           // sometimes use a shared scratch array
           System.arraycopy(values[i], 0, scratch, 0, scratch.length);
-          add(iw, fieldName, i, scratch, VectorSimilarityFunction.EUCLIDEAN);
+          add(iw, fieldName, i, scratch, similarityFunction);
         } else {
-          add(iw, fieldName, i, values[i], VectorSimilarityFunction.EUCLIDEAN);
+          add(iw, fieldName, i, values[i], similarityFunction);
         }
         if (random().nextInt(10) == 2) {
           // sometimes delete a random document
@@ -921,7 +938,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       int numDoc = atLeast(100);
       int dimension = atLeast(10);
       float[][] id2value = new float[numDoc][];
-      int[] id2ord = new int[numDoc];
       for (int i = 0; i < numDoc; i++) {
         int id = random().nextInt(numDoc);
         float[] value;
@@ -932,7 +948,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           value = null;
         }
         id2value[id] = value;
-        id2ord[id] = i;
         add(iw, fieldName, id, value, VectorSimilarityFunction.EUCLIDEAN);
       }
       try (IndexReader reader = DirectoryReader.open(iw)) {
@@ -1030,12 +1045,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     return v;
   }
 
-  private float[] randomVector8(int dim) {
+  private BytesRef randomVector8(int dim) {
     float[] v = randomVector(dim);
+    byte[] b = new byte[dim];
     for (int i = 0; i < dim; i++) {
-      v[i] *= 127;
+      b[i] = (byte) (v[i] * 127);
     }
-    return v;
+    return new BytesRef(b);
   }
 
   public void testCheckIndexIncludesVectors() throws Exception {
@@ -1130,8 +1146,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   public void testVectorValuesReportCorrectDocs() throws Exception {
     final int numDocs = atLeast(1000);
     final int dim = random().nextInt(20) + 1;
-    final VectorSimilarityFunction similarityFunction = randomSimilarity();
-    final VectorEncoding vectorEncoding = randomVectorEncoding(similarityFunction);
     double fieldValuesCheckSum = 0;
     int fieldDocCount = 0;
     long fieldSumDocIDs = 0;
@@ -1143,14 +1157,18 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         int docID = random().nextInt(numDocs);
         doc.add(new StoredField("id", docID));
         if (random().nextInt(4) == 3) {
-          float[] vector =
-              switch (vectorEncoding) {
-                case BYTE -> randomVector8(dim);
-                case FLOAT32 -> randomVector(dim);
-                default -> throw new AssertionError("unknown vector encoding " + vectorEncoding);
-              };
-          doc.add(new KnnVectorField("knn_vector", vector, similarityFunction));
-          fieldValuesCheckSum += vector[0];
+          switch (vectorEncoding) {
+            case BYTE -> {
+              BytesRef b = randomVector8(dim);
+              fieldValuesCheckSum += b.bytes[b.offset];
+              doc.add(new KnnVectorField("knn_vector", b, similarityFunction));
+            }
+            case FLOAT32 -> {
+              float[] v = randomVector(dim);
+              fieldValuesCheckSum += v[0];
+              doc.add(new KnnVectorField("knn_vector", v, similarityFunction));
+            }
+          }
           fieldDocCount++;
           fieldSumDocIDs += docID;
         }

@@ -467,17 +467,6 @@ public class TestHnswGraph extends LuceneTestCase {
                 10,
                 0,
                 0));
-    // can't use BYTE + EUCLIDEAN
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            HnswGraphBuilder.create(
-                new RandomVectorValues(1, 1, random()),
-                VectorEncoding.BYTE,
-                VectorSimilarityFunction.EUCLIDEAN,
-                10,
-                10,
-                0));
   }
 
   @SuppressWarnings("unchecked")

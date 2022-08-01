@@ -165,7 +165,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, Object value, int offset) {
+    public void addValue(int docID, Object value) {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
@@ -176,25 +176,25 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
       float[] vectorValue =
           switch (fieldInfo.getVectorEncoding()) {
             case FLOAT32 -> (float[]) value;
-            case BYTE -> bytesToFloats((byte[]) value, offset);
+            case BYTE -> bytesToFloats((BytesRef) value);
           };
       docsWithField.add(docID);
-      vectors.add(copyValue(vectorValue, offset));
+      vectors.add(copyValue(vectorValue));
       lastDocID = docID;
     }
 
-    private float[] bytesToFloats(byte[] bytes, int offset) {
+    private float[] bytesToFloats(BytesRef b) {
       // This is used only by SimpleTextKnnVectorsWriter
       float[] floats = new float[dim];
       for (int i = 0; i < dim; i++) {
-        floats[i] = bytes[i + offset];
+        floats[i] = b.bytes[i + b.offset];
       }
       return floats;
     }
 
     @Override
-    public float[] copyValue(float[] vectorValue, int offset) {
-      return ArrayUtil.copyOfSubArray(vectorValue, offset, dim);
+    public float[] copyValue(float[] vectorValue) {
+      return ArrayUtil.copyOfSubArray(vectorValue, 0, dim);
     }
 
     @Override

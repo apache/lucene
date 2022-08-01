@@ -107,11 +107,6 @@ public final class HnswGraphBuilder<T> {
     if (beamWidth <= 0) {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
-    if (vectorEncoding == VectorEncoding.BYTE
-        && similarityFunction != VectorSimilarityFunction.DOT_PRODUCT) {
-      throw new IllegalArgumentException(
-          "Vector encoding BYTE must only be used with DOT_PRODUCT similarity function.");
-    }
     this.M = M;
     this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable

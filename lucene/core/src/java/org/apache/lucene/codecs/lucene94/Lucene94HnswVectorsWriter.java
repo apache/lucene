@@ -168,11 +168,12 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
 
   private void writeField(FieldWriter<?> fieldData, int maxDoc) throws IOException {
     // write vector values
-    long vectorDataOffset =
-        switch (fieldData.fieldInfo.getVectorEncoding()) {
-          case BYTE -> writeByteVectors(fieldData);
-          case FLOAT32 -> writeFloat32Vectors(fieldData);
-        };
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+    switch (fieldData.fieldInfo.getVectorEncoding()) {
+      case BYTE -> writeByteVectors(fieldData);
+      case FLOAT32 -> writeFloat32Vectors(fieldData);
+    }
+    ;
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     // write graph
@@ -192,8 +193,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         graph);
   }
 
-  private long writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+  private void writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
     final ByteBuffer buffer =
         ByteBuffer.allocate(fieldData.dim * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     final BytesRef binaryValue = new BytesRef(buffer.array());
@@ -201,16 +201,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       buffer.asFloatBuffer().put((float[]) v);
       vectorData.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
     }
-    return vectorDataOffset;
   }
 
-  private long writeByteVectors(FieldWriter<?> fieldData) throws IOException {
-    long vectorDataOffset = vectorData.getFilePointer();
+  private void writeByteVectors(FieldWriter<?> fieldData) throws IOException {
     for (Object v : fieldData.vectors) {
-      byte[] vector = (byte[]) v;
-      vectorData.writeBytes(vector, 0, vector.length);
+      BytesRef vector = (BytesRef) v;
+      vectorData.writeBytes(vector.bytes, vector.offset, vector.length);
     }
-    return vectorDataOffset;
   }
 
   private void writeSortingField(FieldWriter<?> fieldData, int maxDoc, Sorter.DocMap sortMap)
@@ -392,7 +389,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, vectors);
+      DocsWithFieldSet docsWithField =
+          writeVectorData(tempVectorData, vectors, fieldInfo.getVectorEncoding().byteSize);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -403,7 +401,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
       // we use Lucene94HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
@@ -561,13 +558,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
-  private static DocsWithFieldSet writeVectorData(IndexOutput output, VectorValues vectors)
-      throws IOException {
+  private static DocsWithFieldSet writeVectorData(
+      IndexOutput output, VectorValues vectors, int scalarSize) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
       // write vector
       BytesRef binaryValue = vectors.binaryValue();
-      assert binaryValue.length == vectors.dimension() * Float.BYTES;
+      assert binaryValue.length == vectors.dimension() * scalarSize;
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
       docsWithField.add(docV);
     }
@@ -594,16 +591,16 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         throws IOException {
       int dim = fieldInfo.getVectorDimension();
       return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> new FieldWriter<byte[]>(fieldInfo, M, beamWidth, infoStream) {
+        case BYTE -> new FieldWriter<BytesRef>(fieldInfo, M, beamWidth, infoStream) {
           @Override
-          public byte[] copyValue(byte[] value, int offset) {
-            return ArrayUtil.copyOfSubArray(value, offset, dim);
+          public BytesRef copyValue(BytesRef value) {
+            return new BytesRef(ArrayUtil.copyOfSubArray(value.bytes, value.offset, dim));
           }
         };
         case FLOAT32 -> new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream) {
           @Override
-          public float[] copyValue(float[] value, int offset) {
-            return ArrayUtil.copyOfSubArray(value, offset, dim);
+          public float[] copyValue(float[] value) {
+            return ArrayUtil.copyOfSubArray(value, 0, dim);
           }
         };
       };
@@ -631,7 +628,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void addValue(int docID, Object value, int offset) throws IOException {
+    public void addValue(int docID, Object value) throws IOException {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
@@ -641,7 +638,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       T vectorValue = (T) value;
       assert docID > lastDocID;
       docsWithField.add(docID);
-      vectors.add(copyValue(vectorValue, offset));
+      vectors.add(copyValue(vectorValue));
       if (node > 0) {
         // start at node 1! node 0 is added implicitly, in the constructor
         hnswGraphBuilder.addGraphNode(node, vectorValue);
@@ -695,7 +692,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
-      return new BytesRef((byte[]) vectors.get(targetOrd));
+      return (BytesRef) vectors.get(targetOrd);
     }
   }
 }

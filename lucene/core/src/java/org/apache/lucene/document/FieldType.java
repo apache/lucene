@@ -374,8 +374,8 @@ public class FieldType implements IndexableFieldType {
   }
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
-  public void setVectorDimensionsAndSimilarityFunction(
-      int numDimensions, VectorSimilarityFunction distFunc) {
+  public void setVectorAttributes(
+      int numDimensions, VectorEncoding encoding, VectorSimilarityFunction similarity) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
@@ -388,7 +388,8 @@ public class FieldType implements IndexableFieldType {
               + numDimensions);
     }
     this.vectorDimension = numDimensions;
-    this.vectorSimilarityFunction = Objects.requireNonNull(distFunc);
+    this.vectorSimilarityFunction = Objects.requireNonNull(similarity);
+    this.vectorEncoding = Objects.requireNonNull(encoding);
   }
 
   @Override

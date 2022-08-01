@@ -34,16 +34,13 @@ public abstract class KnnFieldVectorsWriter<T> implements Accountable {
    * Add new docID with its vector value to the given field for indexing. Doc IDs must be added in
    * increasing order.
    */
-  public abstract void addValue(int docID, Object vectorValue, int offset) throws IOException;
+  public abstract void addValue(int docID, Object vectorValue) throws IOException;
 
   /**
-   * Used to copy values being indexed to internal storage. The vectorValue will be of an array
-   * type; the value being added starts at offset in the array, and the array must contain at least
-   * offset + dimension.
+   * Used to copy values being indexed to internal storage.
    *
    * @param vectorValue an array containing the vector value to add
-   * @param offset the position of the value in the array
    * @return a copy of the value; a new array
    */
-  public abstract T copyValue(T vectorValue, int offset);
+  public abstract T copyValue(T vectorValue);
 }

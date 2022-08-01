@@ -355,7 +355,8 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       int dimension = 1 + r.nextInt(VectorValues.MAX_DIMENSIONS);
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
-      type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction);
+      VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
+      type.setVectorAttributes(dimension, encoding, similarityFunction);
     }
 
     return type;
