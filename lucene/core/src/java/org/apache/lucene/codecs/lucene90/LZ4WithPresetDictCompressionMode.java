@@ -21,6 +21,7 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -167,23 +168,23 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     }
 
     @Override
-    public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
+    public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
+      final int len = (int) (buffersInput.size() - buffersInput.position());
       final int dictLength = len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR);
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
       buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
       out.writeVInt(dictLength);
       out.writeVInt(blockLength);
-      final int end = off + len;
 
       compressed.reset();
       // Compress the dictionary first
-      System.arraycopy(bytes, off, buffer, 0, dictLength);
+      buffersInput.readBytes(buffer, 0, dictLength);
       doCompress(buffer, 0, dictLength, out);
 
       // And then sub blocks
-      for (int start = off + dictLength; start < end; start += blockLength) {
-        int l = Math.min(blockLength, off + len - start);
-        System.arraycopy(bytes, start, buffer, dictLength, l);
+      for (int start = dictLength; start < len; start += blockLength) {
+        int l = Math.min(blockLength, len - start);
+        buffersInput.readBytes(buffer, dictLength, l);
         doCompress(buffer, dictLength, l, out);
       }
 

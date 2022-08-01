@@ -30,11 +30,11 @@ import static org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50Com
 import static org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingStoredFieldsReader.VERSION_CURRENT;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
+import org.apache.lucene.backward_codecs.compressing.Compressor;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexableField;
