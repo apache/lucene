@@ -31,6 +31,7 @@ import org.apache.lucene.search.comparators.DoubleComparator;
 import org.apache.lucene.search.comparators.FloatComparator;
 import org.apache.lucene.search.comparators.IntComparator;
 import org.apache.lucene.search.comparators.LongComparator;
+import org.apache.lucene.search.comparators.TermOrdValComparator;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BytesRef;
@@ -536,8 +537,7 @@ public class SortField {
         break;
 
       case STRING:
-        return new FieldComparator.TermOrdValComparator(
-            numHits, field, missingValue == STRING_LAST);
+        return new TermOrdValComparator(numHits, field, missingValue == STRING_LAST, reverse);
 
       case STRING_VAL:
         fieldComparator =
