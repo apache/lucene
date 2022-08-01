@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -47,7 +46,6 @@ public final class ByteBuffersDataInput extends DataInput
   private final long offset;
 
   private long pos;
-  private byte[] shareBuffer;
 
   /**
    * Read data from a set of contiguous buffers. All data buffers except for the last one must have
@@ -78,7 +76,6 @@ public final class ByteBuffersDataInput extends DataInput
     // The initial "position" of this stream is shifted by the position of the first block.
     this.offset = blocks[0].position();
     this.pos = offset;
-    this.shareBuffer = new byte[0];
   }
 
   public long size() {
@@ -166,38 +163,6 @@ public final class ByteBuffersDataInput extends DataInput
       } else {
         throw e; // Something is wrong.
       }
-    }
-  }
-
-  /**
-   * ReadBytes from position with length, if [pos, pos + len] stay in one ByteBuffer can ignore
-   * memory copy, otherwise return a new ByteBuffer with continuous byte array
-   *
-   * @param length from position to length
-   * @return ByteBuffer which bytes read from [pos, pos + length]
-   */
-  public ByteBuffer readNBytes(int length) throws EOFException {
-    final long pos = this.pos;
-    if (length < 0 || (pos - offset + length) > this.size) {
-      throw new EOFException(
-          String.format(
-              Locale.ROOT, "read(pos=%s, length=%s) is out of bounds: %s", pos, length, this));
-    }
-
-    final int blockIndex = blockIndex(pos);
-    final int blockOffset = blockOffset(pos);
-    ByteBuffer block = blocks[blockIndex].duplicate();
-    block.position(blockOffset);
-    // if [pos, pos + len] stay in one ByteBuffer, we can ignore memory copy,
-    // otherwise need to copy bytes into a copyBuffer
-    if (block.remaining() >= length) {
-      this.pos += length;
-      return block.slice(blockOffset, length);
-    } else {
-      shareBuffer = ArrayUtil.growNoCopy(shareBuffer, length);
-      ByteBuffer bb = ByteBuffer.wrap(shareBuffer, 0, length);
-      readBytes(bb, length);
-      return bb.rewind().order(ByteOrder.LITTLE_ENDIAN);
     }
   }
 

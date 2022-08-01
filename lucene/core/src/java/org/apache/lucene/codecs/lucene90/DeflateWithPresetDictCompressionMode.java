@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -165,19 +164,20 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     final Deflater compressor;
     byte[] compressed;
     boolean closed;
+    byte[] buffer;
 
     DeflateWithPresetDictCompressor(int level) {
       compressor = new Deflater(level, true);
       compressed = new byte[64];
+      buffer = BytesRef.EMPTY_BYTES;
     }
 
-    private void doCompress(ByteBuffer bytes, DataOutput out) throws IOException {
-      int len = bytes.remaining();
+    private void doCompress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
       if (len == 0) {
         out.writeVInt(0);
         return;
       }
-      compressor.setInput(bytes);
+      compressor.setInput(bytes, off, len);
       compressor.finish();
       if (compressor.needsInput()) {
         throw new IllegalStateException();
@@ -210,16 +210,17 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
 
       // Compress the dictionary first
       compressor.reset();
-      ByteBuffer bufferDict = buffersInput.readNBytes(dictLength);
-      doCompress(bufferDict, out);
+      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
+      buffersInput.readBytes(buffer, 0, dictLength);
+      doCompress(buffer, 0, dictLength, out);
 
       // And then sub blocks
       for (int start = dictLength; start < len; start += blockLength) {
         compressor.reset();
-        compressor.setDictionary(bufferDict);
+        compressor.setDictionary(buffer, 0, dictLength);
         int l = Math.min(blockLength, len - start);
-        ByteBuffer bufferBlock = buffersInput.readNBytes(l);
-        doCompress(bufferBlock, out);
+        buffersInput.readBytes(buffer, dictLength, l);
+        doCompress(buffer, dictLength, l, out);
       }
     }
 
