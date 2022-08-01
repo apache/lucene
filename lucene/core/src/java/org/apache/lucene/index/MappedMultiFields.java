@@ -43,8 +43,11 @@ public class MappedMultiFields extends FilterFields {
   @Override
   public Terms terms(String field) throws IOException {
     MultiTerms terms = (MultiTerms) in.terms(field);
-    return new MappedMultiTerms(field, mergeState, terms);
-
+    if (terms.isEmpty()) {
+      return Terms.EMPTY;
+    } else {
+      return new MappedMultiTerms(field, mergeState, terms);
+    }
   }
 
   private static class MappedMultiTerms extends FilterTerms {
