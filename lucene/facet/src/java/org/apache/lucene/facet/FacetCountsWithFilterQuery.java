@@ -73,11 +73,11 @@ public abstract class FacetCountsWithFilterQuery extends Facets {
       final Weight fastMatchWeight =
           searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
       final Scorer s = fastMatchWeight.scorer(hits.context);
-      DocIdSetIterator fastMatchQueryIterator = s.iterator();
-      if (fastMatchQueryIterator == null) {
+      if (s == null) {
         // no matching docs by the fast match query
         return null;
       } else {
+        DocIdSetIterator fastMatchQueryIterator = s.iterator();
         allIterators.add(fastMatchQueryIterator);
       }
     }
