@@ -54,8 +54,7 @@ Improvements
 
 Optimizations
 ---------------------
-
-* LUCENE-10627: Using ByteBuffersDataInput reduce memory copy on compressing data. (luyuncheng)
+(No changes)
 
 Bug Fixes
 ---------------------
@@ -81,6 +80,46 @@ Other
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
+
+======================== Lucene 9.4.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+* LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
+
+Improvements
+---------------------
+* LUCENE-10592: Build HNSW Graph on indexing. (Mayya Sharipova, Adrien Grand, Julie Tibshirani)
+
+Optimizations
+---------------------
+
+* LUCENE-10661: Reduce memory copy in BytesStore. (luyuncheng)
+
+* GITHUB#1020: Support #scoreSupplier and small optimizations to DocValuesRewriteMethod. (Greg Miller)
+
+* LUCENE-10633: Added support for dynamic pruning to queries sorted by a string
+  field that is indexed with terms and SORTED or SORTED_SET doc values.
+  (Adrien Grand)
+
+* LUCENE-10627: Using ByteBuffersDataInput reduce memory copy on compressing data. (luyuncheng)
+
+Bug Fixes
+---------------------
+* LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
+
+Build
+---------------------
+
+* LUCENE-10669: The build should be more helpful when generated resources are touched (Dawid Weiss)
+
+Other
+---------------------
+* LUCENE-10559: Add Prefilter Option to KnnGraphTester (Kaival Parikh)
 
 ======================== Lucene 9.3.0 =======================
 
