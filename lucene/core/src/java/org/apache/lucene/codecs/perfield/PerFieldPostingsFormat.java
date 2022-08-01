@@ -296,9 +296,20 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
       // Then rebuild fields:
       for (Map.Entry<String, FieldsProducer> ent : other.fields.entrySet()) {
-        FieldsProducer producer = oldToNew.get(ent.getValue());
-        assert producer != null;
-        fields.put(ent.getKey(), producer);
+        Terms terms = null;
+        try {
+          terms = other.terms(ent.getKey());
+        } catch (
+            @SuppressWarnings("unused")
+            IOException e) {
+          // Should not come here.
+        }
+        assert terms != null;
+        if (terms != Terms.EMPTY) {
+          FieldsProducer producer = oldToNew.get(ent.getValue());
+          assert producer != null;
+          fields.put(ent.getKey(), producer);
+        }
       }
 
       segment = other.segment;
