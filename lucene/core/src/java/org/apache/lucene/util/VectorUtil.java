@@ -122,15 +122,16 @@ public final class VectorUtil {
   }
 
   /** Returns the cosine similarity between the two vectors. */
-  public static float cosine(byte[] a, int aOffset, byte[] b, int bOffset, int dim) {
+  public static float cosine(BytesRef a, BytesRef b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int sum = 0;
     int norm1 = 0;
     int norm2 = 0;
+    int aOffset = a.offset, bOffset = b.offset;
 
-    for (int i = 0; i < dim; i++) {
-      byte elem1 = a[aOffset++];
-      byte elem2 = b[bOffset++];
+    for (int i = 0; i < a.length; i++) {
+      byte elem1 = a.bytes[aOffset++];
+      byte elem2 = b.bytes[bOffset++];
       sum += elem1 * elem2;
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;
@@ -152,7 +153,7 @@ public final class VectorUtil {
     int dim = v1.length;
     int i;
     for (i = 0; i + 8 <= dim; i += 8) {
-      squareSum += squareDistanceUnrolled8(v1, v2, i);
+      squareSum += squareDistanceUnrolled(v1, v2, i);
     }
     for (; i < dim; i++) {
       float diff = v1[i] - v2[i];
@@ -161,18 +162,7 @@ public final class VectorUtil {
     return squareSum;
   }
 
-  /** Returns the sum of squared differences of the two vectors. */
-  public static float squareDistance(byte[] a, int aOffset, byte[] b, int bOffset, int dim) {
-    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
-    int squareSum = 0;
-    for (int i = 0; i < dim; i++) {
-      int diff = a[aOffset++] - b[bOffset++];
-      squareSum += diff * diff;
-    }
-    return squareSum;
-  }
-
-  private static float squareDistanceUnrolled8(float[] v1, float[] v2, int index) {
+  private static float squareDistanceUnrolled(float[] v1, float[] v2, int index) {
     float diff0 = v1[index + 0] - v2[index + 0];
     float diff1 = v1[index + 1] - v2[index + 1];
     float diff2 = v1[index + 2] - v2[index + 2];
@@ -189,6 +179,18 @@ public final class VectorUtil {
         + diff5 * diff5
         + diff6 * diff6
         + diff7 * diff7;
+  }
+
+  /** Returns the sum of squared differences of the two vectors. */
+  public static float squareDistance(BytesRef a, BytesRef b) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int squareSum = 0;
+    int aOffset = a.offset, bOffset = b.offset;
+    for (int i = 0; i < a.length; i++) {
+      int diff = a.bytes[aOffset++] - b.bytes[bOffset++];
+      squareSum += diff * diff;
+    }
+    return squareSum;
   }
 
   /**
@@ -243,22 +245,32 @@ public final class VectorUtil {
   }
 
   /**
+   * Dot product computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static float dotProduct(BytesRef a, BytesRef b) {
+    assert a.length == b.length;
+    int total = 0;
+    int aOffset = a.offset, bOffset = b.offset;
+    for (int i = 0; i < a.length; i++) {
+      total += a.bytes[aOffset++] * b.bytes[bOffset++];
+    }
+    return total;
+  }
+
+  /**
    * Dot product score computed over signed bytes, scaled to be in [0, 1].
    *
    * @param a bytes containing a vector
-   * @param aOffset offset of the vector in a
    * @param b bytes containing another vector, of the same dimension
-   * @param len the length (aka dimension) of the vectors
-   * @param bOffset offset of the vector in b
    * @return the value of the similarity function applied to the two vectors
    */
-  public static float dotProductScore(byte[] a, int aOffset, byte[] b, int bOffset, int len) {
-    int total = 0;
-    for (int i = 0; i < len; i++) {
-      total += a[aOffset++] * b[bOffset++];
-    }
+  public static float dotProductScore(BytesRef a, BytesRef b) {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-    return (1 + total) / (float) (len * (1 << 15));
+    return (1 + dotProduct(a, b)) / (float) (a.length * (1 << 15));
   }
 
   /**
@@ -269,7 +281,7 @@ public final class VectorUtil {
    * @return a new BytesRef containing the vector's values cast to byte.
    */
   public static BytesRef toBytesRef(float[] vector) {
-    BytesRef b = new BytesRef(vector.length);
+    BytesRef b = new BytesRef(new byte[vector.length]);
     for (int i = 0; i < vector.length; i++) {
       b.bytes[i] = (byte) vector[i];
     }

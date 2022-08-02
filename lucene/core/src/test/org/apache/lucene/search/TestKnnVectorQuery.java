@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.TestVectorUtil.randomVector;
 
@@ -40,7 +41,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -48,6 +49,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.VectorUtil;
 
@@ -174,7 +176,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       KnnVectorQuery kvq = new KnnVectorQuery("field", new float[] {0}, 10);
       IllegalArgumentException e =
           expectThrows(IllegalArgumentException.class, () -> searcher.search(kvq, 10));
-      assertEquals("vector dimensions differ: 1!=2", e.getMessage());
+      assertEquals("vector query dimension: 1 differs from field dimension: 2", e.getMessage());
     }
   }
 
@@ -239,43 +241,38 @@ public class TestKnnVectorQuery extends LuceneTestCase {
   }
 
   public void testScoreEuclidean() throws IOException {
-    try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
-        for (int j = 0; j < 5; j++) {
-          Document doc = new Document();
-          doc.add(
-              new KnnVectorField("field", new float[] {j, j}, VectorSimilarityFunction.EUCLIDEAN));
-          w.addDocument(doc);
-        }
-      }
-      try (IndexReader reader = DirectoryReader.open(d)) {
-        assertEquals(1, reader.leaves().size());
-        IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
-        Query rewritten = query.rewrite(reader);
-        Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-        Scorer scorer = weight.scorer(reader.leaves().get(0));
+    float[][] vectors = new float[5][];
+    for (int j = 0; j < 5; j++) {
+      vectors[j] = new float[] {j, j};
+    }
+    try (Directory d = getIndexStore("field", vectors);
+        IndexReader reader = DirectoryReader.open(d)) {
+      assertEquals(1, reader.leaves().size());
+      IndexSearcher searcher = new IndexSearcher(reader);
+      KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
+      Query rewritten = query.rewrite(reader);
+      Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+      Scorer scorer = weight.scorer(reader.leaves().get(0));
 
-        // prior to advancing, score is 0
-        assertEquals(-1, scorer.docID());
-        expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
+      // prior to advancing, score is 0
+      assertEquals(-1, scorer.docID());
+      expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
 
-        // test getMaxScore
-        assertEquals(0, scorer.getMaxScore(-1), 0);
-        assertEquals(0, scorer.getMaxScore(0), 0);
-        // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
-        assertEquals(1 / 2f, scorer.getMaxScore(2), 0);
-        assertEquals(1 / 2f, scorer.getMaxScore(Integer.MAX_VALUE), 0);
+      // test getMaxScore
+      assertEquals(0, scorer.getMaxScore(-1), 0);
+      assertEquals(0, scorer.getMaxScore(0), 0);
+      // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
+      assertEquals(1 / 2f, scorer.getMaxScore(2), 0);
+      assertEquals(1 / 2f, scorer.getMaxScore(Integer.MAX_VALUE), 0);
 
-        DocIdSetIterator it = scorer.iterator();
-        assertEquals(3, it.cost());
-        assertEquals(1, it.nextDoc());
-        assertEquals(1 / 6f, scorer.score(), 0);
-        assertEquals(3, it.advance(3));
-        assertEquals(1 / 2f, scorer.score(), 0);
-        assertEquals(NO_MORE_DOCS, it.advance(4));
-        expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
-      }
+      DocIdSetIterator it = scorer.iterator();
+      assertEquals(3, it.cost());
+      assertEquals(1, it.nextDoc());
+      assertEquals(1 / 6f, scorer.score(), 0);
+      assertEquals(3, it.advance(3));
+      assertEquals(1 / 2f, scorer.score(), 0);
+      assertEquals(NO_MORE_DOCS, it.advance(4));
+      expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
     }
   }
 
@@ -764,9 +761,18 @@ public class TestKnnVectorQuery extends LuceneTestCase {
   private Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
+    VectorEncoding encoding = randomVectorEncoding();
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
-      doc.add(new KnnVectorField(field, contents[i]));
+      if (encoding == VectorEncoding.BYTE) {
+        BytesRef v = new BytesRef(new byte[contents[i].length]);
+        for (int j = 0; j < v.length; j++) {
+          v.bytes[j] = (byte) contents[i][j];
+        }
+        doc.add(new KnnVectorField(field, v, EUCLIDEAN));
+      } else {
+        doc.add(new KnnVectorField(field, contents[i]));
+      }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);
     }
@@ -907,5 +913,9 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     public int hashCode() {
       return 31 * classHash() + docs.hashCode();
     }
+  }
+
+  private VectorEncoding randomVectorEncoding() {
+    return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
   }
 }

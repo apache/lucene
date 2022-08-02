@@ -90,6 +90,13 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
+    if (query.length != vectors.dimension()) {
+      throw new IllegalArgumentException(
+          "vector query dimension: "
+              + query.length
+              + " differs from field dimension: "
+              + vectors.dimension());
+    }
     if (vectorEncoding == VectorEncoding.BYTE) {
       return search(
           toBytesRef(query),
@@ -178,6 +185,7 @@ public class HnswGraphSearcher<T> {
    * @return a priority queue holding the closest neighbors found
    */
   public NeighborQueue searchLevel(
+      // Note: this is only public because Lucene91HnswGraphBuilder needs it
       T query,
       int topK,
       int level,

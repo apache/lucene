@@ -88,11 +88,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
     int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
     similarityFunction = VectorSimilarityFunction.values()[similarity];
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
-      vectorEncoding = random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
-    } else {
-      vectorEncoding = VectorEncoding.FLOAT32;
-    }
+    vectorEncoding = randomVectorEncoding();
 
     codec =
         new Lucene94Codec() {
@@ -113,6 +109,10 @@ public class TestKnnGraph extends LuceneTestCase {
             }
           };
     }
+  }
+
+  private VectorEncoding randomVectorEncoding() {
+    return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
   }
 
   @After

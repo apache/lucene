@@ -36,7 +36,7 @@ public enum VectorSimilarityFunction {
 
     @Override
     public float compare(BytesRef v1, BytesRef v2) {
-      return 1 / (1 + squareDistance(v1.bytes, v1.offset, v2.bytes, v2.offset, v1.length));
+      return 1 / (1 + squareDistance(v1, v2));
     }
   },
 
@@ -54,7 +54,7 @@ public enum VectorSimilarityFunction {
 
     @Override
     public float compare(BytesRef v1, BytesRef v2) {
-      return dotProductScore(v1.bytes, v1.offset, v2.bytes, v2.offset, v1.length);
+      return dotProductScore(v1, v2);
     }
   },
 
@@ -72,7 +72,7 @@ public enum VectorSimilarityFunction {
 
     @Override
     public float compare(BytesRef v1, BytesRef v2) {
-      return (1 + cosine(v1.bytes, v1.offset, v2.bytes, v2.offset, v1.length)) / 2;
+      return (1 + cosine(v1, v2)) / 2;
     }
   };
 

@@ -147,7 +147,7 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   private VectorEncoding randomVectorEncoding() {
-    return random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
+    return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
   }
 
   // test that sorted index returns the same search results are unsorted
