@@ -19,8 +19,6 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.packed.PackedInts;
@@ -100,52 +98,17 @@ public final class DocIdSetBuilder {
 
   private final int maxDoc;
   private final int threshold;
-  // pkg-private for testing
-  final boolean multivalued;
-  final double numValuesPerDoc;
 
   private List<Buffer> buffers = new ArrayList<>();
   private int totalAllocated; // accumulated size of the allocated buffers
 
   private FixedBitSet bitSet;
 
-  private long counter = -1;
   private BulkAdder adder;
 
   /** Create a builder that can contain doc IDs between {@code 0} and {@code maxDoc}. */
   public DocIdSetBuilder(int maxDoc) {
-    this(maxDoc, -1, -1);
-  }
-
-  /**
-   * Create a {@link DocIdSetBuilder} instance that is optimized for accumulating docs that match
-   * the given {@link Terms}.
-   */
-  public DocIdSetBuilder(int maxDoc, Terms terms) throws IOException {
-    this(maxDoc, terms.getDocCount(), terms.getSumDocFreq());
-  }
-
-  /**
-   * Create a {@link DocIdSetBuilder} instance that is optimized for accumulating docs that match
-   * the given {@link PointValues}.
-   */
-  public DocIdSetBuilder(int maxDoc, PointValues values, String field) throws IOException {
-    this(maxDoc, values.getDocCount(), values.size());
-  }
-
-  DocIdSetBuilder(int maxDoc, int docCount, long valueCount) {
     this.maxDoc = maxDoc;
-    this.multivalued = docCount < 0 || docCount != valueCount;
-    if (docCount <= 0 || valueCount < 0) {
-      // assume one value per doc, this means the cost will be overestimated
-      // if the docs are actually multi-valued
-      this.numValuesPerDoc = 1;
-    } else {
-      // otherwise compute from index stats
-      this.numValuesPerDoc = (double) valueCount / docCount;
-    }
-
-    assert numValuesPerDoc >= 1 : "valueCount=" + valueCount + " docCount=" + docCount;
 
     // For ridiculously small sets, we'll just use a sorted int[]
     // maxDoc >>> 7 is a good value if you want to save memory, lower values
@@ -190,10 +153,8 @@ public final class DocIdSetBuilder {
         ensureBufferCapacity(numDocs);
       } else {
         upgradeToBitSet();
-        counter += numDocs;
       }
     } else {
-      counter += numDocs;
     }
     return adder;
   }
@@ -247,17 +208,14 @@ public final class DocIdSetBuilder {
   private void upgradeToBitSet() {
     assert bitSet == null;
     FixedBitSet bitSet = new FixedBitSet(maxDoc);
-    long counter = 0;
     for (Buffer buffer : buffers) {
       int[] array = buffer.array;
       int length = buffer.length;
-      counter += length;
       for (int i = 0; i < length; ++i) {
         bitSet.set(array[i]);
       }
     }
     this.bitSet = bitSet;
-    this.counter = counter;
     this.buffers = null;
     this.adder = new FixedBitSetAdder(bitSet);
   }
@@ -266,20 +224,12 @@ public final class DocIdSetBuilder {
   public DocIdSet build() {
     try {
       if (bitSet != null) {
-        assert counter >= 0;
-        final long cost = Math.round(counter / numValuesPerDoc);
-        return new BitDocIdSet(bitSet, cost);
+        return new BitDocIdSet(bitSet);
       } else {
         Buffer concatenated = concat(buffers);
         LSBRadixSorter sorter = new LSBRadixSorter();
         sorter.sort(PackedInts.bitsRequired(maxDoc - 1), concatenated.array, concatenated.length);
-        final int l;
-        if (multivalued) {
-          l = dedup(concatenated.array, concatenated.length);
-        } else {
-          assert noDups(concatenated.array, concatenated.length);
-          l = concatenated.length;
-        }
+        final int l = dedup(concatenated.array, concatenated.length);
         assert l <= concatenated.length;
         concatenated.array[l] = DocIdSetIterator.NO_MORE_DOCS;
         return new IntArrayDocIdSet(concatenated.array, l);
@@ -335,12 +285,5 @@ public final class DocIdSetBuilder {
       }
     }
     return l;
-  }
-
-  private static boolean noDups(int[] a, int len) {
-    for (int i = 1; i < len; ++i) {
-      assert a[i - 1] < a[i];
-    }
-    return true;
   }
 }

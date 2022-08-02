@@ -325,7 +325,7 @@ public abstract class PointRangeQuery extends Query {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc());
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 

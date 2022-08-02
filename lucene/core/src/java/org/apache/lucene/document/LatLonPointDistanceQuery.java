@@ -148,7 +148,7 @@ final class LatLonPointDistanceQuery extends Query {
         LatLonPoint.checkCompatible(fieldInfo);
 
         // matching docids
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc());
         final IntersectVisitor visitor = getIntersectVisitor(result);
 
         final Weight weight = this;

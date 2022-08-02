@@ -197,8 +197,8 @@ public class IntersectsRPTVerifyQuery extends Query {
 
       @Override
       protected void start() throws IOException {
-        approxBuilder = new DocIdSetBuilder(maxDoc, terms);
-        exactBuilder = new DocIdSetBuilder(maxDoc, terms);
+        approxBuilder = new DocIdSetBuilder(maxDoc);
+        exactBuilder = new DocIdSetBuilder(maxDoc);
       }
 
       @Override
