@@ -217,8 +217,9 @@ public class LevenshteinAutomata {
     }
 
     a.finishState();
-    assert a.isDeterministic();
-    return a;
+    Automaton automaton = Operations.removeDeadStates(a);
+    assert automaton.isDeterministic();
+    return automaton;
   }
 
   /**
