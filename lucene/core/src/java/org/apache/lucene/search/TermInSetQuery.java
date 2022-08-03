@@ -44,8 +44,8 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 
 /**
- * Specialization for a disjunction over many terms that behaves like a {@link ConstantScoreQuery}
- * over a {@link BooleanQuery} containing only {@link
+ * Specialization for a disjunction over many terms that, by default, behaves like a {@link
+ * ConstantScoreQuery} over a {@link BooleanQuery} containing only {@link
  * org.apache.lucene.search.BooleanClause.Occur#SHOULD} clauses.
  *
  * <p>For instance in the following example, both {@code q1} and {@code q2} would yield the same
@@ -60,11 +60,14 @@ import org.apache.lucene.util.automaton.Operations;
  * Query q2 = new ConstantScoreQuery(bq);
  * </pre>
  *
- * <p>When there are few terms, this query executes like a regular disjunction. However, when there
- * are many terms, instead of merging iterators on the fly, it will populate a bit set with matching
- * docs and return a {@link Scorer} over this bit set.
+ * <p>Unless a custom {@link MultiTermQuery.RewriteMethod} is provided, this query executes like a
+ * regular disjunction where there are few terms. However, when there are many terms, instead of
+ * merging iterators on the fly, it will populate a bit set with matching docs and return a {@link
+ * Scorer} over this bit set.
  *
- * <p>NOTE: This query produces scores that are equal to its boost
+ * <p>Users may also provide a custom {@link MultiTermQuery.RewriteMethod} to define different
+ * execution behavior, such as relying on doc values (see: {@link DocValuesRewriteMethod}), or if
+ * scores are required (see: {@link MultiTermQuery#SCORING_BOOLEAN_REWRITE}).
  */
 public class TermInSetQuery extends MultiTermQuery implements Accountable {
 
@@ -78,16 +81,19 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   private final int termDataHashCode; // cached hashcode of termData
 
   public TermInSetQuery(String field, Collection<BytesRef> terms) {
-    this(MultiTermQuery.CONSTANT_SCORE_REWRITE, field, terms);
+    this(field, packTerms(field, terms));
   }
 
   public TermInSetQuery(String field, BytesRef... terms) {
-    this(MultiTermQuery.CONSTANT_SCORE_REWRITE, field, terms);
+    this(field, packTerms(field, Arrays.asList(terms)));
   }
 
   /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
   public TermInSetQuery(RewriteMethod rewriteMethod, String field, Collection<BytesRef> terms) {
-    this(rewriteMethod, field, packTerms(field, terms));
+    super(field, rewriteMethod);
+    this.field = field;
+    this.termData = packTerms(field, terms);
+    termDataHashCode = termData.hashCode();
   }
 
   /** Creates a new {@link TermInSetQuery} from the given array of terms. */
@@ -95,8 +101,8 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     this(rewriteMethod, field, Arrays.asList(terms));
   }
 
-  private TermInSetQuery(RewriteMethod rewriteMethod, String field, PrefixCodedTerms termData) {
-    super(field, new DelegatingRewriteMethod(rewriteMethod, termData));
+  private TermInSetQuery(String field, PrefixCodedTerms termData) {
+    super(field, new DefaultRewriteMethod(termData));
     this.field = field;
     this.termData = termData;
     termDataHashCode = termData.hashCode();
@@ -106,7 +112,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     BytesRef[] sortedTerms = terms.toArray(new BytesRef[0]);
     // already sorted if we are a SortedSet with natural order
     boolean sorted =
-      terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
+        terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
     if (!sorted) {
       ArrayUtil.timSort(sortedTerms);
     }
@@ -254,28 +260,32 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     }
   }
 
-  private static final class DelegatingRewriteMethod extends RewriteMethod {
-    private final RewriteMethod in;
+  /**
+   * Rewrites to a standard {@code BooleanQuery} when there are up to {@link
+   * TermInSetQuery#BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD} terms; otherwise rewrites using {@link
+   * MultiTermQuery#CONSTANT_SCORE_REWRITE}.
+   */
+  private static final class DefaultRewriteMethod extends RewriteMethod {
     private final PrefixCodedTerms termData;
 
-    DelegatingRewriteMethod(RewriteMethod in, PrefixCodedTerms termData) {
-      this.in = in;
+    DefaultRewriteMethod(PrefixCodedTerms termData) {
       this.termData = termData;
     }
 
     @Override
     public Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
       final int threshold =
-        Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
+          Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
       if (termData.size() <= threshold) {
         BooleanQuery.Builder bq = new BooleanQuery.Builder();
         TermIterator iterator = termData.iterator();
         for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-          bq.add(new TermQuery(new Term(iterator.field(), BytesRef.deepCopyOf(term))), Occur.SHOULD);
+          bq.add(
+              new TermQuery(new Term(iterator.field(), BytesRef.deepCopyOf(term))), Occur.SHOULD);
         }
         return new ConstantScoreQuery(bq.build());
       }
-      return in.rewrite(reader, query);
+      return MultiTermQuery.CONSTANT_SCORE_REWRITE.rewrite(reader, query);
     }
   }
 }
