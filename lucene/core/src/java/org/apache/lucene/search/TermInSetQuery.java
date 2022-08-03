@@ -24,11 +24,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.SortedSet;
 import org.apache.lucene.index.FilteredTermsEnum;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeSource;
@@ -73,7 +75,6 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
 
   private final String field;
   private final PrefixCodedTerms termData;
-  private final int termCount;
   private final int termDataHashCode; // cached hashcode of termData
 
   public TermInSetQuery(String field, Collection<BytesRef> terms) {
@@ -86,12 +87,26 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
 
   /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
   public TermInSetQuery(RewriteMethod rewriteMethod, String field, Collection<BytesRef> terms) {
-    super(field, rewriteMethod);
-    int termCount = 0;
+    this(rewriteMethod, field, packTerms(field, terms));
+  }
+
+  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
+  public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
+    this(rewriteMethod, field, Arrays.asList(terms));
+  }
+
+  private TermInSetQuery(RewriteMethod rewriteMethod, String field, PrefixCodedTerms termData) {
+    super(field, new DelegatingRewriteMethod(rewriteMethod, termData));
+    this.field = field;
+    this.termData = termData;
+    termDataHashCode = termData.hashCode();
+  }
+
+  private static PrefixCodedTerms packTerms(String field, Collection<BytesRef> terms) {
     BytesRef[] sortedTerms = terms.toArray(new BytesRef[0]);
     // already sorted if we are a SortedSet with natural order
     boolean sorted =
-        terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
+      terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
     if (!sorted) {
       ArrayUtil.timSort(sortedTerms);
     }
@@ -105,22 +120,14 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
       }
       builder.add(field, term);
       previous.copyBytes(term);
-      termCount++;
     }
-    this.field = field;
-    termData = builder.finish();
-    this.termCount = termCount;
-    termDataHashCode = termData.hashCode();
-  }
 
-  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
-  public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
-    this(rewriteMethod, field, Arrays.asList(terms));
+    return builder.finish();
   }
 
   @Override
-  public int getTermsCount() throws IOException {
-    return termCount;
+  public long getTermsCount() throws IOException {
+    return termData.size();
   }
 
   @Override
@@ -244,6 +251,31 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
         seekTerm = iterator.next();
       }
       return seekTerm;
+    }
+  }
+
+  private static final class DelegatingRewriteMethod extends RewriteMethod {
+    private final RewriteMethod in;
+    private final PrefixCodedTerms termData;
+
+    DelegatingRewriteMethod(RewriteMethod in, PrefixCodedTerms termData) {
+      this.in = in;
+      this.termData = termData;
+    }
+
+    @Override
+    public Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
+      final int threshold =
+        Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
+      if (termData.size() <= threshold) {
+        BooleanQuery.Builder bq = new BooleanQuery.Builder();
+        TermIterator iterator = termData.iterator();
+        for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
+          bq.add(new TermQuery(new Term(iterator.field(), BytesRef.deepCopyOf(term))), Occur.SHOULD);
+        }
+        return new ConstantScoreQuery(bq.build());
+      }
+      return in.rewrite(reader, query);
     }
   }
 }

@@ -278,7 +278,7 @@ public abstract class MultiTermQuery extends Query {
    * Return the number of unique terms contained in this query, if known up-front. If not known, -1
    * will be returned.
    */
-  public int getTermsCount() throws IOException {
+  public long getTermsCount() throws IOException {
     return -1;
   }
 

@@ -143,7 +143,7 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
         //        that first one. (We omit the first since it's already been counted in 2a).
         // See: LUCENE-10207
         final long cost;
-        final int queryTermsCount = query.getTermsCount();
+        final long queryTermsCount = query.getTermsCount();
         if (queryTermsCount == -1) {
           cost = indexTerms.getSumDocFreq();
         } else {
