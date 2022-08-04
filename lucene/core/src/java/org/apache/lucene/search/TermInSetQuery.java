@@ -345,15 +345,62 @@ public class TermInSetQuery extends Query implements Accountable {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSet weightOrBitSet = rewrite(context);
-        if (weightOrBitSet == null) {
-          return null;
-        } else if (weightOrBitSet.weight != null) {
-          return weightOrBitSet.weight.scorer(context);
-        } else {
-          return scorer(weightOrBitSet.set);
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        // Cost estimation reasoning is:
+        //  1. Assume every query term matches at least one document (queryTermsCount).
+        //  2. Determine the total number of docs beyond the first one for each term.
+        //     That count provides a ceiling on the number of extra docs that could match beyond
+        //     that first one. (We omit the first since it's already been counted in #1).
+        // This approach still provides correct worst-case cost in general, but provides tighter
+        // estimates for primary-key-like fields. See: LUCENE-10207
+
+        // TODO: This cost estimation may grossly overestimate since we have no index statistics
+        // for the specific query terms. While it's nice to avoid the cost of intersecting the
+        // query terms with the index, it could be beneficial to do that work and get better
+        // cost estimates.
+        final long cost;
+        final long queryTermsCount = termData.size();
+        Terms indexTerms = context.reader().terms(field);
+        long potentialExtraCost = indexTerms.getSumDocFreq();
+        final long indexedTermCount = indexTerms.size();
+        if (indexedTermCount != -1) {
+          potentialExtraCost -= indexedTermCount;
         }
+        cost = queryTermsCount + potentialExtraCost;
+
+        final Weight weight = this;
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            WeightOrDocIdSet weightOrDocIdSet = rewrite(context);
+            if (weightOrDocIdSet == null) {
+              return null;
+            }
+
+            final Scorer scorer;
+            if (weightOrDocIdSet.weight != null) {
+              scorer = weightOrDocIdSet.weight.scorer(context);
+            } else {
+              scorer = scorer(weightOrDocIdSet.set);
+            }
+
+            return Objects.requireNonNullElseGet(
+                scorer,
+                () ->
+                    new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty()));
+          }
+
+          @Override
+          public long cost() {
+            return cost;
+          }
+        };
+      }
+
+      @Override
+      public Scorer scorer(LeafReaderContext context) throws IOException {
+        final ScorerSupplier supplier = scorerSupplier(context);
+        return supplier.get(Long.MAX_VALUE);
       }
 
       @Override
