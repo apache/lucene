@@ -255,69 +255,129 @@ public class TermInSetQuery extends Query implements Accountable {
                     context, doc, getQuery(), field, termData.iterator()));
       }
 
-      /**
-       * On the given leaf context, try to either rewrite to a disjunction if there are few matching
-       * terms, or build a bitset containing matching docs.
-       */
-      private WeightOrDocIdSet rewrite(LeafReaderContext context) throws IOException {
+      private List<TermAndState> collectTerms(LeafReaderContext context) throws IOException {
+        List<TermAndState> collected = new ArrayList<>();
+
         final LeafReader reader = context.reader();
 
         Terms terms = reader.terms(field);
         if (terms == null) {
-          return null;
+          return collected;
         }
         TermsEnum termsEnum = terms.iterator();
-        PostingsEnum docs = null;
         TermIterator iterator = termData.iterator();
+
+        for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
+          assert field.equals(iterator.field());
+          if (termsEnum.seekExact(term)) {
+            TermAndState termAndState = new TermAndState(field, termsEnum);
+            if (reader.maxDoc() == termsEnum.docFreq()) {
+              return List.of(termAndState);
+            }
+            collected.add(termAndState);
+          }
+        }
+
+        return collected;
+      }
+
+      /**
+       * On the given leaf context, try to either rewrite to a disjunction if there are few matching
+       * terms, or build a bitset containing matching docs.
+       */
+      private WeightOrDocIdSet rewrite(LeafReaderContext context, List<TermAndState> collectedTerms) throws IOException {
+        final LeafReader reader = context.reader();
 
         // We will first try to collect up to 'threshold' terms into 'matchingTerms'
         // if there are too many terms, we will fall back to building the 'builder'
         final int threshold =
             Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
         assert termData.size() > threshold : "Query should have been rewritten";
-        List<TermAndState> matchingTerms = new ArrayList<>(threshold);
-        DocIdSetBuilder builder = null;
 
-        for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-          assert field.equals(iterator.field());
-          if (termsEnum.seekExact(term)) {
-            if (reader.maxDoc() == termsEnum.docFreq()) {
-              return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
-            }
-
-            if (matchingTerms == null) {
-              docs = termsEnum.postings(docs, PostingsEnum.NONE);
-              builder.add(docs);
-            } else if (matchingTerms.size() < threshold) {
-              matchingTerms.add(new TermAndState(field, termsEnum));
-            } else {
-              assert matchingTerms.size() == threshold;
-              builder = new DocIdSetBuilder(reader.maxDoc(), terms);
-              docs = termsEnum.postings(docs, PostingsEnum.NONE);
-              builder.add(docs);
-              for (TermAndState t : matchingTerms) {
-                t.termsEnum.seekExact(t.term, t.state);
-                docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
-                builder.add(docs);
-              }
-              matchingTerms = null;
-            }
-          }
+        Terms terms = reader.terms(field);
+        if (terms == null) {
+          return null;
         }
-        if (matchingTerms != null) {
-          assert builder == null;
-          BooleanQuery.Builder bq = new BooleanQuery.Builder();
-          for (TermAndState t : matchingTerms) {
-            final TermStates termStates = new TermStates(searcher.getTopReaderContext());
-            termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
-            bq.add(new TermQuery(new Term(t.field, t.term), termStates), Occur.SHOULD);
+
+        if (collectedTerms == null) {
+          TermsEnum termsEnum = terms.iterator();
+          PostingsEnum docs = null;
+          TermIterator iterator = termData.iterator();
+
+          List<TermAndState> matchingTerms = new ArrayList<>(threshold);
+          DocIdSetBuilder builder = null;
+
+          for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
+            assert field.equals(iterator.field());
+            if (termsEnum.seekExact(term)) {
+              if (reader.maxDoc() == termsEnum.docFreq()) {
+                return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
+              }
+
+              if (matchingTerms == null) {
+                docs = termsEnum.postings(docs, PostingsEnum.NONE);
+                builder.add(docs);
+              } else if (matchingTerms.size() < threshold) {
+                matchingTerms.add(new TermAndState(field, termsEnum));
+              } else {
+                assert matchingTerms.size() == threshold;
+                builder = new DocIdSetBuilder(reader.maxDoc(), terms);
+                docs = termsEnum.postings(docs, PostingsEnum.NONE);
+                builder.add(docs);
+                for (TermAndState t : matchingTerms) {
+                  t.termsEnum.seekExact(t.term, t.state);
+                  docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
+                  builder.add(docs);
+                }
+                matchingTerms = null;
+              }
+            }
           }
-          Query q = new ConstantScoreQuery(bq.build());
-          final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-          return new WeightOrDocIdSet(weight);
+          if (matchingTerms != null) {
+            assert builder == null;
+            BooleanQuery.Builder bq = new BooleanQuery.Builder();
+            for (TermAndState t : matchingTerms) {
+              final TermStates termStates = new TermStates(searcher.getTopReaderContext());
+              termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
+              bq.add(new TermQuery(new Term(t.field, t.term), termStates), Occur.SHOULD);
+            }
+            Query q = new ConstantScoreQuery(bq.build());
+            final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+            return new WeightOrDocIdSet(weight);
+          } else {
+            assert builder != null;
+            return new WeightOrDocIdSet(builder.build());
+          }
         } else {
-          assert builder != null;
-          return new WeightOrDocIdSet(builder.build());
+          if (collectedTerms.isEmpty()) {
+            return null;
+          }
+          if (collectedTerms.size() <= threshold) {
+            BooleanQuery.Builder bq = new BooleanQuery.Builder();
+            for (TermAndState t : collectedTerms) {
+              if (reader.maxDoc() == t.docFreq) {
+                return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
+              }
+              final TermStates termStates = new TermStates(searcher.getTopReaderContext());
+              termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
+              bq.add(new TermQuery(new Term(t.field, t.term), termStates), Occur.SHOULD);
+            }
+            Query q = new ConstantScoreQuery(bq.build());
+            final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+            return new WeightOrDocIdSet(weight);
+          } else {
+            DocIdSetBuilder builder = new DocIdSetBuilder(reader.maxDoc(), terms);
+            PostingsEnum docs = null;
+            for (TermAndState t : collectedTerms) {
+              if (reader.maxDoc() == t.docFreq) {
+                return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
+              }
+              t.termsEnum.seekExact(t.term, t.state);
+              docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
+              builder.add(docs);
+            }
+            return new WeightOrDocIdSet(builder.build());
+          }
         }
       }
 
@@ -334,7 +394,7 @@ public class TermInSetQuery extends Query implements Accountable {
 
       @Override
       public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSet weightOrBitSet = rewrite(context);
+        final WeightOrDocIdSet weightOrBitSet = rewrite(context, null);
         if (weightOrBitSet == null) {
           return null;
         } else if (weightOrBitSet.weight != null) {
@@ -350,37 +410,13 @@ public class TermInSetQuery extends Query implements Accountable {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        Terms indexTerms = context.reader().terms(field);
-        if (indexTerms == null) {
-          return null;
-        }
-
-        // Cost estimation reasoning is:
-        //  1. Assume every query term matches at least one document (queryTermsCount).
-        //  2. Determine the total number of docs beyond the first one for each term.
-        //     That count provides a ceiling on the number of extra docs that could match beyond
-        //     that first one. (We omit the first since it's already been counted in #1).
-        // This approach still provides correct worst-case cost in general, but provides tighter
-        // estimates for primary-key-like fields. See: LUCENE-10207
-
-        // TODO: This cost estimation may grossly overestimate since we have no index statistics
-        // for the specific query terms. While it's nice to avoid the cost of intersecting the
-        // query terms with the index, it could be beneficial to do that work and get better
-        // cost estimates.
-        final long cost;
-        final long queryTermsCount = termData.size();
-        long potentialExtraCost = indexTerms.getSumDocFreq();
-        final long indexedTermCount = indexTerms.size();
-        if (indexedTermCount != -1) {
-          potentialExtraCost -= indexedTermCount;
-        }
-        cost = queryTermsCount + potentialExtraCost;
-
+        final List<TermAndState> collectedTerms = collectTerms(context);
+        final long cost = collectedTerms.stream().mapToLong(e -> e.docFreq).sum();
         final Weight weight = this;
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
-            WeightOrDocIdSet weightOrDocIdSet = rewrite(context);
+            WeightOrDocIdSet weightOrDocIdSet = rewrite(context, collectedTerms);
             final Scorer scorer;
             if (weightOrDocIdSet == null) {
               scorer = null;
