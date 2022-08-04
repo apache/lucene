@@ -37,6 +37,8 @@ Bug Fixes
 ---------------------
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
 
+* LUCENE-10673: Improve check of equality for latitudes for spatial3d GeoBoundingBox (ignacio Vera)
+
 Build
 ---------------------
 
