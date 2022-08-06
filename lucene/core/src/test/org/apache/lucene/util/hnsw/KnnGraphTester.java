@@ -200,15 +200,15 @@ public class KnnGraphTester {
           break;
         case "-encoding":
           String encoding = args[++iarg];
-          switch(encoding) {
-          case "byte":
-            vectorEncoding = VectorEncoding.BYTE;
-            break;
-          case "float32":
-            vectorEncoding = VectorEncoding.FLOAT32;
-            break;
-          default:
-            throw new IllegalArgumentException("-encoding can be 'byte' or 'float32' only");
+          switch (encoding) {
+            case "byte":
+              vectorEncoding = VectorEncoding.BYTE;
+              break;
+            case "float32":
+              vectorEncoding = VectorEncoding.FLOAT32;
+              break;
+            default:
+              throw new IllegalArgumentException("-encoding can be 'byte' or 'float32' only");
           }
           break;
         case "-metric":
@@ -437,9 +437,9 @@ public class KnnGraphTester {
 
             if (matchDocs != null) {
               results[i].scoreDocs =
-                Arrays.stream(results[i].scoreDocs)
-                .filter(scoreDoc -> matchDocs.get(scoreDoc.doc))
-                .toArray(ScoreDoc[]::new);
+                  Arrays.stream(results[i].scoreDocs)
+                      .filter(scoreDoc -> matchDocs.get(scoreDoc.doc))
+                      .toArray(ScoreDoc[]::new);
             }
           }
         }
@@ -509,21 +509,20 @@ public class KnnGraphTester {
 
   private abstract static class VectorReader {
     final float[] target;
-    final FileChannel input;
     final ByteBuffer bytes;
 
-    static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding, int n) throws IOException {
+    static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding, int n)
+        throws IOException {
       int bufferSize = n * dim * vectorEncoding.byteSize;
-      return switch(vectorEncoding) {
+      return switch (vectorEncoding) {
         case BYTE -> new VectorReaderByte(input, dim, bufferSize);
         case FLOAT32 -> new VectorReaderFloat32(input, dim, bufferSize);
       };
     }
 
     VectorReader(FileChannel input, int dim, int bufferSize) throws IOException {
-      this.input = input;
-      bytes = input.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize)
-        .order(ByteOrder.LITTLE_ENDIAN);
+      bytes =
+          input.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize).order(ByteOrder.LITTLE_ENDIAN);
       target = new float[dim];
     }
 
@@ -542,10 +541,13 @@ public class KnnGraphTester {
       floats = bytes.asFloatBuffer();
     }
 
+    @Override
     void reset() {
+      super.reset();
       floats.position(0);
     }
 
+    @Override
     float[] next() {
       floats.get(target);
       return target;
@@ -562,6 +564,7 @@ public class KnnGraphTester {
       bytesRef = new BytesRef(scratch);
     }
 
+    @Override
     float[] next() {
       bytes.get(scratch);
       for (int i = 0; i < scratch.length; i++) {
@@ -586,8 +589,8 @@ public class KnnGraphTester {
     int totalMatches = 0;
     int totalResults = results.length * topK;
     for (int i = 0; i < results.length; i++) {
-      //System.out.println(Arrays.toString(nn[i]));
-      //System.out.println(Arrays.toString(results[i].scoreDocs));
+      // System.out.println(Arrays.toString(nn[i]));
+      // System.out.println(Arrays.toString(results[i].scoreDocs));
       totalMatches += compareNN(nn[i], results[i]);
     }
     return totalMatches / (float) totalResults;
@@ -690,13 +693,14 @@ public class KnnGraphTester {
     return bitSet;
   }
 
-  private int[][] computeNN(Path docPath, Path queryPath, VectorEncoding encoding) throws IOException {
+  private int[][] computeNN(Path docPath, Path queryPath, VectorEncoding encoding)
+      throws IOException {
     int[][] result = new int[numIters][];
     if (quiet == false) {
       System.out.println("computing true nearest neighbors of " + numIters + " target vectors");
     }
     try (FileChannel in = FileChannel.open(docPath);
-         FileChannel qIn = FileChannel.open(queryPath)) {
+        FileChannel qIn = FileChannel.open(queryPath)) {
       VectorReader docReader = VectorReader.create(in, dim, encoding, numDocs);
       VectorReader queryReader = VectorReader.create(qIn, dim, encoding, numIters);
       for (int i = 0; i < numIters; i++) {
@@ -752,7 +756,9 @@ public class KnnGraphTester {
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
           switch (vectorEncoding) {
-            case BYTE -> doc.add(new KnnVectorField(KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
+            case BYTE -> doc.add(
+                new KnnVectorField(
+                    KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
             case FLOAT32 -> doc.add(new KnnVectorField(KNN_FIELD, vectorReader.next(), fieldType));
           }
           doc.add(new StoredField(ID_FIELD, i));
