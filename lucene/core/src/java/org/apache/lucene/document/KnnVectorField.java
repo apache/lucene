@@ -160,6 +160,21 @@ public class KnnVectorField extends Field {
     fieldsData = vector;
   }
 
+  /**
+   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
+   * no value. Vectors of a single field share the same dimension and similarity function.
+   *
+   * @param name field name
+   * @param vector value
+   * @param fieldType field type
+   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
+   *     dimension &gt; 1024.
+   */
+  public KnnVectorField(String name, BytesRef vector, FieldType fieldType) {
+    super(name, fieldType);
+    fieldsData = vector;
+  }
+
   /** Return the vector value of this field */
   public float[] vectorValue() {
     return (float[]) fieldsData;
