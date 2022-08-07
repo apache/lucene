@@ -269,7 +269,7 @@ public class KnnGraphTester {
           if (docVectorsPath == null) {
             throw new IllegalArgumentException("missing -docs arg");
           }
-          if (prefilter) {
+          if (selectivity < 1) {
             matchDocs = generateRandomBitSet(numDocs, selectivity);
           }
           if (outputPath != null) {
