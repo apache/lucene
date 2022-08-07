@@ -346,6 +346,11 @@ public class TermInSetQuery extends Query implements Accountable {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        Terms indexTerms = context.reader().terms(field);
+        if (indexTerms == null) {
+          return null;
+        }
+
         // Cost estimation reasoning is:
         //  1. Assume every query term matches at least one document (queryTermsCount).
         //  2. Determine the total number of docs beyond the first one for each term.
@@ -360,7 +365,6 @@ public class TermInSetQuery extends Query implements Accountable {
         // cost estimates.
         final long cost;
         final long queryTermsCount = termData.size();
-        Terms indexTerms = context.reader().terms(field);
         long potentialExtraCost = indexTerms.getSumDocFreq();
         final long indexedTermCount = indexTerms.size();
         if (indexedTermCount != -1) {
