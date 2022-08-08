@@ -285,10 +285,9 @@ public class TermInSetQuery extends Query implements Accountable {
             if (matchingTerms == null) {
               if (reader.maxDoc() == termsEnum.docFreq()) {
                 return new WeightOrDocIdSet(new MatchAllDocIdSet(reader.maxDoc()));
-              } else {
-                docs = termsEnum.postings(docs, PostingsEnum.NONE);
-                builder.add(docs);
               }
+              docs = termsEnum.postings(docs, PostingsEnum.NONE);
+              builder.add(docs);
             } else if (matchingTerms.size() < threshold) {
               matchingTerms.add(new TermAndState(field, termsEnum));
             } else {
@@ -300,10 +299,9 @@ public class TermInSetQuery extends Query implements Accountable {
                 t.termsEnum.seekExact(t.term, t.state);
                 if (reader.maxDoc() == t.docFreq) {
                   return new WeightOrDocIdSet(new MatchAllDocIdSet(reader.maxDoc()));
-                } else {
-                  docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
-                  builder.add(docs);
                 }
+                docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
+                builder.add(docs);
               }
               matchingTerms = null;
             }
