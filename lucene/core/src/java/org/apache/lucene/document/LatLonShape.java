@@ -259,7 +259,7 @@ public class LatLonShape {
   }
 
   /** create a docvalue query to find all geo shapes that intersect a defined bounding box * */
-  public static Query newDocValuesBoxQuery(
+  public static Query newSlowDocValuesBoxQuery(
       String field,
       QueryRelation queryRelation,
       double minLatitude,

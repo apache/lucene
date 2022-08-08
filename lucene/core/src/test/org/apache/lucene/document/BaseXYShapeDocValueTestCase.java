@@ -41,7 +41,7 @@ public abstract class BaseXYShapeDocValueTestCase extends BaseXYShapeTestCase {
       double maxX,
       double minY,
       double maxY) {
-    return XYShape.newDocValuesBoxQuery(
+    return XYShape.newSlowDocValuesBoxQuery(
         field, queryRelation, (float) minX, (float) maxX, (float) minY, (float) maxY);
   }
 

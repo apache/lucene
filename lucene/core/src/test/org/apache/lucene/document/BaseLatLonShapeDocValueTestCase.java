@@ -42,7 +42,8 @@ public abstract class BaseLatLonShapeDocValueTestCase extends BaseLatLonSpatialT
       double maxLon,
       double minLat,
       double maxLat) {
-    return LatLonShape.newDocValuesBoxQuery(field, queryRelation, minLat, maxLat, minLon, maxLon);
+    return LatLonShape.newSlowDocValuesBoxQuery(
+        field, queryRelation, minLat, maxLat, minLon, maxLon);
   }
 
   @Override
