@@ -37,7 +37,7 @@ import org.apache.lucene.search.Query;
  *
  * @lucene.experimental
  */
-abstract class ShapeDocValuesField extends Field {
+public abstract class ShapeDocValuesField extends Field {
 
   /** the binary doc value format for this field */
   protected final ShapeDocValues shapeDocValues;
