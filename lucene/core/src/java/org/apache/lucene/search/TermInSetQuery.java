@@ -282,8 +282,12 @@ public class TermInSetQuery extends Query implements Accountable {
           assert field.equals(iterator.field());
           if (termsEnum.seekExact(term)) {
             if (matchingTerms == null) {
-              docs = termsEnum.postings(docs, PostingsEnum.NONE);
-              builder.add(docs);
+              if (reader.maxDoc() == termsEnum.docFreq()) {
+                builder.add(DocIdSetIterator.all(reader.maxDoc()));
+              } else {
+                docs = termsEnum.postings(docs, PostingsEnum.NONE);
+                builder.add(docs);
+              }
             } else if (matchingTerms.size() < threshold) {
               matchingTerms.add(new TermAndState(field, termsEnum));
             } else {
@@ -293,8 +297,12 @@ public class TermInSetQuery extends Query implements Accountable {
               builder.add(docs);
               for (TermAndState t : matchingTerms) {
                 t.termsEnum.seekExact(t.term, t.state);
-                docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
-                builder.add(docs);
+                if (reader.maxDoc() == t.docFreq) {
+                  builder.add(DocIdSetIterator.all(reader.maxDoc()));
+                } else {
+                  docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
+                  builder.add(docs);
+                }
               }
               matchingTerms = null;
             }
