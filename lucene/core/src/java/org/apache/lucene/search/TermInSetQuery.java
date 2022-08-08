@@ -404,6 +404,9 @@ public class TermInSetQuery extends Query implements Accountable {
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
         final ScorerSupplier supplier = scorerSupplier(context);
+        if (supplier == null) {
+          return null;
+        }
         return supplier.get(Long.MAX_VALUE);
       }
 
