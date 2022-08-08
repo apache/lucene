@@ -38,6 +38,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.DocIdSetBuilder;
@@ -283,7 +284,7 @@ public class TermInSetQuery extends Query implements Accountable {
           if (termsEnum.seekExact(term)) {
             if (matchingTerms == null) {
               if (reader.maxDoc() == termsEnum.docFreq()) {
-                builder.add(DocIdSetIterator.all(reader.maxDoc()));
+                return new WeightOrDocIdSet(new MatchAllDocIdSet(reader.maxDoc()));
               } else {
                 docs = termsEnum.postings(docs, PostingsEnum.NONE);
                 builder.add(docs);
@@ -298,7 +299,7 @@ public class TermInSetQuery extends Query implements Accountable {
               for (TermAndState t : matchingTerms) {
                 t.termsEnum.seekExact(t.term, t.state);
                 if (reader.maxDoc() == t.docFreq) {
-                  builder.add(DocIdSetIterator.all(reader.maxDoc()));
+                  return new WeightOrDocIdSet(new MatchAllDocIdSet(reader.maxDoc()));
                 } else {
                   docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
                   builder.add(docs);
@@ -370,6 +371,29 @@ public class TermInSetQuery extends Query implements Accountable {
         // with the query cache if most memory ends up being spent on queries rather than doc id
         // sets.
         return ramBytesUsed() <= RamUsageEstimator.QUERY_DEFAULT_RAM_BYTES_USED;
+      }
+
+      static final class MatchAllDocIdSet extends DocIdSet {
+        private final int size;
+
+        MatchAllDocIdSet(int size) {
+          this.size = size;
+        }
+
+        @Override
+        public DocIdSetIterator iterator() throws IOException {
+          return DocIdSetIterator.all(size);
+        }
+
+        @Override
+        public Bits bits() throws IOException {
+          return new Bits.MatchAllBits(size);
+        }
+
+        @Override
+        public long ramBytesUsed() {
+          return Integer.BYTES;
+        }
       }
     };
   }
