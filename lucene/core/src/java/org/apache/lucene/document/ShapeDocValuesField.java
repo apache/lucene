@@ -42,6 +42,7 @@ public abstract class ShapeDocValuesField extends Field {
   /** the binary doc value format for this field */
   protected final ShapeDocValues shapeDocValues;
 
+  /** FieldType for ShapeDocValues field */
   protected static final FieldType FIELD_TYPE = new FieldType();
 
   static {
@@ -127,7 +128,9 @@ public abstract class ShapeDocValuesField extends Field {
     return shapeDocValues.getHighestDimension();
   }
 
+  /** decodes x coordinates from encoded space */
   protected abstract double decodeX(int encoded);
 
+  /** decodes y coordinates from encoded space */
   protected abstract double decodeY(int encoded);
 }
