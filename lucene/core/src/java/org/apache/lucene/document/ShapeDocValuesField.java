@@ -89,9 +89,9 @@ public abstract class ShapeDocValuesField extends Field {
   /** Creates a geometry query for shape docvalues */
   public static Query newGeometryQuery(
       final String field, final QueryRelation relation, Object... geometries) {
-    return null;
-    // TODO
-    //  return new ShapeDocValuesQuery(field, relation, geometries);
+    // TODO add general geometry query
+    throw new IllegalStateException(
+        "geometry queries not yet supported on shape doc values for field [" + field + "]");
   }
 
   /** retrieves the centroid location for the geometry */
