@@ -16,12 +16,12 @@
  */
 package org.apache.lucene.document;
 
-import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.GeoEncodingUtils;
+import org.apache.lucene.geo.Geometry;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Line;
 import org.apache.lucene.index.PointValues.Relation;
@@ -32,17 +32,21 @@ import org.apache.lucene.util.NumericUtils;
  * specified array of {@link LatLonGeometry}.
  *
  * <p>The field must be indexed using {@link LatLonShape#createIndexableFields} added per document.
+ *
+ * @lucene.internal
  */
 final class LatLonShapeQuery extends SpatialQuery {
-  private final LatLonGeometry[] geometries;
-  private final Component2D component2D;
 
   /**
    * Creates a query that matches all indexed shapes to the provided array of {@link LatLonGeometry}
    */
   LatLonShapeQuery(String field, QueryRelation queryRelation, LatLonGeometry... geometries) {
-    super(field, queryRelation);
-    if (queryRelation == QueryRelation.WITHIN) {
+    super(field, queryRelation, validateGeometries(queryRelation, geometries));
+  }
+
+  private static LatLonGeometry[] validateGeometries(
+      QueryRelation queryRelation, LatLonGeometry... geometries) {
+    if (geometries != null && queryRelation == QueryRelation.WITHIN) {
       for (LatLonGeometry geometry : geometries) {
         if (geometry instanceof Line) {
           // TODO: line queries do not support within relations
@@ -53,13 +57,15 @@ final class LatLonShapeQuery extends SpatialQuery {
         }
       }
     }
-    this.component2D = LatLonGeometry.create(geometries);
-    this.geometries = geometries.clone();
+    return geometries;
   }
 
   @Override
-  protected SpatialVisitor getSpatialVisitor() {
+  protected Component2D createComponent2D(Geometry... geometries) {
+    return LatLonGeometry.create((LatLonGeometry[]) geometries);
+  }
 
+  static SpatialVisitor getSpatialVisitor(Component2D component2D) {
     return new SpatialVisitor() {
       @Override
       protected Relation relate(byte[] minTriangle, byte[] maxTriangle) {
@@ -205,33 +211,7 @@ final class LatLonShapeQuery extends SpatialQuery {
   }
 
   @Override
-  public String toString(String field) {
-    final StringBuilder sb = new StringBuilder();
-    sb.append(getClass().getSimpleName());
-    sb.append(':');
-    if (this.field.equals(field) == false) {
-      sb.append(" field=");
-      sb.append(this.field);
-      sb.append(':');
-    }
-    sb.append("[");
-    for (int i = 0; i < geometries.length; i++) {
-      sb.append(geometries[i].toString());
-      sb.append(',');
-    }
-    sb.append(']');
-    return sb.toString();
-  }
-
-  @Override
-  protected boolean equalsTo(Object o) {
-    return super.equalsTo(o) && Arrays.equals(geometries, ((LatLonShapeQuery) o).geometries);
-  }
-
-  @Override
-  public int hashCode() {
-    int hash = super.hashCode();
-    hash = 31 * hash + Arrays.hashCode(geometries);
-    return hash;
+  protected SpatialVisitor getSpatialVisitor() {
+    return getSpatialVisitor(queryComponent2D);
   }
 }

@@ -19,7 +19,7 @@ github:
 
   features:
     wiki: false
-    issues: true  # temporarily enabled for testing
+    issues: false
     projects: false
 
 notifications:

@@ -91,7 +91,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* LUCENE-10654: Add new ShapeDocValuesField for LatLonShape and XYShape. (Nick Knize)
+
+* LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
 
 Improvements
 ---------------------
@@ -108,9 +110,13 @@ Optimizations
   field that is indexed with terms and SORTED or SORTED_SET doc values.
   (Adrien Grand)
 
+* LUCENE-10627: Using ByteBuffersDataInput reduce memory copy on compressing data. (luyuncheng)
+
 Bug Fixes
 ---------------------
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
+
+* LUCENE-10673: Improve check of equality for latitudes for spatial3d GeoBoundingBox (ignacio Vera)
 
 Build
 ---------------------
