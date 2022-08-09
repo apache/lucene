@@ -11,6 +11,8 @@ API Changes
 
 New Features
 ---------------------
+* LUCENE-10654: Add new ShapeDocValuesField for LatLonShape and XYShape. (Nick Knize)
+
 * LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
 
 Improvements
