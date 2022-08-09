@@ -741,7 +741,10 @@ public class TestWANDScorer extends LuceneTestCase {
     }
     IndexReader reader = DirectoryReader.open(w);
     w.close();
-    IndexSearcher searcher = newSearcher(reader);
+    // turn off concurrent search to avoid Random object used across threads resulting into
+    // RuntimeException, as WANDScorerQuery#createWeight has reference to this searcher,
+    // but will be called during searching
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
 
     for (int iter = 0; iter < 100; ++iter) {
       int start = random().nextInt(10);
@@ -751,7 +754,7 @@ public class TestWANDScorer extends LuceneTestCase {
         builder.add(
             maybeWrap(new TermQuery(new Term("foo", Integer.toString(start + i)))), Occur.SHOULD);
       }
-      Query query = numClauses > 0 ? new WANDScorerQuery(builder.build()) : builder.build();
+      Query query = new WANDScorerQuery(builder.build());
 
       CheckHits.checkTopScores(random(), query, searcher);
 
@@ -784,7 +787,10 @@ public class TestWANDScorer extends LuceneTestCase {
     }
     IndexReader reader = DirectoryReader.open(w);
     w.close();
-    IndexSearcher searcher = newSearcher(reader);
+    // turn off concurrent search to avoid Random object used across threads resulting into
+    // RuntimeException, as WANDScorerQuery#createWeight has reference to this searcher,
+    // but will be called during searching
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
 
     for (int iter = 0; iter < 100; ++iter) {
       int start = random().nextInt(10);
@@ -799,7 +805,7 @@ public class TestWANDScorer extends LuceneTestCase {
                     0f)),
             Occur.SHOULD);
       }
-      Query query = numClauses > 0 ? new WANDScorerQuery(builder.build()) : builder.build();
+      Query query = new WANDScorerQuery(builder.build());
 
       CheckHits.checkTopScores(random(), query, searcher);
 
@@ -841,7 +847,10 @@ public class TestWANDScorer extends LuceneTestCase {
     }
     IndexReader reader = DirectoryReader.open(w);
     w.close();
-    IndexSearcher searcher = newSearcher(reader);
+    // turn off concurrent search to avoid Random object used across threads resulting into
+    // RuntimeException, as WANDScorerQuery#createWeight has reference to this searcher,
+    // but will be called during searching
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
 
     for (int iter = 0; iter < 100; ++iter) {
       int start = random().nextInt(10);
@@ -856,7 +865,7 @@ public class TestWANDScorer extends LuceneTestCase {
         }
         builder.add(query, Occur.SHOULD);
       }
-      Query query = numClauses > 0 ? new WANDScorerQuery(builder.build()) : builder.build();
+      Query query = new WANDScorerQuery(builder.build());
 
       CheckHits.checkTopScores(random(), query, searcher);
 
@@ -994,8 +1003,7 @@ public class TestWANDScorer extends LuceneTestCase {
 
     private WANDScorerQuery(BooleanQuery query) {
       assert query.clauses().size() == query.getClauses(Occur.SHOULD).size()
-              && query.getClauses(Occur.SHOULD).size() > 0
-          : "This test utility query is only used to create WANDScorer for disjunctions with at least 1 clause.";
+          : "This test utility query is only used to create WANDScorer for disjunctions.";
       this.query = query;
     }
 
@@ -1035,8 +1043,12 @@ public class TestWANDScorer extends LuceneTestCase {
                       })
                   .toList();
 
-          return new WANDScorer(
-              weight, optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
+          if (optionalScorers.size() > 0) {
+            return new WANDScorer(
+                weight, optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
+          } else {
+            return weight.scorer(context);
+          }
         }
 
         @Override
