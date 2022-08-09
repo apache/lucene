@@ -94,26 +94,6 @@ public abstract class ShapeDocValuesField extends Field {
     //  return new ShapeDocValuesQuery(field, relation, geometries);
   }
 
-  /** returns the min x value for the shape's bounding box */
-  public int getEncodedMinX() {
-    return shapeDocValues.getEncodedMinX();
-  }
-
-  /** returns the min y value for the shape's bounding box */
-  public int getEncodedMinY() {
-    return shapeDocValues.getEncodedMinY();
-  }
-
-  /** returns the max x value for the shape's bounding box */
-  public int getEncodedMaxX() {
-    return shapeDocValues.getEncodedMaxX();
-  }
-
-  /** returns the max y value for the shape's bounding box */
-  public int getEncodedMaxY() {
-    return shapeDocValues.getEncodedMaxY();
-  }
-
   /** retrieves the centroid location for the geometry */
   public abstract Geometry getCentroid();
 
