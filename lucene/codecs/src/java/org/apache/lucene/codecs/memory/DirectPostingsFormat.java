@@ -1975,6 +1975,11 @@ public final class DirectPostingsFormat extends PostingsFormat {
       if (upto == docIDs.length) {
         return docID = NO_MORE_DOCS;
       }
+      // help for scorer scan
+      if (docIDs[upto] >= target) {
+        return docID = docIDs[upto];
+      }
+      upto++;
 
       // First "grow" outwards, since most advances are to
       // nearby docs:
@@ -2180,7 +2185,12 @@ public final class DirectPostingsFormat extends PostingsFormat {
       if (upto == docIDs.length) {
         return docID = NO_MORE_DOCS;
       }
-
+      // help for scorer scan
+      if (docIDs[upto] >= target) {
+        return docID = docIDs[upto];
+      }
+      upto++;
+      
       // First "grow" outwards, since most advances are to
       // nearby docs:
       int inc = 10;
