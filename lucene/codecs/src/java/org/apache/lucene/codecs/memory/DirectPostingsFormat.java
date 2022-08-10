@@ -1971,15 +1971,18 @@ public final class DirectPostingsFormat extends PostingsFormat {
       // if (DEBUG) {
       //   System.out.println("advance target=" + target + " len=" + docIDs.length);
       // }
-      upto++;
-      if (upto == docIDs.length) {
-        return docID = NO_MORE_DOCS;
+      // try linear scan to help term query
+      int linear = 5;
+      while (linear-- > 0) {
+        upto++;
+        if (upto < docIDs.length) {
+          if (docIDs[upto] >= target) {
+            return docID = docIDs[upto];
+          }
+        } else {
+          return docID = NO_MORE_DOCS;
+        }
       }
-      // help for scorer scan
-      if (docIDs[upto] >= target) {
-        return docID = docIDs[upto];
-      }
-      upto++;
 
       // First "grow" outwards, since most advances are to
       // nearby docs:
@@ -2181,16 +2184,19 @@ public final class DirectPostingsFormat extends PostingsFormat {
       // if (DEBUG) {
       //   System.out.println("advance target=" + target + " len=" + docIDs.length);
       // }
-      upto++;
-      if (upto == docIDs.length) {
-        return docID = NO_MORE_DOCS;
+      // try linear scan to help term query
+      int linear = 5;
+      while (linear-- > 0) {
+        upto++;
+        if (upto < docIDs.length) {
+          if (docIDs[upto] >= target) {
+            return docID = docIDs[upto];
+          }
+        } else {
+          return docID = NO_MORE_DOCS;
+        }
       }
-      // help for scorer scan
-      if (docIDs[upto] >= target) {
-        return docID = docIDs[upto];
-      }
-      upto++;
-      
+
       // First "grow" outwards, since most advances are to
       // nearby docs:
       int inc = 10;
