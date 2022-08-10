@@ -62,6 +62,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -162,6 +163,7 @@ public class RandomPostingsTester {
               0,
               0,
               0,
+              VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false);
       fieldUpto++;
@@ -733,6 +735,7 @@ public class RandomPostingsTester {
               0,
               0,
               0,
+              VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false);
     }

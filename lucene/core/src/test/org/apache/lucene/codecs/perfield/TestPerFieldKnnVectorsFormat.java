@@ -178,7 +178,7 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       return new KnnVectorsWriter() {
 
         @Override
-        public KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException {
+        public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
           fieldsWritten.add(fieldInfo.name);
           return writer.addField(fieldInfo);
         }

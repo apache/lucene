@@ -56,6 +56,7 @@ public final class FieldInfo {
 
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
+  private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
@@ -80,6 +81,7 @@ public final class FieldInfo {
       int pointIndexDimensionCount,
       int pointNumBytes,
       int vectorDimension,
+      VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
       boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
@@ -105,6 +107,7 @@ public final class FieldInfo {
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
+    this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.checkConsistency();
@@ -231,8 +234,10 @@ public final class FieldInfo {
     verifySameVectorOptions(
         fieldName,
         this.vectorDimension,
+        this.vectorEncoding,
         this.vectorSimilarityFunction,
         o.vectorDimension,
+        o.vectorEncoding,
         o.vectorSimilarityFunction);
   }
 
@@ -371,19 +376,25 @@ public final class FieldInfo {
   static void verifySameVectorOptions(
       String fieldName,
       int vd1,
+      VectorEncoding ve1,
       VectorSimilarityFunction vsf1,
       int vd2,
+      VectorEncoding ve2,
       VectorSimilarityFunction vsf2) {
-    if (vd1 != vd2 || vsf1 != vsf2) {
+    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
               + "\" from vector dimension="
               + vd1
+              + ", vector encoding="
+              + ve1
               + ", vector similarity function="
               + vsf1
               + " to inconsistent vector dimension="
               + vd2
+              + ", vector encoding="
+              + ve2
               + ", vector similarity function="
               + vsf2);
     }
@@ -492,6 +503,11 @@ public final class FieldInfo {
   /** Returns the number of dimensions of the vector value */
   public int getVectorDimension() {
     return vectorDimension;
+  }
+
+  /** Returns the number of dimensions of the vector value */
+  public VectorEncoding getVectorEncoding() {
+    return vectorEncoding;
   }
 
   /** Returns {@link VectorSimilarityFunction} for the field */

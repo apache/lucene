@@ -50,6 +50,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.store.Directory;
@@ -1126,6 +1127,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 0,
                 0,
                 0,
+                VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.DOT_PRODUCT,
                 fi.isSoftDeletesField());
         newInfos[i] = noIndexFI;

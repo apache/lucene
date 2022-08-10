@@ -32,7 +32,6 @@ import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90CompoundFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90FieldInfosFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90LiveDocsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90NormsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
@@ -69,7 +68,7 @@ public class Lucene94Codec extends Codec {
   }
 
   private final TermVectorsFormat vectorsFormat = new Lucene90TermVectorsFormat();
-  private final FieldInfosFormat fieldInfosFormat = new Lucene90FieldInfosFormat();
+  private final FieldInfosFormat fieldInfosFormat = new Lucene94FieldInfosFormat();
   private final SegmentInfoFormat segmentInfosFormat = new Lucene90SegmentInfoFormat();
   private final LiveDocsFormat liveDocsFormat = new Lucene90LiveDocsFormat();
   private final CompoundFormat compoundFormat = new Lucene90CompoundFormat();
@@ -99,6 +98,11 @@ public class Lucene94Codec extends Codec {
         @Override
         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
           return Lucene94Codec.this.getKnnVectorsFormatForField(field);
+        }
+
+        @Override
+        public int currentVersion() {
+          return Lucene94HnswVectorsFormat.VERSION_CURRENT;
         }
       };
 
