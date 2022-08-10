@@ -101,6 +101,9 @@ public interface IndexableFieldType {
   /** The number of dimensions of the field's vector value */
   int vectorDimension();
 
+  /** The {@link VectorEncoding} of the field's vector value */
+  VectorEncoding vectorEncoding();
+
   /** The {@link VectorSimilarityFunction} of the field's vector value */
   VectorSimilarityFunction vectorSimilarityFunction();
 

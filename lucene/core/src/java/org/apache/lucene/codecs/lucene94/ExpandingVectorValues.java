@@ -15,32 +15,31 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs;
+package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
-import org.apache.lucene.util.Accountable;
+import org.apache.lucene.index.FilterVectorValues;
+import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.util.BytesRef;
 
-/**
- * Vectors' writer for a field
- *
- * @param <T> an array type; the type of vectors to be written
- */
-public abstract class KnnFieldVectorsWriter<T> implements Accountable {
+/** reads from byte-encoded data */
+public class ExpandingVectorValues extends FilterVectorValues {
 
-  /** Sole constructor */
-  protected KnnFieldVectorsWriter() {}
+  private final float[] value;
 
-  /**
-   * Add new docID with its vector value to the given field for indexing. Doc IDs must be added in
-   * increasing order.
-   */
-  public abstract void addValue(int docID, Object vectorValue) throws IOException;
+  /** @param in the wrapped values */
+  protected ExpandingVectorValues(VectorValues in) {
+    super(in);
+    value = new float[in.dimension()];
+  }
 
-  /**
-   * Used to copy values being indexed to internal storage.
-   *
-   * @param vectorValue an array containing the vector value to add
-   * @return a copy of the value; a new array
-   */
-  public abstract T copyValue(T vectorValue);
+  @Override
+  public float[] vectorValue() throws IOException {
+    BytesRef binaryValue = binaryValue();
+    byte[] bytes = binaryValue.bytes;
+    for (int i = 0, j = binaryValue.offset; i < value.length; i++, j++) {
+      value[i] = bytes[j];
+    }
+    return value;
+  }
 }
