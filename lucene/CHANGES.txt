@@ -41,6 +41,9 @@ Bug Fixes
 
 * LUCENE-10673: Improve check of equality for latitudes for spatial3d GeoBoundingBox (ignacio Vera)
 
+* LUCENE-10678: Fix potential overflow when building a BKD tree with more than 4 billion points. The overflow
+  occurs when computing the partition point. (Ignacio Vera)
+
 Build
 ---------------------
 
