@@ -57,7 +57,7 @@ public class TestShapeDocValues extends LuceneTestCase {
 
   public void testLatLonPolygonBBox() {
     Polygon p = GeoTestUtil.nextPolygon();
-    Rectangle expected = new Rectangle(p.minLat, p.maxLat, p.minLon, p.maxLon);
+    Rectangle expected = (Rectangle) computeBoundingBox(p);
     LatLonShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
     assertEquals(expected.minLat, dv.getBoundingBox().minLat, TOLERANCE);
     assertEquals(expected.maxLat, dv.getBoundingBox().maxLat, TOLERANCE);
@@ -67,7 +67,7 @@ public class TestShapeDocValues extends LuceneTestCase {
 
   public void testXYPolygonBBox() {
     XYPolygon p = (XYPolygon) BaseXYShapeTestCase.ShapeType.POLYGON.nextShape();
-    XYRectangle expected = new XYRectangle(p.minX, p.maxX, p.minY, p.maxY);
+    XYRectangle expected = (XYRectangle) computeBoundingBox(p);
     XYShapeDocValuesField dv = XYShape.createDocValueField(FIELD_NAME, p);
     assertEquals(expected.minX, dv.getBoundingBox().minX, TOLERANCE);
     assertEquals(expected.maxX, dv.getBoundingBox().maxX, TOLERANCE);
@@ -131,6 +131,51 @@ public class TestShapeDocValues extends LuceneTestCase {
     }
     totalSignedArea = totalSignedArea == 0d ? 1 : totalSignedArea;
     return createPoint.apply(numXPly / totalSignedArea, numYPly / totalSignedArea);
+  }
+
+  /**
+   * compute the bounding box from the tessellation; test utils may create self crossing polygons
+   * cleaned by the tessellator
+   */
+  private Geometry computeBoundingBox(Geometry p) {
+    List<ShapeField.DecodedTriangle> tess = getTessellation(p);
+    IntFunction<Double> decodeX =
+        p instanceof Polygon
+            ? (x) -> GeoEncodingUtils.decodeLongitude(x)
+            : (x) -> (double) XYEncodingUtils.decode(x);
+    IntFunction<Double> decodeY =
+        p instanceof Polygon
+            ? (y) -> GeoEncodingUtils.decodeLatitude(y)
+            : (y) -> (double) XYEncodingUtils.decode(y);
+    BiFunction<Double[], Double[], Geometry> createRectangle =
+        p instanceof Polygon
+            ? (min, max) -> new Rectangle(min[1], max[1], min[0], max[0])
+            : (min, max) ->
+                new XYRectangle(
+                    min[0].floatValue(),
+                    max[0].floatValue(),
+                    min[1].floatValue(),
+                    max[1].floatValue());
+
+    double ax, bx, cx;
+    double ay, by, cy;
+    double minX = Double.MAX_VALUE;
+    double minY = Double.MAX_VALUE;
+    double maxX = -Double.MAX_VALUE;
+    double maxY = -Double.MAX_VALUE;
+    for (ShapeField.DecodedTriangle t : tess) {
+      ax = decodeX.apply(t.aX);
+      ay = decodeY.apply(t.aY);
+      bx = decodeX.apply(t.bX);
+      by = decodeY.apply(t.bY);
+      cx = decodeX.apply(t.cX);
+      cy = decodeY.apply(t.cY);
+      minX = Math.min(minX, Math.min(ax, Math.min(bx, cx)));
+      maxX = Math.max(maxX, Math.max(ax, Math.max(bx, cx)));
+      minY = Math.min(minY, Math.min(ay, Math.min(by, cy)));
+      maxY = Math.max(maxY, Math.max(ay, Math.max(by, cy)));
+    }
+    return createRectangle.apply(new Double[] {minX, minY}, new Double[] {maxX, maxY});
   }
 
   public void testExplicitLatLonPolygonCentroid() throws Exception {

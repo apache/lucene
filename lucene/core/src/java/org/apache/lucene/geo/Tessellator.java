@@ -194,7 +194,7 @@ public final class Tessellator {
         sortByMorton(outerNode);
       }
     }
-    if (checkSelfIntersections) {
+    if (checkSelfIntersections == true) {
       checkIntersection(outerNode, mortonOptimized);
     }
     // Calculate the tessellation using the doubly LinkedList.
@@ -1060,6 +1060,7 @@ public final class Tessellator {
     return isPointInLine(a, b, point.getX(), point.getY());
   }
 
+  /** returns true if the lon, lat point is colinear w/ the provided a and b point */
   private static boolean isPointInLine(
       final Node a, final Node b, final double lon, final double lat) {
     final double dxc = lon - a.getX();
