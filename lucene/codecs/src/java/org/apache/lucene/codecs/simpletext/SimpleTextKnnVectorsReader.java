@@ -150,7 +150,10 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     VectorValues values = getVectorValues(field);
     if (target.length != values.dimension()) {
       throw new IllegalArgumentException(
-          "vector dimensions differ: " + target.length + "!=" + values.dimension());
+          "vector query dimension: "
+              + target.length
+              + " differs from field dimension: "
+              + values.dimension());
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
