@@ -19,13 +19,16 @@ package org.apache.lucene.search.highlight;
 public class TextFragment {
   CharSequence markedUpText;
   int fragNum;
+  int prevFragEndPos;
   int textStartPos;
   int textEndPos;
   float score;
 
-  public TextFragment(CharSequence markedUpText, int textStartPos, int fragNum) {
+  public TextFragment(
+      CharSequence markedUpText, int textStartPos, int prevFragEndPos, int fragNum) {
     this.markedUpText = markedUpText;
     this.textStartPos = textStartPos;
+    this.prevFragEndPos = prevFragEndPos;
     this.fragNum = fragNum;
   }
 
@@ -43,7 +46,7 @@ public class TextFragment {
   }
   /** @return true if this fragment follows the one passed */
   public boolean follows(TextFragment fragment) {
-    return textStartPos == fragment.textEndPos;
+    return prevFragEndPos == fragment.textEndPos;
   }
 
   /** @return the fragment sequence number */
