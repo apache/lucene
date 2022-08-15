@@ -220,6 +220,8 @@ public class Highlighter {
             // record stats for a new fragment
             currentFrag.textEndPos = newText.length();
             currentFrag = new TextFragment(newText, newText.length(), docFrags.size());
+            // XXX FIX FOR LUCENE-2587
+            //currentFrag = new TextFragment(newText, newText.length() + offsetAtt.startOffset() - endOffset, docFrags.size());
             fragmentScorer.startFragment(currentFrag);
             docFrags.add(currentFrag);
           }
