@@ -64,7 +64,7 @@ Bug Fixes
 
 * LUCENE-2587: Computing the right offset in the case of trailing whitespaces.
   and added a test case testForIssue2587 demonstrating the issue. Before the fix
-  this test case would fail, returning ". F <B>g</B> h i j" as hitline. (Roberto Minelli)
+  this test case would fail, returning ". F <B>g</B> h i j" as hitline. (Roberto Minelli, Elliot Lin)
 
 Other
 ---------------------
