@@ -49,4 +49,6 @@ public interface RandomAccessVectorValues {
    * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
    */
   BytesRef binaryValue(int targetOrd) throws IOException;
+  
+  RandomAccessVectorValues randomAccess() throws IOException;
 }

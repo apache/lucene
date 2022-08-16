@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
@@ -54,8 +53,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -278,9 +275,6 @@ public class KnnGraphTester {
             testSearch(indexPath, queryPath, null, getNN(docVectorsPath, queryPath));
           }
           break;
-        case "-dump":
-          dumpGraph(docVectorsPath);
-          break;
         case "-stats":
           printFanoutHist(indexPath);
           break;
@@ -305,41 +299,6 @@ public class KnnGraphTester {
         System.out.printf("Leaf %d has %d documents\n", context.ord, leafReader.maxDoc());
         printGraphFanout(knnValues, leafReader.maxDoc());
       }
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private void dumpGraph(Path docsPath) throws IOException {
-    try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
-      RandomAccessVectorValues values = vectors.randomAccess();
-      HnswGraphBuilder<float[]> builder =
-          (HnswGraphBuilder<float[]>)
-              HnswGraphBuilder.create(
-                  vectors, vectorEncoding, similarityFunction, maxConn, beamWidth, 0);
-      // start at node 1
-      for (int i = 1; i < numDocs; i++) {
-        builder.addGraphNode(i, values);
-        System.out.println("\nITERATION " + i);
-        dumpGraph(builder.hnsw);
-      }
-    }
-  }
-
-  private void dumpGraph(OnHeapHnswGraph hnsw) {
-    for (int i = 0; i < hnsw.size(); i++) {
-      NeighborArray neighbors = hnsw.getNeighbors(0, i);
-      System.out.printf(Locale.ROOT, "%5d", i);
-      NeighborArray sorted = new NeighborArray(neighbors.size(), true);
-      for (int j = 0; j < neighbors.size(); j++) {
-        int node = neighbors.node[j];
-        float score = neighbors.score[j];
-        sorted.add(node, score);
-      }
-      new NeighborArraySorter(sorted).sort(0, sorted.size());
-      for (int j = 0; j < sorted.size(); j++) {
-        System.out.printf(Locale.ROOT, " [%d, %.4f]", sorted.node[j], sorted.score[j]);
-      }
-      System.out.println();
     }
   }
 
@@ -781,66 +740,6 @@ public class KnnGraphTester {
         "Usage: TestKnnGraph [-reindex] [-search {queryfile}|-stats|-check] [-docs {datafile}] [-niter N] [-fanout N] [-maxConn N] [-beamWidth N] [-filterSelectivity N] [-prefilter]";
     System.err.println(error);
     System.exit(1);
-  }
-
-  class BinaryFileVectors implements RandomAccessVectorValuesProducer, Closeable {
-
-    private final int size;
-    private final FileChannel in;
-    private final FloatBuffer mmap;
-
-    BinaryFileVectors(Path filePath) throws IOException {
-      in = FileChannel.open(filePath);
-      long totalBytes = (long) numDocs * dim * Float.BYTES;
-      if (totalBytes > Integer.MAX_VALUE) {
-        throw new IllegalArgumentException("input over 2GB not supported");
-      }
-      int vectorByteSize = dim * Float.BYTES;
-      size = (int) (totalBytes / vectorByteSize);
-      mmap =
-          in.map(FileChannel.MapMode.READ_ONLY, 0, totalBytes)
-              .order(ByteOrder.LITTLE_ENDIAN)
-              .asFloatBuffer();
-    }
-
-    @Override
-    public void close() throws IOException {
-      in.close();
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new Values();
-    }
-
-    class Values implements RandomAccessVectorValues {
-
-      float[] vector = new float[dim];
-      FloatBuffer source = mmap.slice();
-
-      @Override
-      public int size() {
-        return size;
-      }
-
-      @Override
-      public int dimension() {
-        return dim;
-      }
-
-      @Override
-      public float[] vectorValue(int targetOrd) {
-        int pos = targetOrd * dim;
-        source.position(pos);
-        source.get(vector);
-        return vector;
-      }
-
-      @Override
-      public BytesRef binaryValue(int targetOrd) {
-        throw new UnsupportedOperationException();
-      }
-    }
   }
 
   static class NeighborArraySorter extends IntroSorter {

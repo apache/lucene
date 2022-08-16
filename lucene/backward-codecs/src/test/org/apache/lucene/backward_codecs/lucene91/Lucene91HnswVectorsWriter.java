@@ -27,7 +27,7 @@ import org.apache.lucene.index.BufferingKnnVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -233,7 +233,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private Lucene91OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph

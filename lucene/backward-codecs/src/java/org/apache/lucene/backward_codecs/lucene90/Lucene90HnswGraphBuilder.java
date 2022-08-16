@@ -22,7 +22,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.NeighborQueue;
@@ -72,7 +71,7 @@ public final class Lucene90HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene90HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors,
+      RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,

@@ -617,7 +617,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       hnswGraphBuilder =
           (HnswGraphBuilder<T>)
               HnswGraphBuilder.create(
-                  () -> raVectorValues,
+                  raVectorValues,
                   fieldInfo.getVectorEncoding(),
                   fieldInfo.getVectorSimilarityFunction(),
                   M,
@@ -693,6 +693,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
       return (BytesRef) vectors.get(targetOrd);
+    }
+
+    @Override
+    public RandomAccessVectorValues randomAccess() throws IOException {
+      return this;
     }
   }
 }

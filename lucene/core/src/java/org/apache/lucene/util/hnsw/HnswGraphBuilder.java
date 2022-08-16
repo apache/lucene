@@ -24,7 +24,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BytesRef;
@@ -67,7 +66,7 @@ public final class HnswGraphBuilder<T> {
   private final RandomAccessVectorValues buildVectors;
 
   public static HnswGraphBuilder<?> create(
-      RandomAccessVectorValuesProducer vectors,
+      RandomAccessVectorValues vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
@@ -90,7 +89,7 @@ public final class HnswGraphBuilder<T> {
    *     to ensure repeatable construction.
    */
   private HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors,
+      RandomAccessVectorValues vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
