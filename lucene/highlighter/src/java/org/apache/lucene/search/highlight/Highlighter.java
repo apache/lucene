@@ -164,8 +164,7 @@ public class Highlighter {
 
     CharTermAttribute termAtt = tokenStream.addAttribute(CharTermAttribute.class);
     OffsetAttribute offsetAtt = tokenStream.addAttribute(OffsetAttribute.class);
-    TextFragment currentFrag =
-        new TextFragment(newText, newText.length(), -1, docFrags.size());
+    TextFragment currentFrag = new TextFragment(newText, newText.length(), -1, docFrags.size());
 
     if (fragmentScorer instanceof QueryScorer) {
       ((QueryScorer) fragmentScorer).setMaxDocCharsToAnalyze(maxDocCharsToAnalyze);
