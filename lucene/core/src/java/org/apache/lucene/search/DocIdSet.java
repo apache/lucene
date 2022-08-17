@@ -48,6 +48,26 @@ public abstract class DocIdSet implements Accountable {
         }
       };
 
+  /** A {@code DocIdSet} that matches all doc ids up to a specified value. */
+  public static DocIdSet all(int maxDoc) {
+    return new DocIdSet() {
+      @Override
+      public DocIdSetIterator iterator() throws IOException {
+        return DocIdSetIterator.all(maxDoc);
+      }
+
+      @Override
+      public Bits bits() throws IOException {
+        return new Bits.MatchAllBits(maxDoc);
+      }
+
+      @Override
+      public long ramBytesUsed() {
+        return Integer.BYTES;
+      }
+    };
+  }
+
   /**
    * Provides a {@link DocIdSetIterator} to access the set. This implementation can return <code>
    * null</code> if there are no docs that match.
