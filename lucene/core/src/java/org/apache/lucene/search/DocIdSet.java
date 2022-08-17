@@ -48,7 +48,7 @@ public abstract class DocIdSet implements Accountable {
         }
       };
 
-  /** A {@code DocIdSet} that matches all doc ids up to a specified value. */
+  /** A {@code DocIdSet} that matches all doc ids up to a specified doc (exclusive). */
   public static DocIdSet all(int maxDoc) {
     return new DocIdSet() {
       @Override
