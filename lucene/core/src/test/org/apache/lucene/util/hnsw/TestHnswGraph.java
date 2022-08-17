@@ -93,7 +93,7 @@ public class TestHnswGraph extends LuceneTestCase {
     RandomVectorValues v2 = vectors.copy(), v3 = vectors.copy();
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
-    HnswGraph hnsw = builder.build(vectors);
+    HnswGraph hnsw = builder.build(vectors.copy());
 
     // Recreate the graph while indexing with the same random seed and write it out
     HnswGraphBuilder.randSeed = seed;
@@ -274,7 +274,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 10, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // run some searches
     NeighborQueue nn =
         HnswGraphSearcher.search(
@@ -315,7 +315,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
@@ -348,7 +348,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // Only mark a few vectors as accepted
     BitSet acceptOrds = new FixedBitSet(vectors.size);
     for (int i = 0; i < vectors.size; i += random().nextInt(15, 20)) {
@@ -385,7 +385,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, VectorEncoding.FLOAT32, similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
@@ -422,7 +422,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
 
     int topK = 50;
     int visitedLimit = topK + random().nextInt(5);
@@ -495,15 +495,16 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors, vectorEncoding, similarityFunction, 2, 10, random().nextInt());
     // node 0 is added by the builder constructor
     // builder.addGraphNode(vectors.vectorValue(0));
-    builder.addGraphNode(1, vectors);
-    builder.addGraphNode(2, vectors);
+    RandomAccessVectorValues vectorsCopy = vectors.copy();
+    builder.addGraphNode(1, vectorsCopy);
+    builder.addGraphNode(2, vectorsCopy);
     // now every node has tried to attach every other node as a neighbor, but
     // some were excluded based on diversity check.
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     assertLevel0Neighbors(builder.hnsw, 1, 0);
     assertLevel0Neighbors(builder.hnsw, 2, 0);
 
-    builder.addGraphNode(3, vectors);
+    builder.addGraphNode(3, vectorsCopy);
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     // we added 3 here
     assertLevel0Neighbors(builder.hnsw, 1, 0, 3);
@@ -511,7 +512,7 @@ public class TestHnswGraph extends LuceneTestCase {
     assertLevel0Neighbors(builder.hnsw, 3, 1);
 
     // supplant an existing neighbor
-    builder.addGraphNode(4, vectors);
+    builder.addGraphNode(4, vectorsCopy);
     // 4 is the same distance from 0 that 2 is; we leave the existing node in place
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     assertLevel0Neighbors(builder.hnsw, 1, 0, 3, 4);
@@ -520,7 +521,7 @@ public class TestHnswGraph extends LuceneTestCase {
     assertLevel0Neighbors(builder.hnsw, 3, 1, 4);
     assertLevel0Neighbors(builder.hnsw, 4, 1, 3);
 
-    builder.addGraphNode(5, vectors);
+    builder.addGraphNode(5, vectorsCopy);
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     assertLevel0Neighbors(builder.hnsw, 1, 0, 3, 4, 5);
     assertLevel0Neighbors(builder.hnsw, 2, 0);
@@ -549,7 +550,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 10, 30, random().nextLong());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
     int totalMatches = 0;
