@@ -51,6 +51,7 @@ class MockVectorValues extends VectorValues implements RandomAccessVectorValues 
     binaryValue.length = dimension;
   }
 
+  @Override
   public MockVectorValues copy() {
     return new MockVectorValues(values);
   }
@@ -77,11 +78,6 @@ class MockVectorValues extends VectorValues implements RandomAccessVectorValues 
       System.arraycopy(values[pos], 0, scratch, 0, dimension);
       return scratch;
     }
-  }
-
-  @Override
-  public RandomAccessVectorValues randomAccess() {
-    return copy();
   }
 
   @Override

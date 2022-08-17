@@ -96,8 +96,8 @@ public final class HnswGraphBuilder<T> {
       int beamWidth,
       long seed)
       throws IOException {
-    vectorValues = vectors.randomAccess();
-    buildVectors = vectors.randomAccess();
+    vectorValues = vectors.copy();
+    buildVectors = vectors.copy();
     this.vectorEncoding = Objects.requireNonNull(vectorEncoding);
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (M <= 0) {

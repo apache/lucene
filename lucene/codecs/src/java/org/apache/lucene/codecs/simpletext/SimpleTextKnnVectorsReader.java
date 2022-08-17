@@ -309,7 +309,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return this;
     }
 

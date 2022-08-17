@@ -148,7 +148,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
+    public RandomAccessVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
     }
 
@@ -224,7 +224,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
+    public RandomAccessVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
     }
 
@@ -301,7 +301,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
+    public RandomAccessVectorValues copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 

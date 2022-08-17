@@ -280,7 +280,7 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraphSearcher.search(
             getTargetVector(),
             10,
-            vectors.randomAccess(),
+            vectors.copy(),
             vectorEncoding,
             similarityFunction,
             hnsw,
@@ -322,7 +322,7 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraphSearcher.search(
             getTargetVector(),
             10,
-            vectors.randomAccess(),
+            vectors.copy(),
             vectorEncoding,
             similarityFunction,
             hnsw,
@@ -361,7 +361,7 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraphSearcher.search(
             getTargetVector(),
             numAccepted,
-            vectors.randomAccess(),
+            vectors.copy(),
             vectorEncoding,
             similarityFunction,
             hnsw,
@@ -396,7 +396,7 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraphSearcher.search(
             getTargetVector(),
             10,
-            vectors.randomAccess(),
+            vectors.copy(),
             VectorEncoding.FLOAT32,
             similarityFunction,
             hnsw,
@@ -430,7 +430,7 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraphSearcher.search(
             getTargetVector(),
             topK,
-            vectors.randomAccess(),
+            vectors.copy(),
             vectorEncoding,
             similarityFunction,
             hnsw,
@@ -629,6 +629,7 @@ public class TestHnswGraph extends LuceneTestCase {
       binaryValue = new BytesRef(new byte[2]);
     }
 
+    @Override
     public CircularVectorValues copy() {
       return new CircularVectorValues(size);
     }
@@ -646,11 +647,6 @@ public class TestHnswGraph extends LuceneTestCase {
     @Override
     public float[] vectorValue() {
       return vectorValue(doc);
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new CircularVectorValues(size);
     }
 
     @Override

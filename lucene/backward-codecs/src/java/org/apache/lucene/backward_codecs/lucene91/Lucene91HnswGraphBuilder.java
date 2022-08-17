@@ -84,8 +84,8 @@ public final class Lucene91HnswGraphBuilder {
       int beamWidth,
       long seed)
       throws IOException {
-    vectorValues = vectors.randomAccess();
-    buildVectors = vectors.randomAccess();
+    vectorValues = vectors.copy();
+    buildVectors = vectors.copy();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");

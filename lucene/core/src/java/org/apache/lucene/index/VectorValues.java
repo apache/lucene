@@ -119,7 +119,7 @@ public abstract class VectorValues extends DocIdSetIterator {
     private int docId = -1;
 
     public SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.randomAccess = ((RandomAccessVectorValues) delegate).randomAccess();
+      this.randomAccess = ((RandomAccessVectorValues) delegate).copy();
       this.docIdOffsets = new int[sortMap.size()];
 
       int offset = 1; // 0 means no vector for this (field, document)

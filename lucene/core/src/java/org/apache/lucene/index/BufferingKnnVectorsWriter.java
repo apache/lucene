@@ -236,7 +236,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return new BufferedVectorValues(docsWithField, vectors, dimension);
     }
 
