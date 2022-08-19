@@ -37,14 +37,15 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   protected KnnVectorsWriter() {}
 
   /** Add new field for indexing */
-  public abstract KnnFieldVectorsWriter addField(FieldInfo fieldInfo) throws IOException;
+  public abstract KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException;
 
   /** Flush all buffered data on disk * */
   public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 
   /** Write field for merging */
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    KnnFieldVectorsWriter writer = addField(fieldInfo);
+  @SuppressWarnings("unchecked")
+  public <T> void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    KnnFieldVectorsWriter<T> writer = (KnnFieldVectorsWriter<T>) addField(fieldInfo);
     VectorValues mergedValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
     for (int doc = mergedValues.nextDoc();
         doc != DocIdSetIterator.NO_MORE_DOCS;

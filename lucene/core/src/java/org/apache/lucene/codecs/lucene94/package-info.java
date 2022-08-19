@@ -144,7 +144,7 @@
  *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90SegmentInfoFormat Segment info}. This
  *       contains metadata about a segment, such as the number of documents, what files it uses, and
  *       information about how the segment is sorted
- *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90FieldInfosFormat Field names}. This
+ *   <li>{@link org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat Field names}. This
  *       contains metadata about the set of named fields used in the index.
  *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat Stored Field values}.
  *       This contains, for each document, a list of attribute-value pairs, where the attributes are
@@ -240,7 +240,7 @@
  * systems that frequently run out of file handles.</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene90.Lucene90FieldInfosFormat Fields}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat Fields}</td>
  * <td>.fnm</td>
  * <td>Stores information about the fields</td>
  * </tr>

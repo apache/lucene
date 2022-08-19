@@ -89,6 +89,8 @@ API Changes
 
 New Features
 ---------------------
+* LUCENE-10654: Add new ShapeDocValuesField for LatLonShape and XYShape. (Nick Knize)
+
 * LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
 
 Improvements
@@ -113,6 +115,11 @@ Bug Fixes
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
 
 * LUCENE-10673: Improve check of equality for latitudes for spatial3d GeoBoundingBox (ignacio Vera)
+
+* LUCENE-10678: Fix potential overflow when building a BKD tree with more than 4 billion points. The overflow
+  occurs when computing the partition point. (Ignacio Vera)
+
+* LUCENE-10644: Facets#getAllChildren testing should ignore child order. (Yuting Gan)
 
 Build
 ---------------------

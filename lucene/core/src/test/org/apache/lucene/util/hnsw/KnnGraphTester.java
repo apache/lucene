@@ -56,6 +56,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -101,6 +102,7 @@ public class KnnGraphTester {
   private int beamWidth;
   private int maxConn;
   private VectorSimilarityFunction similarityFunction;
+  private VectorEncoding vectorEncoding;
   private FixedBitSet matchDocs;
   private float selectivity;
   private boolean prefilter;
@@ -113,6 +115,7 @@ public class KnnGraphTester {
     topK = 100;
     fanout = topK;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    vectorEncoding = VectorEncoding.FLOAT32;
     selectivity = 1f;
     prefilter = false;
   }
@@ -195,12 +198,30 @@ public class KnnGraphTester {
         case "-docs":
           docVectorsPath = Paths.get(args[++iarg]);
           break;
+        case "-encoding":
+          String encoding = args[++iarg];
+          switch (encoding) {
+            case "byte":
+              vectorEncoding = VectorEncoding.BYTE;
+              break;
+            case "float32":
+              vectorEncoding = VectorEncoding.FLOAT32;
+              break;
+            default:
+              throw new IllegalArgumentException("-encoding can be 'byte' or 'float32' only");
+          }
+          break;
         case "-metric":
           String metric = args[++iarg];
-          if (metric.equals("euclidean")) {
-            similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-          } else if (metric.equals("angular") == false) {
-            throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
+          switch (metric) {
+            case "euclidean":
+              similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+              break;
+            case "angular":
+              similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+              break;
+            default:
+              throw new IllegalArgumentException("-metric can be 'angular' or 'euclidean' only");
           }
           break;
         case "-forceMerge":
@@ -229,7 +250,7 @@ public class KnnGraphTester {
     if (operation == null && reindex == false) {
       usage();
     }
-    if (prefilter == true && selectivity == 1f) {
+    if (prefilter && selectivity == 1f) {
       throw new IllegalArgumentException("-prefilter requires filterSelectivity between 0 and 1");
     }
     indexPath = Paths.get(formatIndexPath(docVectorsPath));
@@ -248,7 +269,9 @@ public class KnnGraphTester {
           if (docVectorsPath == null) {
             throw new IllegalArgumentException("missing -docs arg");
           }
-          matchDocs = generateRandomBitSet(numDocs, selectivity);
+          if (selectivity < 1) {
+            matchDocs = generateRandomBitSet(numDocs, selectivity);
+          }
           if (outputPath != null) {
             testSearch(indexPath, queryPath, outputPath, null);
           } else {
@@ -285,14 +308,17 @@ public class KnnGraphTester {
     }
   }
 
+  @SuppressWarnings("unchecked")
   private void dumpGraph(Path docsPath) throws IOException {
     try (BinaryFileVectors vectors = new BinaryFileVectors(docsPath)) {
       RandomAccessVectorValues values = vectors.randomAccess();
-      HnswGraphBuilder builder =
-          new HnswGraphBuilder(vectors, similarityFunction, maxConn, beamWidth, 0);
+      HnswGraphBuilder<float[]> builder =
+          (HnswGraphBuilder<float[]>)
+              HnswGraphBuilder.create(
+                  vectors, vectorEncoding, similarityFunction, maxConn, beamWidth, 0);
       // start at node 1
       for (int i = 1; i < numDocs; i++) {
-        builder.addGraphNode(i, values.vectorValue(i));
+        builder.addGraphNode(i, values);
         System.out.println("\nITERATION " + i);
         dumpGraph(builder.hnsw);
       }
@@ -375,13 +401,8 @@ public class KnnGraphTester {
       throws IOException {
     TopDocs[] results = new TopDocs[numIters];
     long elapsed, totalCpuTime, totalVisited = 0;
-    try (FileChannel q = FileChannel.open(queryPath)) {
-      int bufferSize = numIters * dim * Float.BYTES;
-      FloatBuffer targets =
-          q.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize)
-              .order(ByteOrder.LITTLE_ENDIAN)
-              .asFloatBuffer();
-      float[] target = new float[dim];
+    try (FileChannel input = FileChannel.open(queryPath)) {
+      VectorReader targetReader = VectorReader.create(input, dim, vectorEncoding, numIters);
       if (quiet == false) {
         System.out.println("running " + numIters + " targets; topK=" + topK + ", fanout=" + fanout);
       }
@@ -392,21 +413,21 @@ public class KnnGraphTester {
           DirectoryReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         numDocs = reader.maxDoc();
-        Query bitSetQuery = new BitSetQuery(matchDocs);
+        Query bitSetQuery = prefilter ? new BitSetQuery(matchDocs) : null;
         for (int i = 0; i < numIters; i++) {
           // warm up
-          targets.get(target);
+          float[] target = targetReader.next();
           if (prefilter) {
             doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout, bitSetQuery);
           } else {
             doKnnVectorQuery(searcher, KNN_FIELD, target, (int) (topK / selectivity), fanout, null);
           }
         }
-        targets.position(0);
+        targetReader.reset();
         start = System.nanoTime();
         cpuTimeStartNs = bean.getCurrentThreadCpuTime();
         for (int i = 0; i < numIters; i++) {
-          targets.get(target);
+          float[] target = targetReader.next();
           if (prefilter) {
             results[i] = doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout, bitSetQuery);
           } else {
@@ -414,10 +435,12 @@ public class KnnGraphTester {
                 doKnnVectorQuery(
                     searcher, KNN_FIELD, target, (int) (topK / selectivity), fanout, null);
 
-            results[i].scoreDocs =
-                Arrays.stream(results[i].scoreDocs)
-                    .filter(scoreDoc -> matchDocs == null || matchDocs.get(scoreDoc.doc))
-                    .toArray(ScoreDoc[]::new);
+            if (matchDocs != null) {
+              results[i].scoreDocs =
+                  Arrays.stream(results[i].scoreDocs)
+                      .filter(scoreDoc -> matchDocs.get(scoreDoc.doc))
+                      .toArray(ScoreDoc[]::new);
+            }
           }
         }
         totalCpuTime = (bean.getCurrentThreadCpuTime() - cpuTimeStartNs) / 1_000_000;
@@ -425,7 +448,14 @@ public class KnnGraphTester {
         for (int i = 0; i < numIters; i++) {
           totalVisited += results[i].totalHits.value;
           for (ScoreDoc doc : results[i].scoreDocs) {
-            doc.doc = Integer.parseInt(reader.document(doc.doc).get("id"));
+            if (doc.doc != NO_MORE_DOCS) {
+              // there is a bug somewhere that can result in doc=NO_MORE_DOCS!  I think it happens
+              // in some degenerate case (like input query has NaN in it?) that causes no results to
+              // be returned from HNSW search?
+              doc.doc = Integer.parseInt(reader.document(doc.doc).get("id"));
+            } else {
+              System.out.println("NO_MORE_DOCS!");
+            }
           }
         }
       }
@@ -474,6 +504,78 @@ public class KnnGraphTester {
           reindexTimeMsec,
           selectivity,
           prefilter ? "pre-filter" : "post-filter");
+    }
+  }
+
+  private abstract static class VectorReader {
+    final float[] target;
+    final ByteBuffer bytes;
+
+    static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding, int n)
+        throws IOException {
+      int bufferSize = n * dim * vectorEncoding.byteSize;
+      return switch (vectorEncoding) {
+        case BYTE -> new VectorReaderByte(input, dim, bufferSize);
+        case FLOAT32 -> new VectorReaderFloat32(input, dim, bufferSize);
+      };
+    }
+
+    VectorReader(FileChannel input, int dim, int bufferSize) throws IOException {
+      bytes =
+          input.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize).order(ByteOrder.LITTLE_ENDIAN);
+      target = new float[dim];
+    }
+
+    void reset() {
+      bytes.position(0);
+    }
+
+    abstract float[] next();
+  }
+
+  private static class VectorReaderFloat32 extends VectorReader {
+    private final FloatBuffer floats;
+
+    VectorReaderFloat32(FileChannel input, int dim, int bufferSize) throws IOException {
+      super(input, dim, bufferSize);
+      floats = bytes.asFloatBuffer();
+    }
+
+    @Override
+    void reset() {
+      super.reset();
+      floats.position(0);
+    }
+
+    @Override
+    float[] next() {
+      floats.get(target);
+      return target;
+    }
+  }
+
+  private static class VectorReaderByte extends VectorReader {
+    private byte[] scratch;
+    private BytesRef bytesRef;
+
+    VectorReaderByte(FileChannel input, int dim, int bufferSize) throws IOException {
+      super(input, dim, bufferSize);
+      scratch = new byte[dim];
+      bytesRef = new BytesRef(scratch);
+    }
+
+    @Override
+    float[] next() {
+      bytes.get(scratch);
+      for (int i = 0; i < scratch.length; i++) {
+        target[i] = scratch[i];
+      }
+      return target;
+    }
+
+    BytesRef nextBytes() {
+      bytes.get(scratch);
+      return bytesRef;
     }
   }
 
@@ -529,7 +631,9 @@ public class KnnGraphTester {
     if (Files.exists(nnPath) && isNewer(nnPath, docPath, queryPath) && selectivity == 1f) {
       return readNN(nnPath);
     } else {
-      int[][] nn = computeNN(docPath, queryPath);
+      // TODO: enable computing NN from high precision vectors when
+      // checking low-precision recall
+      int[][] nn = computeNN(docPath, queryPath, vectorEncoding);
       if (selectivity == 1f) {
         writeNN(nn, nnPath);
       }
@@ -589,51 +693,36 @@ public class KnnGraphTester {
     return bitSet;
   }
 
-  private int[][] computeNN(Path docPath, Path queryPath) throws IOException {
+  private int[][] computeNN(Path docPath, Path queryPath, VectorEncoding encoding)
+      throws IOException {
     int[][] result = new int[numIters][];
     if (quiet == false) {
       System.out.println("computing true nearest neighbors of " + numIters + " target vectors");
     }
     try (FileChannel in = FileChannel.open(docPath);
         FileChannel qIn = FileChannel.open(queryPath)) {
-      FloatBuffer queries =
-          qIn.map(FileChannel.MapMode.READ_ONLY, 0, numIters * dim * Float.BYTES)
-              .order(ByteOrder.LITTLE_ENDIAN)
-              .asFloatBuffer();
-      float[] vector = new float[dim];
-      float[] query = new float[dim];
+      VectorReader docReader = VectorReader.create(in, dim, encoding, numDocs);
+      VectorReader queryReader = VectorReader.create(qIn, dim, encoding, numIters);
       for (int i = 0; i < numIters; i++) {
-        queries.get(query);
-        long totalBytes = (long) numDocs * dim * Float.BYTES;
-        final int maxBlockSize = (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES);
-        int offset = 0;
-        int j = 0;
-        // System.out.println("totalBytes=" + totalBytes);
-        while (j < numDocs) {
-          int blockSize = (int) Math.min(totalBytes - offset, maxBlockSize);
-          FloatBuffer vectors =
-              in.map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
-                  .order(ByteOrder.LITTLE_ENDIAN)
-                  .asFloatBuffer();
-          offset += blockSize;
-          NeighborQueue queue = new NeighborQueue(topK, false);
-          for (; j < numDocs && vectors.hasRemaining(); j++) {
-            vectors.get(vector);
-            float d = similarityFunction.compare(query, vector);
-            if (matchDocs == null || matchDocs.get(j)) {
-              queue.insertWithOverflow(j, d);
-            }
+        float[] query = queryReader.next();
+        NeighborQueue queue = new NeighborQueue(topK, false);
+        for (int j = 0; j < numDocs; j++) {
+          float[] doc = docReader.next();
+          float d = similarityFunction.compare(query, doc);
+          if (matchDocs == null || matchDocs.get(j)) {
+            queue.insertWithOverflow(j, d);
           }
-          result[i] = new int[topK];
-          for (int k = topK - 1; k >= 0; k--) {
-            result[i][k] = queue.topNode();
-            queue.pop();
-            // System.out.print(" " + n);
-          }
-          if (quiet == false && (i + 1) % 10 == 0) {
-            System.out.print(" " + (i + 1));
-            System.out.flush();
-          }
+        }
+        docReader.reset();
+        result[i] = new int[topK];
+        for (int k = topK - 1; k >= 0; k--) {
+          result[i][k] = queue.topNode();
+          queue.pop();
+          // System.out.print(" " + n);
+        }
+        if (quiet == false && (i + 1) % 10 == 0) {
+          System.out.print(" " + (i + 1));
+          System.out.flush();
         }
       }
     }
@@ -651,37 +740,29 @@ public class KnnGraphTester {
         });
     // iwc.setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setRAMBufferSizeMB(1994d);
+    iwc.setUseCompoundFile(false);
     // iwc.setMaxBufferedDocs(10000);
 
-    FieldType fieldType = KnnVectorField.createFieldType(dim, similarityFunction);
+    FieldType fieldType = KnnVectorField.createFieldType(dim, vectorEncoding, similarityFunction);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
     }
     long start = System.nanoTime();
-    long totalBytes = (long) numDocs * dim * Float.BYTES, offset = 0;
-    final int maxBlockSize = (Integer.MAX_VALUE / (dim * Float.BYTES)) * (dim * Float.BYTES);
-
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter iw = new IndexWriter(dir, iwc)) {
-      float[] vector = new float[dim];
       try (FileChannel in = FileChannel.open(docsPath)) {
-        int i = 0;
-        while (i < numDocs) {
-          int blockSize = (int) Math.min(totalBytes - offset, maxBlockSize);
-          FloatBuffer vectors =
-              in.map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
-                  .order(ByteOrder.LITTLE_ENDIAN)
-                  .asFloatBuffer();
-          offset += blockSize;
-          for (; vectors.hasRemaining() && i < numDocs; i++) {
-            vectors.get(vector);
-            Document doc = new Document();
-            // System.out.println("vector=" + vector[0] + "," + vector[1] + "...");
-            doc.add(new KnnVectorField(KNN_FIELD, vector, fieldType));
-            doc.add(new StoredField(ID_FIELD, i));
-            iw.addDocument(doc);
+        VectorReader vectorReader = VectorReader.create(in, dim, vectorEncoding, numDocs);
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          switch (vectorEncoding) {
+            case BYTE -> doc.add(
+                new KnnVectorField(
+                    KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
+            case FLOAT32 -> doc.add(new KnnVectorField(KNN_FIELD, vectorReader.next(), fieldType));
           }
+          doc.add(new StoredField(ID_FIELD, i));
+          iw.addDocument(doc);
         }
         if (quiet == false) {
           System.out.println("Done indexing " + numDocs + " documents; now flush");
