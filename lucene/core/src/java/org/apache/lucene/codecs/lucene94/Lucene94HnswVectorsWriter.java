@@ -594,7 +594,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         case BYTE -> new FieldWriter<BytesRef>(fieldInfo, M, beamWidth, infoStream) {
           @Override
           public BytesRef copyValue(BytesRef value) {
-            return new BytesRef(ArrayUtil.copyOfSubArray(value.bytes, value.offset, dim));
+            return new BytesRef(
+                ArrayUtil.copyOfSubArray(value.bytes, value.offset, value.offset + dim));
           }
         };
         case FLOAT32 -> new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream) {
