@@ -278,8 +278,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   private long writeSortedByteVectors(FieldWriter<?> fieldData, int[] ordMap) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     for (int ordinal : ordMap) {
-      byte[] vector = (byte[]) fieldData.vectors.get(ordinal);
-      vectorData.writeBytes(vector, 0, vector.length);
+      BytesRef vector = (BytesRef) fieldData.vectors.get(ordinal);
+      vectorData.writeBytes(vector.bytes, vector.offset, vector.length);
     }
     return vectorDataOffset;
   }
