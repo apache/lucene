@@ -206,7 +206,7 @@ public class TestHnswGraph extends LuceneTestCase {
           IndexReader reader2 = DirectoryReader.open(dir2)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         IndexSearcher searcher2 = new IndexSearcher(reader2);
-
+        OUTER:
         for (int i = 0; i < 10; i++) {
           // ask to explore a lot of candidates to ensure the same returned hits,
           // as graphs of 2 indices are organized differently
@@ -217,7 +217,14 @@ public class TestHnswGraph extends LuceneTestCase {
           List<Integer> docs2 = new ArrayList<>();
 
           TopDocs topDocs = searcher.search(query, 5);
+          float lastScore = -1;
           for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+            if (scoreDoc.score == lastScore) {
+              // if we have repeated score this test is invalid
+              continue OUTER;
+            } else {
+              lastScore = scoreDoc.score;
+            }
             Document doc = reader.document(scoreDoc.doc, Set.of("id"));
             ids1.add(doc.get("id"));
             docs1.add(scoreDoc.doc);
