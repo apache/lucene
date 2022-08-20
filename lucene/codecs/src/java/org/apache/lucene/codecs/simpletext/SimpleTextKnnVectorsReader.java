@@ -29,7 +29,6 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -268,7 +267,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   private static class SimpleTextVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+      implements RandomAccessVectorValues {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -310,7 +309,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return this;
     }
 

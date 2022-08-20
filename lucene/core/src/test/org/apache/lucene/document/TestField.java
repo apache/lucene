@@ -16,10 +16,16 @@
  */
 package org.apache.lucene.document;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -504,6 +510,43 @@ public class TestField extends LuceneTestCase {
     r.close();
     w.close();
     dir.close();
+  }
+
+  public void testKnnVectorField() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      BytesRef br = newBytesRef(new byte[5]);
+      Field field = new KnnVectorField("binary", br, VectorSimilarityFunction.EUCLIDEAN);
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> new KnnVectorField("bogus", new float[] {1}, (FieldType) field.fieldType()));
+      float[] vector = new float[] {1, 2};
+      Field field2 = new KnnVectorField("float", vector);
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> new KnnVectorField("bogus", br, (FieldType) field2.fieldType()));
+      assertEquals(br, field.binaryValue());
+      doc.add(field);
+      doc.add(field2);
+      w.addDocument(doc);
+      try (IndexReader r = DirectoryReader.open(w)) {
+        VectorValues binary = r.leaves().get(0).reader().getVectorValues("binary");
+        assertEquals(1, binary.size());
+        assertNotEquals(NO_MORE_DOCS, binary.nextDoc());
+        assertEquals(br, binary.binaryValue());
+        assertNotNull(binary.vectorValue());
+        assertEquals(NO_MORE_DOCS, binary.nextDoc());
+
+        VectorValues floatValues = r.leaves().get(0).reader().getVectorValues("float");
+        assertEquals(1, floatValues.size());
+        assertNotEquals(NO_MORE_DOCS, floatValues.nextDoc());
+        assertNotNull(floatValues.binaryValue());
+        assertEquals(vector.length, floatValues.vectorValue().length);
+        assertEquals(vector[0], floatValues.vectorValue()[0], 0);
+        assertEquals(NO_MORE_DOCS, floatValues.nextDoc());
+      }
+    }
   }
 
   private void trySetByteValue(Field f) {

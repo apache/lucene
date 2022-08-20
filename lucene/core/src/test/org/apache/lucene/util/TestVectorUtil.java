@@ -259,8 +259,14 @@ public class TestVectorUtil extends LuceneTestCase {
   }
 
   public void testToBytesRef() {
-    float[] v = new float[] {-128, 0, 127, 1000};
-    BytesRef b = VectorUtil.toBytesRef(v);
-    assertArrayEquals(new byte[] {-128, 0, 127, -24}, b.bytes);
+    assertEquals(
+        new BytesRef(new byte[] {-128, 0, 127}),
+        VectorUtil.toBytesRef(new float[] {-128f, 0, 127f}));
+    assertEquals(
+        new BytesRef(new byte[] {-19, 0, 33}),
+        VectorUtil.toBytesRef(new float[] {-19.9f, 0.5f, 33.7f}));
+    expectThrows(
+        IllegalArgumentException.class, () -> VectorUtil.toBytesRef(new float[] {-128.1f}));
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.toBytesRef(new float[] {127.1f}));
   }
 }

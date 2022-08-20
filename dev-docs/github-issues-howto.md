@@ -23,21 +23,21 @@ under the License.
 
 There are a few pre-defined label families to organize/search issues.
 
-- `type` : issue type
+- `type` (color code `#ffbb00`) : issue type
   - `type:bug` is attached to bug reports
   - `type:enhancement` is attached to enhancement requests or suggestions
   - `type:test` is attached to test improvements or failure reports
   - `type:task` is attached to general tasks
   - `type:documentation` is attached to tasks relate to documentation
-- `fix-version` : the versions in which a bug or enhancement is planned to be released
+- `fix-version` (color code `#7ebea5`) : the versions in which a bug or enhancement is planned to be released
   - this may be used for release planning
   - (example) `fix-version:10.0.0`
-- `affects-version` : the versions in which a bug was found 
+- `affects-version` (color code `#f19072`) : the versions in which a bug was found 
   - this may be used with `type:bug` 
   - (example) `affects-version:9.1.0`
-- `module` : Lucene module
+- `module` (color code `#a0d8ef`) : Lucene module
   - (example) `module:core/index`, `module:analysis`
-- `tool` : tooling
+- `tool` (color code `#a0d8ef`) : tooling
   - (example) `tool:build`, `tool:release-wizard`
 
 A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `fix-version` may be manually added by committers.
