@@ -18,13 +18,11 @@
 package org.apache.lucene.util.hnsw;
 
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
-class MockVectorValues extends VectorValues
-    implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+class MockVectorValues extends VectorValues implements RandomAccessVectorValues {
   private final float[] scratch;
 
   protected final int dimension;
@@ -53,6 +51,7 @@ class MockVectorValues extends VectorValues
     binaryValue.length = dimension;
   }
 
+  @Override
   public MockVectorValues copy() {
     return new MockVectorValues(values);
   }
@@ -79,11 +78,6 @@ class MockVectorValues extends VectorValues
       System.arraycopy(values[pos], 0, scratch, 0, dimension);
       return scratch;
     }
-  }
-
-  @Override
-  public RandomAccessVectorValues randomAccess() {
-    return copy();
   }
 
   @Override
