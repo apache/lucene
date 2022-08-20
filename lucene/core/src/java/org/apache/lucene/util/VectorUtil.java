@@ -270,7 +270,8 @@ public final class VectorUtil {
    */
   public static float dotProductScore(BytesRef a, BytesRef b) {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-    return (1 + dotProduct(a, b)) / (float) (a.length * (1 << 15));
+    float denom = (float) (a.length * (1 << 15));
+    return 0.5f + dotProduct(a, b) / denom;
   }
 
   /**
