@@ -208,7 +208,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   private static class BufferedVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+      implements RandomAccessVectorValues {
 
     final DocsWithFieldSet docsWithField;
 
@@ -236,7 +236,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return new BufferedVectorValues(docsWithField, vectors, dimension);
     }
 

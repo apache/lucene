@@ -29,7 +29,7 @@ import org.apache.lucene.index.BufferingKnnVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -268,7 +268,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValuesProducer vectorValues,
+      RandomAccessVectorValues vectorValues,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
@@ -283,7 +283,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
             beamWidth,
             HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
+    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.copy());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();

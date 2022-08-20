@@ -422,7 +422,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                 beamWidth,
                 HnswGraphBuilder.randSeed);
         hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-        graph = hnswGraphBuilder.build(offHeapVectors.randomAccess());
+        graph = hnswGraphBuilder.build(offHeapVectors.copy());
         writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
@@ -617,7 +617,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       hnswGraphBuilder =
           (HnswGraphBuilder<T>)
               HnswGraphBuilder.create(
-                  () -> raVectorValues,
+                  raVectorValues,
                   fieldInfo.getVectorEncoding(),
                   fieldInfo.getVectorSimilarityFunction(),
                   M,
@@ -693,6 +693,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
       return (BytesRef) vectors.get(targetOrd);
+    }
+
+    @Override
+    public RandomAccessVectorValues copy() throws IOException {
+      return this;
     }
   }
 }
