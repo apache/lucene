@@ -21,8 +21,10 @@ package org.apache.lucene.index;
 public enum VectorEncoding {
 
   /**
-   * Encodes vector using 8 bits of precision per sample. NOTE: this can enable significant storage
-   * savings and faster searches, at the cost of some possible loss of precision.
+   * Encodes vector using 8 bits of precision per sample. Values provided with higher precision (eg:
+   * queries provided as float) *must* be in the range [-128, 127]. NOTE: this can enable
+   * significant storage savings and faster searches, at the cost of some possible loss of
+   * precision.
    */
   BYTE(1),
 
@@ -30,8 +32,8 @@ public enum VectorEncoding {
   FLOAT32(4);
 
   /**
-   * The number of bytes required to encode a scalar in this format. A vector will require dimension
-   * * byteSize.
+   * The number of bytes required to encode a scalar in this format. A vector will nominally require
+   * dimension * byteSize bytes of storage.
    */
   public final int byteSize;
 
