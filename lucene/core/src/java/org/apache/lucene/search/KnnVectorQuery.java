@@ -131,20 +131,21 @@ public class KnnVectorQuery extends Query {
     }
 
     BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
+    int cost = acceptDocs.cardinality();
 
-    if (acceptDocs.cardinality() <= k) {
+    if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, acceptDocs.cardinality()));
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, acceptDocs.cardinality());
+    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, acceptDocs.cardinality()));
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
     }
   }
 
