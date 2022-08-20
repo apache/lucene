@@ -51,4 +51,14 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         .toString()
         .equals(expectedString));
   }
+
+  @Override
+  public void testRandomBytes() throws Exception {
+    // unimplemented
+  }
+
+  @Override
+  public void testSortedIndexBytes() throws Exception {
+    // unimplemented
+  }
 }
