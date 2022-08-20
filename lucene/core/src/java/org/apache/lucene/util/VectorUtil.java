@@ -283,6 +283,10 @@ public final class VectorUtil {
   public static BytesRef toBytesRef(float[] vector) {
     BytesRef b = new BytesRef(new byte[vector.length]);
     for (int i = 0; i < vector.length; i++) {
+      if (vector[i] < -128 || vector[i] > 127) {
+        throw new IllegalArgumentException(
+            "Vector value at " + i + " is out of range [-128.127]: " + vector[i]);
+      }
       b.bytes[i] = (byte) vector[i];
     }
     return b;

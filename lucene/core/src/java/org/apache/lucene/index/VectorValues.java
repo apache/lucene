@@ -113,20 +113,14 @@ public abstract class VectorValues extends DocIdSetIterator {
       };
 
   /** Sorting VectorValues that iterate over documents in the order of the provided sortMap */
-  public static class SortingVectorValues extends VectorValues
-      implements RandomAccessVectorValuesProducer {
-
-    private final VectorValues delegate;
+  public static class SortingVectorValues extends VectorValues {
     private final RandomAccessVectorValues randomAccess;
     private final int[] docIdOffsets;
-    private final int[] ordMap;
     private int docId = -1;
 
-    /** Sorting VectorValues */
-    public SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.delegate = delegate;
-      randomAccess = ((RandomAccessVectorValuesProducer) delegate).randomAccess();
-      docIdOffsets = new int[sortMap.size()];
+    SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+      this.randomAccess = ((RandomAccessVectorValues) delegate).copy();
+      this.docIdOffsets = new int[sortMap.size()];
 
       int offset = 1; // 0 means no vector for this (field, document)
       int docID;
@@ -134,16 +128,6 @@ public abstract class VectorValues extends DocIdSetIterator {
         int newDocID = sortMap.oldToNew(docID);
         docIdOffsets[newDocID] = offset++;
       }
-
-      // set up ordMap to map from new dense ordinal to old dense ordinal
-      ordMap = new int[offset - 1];
-      int ord = 0;
-      for (int docIdOffset : docIdOffsets) {
-        if (docIdOffset != 0) {
-          ordMap[ord++] = docIdOffset - 1;
-        }
-      }
-      assert ord == ordMap.length;
     }
 
     @Override
@@ -175,12 +159,12 @@ public abstract class VectorValues extends DocIdSetIterator {
 
     @Override
     public int dimension() {
-      return delegate.dimension();
+      return randomAccess.dimension();
     }
 
     @Override
     public int size() {
-      return delegate.size();
+      return randomAccess.size();
     }
 
     @Override
@@ -191,37 +175,6 @@ public abstract class VectorValues extends DocIdSetIterator {
     @Override
     public long cost() {
       return size();
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
-
-      // Must make a new delegate randomAccess so that we have our own distinct float[]
-      final RandomAccessVectorValues delegateRA =
-          ((RandomAccessVectorValuesProducer) SortingVectorValues.this.delegate).randomAccess();
-
-      return new RandomAccessVectorValues() {
-
-        @Override
-        public int size() {
-          return delegateRA.size();
-        }
-
-        @Override
-        public int dimension() {
-          return delegateRA.dimension();
-        }
-
-        @Override
-        public float[] vectorValue(int targetOrd) throws IOException {
-          return delegateRA.vectorValue(ordMap[targetOrd]);
-        }
-
-        @Override
-        public BytesRef binaryValue(int targetOrd) {
-          throw new UnsupportedOperationException();
-        }
-      };
     }
   }
 }
