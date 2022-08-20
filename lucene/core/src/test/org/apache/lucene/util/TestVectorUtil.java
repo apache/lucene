@@ -176,8 +176,8 @@ public class TestVectorUtil extends LuceneTestCase {
     BytesRef a = new BytesRef(new byte[] {1, 2, 3});
     BytesRef b = new BytesRef(new byte[] {-10, 0, 5});
     assertEquals(5, VectorUtil.dotProduct(a, b), 0);
-    float maxValue = a.length * (1 << 14);
-    assertEquals((maxValue + 5) / (2 * maxValue), VectorUtil.dotProductScore(a, b), DELTA);
+    float denom = a.length * (1 << 15);
+    assertEquals(0.5 + 5 / denom, VectorUtil.dotProductScore(a, b), DELTA);
 
     // dot product 0 maps to dotProductScore 0.5
     BytesRef zero = new BytesRef(new byte[] {0, 0, 0});
