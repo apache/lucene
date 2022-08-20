@@ -128,26 +128,26 @@ public final class HnswGraphBuilder<T> {
    * enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
-   * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independent
-   *     accessor for the vectors
+   * @param vectorsToAdd the vectors for which to build a nearest neighbors graph. Must be an
+   *     independent accessor for the vectors
    */
-  public OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
-    if (vectors == this.vectors) {
+  public OnHeapHnswGraph build(RandomAccessVectorValues vectorsToAdd) throws IOException {
+    if (vectorsToAdd == this.vectors) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
     }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      infoStream.message(HNSW_COMPONENT, "build graph from " + vectors.size() + " vectors");
+      infoStream.message(HNSW_COMPONENT, "build graph from " + vectorsToAdd.size() + " vectors");
     }
-    addVectors(vectors);
+    addVectors(vectorsToAdd);
     return hnsw;
   }
 
-  private void addVectors(RandomAccessVectorValues vectors) throws IOException {
+  private void addVectors(RandomAccessVectorValues vectorsToAdd) throws IOException {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
-    for (int node = 1; node < vectors.size(); node++) {
-      addGraphNode(node, vectors);
+    for (int node = 1; node < vectorsToAdd.size(); node++) {
+      addGraphNode(node, vectorsToAdd);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
       }
