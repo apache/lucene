@@ -17,11 +17,36 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 
 public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
     return new SimpleTextCodec();
+  }
+
+  public void testUnsupportedEncoding() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new KnnVectorField("field", newBytesRef(2), VectorSimilarityFunction.DOT_PRODUCT));
+      iw.addDocument(doc);
+      expectThrows(IllegalArgumentException.class, () -> iw.commit());
+    }
+  }
+
+  @Override
+  public void testRandomBytes() throws Exception {
+    // unimplemented
+  }
+
+  @Override
+  public void testSortedIndexBytes() throws Exception {
+    // unimplemented
   }
 }

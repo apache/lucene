@@ -28,6 +28,7 @@ import org.apache.lucene.index.BufferingKnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
@@ -76,6 +77,10 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
       throws IOException {
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
+    if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "SimpleText codec does not support vector encoding: " + fieldInfo.getVectorEncoding());
+    }
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     int docV;

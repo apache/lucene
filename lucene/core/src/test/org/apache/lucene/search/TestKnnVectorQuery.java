@@ -245,9 +245,8 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     for (int j = 0; j < 5; j++) {
       vectors[j] = new float[] {j, j};
     }
-    try (Directory d = getIndexStore("field", vectors);
+    try (Directory d = getIndexStore("field", 1, vectors);
         IndexReader reader = DirectoryReader.open(d)) {
-      assertEquals(1, reader.leaves().size());
       IndexSearcher searcher = new IndexSearcher(reader);
       KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
       Query rewritten = query.rewrite(reader);
@@ -757,8 +756,13 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
-  /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   private Directory getIndexStore(String field, float[]... contents) throws IOException {
+    return getIndexStore(field, -1, contents);
+  }
+
+  /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
+  private Directory getIndexStore(String field, int forceMerge, float[]... contents)
+      throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
     VectorEncoding encoding = randomVectorEncoding();
@@ -782,7 +786,9 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       doc.add(new StringField("other", "value", Field.Store.NO));
       writer.addDocument(doc);
     }
-
+    if (forceMerge > 0) {
+      writer.forceMerge(forceMerge);
+    }
     writer.close();
     return indexStore;
   }

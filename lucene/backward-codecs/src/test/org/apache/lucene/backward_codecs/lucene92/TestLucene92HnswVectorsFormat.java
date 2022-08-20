@@ -40,4 +40,14 @@ public class TestLucene92HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         expectedString,
         ((Lucene92Codec) customCodec).getKnnVectorsFormatForField("bogus_field").toString());
   }
+
+  @Override
+  public void testRandomBytes() throws Exception {
+    // unimplemented
+  }
+
+  @Override
+  public void testSortedIndexBytes() throws Exception {
+    // unimplemented
+  }
 }
