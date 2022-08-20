@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
@@ -77,15 +76,6 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
   /** Returns a {@link KnnVectorsReader} to read the vectors from the index. */
   public abstract KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
-
-  /**
-   * Returns the current KnnVectorsFormat version number. Indexes written using the format will be
-   * "stamped" with this version.
-   */
-  public int currentVersion() {
-    // return the version supported by older codecs that did not override this method
-    return Lucene94HnswVectorsFormat.VERSION_START;
-  }
 
   /**
    * EMPTY throws an exception when written. It acts as a sentinel indicating a Codec that does not

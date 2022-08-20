@@ -22,12 +22,19 @@ import static org.apache.lucene.backward_codecs.lucene90.Lucene90HnswVectorsForm
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 
 public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
     return new Lucene90RWCodec();
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    // Older formats only support float vectors
+    return VectorEncoding.FLOAT32;
   }
 
   public void testToString() {
