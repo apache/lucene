@@ -157,6 +157,13 @@ public class KnnVectorField extends Field {
    */
   public KnnVectorField(String name, float[] vector, FieldType fieldType) {
     super(name, fieldType);
+    if (fieldType.vectorEncoding() != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "Attempt to create a vector for field "
+              + name
+              + " using float[] but the field encoding is "
+              + fieldType.vectorEncoding());
+    }
     fieldsData = vector;
   }
 
@@ -172,6 +179,13 @@ public class KnnVectorField extends Field {
    */
   public KnnVectorField(String name, BytesRef vector, FieldType fieldType) {
     super(name, fieldType);
+    if (fieldType.vectorEncoding() != VectorEncoding.BYTE) {
+      throw new IllegalArgumentException(
+          "Attempt to create a vector for field "
+              + name
+              + " using BytesRef but the field encoding is "
+              + fieldType.vectorEncoding());
+    }
     fieldsData = vector;
   }
 
