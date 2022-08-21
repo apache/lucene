@@ -670,14 +670,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         random().nextInt(VectorSimilarityFunction.values().length)];
   }
 
-  private VectorEncoding randomVectorEncoding() {
-    Codec codec = getCodec();
-    if (codec.knnVectorsFormat().currentVersion()
-        >= Codec.forName("Lucene94").knnVectorsFormat().currentVersion()) {
-      return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
-    } else {
-      return VectorEncoding.FLOAT32;
-    }
+  /**
+   * This method is overrideable since old codec versions only support {@link
+   * VectorEncoding#FLOAT32}.
+   */
+  protected VectorEncoding randomVectorEncoding() {
+    return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
   }
 
   public void testIndexedValueNotAliased() throws Exception {
