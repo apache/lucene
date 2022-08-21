@@ -111,7 +111,8 @@ SingleQuoted = ( "'" ( "\\'" | [^']* )* "'" )
 DoubleQuoted = ( "\"" ( "\\\"" | [^\"]* )* "\"" )
 ServerSideInclude = ( "<!--#" ( [^'\"] | {SingleQuoted} | {DoubleQuoted} )* "-->" )
 EventAttribute = [oO][nN] {EventAttributeSuffixes} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
-OpenTagContent = ( {EventAttribute} | [^<>] | {ServerSideInclude} )*
+OpenTagAttribute = {Name} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
+OpenTagContent = ( {EventAttribute} | [^<>] | {ServerSideInclude} | {OpenTagAttribute} )*
 
 InlineElment = ( [aAbBiIqQsSuU]                   |
                  [aA][bB][bB][rR]                 |
