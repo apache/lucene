@@ -20,6 +20,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
@@ -28,6 +29,12 @@ public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase
   @Override
   protected Codec getCodec() {
     return new SimpleTextCodec();
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    // TODO: Should SimpleTextKnnVectorsFormat support all encodings?
+    return VectorEncoding.FLOAT32;
   }
 
   public void testUnsupportedEncoding() throws Exception {
