@@ -96,7 +96,7 @@ Improvements
 * LUCENE-10592: Build HNSW Graph on indexing. (Mayya Sharipova, Adrien Grand, Julie Tibshirani)
 
 * LUCENE-10207: TermInSetQuery can now provide a ScoreSupplier with cost estimation, making it
-  usable in TermInSetQuery. (Greg Miller)
+  usable in IndexOrDocValuesQuery. (Greg Miller)
 
 Optimizations
 ---------------------
