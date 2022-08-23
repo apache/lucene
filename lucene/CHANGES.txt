@@ -35,6 +35,9 @@ Optimizations
 
 * LUCENE-10627: Using ByteBuffersDataInput reduce memory copy on compressing data. (luyuncheng)
 
+* GITHUB#1062: Optimize TermInSetQuery when a term is present that matches all docs in a segment.
+  (Greg Miller)
+
 Bug Fixes
 ---------------------
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
