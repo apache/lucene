@@ -75,6 +75,8 @@ final class SegmentTermsEnumFrame {
   // True if all entries are terms
   boolean isLeafBlock;
 
+  boolean allEqual;
+
   long lastSubFP;
 
   int nextFloorLabel;
@@ -187,7 +189,7 @@ final class SegmentTermsEnumFrame {
     suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
 
     int numSuffixLengthBytes = ste.in.readVInt();
-    final boolean allEqual = (numSuffixLengthBytes & 0x01) != 0;
+    allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
     if (suffixLengthBytes.length < numSuffixLengthBytes) {
       suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
@@ -527,7 +529,8 @@ final class SegmentTermsEnumFrame {
 
   // NOTE: sets startBytePos/suffix as a side effect
   public SeekStatus scanToTerm(BytesRef target, boolean exactOnly) throws IOException {
-    return isLeafBlock ? scanToTermLeaf(target, exactOnly) : scanToTermNonLeaf(target, exactOnly);
+    return isLeafBlock ? allEqual ? binarySearchTermLeaf(target, exactOnly) : scanToTermLeaf(target, exactOnly)
+            : scanToTermNonLeaf(target, exactOnly);
   }
 
   private int startBytePos;
@@ -572,8 +575,6 @@ final class SegmentTermsEnumFrame {
 
     assert prefixMatches(target);
 
-    // TODO: binary search when all terms have the same length, which is common for ID fields,
-    // which are also the most sensitive to lookup performance?
     // Loop over each entry (term or sub-block) in this block:
     do {
       nextEnt++;
@@ -625,6 +626,83 @@ final class SegmentTermsEnumFrame {
         return SeekStatus.FOUND;
       }
     } while (nextEnt < entCount);
+
+    // It is possible (and OK) that terms index pointed us
+    // at this block, but, we scanned the entire block and
+    // did not find the term to position to.  This happens
+    // when the target is after the last term in the block
+    // (but, before the next term in the index).  EG
+    // target could be foozzz, and terms index pointed us
+    // to the foo* block, but the last term in this block
+    // was fooz (and, eg, first term in the next block will
+    // bee fop).
+    // if (DEBUG) System.out.println("      block end");
+    if (exactOnly) {
+      fillTerm();
+    }
+
+    // TODO: not consistent that in the
+    // not-exact case we don't next() into the next
+    // frame here
+    return SeekStatus.END;
+  }
+
+  // Target's prefix matches this block's prefix;
+  // And all suffixes have the same length in this block,
+  // we binary search the entries check if the suffix matches.
+  public SeekStatus binarySearchTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
+    // if (DEBUG) System.out.println("    binarySearchTermLeaf: block fp=" + fp + " prefix=" + prefix + "
+    // nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
+    // brToString(term));
+
+    assert nextEnt != -1;
+
+    ste.termExists = true;
+    subCode = 0;
+
+    if (nextEnt == entCount) {
+      if (exactOnly) {
+        fillTerm();
+      }
+      return SeekStatus.END;
+    }
+
+    assert prefixMatches(target);
+
+    suffix = suffixLengthsReader.readVInt();
+    int start = nextEnt;
+    int end = entCount - 1;
+    //Binary search the entries (terms) in this leaf block:
+    while (start <= end) {
+      int mid = (start + end) / 2;
+      nextEnt = mid + 1;
+      startBytePos = mid * suffix;
+      // Loop over bytes in the suffix, comparing to the target
+      final int cmp =
+              Arrays.compareUnsigned(
+                      suffixBytes,
+                      startBytePos,
+                      startBytePos + suffix,
+                      target.bytes,
+                      target.offset + prefix,
+                      target.offset + target.length);
+      if (cmp < 0) {
+        start = mid + 1;
+      } else if (cmp > 0) {
+        end = mid - 1;
+      } else {
+        // Exact match!
+
+        // This cannot be a sub-block because we
+        // would have followed the index to this
+        // sub-block from the start:
+
+        assert ste.termExists;
+        fillTerm();
+        // if (DEBUG) System.out.println("        found!");
+        return SeekStatus.FOUND;
+      }
+    }
 
     // It is possible (and OK) that terms index pointed us
     // at this block, but, we scanned the entire block and
