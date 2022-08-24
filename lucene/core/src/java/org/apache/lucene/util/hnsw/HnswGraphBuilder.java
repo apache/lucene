@@ -195,10 +195,13 @@ public final class HnswGraphBuilder<T> {
 
   @SuppressWarnings("unchecked")
   private T getValue(int node, RandomAccessVectorValues values) throws IOException {
-    return switch (vectorEncoding) {
-      case BYTE -> (T) values.binaryValue(node);
-      case FLOAT32 -> (T) values.vectorValue(node);
-    };
+    switch (vectorEncoding) {
+      case BYTE:
+        return (T) values.binaryValue(node);
+      default:
+      case FLOAT32:
+        return (T) values.vectorValue(node);
+    }
   }
 
   private long printGraphBuildStatus(int node, long start, long t) {
@@ -280,10 +283,13 @@ public final class HnswGraphBuilder<T> {
 
   private boolean isDiverse(int candidate, NeighborArray neighbors, float score)
       throws IOException {
-    return switch (vectorEncoding) {
-      case BYTE -> isDiverse(vectors.binaryValue(candidate), neighbors, score);
-      case FLOAT32 -> isDiverse(vectors.vectorValue(candidate), neighbors, score);
-    };
+    switch (vectorEncoding) {
+      case BYTE:
+        return isDiverse(vectors.binaryValue(candidate), neighbors, score);
+      default:
+      case FLOAT32:
+        return isDiverse(vectors.vectorValue(candidate), neighbors, score);
+    }
   }
 
   private boolean isDiverse(float[] candidate, NeighborArray neighbors, float score)
@@ -325,12 +331,15 @@ public final class HnswGraphBuilder<T> {
 
   private boolean isWorstNonDiverse(
       int candidate, NeighborArray neighbors, float minAcceptedSimilarity) throws IOException {
-    return switch (vectorEncoding) {
-      case BYTE -> isWorstNonDiverse(
-          candidate, vectors.binaryValue(candidate), neighbors, minAcceptedSimilarity);
-      case FLOAT32 -> isWorstNonDiverse(
-          candidate, vectors.vectorValue(candidate), neighbors, minAcceptedSimilarity);
-    };
+    switch (vectorEncoding) {
+      case BYTE:
+        return isWorstNonDiverse(
+            candidate, vectors.binaryValue(candidate), neighbors, minAcceptedSimilarity);
+      default:
+      case FLOAT32:
+        return isWorstNonDiverse(
+            candidate, vectors.vectorValue(candidate), neighbors, minAcceptedSimilarity);
+    }
   }
 
   private boolean isWorstNonDiverse(

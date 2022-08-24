@@ -173,11 +173,17 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       assert docID > lastDocID;
-      float[] vectorValue =
-          switch (fieldInfo.getVectorEncoding()) {
-            case FLOAT32 -> (float[]) value;
-            case BYTE -> bytesToFloats((BytesRef) value);
-          };
+      float[] vectorValue;
+      switch (fieldInfo.getVectorEncoding()) {
+        case BYTE:
+          vectorValue = bytesToFloats((BytesRef) value);
+          break;
+        default:
+        case FLOAT32:
+          vectorValue = (float[]) value;
+          break;
+      }
+      ;
       docsWithField.add(docID);
       vectors.add(copyValue(vectorValue));
       lastDocID = docID;

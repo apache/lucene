@@ -473,10 +473,13 @@ public class KnnGraphTester {
     static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding, int n)
         throws IOException {
       int bufferSize = n * dim * vectorEncoding.byteSize;
-      return switch (vectorEncoding) {
-        case BYTE -> new VectorReaderByte(input, dim, bufferSize);
-        case FLOAT32 -> new VectorReaderFloat32(input, dim, bufferSize);
-      };
+      switch (vectorEncoding) {
+        case BYTE:
+          return new VectorReaderByte(input, dim, bufferSize);
+        default:
+        case FLOAT32:
+          return new VectorReaderFloat32(input, dim, bufferSize);
+      }
     }
 
     VectorReader(FileChannel input, int dim, int bufferSize) throws IOException {
@@ -715,10 +718,15 @@ public class KnnGraphTester {
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
           switch (vectorEncoding) {
-            case BYTE -> doc.add(
-                new KnnVectorField(
-                    KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
-            case FLOAT32 -> doc.add(new KnnVectorField(KNN_FIELD, vectorReader.next(), fieldType));
+            case BYTE:
+              doc.add(
+                  new KnnVectorField(
+                      KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
+              break;
+            default:
+            case FLOAT32:
+              doc.add(new KnnVectorField(KNN_FIELD, vectorReader.next(), fieldType));
+              break;
           }
           doc.add(new StoredField(ID_FIELD, i));
           iw.addDocument(doc);

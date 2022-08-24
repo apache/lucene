@@ -251,7 +251,7 @@ public class TestVectorUtil extends LuceneTestCase {
     float[] v = new float[2];
     v[0] = random().nextInt(100);
     // ensure the vector is non-zero so that cosine is defined
-    v[1] = random().nextInt(1, 100);
+    v[1] = random().nextInt(99) + 1;
     float[] u = new float[2];
     u[0] = v[1];
     u[1] = -v[0];

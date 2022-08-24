@@ -78,8 +78,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   @Override
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
-      case BYTE -> doc.add(new KnnVectorField("v2", randomVector8(30), similarityFunction));
-      case FLOAT32 -> doc.add(new KnnVectorField("v2", randomVector(30), similarityFunction));
+      case BYTE:
+        doc.add(new KnnVectorField("v2", randomVector8(30), similarityFunction));
+        break;
+      default:
+      case FLOAT32:
+        doc.add(new KnnVectorField("v2", randomVector(30), similarityFunction));
+        break;
     }
   }
 
@@ -626,16 +631,21 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           String fieldName = "int" + field;
           if (random().nextInt(100) == 17) {
             switch (fieldVectorEncodings[field]) {
-              case BYTE -> {
-                BytesRef b = randomVector8(fieldDims[field]);
-                doc.add(new KnnVectorField(fieldName, b, fieldSimilarityFunctions[field]));
-                fieldTotals[field] += b.bytes[b.offset];
-              }
-              case FLOAT32 -> {
-                float[] v = randomVector(fieldDims[field]);
-                doc.add(new KnnVectorField(fieldName, v, fieldSimilarityFunctions[field]));
-                fieldTotals[field] += v[0];
-              }
+              case BYTE:
+                {
+                  BytesRef b = randomVector8(fieldDims[field]);
+                  doc.add(new KnnVectorField(fieldName, b, fieldSimilarityFunctions[field]));
+                  fieldTotals[field] += b.bytes[b.offset];
+                  break;
+                }
+              default:
+              case FLOAT32:
+                {
+                  float[] v = randomVector(fieldDims[field]);
+                  doc.add(new KnnVectorField(fieldName, v, fieldSimilarityFunctions[field]));
+                  fieldTotals[field] += v[0];
+                  break;
+                }
             }
             fieldDocCounts[field]++;
           }
@@ -1290,16 +1300,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         doc.add(new StoredField("id", docID));
         if (random().nextInt(4) == 3) {
           switch (vectorEncoding) {
-            case BYTE -> {
-              BytesRef b = randomVector8(dim);
-              fieldValuesCheckSum += b.bytes[b.offset];
-              doc.add(new KnnVectorField("knn_vector", b, similarityFunction));
-            }
-            case FLOAT32 -> {
-              float[] v = randomVector(dim);
-              fieldValuesCheckSum += v[0];
-              doc.add(new KnnVectorField("knn_vector", v, similarityFunction));
-            }
+            case BYTE:
+              {
+                BytesRef b = randomVector8(dim);
+                fieldValuesCheckSum += b.bytes[b.offset];
+                doc.add(new KnnVectorField("knn_vector", b, similarityFunction));
+                break;
+              }
+            case FLOAT32:
+              {
+                float[] v = randomVector(dim);
+                fieldValuesCheckSum += v[0];
+                doc.add(new KnnVectorField("knn_vector", v, similarityFunction));
+                break;
+              }
           }
           fieldDocCount++;
           fieldSumDocIDs += docID;

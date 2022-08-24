@@ -91,11 +91,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    int byteSize =
-        switch (fieldEntry.vectorEncoding) {
-          case BYTE -> fieldEntry.dimension;
-          case FLOAT32 -> fieldEntry.dimension * Float.BYTES;
-        };
+    int byteSize = fieldEntry.dimension * fieldEntry.vectorEncoding.byteSize;
     if (fieldEntry.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
           fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);

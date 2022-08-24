@@ -173,11 +173,16 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
               + fieldEntry.dimension);
     }
 
-    int byteSize =
-        switch (info.getVectorEncoding()) {
-          case BYTE -> Byte.BYTES;
-          case FLOAT32 -> Float.BYTES;
-        };
+    int byteSize;
+    switch (info.getVectorEncoding()) {
+      case BYTE:
+        byteSize = Byte.BYTES;
+        break;
+      default:
+      case FLOAT32:
+        byteSize = Float.BYTES;
+        break;
+    }
     int numBytes = fieldEntry.size * dimension * byteSize;
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
@@ -296,11 +301,14 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     VectorSimilarityFunction similarityFunction = fieldEntry.similarityFunction;
     VectorValues vectorValues = getVectorValues(field);
 
-    return switch (fieldEntry.vectorEncoding) {
-      case BYTE -> exhaustiveSearch(
-          vectorValues, acceptDocs, similarityFunction, toBytesRef(target), k);
-      case FLOAT32 -> exhaustiveSearch(vectorValues, acceptDocs, similarityFunction, target, k);
-    };
+    switch (fieldEntry.vectorEncoding) {
+      case BYTE:
+        return exhaustiveSearch(
+            vectorValues, acceptDocs, similarityFunction, toBytesRef(target), k);
+      default:
+      case FLOAT32:
+        return exhaustiveSearch(vectorValues, acceptDocs, similarityFunction, target, k);
+    }
   }
 
   /** Get knn graph values; used for testing */

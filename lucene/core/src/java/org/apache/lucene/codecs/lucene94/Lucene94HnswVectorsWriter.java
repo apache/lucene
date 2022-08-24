@@ -170,10 +170,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     // write vector values
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     switch (fieldData.fieldInfo.getVectorEncoding()) {
-      case BYTE -> writeByteVectors(fieldData);
-      case FLOAT32 -> writeFloat32Vectors(fieldData);
+      case BYTE:
+        writeByteVectors(fieldData);
+        break;
+      default:
+      case FLOAT32:
+        writeFloat32Vectors(fieldData);
     }
-    ;
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     // write graph
@@ -237,11 +240,17 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     // write vector values
-    long vectorDataOffset =
-        switch (fieldData.fieldInfo.getVectorEncoding()) {
-          case BYTE -> writeSortedByteVectors(fieldData, ordMap);
-          case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
-        };
+    long vectorDataOffset;
+    switch (fieldData.fieldInfo.getVectorEncoding()) {
+      case BYTE:
+        vectorDataOffset = writeSortedByteVectors(fieldData, ordMap);
+        break;
+      default:
+      case FLOAT32:
+        vectorDataOffset = writeSortedFloat32Vectors(fieldData, ordMap);
+        break;
+    }
+    ;
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     // write graph
@@ -590,21 +599,24 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     static FieldWriter<?> create(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       int dim = fieldInfo.getVectorDimension();
-      return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> new FieldWriter<BytesRef>(fieldInfo, M, beamWidth, infoStream) {
-          @Override
-          public BytesRef copyValue(BytesRef value) {
-            return new BytesRef(
-                ArrayUtil.copyOfSubArray(value.bytes, value.offset, value.offset + dim));
-          }
-        };
-        case FLOAT32 -> new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream) {
-          @Override
-          public float[] copyValue(float[] value) {
-            return ArrayUtil.copyOfSubArray(value, 0, dim);
-          }
-        };
-      };
+      switch (fieldInfo.getVectorEncoding()) {
+        case BYTE:
+          return new FieldWriter<BytesRef>(fieldInfo, M, beamWidth, infoStream) {
+            @Override
+            public BytesRef copyValue(BytesRef value) {
+              return new BytesRef(
+                  ArrayUtil.copyOfSubArray(value.bytes, value.offset, value.offset + dim));
+            }
+          };
+        default:
+        case FLOAT32:
+          return new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream) {
+            @Override
+            public float[] copyValue(float[] value) {
+              return ArrayUtil.copyOfSubArray(value, 0, dim);
+            }
+          };
+      }
     }
 
     @SuppressWarnings("unchecked")

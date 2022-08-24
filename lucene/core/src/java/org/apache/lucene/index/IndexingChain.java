@@ -714,9 +714,13 @@ final class IndexingChain implements Accountable {
     }
     if (fieldType.vectorDimension() != 0) {
       switch (fieldType.vectorEncoding()) {
-        case BYTE -> pf.knnFieldVectorsWriter.addValue(docID, field.binaryValue());
-        case FLOAT32 -> pf.knnFieldVectorsWriter.addValue(
-            docID, ((KnnVectorField) field).vectorValue());
+        case BYTE:
+          pf.knnFieldVectorsWriter.addValue(docID, field.binaryValue());
+          break;
+        default:
+        case FLOAT32:
+          pf.knnFieldVectorsWriter.addValue(docID, ((KnnVectorField) field).vectorValue());
+          break;
       }
     }
     return indexedField;
