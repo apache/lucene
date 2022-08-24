@@ -107,7 +107,6 @@ public final class RamUsageEstimator {
     primitiveSizes = Collections.unmodifiableMap(primitiveSizesMap);
   }
 
-  /** JVMs typically cache small longs. This tries to find out what the range is. */
   static final int INTEGER_SIZE, LONG_SIZE, STRING_SIZE;
 
   /** For testing only */
@@ -209,23 +208,19 @@ public final class RamUsageEstimator {
   }
 
   /**
-   * Return the size of the provided {@link Integer} object, returning 0 if it is cached by the JVM
-   * and its shallow size otherwise.
+   * Return the shallow size of the provided {@link Integer} object. Ignores the possibility that
+   * this object is part of the VM IntegerCache
    */
-  @SuppressWarnings("BoxedPrimitiveEquality")
-  public static long sizeOf(Integer value) {
-    // Explicitly need to use reference equality and unboxing to check for the cache
-    return value == Integer.valueOf(value.intValue()) ? 0 : INTEGER_SIZE;
+  public static long sizeOf(Integer ignored) {
+    return INTEGER_SIZE;
   }
 
   /**
-   * Return the size of the provided {@link Long} object, returning 0 if it is cached by the JVM and
-   * its shallow size otherwise.
+   * Return the shallow size of the provided {@link Long} object. Ignores the possibility that this
+   * object is part of the VM LongCache
    */
-  @SuppressWarnings("BoxedPrimitiveEquality")
-  public static long sizeOf(Long value) {
-    // Explicitly need to use reference equality and unboxing to check for the cache
-    return value == Long.valueOf(value.longValue()) ? 0 : LONG_SIZE;
+  public static long sizeOf(Long ignored) {
+    return LONG_SIZE;
   }
 
   /** Returns the size in bytes of the byte[] object. */
