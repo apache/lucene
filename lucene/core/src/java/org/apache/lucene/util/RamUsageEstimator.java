@@ -108,7 +108,7 @@ public final class RamUsageEstimator {
   }
 
   /** JVMs typically cache small longs. This tries to find out what the range is. */
-  static final int LONG_SIZE, STRING_SIZE;
+  static final int INTEGER_SIZE, LONG_SIZE, STRING_SIZE;
 
   /** For testing only */
   static final boolean JVM_IS_HOTSPOT_64BIT;
@@ -187,6 +187,7 @@ public final class RamUsageEstimator {
       NUM_BYTES_ARRAY_HEADER = NUM_BYTES_OBJECT_HEADER + Integer.BYTES;
     }
 
+    INTEGER_SIZE = (int) shallowSizeOfInstance(Integer.class);
     LONG_SIZE = (int) shallowSizeOfInstance(Long.class);
     STRING_SIZE = (int) shallowSizeOfInstance(String.class);
   }
@@ -208,11 +209,21 @@ public final class RamUsageEstimator {
   }
 
   /**
+   * Return the size of the provided {@link Integer} object, returning 0 if it is cached by the JVM and
+   * its shallow size otherwise.
+   */
+  public static long sizeOf(Integer value) {
+    // Explicitly need to use reference equality and unboxing to check for the cache
+    return value == Integer.valueOf(value.intValue()) ? 0 : INTEGER_SIZE;
+  }
+
+  /**
    * Return the size of the provided {@link Long} object, returning 0 if it is cached by the JVM and
    * its shallow size otherwise.
    */
   public static long sizeOf(Long value) {
-    return LONG_SIZE;
+    // Explicitly need to use reference equality and unboxing to check for the cache
+    return value == Long.valueOf(value.longValue()) ? 0 : LONG_SIZE;
   }
 
   /** Returns the size in bytes of the byte[] object. */
@@ -456,6 +467,8 @@ public final class RamUsageEstimator {
       size = sizeOf((float[]) o);
     } else if (o instanceof int[]) {
       size = sizeOf((int[]) o);
+    } else if (o instanceof Integer) {
+      size = sizeOf((Integer) o);
     } else if (o instanceof Long) {
       size = sizeOf((Long) o);
     } else if (o instanceof long[]) {
