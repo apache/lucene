@@ -209,9 +209,10 @@ public final class RamUsageEstimator {
   }
 
   /**
-   * Return the size of the provided {@link Integer} object, returning 0 if it is cached by the JVM and
-   * its shallow size otherwise.
+   * Return the size of the provided {@link Integer} object, returning 0 if it is cached by the JVM
+   * and its shallow size otherwise.
    */
+  @SuppressWarnings("BoxedPrimitiveEquality")
   public static long sizeOf(Integer value) {
     // Explicitly need to use reference equality and unboxing to check for the cache
     return value == Integer.valueOf(value.intValue()) ? 0 : INTEGER_SIZE;
@@ -221,6 +222,7 @@ public final class RamUsageEstimator {
    * Return the size of the provided {@link Long} object, returning 0 if it is cached by the JVM and
    * its shallow size otherwise.
    */
+  @SuppressWarnings("BoxedPrimitiveEquality")
   public static long sizeOf(Long value) {
     // Explicitly need to use reference equality and unboxing to check for the cache
     return value == Long.valueOf(value.longValue()) ? 0 : LONG_SIZE;
