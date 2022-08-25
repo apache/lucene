@@ -97,6 +97,8 @@ Improvements
 ---------------------
 * LUCENE-10592: Build HNSW Graph on indexing. (Mayya Sharipova, Adrien Grand, Julie Tibshirani)
 
+* GITHUB#11715: Add Integer awareness to RamUsageEstimator.sizeOf (Mike Drob)
+
 Optimizations
 ---------------------
 
