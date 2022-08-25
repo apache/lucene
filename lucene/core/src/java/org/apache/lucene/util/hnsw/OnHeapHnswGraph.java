@@ -110,6 +110,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
         }
         numLevels = level + 1;
         entryNode = node;
+        graph.get(level).add(new NeighborArray(nsize, true));
       } else {
         // Add this node id to this level's nodes
         int[] nodes = nodesByLevel.get(level);
@@ -121,9 +122,25 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
           nodes[idx] = node;
           nodesByLevel.set(level, nodes);
         }
+
+        int position = Arrays.binarySearch(nodes, 0, idx, node);
+        assert position < 0;
+        position = -1 * position - 1;
+
+        if (position == idx) {
+          graph.get(level).add(new NeighborArray(nsize, true));
+        } else {
+          Arrays.sort(nodes, position, idx + 1);
+          graph.get(level).add(position, new NeighborArray(nsize, true));
+        }
+      }
+    } else {
+      // TODO: This makes the return value of size wrong until all nodes are backfilled.
+      List<NeighborArray> level0Neighbors = graph.get(level);
+      while (node >= level0Neighbors.size()) {
+        level0Neighbors.add(new NeighborArray(nsize0, true));
       }
     }
-    graph.get(level).add(new NeighborArray(level == 0 ? nsize0 : nsize, true));
   }
 
   @Override

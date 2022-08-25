@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -42,6 +43,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -414,13 +416,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       if (offHeapVectors.size() != 0) {
         // build graph
         HnswGraphBuilder<?> hnswGraphBuilder =
-            HnswGraphBuilder.create(
-                offHeapVectors,
-                fieldInfo.getVectorEncoding(),
-                fieldInfo.getVectorSimilarityFunction(),
-                M,
-                beamWidth,
-                HnswGraphBuilder.randSeed);
+            createHnswGraphBuilder(fieldInfo, mergeState, offHeapVectors);
         hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
         graph = hnswGraphBuilder.build(offHeapVectors.copy());
         writeGraph(graph);
@@ -446,6 +442,70 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+  }
+
+  private HnswGraphBuilder<?> createHnswGraphBuilder(
+      FieldInfo fieldInfo, MergeState mergeState, OffHeapVectorValues offHeapVectors)
+      throws IOException {
+    int initializerIndex =
+        selectReaderForGraphInitialization(
+            fieldInfo.name, mergeState.liveDocs, mergeState.knnVectorsReaders);
+    if (initializerIndex == -1) {
+      return HnswGraphBuilder.create(
+          offHeapVectors,
+          fieldInfo.getVectorEncoding(),
+          fieldInfo.getVectorSimilarityFunction(),
+          M,
+          beamWidth,
+          HnswGraphBuilder.randSeed);
+    }
+
+    return HnswGraphBuilder.create(
+        offHeapVectors,
+        fieldInfo.getVectorEncoding(),
+        fieldInfo.getVectorSimilarityFunction(),
+        M,
+        beamWidth,
+        HnswGraphBuilder.randSeed,
+        ((Lucene94HnswVectorsReader) mergeState.knnVectorsReaders[initializerIndex])
+            .getGraph(fieldInfo.getName()),
+        mergeState.docMaps[initializerIndex]::get);
+  }
+
+  private int selectReaderForGraphInitialization(
+      String fieldName, Bits[] liveDocs, KnnVectorsReader[] knnVectorsReaders) throws IOException {
+    // Find the KnnVectorReader with the most docs that meets the following criteria:
+    //  1. Does not contain any deleted docs
+    //  2. Is a Lucene94HnswVectorsReader
+    // If no readers exist that meet this criteria, return -1. If they do, return their index in
+    // merge state
+    int maxCandidateVectorCount = 0;
+    int initializerIndex = -1;
+    for (int i = 0; i < liveDocs.length; i++) {
+      if (!allMatch(liveDocs[i])
+          || !(knnVectorsReaders[i] instanceof Lucene94HnswVectorsReader candidateReader)) {
+        continue;
+      }
+      int candidateVectorCount = candidateReader.getVectorValues(fieldName).size();
+      if (candidateVectorCount > maxCandidateVectorCount) {
+        maxCandidateVectorCount = candidateVectorCount;
+        initializerIndex = i;
+      }
+    }
+    return initializerIndex;
+  }
+
+  private boolean allMatch(Bits bits) {
+    if (bits == null) {
+      return true;
+    }
+
+    for (int i = 0; i < bits.length(); i++) {
+      if (!bits.get(i)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private void writeGraph(OnHeapHnswGraph graph) throws IOException {

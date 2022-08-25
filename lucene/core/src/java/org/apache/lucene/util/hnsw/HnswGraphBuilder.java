@@ -18,14 +18,19 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SplittableRandom;
+import java.util.function.UnaryOperator;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
@@ -65,6 +70,8 @@ public final class HnswGraphBuilder<T> {
   // colliding
   private final RandomAccessVectorValues vectorsCopy;
 
+  private Bits preloadedNodes;
+
   public static HnswGraphBuilder<?> create(
       RandomAccessVectorValues vectors,
       VectorEncoding vectorEncoding,
@@ -74,6 +81,22 @@ public final class HnswGraphBuilder<T> {
       long seed)
       throws IOException {
     return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+  }
+
+  public static HnswGraphBuilder<?> create(
+      RandomAccessVectorValues vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      int M,
+      int beamWidth,
+      long seed,
+      HnswGraph initializerGraph,
+      UnaryOperator<Integer> initializerOrdMapper)
+      throws IOException {
+    HnswGraphBuilder<?> hnswGraphBuilder =
+        HnswGraphBuilder.create(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+    hnswGraphBuilder.initializeFromGraph(initializerGraph, initializerOrdMapper);
+    return hnswGraphBuilder;
   }
 
   /**
@@ -121,6 +144,75 @@ public final class HnswGraphBuilder<T> {
             new FixedBitSet(this.vectors.size()));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
+    preloadedNodes = null;
+  }
+
+  private void initializeFromGraph(
+      HnswGraph initializerGraph, UnaryOperator<Integer> initializerOrdMapper) throws IOException {
+    BytesRef binaryValue = null;
+    float[] vectorValue = null;
+    Set<Integer> preloadedNodesSet = new HashSet<>();
+    int maxOrd = -1;
+    int minOrd = Integer.MAX_VALUE;
+
+    for (int level = 0; level < initializerGraph.numLevels(); level++) {
+      HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
+      while (it.hasNext()) {
+        int oldOrd = it.nextInt();
+        int newOrd = initializerOrdMapper.apply(oldOrd);
+        this.hnsw.addNode(level, newOrd);
+
+        switch (this.vectorEncoding) {
+          case FLOAT32 -> vectorValue = vectors.vectorValue(newOrd);
+          case BYTE -> binaryValue = vectors.binaryValue(newOrd);
+        }
+        NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
+        initializerGraph.seek(level, oldOrd);
+        for (int oldNeighbor = initializerGraph.nextNeighbor();
+            oldNeighbor != NO_MORE_DOCS;
+            oldNeighbor = initializerGraph.nextNeighbor()) {
+          int newNeighbor = initializerOrdMapper.apply(oldNeighbor);
+
+          // TODO: Could we avoid computing scores here and lazily compute them when they are
+          // needed?
+          float score =
+              switch (this.vectorEncoding) {
+                case FLOAT32 -> this.similarityFunction.compare(
+                    vectorValue, vectors.vectorValue(newNeighbor));
+                case BYTE -> this.similarityFunction.compare(
+                    binaryValue, vectors.binaryValue(newNeighbor));
+              };
+          newNeighbors.insertSorted(newNeighbor, score);
+        }
+
+        if (level == 0) {
+          preloadedNodesSet.add(newOrd);
+          if (newOrd > maxOrd) {
+            maxOrd = newOrd;
+          }
+          if (newOrd < minOrd) {
+            minOrd = newOrd;
+          }
+        }
+      }
+    }
+
+    int finalMinOrd = minOrd;
+    int finalMaxOrd = maxOrd;
+    this.preloadedNodes =
+        new Bits() {
+          @Override
+          public boolean get(int index) {
+            return index <= finalMaxOrd
+                && index >= finalMinOrd
+                && preloadedNodesSet.contains(index);
+          }
+
+          @Override
+          public int length() {
+            return vectors.size();
+          }
+        };
   }
 
   /**
@@ -147,6 +239,10 @@ public final class HnswGraphBuilder<T> {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectorsToAdd.size(); node++) {
+      if (this.preloadedNodes != null && this.preloadedNodes.get(node)) {
+        continue;
+      }
+
       addGraphNode(node, vectorsToAdd);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);

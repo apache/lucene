@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene94.Lucene94Codec;
 import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
@@ -605,6 +606,112 @@ public class TestHnswGraph extends LuceneTestCase {
     assertTrue("overlap=" + overlap, overlap > 0.9);
   }
 
+  public void testHnswGraphBuilderInitializedFromGraph() throws IOException {
+    int totalSize = atLeast(100);
+    int initializerSize = totalSize % random().nextInt(5, totalSize);
+    int offset = random().nextInt(0, totalSize - initializerSize + 1);
+    int dim = atLeast(10);
+
+    RandomVectorValues initializerVectors =
+        new RandomVectorValues(initializerSize, dim, vectorEncoding, random());
+    HnswGraphBuilder<?> initializerBuilder =
+        HnswGraphBuilder.create(
+            initializerVectors, vectorEncoding, similarityFunction, 10, 30, random().nextLong());
+    UnaryOperator<Integer> initializerOrdMap = integer -> integer + offset;
+    OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.copy());
+    RandomVectorValues finalVectorValues =
+        new RandomVectorValues(
+            totalSize, dim, vectorEncoding, random(), initializerVectors.values, offset);
+
+    HnswGraphBuilder<?> finalBuilder =
+        HnswGraphBuilder.create(
+            finalVectorValues,
+            vectorEncoding,
+            similarityFunction,
+            10,
+            30,
+            random().nextLong(),
+            initializerGraph,
+            initializerOrdMap);
+    OnHeapHnswGraph finalGraph = finalBuilder.build(initializerVectors.copy());
+
+    // Confirm that the graph is appropriately constrcuted by checking that the nodes in the old
+    // graph are present in
+    // the levels of the new graph
+    for (int i = 1; i < initializerGraph.numLevels(); i++) {
+      int[] finalGraphNodeNeighbors = nodesIteratorToIntArray(finalGraph.getNodesOnLevel(i));
+      int[] initializerGraphNodeNeighbors =
+          mapArrayAndSort(
+              nodesIteratorToIntArray(initializerGraph.getNodesOnLevel(i)), initializerOrdMap);
+      int overlap = computeOverlap(finalGraphNodeNeighbors, initializerGraphNodeNeighbors);
+      assertEquals(initializerGraphNodeNeighbors.length, overlap);
+    }
+  }
+
+  private int[] nodesIteratorToIntArray(NodesIterator nodesIterator) {
+    int[] intArray = new int[nodesIterator.size()];
+    int i = 0;
+    while (nodesIterator.hasNext()) {
+      intArray[i++] = nodesIterator.nextInt();
+    }
+    return intArray;
+  }
+
+  private int[] mapArrayAndSort(int[] a, UnaryOperator<Integer> mapper) {
+    int[] mappedA = new int[a.length];
+    for (int i = 0; i < a.length; i++) {
+      mappedA[i] = mapper.apply(a[i]);
+    }
+    Arrays.sort(mappedA);
+    return mappedA;
+  }
+
+  public void testOnHeaphHnswGraphAddNodeOutOfOrder() {
+    OnHeapHnswGraph onHeapHnswGraph = new OnHeapHnswGraph(10, 0);
+    int docsIn0 = atLeast(100);
+    int offset0 = random().nextInt(10, docsIn0);
+
+    for (int i = offset0; i < docsIn0; i++) {
+      onHeapHnswGraph.addNode(0, i);
+    }
+
+    // Adding docs out of order will make size equal to the max doc + 1
+    assertEquals(docsIn0, onHeapHnswGraph.size());
+
+    for (int i = 1; i < offset0; i++) {
+      onHeapHnswGraph.addNode(0, i);
+    }
+
+    assertEquals(docsIn0, onHeapHnswGraph.size());
+
+    int docsIn1 = random().nextInt(99, docsIn0);
+    int offset1 = random().nextInt(10, docsIn1);
+
+    for (int i = offset1; i < docsIn1; i++) {
+      onHeapHnswGraph.addNode(1, i);
+    }
+
+    int last = -1;
+    NodesIterator l1NodesIterator = onHeapHnswGraph.getNodesOnLevel(1);
+    for (int i = 0; i < l1NodesIterator.size(); i++) {
+      int curr = l1NodesIterator.nextInt();
+      assertTrue(last < curr);
+      last = curr;
+    }
+
+    for (int i = 1; i < offset1; i++) {
+      onHeapHnswGraph.addNode(1, i);
+    }
+
+    last = -1;
+    l1NodesIterator = onHeapHnswGraph.getNodesOnLevel(1);
+    for (int i = 0; i < l1NodesIterator.size(); i++) {
+      int curr = l1NodesIterator.nextInt();
+      assertTrue(last < curr);
+      last = curr;
+    }
+  }
+
   private int computeOverlap(int[] a, int[] b) {
     Arrays.sort(a);
     Arrays.sort(b);
@@ -741,6 +848,23 @@ public class TestHnswGraph extends LuceneTestCase {
       super(createRandomVectors(size, dimension, vectorEncoding, random));
     }
 
+    RandomVectorValues(
+        int size,
+        int dimension,
+        VectorEncoding vectorEncoding,
+        Random random,
+        float[][] pregeneratedVectorValues,
+        int pregeneratedOffset) {
+      super(
+          createPartiallyRandomVectors(
+              size,
+              dimension,
+              vectorEncoding,
+              random,
+              pregeneratedVectorValues,
+              pregeneratedOffset));
+    }
+
     RandomVectorValues(RandomVectorValues other) {
       super(other.values);
     }
@@ -750,10 +874,44 @@ public class TestHnswGraph extends LuceneTestCase {
       return new RandomVectorValues(this);
     }
 
+    private static float[][] createPartiallyRandomVectors(
+        int size,
+        int dimension,
+        VectorEncoding vectorEncoding,
+        Random random,
+        float[][] pregeneratedVectorValues,
+        int pregeneratedOffset) {
+
+      float[][] vectors = new float[size][];
+      float[][] randomVectors =
+          createRandomVectors(
+              size - pregeneratedVectorValues.length, dimension, vectorEncoding, random);
+
+      for (int i = 0; i < pregeneratedOffset; i++) {
+        vectors[i] = randomVectors[i];
+      }
+
+      for (int i = pregeneratedOffset;
+          i < pregeneratedOffset + pregeneratedVectorValues.length;
+          i++) {
+        vectors[i] = pregeneratedVectorValues[i - pregeneratedOffset];
+      }
+
+      for (int i = pregeneratedOffset + pregeneratedVectorValues.length; i < vectors.length; i++) {
+        vectors[i] = randomVectors[i - pregeneratedVectorValues.length];
+      }
+
+      for (int i = 0; i < size; i++) {
+        assertNotNull(vectors[i]);
+      }
+
+      return vectors;
+    }
+
     private static float[][] createRandomVectors(
         int size, int dimension, VectorEncoding vectorEncoding, Random random) {
       float[][] vectors = new float[size][];
-      for (int offset = 0; offset < size; offset += random.nextInt(3) + 1) {
+      for (int offset = 0; offset < size; offset++) {
         vectors[offset] = randomVector(random, dimension);
       }
       if (vectorEncoding == VectorEncoding.BYTE) {
