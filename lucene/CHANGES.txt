@@ -22,6 +22,8 @@ Improvements
 * LUCENE-10216: Use MergePolicy to define and MergeScheduler to trigger the reader merges
   required by addIndexes(CodecReader[]) API. (Vigya Sharma, Michael McCandless)
 
+* GITHUB#11715: Add Integer awareness to RamUsageEstimator.sizeOf (Mike Drob)
+
 Optimizations
 ---------------------
 
