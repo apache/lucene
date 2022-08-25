@@ -49,6 +49,9 @@ Bug Fixes
 
 * LUCENE-10644: Facets#getAllChildren testing should ignore child order. (Yuting Gan)
 
+* LUCENE-10665, GITHUB#11701: Fix classloading deadlock in analysis factories / AnalysisSPILoader
+  initialization.  (Uwe Schindler)
+
 Build
 ---------------------
 
