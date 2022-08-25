@@ -57,6 +57,9 @@ Bug Fixes
 Build
 ---------------------
 
+* GITHUB#11720: Upgrade randomizedtesting to 2.8.1 (potential fix for odd wall clock - related 
+  timeout failures). (Dawid Weiss)
+
 * LUCENE-10669: The build should be more helpful when generated resources are touched (Dawid Weiss)
 
 Other
