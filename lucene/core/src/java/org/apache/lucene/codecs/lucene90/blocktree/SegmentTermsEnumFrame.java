@@ -75,6 +75,7 @@ final class SegmentTermsEnumFrame {
   // True if all entries are terms
   boolean isLeafBlock;
 
+  // True if all entries have the same length.
   boolean allEqual;
 
   long lastSubFP;
