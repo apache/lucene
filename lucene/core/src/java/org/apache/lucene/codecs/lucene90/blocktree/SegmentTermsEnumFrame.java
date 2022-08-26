@@ -715,14 +715,15 @@ final class SegmentTermsEnumFrame {
     // was fooz (and, eg, first term in the next block will
     // bee fop).
     // if (DEBUG) System.out.println("      block end");
-    if (exactOnly) {
+    SeekStatus seekStatus = end < entCount - 1 ? SeekStatus.NOT_FOUND : SeekStatus.END;
+    if (exactOnly || seekStatus == SeekStatus.NOT_FOUND) {
       fillTerm();
     }
 
     // TODO: not consistent that in the
     // not-exact case we don't next() into the next
     // frame here
-    return SeekStatus.END;
+    return seekStatus;
   }
 
   // Target's prefix matches this block's prefix; we
