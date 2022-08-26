@@ -49,7 +49,7 @@ There are a few pre-defined label families to organize/search issues.
 - `tool` (color code `#a0d8ef`) : tooling
   - (example) `tool:build`, `tool:release-wizard`
 
-A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `fix-version` may be manually added by committers.
+A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `affects-version` may be manually added by committers.
 
 If necessary, uncategorized labels may also be used.
 
