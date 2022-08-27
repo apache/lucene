@@ -23,11 +23,9 @@ under the License.
 
 We use Milestones for release planning.
 
-A milestone represents a release. All issues/PRs associated with a milestone must be resolved before the release, which means unresolved issues/PRs in a milestone are blockers for the release.
+A milestone represents a release. All issues/PRs associated with a milestone must be resolved before the release, which means unresolved issues/PRs in a milestone are blockers for the release. Release managers should consider how to address blockers. Some may be resolved by developers, and others may be postponed to future releases.
 
 The Milestone associated with an Issue/PR should be the same version in CHANGES. For instance, if an Issue/PR appears in the CHANGES section 10.0.0, it should be marked as Milestone 10.0.0.
-
-Release managers should consider how to address blockers. Some may be resolved by developers, and others may be postponed to future releases.
 
 Once the release is done, the Milestone should be closed then a new Milestone for the next release should be created.
 
