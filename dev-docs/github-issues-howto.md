@@ -19,6 +19,18 @@ under the License.
 
 # GitHub Issues How-To Manual
 
+## Milestones
+
+We use Milestones for release planning.
+
+A milestone represents a release. All issues/PRs associated with a milestone must be resolved before the release, which means unresolved issues/PRs in a milestone are blockers for the release.
+
+Release managers should consider how to address blockers. Some may be resolved by developers, and others may be postponed to future releases.
+
+Once the release is done, the Milestone should be closed then a new Milestone for the next release should be created.
+
+See [GitHub documentation](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones) for more details.
+
 ## Issue labels
 
 There are a few pre-defined label families to organize/search issues.
@@ -29,9 +41,6 @@ There are a few pre-defined label families to organize/search issues.
   - `type:test` is attached to test improvements or failure reports
   - `type:task` is attached to general tasks
   - `type:documentation` is attached to tasks relate to documentation
-- `fix-version` (color code `#7ebea5`) : the versions in which a bug or enhancement is planned to be released
-  - this may be used for release planning
-  - (example) `fix-version:10.0.0`
 - `affects-version` (color code `#f19072`) : the versions in which a bug was found 
   - this may be used with `type:bug` 
   - (example) `affects-version:9.1.0`
@@ -40,7 +49,7 @@ There are a few pre-defined label families to organize/search issues.
 - `tool` (color code `#a0d8ef`) : tooling
   - (example) `tool:build`, `tool:release-wizard`
 
-A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `fix-version` may be manually added by committers.
+A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `affects-version` may be manually added by committers.
 
 If necessary, uncategorized labels may also be used.
 
@@ -62,3 +71,9 @@ Each issue template (web form) is associated with one `type` label. You should a
 - `Documentation` is associated with `type:documentation` label
 
 Issue templates are written in YAML format and committed in `.github/ISSUE_TEMPLATE`. See [GitHub documentation](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms) for details.
+
+## Should I raise an Issue when I already have a working patch?
+
+It's up to you.
+
+From a broader viewpoint, there are no differences between issues and pull requests. You can associate both issues and PRs with Milestones/Labels and mention both issues and PRs in the CHANGES in the very same manner. Sometimes a pull request would be sufficient, and sometimes you may want to open an issue and PRs on it, depending on the context.
