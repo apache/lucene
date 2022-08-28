@@ -23,13 +23,19 @@ under the License.
 
 We use Milestones for release planning.
 
-A milestone represents a release. All issues/PRs associated with a milestone must be resolved before the release, which means unresolved issues/PRs in a milestone are blockers for the release. Release managers should consider how to address blockers. Some may be resolved by developers, and others may be postponed to future releases.
+A milestone represents a release. Issues and/or PRs should be associated with proper Milestones where the changes are planned to be delivered.
 
-The Milestone associated with an Issue/PR should be the same version in CHANGES. For instance, if an Issue/PR appears in the CHANGES section 10.0.0, it should be marked as Milestone 10.0.0.
+All issues/PRs associated with a milestone must be resolved before the release, which means unresolved issues/PRs in a milestone are blockers for the release. Release managers should consider how to address blockers. Some may be resolved by developers, and others may be postponed to future releases.
 
 Once the release is done, the Milestone should be closed then a new Milestone for the next release should be created.
 
+You can see the list of current active (opened) Milestones here. https://github.com/apache/lucene/milestones
+
 See [GitHub documentation](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones) for more details.
+
+### Relation between Milestones and CHANGES
+
+The Milestone associated with an Issue/PR should be the same version in [CHANGES](https://github.com/apache/lucene/blob/main/lucene/CHANGES.txt). For instance, if an Issue/PR appears in the CHANGES section 10.0.0, it should be marked as Milestone 10.0.0.
 
 ## Issue labels
 
