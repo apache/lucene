@@ -20,6 +20,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -513,6 +514,9 @@ public class TestField extends LuceneTestCase {
   }
 
   public void testKnnVectorField() throws Exception {
+    if (Codec.getDefault().getName().equals("SimpleText")) {
+      return;
+    }
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
