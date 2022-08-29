@@ -47,9 +47,14 @@ public final class LZ4 {
 
   private LZ4() {}
 
+  /**
+   * Window size: this is the maximum supported distance between two strings so that LZ4 can replace
+   * the second one by a reference to the first one.
+   */
+  public static final int MAX_DISTANCE = 1 << 16; // maximum distance of a reference
+
   static final int MEMORY_USAGE = 14;
   static final int MIN_MATCH = 4; // minimum length of a match
-  public static final int MAX_DISTANCE = 1 << 16; // maximum distance of a reference
   static final int LAST_LITERALS = 5; // the last 5 bytes must be encoded as literals
   static final int HASH_LOG_HC = 15; // log size of the dictionary for compressHC
   static final int HASH_TABLE_SIZE_HC = 1 << HASH_LOG_HC;
