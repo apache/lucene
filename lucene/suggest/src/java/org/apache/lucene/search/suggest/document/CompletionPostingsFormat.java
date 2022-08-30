@@ -119,9 +119,7 @@ public abstract class CompletionPostingsFormat extends PostingsFormat {
   }
 
   private final FSTLoadMode fstLoadMode;
-
-  /** Used only by core Lucene at read-time via Service Provider instantiation */
-
+  
   /**
    * Creates a {@link CompletionPostingsFormat} that will use the provided <code>fstLoadMode</code>
    * to determine if the completion FST should be loaded on or off heap.
