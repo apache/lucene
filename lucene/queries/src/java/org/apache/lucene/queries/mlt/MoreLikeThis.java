@@ -637,8 +637,8 @@ public final class MoreLikeThis {
 
       for (Map.Entry<String, Int> tfEntry : perWordTermFrequencies.entrySet()) { // for every word
         String word = tfEntry.getKey();
-        int termFreq = tfEntry.getValue().x; // term freq in the source doc
-        if (minTermFreq > 0 && termFreq < minTermFreq) {
+        int tf = tfEntry.getValue().x; // term freq in the source doc
+        if (minTermFreq > 0 && tf < minTermFreq) {
           continue; // filter out words that don't occur enough times in the source
         }
 
@@ -656,7 +656,6 @@ public final class MoreLikeThis {
           continue; // index update problem?
         }
 
-        float tf = similarity.tf(termFreq);
         float idf = similarity.idf(docFreq, numDocs);
         float score = tf * idf;
 
