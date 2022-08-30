@@ -320,8 +320,6 @@ public final class NRTSuggester implements Accountable {
 
   private static boolean shouldLoadFSTOffHeap(IndexInput input, FSTLoadMode fstLoadMode) {
     switch (fstLoadMode) {
-      case ON_HEAP:
-        return false;
       case OFF_HEAP:
         return true;
       case AUTO:
