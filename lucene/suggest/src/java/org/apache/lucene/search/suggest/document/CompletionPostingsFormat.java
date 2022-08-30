@@ -111,6 +111,8 @@ public abstract class CompletionPostingsFormat extends PostingsFormat {
      * if buffered directory implementations are used.
      */
     OFF_HEAP,
+    /** Never read FSTs from disk ie. all suggest fields FSTs are loaded into memory as provided by server provider instantiation. */
+    ON_HEAP,
     /**
      * Automatically make the decision if FSTs are read from disk depending if the segment read from
      * an MMAPDirectory
