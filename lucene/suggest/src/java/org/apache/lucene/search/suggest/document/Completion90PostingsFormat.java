@@ -25,6 +25,10 @@ import org.apache.lucene.codecs.PostingsFormat;
  * @lucene.experimental
  */
 public class Completion90PostingsFormat extends CompletionPostingsFormat {
+  public Completion90PostingsFormat() {
+    this(FSTLoadMode.OFF_HEAP);
+  }
+
   /**
    * Creates a {@link Completion90PostingsFormat} that will use the provided <code>fstLoadMode
    * </code> to determine if the completion FST should be loaded from NIO FS or off heap.
