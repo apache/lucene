@@ -665,4 +665,35 @@ public class SortField {
   public boolean getOptimizeSortWithIndexedData() {
     return optimizeSortWithIndexedData;
   }
+
+  /**
+   * Enables/disables numeric sort optimization to use the Points index.
+   *
+   * <p>Enabled by default. By default, sorting on a numeric field activates point sort optimization
+   * that can efficiently skip over non-competitive hits. Sort optimization has a number of
+   * requirements, one of which is that SortField.Type matches the Point type with which the field
+   * was indexed (e.g. sort on IntPoint field should use SortField.Type.INT). Another requirement is
+   * that the same data is indexed with points and doc values for the field.
+   *
+   * @param optimizeSortWithPoints providing {@code false} disables the optimization, in cases where
+   *     these requirements can't be met.
+   * @deprecated should only be used for compatibility with 8.x indices that got created with
+   *     inconsistent data across fields, or the wrong sort configuration in the index sort. This is
+   *     a duplicate method for {@code SortField#setOptimizeSortWithIndexedData}.
+   */
+  @Deprecated // Remove in Lucene 10
+  public void setOptimizeSortWithPoints(boolean optimizeSortWithPoints) {
+    setOptimizeSortWithIndexedData(optimizeSortWithPoints);
+  }
+
+  /**
+   * Returns whether sort optimization should be optimized with points index
+   *
+   * @return whether sort optimization should be optimized with points index
+   * @deprecated This is a duplicate method for {@code SortField#getOptimizeSortWithIndexedData}.
+   */
+  @Deprecated // Remove in Lucene 10
+  public boolean getOptimizeSortWithPoints() {
+    return getOptimizeSortWithIndexedData();
+  }
 }
