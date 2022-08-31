@@ -85,7 +85,7 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* LUCENE-10577: Add VectorEncoding to enable byte-encoded HNSW vectors (Michael Sokolov, Julie Tibshirani)
 
 New Features
 ---------------------
