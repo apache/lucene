@@ -52,6 +52,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // KnnGraphValues iterator members
   private int upto;
   private NeighborArray cur;
+  private final List<Integer> lastAddedPosInLayer;
 
   OnHeapHnswGraph(int M, int levelOfFirstNode) {
     this.numLevels = levelOfFirstNode + 1;
@@ -68,8 +69,11 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
     this.nodesByLevel = new ArrayList<>(numLevels);
     nodesByLevel.add(null); // we don't need this for 0th level, as it contains all nodes
+    this.lastAddedPosInLayer = new ArrayList<>(numLevels);
+    lastAddedPosInLayer.add(null);
     for (int l = 1; l < numLevels; l++) {
       nodesByLevel.add(new int[] {0});
+      lastAddedPosInLayer.add(0);
     }
   }
 
@@ -107,6 +111,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
         for (int i = numLevels; i <= level; i++) {
           graph.add(new ArrayList<>());
           nodesByLevel.add(new int[] {node});
+          lastAddedPosInLayer.add(0);
         }
         numLevels = level + 1;
         entryNode = node;
@@ -115,24 +120,39 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
         // Add this node id to this level's nodes
         int[] nodes = nodesByLevel.get(level);
         int idx = graph.get(level).size();
-        if (idx < nodes.length) {
-          nodes[idx] = node;
-        } else {
+        if (idx >= nodes.length) {
           nodes = ArrayUtil.grow(nodes);
-          nodes[idx] = node;
           nodesByLevel.set(level, nodes);
         }
 
-        int position = Arrays.binarySearch(nodes, 0, idx, node);
-        assert position < 0;
-        position = -1 * position - 1;
+        // Find what position in the nodes array to insert the new node to ensure it stays sorted.
+        // In the worst case, we need to perform a binary search to find the position to insert the
+        // node.
+        // However, we can avoid binary search in 2 common cases:
+        // (1) When the node belongs at the end of the array
+        // (2) When the node belongs after the position of the last inserted node
+        int position;
+        int lastPosition = lastAddedPosInLayer.get(level);
+        if (lastPosition == idx - 1 && node > nodes[idx - 1]) {
+          position = idx;
+        } else if (lastPosition < idx - 1
+            && node > nodes[lastPosition]
+            && node < nodes[lastPosition + 1]) {
+          position = lastPosition + 1;
+        } else {
+          position = Arrays.binarySearch(nodes, 0, idx, node);
+          assert position < 0;
+          position = -1 * position - 1;
+        }
 
         if (position == idx) {
           graph.get(level).add(new NeighborArray(nsize, true));
         } else {
-          Arrays.sort(nodes, position, idx + 1);
+          System.arraycopy(nodes, position, nodes, position + 1, (idx - position));
           graph.get(level).add(position, new NeighborArray(nsize, true));
         }
+        nodes[position] = node;
+        lastAddedPosInLayer.set(level, position);
       }
     } else {
       // TODO: This makes the return value of size wrong until all nodes are backfilled.
