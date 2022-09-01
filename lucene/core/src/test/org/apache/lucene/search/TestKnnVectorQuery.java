@@ -245,7 +245,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     for (int j = 0; j < 5; j++) {
       vectors[j] = new float[] {j, j};
     }
-    try (Directory d = getIndexStore("field", 1, vectors);
+    try (Directory d = getStableIndexStore("field", vectors);
         IndexReader reader = DirectoryReader.open(d)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
@@ -756,13 +756,8 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
-  private Directory getIndexStore(String field, float[]... contents) throws IOException {
-    return getIndexStore(field, -1, contents);
-  }
-
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
-  private Directory getIndexStore(String field, int forceMerge, float[]... contents)
-      throws IOException {
+  private Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
     VectorEncoding encoding = randomVectorEncoding();
@@ -786,10 +781,39 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       doc.add(new StringField("other", "value", Field.Store.NO));
       writer.addDocument(doc);
     }
-    if (forceMerge > 0) {
-      writer.forceMerge(forceMerge);
-    }
     writer.close();
+    return indexStore;
+  }
+
+  /**
+   * Creates a new directory and adds documents with the given vectors as kNN vector fields,
+   * preserving the order of the added documents.
+   */
+  private Directory getStableIndexStore(String field, float[]... contents) throws IOException {
+    Directory indexStore = newDirectory();
+    try (IndexWriter writer = new IndexWriter(indexStore, newIndexWriterConfig())) {
+      VectorEncoding encoding = randomVectorEncoding();
+      for (int i = 0; i < contents.length; ++i) {
+        Document doc = new Document();
+        if (encoding == VectorEncoding.BYTE) {
+          BytesRef v = new BytesRef(new byte[contents[i].length]);
+          for (int j = 0; j < v.length; j++) {
+            v.bytes[j] = (byte) contents[i][j];
+          }
+          doc.add(new KnnVectorField(field, v, EUCLIDEAN));
+        } else {
+          doc.add(new KnnVectorField(field, contents[i]));
+        }
+        doc.add(new StringField("id", "id" + i, Field.Store.YES));
+        writer.addDocument(doc);
+      }
+      // Add some documents without a vector
+      for (int i = 0; i < 5; i++) {
+        Document doc = new Document();
+        doc.add(new StringField("other", "value", Field.Store.NO));
+        writer.addDocument(doc);
+      }
+    }
     return indexStore;
   }
 
