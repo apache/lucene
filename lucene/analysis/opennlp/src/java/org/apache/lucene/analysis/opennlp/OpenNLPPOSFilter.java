@@ -49,8 +49,8 @@ public final class OpenNLPPOSFilter extends TokenFilter {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
-    boolean readNextSentence = tokenNum == sentenceTokenAttrs.size() && sentenceAttributeExtractor.areMoreTokensAvailable();
+  public boolean incrementToken() throws IOException {
+    boolean readNextSentence = tokenNum >= sentenceTokenAttrs.size() && sentenceAttributeExtractor.areMoreTokensAvailable();
     if (readNextSentence) {
       String[] sentenceTokens = nextSentence();
       tags = posTaggerOp.getPOSTags(sentenceTokens);
