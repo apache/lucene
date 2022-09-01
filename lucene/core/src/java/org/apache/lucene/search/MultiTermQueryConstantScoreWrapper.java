@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
@@ -125,35 +126,12 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
     return new ConstantScoreWeight(this, boost) {
 
       /**
-       * Try to collect terms from the given terms enum and return true iff all terms could be
-       * collected. If {@code false} is returned, the enum is left positioned on the next term.
-       */
-      private boolean collectTerms(
-          LeafReaderContext context, TermsEnum termsEnum, List<TermAndState> terms)
-          throws IOException {
-        final int threshold =
-            Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
-        for (int i = 0; i < threshold; ++i) {
-          final BytesRef term = termsEnum.next();
-          if (term == null) {
-            return true;
-          }
-          TermState state = termsEnum.termState();
-          terms.add(
-              new TermAndState(
-                  BytesRef.deepCopyOf(term),
-                  state,
-                  termsEnum.docFreq(),
-                  termsEnum.totalTermFreq()));
-        }
-        return termsEnum.next() == null;
-      }
-
-      /**
        * On the given leaf context, try to either rewrite to a disjunction if there are few terms,
        * or build a bitset containing matching docs.
        */
       private WeightOrDocIdSet rewrite(LeafReaderContext context) throws IOException {
+        final LeafReader reader = context.reader();
+
         final Terms terms = context.reader().terms(query.field);
         if (terms == null) {
           // field does not exist
@@ -165,9 +143,46 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
 
         PostingsEnum docs = null;
 
-        final List<TermAndState> collectedTerms = new ArrayList<>();
-        if (collectTerms(context, termsEnum, collectedTerms)) {
-          // build a boolean query
+        // We will first try to collect up to 'threshold' terms into 'matchingTerms'
+        // if there are too many terms, we will fall back to building the 'builder'
+        final int threshold =
+            Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
+        List<TermAndState> collectedTerms = new ArrayList<>();
+        DocIdSetBuilder builder = null;
+
+        for (BytesRef term = termsEnum.next(); term != null; term = termsEnum.next()) {
+          // If any term contains the complete segment's docs, we can short-circuit since this
+          // query is a disjunction over all terms:
+          if (reader.maxDoc() == termsEnum.docFreq()) {
+            return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
+          }
+
+          if (collectedTerms == null) {
+            docs = termsEnum.postings(docs, PostingsEnum.NONE);
+            builder.add(docs);
+          } else if (collectedTerms.size() < threshold) {
+            collectedTerms.add(
+                new TermAndState(
+                    BytesRef.deepCopyOf(term),
+                    termsEnum.termState(),
+                    termsEnum.docFreq(),
+                    termsEnum.totalTermFreq()));
+          } else {
+            assert collectedTerms.size() == threshold;
+            builder = new DocIdSetBuilder(reader.maxDoc(), terms);
+            docs = termsEnum.postings(docs, PostingsEnum.NONE);
+            builder.add(docs);
+            TermsEnum termsEnum2 = terms.iterator();
+            for (TermAndState t : collectedTerms) {
+              termsEnum2.seekExact(t.term, t.state);
+              docs = termsEnum2.postings(docs, PostingsEnum.NONE);
+              builder.add(docs);
+            }
+            collectedTerms = null;
+          }
+        }
+        if (collectedTerms != null) {
+          assert builder == null;
           BooleanQuery.Builder bq = new BooleanQuery.Builder();
           for (TermAndState t : collectedTerms) {
             final TermStates termStates = new TermStates(searcher.getTopReaderContext());
@@ -177,26 +192,10 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
           Query q = new ConstantScoreQuery(bq.build());
           final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
           return new WeightOrDocIdSet(weight);
+        } else {
+          assert builder != null;
+          return new WeightOrDocIdSet(builder.build());
         }
-
-        // Too many terms: go back to the terms we already collected and start building the bit set
-        DocIdSetBuilder builder = new DocIdSetBuilder(context.reader().maxDoc(), terms);
-        if (collectedTerms.isEmpty() == false) {
-          TermsEnum termsEnum2 = terms.iterator();
-          for (TermAndState t : collectedTerms) {
-            termsEnum2.seekExact(t.term, t.state);
-            docs = termsEnum2.postings(docs, PostingsEnum.NONE);
-            builder.add(docs);
-          }
-        }
-
-        // Then keep filling the bit set with remaining terms
-        do {
-          docs = termsEnum.postings(docs, PostingsEnum.NONE);
-          builder.add(docs);
-        } while (termsEnum.next() != null);
-
-        return new WeightOrDocIdSet(builder.build());
       }
 
       private Scorer scorer(DocIdSet set) throws IOException {
