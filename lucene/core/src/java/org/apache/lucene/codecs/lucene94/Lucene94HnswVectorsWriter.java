@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -467,23 +468,43 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         M,
         beamWidth,
         HnswGraphBuilder.randSeed,
-        ((Lucene94HnswVectorsReader) mergeState.knnVectorsReaders[initializerIndex])
-            .getGraph(fieldInfo.getName()),
+        getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]),
         mergeState.docMaps[initializerIndex]::get);
+  }
+
+  private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
+        && perFieldReader.getFieldReader(fieldName)
+            instanceof Lucene94HnswVectorsReader fieldReader) {
+      return fieldReader.getGraph(fieldName);
+    }
+
+    if (knnVectorsReader instanceof Lucene94HnswVectorsReader) {
+      return ((Lucene94HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
+    }
+
+    throw new IllegalArgumentException(
+        "Invalid KnnVectorsReader. Must be of type PerFieldKnnVectorsFormat.FieldsReader or Lucene94HnswVectorsReader");
   }
 
   private int selectReaderForGraphInitialization(
       String fieldName, Bits[] liveDocs, KnnVectorsReader[] knnVectorsReaders) throws IOException {
     // Find the KnnVectorReader with the most docs that meets the following criteria:
     //  1. Does not contain any deleted docs
-    //  2. Is a Lucene94HnswVectorsReader
+    //  2. Is a Lucene94HnswVectorsReader/PerFieldKnnVectorReader
     // If no readers exist that meet this criteria, return -1. If they do, return their index in
     // merge state
     int maxCandidateVectorCount = 0;
     int initializerIndex = -1;
     for (int i = 0; i < liveDocs.length; i++) {
+      KnnVectorsReader currKnnVectorsReader = knnVectorsReaders[i];
+      if (knnVectorsReaders[i] instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
+        currKnnVectorsReader = candidateReader.getFieldReader(fieldName);
+      }
+
       if (!allMatch(liveDocs[i])
-          || !(knnVectorsReaders[i] instanceof Lucene94HnswVectorsReader candidateReader)) {
+          || !(currKnnVectorsReader instanceof Lucene94HnswVectorsReader candidateReader)) {
         continue;
       }
       int candidateVectorCount = candidateReader.getVectorValues(fieldName).size();
