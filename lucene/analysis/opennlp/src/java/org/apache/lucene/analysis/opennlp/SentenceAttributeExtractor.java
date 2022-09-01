@@ -22,22 +22,23 @@ public class SentenceAttributeExtractor {
         this.sentenceAtt = sentenceAtt;
     }
 
-    public boolean hasNext() throws IOException {
-        moreTokensAvailable = input.incrementToken();
-        int currSentenceTmp = sentenceAtt.getSentence();
-        boolean hasNext = currSentence == currSentenceTmp && moreTokensAvailable;
-        currSentence = currSentenceTmp;
-        if (prevAttributeSource != null) {
-            sentenceTokenAttrs.add(prevAttributeSource);
-        }
-        prevAttributeSource = input.cloneAttributes();
-        return hasNext;
-    }
-
     public List<AttributeSource> extractSentenceAttributes() throws IOException {
         sentenceTokenAttrs.clear();
-        while (hasNext()) {
-        }
+        boolean hasNext;
+        do {
+            moreTokensAvailable = input.incrementToken();
+            int currSentenceTmp = sentenceAtt.getSentence();
+            hasNext = currSentence == currSentenceTmp && moreTokensAvailable;
+            currSentence = currSentenceTmp;
+            if (prevAttributeSource != null) {
+                sentenceTokenAttrs.add(prevAttributeSource);
+            }
+            prevAttributeSource = input.cloneAttributes();
+        } while(hasNext);
+        return sentenceTokenAttrs;
+    }
+
+    public List<AttributeSource> getSentenceAttributes() {
         return sentenceTokenAttrs;
     }
 

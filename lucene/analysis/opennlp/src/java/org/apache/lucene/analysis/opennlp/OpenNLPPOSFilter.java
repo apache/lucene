@@ -34,7 +34,6 @@ import java.util.List;
 @IgnoreRandomChains(reason = "LUCENE-10352: add argument providers for this one")
 public final class OpenNLPPOSFilter extends TokenFilter {
 
-  private List<AttributeSource> sentenceTokenAttrs = new ArrayList<>();
   String[] tags = null;
   private int tokenNum = 0;
 
@@ -50,6 +49,7 @@ public final class OpenNLPPOSFilter extends TokenFilter {
 
   @Override
   public boolean incrementToken() throws IOException {
+    List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
     boolean readNextSentence = tokenNum >= sentenceTokenAttrs.size() && sentenceAttributeExtractor.areMoreTokensAvailable();
     if (readNextSentence) {
       String[] sentenceTokens = nextSentence();
@@ -67,8 +67,7 @@ public final class OpenNLPPOSFilter extends TokenFilter {
   private String[] nextSentence() throws IOException {
     tokenNum = 0;
     List<String> termList = new ArrayList<>();
-    sentenceTokenAttrs = sentenceAttributeExtractor.extractSentenceAttributes();
-    for (AttributeSource attributeSource : sentenceTokenAttrs) {
+    for (AttributeSource attributeSource : sentenceAttributeExtractor.extractSentenceAttributes()) {
       termList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
     }
     return termList.size() > 0 ? termList.toArray(new String[0]) : null;

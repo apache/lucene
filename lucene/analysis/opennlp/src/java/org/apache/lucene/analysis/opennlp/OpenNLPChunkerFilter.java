@@ -17,17 +17,18 @@
 
 package org.apache.lucene.analysis.opennlp;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.opennlp.tools.NLPChunkerOp;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.analysis.tokenattributes.SentenceAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IgnoreRandomChains;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Run OpenNLP chunker. Prerequisite: the OpenNLPTokenizer and OpenNLPPOSFilter must precede this
@@ -36,74 +37,61 @@ import org.apache.lucene.util.IgnoreRandomChains;
  */
 @IgnoreRandomChains(reason = "other filters must precede this one (see docs)")
 public final class OpenNLPChunkerFilter extends TokenFilter {
-
-  private List<AttributeSource> sentenceTokenAttrs = new ArrayList<>();
   private int tokenNum = 0;
-  private boolean moreTokensAvailable = true;
   private String[] sentenceTerms = null;
   private String[] sentenceTermPOSTags = null;
-
   private final NLPChunkerOp chunkerOp;
-  private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
-  private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final SentenceAttributeExtractor sentenceAttributeExtractor;
 
   public OpenNLPChunkerFilter(TokenStream input, NLPChunkerOp chunkerOp) {
     super(input);
     this.chunkerOp = chunkerOp;
+    sentenceAttributeExtractor = new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
-    if (!moreTokensAvailable) {
-      clear();
-      return false;
-    }
-    if (tokenNum == sentenceTokenAttrs.size()) {
+  public boolean incrementToken() throws IOException {
+    List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
+    boolean readNextSentence = tokenNum >= sentenceTokenAttrs.size() && sentenceAttributeExtractor.areMoreTokensAvailable();
+    if (readNextSentence) {
       nextSentence();
-      if (sentenceTerms == null) {
-        clear();
-        return false;
-      }
       assignTokenTypes(chunkerOp.getChunks(sentenceTerms, sentenceTermPOSTags, null));
-      tokenNum = 0;
     }
-    clearAttributes();
-    sentenceTokenAttrs.get(tokenNum++).copyTo(this);
-    return true;
+    if (tokenNum < sentenceTokenAttrs.size()) {
+      clearAttributes();
+      sentenceTokenAttrs.get(tokenNum++).copyTo(this);
+      return true;
+    }
+    return false;
   }
 
   private void nextSentence() throws IOException {
+    tokenNum = 0;
     List<String> termList = new ArrayList<>();
     List<String> posTagList = new ArrayList<>();
-    sentenceTokenAttrs.clear();
-    boolean endOfSentence = false;
-    while (!endOfSentence && (moreTokensAvailable = input.incrementToken())) {
-      termList.add(termAtt.toString());
-      posTagList.add(typeAtt.type());
-      endOfSentence = 0 != (flagsAtt.getFlags() & OpenNLPTokenizer.EOS_FLAG_BIT);
-      sentenceTokenAttrs.add(input.cloneAttributes());
+    for (AttributeSource attributeSource : sentenceAttributeExtractor.extractSentenceAttributes()) {
+      termList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
+      posTagList.add(attributeSource.getAttribute(TypeAttribute.class).type());
     }
-    sentenceTerms = termList.size() > 0 ? termList.toArray(new String[termList.size()]) : null;
+    sentenceTerms = termList.size() > 0 ? termList.toArray(new String[0]) : null;
     sentenceTermPOSTags =
-        posTagList.size() > 0 ? posTagList.toArray(new String[posTagList.size()]) : null;
+        posTagList.size() > 0 ? posTagList.toArray(new String[0]) : null;
   }
 
   private void assignTokenTypes(String[] tags) {
     for (int i = 0; i < tags.length; ++i) {
-      sentenceTokenAttrs.get(i).getAttribute(TypeAttribute.class).setType(tags[i]);
+      sentenceAttributeExtractor.getSentenceAttributes().get(i).getAttribute(TypeAttribute.class).setType(tags[i]);
     }
   }
 
   @Override
   public void reset() throws IOException {
     super.reset();
-    moreTokensAvailable = true;
+    sentenceAttributeExtractor.reset();
     clear();
   }
 
   private void clear() {
-    sentenceTokenAttrs.clear();
     sentenceTerms = null;
     sentenceTermPOSTags = null;
     tokenNum = 0;
