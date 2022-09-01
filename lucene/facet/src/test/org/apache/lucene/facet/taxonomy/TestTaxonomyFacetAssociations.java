@@ -201,9 +201,15 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     assertEquals(
         "dim=int path=[] value=-1 childCount=2\n  a (200)\n  b (150)\n",
         facets.getTopChildren(10, "int").toString());
-    assertEquals(
-        "dim=int path=[] value=-1 childCount=2\n  a (200)\n  b (150)\n",
-        sortAllChildren(facets.getAllChildren("int")).toString());
+    assertFacetResult(
+        facets.getAllChildren("int"),
+        "int",
+        new String[0],
+        2,
+        -1,
+        new LabelAndValue[] {
+          new LabelAndValue("a", 200), new LabelAndValue("b", 150),
+        });
     assertEquals(
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
@@ -276,9 +282,17 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     assertEquals(
         "dim=float path=[] value=-1.0 childCount=2\n  a (50.0)\n  b (9.999995)\n",
         facets.getTopChildren(10, "float").toString());
-    assertEquals(
-        "dim=float path=[] value=-1.0 childCount=2\n  a (50.0)\n  b (9.999995)\n",
-        sortAllChildren(facets.getAllChildren("float")).toString());
+
+    assertFacetResult(
+        facets.getAllChildren("float"),
+        "float",
+        new String[0],
+        2,
+        -1.0f,
+        new LabelAndValue[] {
+          new LabelAndValue("a", 50.0f), new LabelAndValue("b", 9.999995f),
+        });
+
     assertEquals(
         "Wrong count for category 'a'!",
         50f,
@@ -483,6 +497,16 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     assertEquals(
         "dim=int path=[] value=-1 childCount=2\n  a (100)\n  b (150)\n",
         sortAllChildren(facets.getAllChildren("int")).toString());
+
+    assertFacetResult(
+        facets.getAllChildren("int"),
+        "int",
+        new String[0],
+        2,
+        -1,
+        new LabelAndValue[] {
+          new LabelAndValue("a", 100), new LabelAndValue("b", 150),
+        });
 
     assertEquals(
         "Wrong count for category 'a'!", 100, facets.getSpecificValue("int", "a").intValue());

@@ -26,7 +26,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.BufferingKnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -224,7 +224,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValuesProducer vectorValues,
+      RandomAccessVectorValues vectorValues,
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,
@@ -239,7 +239,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
             beamWidth,
             Lucene90HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    Lucene90OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
+    Lucene90OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.copy());
 
     for (int ord = 0; ord < offsets.length; ord++) {
       // write graph

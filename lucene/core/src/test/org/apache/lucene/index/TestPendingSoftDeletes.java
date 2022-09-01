@@ -196,6 +196,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
     List<Integer> docsDeleted = Arrays.asList(1, 3, 7, 8, DocIdSetIterator.NO_MORE_DOCS);
@@ -233,6 +234,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
     for (DocValuesFieldUpdates update : updates) {
@@ -295,6 +297,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
     List<Integer> docsDeleted = Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS);
@@ -362,6 +365,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
     List<DocValuesFieldUpdates> updates =
@@ -398,6 +402,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
     updates = Arrays.asList(singleUpdate(Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS), 3, true));

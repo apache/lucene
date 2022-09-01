@@ -24,11 +24,8 @@ import java.util.Comparator;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnVectorField;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -133,22 +130,22 @@ public class KnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    BitSet bitSet = createBitSet(scorer.iterator(), liveDocs, maxDoc);
-    BitSetIterator filterIterator = new BitSetIterator(bitSet, bitSet.cardinality());
+    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
+    int cost = acceptDocs.cardinality();
 
-    if (filterIterator.cost() <= k) {
+    if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      return exactSearch(ctx, filterIterator);
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, bitSet, (int) filterIterator.cost());
+    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, filterIterator);
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
     }
   }
 
@@ -178,45 +175,9 @@ public class KnnVectorQuery extends Query {
   }
 
   // We allow this to be overridden so that tests can check what search strategy is used
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
+  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptDocs)
       throws IOException {
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
-      return NO_RESULTS;
-    }
-
-    VectorSimilarityFunction similarityFunction = fi.getVectorSimilarityFunction();
-    VectorValues vectorValues = context.reader().getVectorValues(field);
-
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
-    int doc;
-    while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      int vectorDoc = vectorValues.advance(doc);
-      assert vectorDoc == doc;
-      float[] vector = vectorValues.vectorValue();
-
-      float score = similarityFunction.compare(vector, target);
-      if (score >= topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = doc;
-        topDoc = queue.updateTop();
-      }
-    }
-
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
-
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
-    return new TopDocs(totalHits, topScoreDocs);
+    return context.reader().searchNearestVectorsExhaustively(field, target, k, acceptDocs);
   }
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
