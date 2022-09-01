@@ -59,7 +59,7 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
   @Override
   public final boolean incrementToken() throws IOException {
     boolean readNextSentence =
-        lemmaNum >= lemmas.length && sentenceAttributeExtractor.areMoreTokensAvailable();
+        lemmaNum >= lemmas.length && sentenceAttributeExtractor.areMoreSentencesAvailable();
     if (readNextSentence) {
       nextSentence();
     }

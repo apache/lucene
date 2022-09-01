@@ -14,7 +14,7 @@ public class SentenceAttributeExtractor {
   private final List<AttributeSource> sentenceTokenAttrs = new ArrayList<>();
   private AttributeSource prevAttributeSource;
   private int currSentence = 0;
-  private boolean moreTokensAvailable = true;
+  private boolean hasNextToken = true;
 
   public SentenceAttributeExtractor(TokenStream input, SentenceAttribute sentenceAtt) {
     this.input = input;
@@ -25,9 +25,9 @@ public class SentenceAttributeExtractor {
     sentenceTokenAttrs.clear();
     boolean hasNext;
     do {
-      moreTokensAvailable = input.incrementToken();
+      hasNextToken = input.incrementToken();
       int currSentenceTmp = sentenceAtt.getSentenceIndex();
-      hasNext = currSentence == currSentenceTmp && moreTokensAvailable;
+      hasNext = currSentence == currSentenceTmp && hasNextToken;
       currSentence = currSentenceTmp;
       if (prevAttributeSource != null) {
         sentenceTokenAttrs.add(prevAttributeSource);
@@ -41,12 +41,12 @@ public class SentenceAttributeExtractor {
     return sentenceTokenAttrs;
   }
 
-  public boolean areMoreTokensAvailable() {
-    return moreTokensAvailable;
+  public boolean areMoreSentencesAvailable() {
+    return hasNextToken;
   }
 
   public void reset() {
-    moreTokensAvailable = true;
+    hasNextToken = true;
     sentenceTokenAttrs.clear();
     currSentence = 0;
     prevAttributeSource = null;

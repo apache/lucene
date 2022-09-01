@@ -54,7 +54,7 @@ public final class OpenNLPChunkerFilter extends TokenFilter {
     List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
     boolean readNextSentence =
         tokenNum >= sentenceTokenAttrs.size()
-            && sentenceAttributeExtractor.areMoreTokensAvailable();
+            && sentenceAttributeExtractor.areMoreSentencesAvailable();
     if (readNextSentence) {
       nextSentence();
       assignTokenTypes(chunkerOp.getChunks(sentenceTerms, sentenceTermPOSTags, null));

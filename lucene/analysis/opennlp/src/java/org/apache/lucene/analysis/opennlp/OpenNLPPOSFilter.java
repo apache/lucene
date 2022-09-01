@@ -49,7 +49,7 @@ public final class OpenNLPPOSFilter extends TokenFilter {
     List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
     boolean readNextSentence =
         tokenNum >= sentenceTokenAttrs.size()
-            && sentenceAttributeExtractor.areMoreTokensAvailable();
+            && sentenceAttributeExtractor.areMoreSentencesAvailable();
     if (readNextSentence) {
       String[] sentenceTokens = nextSentence();
       assignTokenTypes(posTaggerOp.getPOSTags(sentenceTokens));
