@@ -19,7 +19,7 @@ github:
 
   features:
     wiki: false
-    issues: false
+    issues: true
     projects: false
 
 notifications:

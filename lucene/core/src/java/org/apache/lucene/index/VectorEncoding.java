@@ -15,32 +15,29 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs;
+package org.apache.lucene.index;
 
-import java.io.IOException;
-import org.apache.lucene.util.Accountable;
-
-/**
- * Vectors' writer for a field
- *
- * @param <T> an array type; the type of vectors to be written
- */
-public abstract class KnnFieldVectorsWriter<T> implements Accountable {
-
-  /** Sole constructor */
-  protected KnnFieldVectorsWriter() {}
+/** The numeric datatype of the vector values. */
+public enum VectorEncoding {
 
   /**
-   * Add new docID with its vector value to the given field for indexing. Doc IDs must be added in
-   * increasing order.
+   * Encodes vector using 8 bits of precision per sample. Values provided with higher precision (eg:
+   * queries provided as float) *must* be in the range [-128, 127]. NOTE: this can enable
+   * significant storage savings and faster searches, at the cost of some possible loss of
+   * precision.
    */
-  public abstract void addValue(int docID, Object vectorValue) throws IOException;
+  BYTE(1),
+
+  /** Encodes vector using 32 bits of precision per sample in IEEE floating point format. */
+  FLOAT32(4);
 
   /**
-   * Used to copy values being indexed to internal storage.
-   *
-   * @param vectorValue an array containing the vector value to add
-   * @return a copy of the value; a new array
+   * The number of bytes required to encode a scalar in this format. A vector will nominally require
+   * dimension * byteSize bytes of storage.
    */
-  public abstract T copyValue(T vectorValue);
+  public final int byteSize;
+
+  VectorEncoding(int byteSize) {
+    this.byteSize = byteSize;
+  }
 }

@@ -15,21 +15,31 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.index;
+package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
+import org.apache.lucene.index.FilterVectorValues;
+import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.util.BytesRef;
 
-/**
- * Something (generally a {@link VectorValues}) that provides a {@link RandomAccessVectorValues}.
- *
- * @lucene.experimental
- */
-public interface RandomAccessVectorValuesProducer {
-  /**
-   * Return a random access interface over this iterator's vectors. Calling the RandomAccess methods
-   * will have no effect on the progress of the iteration or the values returned by this iterator.
-   * Successive calls will retrieve independent copies that do not overwrite each others' returned
-   * values.
-   */
-  RandomAccessVectorValues randomAccess() throws IOException;
+/** reads from byte-encoded data */
+public class ExpandingVectorValues extends FilterVectorValues {
+
+  private final float[] value;
+
+  /** @param in the wrapped values */
+  protected ExpandingVectorValues(VectorValues in) {
+    super(in);
+    value = new float[in.dimension()];
+  }
+
+  @Override
+  public float[] vectorValue() throws IOException {
+    BytesRef binaryValue = binaryValue();
+    byte[] bytes = binaryValue.bytes;
+    for (int i = 0, j = binaryValue.offset; i < value.length; i++, j++) {
+      value[i] = bytes[j];
+    }
+    return value;
+  }
 }

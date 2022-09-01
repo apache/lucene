@@ -18,19 +18,18 @@
 package org.apache.lucene.util.hnsw;
 
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
-class MockVectorValues extends VectorValues
-    implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+class MockVectorValues extends VectorValues implements RandomAccessVectorValues {
   private final float[] scratch;
 
   protected final int dimension;
   protected final float[][] denseValues;
   protected final float[][] values;
   private final int numVectors;
+  private final BytesRef binaryValue;
 
   private int pos = -1;
 
@@ -47,8 +46,12 @@ class MockVectorValues extends VectorValues
     }
     numVectors = count;
     scratch = new float[dimension];
+    // used by tests that build a graph from bytes rather than floats
+    binaryValue = new BytesRef(dimension);
+    binaryValue.length = dimension;
   }
 
+  @Override
   public MockVectorValues copy() {
     return new MockVectorValues(values);
   }
@@ -78,18 +81,17 @@ class MockVectorValues extends VectorValues
   }
 
   @Override
-  public RandomAccessVectorValues randomAccess() {
-    return copy();
-  }
-
-  @Override
   public float[] vectorValue(int targetOrd) {
     return denseValues[targetOrd];
   }
 
   @Override
   public BytesRef binaryValue(int targetOrd) {
-    return null;
+    float[] value = vectorValue(targetOrd);
+    for (int i = 0; i < value.length; i++) {
+      binaryValue.bytes[i] = (byte) value[i];
+    }
+    return binaryValue;
   }
 
   private boolean seek(int target) {

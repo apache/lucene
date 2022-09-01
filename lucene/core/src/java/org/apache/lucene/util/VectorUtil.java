@@ -121,6 +121,24 @@ public final class VectorUtil {
     return (float) (sum / Math.sqrt(norm1 * norm2));
   }
 
+  /** Returns the cosine similarity between the two vectors. */
+  public static float cosine(BytesRef a, BytesRef b) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int sum = 0;
+    int norm1 = 0;
+    int norm2 = 0;
+    int aOffset = a.offset, bOffset = b.offset;
+
+    for (int i = 0; i < a.length; i++) {
+      byte elem1 = a.bytes[aOffset++];
+      byte elem2 = b.bytes[bOffset++];
+      sum += elem1 * elem2;
+      norm1 += elem1 * elem1;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
+  }
+
   /**
    * Returns the sum of squared differences of the two vectors.
    *
@@ -135,7 +153,7 @@ public final class VectorUtil {
     int dim = v1.length;
     int i;
     for (i = 0; i + 8 <= dim; i += 8) {
-      squareSum += squareDistanceUnrolled8(v1, v2, i);
+      squareSum += squareDistanceUnrolled(v1, v2, i);
     }
     for (; i < dim; i++) {
       float diff = v1[i] - v2[i];
@@ -144,7 +162,7 @@ public final class VectorUtil {
     return squareSum;
   }
 
-  private static float squareDistanceUnrolled8(float[] v1, float[] v2, int index) {
+  private static float squareDistanceUnrolled(float[] v1, float[] v2, int index) {
     float diff0 = v1[index + 0] - v2[index + 0];
     float diff1 = v1[index + 1] - v2[index + 1];
     float diff2 = v1[index + 2] - v2[index + 2];
@@ -161,6 +179,18 @@ public final class VectorUtil {
         + diff5 * diff5
         + diff6 * diff6
         + diff7 * diff7;
+  }
+
+  /** Returns the sum of squared differences of the two vectors. */
+  public static float squareDistance(BytesRef a, BytesRef b) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int squareSum = 0;
+    int aOffset = a.offset, bOffset = b.offset;
+    for (int i = 0; i < a.length; i++) {
+      int diff = a.bytes[aOffset++] - b.bytes[bOffset++];
+      squareSum += diff * diff;
+    }
+    return squareSum;
   }
 
   /**
@@ -212,5 +242,54 @@ public final class VectorUtil {
     for (int i = 0; i < u.length; i++) {
       u[i] += v[i];
     }
+  }
+
+  /**
+   * Dot product computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static float dotProduct(BytesRef a, BytesRef b) {
+    assert a.length == b.length;
+    int total = 0;
+    int aOffset = a.offset, bOffset = b.offset;
+    for (int i = 0; i < a.length; i++) {
+      total += a.bytes[aOffset++] * b.bytes[bOffset++];
+    }
+    return total;
+  }
+
+  /**
+   * Dot product score computed over signed bytes, scaled to be in [0, 1].
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the similarity function applied to the two vectors
+   */
+  public static float dotProductScore(BytesRef a, BytesRef b) {
+    // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+    float denom = (float) (a.length * (1 << 15));
+    return 0.5f + dotProduct(a, b) / denom;
+  }
+
+  /**
+   * Convert a floating point vector to an array of bytes using casting; the vector values should be
+   * in [-128,127]
+   *
+   * @param vector a vector
+   * @return a new BytesRef containing the vector's values cast to byte.
+   */
+  public static BytesRef toBytesRef(float[] vector) {
+    BytesRef b = new BytesRef(new byte[vector.length]);
+    for (int i = 0; i < vector.length; i++) {
+      if (vector[i] < -128 || vector[i] > 127) {
+        throw new IllegalArgumentException(
+            "Vector value at " + i + " is out of range [-128.127]: " + vector[i]);
+      }
+      b.bytes[i] = (byte) vector[i];
+    }
+    return b;
   }
 }

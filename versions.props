@@ -1,4 +1,4 @@
-com.carrotsearch.randomizedtesting:*=2.8.0
+com.carrotsearch.randomizedtesting:*=2.8.1
 com.carrotsearch:hppc=0.9.1
 com.carrotsearch:procfork=1.0.6
 com.google.errorprone:*=2.10.0

@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -30,8 +29,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-abstract class OffHeapVectorValues extends VectorValues
-    implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+abstract class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
 
   protected final int dimension;
   protected final int size;
@@ -41,11 +39,11 @@ abstract class OffHeapVectorValues extends VectorValues
   protected final int byteSize;
   protected final float[] value;
 
-  OffHeapVectorValues(int dimension, int size, IndexInput slice) {
+  OffHeapVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
-    byteSize = Float.BYTES * dimension;
+    this.byteSize = byteSize;
     byteBuffer = ByteBuffer.allocate(byteSize);
     value = new float[dimension];
     binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
@@ -93,10 +91,16 @@ abstract class OffHeapVectorValues extends VectorValues
     }
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
+    int byteSize =
+        switch (fieldEntry.vectorEncoding) {
+          case BYTE -> fieldEntry.dimension;
+          case FLOAT32 -> fieldEntry.dimension * Float.BYTES;
+        };
     if (fieldEntry.docsWithFieldOffset == -1) {
-      return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice);
+      return new DenseOffHeapVectorValues(
+          fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
     } else {
-      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice);
+      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice, byteSize);
     }
   }
 
@@ -106,8 +110,8 @@ abstract class OffHeapVectorValues extends VectorValues
 
     private int doc = -1;
 
-    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice) {
-      super(dimension, size, slice);
+    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
+      super(dimension, size, slice, byteSize);
     }
 
     @Override
@@ -144,8 +148,8 @@ abstract class OffHeapVectorValues extends VectorValues
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
-      return new DenseOffHeapVectorValues(dimension, size, slice.clone());
+    public RandomAccessVectorValues copy() throws IOException {
+      return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
     }
 
     @Override
@@ -167,10 +171,13 @@ abstract class OffHeapVectorValues extends VectorValues
     private final Lucene94HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput dataIn, IndexInput slice)
+        Lucene94HnswVectorsReader.FieldEntry fieldEntry,
+        IndexInput dataIn,
+        IndexInput slice,
+        int byteSize)
         throws IOException {
 
-      super(fieldEntry.dimension, fieldEntry.size, slice);
+      super(fieldEntry.dimension, fieldEntry.size, slice, byteSize);
       this.fieldEntry = fieldEntry;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
@@ -217,8 +224,8 @@ abstract class OffHeapVectorValues extends VectorValues
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
-      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone());
+    public RandomAccessVectorValues copy() throws IOException {
+      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
     }
 
     @Override
@@ -248,7 +255,7 @@ abstract class OffHeapVectorValues extends VectorValues
   private static class EmptyOffHeapVectorValues extends OffHeapVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, null);
+      super(dimension, 0, null, 0);
     }
 
     private int doc = -1;
@@ -294,7 +301,7 @@ abstract class OffHeapVectorValues extends VectorValues
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() throws IOException {
+    public RandomAccessVectorValues copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 

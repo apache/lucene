@@ -28,19 +28,19 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 import org.apache.lucene.util.NumericUtils;
 
-// e.g. run like this: ant test -Dtestcase=Test2BBKDPoints -Dtests.nightly=true -Dtests.verbose=true
+// e.g. run like this: ant test -Dtestcase=Test4BBKDPoints -Dtests.nightly=true -Dtests.verbose=true
 // -Dtests.monster=true
 //
 //   or: python -u /l/util/src/python/repeatLuceneTest.py -heap 4g -once -nolog -tmpDir /b/tmp
-// -logDir /l/logs Test2BBKDPoints.test2D -verbose
+// -logDir /l/logs Test4BBKDPoints.test2D -verbose
 
 @TimeoutSuite(millis = Integer.MAX_VALUE) // hopefully ~24 days is long enough ;)
 @Monster("takes at least 4 hours and consumes many GB of temp disk space")
-public class Test2BBKDPoints extends LuceneTestCase {
+public class Test4BBKDPoints extends LuceneTestCase {
   public void test1D() throws Exception {
-    Directory dir = FSDirectory.open(createTempDir("2BBKDPoints1D"));
+    Directory dir = FSDirectory.open(createTempDir("4BBKDPoints1D"));
 
-    final int numDocs = (Integer.MAX_VALUE / 26) + 100;
+    final int numDocs = (Integer.MAX_VALUE / 13) + 100;
 
     BKDWriter w =
         new BKDWriter(
@@ -83,9 +83,9 @@ public class Test2BBKDPoints extends LuceneTestCase {
   }
 
   public void test2D() throws Exception {
-    Directory dir = FSDirectory.open(createTempDir("2BBKDPoints2D"));
+    Directory dir = FSDirectory.open(createTempDir("4BBKDPoints2D"));
 
-    final int numDocs = (Integer.MAX_VALUE / 26) + 100;
+    final int numDocs = (Integer.MAX_VALUE / 13) + 100;
 
     BKDWriter w =
         new BKDWriter(

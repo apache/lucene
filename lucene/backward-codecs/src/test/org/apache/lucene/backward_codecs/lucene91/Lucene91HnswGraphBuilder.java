@@ -24,7 +24,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
@@ -55,7 +55,7 @@ public final class Lucene91HnswGraphBuilder {
   private final RandomAccessVectorValues vectorValues;
   private final SplittableRandom random;
   private final Lucene91BoundsChecker bound;
-  private final HnswGraphSearcher graphSearcher;
+  private final HnswGraphSearcher<float[]> graphSearcher;
 
   final Lucene91OnHeapHnswGraph hnsw;
 
@@ -78,14 +78,14 @@ public final class Lucene91HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene91HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors,
+      RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
       long seed)
       throws IOException {
-    vectorValues = vectors.randomAccess();
-    buildVectors = vectors.randomAccess();
+    vectorValues = vectors.copy();
+    buildVectors = vectors.copy();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -101,7 +101,8 @@ public final class Lucene91HnswGraphBuilder {
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
     this.hnsw = new Lucene91OnHeapHnswGraph(maxConn, levelOfFirstNode);
     this.graphSearcher =
-        new HnswGraphSearcher(
+        new HnswGraphSearcher<>(
+            VectorEncoding.FLOAT32,
             similarityFunction,
             new NeighborQueue(beamWidth, true),
             new FixedBitSet(vectorValues.size()));

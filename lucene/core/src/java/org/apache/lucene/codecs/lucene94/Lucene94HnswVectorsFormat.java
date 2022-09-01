@@ -38,8 +38,9 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  * <p>For each field:
  *
  * <ul>
- *   <li>Floating-point vector data ordered by field, document ordinal, and vector dimension. The
- *       floats are stored in little-endian byte order
+ *   <li>Vector data ordered by field, document ordinal, and vector dimension. When the
+ *       vectorEncoding is BYTE, each sample is stored as a single byte. When it is FLOAT32, each
+ *       sample is stored as an IEEE float in little-endian byte order.
  *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
  *       note that only in sparse case
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
@@ -89,7 +90,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *       <ul>
  *         <li><b>[int]</b> the number of nodes on this level
  *         <li><b>array[int]</b> for levels greater than 0 list of nodes on this level, stored as
- *             the the level 0th nodes ordinals.
+ *             the level 0th nodes' ordinals.
  *       </ul>
  * </ul>
  *
@@ -104,8 +105,8 @@ public final class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
 
-  static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  public static final int VERSION_START = 0;
+  public static final int VERSION_CURRENT = 1;
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
