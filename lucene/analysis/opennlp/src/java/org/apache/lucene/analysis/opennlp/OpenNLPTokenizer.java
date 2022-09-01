@@ -24,6 +24,7 @@ import org.apache.lucene.analysis.opennlp.tools.NLPTokenizerOp;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.analysis.tokenattributes.SentenceAttribute;
 import org.apache.lucene.analysis.util.SegmentingTokenizerBase;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.IgnoreRandomChains;
@@ -38,12 +39,14 @@ public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
   public static int EOS_FLAG_BIT = 1;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
+  private final SentenceAttribute sentenceAtt = addAttribute(SentenceAttribute.class);
+  private final FlagsAttribute flagsAtt = addAttribute(FlagsAttribute.class);
 
   private Span[] termSpans = null;
   private int termNum = 0;
   private int sentenceStart = 0;
+  private int sentenceIndex = -1;
 
   private NLPTokenizerOp tokenizerOp = null;
 
@@ -71,6 +74,7 @@ public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
     String sentenceText = new String(buffer, sentenceStart, sentenceEnd - sentenceStart);
     termSpans = tokenizerOp.getTerms(sentenceText);
     termNum = 0;
+    sentenceIndex++;
   }
 
   @Override
@@ -84,10 +88,11 @@ public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
     offsetAtt.setOffset(
         correctOffset(offset + sentenceStart + term.getStart()),
         correctOffset(offset + sentenceStart + term.getEnd()));
+    sentenceAtt.setSentence(sentenceIndex);
     if (termNum == termSpans.length - 1) {
       flagsAtt.setFlags(
-          flagsAtt.getFlags()
-              | EOS_FLAG_BIT); // mark the last token in the sentence with EOS_FLAG_BIT
+              flagsAtt.getFlags()
+                      | EOS_FLAG_BIT); // mark the last token in the sentence with EOS_FLAG_BIT
     }
     ++termNum;
     return true;
@@ -98,5 +103,6 @@ public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
     super.reset();
     termSpans = null;
     termNum = sentenceStart = 0;
+    sentenceIndex = -1;
   }
 }
