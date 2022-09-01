@@ -101,6 +101,9 @@ Improvements
 ---------------------
 * LUCENE-10592: Build HNSW Graph on indexing. (Mayya Sharipova, Adrien Grand, Julie Tibshirani)
 
+* LUCENE-10207: TermInSetQuery can now provide a ScoreSupplier with cost estimation, making it
+  usable in IndexOrDocValuesQuery. (Greg Miller)
+
 * GITHUB#11715: Add Integer awareness to RamUsageEstimator.sizeOf (Mike Drob)
 
 Optimizations
