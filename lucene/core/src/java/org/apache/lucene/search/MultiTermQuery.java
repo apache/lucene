@@ -275,6 +275,14 @@ public abstract class MultiTermQuery extends Query {
   }
 
   /**
+   * Return the number of unique terms contained in this query, if known up-front. If not known, -1
+   * will be returned.
+   */
+  public long getTermsCount() throws IOException {
+    return -1;
+  }
+
+  /**
    * To rewrite to a simpler form, instead return a simpler enum from {@link #getTermsEnum(Terms,
    * AttributeSource)}. For example, to rewrite to a single term, return a {@link SingleTermsEnum}
    */
