@@ -4,6 +4,7 @@ import org.apache.lucene.util.Attribute;
 
 /**
  * This attribute tracks what sentence a given token belongs to
+ * as well as potentially other sentence specific attributes.
  */
 public interface SentenceAttribute extends Attribute {
 
@@ -11,14 +12,14 @@ public interface SentenceAttribute extends Attribute {
      * Get the sentence index for the current token
      *
      * @return The index of the sentence
-     * @see #getSentence()
+     * @see #getSentenceIndex()
      */
-    int getSentence();
+    int getSentenceIndex();
 
     /**
      * Set the sentence of the current token
      *
-     * @see #setSentence(int sentenceIndex)
+     * @see #setSentenceIndex(int sentenceIndex)
      */
-    void setSentence(int sentenceIndex);
+    void setSentenceIndex(int sentenceIndex);
 }

@@ -27,7 +27,7 @@ public class SentenceAttributeExtractor {
         boolean hasNext;
         do {
             moreTokensAvailable = input.incrementToken();
-            int currSentenceTmp = sentenceAtt.getSentence();
+            int currSentenceTmp = sentenceAtt.getSentenceIndex();
             hasNext = currSentence == currSentenceTmp && moreTokensAvailable;
             currSentence = currSentenceTmp;
             if (prevAttributeSource != null) {

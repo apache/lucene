@@ -34,11 +34,8 @@ import java.util.List;
 @IgnoreRandomChains(reason = "LUCENE-10352: add argument providers for this one")
 public final class OpenNLPPOSFilter extends TokenFilter {
 
-  String[] tags = null;
   private int tokenNum = 0;
-
   private final NLPPOSTaggerOp posTaggerOp;
-  private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
   private final SentenceAttributeExtractor sentenceAttributeExtractor;
 
   public OpenNLPPOSFilter(TokenStream input, NLPPOSTaggerOp posTaggerOp) {
@@ -53,12 +50,11 @@ public final class OpenNLPPOSFilter extends TokenFilter {
     boolean readNextSentence = tokenNum >= sentenceTokenAttrs.size() && sentenceAttributeExtractor.areMoreTokensAvailable();
     if (readNextSentence) {
       String[] sentenceTokens = nextSentence();
-      tags = posTaggerOp.getPOSTags(sentenceTokens);
+      assignTokenTypes(posTaggerOp.getPOSTags(sentenceTokens));
     }
-    if (tokenNum < tags.length) {
+    if (tokenNum < sentenceTokenAttrs.size()) {
       clearAttributes();
-      sentenceTokenAttrs.get(tokenNum).copyTo(this);
-      typeAtt.setType(tags[tokenNum++]);
+      sentenceTokenAttrs.get(tokenNum++).copyTo(this);
       return true;
     }
     return false;
@@ -73,6 +69,12 @@ public final class OpenNLPPOSFilter extends TokenFilter {
     return termList.size() > 0 ? termList.toArray(new String[0]) : null;
   }
 
+  private void assignTokenTypes(String[] tags) {
+    for (int i = 0; i < tags.length; ++i) {
+      sentenceAttributeExtractor.getSentenceAttributes().get(i).getAttribute(TypeAttribute.class).setType(tags[i]);
+    }
+  }
+
   @Override
   public void reset() throws IOException {
     super.reset();
@@ -81,7 +83,6 @@ public final class OpenNLPPOSFilter extends TokenFilter {
   }
 
   private void clear() {
-    tags = null;
     tokenNum = 0;
   }
 }

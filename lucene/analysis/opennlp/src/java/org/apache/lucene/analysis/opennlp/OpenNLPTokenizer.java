@@ -88,7 +88,7 @@ public final class OpenNLPTokenizer extends SegmentingTokenizerBase {
     offsetAtt.setOffset(
         correctOffset(offset + sentenceStart + term.getStart()),
         correctOffset(offset + sentenceStart + term.getEnd()));
-    sentenceAtt.setSentence(sentenceIndex);
+    sentenceAtt.setSentenceIndex(sentenceIndex);
     if (termNum == termSpans.length - 1) {
       flagsAtt.setFlags(
               flagsAtt.getFlags()
