@@ -382,12 +382,10 @@ public class TermInSetQuery extends Query implements Accountable {
           @Override
           public Scorer get(long leadCost) throws IOException {
             WeightOrDocIdSet weightOrDocIdSet = rewrite(context);
-            if (weightOrDocIdSet == null) {
-              return null;
-            }
-
             final Scorer scorer;
-            if (weightOrDocIdSet.weight != null) {
+            if (weightOrDocIdSet == null) {
+              scorer = null;
+            } else if (weightOrDocIdSet.weight != null) {
               scorer = weightOrDocIdSet.weight.scorer(context);
             } else {
               scorer = scorer(weightOrDocIdSet.set);
