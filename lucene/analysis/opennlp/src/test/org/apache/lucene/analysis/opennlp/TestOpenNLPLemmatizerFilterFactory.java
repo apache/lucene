@@ -306,7 +306,7 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
             .build();
     assertAnalyzesTo(
         analyzer,
-            NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD,
+        NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD,
         NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD_terms,
         null,
         null,
