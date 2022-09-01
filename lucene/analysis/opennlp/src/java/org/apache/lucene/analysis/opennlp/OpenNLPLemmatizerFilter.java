@@ -64,7 +64,7 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
     if (readNextSentence) {
       nextSentence();
     }
-    if (lemmaNum < lemmas.length || sentenceAttributeExtractor.areMoreTokensAvailable()) {
+    if (lemmaNum < lemmas.length) {
       clearAttributes();
       sentenceTokenAttrsIter.next().copyTo(this);
       if (!keywordAtt.isKeyword()) {
