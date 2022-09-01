@@ -7,7 +7,7 @@ import org.apache.lucene.util.AttributeReflector;
  * Default implementation of {@link SentenceAttribute}.
  *
  * <p>The current implementation is coincidentally identical to {@link FlagsAttributeImpl} It was
- * decided to keep it separate because this attribute will NOT be an implied bitmap Also this class
+ * decided to keep it separate because this attribute will NOT be an implied bitmap. Also, this class
  * may hold other sentence specific data in the future.
  */
 public class SentenceAttributeImpl extends AttributeImpl implements SentenceAttribute {
