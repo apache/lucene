@@ -3,59 +3,61 @@ package org.apache.lucene.analysis.tokenattributes;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
-/** Default implementation of {@link SentenceAttribute}.
- * <p>The current implementation is coincidentally identical to {@link FlagsAttributeImpl}
- * It was decided to keep it separate because this attribute will NOT be an implied bitmap
- * Also this class may hold other sentence specific data in the future.
- * */
+/**
+ * Default implementation of {@link SentenceAttribute}.
+ *
+ * <p>The current implementation is coincidentally identical to {@link FlagsAttributeImpl} It was
+ * decided to keep it separate because this attribute will NOT be an implied bitmap Also this class
+ * may hold other sentence specific data in the future.
+ */
 public class SentenceAttributeImpl extends AttributeImpl implements SentenceAttribute {
-    private static final int NO_SENTENCE = 0;
-    private int sentence = NO_SENTENCE;
+  private static final int NO_SENTENCE = 0;
+  private int sentence = NO_SENTENCE;
 
-    /** Initialize this attribute to default */
-    public SentenceAttributeImpl() {}
+  /** Initialize this attribute to default */
+  public SentenceAttributeImpl() {}
 
-    @Override
-    public void clear() {
-        sentence = NO_SENTENCE;
+  @Override
+  public void clear() {
+    sentence = NO_SENTENCE;
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (this == other) {
+      return true;
     }
 
-    @Override
-    public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        }
-
-        if (other instanceof SentenceAttributeImpl) {
-            return ((SentenceAttributeImpl) other).sentence == sentence;
-        }
-
-        return false;
+    if (other instanceof SentenceAttributeImpl) {
+      return ((SentenceAttributeImpl) other).sentence == sentence;
     }
 
-    @Override
-    public int hashCode() {
-        return sentence;
-    }
+    return false;
+  }
 
-    @Override
-    public void copyTo(AttributeImpl target) {
-        SentenceAttribute t = (SentenceAttribute) target;
-        t.setSentenceIndex(sentence);
-    }
+  @Override
+  public int hashCode() {
+    return sentence;
+  }
 
-    @Override
-    public void reflectWith(AttributeReflector reflector) {
-        reflector.reflect(SentenceAttribute.class, "sentences", sentence);
-    }
+  @Override
+  public void copyTo(AttributeImpl target) {
+    SentenceAttribute t = (SentenceAttribute) target;
+    t.setSentenceIndex(sentence);
+  }
 
-    @Override
-    public int getSentenceIndex() {
-        return sentence;
-    }
+  @Override
+  public void reflectWith(AttributeReflector reflector) {
+    reflector.reflect(SentenceAttribute.class, "sentences", sentence);
+  }
 
-    @Override
-    public void setSentenceIndex(int sentence) {
-        this.sentence = sentence;
-    }
+  @Override
+  public int getSentenceIndex() {
+    return sentence;
+  }
+
+  @Override
+  public void setSentenceIndex(int sentence) {
+    this.sentence = sentence;
+  }
 }
