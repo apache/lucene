@@ -108,9 +108,9 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
     "IN", "IN", "JJ", "JJ", "NN", "VBN", "VBN", ".", "NNP", "NNP", "VBN", "NN", ",", "NN", "."
   };
 
-  private static final String NO_BREAK_REPEAT_KEYWORD = "period";
+  private static final String NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD = "period";
 
-  private static final String[] NO_BREAK_REPEAT_KEYWORD_terms = {"period", "period"};
+  private static final String[] NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD_terms = {"period", "period"};
 
   private static final String tokenizerModelFile = "en-test-tokenizer.bin";
   private static final String sentenceModelFile = "en-test-sent.bin";
@@ -306,8 +306,8 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
             .build();
     assertAnalyzesTo(
         analyzer,
-        NO_BREAK_REPEAT_KEYWORD,
-        NO_BREAK_REPEAT_KEYWORD_terms,
+            NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD,
+        NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD_terms,
         null,
         null,
         null,
