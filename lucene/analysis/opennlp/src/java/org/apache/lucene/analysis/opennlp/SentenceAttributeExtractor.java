@@ -24,6 +24,10 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.SentenceAttribute;
 import org.apache.lucene.util.AttributeSource;
 
+/**
+ * Iterate through sentence tokens and cache their attributes. Could consider moving this to a more
+ * central location to be used by other sentence-aware components.
+ */
 public class SentenceAttributeExtractor {
 
   private final TokenStream input;
