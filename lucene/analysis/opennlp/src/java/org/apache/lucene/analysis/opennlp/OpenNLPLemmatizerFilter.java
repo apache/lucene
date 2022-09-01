@@ -47,8 +47,6 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
   private final KeywordAttribute keywordAtt = addAttribute(KeywordAttribute.class);
   private Iterator<AttributeSource> sentenceTokenAttrsIter = null;
   private final SentenceAttributeExtractor sentenceAttributeExtractor;
-  private String[] sentenceTokens = null; // non-keyword tokens
-  private String[] sentenceTokenTypes = null; // types for non-keyword tokens
   private String[] lemmas = null; // lemmas for non-keyword tokens
   private int lemmaNum = 0; // lemma counter
 
@@ -86,8 +84,8 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
         typeList.add(attributeSource.getAttribute(TypeAttribute.class).type());
       }
     }
-    sentenceTokens = tokenList.size() > 0 ? tokenList.toArray(new String[0]) : null;
-    sentenceTokenTypes = typeList.size() > 0 ? typeList.toArray(new String[0]) : null;
+    String[] sentenceTokens = tokenList.size() > 0 ? tokenList.toArray(new String[0]) : null;
+    String[] sentenceTokenTypes = typeList.size() > 0 ? typeList.toArray(new String[0]) : null;
     lemmas = lemmatizerOp.lemmatize(sentenceTokens, sentenceTokenTypes);
     sentenceTokenAttrsIter = sentenceAttributes.iterator();
   }
@@ -101,8 +99,6 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
 
   private void clear() {
     sentenceTokenAttrsIter = null;
-    sentenceTokens = null;
-    sentenceTokenTypes = null;
     lemmas = null;
     lemmaNum = 0;
   }
