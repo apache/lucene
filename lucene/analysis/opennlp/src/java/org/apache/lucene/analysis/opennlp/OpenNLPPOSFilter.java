@@ -17,6 +17,9 @@
 
 package org.apache.lucene.analysis.opennlp;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.opennlp.tools.NLPPOSTaggerOp;
@@ -25,10 +28,6 @@ import org.apache.lucene.analysis.tokenattributes.SentenceAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IgnoreRandomChains;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /** Run OpenNLP POS tagger. Tags all terms in the TypeAttribute. */
 @IgnoreRandomChains(reason = "LUCENE-10352: add argument providers for this one")
@@ -41,13 +40,16 @@ public final class OpenNLPPOSFilter extends TokenFilter {
   public OpenNLPPOSFilter(TokenStream input, NLPPOSTaggerOp posTaggerOp) {
     super(input);
     this.posTaggerOp = posTaggerOp;
-    sentenceAttributeExtractor = new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
+    sentenceAttributeExtractor =
+        new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
   }
 
   @Override
   public boolean incrementToken() throws IOException {
     List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
-    boolean readNextSentence = tokenNum >= sentenceTokenAttrs.size() && sentenceAttributeExtractor.areMoreTokensAvailable();
+    boolean readNextSentence =
+        tokenNum >= sentenceTokenAttrs.size()
+            && sentenceAttributeExtractor.areMoreTokensAvailable();
     if (readNextSentence) {
       String[] sentenceTokens = nextSentence();
       assignTokenTypes(posTaggerOp.getPOSTags(sentenceTokens));
@@ -71,7 +73,11 @@ public final class OpenNLPPOSFilter extends TokenFilter {
 
   private void assignTokenTypes(String[] tags) {
     for (int i = 0; i < tags.length; ++i) {
-      sentenceAttributeExtractor.getSentenceAttributes().get(i).getAttribute(TypeAttribute.class).setType(tags[i]);
+      sentenceAttributeExtractor
+          .getSentenceAttributes()
+          .get(i)
+          .getAttribute(TypeAttribute.class)
+          .setType(tags[i]);
     }
   }
 

@@ -297,14 +297,22 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
 
   public void testNoBreakWithRepeatKeywordFilter() throws Exception {
     CustomAnalyzer analyzer =
-            CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
-                    .withTokenizer(
-                            "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
-                    .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
-                    .addTokenFilter(KeywordRepeatFilterFactory.class)
-                    .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
-                    .build();
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
+            .addTokenFilter(KeywordRepeatFilterFactory.class)
+            .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
+            .build();
     assertAnalyzesTo(
-            analyzer, NO_BREAK_REPEAT_KEYWORD, NO_BREAK_REPEAT_KEYWORD_terms, null, null, null, null, null, true);
+        analyzer,
+        NO_BREAK_REPEAT_KEYWORD,
+        NO_BREAK_REPEAT_KEYWORD_terms,
+        null,
+        null,
+        null,
+        null,
+        null,
+        true);
   }
 }

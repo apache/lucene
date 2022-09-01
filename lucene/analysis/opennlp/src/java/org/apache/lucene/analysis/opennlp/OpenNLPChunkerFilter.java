@@ -17,6 +17,9 @@
 
 package org.apache.lucene.analysis.opennlp;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.opennlp.tools.NLPChunkerOp;
@@ -25,10 +28,6 @@ import org.apache.lucene.analysis.tokenattributes.SentenceAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IgnoreRandomChains;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Run OpenNLP chunker. Prerequisite: the OpenNLPTokenizer and OpenNLPPOSFilter must precede this
@@ -46,13 +45,16 @@ public final class OpenNLPChunkerFilter extends TokenFilter {
   public OpenNLPChunkerFilter(TokenStream input, NLPChunkerOp chunkerOp) {
     super(input);
     this.chunkerOp = chunkerOp;
-    sentenceAttributeExtractor = new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
+    sentenceAttributeExtractor =
+        new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
   }
 
   @Override
   public boolean incrementToken() throws IOException {
     List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
-    boolean readNextSentence = tokenNum >= sentenceTokenAttrs.size() && sentenceAttributeExtractor.areMoreTokensAvailable();
+    boolean readNextSentence =
+        tokenNum >= sentenceTokenAttrs.size()
+            && sentenceAttributeExtractor.areMoreTokensAvailable();
     if (readNextSentence) {
       nextSentence();
       assignTokenTypes(chunkerOp.getChunks(sentenceTerms, sentenceTermPOSTags, null));
@@ -74,13 +76,16 @@ public final class OpenNLPChunkerFilter extends TokenFilter {
       posTagList.add(attributeSource.getAttribute(TypeAttribute.class).type());
     }
     sentenceTerms = termList.size() > 0 ? termList.toArray(new String[0]) : null;
-    sentenceTermPOSTags =
-        posTagList.size() > 0 ? posTagList.toArray(new String[0]) : null;
+    sentenceTermPOSTags = posTagList.size() > 0 ? posTagList.toArray(new String[0]) : null;
   }
 
   private void assignTokenTypes(String[] tags) {
     for (int i = 0; i < tags.length; ++i) {
-      sentenceAttributeExtractor.getSentenceAttributes().get(i).getAttribute(TypeAttribute.class).setType(tags[i]);
+      sentenceAttributeExtractor
+          .getSentenceAttributes()
+          .get(i)
+          .getAttribute(TypeAttribute.class)
+          .setType(tags[i]);
     }
   }
 

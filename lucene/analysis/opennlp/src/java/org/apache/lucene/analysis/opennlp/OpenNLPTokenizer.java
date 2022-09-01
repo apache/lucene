@@ -17,6 +17,7 @@
 
 package org.apache.lucene.analysis.opennlp;
 
+import java.io.IOException;
 import opennlp.tools.util.Span;
 import org.apache.lucene.analysis.opennlp.tools.NLPSentenceDetectorOp;
 import org.apache.lucene.analysis.opennlp.tools.NLPTokenizerOp;
@@ -27,11 +28,9 @@ import org.apache.lucene.analysis.util.SegmentingTokenizerBase;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.IgnoreRandomChains;
 
-import java.io.IOException;
-
 /**
- * Run OpenNLP SentenceDetector and Tokenizer.
- * The index of each sentence is stored in SentenceAttribute.
+ * Run OpenNLP SentenceDetector and Tokenizer. The index of each sentence is stored in
+ * SentenceAttribute.
  */
 @IgnoreRandomChains(reason = "LUCENE-10352: add argument providers for this one")
 public final class OpenNLPTokenizer extends SegmentingTokenizerBase {

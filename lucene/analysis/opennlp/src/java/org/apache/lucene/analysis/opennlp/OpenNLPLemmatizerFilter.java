@@ -17,17 +17,16 @@
 
 package org.apache.lucene.analysis.opennlp;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.opennlp.tools.NLPLemmatizerOp;
 import org.apache.lucene.analysis.tokenattributes.*;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IgnoreRandomChains;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 /**
  * Runs OpenNLP dictionary-based and/or MaxEnt lemmatizers.
@@ -53,12 +52,14 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
   public OpenNLPLemmatizerFilter(TokenStream input, NLPLemmatizerOp lemmatizerOp) {
     super(input);
     this.lemmatizerOp = lemmatizerOp;
-    sentenceAttributeExtractor = new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
+    sentenceAttributeExtractor =
+        new SentenceAttributeExtractor(input, addAttribute(SentenceAttribute.class));
   }
 
   @Override
   public final boolean incrementToken() throws IOException {
-    boolean readNextSentence = lemmaNum >= lemmas.length && sentenceAttributeExtractor.areMoreTokensAvailable();
+    boolean readNextSentence =
+        lemmaNum >= lemmas.length && sentenceAttributeExtractor.areMoreTokensAvailable();
     if (readNextSentence) {
       nextSentence();
     }
@@ -77,7 +78,8 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
     lemmaNum = 0;
     List<String> tokenList = new ArrayList<>();
     List<String> typeList = new ArrayList<>();
-    List<AttributeSource> sentenceAttributes = sentenceAttributeExtractor.extractSentenceAttributes();
+    List<AttributeSource> sentenceAttributes =
+        sentenceAttributeExtractor.extractSentenceAttributes();
     for (AttributeSource attributeSource : sentenceAttributes) {
       if (!attributeSource.getAttribute(KeywordAttribute.class).isKeyword()) {
         tokenList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
