@@ -117,6 +117,8 @@ API Changes
 * GITHUB#12173: TermInSetQuery#getTermData has been deprecated. This exposes internal implementation details that we
   may want to change in the future, and users shouldn't rely on the encoding directly. (Greg Miller)
 
+* GITHUB#11746: Deprecate LongValueFacetCounts#getTopChildrenSortByCount. (Greg Miller)
+
 New Features
 ---------------------
 
