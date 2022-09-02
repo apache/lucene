@@ -249,8 +249,8 @@ groups:
       The ID is the last 8 bytes of your key fingerprint, e.g. 0D8D0B93.
 
       * Make sure your gpg key is 4096 bits key or larger
-      * Upload your key to the MIT key server, pgp.mit.edu
-      * Put you GPG key's fingerprint in the `OpenPGP Public Key Primary Fingerprint`
+      * Upload your key to a key server: pgp.mit.edu or keys.openpgp.org
+      * Put your GPG key's fingerprint in the `OpenPGP Public Key Primary Fingerprint`
         field in your id.apache.org profile
       * The tests will complain if your GPG key has not been signed by another Lucene
         committer. This makes you a part of the GPG "web of trust" (WoT). Ask a committer
@@ -262,24 +262,15 @@ groups:
     - http://www.apache.org/dev/openpgp.html#apache-wot
     - https://id.apache.org
     - https://dist.apache.org/repos/dist/release/lucene/KEYS
-  - !Todo
-    id: jira_permissions
-    title: Obtain the neccessary permissions for Apache Jira
-    description: |-
-      If you are not a PMC member and this is your first time as RM, please ask to be granted extra permissions in Jira in order to complete all steps of the release.
-
-      If you are a PMC member, you will already have the necessary permissions.
-    links:
-      - https://issues.apache.org/jira/projects/LUCENE
 - !TodoGroup
   id: preparation
   title: Prepare for the release
   description: Work with the community to decide when the release will happen and what work must be completed before it can happen
   todos:
   - !Todo
-    id: decide_jira_issues
-    title: Select JIRA issues to be included
-    description: Set the appropriate "Fix Version" in JIRA for the issues that should be included in the release.
+    id: decide_github_issues
+    title: Select issues to be included
+    description: Set the appropriate "Milestone" in Github for the issues that should be included in the release.
   - !Todo
     id: fix_build_failures
     title: Look into common build failures
@@ -503,8 +494,8 @@ groups:
       * No new features may be committed to the branch.
       * Documentation patches, build patches and serious bug fixes may be
         committed to the branch. However, you should submit all patches you
-        want to commit to Jira first to give others the chance to review
-        and possibly vote against the patch. Keep in mind that it is our
+        want to commit as pull requests first to give others the chance to review
+        and possibly vote against them. Keep in mind that it is our
         main intention to keep the branch as stable as possible.
       * All patches that are intended for the branch should first be committed
         to the unstable branch, merged into the stable branch, and then into
@@ -514,8 +505,8 @@ groups:
         while the branch feature freeze is in effect, think twice: can't the
         addition wait a couple more days? Merges of bug fixes into the branch
         may become more difficult.
-      * Only Jira issues with Fix version {{ release_version_major }}.{{ release_version_minor }} and priority "Blocker" will delay
-        a release candidate build.
+      * Only Github issues with Milestone {{ release_version_major }}.{{ release_version_minor }}
+        and priority "Blocker" will delay a release candidate build.
       ----
     types:
     - major
