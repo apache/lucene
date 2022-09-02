@@ -731,13 +731,14 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   /** Produces random vectors and caches them for random-access. */
-  static class RandomVectorValues extends MockVectorValues {
+  public static class RandomVectorValues extends MockVectorValues {
 
     RandomVectorValues(int size, int dimension, Random random) {
       super(createRandomVectors(size, dimension, null, random));
     }
 
-    RandomVectorValues(int size, int dimension, VectorEncoding vectorEncoding, Random random) {
+    public RandomVectorValues(
+        int size, int dimension, VectorEncoding vectorEncoding, Random random) {
       super(createRandomVectors(size, dimension, vectorEncoding, random));
     }
 

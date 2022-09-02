@@ -46,7 +46,7 @@ public class NeighborArray {
    * nodes.
    */
   public void add(int newNode, float newScore) {
-    if (size == node.length - 1) {
+    if (size == node.length) {
       node = ArrayUtil.grow(node, (size + 1) * 3 / 2);
       score = ArrayUtil.growExact(score, node.length);
     }
@@ -63,7 +63,7 @@ public class NeighborArray {
 
   /** Add a new node to the NeighborArray into a correct sort position according to its score. */
   public void insertSorted(int newNode, float newScore) {
-    if (size == node.length - 1) {
+    if (size == node.length) {
       node = ArrayUtil.grow(node, (size + 1) * 3 / 2);
       score = ArrayUtil.growExact(score, node.length);
     }
@@ -104,8 +104,8 @@ public class NeighborArray {
   }
 
   public void removeIndex(int idx) {
-    System.arraycopy(node, idx + 1, node, idx, size - idx);
-    System.arraycopy(score, idx + 1, score, idx, size - idx);
+    System.arraycopy(node, idx + 1, node, idx, size - idx - 1);
+    System.arraycopy(score, idx + 1, score, idx, size - idx - 1);
     size--;
   }
 
