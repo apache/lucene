@@ -17,22 +17,115 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 
 public class TestDocValuesQueries extends LuceneTestCase {
+
+  public void testDuelTermInSetSortedSetQuery() throws IOException {
+    doTestDuelTermInSetQuery(true, 1);
+  }
+
+  public void testDuelTermInSetSortedSetMultivaluedQuery() throws IOException {
+    doTestDuelTermInSetQuery(true, 3);
+  }
+
+  public void testDuelTermInSetSortedSetQueryNoTermsIndexed() throws IOException {
+    doTestDuelTermInSetQuery(true, 0);
+  }
+
+  public void testDuelTermInSetSortedQuery() throws IOException {
+    doTestDuelTermInSetQuery(false, 1);
+  }
+
+  public void testDuelTermInSetSortedQueryNoTermsIndexed() throws IOException {
+    doTestDuelTermInSetQuery(false, 0);
+  }
+
+  private void doTestDuelTermInSetQuery(boolean sortedSet, int maxValuesPerDoc) throws IOException {
+    assert sortedSet || maxValuesPerDoc < 2;
+
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      final List<BytesRef> randomTerms = new ArrayList<>();
+      final int numTerms = TestUtil.nextInt(random(), 1, 100);
+      for (int i = 0; i < numTerms; i++) {
+        randomTerms.add(new BytesRef(TestUtil.randomAnalysisString(random(), 10, true)));
+      }
+      Directory dir = newDirectory();
+      RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+      final int numDocs = atLeast(100);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        final int numValues = TestUtil.nextInt(random(), 0, maxValuesPerDoc);
+        for (int j = 0; j < numValues; ++j) {
+          final BytesRef term = randomTerms.get(random().nextInt(numTerms));
+          if (sortedSet) {
+            doc.add(new SortedSetDocValuesField("dv", term));
+          } else {
+            doc.add(new SortedDocValuesField("dv", term));
+          }
+          doc.add(new StringField("idx", term, Field.Store.NO));
+        }
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        iw.deleteDocuments(new TermQuery(new Term("idx", randomTerms.get(0))));
+      }
+      final IndexReader reader = iw.getReader();
+      final IndexSearcher searcher = newSearcher(reader, false);
+      iw.close();
+
+      if (reader.numDocs() == 0) {
+        // should be very rare, but just in case all docs got the same term, and we deleted docs
+        // with that term:
+        IOUtils.close(reader, dir);
+        continue;
+      }
+
+      for (int i = 0; i < 100; ++i) {
+        final List<BytesRef> queryTerms = new ArrayList<>();
+        final int numQueryTerms = TestUtil.nextInt(random(), 1, 100);
+        for (int j = 0; j < numQueryTerms; j++) {
+          if (random().nextInt(10) < 2) {
+            // sometimes include a term we didn't index
+            queryTerms.add(new BytesRef(TestUtil.randomAnalysisString(random(), 10, true)));
+          } else {
+            queryTerms.add(randomTerms.get(random().nextInt(numTerms)));
+          }
+        }
+        final Query q1 = new TermInSetQuery("idx", queryTerms);
+        final Query q2;
+        if (sortedSet) {
+          q2 = SortedSetDocValuesField.newSlowTermInSetQuery("dv", queryTerms);
+        } else {
+          q2 = SortedDocValuesField.newSlowTermInSetQuery("dv", queryTerms);
+        }
+        assertSameMatches(searcher, q1, q2, false);
+      }
+
+      IOUtils.close(reader, dir);
+    }
+  }
 
   public void testDuelPointRangeSortedNumericRangeQuery() throws IOException {
     doTestDuelPointRangeNumericRangeQuery(true, 1);
