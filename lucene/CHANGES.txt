@@ -9,6 +9,8 @@ API Changes
 ---------------------
 * LUCENE-10577: Add VectorEncoding to enable byte-encoded HNSW vectors (Michael Sokolov, Julie Tibshirani)
 
+* GITHUB#11746: Deprecate LongValueFacetCounts#getTopChildrenSortByCount. (Greg Miller)
+
 New Features
 ---------------------
 * LUCENE-10654: Add new ShapeDocValuesField for LatLonShape and XYShape. (Nick Knize)
