@@ -285,7 +285,8 @@ public class TermInSetQuery extends Query implements Accountable {
        * On the given leaf context, try to either rewrite to a disjunction if there are few matching
        * terms, or build a bitset containing matching docs.
        */
-      private WeightOrDocIdSet rewrite(LeafReaderContext context, List<TermAndState> collectedTerms) throws IOException {
+      private WeightOrDocIdSet rewrite(LeafReaderContext context, List<TermAndState> collectedTerms)
+          throws IOException {
         final LeafReader reader = context.reader();
 
         // We will first try to collect up to 'threshold' terms into 'matchingTerms'
