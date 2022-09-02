@@ -22,25 +22,20 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.SortedSet;
+import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermState;
-import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
@@ -49,8 +44,8 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 
 /**
- * Specialization for a disjunction over many terms that behaves like a {@link ConstantScoreQuery}
- * over a {@link BooleanQuery} containing only {@link
+ * Specialization for a disjunction over many terms that, by default, behaves like a {@link
+ * ConstantScoreQuery} over a {@link BooleanQuery} containing only {@link
  * org.apache.lucene.search.BooleanClause.Occur#SHOULD} clauses.
  *
  * <p>For instance in the following example, both {@code q1} and {@code q2} would yield the same
@@ -65,13 +60,16 @@ import org.apache.lucene.util.automaton.Operations;
  * Query q2 = new ConstantScoreQuery(bq);
  * </pre>
  *
- * <p>When there are few terms, this query executes like a regular disjunction. However, when there
- * are many terms, instead of merging iterators on the fly, it will populate a bit set with matching
- * docs and return a {@link Scorer} over this bit set.
+ * <p>Unless a custom {@link MultiTermQuery.RewriteMethod} is provided, this query executes like a
+ * regular disjunction where there are few terms. However, when there are many terms, instead of
+ * merging iterators on the fly, it will populate a bit set with matching docs and return a {@link
+ * Scorer} over this bit set.
  *
- * <p>NOTE: This query produces scores that are equal to its boost
+ * <p>Users may also provide a custom {@link MultiTermQuery.RewriteMethod} to define different
+ * execution behavior, such as relying on doc values (see: {@link DocValuesRewriteMethod}), or if
+ * scores are required (see: {@link MultiTermQuery#SCORING_BOOLEAN_REWRITE}).
  */
-public class TermInSetQuery extends Query implements Accountable {
+public class TermInSetQuery extends MultiTermQuery implements Accountable {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(TermInSetQuery.class);
@@ -82,8 +80,35 @@ public class TermInSetQuery extends Query implements Accountable {
   private final PrefixCodedTerms termData;
   private final int termDataHashCode; // cached hashcode of termData
 
-  /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
   public TermInSetQuery(String field, Collection<BytesRef> terms) {
+    this(field, packTerms(field, terms));
+  }
+
+  public TermInSetQuery(String field, BytesRef... terms) {
+    this(field, packTerms(field, Arrays.asList(terms)));
+  }
+
+  /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
+  public TermInSetQuery(RewriteMethod rewriteMethod, String field, Collection<BytesRef> terms) {
+    super(field, rewriteMethod);
+    this.field = field;
+    this.termData = packTerms(field, terms);
+    termDataHashCode = termData.hashCode();
+  }
+
+  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
+  public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
+    this(rewriteMethod, field, Arrays.asList(terms));
+  }
+
+  private TermInSetQuery(String field, PrefixCodedTerms termData) {
+    super(field, new DefaultRewriteMethod(termData));
+    this.field = field;
+    this.termData = termData;
+    termDataHashCode = termData.hashCode();
+  }
+
+  private static PrefixCodedTerms packTerms(String field, Collection<BytesRef> terms) {
     BytesRef[] sortedTerms = terms.toArray(new BytesRef[0]);
     // already sorted if we are a SortedSet with natural order
     boolean sorted =
@@ -102,29 +127,13 @@ public class TermInSetQuery extends Query implements Accountable {
       builder.add(field, term);
       previous.copyBytes(term);
     }
-    this.field = field;
-    termData = builder.finish();
-    termDataHashCode = termData.hashCode();
-  }
 
-  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
-  public TermInSetQuery(String field, BytesRef... terms) {
-    this(field, Arrays.asList(terms));
+    return builder.finish();
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    final int threshold =
-        Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
-    if (termData.size() <= threshold) {
-      BooleanQuery.Builder bq = new BooleanQuery.Builder();
-      TermIterator iterator = termData.iterator();
-      for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-        bq.add(new TermQuery(new Term(iterator.field(), BytesRef.deepCopyOf(term))), Occur.SHOULD);
-      }
-      return new ConstantScoreQuery(bq.build());
-    }
-    return super.rewrite(reader);
+  public long getTermsCount() throws IOException {
+    return termData.size();
   }
 
   @Override
@@ -204,226 +213,79 @@ public class TermInSetQuery extends Query implements Accountable {
     return Collections.emptyList();
   }
 
-  private static class TermAndState {
-    final String field;
-    final TermsEnum termsEnum;
-    final BytesRef term;
-    final TermState state;
-    final int docFreq;
-    final long totalTermFreq;
-
-    TermAndState(String field, TermsEnum termsEnum) throws IOException {
-      this.field = field;
-      this.termsEnum = termsEnum;
-      this.term = BytesRef.deepCopyOf(termsEnum.term());
-      this.state = termsEnum.termState();
-      this.docFreq = termsEnum.docFreq();
-      this.totalTermFreq = termsEnum.totalTermFreq();
-    }
-  }
-
-  private static class WeightOrDocIdSet {
-    final Weight weight;
-    final DocIdSet set;
-
-    WeightOrDocIdSet(Weight weight) {
-      this.weight = Objects.requireNonNull(weight);
-      this.set = null;
-    }
-
-    WeightOrDocIdSet(DocIdSet bitset) {
-      this.set = bitset;
-      this.weight = null;
-    }
-  }
-
   @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-      throws IOException {
-    return new ConstantScoreWeight(this, boost) {
+  protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
+    return new SetEnum(terms.iterator());
+  }
 
-      @Override
-      public Matches matches(LeafReaderContext context, int doc) throws IOException {
-        Terms terms = Terms.getTerms(context.reader(), field);
-        if (terms.hasPositions() == false) {
-          return super.matches(context, doc);
-        }
-        return MatchesUtils.forField(
-            field,
-            () ->
-                DisjunctionMatchesIterator.fromTermsEnum(
-                    context, doc, getQuery(), field, termData.iterator()));
+  // like a baby AutomatonTermsEnum, ping-pong intersects the terms dict against our
+  // PrefixCodedTerms
+  class SetEnum extends FilteredTermsEnum {
+    final TermIterator iterator;
+    BytesRef seekTerm;
+
+    SetEnum(TermsEnum termsEnum) {
+      super(termsEnum);
+      iterator = termData.iterator();
+      seekTerm = iterator.next();
+    }
+
+    @Override
+    protected AcceptStatus accept(BytesRef term) throws IOException {
+      // next() our iterator until it is >= the incoming term
+      // if it matches exactly, its a hit, otherwise its a miss
+      int cmp = 0;
+      while (seekTerm != null && (cmp = seekTerm.compareTo(term)) < 0) {
+        seekTerm = iterator.next();
       }
+      if (seekTerm == null) {
+        return AcceptStatus.END;
+      } else if (cmp == 0) {
+        return AcceptStatus.YES_AND_SEEK;
+      } else {
+        return AcceptStatus.NO_AND_SEEK;
+      }
+    }
 
-      /**
-       * On the given leaf context, try to either rewrite to a disjunction if there are few matching
-       * terms, or build a bitset containing matching docs.
-       */
-      private WeightOrDocIdSet rewrite(LeafReaderContext context) throws IOException {
-        final LeafReader reader = context.reader();
+    @Override
+    protected BytesRef nextSeekTerm(BytesRef currentTerm) throws IOException {
+      // next() our iterator until it is > the currentTerm, must always make progress.
+      if (currentTerm == null) {
+        return seekTerm;
+      }
+      while (seekTerm != null && seekTerm.compareTo(currentTerm) <= 0) {
+        seekTerm = iterator.next();
+      }
+      return seekTerm;
+    }
+  }
 
-        Terms terms = reader.terms(field);
-        if (terms == null) {
-          return null;
-        }
-        TermsEnum termsEnum = terms.iterator();
-        PostingsEnum docs = null;
+  /**
+   * Rewrites to a standard {@code BooleanQuery} when there are up to {@link
+   * TermInSetQuery#BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD} terms; otherwise rewrites using {@link
+   * MultiTermQuery#CONSTANT_SCORE_REWRITE}.
+   */
+  private static final class DefaultRewriteMethod extends RewriteMethod {
+    private final PrefixCodedTerms termData;
+
+    DefaultRewriteMethod(PrefixCodedTerms termData) {
+      this.termData = termData;
+    }
+
+    @Override
+    public Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
+      final int threshold =
+          Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
+      if (termData.size() <= threshold) {
+        BooleanQuery.Builder bq = new BooleanQuery.Builder();
         TermIterator iterator = termData.iterator();
-
-        // We will first try to collect up to 'threshold' terms into 'matchingTerms'
-        // if there are too many terms, we will fall back to building the 'builder'
-        final int threshold =
-            Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
-        assert termData.size() > threshold : "Query should have been rewritten";
-        List<TermAndState> matchingTerms = new ArrayList<>(threshold);
-        DocIdSetBuilder builder = null;
-
         for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-          assert field.equals(iterator.field());
-          if (termsEnum.seekExact(term)) {
-            if (matchingTerms == null) {
-              if (reader.maxDoc() == termsEnum.docFreq()) {
-                return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
-              }
-              docs = termsEnum.postings(docs, PostingsEnum.NONE);
-              builder.add(docs);
-            } else if (matchingTerms.size() < threshold) {
-              matchingTerms.add(new TermAndState(field, termsEnum));
-            } else {
-              assert matchingTerms.size() == threshold;
-              builder = new DocIdSetBuilder(reader.maxDoc(), terms);
-              if (reader.maxDoc() == termsEnum.docFreq()) {
-                return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
-              }
-              docs = termsEnum.postings(docs, PostingsEnum.NONE);
-              builder.add(docs);
-              for (TermAndState t : matchingTerms) {
-                t.termsEnum.seekExact(t.term, t.state);
-                if (reader.maxDoc() == t.docFreq) {
-                  return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
-                }
-                docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
-                builder.add(docs);
-              }
-              matchingTerms = null;
-            }
-          }
+          bq.add(
+              new TermQuery(new Term(iterator.field(), BytesRef.deepCopyOf(term))), Occur.SHOULD);
         }
-        if (matchingTerms != null) {
-          assert builder == null;
-          BooleanQuery.Builder bq = new BooleanQuery.Builder();
-          for (TermAndState t : matchingTerms) {
-            final TermStates termStates = new TermStates(searcher.getTopReaderContext());
-            termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
-            bq.add(new TermQuery(new Term(t.field, t.term), termStates), Occur.SHOULD);
-          }
-          Query q = new ConstantScoreQuery(bq.build());
-          final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-          return new WeightOrDocIdSet(weight);
-        } else {
-          assert builder != null;
-          return new WeightOrDocIdSet(builder.build());
-        }
+        return new ConstantScoreQuery(bq.build());
       }
-
-      private Scorer scorer(DocIdSet set) throws IOException {
-        if (set == null) {
-          return null;
-        }
-        final DocIdSetIterator disi = set.iterator();
-        if (disi == null) {
-          return null;
-        }
-        return new ConstantScoreScorer(this, score(), scoreMode, disi);
-      }
-
-      @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSet weightOrBitSet = rewrite(context);
-        if (weightOrBitSet == null) {
-          return null;
-        } else if (weightOrBitSet.weight != null) {
-          return weightOrBitSet.weight.bulkScorer(context);
-        } else {
-          final Scorer scorer = scorer(weightOrBitSet.set);
-          if (scorer == null) {
-            return null;
-          }
-          return new DefaultBulkScorer(scorer);
-        }
-      }
-
-      @Override
-      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        Terms indexTerms = context.reader().terms(field);
-        if (indexTerms == null) {
-          return null;
-        }
-
-        // Cost estimation reasoning is:
-        //  1. Assume every query term matches at least one document (queryTermsCount).
-        //  2. Determine the total number of docs beyond the first one for each term.
-        //     That count provides a ceiling on the number of extra docs that could match beyond
-        //     that first one. (We omit the first since it's already been counted in #1).
-        // This approach still provides correct worst-case cost in general, but provides tighter
-        // estimates for primary-key-like fields. See: LUCENE-10207
-
-        // TODO: This cost estimation may grossly overestimate since we have no index statistics
-        // for the specific query terms. While it's nice to avoid the cost of intersecting the
-        // query terms with the index, it could be beneficial to do that work and get better
-        // cost estimates.
-        final long cost;
-        final long queryTermsCount = termData.size();
-        long potentialExtraCost = indexTerms.getSumDocFreq();
-        final long indexedTermCount = indexTerms.size();
-        if (indexedTermCount != -1) {
-          potentialExtraCost -= indexedTermCount;
-        }
-        cost = queryTermsCount + potentialExtraCost;
-
-        final Weight weight = this;
-        return new ScorerSupplier() {
-          @Override
-          public Scorer get(long leadCost) throws IOException {
-            WeightOrDocIdSet weightOrDocIdSet = rewrite(context);
-            final Scorer scorer;
-            if (weightOrDocIdSet == null) {
-              scorer = null;
-            } else if (weightOrDocIdSet.weight != null) {
-              scorer = weightOrDocIdSet.weight.scorer(context);
-            } else {
-              scorer = scorer(weightOrDocIdSet.set);
-            }
-
-            return Objects.requireNonNullElseGet(
-                scorer,
-                () ->
-                    new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty()));
-          }
-
-          @Override
-          public long cost() {
-            return cost;
-          }
-        };
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        final ScorerSupplier supplier = scorerSupplier(context);
-        if (supplier == null) {
-          return null;
-        }
-        return supplier.get(Long.MAX_VALUE);
-      }
-
-      @Override
-      public boolean isCacheable(LeafReaderContext ctx) {
-        // Only cache instances that have a reasonable size. Otherwise it might cause memory issues
-        // with the query cache if most memory ends up being spent on queries rather than doc id
-        // sets.
-        return ramBytesUsed() <= RamUsageEstimator.QUERY_DEFAULT_RAM_BYTES_USED;
-      }
-    };
+      return MultiTermQuery.CONSTANT_SCORE_REWRITE.rewrite(reader, query);
+    }
   }
 }
