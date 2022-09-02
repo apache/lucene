@@ -138,6 +138,9 @@ Optimizations
 * GITHUB#1062: Optimize TermInSetQuery when a term is present that matches all docs in a segment.
   (Greg Miller)
 
+* GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
+  docs in a segment. (Greg Miller)
+
 Bug Fixes
 ---------------------
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
