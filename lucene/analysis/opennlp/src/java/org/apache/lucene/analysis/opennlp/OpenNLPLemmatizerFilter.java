@@ -58,20 +58,19 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
 
   @Override
   public final boolean incrementToken() throws IOException {
-    boolean readNextSentence =
-        lemmaNum >= lemmas.length && sentenceAttributeExtractor.areMoreSentencesAvailable();
-    if (readNextSentence) {
+    boolean isEndOfCurrentSentence = lemmaNum >= lemmas.length;
+    if (isEndOfCurrentSentence) {
+      if (!sentenceAttributeExtractor.areMoreSentencesAvailable()) {
+        return false;
+      }
       nextSentence();
     }
-    if (lemmaNum < lemmas.length) {
-      clearAttributes();
-      sentenceTokenAttrsIter.next().copyTo(this);
-      if (!keywordAtt.isKeyword()) {
-        termAtt.setEmpty().append(lemmas[lemmaNum++]);
-      }
-      return true;
+    clearAttributes();
+    sentenceTokenAttrsIter.next().copyTo(this);
+    if (!keywordAtt.isKeyword()) {
+      termAtt.setEmpty().append(lemmas[lemmaNum++]);
     }
-    return false;
+    return true;
   }
 
   private void nextSentence() throws IOException {

@@ -37,8 +37,6 @@ import org.apache.lucene.util.IgnoreRandomChains;
 @IgnoreRandomChains(reason = "other filters must precede this one (see docs)")
 public final class OpenNLPChunkerFilter extends TokenFilter {
   private int tokenNum = 0;
-  private String[] sentenceTerms = null;
-  private String[] sentenceTermPOSTags = null;
   private final NLPChunkerOp chunkerOp;
   private final SentenceAttributeExtractor sentenceAttributeExtractor;
 
@@ -52,19 +50,16 @@ public final class OpenNLPChunkerFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
-    boolean readNextSentence =
-        tokenNum >= sentenceTokenAttrs.size()
-            && sentenceAttributeExtractor.areMoreSentencesAvailable();
-    if (readNextSentence) {
+    boolean isEndOfCurrentSentence = tokenNum >= sentenceTokenAttrs.size();
+    if (isEndOfCurrentSentence) {
+      if (!sentenceAttributeExtractor.areMoreSentencesAvailable()) {
+        return false;
+      }
       nextSentence();
-      assignTokenTypes(chunkerOp.getChunks(sentenceTerms, sentenceTermPOSTags, null));
     }
-    if (tokenNum < sentenceTokenAttrs.size()) {
-      clearAttributes();
-      sentenceTokenAttrs.get(tokenNum++).copyTo(this);
-      return true;
-    }
-    return false;
+    clearAttributes();
+    sentenceTokenAttrs.get(tokenNum++).copyTo(this);
+    return true;
   }
 
   private void nextSentence() throws IOException {
@@ -75,8 +70,9 @@ public final class OpenNLPChunkerFilter extends TokenFilter {
       termList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
       posTagList.add(attributeSource.getAttribute(TypeAttribute.class).type());
     }
-    sentenceTerms = termList.size() > 0 ? termList.toArray(new String[0]) : null;
-    sentenceTermPOSTags = posTagList.size() > 0 ? posTagList.toArray(new String[0]) : null;
+    String[] sentenceTerms = termList.size() > 0 ? termList.toArray(new String[0]) : null;
+    String[] sentenceTermPOSTags = posTagList.size() > 0 ? posTagList.toArray(new String[0]) : null;
+    assignTokenTypes(chunkerOp.getChunks(sentenceTerms, sentenceTermPOSTags, null));
   }
 
   private void assignTokenTypes(String[] tags) {
@@ -97,8 +93,6 @@ public final class OpenNLPChunkerFilter extends TokenFilter {
   }
 
   private void clear() {
-    sentenceTerms = null;
-    sentenceTermPOSTags = null;
     tokenNum = 0;
   }
 }

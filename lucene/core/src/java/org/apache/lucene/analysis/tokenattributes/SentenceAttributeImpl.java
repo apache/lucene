@@ -28,15 +28,15 @@ import org.apache.lucene.util.AttributeReflector;
  * class may hold other sentence specific data in the future.
  */
 public class SentenceAttributeImpl extends AttributeImpl implements SentenceAttribute {
-  private static final int NO_SENTENCE = 0;
-  private int sentence = NO_SENTENCE;
+
+  private int index = 0;
 
   /** Initialize this attribute to default */
   public SentenceAttributeImpl() {}
 
   @Override
   public void clear() {
-    sentence = NO_SENTENCE;
+    index = 0;
   }
 
   @Override
@@ -46,7 +46,7 @@ public class SentenceAttributeImpl extends AttributeImpl implements SentenceAttr
     }
 
     if (other instanceof SentenceAttributeImpl) {
-      return ((SentenceAttributeImpl) other).sentence == sentence;
+      return ((SentenceAttributeImpl) other).index == index;
     }
 
     return false;
@@ -54,27 +54,27 @@ public class SentenceAttributeImpl extends AttributeImpl implements SentenceAttr
 
   @Override
   public int hashCode() {
-    return sentence;
+    return index;
   }
 
   @Override
   public void copyTo(AttributeImpl target) {
     SentenceAttribute t = (SentenceAttribute) target;
-    t.setSentenceIndex(sentence);
+    t.setSentenceIndex(index);
   }
 
   @Override
   public void reflectWith(AttributeReflector reflector) {
-    reflector.reflect(SentenceAttribute.class, "sentences", sentence);
+    reflector.reflect(SentenceAttribute.class, "sentences", index);
   }
 
   @Override
   public int getSentenceIndex() {
-    return sentence;
+    return index;
   }
 
   @Override
   public void setSentenceIndex(int sentence) {
-    this.sentence = sentence;
+    this.index = sentence;
   }
 }

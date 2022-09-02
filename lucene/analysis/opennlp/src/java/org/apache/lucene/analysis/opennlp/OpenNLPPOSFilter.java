@@ -47,28 +47,26 @@ public final class OpenNLPPOSFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
-    boolean readNextSentence =
-        tokenNum >= sentenceTokenAttrs.size()
-            && sentenceAttributeExtractor.areMoreSentencesAvailable();
-    if (readNextSentence) {
-      String[] sentenceTokens = nextSentence();
-      assignTokenTypes(posTaggerOp.getPOSTags(sentenceTokens));
+    boolean isEndOfCurrentSentence = tokenNum >= sentenceTokenAttrs.size();
+    if (isEndOfCurrentSentence) {
+      if (!sentenceAttributeExtractor.areMoreSentencesAvailable()) {
+        return false;
+      }
+      nextSentence();
     }
-    if (tokenNum < sentenceTokenAttrs.size()) {
-      clearAttributes();
-      sentenceTokenAttrs.get(tokenNum++).copyTo(this);
-      return true;
-    }
-    return false;
+    clearAttributes();
+    sentenceTokenAttrs.get(tokenNum++).copyTo(this);
+    return true;
   }
 
-  private String[] nextSentence() throws IOException {
+  private void nextSentence() throws IOException {
     tokenNum = 0;
     List<String> termList = new ArrayList<>();
     for (AttributeSource attributeSource : sentenceAttributeExtractor.extractSentenceAttributes()) {
       termList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
     }
-    return termList.size() > 0 ? termList.toArray(new String[0]) : null;
+    String[] sentenceTerms = termList.size() > 0 ? termList.toArray(new String[0]) : null;
+    assignTokenTypes(posTaggerOp.getPOSTags(sentenceTerms));
   }
 
   private void assignTokenTypes(String[] tags) {
