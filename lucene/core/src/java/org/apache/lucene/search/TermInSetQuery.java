@@ -277,10 +277,11 @@ public class TermInSetQuery extends Query implements Accountable {
         for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
           assert field.equals(iterator.field());
           if (termsEnum.seekExact(term)) {
+            if (reader.maxDoc() == termsEnum.docFreq()) {
+              return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
+            }
+
             if (matchingTerms == null) {
-              if (reader.maxDoc() == termsEnum.docFreq()) {
-                return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
-              }
               docs = termsEnum.postings(docs, PostingsEnum.NONE);
               builder.add(docs);
             } else if (matchingTerms.size() < threshold) {
@@ -288,16 +289,10 @@ public class TermInSetQuery extends Query implements Accountable {
             } else {
               assert matchingTerms.size() == threshold;
               builder = new DocIdSetBuilder(reader.maxDoc(), terms);
-              if (reader.maxDoc() == termsEnum.docFreq()) {
-                return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
-              }
               docs = termsEnum.postings(docs, PostingsEnum.NONE);
               builder.add(docs);
               for (TermAndState t : matchingTerms) {
                 t.termsEnum.seekExact(t.term, t.state);
-                if (reader.maxDoc() == t.docFreq) {
-                  return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
-                }
                 docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
                 builder.add(docs);
               }
