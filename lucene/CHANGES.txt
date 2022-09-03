@@ -85,6 +85,11 @@ Other
 
 ======================== Lucene 9.5.0 =======================
 
+API Changes
+---------------------
+* GITHUB#11742: MatchingFacetSetsCounts#getTopChildren now properly returns "top" children instead
+  of all children. (Greg Miller)
+
 Bug Fixes
 ---------------------
 

@@ -30,6 +30,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Returns the counts for each given {@link FacetSet}
@@ -156,7 +157,43 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
-    return getAllChildren(dim, path);
+
+    topN = Math.min(topN, counts.length);
+
+    PriorityQueue<Entry> pq =
+        new PriorityQueue<>(topN) {
+          @Override
+          protected boolean lessThan(Entry a, Entry b) {
+            int cmp = Integer.compare(a.count, b.count);
+            if (cmp == 0) {
+              cmp = b.label.compareTo(a.label);
+            }
+            return cmp < 0;
+          }
+        };
+
+    int childCount = 0;
+    Entry reuse = null;
+    for (int i = 0; i < counts.length; i++) {
+      int count = counts[i];
+      if (count > 0) {
+        childCount++;
+        if (reuse == null) {
+          reuse = new Entry();
+        }
+        reuse.label = facetSetMatchers[i].label;
+        reuse.count = count;
+        reuse = pq.insertWithOverflow(reuse);
+      }
+    }
+
+    LabelAndValue[] labelValues = new LabelAndValue[topN];
+    for (int i = topN - 1; i >= 0; i--) {
+      Entry e = pq.pop();
+      labelValues[i] = new LabelAndValue(e.label, e.count);
+    }
+
+    return new FacetResult(dim, path, totCount, labelValues, childCount);
   }
 
   @Override
@@ -175,5 +212,10 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
     int dims = facetSetMatchers[0].dims;
     return Arrays.stream(facetSetMatchers)
         .anyMatch(facetSetMatcher -> facetSetMatcher.dims != dims);
+  }
+
+  private static final class Entry {
+    String label;
+    int count;
   }
 }
