@@ -236,13 +236,8 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     VectorSimilarityFunction similarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
-    VectorEncoding vectorEncoding;
-    if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
-      vectorEncoding =
-          VectorEncoding.values()[random().nextInt(VectorEncoding.values().length - 1) + 1];
-    } else {
-      vectorEncoding = VectorEncoding.FLOAT32;
-    }
+    VectorEncoding vectorEncoding =
+        VectorEncoding.values()[random().nextInt(VectorEncoding.values().length - 1) + 1];
     TestHnswGraph.RandomVectorValues vectors =
         new TestHnswGraph.RandomVectorValues(size, dim, vectorEncoding, random());
 
