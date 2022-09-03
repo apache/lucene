@@ -75,7 +75,7 @@ public class TestHnswGraph extends LuceneTestCase {
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
     vectorEncoding =
-          VectorEncoding.values()[random().nextInt(VectorEncoding.values().length - 1) + 1];
+        VectorEncoding.values()[random().nextInt(VectorEncoding.values().length - 1) + 1];
   }
 
   // test writing out and reading in a graph gives the expected graph
