@@ -424,7 +424,7 @@ groups:
         cmd: git checkout main
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }} && ./gradlew tidy
         tee: true
       - !Command
         comment: Make sure the edits done by `addVersion.py` are ok, then push
@@ -454,7 +454,7 @@ groups:
         cmd: git checkout {{ stable_branch }}
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }} && ./gradlew tidy
         tee: true
       - !Command
         comment: Make sure the edits done by `addVersion.py` are ok, then push
