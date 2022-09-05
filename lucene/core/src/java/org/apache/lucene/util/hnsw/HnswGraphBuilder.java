@@ -80,7 +80,8 @@ public final class HnswGraphBuilder<T> {
       int beamWidth,
       long seed)
       throws IOException {
-    return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+    return new HnswGraphBuilder<>(
+        vectors, vectorEncoding, similarityFunction, M, beamWidth, seed, -1);
   }
 
   public static HnswGraphBuilder<?> create(
@@ -93,8 +94,23 @@ public final class HnswGraphBuilder<T> {
       HnswGraph initializerGraph,
       UnaryOperator<Integer> initializerOrdMapper)
       throws IOException {
-    HnswGraphBuilder<?> hnswGraphBuilder =
-        HnswGraphBuilder.create(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+    HnswGraphBuilder<?> hnswGraphBuilder;
+    // If initialization graph contains starting node, get the level of the first added node so that
+    // graph can be
+    // properly initialized.
+    if (initializerOrdMapper.apply(0) == 0) {
+      int levelOfFirstNode = 0;
+      while (initializerGraph.numLevels() > levelOfFirstNode + 1
+          && initializerGraph.getNodesOnLevel(levelOfFirstNode + 1).nextInt() == 0) {
+        levelOfFirstNode++;
+      }
+      hnswGraphBuilder =
+          new HnswGraphBuilder<>(
+              vectors, vectorEncoding, similarityFunction, M, beamWidth, seed, levelOfFirstNode);
+    } else {
+      hnswGraphBuilder =
+          HnswGraphBuilder.create(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+    }
     hnswGraphBuilder.initializeFromGraph(initializerGraph, initializerOrdMapper);
     return hnswGraphBuilder;
   }
@@ -110,6 +126,8 @@ public final class HnswGraphBuilder<T> {
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
+   * @param levelOfFirstNode the top level of the first node in the graph. Pass -1 to assign random
+   *     value.
    */
   private HnswGraphBuilder(
       RandomAccessVectorValues vectors,
@@ -117,7 +135,8 @@ public final class HnswGraphBuilder<T> {
       VectorSimilarityFunction similarityFunction,
       int M,
       int beamWidth,
-      long seed)
+      long seed,
+      int levelOfFirstNode)
       throws IOException {
     this.vectors = vectors;
     this.vectorsCopy = vectors.copy();
@@ -134,8 +153,9 @@ public final class HnswGraphBuilder<T> {
     // normalization factor for level generation; currently not configurable
     this.ml = 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode);
+    this.hnsw =
+        new OnHeapHnswGraph(
+            M, levelOfFirstNode == -1 ? getRandomGraphLevel(ml, random) : levelOfFirstNode);
     this.graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
@@ -160,7 +180,10 @@ public final class HnswGraphBuilder<T> {
       while (it.hasNext()) {
         int oldOrd = it.nextInt();
         int newOrd = initializerOrdMapper.apply(oldOrd);
-        this.hnsw.addNode(level, newOrd);
+
+        if (newOrd != 0) {
+          this.hnsw.addNode(level, newOrd);
+        }
 
         switch (this.vectorEncoding) {
           case FLOAT32 -> vectorValue = vectors.vectorValue(newOrd);
