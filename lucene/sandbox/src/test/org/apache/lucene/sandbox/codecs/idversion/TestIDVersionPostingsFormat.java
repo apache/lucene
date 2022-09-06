@@ -734,9 +734,9 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
       }
     }
 
-    // Run for 100k iterations in normal tests, else 12m iterations for nightly:
+    // Run for 20k iterations in normal tests, else 2m iterations for nightly:
     final AtomicInteger iterations = new AtomicInteger(0);
-    final int stopIterations = TEST_NIGHTLY ? 12_000_000 : 100_000;
+    final int stopIterations = TEST_NIGHTLY ? 2_000_000 : 20_000;
 
     for (int i = 0; i < threads.length; i++) {
       threads[i] =

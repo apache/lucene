@@ -46,7 +46,7 @@ public class TestNeverDelete extends LuceneTestCase {
 
     w.commit();
     Thread[] indexThreads = new Thread[random().nextInt(4)];
-    final int stopIterations = atLeast(250);
+    final int stopIterations = atLeast(100);
     for (int x = 0; x < indexThreads.length; x++) {
       indexThreads[x] =
           new Thread() {
