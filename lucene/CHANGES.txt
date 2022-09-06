@@ -81,6 +81,13 @@ Other
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
 
+======================== Lucene 9.5.0 =======================
+
+Other
+---------------------
+* LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
+
+
 ======================== Lucene 9.4.0 =======================
 
 API Changes

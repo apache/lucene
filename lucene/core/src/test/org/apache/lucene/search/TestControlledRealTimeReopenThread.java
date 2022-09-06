@@ -289,8 +289,8 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
   }
 
   @Override
-  protected void doSearching(ExecutorService es, long stopTime) throws Exception {
-    runSearchThreads(stopTime);
+  protected void doSearching(ExecutorService es, int maxIterations) throws Exception {
+    runSearchThreads(maxIterations);
   }
 
   @Override
@@ -555,11 +555,11 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
       Document d = new Document();
       d.add(new TextField("count", i + "", Field.Store.NO));
       d.add(new TextField("content", content, Field.Store.YES));
-      long start = System.currentTimeMillis();
+      long start = System.nanoTime();
       long l = iw.addDocument(d);
       controlledRealTimeReopenThread.waitForGeneration(l);
-      long wait = System.currentTimeMillis() - start;
-      assertTrue("waited too long for generation " + wait, wait < (maxStaleSecs * 1000));
+      long wait = System.nanoTime() - start;
+      assertTrue("waited too long for generation " + wait, wait < (maxStaleSecs * 1_000_000_000L));
       IndexSearcher searcher = sm.acquire();
       TopDocs td = searcher.search(new TermQuery(new Term("count", i + "")), 10);
       sm.release(searcher);

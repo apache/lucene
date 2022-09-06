@@ -113,17 +113,18 @@ public class TestTermdocPerf extends LuceneTestCase {
   public int doTest(int iter, int ndocs, int maxTF, float percentDocs) throws IOException {
     Directory dir = newDirectory();
 
-    long start = System.currentTimeMillis();
+    long start = System.nanoTime();
     addDocs(random(), dir, ndocs, "foo", "val", maxTF, percentDocs);
-    long end = System.currentTimeMillis();
+    long end = System.nanoTime();
     if (VERBOSE)
-      System.out.println("milliseconds for creation of " + ndocs + " docs = " + (end - start));
+      System.out.println(
+          "milliseconds for creation of " + ndocs + " docs = " + (end - start) / 1_000_000);
 
     IndexReader reader = DirectoryReader.open(dir);
 
     TermsEnum tenum = MultiTerms.getTerms(reader, "foo").iterator();
 
-    start = System.currentTimeMillis();
+    start = System.nanoTime();
 
     int ret = 0;
     PostingsEnum tdocs = null;
@@ -136,9 +137,10 @@ public class TestTermdocPerf extends LuceneTestCase {
       }
     }
 
-    end = System.currentTimeMillis();
+    end = System.nanoTime();
     if (VERBOSE)
-      System.out.println("milliseconds for " + iter + " TermDocs iteration: " + (end - start));
+      System.out.println(
+          "milliseconds for " + iter + " TermDocs iteration: " + (end - start) / 1_000_000);
 
     return ret;
   }
