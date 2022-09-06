@@ -568,7 +568,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
     final int NUM_INDEX_THREADS = TestUtil.nextInt(random(), 2, 4);
 
-    final int MAX_ITERATIONS = LuceneTestCase.TEST_NIGHTLY ? 30000 : 10 * RANDOM_MULTIPLIER;
+    final int MAX_ITERATIONS = LuceneTestCase.TEST_NIGHTLY ? 200 : 10 * RANDOM_MULTIPLIER;
 
     final Set<String> delIDs = Collections.synchronizedSet(new HashSet<String>());
     final Set<String> delPackIDs = Collections.synchronizedSet(new HashSet<String>());
