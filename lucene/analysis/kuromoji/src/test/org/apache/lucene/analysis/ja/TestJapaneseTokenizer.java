@@ -779,7 +779,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     }
     */
 
-    long totalStart = System.currentTimeMillis();
+    long totalStart = System.nanoTime();
     for (int i = 0; i < numIterations; i++) {
       try (TokenStream ts = analyzer.tokenStream("ignored", line)) {
         ts.reset();
@@ -790,11 +790,11 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     }
     String[] sentences = line.split("、|。");
     if (VERBOSE) {
-      System.out.println("Total time : " + (System.currentTimeMillis() - totalStart));
+      System.out.println("Total time : " + (System.nanoTime() - totalStart) / 100_000);
       System.out.println(
           "Test for Bocchan with pre-splitting sentences (" + sentences.length + " sentences)");
     }
-    totalStart = System.currentTimeMillis();
+    totalStart = System.nanoTime();
     for (int i = 0; i < numIterations; i++) {
       for (String sentence : sentences) {
         try (TokenStream ts = analyzer.tokenStream("ignored", sentence)) {
@@ -806,7 +806,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
       }
     }
     if (VERBOSE) {
-      System.out.println("Total time : " + (System.currentTimeMillis() - totalStart));
+      System.out.println("Total time : " + (System.nanoTime() - totalStart) / 100_000);
     }
   }
 

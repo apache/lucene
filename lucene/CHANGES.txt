@@ -29,6 +29,13 @@ Other
 ---------------------
 (No changes)
 
+======================== Lucene 9.5.0 =======================
+
+Other
+---------------------
+* LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
+
+
 ======================== Lucene 9.4.0 =======================
 
 API Changes
