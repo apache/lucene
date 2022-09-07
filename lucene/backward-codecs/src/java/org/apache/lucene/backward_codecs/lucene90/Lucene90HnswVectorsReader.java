@@ -18,7 +18,6 @@
 package org.apache.lucene.backward_codecs.lucene90;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,7 +35,6 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -276,21 +274,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
-  }
-
-  @Override
-  public TopDocs searchExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
-      // The field does not exist or does not index vectors
-      return EMPTY_TOPDOCS;
-    }
-
-    VectorSimilarityFunction similarityFunction = fieldEntry.similarityFunction;
-    VectorValues vectorValues = getVectorValues(field);
-
-    return exhaustiveSearch(vectorValues, acceptDocs, similarityFunction, target, k);
   }
 
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
