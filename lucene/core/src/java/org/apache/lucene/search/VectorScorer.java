@@ -29,50 +29,54 @@ import org.apache.lucene.util.VectorUtil;
  * is primarily used by {@link org.apache.lucene.search.KnnVectorQuery} to run an exact, exhaustive
  * search over the vectors.
  */
-interface VectorScorer {
+abstract class VectorScorer {
+  protected final VectorValues values;
 
   /**
    * Create a new vector scorer instance.
    *
    * @param context the reader context
-   * @param fieldInfo the field to computeinformation on the
+   * @param fi the FieldInfo for the field containing document vectors
    * @param query the query vector to compute the similarity for
    */
-  static VectorScorer create(LeafReaderContext context, FieldInfo fieldInfo, float[] query)
+  static VectorScorer create(LeafReaderContext context, FieldInfo fi, float[] query)
       throws IOException {
-    VectorValues values = context.reader().getVectorValues(fieldInfo.name);
-    VectorSimilarityFunction similarity = fieldInfo.getVectorSimilarityFunction();
-    return switch (fieldInfo.getVectorEncoding()) {
+    VectorValues values = context.reader().getVectorValues(fi.name);
+    VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
+    return switch (fi.getVectorEncoding()) {
       case BYTE -> new ByteVectorScorer(values, query, similarity);
       case FLOAT32 -> new FloatVectorScorer(values, query, similarity);
     };
+  }
+
+  VectorScorer(VectorValues values) {
+    this.values = values;
   }
 
   /**
    * Advance the instance to the given document ID and return true if there is a value for that
    * document.
    */
-  boolean advanceExact(int doc) throws IOException;
+  public boolean advanceExact(int doc) throws IOException {
+    int vectorDoc = values.docID();
+    if (vectorDoc < doc) {
+      vectorDoc = values.advance(doc);
+    }
+    return vectorDoc == doc;
+  }
 
   /** Compute the similarity score for the current document. */
-  float score() throws IOException;
+  abstract float score() throws IOException;
 
-  class ByteVectorScorer implements VectorScorer {
-    private final VectorValues values;
+  private static class ByteVectorScorer extends VectorScorer {
     private final BytesRef query;
     private final VectorSimilarityFunction similarity;
 
     protected ByteVectorScorer(
         VectorValues values, float[] query, VectorSimilarityFunction similarity) {
-      this.values = values;
+      super(values);
       this.similarity = similarity;
       this.query = VectorUtil.toBytesRef(query);
-    }
-
-    @Override
-    public boolean advanceExact(int doc) throws IOException {
-      int vectorDoc = values.advance(doc);
-      return vectorDoc == doc;
     }
 
     @Override
@@ -81,22 +85,15 @@ interface VectorScorer {
     }
   }
 
-  class FloatVectorScorer implements VectorScorer {
-    private final VectorValues values;
+  private static class FloatVectorScorer extends VectorScorer {
     private final float[] query;
     private final VectorSimilarityFunction similarity;
 
     protected FloatVectorScorer(
         VectorValues values, float[] query, VectorSimilarityFunction similarity) {
-      this.values = values;
+      super(values);
       this.query = query;
       this.similarity = similarity;
-    }
-
-    @Override
-    public boolean advanceExact(int doc) throws IOException {
-      int vectorDoc = values.advance(doc);
-      return vectorDoc == doc;
     }
 
     @Override
