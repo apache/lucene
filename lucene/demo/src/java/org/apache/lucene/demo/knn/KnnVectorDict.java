@@ -21,6 +21,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
 import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,6 +70,19 @@ public class KnnVectorDict implements Closeable {
       throw new IllegalStateException(
           "vector file size " + size + " is not consonant with the vector dimension " + dimension);
     }
+  }
+
+  private KnnVectorDict(FST<Long> fst, IndexInput vectors, int dimension) {
+    this.fst = fst;
+    this.vectors = vectors;
+    this.dimension = dimension;
+  }
+
+  /**
+   * get a shallow copy for thread safe use
+   */
+  public KnnVectorDict copy() {
+    return new KnnVectorDict(fst, vectors.clone(), dimension);
   }
 
   /**
@@ -129,6 +143,15 @@ public class KnnVectorDict implements Closeable {
     new Builder().build(gloveInput, directory, dictName);
   }
 
+  /** build from a pair of corresponding files: textFile has one token per line and binaryVectorFile
+   * has the corresponding dim-dimensional vectors in LE float format.
+   */
+  public static void build(Path textFile, Path binaryVectorFile, int dim, Directory directory, String dictName)
+      throws IOException {
+    new Builder().build(textFile, binaryVectorFile, dim, directory, dictName);
+  }
+
+
   private static class Builder {
     private static final Pattern SPACE_RE = Pattern.compile(" ");
 
@@ -137,8 +160,42 @@ public class KnnVectorDict implements Closeable {
         new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton());
     private float[] scratch;
     private ByteBuffer byteBuffer;
-    private long ordinal = 1;
+    private long ordinal = 0;
     private int numFields;
+
+    void build(Path textFile, Path binaryFile, int dim, Directory directory, String dictName) throws IOException {
+      System.out.print("building knn dict " + dictName + "...");
+      System.out.flush();
+      try {
+        directory.deleteFile(dictName + ".bin");
+        directory.deleteFile(dictName + ".fst");
+      } catch (IOException e) {
+        // ignore; these may not exist
+      }
+      try (BufferedReader in = Files.newBufferedReader(textFile);
+          IndexOutput binOut = directory.createOutput(dictName + ".bin", IOContext.DEFAULT);
+          IndexOutput fstOut = directory.createOutput(dictName + ".fst", IOContext.DEFAULT)) {
+        String line;
+        while ((line = in.readLine()) != null) {
+          fstCompiler.add(Util.toIntsRef(new BytesRef(line), intsRefBuilder), ordinal++);
+        }
+        fstCompiler.compile().save(fstOut, fstOut);
+        long binaryFileSize = Files.size(binaryFile);
+        assert binaryFileSize == ordinal * dim * Float.BYTES : "expected " + (ordinal * dim * Float.BYTES) + " got " + binaryFileSize;
+        try (FileChannel binIn = FileChannel.open(binaryFile)) {
+          // write all the bytes to binOut
+          ByteBuffer bin = binIn.map(FileChannel.MapMode.READ_ONLY, 0, binaryFileSize);
+          byte[] buffer = new byte[dim * Float.BYTES];
+          for (int i = 0; i < ordinal; i++) {
+            bin.get(buffer);
+            binOut.writeBytes(buffer, buffer.length);
+          }
+        }
+        // and write the vector dimension
+        binOut.writeInt(dim);
+      }
+      System.out.println("ok");
+    }
 
     void build(Path gloveInput, Directory directory, String dictName) throws IOException {
       try (BufferedReader in = Files.newBufferedReader(gloveInput);

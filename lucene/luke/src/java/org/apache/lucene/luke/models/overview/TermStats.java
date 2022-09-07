@@ -22,11 +22,11 @@ import org.apache.lucene.luke.util.BytesRefUtils;
 /** Holder for statistics for a term in a specific field. */
 public final class TermStats {
 
-  private final String decodedTermText;
+  public final String decodedTermText;
 
   private final String field;
 
-  private final int docFreq;
+  public final int docFreq;
 
   /**
    * Returns a TermStats instance representing the specified {@link

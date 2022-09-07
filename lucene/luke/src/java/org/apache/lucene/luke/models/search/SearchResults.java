@@ -98,9 +98,14 @@ public final class SearchResults {
 
   /** Holder for a hit. */
   public static class Doc {
-    private int docId;
-    private float score;
-    private Map<String, String[]> fieldValues = new HashMap<>();
+    public final int docId;
+    public final float score;
+    public final Map<String, String[]> fieldValues = new HashMap<>();
+
+    private Doc(int docId, float score) {
+      this.docId = docId;
+      this.score = score;
+    }
 
     /**
      * Creates a hit.
@@ -113,9 +118,7 @@ public final class SearchResults {
     static Doc of(int docId, float score, Document luceneDoc) {
       Objects.requireNonNull(luceneDoc);
 
-      Doc doc = new Doc();
-      doc.docId = docId;
-      doc.score = score;
+      Doc doc = new Doc(docId, score);
       Set<String> fields =
           luceneDoc.getFields().stream().map(IndexableField::name).collect(Collectors.toSet());
       for (String f : fields) {
@@ -138,7 +141,5 @@ public final class SearchResults {
     public Map<String, String[]> getFieldValues() {
       return Map.copyOf(fieldValues);
     }
-
-    private Doc() {}
   }
 }

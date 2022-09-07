@@ -173,6 +173,9 @@ allprojects {
           } else if (project.path == ":lucene:replicator") {
             systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/replicator-tests.policy")
+          } else if (project.path == ":lucene:luke") {
+            systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
+            systemProperty 'java.security.policy', file("${resources}/policies/luke-tests.policy")
           } else if (project.path.startsWith(":lucene")) {
             systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
             systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")

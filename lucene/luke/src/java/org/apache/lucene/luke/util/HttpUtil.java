@@ -15,14 +15,32 @@
  * limitations under the License.
  */
 
-/** Luke : Lucene toolbox project. */
-module org.apache.lucene.luke {
-  requires java.desktop;
-  requires java.logging;
-  requires jdk.httpserver;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
-  requires org.apache.lucene.queries;
-  requires org.apache.lucene.queryparser;
-  requires org.apache.lucene.misc;
+package org.apache.lucene.luke.util;
+
+import java.net.URLDecoder;
+import java.util.HashMap;
+import java.util.Map;
+
+public final class HttpUtil {
+
+  private HttpUtil() {}
+
+  public static Map<String, String> parseQueryString(String queryString) {
+    Map<String, String> result = new HashMap<>();
+    for (String param : queryString.split("&")) {
+      String[] kv = param.split("=", 2);
+      if (kv[0].isEmpty()) {
+        continue;
+      }
+      if (result.containsKey(kv[0])) {
+        throw new IllegalArgumentException("parameter occurred multiple times: " + param);
+      }
+      if (kv.length == 1) {
+        result.put(kv[0], "");
+      } else {
+        result.put(kv[0], URLDecoder.decode(kv[1]));
+      }
+    }
+    return result;
+  }
 }

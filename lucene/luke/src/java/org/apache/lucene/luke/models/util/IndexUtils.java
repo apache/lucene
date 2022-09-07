@@ -367,7 +367,11 @@ public final class IndexUtils {
   public static Map<String, Long> countTerms(IndexReader reader, Collection<String> fields)
       throws IOException {
     Map<String, Long> res = new HashMap<>();
+    FieldInfos fInfos = getFieldInfos(reader);
     for (String field : fields) {
+      if (fInfos.fieldInfo(field).getIndexOptions() == IndexOptions.NONE) {
+        continue;
+      }
       if (!res.containsKey(field)) {
         res.put(field, 0L);
       }
