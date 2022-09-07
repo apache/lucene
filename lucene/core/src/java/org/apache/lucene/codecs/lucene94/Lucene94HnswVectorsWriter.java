@@ -461,6 +461,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
           HnswGraphBuilder.randSeed);
     }
 
+    int offset = getOrdOffset(fieldInfo.name, initializerIndex, mergeState);
     return HnswGraphBuilder.create(
         offHeapVectors,
         fieldInfo.getVectorEncoding(),
@@ -469,7 +470,36 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         beamWidth,
         HnswGraphBuilder.randSeed,
         getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]),
-        mergeState.docMaps[initializerIndex]::get);
+        i -> i + offset);
+  }
+
+  private int getOrdOffset(String field, int index, MergeState mergeState) throws IOException {
+    final KnnVectorsReader[] readers = mergeState.knnVectorsReaders;
+    int offset = 0;
+    for (int i = 0; i < index; i++) {
+      KnnVectorsReader reader = readers[i];
+      if (reader == null) {
+        continue;
+      }
+
+      VectorValues vectorValues = reader.getVectorValues(field);
+      if (vectorValues == null) {
+        continue;
+      }
+
+      int docInc = vectorValues.size();
+      Bits liveDocs = mergeState.liveDocs[i];
+      if (liveDocs != null) {
+        for (int j = 0; j < liveDocs.length(); j++) {
+          if (!liveDocs.get(j)) {
+            docInc--;
+          }
+        }
+      }
+
+      offset += docInc;
+    }
+    return offset;
   }
 
   private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
@@ -507,7 +537,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
           || !(currKnnVectorsReader instanceof Lucene94HnswVectorsReader candidateReader)) {
         continue;
       }
-      int candidateVectorCount = candidateReader.getVectorValues(fieldName).size();
+
+      VectorValues vectorValues = candidateReader.getVectorValues(fieldName);
+      if (vectorValues == null) {
+        continue;
+      }
+
+      int candidateVectorCount = vectorValues.size();
       if (candidateVectorCount > maxCandidateVectorCount) {
         maxCandidateVectorCount = candidateVectorCount;
         initializerIndex = i;

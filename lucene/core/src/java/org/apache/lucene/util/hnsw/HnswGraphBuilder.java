@@ -169,6 +169,7 @@ public final class HnswGraphBuilder<T> {
 
   private void initializeFromGraph(
       HnswGraph initializerGraph, UnaryOperator<Integer> initializerOrdMapper) throws IOException {
+    int levelOfNode0 = hnsw.numLevels() - 1;
     BytesRef binaryValue = null;
     float[] vectorValue = null;
     Set<Integer> preloadedNodesSet = new HashSet<>();
@@ -236,6 +237,26 @@ public final class HnswGraphBuilder<T> {
             return vectors.size();
           }
         };
+
+    // Explicitly add neighbors for node 0 so that the graph gets connected
+    if (initializerOrdMapper.apply(0) == 0) {
+      return;
+    }
+
+    T value = getValue(0, vectors);
+    NeighborQueue candidates;
+    int maxLevelOfInitializerGraph = initializerGraph.numLevels() - 1;
+    int[] eps = new int[] {initializerOrdMapper.apply(initializerGraph.entryNode())};
+    for (int level = maxLevelOfInitializerGraph; level > levelOfNode0; level--) {
+      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectors, hnsw);
+      eps = new int[] {candidates.pop()};
+    }
+
+    for (int level = levelOfNode0; level >= 0; level--) {
+      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectors, hnsw);
+      eps = candidates.nodes();
+      addDiverseNeighbors(level, 0, candidates);
+    }
   }
 
   /**
