@@ -35,17 +35,6 @@ import org.apache.lucene.util.BytesRef;
 
 public class TestVectorScorer extends LuceneTestCase {
 
-  public void testEmptyIndex() throws IOException {
-    try (Directory indexStore = getIndexStore("field");
-        IndexReader reader = DirectoryReader.open(indexStore)) {
-      assert reader.leaves().size() == 1;
-      LeafReaderContext context = reader.leaves().get(0);
-      FieldInfo fieldInfo = context.reader().getFieldInfos().fieldInfo("field");
-      VectorScorer vectorScorer = VectorScorer.create(context, fieldInfo, new float[] {1, 2});
-      assertFalse(vectorScorer.advanceExact(1));
-    }
-  }
-
   public void testFindAll() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
