@@ -193,7 +193,7 @@ public class KnnVectorQuery extends Query {
       assert advanced;
 
       float score = vectorScorer.score();
-      if (score >= topDoc.score) {
+      if (score > topDoc.score) {
         topDoc.score = score;
         topDoc.doc = doc;
         topDoc = queue.updateTop();
