@@ -52,6 +52,8 @@ Improvements
 
 * LUCENE-10614: Properly support getTopChildren in RangeFacetCounts. (Yuting Gan)
 
+* LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
+
 Optimizations
 ---------------------
 (No changes)
