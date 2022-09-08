@@ -186,10 +186,18 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
           return new WeightOrDocIdSet(weight);
         }
 
-        // Too many terms: we'll evaluate the term disjunction and populate a bitset. We start with
-        // the terms we haven't seen yet in case one of them matches all docs and lets us optimize
-        // (likely rare in practice):
+        // Too many terms: go back to the terms we already collected and start building the bit set
         DocIdSetBuilder builder = new DocIdSetBuilder(context.reader().maxDoc(), terms);
+        if (collectedTerms.isEmpty() == false) {
+          TermsEnum termsEnum2 = terms.iterator();
+          for (TermAndState t : collectedTerms) {
+            termsEnum2.seekExact(t.term, t.state);
+            docs = termsEnum2.postings(docs, PostingsEnum.NONE);
+            builder.add(docs);
+          }
+        }
+
+        // Then keep filling the bit set with remaining terms
         do {
           docs = termsEnum.postings(docs, PostingsEnum.NONE);
           // If a term contains all docs with a value for the specified field, we can discard the
@@ -207,16 +215,6 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
           }
           builder.add(docs);
         } while (termsEnum.next() != null);
-
-        // Go back to the terms we already collected and finish building the bit set:
-        if (collectedTerms.isEmpty() == false) {
-          TermsEnum termsEnum2 = terms.iterator();
-          for (TermAndState t : collectedTerms) {
-            termsEnum2.seekExact(t.term, t.state);
-            docs = termsEnum2.postings(docs, PostingsEnum.NONE);
-            builder.add(docs);
-          }
-        }
 
         return new WeightOrDocIdSet(builder.build());
       }
