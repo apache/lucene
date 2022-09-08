@@ -16,11 +16,9 @@
  */
 package org.apache.lucene.util;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.tests.util.RamUsageTester.ramUsed;
 import static org.apache.lucene.util.RamUsageEstimator.*;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,17 +26,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.TestHnswGraph;
 
 public class TestRamUsageEstimator extends LuceneTestCase {
 
@@ -227,28 +220,6 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     System.out.println("NUM_BYTES_OBJECT_HEADER = " + NUM_BYTES_OBJECT_HEADER);
     System.out.println("NUM_BYTES_ARRAY_HEADER = " + NUM_BYTES_ARRAY_HEADER);
     System.out.println("LONG_SIZE = " + LONG_SIZE);
-  }
-
-  public void testHnswGraph() throws IOException {
-    int size = atLeast(2000);
-    int dim = randomIntBetween(100, 1024);
-    int M = randomIntBetween(4, 96);
-    VectorSimilarityFunction similarityFunction =
-        VectorSimilarityFunction.values()[
-            random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
-    VectorEncoding vectorEncoding =
-        VectorEncoding.values()[random().nextInt(VectorEncoding.values().length - 1) + 1];
-    TestHnswGraph.RandomVectorValues vectors =
-        new TestHnswGraph.RandomVectorValues(size, dim, vectorEncoding, random());
-
-    HnswGraphBuilder<?> builder =
-        HnswGraphBuilder.create(
-            vectors, vectorEncoding, similarityFunction, M, M * 2, random().nextLong());
-    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
-    long estimated = RamUsageEstimator.sizeOfObject(hnsw);
-    long actual = ramUsed(hnsw);
-
-    assertEquals((double) actual, (double) estimated, (double) actual * 0.3);
   }
 
   @SuppressWarnings("unused")

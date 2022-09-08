@@ -17,9 +17,12 @@
 
 package org.apache.lucene.util.hnsw;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.tests.util.RamUsageTester.ramUsed;
 import static org.apache.lucene.util.VectorUtil.toBytesRef;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,6 +62,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.junit.Before;
@@ -71,11 +75,8 @@ public class TestHnswGraph extends LuceneTestCase {
 
   @Before
   public void setup() {
-    similarityFunction =
-        VectorSimilarityFunction.values()[
-            random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
-    vectorEncoding =
-        VectorEncoding.values()[random().nextInt(VectorEncoding.values().length - 1) + 1];
+    similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+    vectorEncoding = RandomizedTest.randomFrom(VectorEncoding.values());
   }
 
   // test writing out and reading in a graph gives the expected graph
@@ -154,8 +155,7 @@ public class TestHnswGraph extends LuceneTestCase {
     int M = random().nextInt(10) + 5;
     int beamWidth = random().nextInt(10) + 5;
     VectorSimilarityFunction similarityFunction =
-        VectorSimilarityFunction.values()[
-            random().nextInt(VectorSimilarityFunction.values().length - 1) + 1];
+        RandomizedTest.randomFrom(VectorSimilarityFunction.values());
     long seed = random().nextLong();
     HnswGraphBuilder.randSeed = seed;
     IndexWriterConfig iwc =
@@ -471,6 +471,27 @@ public class TestHnswGraph extends LuceneTestCase {
                 0));
   }
 
+  public void testRamUsageEstimate() throws IOException {
+    int size = atLeast(2000);
+    int dim = randomIntBetween(100, 1024);
+    int M = randomIntBetween(4, 96);
+
+    VectorSimilarityFunction similarityFunction =
+        RandomizedTest.randomFrom(VectorSimilarityFunction.values());
+    VectorEncoding vectorEncoding = RandomizedTest.randomFrom(VectorEncoding.values());
+    TestHnswGraph.RandomVectorValues vectors =
+        new TestHnswGraph.RandomVectorValues(size, dim, vectorEncoding, random());
+
+    HnswGraphBuilder<?> builder =
+        HnswGraphBuilder.create(
+            vectors, vectorEncoding, similarityFunction, M, M * 2, random().nextLong());
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
+    long estimated = RamUsageEstimator.sizeOfObject(hnsw);
+    long actual = ramUsed(hnsw);
+
+    assertEquals((double) actual, (double) estimated, (double) actual * 0.3);
+  }
+
   @SuppressWarnings("unchecked")
   public void testDiversity() throws IOException {
     vectorEncoding = randomVectorEncoding();
@@ -727,14 +748,13 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   /** Produces random vectors and caches them for random-access. */
-  public static class RandomVectorValues extends MockVectorValues {
+  static class RandomVectorValues extends MockVectorValues {
 
     RandomVectorValues(int size, int dimension, Random random) {
       super(createRandomVectors(size, dimension, null, random));
     }
 
-    public RandomVectorValues(
-        int size, int dimension, VectorEncoding vectorEncoding, Random random) {
+    RandomVectorValues(int size, int dimension, VectorEncoding vectorEncoding, Random random) {
       super(createRandomVectors(size, dimension, vectorEncoding, random));
     }
 

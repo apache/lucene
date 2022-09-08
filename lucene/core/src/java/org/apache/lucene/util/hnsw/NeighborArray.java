@@ -47,7 +47,7 @@ public class NeighborArray {
    */
   public void add(int newNode, float newScore) {
     if (size == node.length) {
-      node = ArrayUtil.grow(node, (size + 1) * 3 / 2);
+      node = ArrayUtil.grow(node);
       score = ArrayUtil.growExact(score, node.length);
     }
     if (size > 0) {
@@ -64,7 +64,7 @@ public class NeighborArray {
   /** Add a new node to the NeighborArray into a correct sort position according to its score. */
   public void insertSorted(int newNode, float newScore) {
     if (size == node.length) {
-      node = ArrayUtil.grow(node, (size + 1) * 3 / 2);
+      node = ArrayUtil.grow(node);
       score = ArrayUtil.growExact(score, node.length);
     }
     int insertionPoint =
