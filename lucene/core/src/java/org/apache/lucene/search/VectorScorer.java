@@ -31,6 +31,7 @@ import org.apache.lucene.util.VectorUtil;
  */
 abstract class VectorScorer {
   protected final VectorValues values;
+  protected final VectorSimilarityFunction similarity;
 
   /**
    * Create a new vector scorer instance.
@@ -49,8 +50,9 @@ abstract class VectorScorer {
     };
   }
 
-  VectorScorer(VectorValues values) {
+  VectorScorer(VectorValues values, VectorSimilarityFunction similarity) {
     this.values = values;
+    this.similarity = similarity;
   }
 
   /**
@@ -70,12 +72,10 @@ abstract class VectorScorer {
 
   private static class ByteVectorScorer extends VectorScorer {
     private final BytesRef query;
-    private final VectorSimilarityFunction similarity;
 
     protected ByteVectorScorer(
         VectorValues values, float[] query, VectorSimilarityFunction similarity) {
-      super(values);
-      this.similarity = similarity;
+      super(values, similarity);
       this.query = VectorUtil.toBytesRef(query);
     }
 
@@ -87,13 +87,11 @@ abstract class VectorScorer {
 
   private static class FloatVectorScorer extends VectorScorer {
     private final float[] query;
-    private final VectorSimilarityFunction similarity;
 
     protected FloatVectorScorer(
         VectorValues values, float[] query, VectorSimilarityFunction similarity) {
-      super(values);
+      super(values, similarity);
       this.query = query;
-      this.similarity = similarity;
     }
 
     @Override
