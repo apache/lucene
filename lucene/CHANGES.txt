@@ -81,11 +81,18 @@ Other
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
 
+======================== Lucene 9.5.0 =======================
+
+Other
+---------------------
+* LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
+
+
 ======================== Lucene 9.4.0 =======================
 
 API Changes
 ---------------------
-(No changes)
+* LUCENE-10577: Add VectorEncoding to enable byte-encoded HNSW vectors (Michael Sokolov, Julie Tibshirani)
 
 New Features
 ---------------------
@@ -93,9 +100,16 @@ New Features
 
 * LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
 
+* LUCENE-10633: SortField#setOptimizeSortWithIndexedData and
+  SortField#getOptimizeSortWithIndexedData were introduce to provide
+  an option to disable sort optimization for various sort fields. (Mayya Sharipova)
+
 Improvements
 ---------------------
 * LUCENE-10592: Build HNSW Graph on indexing. (Mayya Sharipova, Adrien Grand, Julie Tibshirani)
+
+* LUCENE-10207: TermInSetQuery can now provide a ScoreSupplier with cost estimation, making it
+  usable in IndexOrDocValuesQuery. (Greg Miller)
 
 * GITHUB#11715: Add Integer awareness to RamUsageEstimator.sizeOf (Mike Drob)
 

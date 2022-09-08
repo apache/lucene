@@ -97,7 +97,9 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
    * Creates this, with control over how missing values are sorted. Pass sortMissingLast=true to put
    * missing values at the end.
    */
-  public TermOrdValComparator(int numHits, String field, boolean sortMissingLast, boolean reverse) {
+  public TermOrdValComparator(
+      int numHits, String field, boolean sortMissingLast, boolean reverse, boolean enableSkipping) {
+    canSkipDocuments = enableSkipping;
     ords = new int[numHits];
     values = new BytesRef[numHits];
     tempBRs = new BytesRefBuilder[numHits];

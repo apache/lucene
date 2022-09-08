@@ -179,7 +179,9 @@ public class SortedSetSortField extends SortField {
 
   @Override
   public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
-    return new TermOrdValComparator(numHits, getField(), missingValue == STRING_LAST, reverse) {
+    boolean finalEnableSkipping = enableSkipping && getOptimizeSortWithIndexedData();
+    return new TermOrdValComparator(
+        numHits, getField(), missingValue == STRING_LAST, reverse, finalEnableSkipping) {
       @Override
       protected SortedDocValues getSortedDocValues(LeafReaderContext context, String field)
           throws IOException {

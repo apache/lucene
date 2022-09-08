@@ -41,7 +41,6 @@ import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -187,8 +186,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   @Override
   public TopDocs searchExhaustively(
       String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    int numDocs = (int) acceptDocs.cost();
-    return search(field, target, k, BitSet.of(acceptDocs, numDocs), Integer.MAX_VALUE);
+    FieldInfo info = readState.fieldInfos.fieldInfo(field);
+    VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
+    return exhaustiveSearch(getVectorValues(field), acceptDocs, vectorSimilarity, target, k);
   }
 
   @Override
