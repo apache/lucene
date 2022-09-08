@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
@@ -410,16 +409,6 @@ public class ParallelLeafReader extends LeafReader {
     return reader == null
         ? null
         : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit);
-  }
-
-  @Override
-  public TopDocs searchNearestVectorsExhaustively(
-      String fieldName, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    ensureOpen();
-    LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null
-        ? null
-        : reader.searchNearestVectorsExhaustively(fieldName, target, k, acceptDocs);
   }
 
   @Override
