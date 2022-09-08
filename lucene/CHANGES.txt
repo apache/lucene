@@ -83,6 +83,11 @@ Other
 
 ======================== Lucene 9.5.0 =======================
 
+Bug Fixes
+---------------------
+* LUCENE-10674: Update sub-iterators when BitSetConjDISI exhausts. (Jack Mazanec)
+
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
