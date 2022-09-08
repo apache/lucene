@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
@@ -175,9 +176,42 @@ public class KnnVectorQuery extends Query {
   }
 
   // We allow this to be overridden so that tests can check what search strategy is used
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptDocs)
+  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
       throws IOException {
-    return context.reader().searchNearestVectorsExhaustively(field, target, k, acceptDocs);
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      // The field does not exist or does not index vectors
+      return NO_RESULTS;
+    }
+
+    VectorScorer vectorScorer = VectorScorer.create(context, fi, target);
+    HitQueue queue = new HitQueue(k, true);
+    ScoreDoc topDoc = queue.top();
+    int doc;
+    while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      boolean advanced = vectorScorer.advanceExact(doc);
+      assert advanced;
+
+      float score = vectorScorer.score();
+      if (score > topDoc.score) {
+        topDoc.score = score;
+        topDoc.doc = doc;
+        topDoc = queue.updateTop();
+      }
+    }
+
+    // Remove any remaining sentinel values
+    while (queue.size() > 0 && queue.top().score < 0) {
+      queue.pop();
+    }
+
+    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
+    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
+      topScoreDocs[i] = queue.pop();
+    }
+
+    TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
+    return new TopDocs(totalHits, topScoreDocs);
   }
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {

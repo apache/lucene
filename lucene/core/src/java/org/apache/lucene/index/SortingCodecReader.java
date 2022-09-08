@@ -31,7 +31,6 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -387,12 +386,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public TopDocs search(
           String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public TopDocs searchExhaustively(
-          String field, float[] target, int k, DocIdSetIterator acceptDocs) {
         throw new UnsupportedOperationException();
       }
 

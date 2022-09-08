@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Iterator;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
@@ -356,12 +355,6 @@ public abstract class FilterLeafReader extends LeafReader {
   public TopDocs searchNearestVectors(
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
-  }
-
-  @Override
-  public TopDocs searchNearestVectorsExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    return in.searchNearestVectorsExhaustively(field, target, k, acceptDocs);
   }
 
   @Override
