@@ -142,10 +142,7 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
           int docFreq = termsEnum.docFreq();
           TermAndState termAndState =
               new TermAndState(
-                  BytesRef.deepCopyOf(term),
-                  state,
-                  docFreq,
-                  termsEnum.totalTermFreq());
+                  BytesRef.deepCopyOf(term), state, docFreq, termsEnum.totalTermFreq());
           if (fieldDocCount == docFreq) {
             // If the term contains every document with a value for the field, we can ignore all
             // other terms:
