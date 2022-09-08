@@ -152,12 +152,21 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
 
         for (BytesRef term = termsEnum.next(); term != null; term = termsEnum.next()) {
           // If any term contains the complete segment's docs, we can short-circuit since this
-          // query is a disjunction over all terms:
-          if (reader.maxDoc() == termsEnum.docFreq()) {
-            return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
+          // query is a disjunction over all terms. Additionally, if a term contains all docs in
+          // its field, we can use that term's postings:
+          int docFreq = termsEnum.docFreq();
+          if (reader.maxDoc() == docFreq) {
+            return new WeightOrDocIdSet(DocIdSet.all(docFreq));
+          } else if (terms.getDocCount() == docFreq) {
+            TermStates termStates = new TermStates(searcher.getTopReaderContext());
+            termStates.register(termsEnum.termState(), context.ord, docFreq, termsEnum.totalTermFreq());
+            Query q = new ConstantScoreQuery(new TermQuery(new Term(query.field, term), termStates));
+            Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+            return new WeightOrDocIdSet(weight);
           }
 
           if (collectedTerms == null) {
+            assert builder != null;
             docs = termsEnum.postings(docs, PostingsEnum.NONE);
             builder.add(docs);
           } else if (collectedTerms.size() < threshold) {
