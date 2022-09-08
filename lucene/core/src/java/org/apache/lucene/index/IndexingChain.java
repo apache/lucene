@@ -963,17 +963,10 @@ final class IndexingChain implements Accountable {
 
   @Override
   public long ramBytesUsed() {
-    long vectorsBytesUsed = vectorValuesConsumer.getAccountable().ramBytesUsed();
-    long totalBytesUsed =
-        bytesUsed.get()
-            + storedFieldsConsumer.accountable.ramBytesUsed()
-            + termVectorsWriter.accountable.ramBytesUsed()
-            + vectorsBytesUsed;
-    if (infoStream.isEnabled("IW")) {
-      infoStream.message(
-          "IW", "ramBytesUsed total: " + totalBytesUsed + "; vectors: " + vectorsBytesUsed);
-    }
-    return totalBytesUsed;
+    return bytesUsed.get()
+        + storedFieldsConsumer.accountable.ramBytesUsed()
+        + termVectorsWriter.accountable.ramBytesUsed()
+        + vectorValuesConsumer.getAccountable().ramBytesUsed();
   }
 
   @Override
