@@ -158,11 +158,6 @@ public final class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
   }
 
   @Override
-  public int currentVersion() {
-    return VERSION_CURRENT;
-  }
-
-  @Override
   public String toString() {
     return "Lucene94HnswVectorsFormat(name=Lucene94HnswVectorsFormat, maxConn="
         + maxConn

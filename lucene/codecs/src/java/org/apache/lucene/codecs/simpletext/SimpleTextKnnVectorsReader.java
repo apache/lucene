@@ -29,7 +29,6 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -42,7 +41,6 @@ import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -188,8 +186,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   @Override
   public TopDocs searchExhaustively(
       String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    int numDocs = (int) acceptDocs.cost();
-    return search(field, target, k, BitSet.of(acceptDocs, numDocs), Integer.MAX_VALUE);
+    FieldInfo info = readState.fieldInfos.fieldInfo(field);
+    VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
+    return exhaustiveSearch(getVectorValues(field), acceptDocs, vectorSimilarity, target, k);
   }
 
   @Override
@@ -268,7 +267,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   private static class SimpleTextVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+      implements RandomAccessVectorValues {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -310,7 +309,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return this;
     }
 

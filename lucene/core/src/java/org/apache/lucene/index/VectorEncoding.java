@@ -21,12 +21,10 @@ package org.apache.lucene.index;
 public enum VectorEncoding {
 
   /**
-   * Encodes vector using 8 bits of precision per sample. Use only with DOT_PRODUCT similarity.
-   * NOTE: this can enable significant storage savings and faster searches, at the cost of some
-   * possible loss of precision. In order to use it, all vectors must be of the same norm, as
-   * measured by the sum of the squares of the scalar values, and those values must be in the range
-   * [-128, 127]. This applies to both document and query vectors. Using nonconforming vectors can
-   * result in errors or poor search results.
+   * Encodes vector using 8 bits of precision per sample. Values provided with higher precision (eg:
+   * queries provided as float) *must* be in the range [-128, 127]. NOTE: this can enable
+   * significant storage savings and faster searches, at the cost of some possible loss of
+   * precision.
    */
   BYTE(1),
 
@@ -34,8 +32,8 @@ public enum VectorEncoding {
   FLOAT32(4);
 
   /**
-   * The number of bytes required to encode a scalar in this format. A vector will require dimension
-   * * byteSize.
+   * The number of bytes required to encode a scalar in this format. A vector will nominally require
+   * dimension * byteSize bytes of storage.
    */
   public final int byteSize;
 

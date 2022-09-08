@@ -424,7 +424,7 @@ groups:
         cmd: git checkout main
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }} && {{ gradle_cmd }} tidy
         tee: true
       - !Command
         comment: Make sure the edits done by `addVersion.py` are ok, then push
@@ -454,7 +454,7 @@ groups:
         cmd: git checkout {{ stable_branch }}
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }} && {{ gradle_cmd }} tidy
         tee: true
       - !Command
         comment: Make sure the edits done by `addVersion.py` are ok, then push
@@ -1296,7 +1296,7 @@ groups:
         comment: Go to main branch
         logfile: checkout-main.log
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }}
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }} && {{ gradle_cmd }} tidy
         logfile: addversion-main.log
       - !Command
         cmd: git diff
@@ -1310,7 +1310,7 @@ groups:
         logfile: checkout-stable.log
         comment: Now the same for the stable branch
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }}
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }} && {{ gradle_cmd }} tidy
         logfile: addversion-stable.log
       - !Command
         cmd: git diff
@@ -1381,7 +1381,7 @@ groups:
         cmd: git checkout {{ release_branch }}
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }} && {{ gradle_cmd }} tidy
         tee: true
       - !Command
         cmd: git diff

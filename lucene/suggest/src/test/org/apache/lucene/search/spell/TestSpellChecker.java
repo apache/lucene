@@ -364,10 +364,7 @@ public class TestSpellChecker extends LuceneTestCase {
   }
 
   private void addwords(IndexReader r, SpellChecker sc, String field) throws IOException {
-    long time = System.currentTimeMillis();
     sc.indexDictionary(new LuceneDictionary(r, field), newIndexWriterConfig(null), false);
-    time = System.currentTimeMillis() - time;
-    // System.out.println("time to build " + field + ": " + time);
   }
 
   private int numdoc() throws IOException {

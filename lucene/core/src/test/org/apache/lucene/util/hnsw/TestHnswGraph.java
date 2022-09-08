@@ -43,7 +43,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -94,7 +93,7 @@ public class TestHnswGraph extends LuceneTestCase {
     RandomVectorValues v2 = vectors.copy(), v3 = vectors.copy();
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
-    HnswGraph hnsw = builder.build(vectors);
+    HnswGraph hnsw = builder.build(vectors.copy());
 
     // Recreate the graph while indexing with the same random seed and write it out
     HnswGraphBuilder.randSeed = seed;
@@ -207,7 +206,7 @@ public class TestHnswGraph extends LuceneTestCase {
           IndexReader reader2 = DirectoryReader.open(dir2)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         IndexSearcher searcher2 = new IndexSearcher(reader2);
-
+        OUTER:
         for (int i = 0; i < 10; i++) {
           // ask to explore a lot of candidates to ensure the same returned hits,
           // as graphs of 2 indices are organized differently
@@ -218,7 +217,14 @@ public class TestHnswGraph extends LuceneTestCase {
           List<Integer> docs2 = new ArrayList<>();
 
           TopDocs topDocs = searcher.search(query, 5);
+          float lastScore = -1;
           for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+            if (scoreDoc.score == lastScore) {
+              // if we have repeated score this test is invalid
+              continue OUTER;
+            } else {
+              lastScore = scoreDoc.score;
+            }
             Document doc = reader.document(scoreDoc.doc, Set.of("id"));
             ids1.add(doc.get("id"));
             docs1.add(scoreDoc.doc);
@@ -275,13 +281,13 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 10, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // run some searches
     NeighborQueue nn =
         HnswGraphSearcher.search(
             getTargetVector(),
             10,
-            vectors.randomAccess(),
+            vectors.copy(),
             vectorEncoding,
             similarityFunction,
             hnsw,
@@ -316,14 +322,14 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
         HnswGraphSearcher.search(
             getTargetVector(),
             10,
-            vectors.randomAccess(),
+            vectors.copy(),
             vectorEncoding,
             similarityFunction,
             hnsw,
@@ -349,7 +355,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // Only mark a few vectors as accepted
     BitSet acceptOrds = new FixedBitSet(vectors.size);
     for (int i = 0; i < vectors.size; i += random().nextInt(15, 20)) {
@@ -362,7 +368,7 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraphSearcher.search(
             getTargetVector(),
             numAccepted,
-            vectors.randomAccess(),
+            vectors.copy(),
             vectorEncoding,
             similarityFunction,
             hnsw,
@@ -386,7 +392,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, VectorEncoding.FLOAT32, similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
@@ -397,7 +403,7 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraphSearcher.search(
             getTargetVector(),
             10,
-            vectors.randomAccess(),
+            vectors.copy(),
             VectorEncoding.FLOAT32,
             similarityFunction,
             hnsw,
@@ -423,7 +429,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
 
     int topK = 50;
     int visitedLimit = topK + random().nextInt(5);
@@ -431,7 +437,7 @@ public class TestHnswGraph extends LuceneTestCase {
         HnswGraphSearcher.search(
             getTargetVector(),
             topK,
-            vectors.randomAccess(),
+            vectors.copy(),
             vectorEncoding,
             similarityFunction,
             hnsw,
@@ -496,15 +502,16 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors, vectorEncoding, similarityFunction, 2, 10, random().nextInt());
     // node 0 is added by the builder constructor
     // builder.addGraphNode(vectors.vectorValue(0));
-    builder.addGraphNode(1, vectors);
-    builder.addGraphNode(2, vectors);
+    RandomAccessVectorValues vectorsCopy = vectors.copy();
+    builder.addGraphNode(1, vectorsCopy);
+    builder.addGraphNode(2, vectorsCopy);
     // now every node has tried to attach every other node as a neighbor, but
     // some were excluded based on diversity check.
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     assertLevel0Neighbors(builder.hnsw, 1, 0);
     assertLevel0Neighbors(builder.hnsw, 2, 0);
 
-    builder.addGraphNode(3, vectors);
+    builder.addGraphNode(3, vectorsCopy);
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     // we added 3 here
     assertLevel0Neighbors(builder.hnsw, 1, 0, 3);
@@ -512,7 +519,7 @@ public class TestHnswGraph extends LuceneTestCase {
     assertLevel0Neighbors(builder.hnsw, 3, 1);
 
     // supplant an existing neighbor
-    builder.addGraphNode(4, vectors);
+    builder.addGraphNode(4, vectorsCopy);
     // 4 is the same distance from 0 that 2 is; we leave the existing node in place
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     assertLevel0Neighbors(builder.hnsw, 1, 0, 3, 4);
@@ -521,7 +528,7 @@ public class TestHnswGraph extends LuceneTestCase {
     assertLevel0Neighbors(builder.hnsw, 3, 1, 4);
     assertLevel0Neighbors(builder.hnsw, 4, 1, 3);
 
-    builder.addGraphNode(5, vectors);
+    builder.addGraphNode(5, vectorsCopy);
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
     assertLevel0Neighbors(builder.hnsw, 1, 0, 3, 4, 5);
     assertLevel0Neighbors(builder.hnsw, 2, 0);
@@ -550,7 +557,7 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> builder =
         HnswGraphBuilder.create(
             vectors, vectorEncoding, similarityFunction, 10, 30, random().nextLong());
-    OnHeapHnswGraph hnsw = builder.build(vectors);
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
     int totalMatches = 0;
@@ -617,8 +624,7 @@ public class TestHnswGraph extends LuceneTestCase {
   }
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
-  static class CircularVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  static class CircularVectorValues extends VectorValues implements RandomAccessVectorValues {
     private final int size;
     private final float[] value;
     private final BytesRef binaryValue;
@@ -631,6 +637,7 @@ public class TestHnswGraph extends LuceneTestCase {
       binaryValue = new BytesRef(new byte[2]);
     }
 
+    @Override
     public CircularVectorValues copy() {
       return new CircularVectorValues(size);
     }
@@ -648,11 +655,6 @@ public class TestHnswGraph extends LuceneTestCase {
     @Override
     public float[] vectorValue() {
       return vectorValue(doc);
-    }
-
-    @Override
-    public RandomAccessVectorValues randomAccess() {
-      return new CircularVectorValues(size);
     }
 
     @Override

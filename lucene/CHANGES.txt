@@ -81,11 +81,18 @@ Other
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
 
+======================== Lucene 9.5.0 =======================
+
+Other
+---------------------
+* LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
+
+
 ======================== Lucene 9.4.0 =======================
 
 API Changes
 ---------------------
-(No changes)
+* LUCENE-10577: Add VectorEncoding to enable byte-encoded HNSW vectors (Michael Sokolov, Julie Tibshirani)
 
 New Features
 ---------------------
@@ -93,9 +100,18 @@ New Features
 
 * LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
 
+* LUCENE-10633: SortField#setOptimizeSortWithIndexedData and
+  SortField#getOptimizeSortWithIndexedData were introduce to provide
+  an option to disable sort optimization for various sort fields. (Mayya Sharipova)
+
 Improvements
 ---------------------
 * LUCENE-10592: Build HNSW Graph on indexing. (Mayya Sharipova, Adrien Grand, Julie Tibshirani)
+
+* LUCENE-10207: TermInSetQuery can now provide a ScoreSupplier with cost estimation, making it
+  usable in IndexOrDocValuesQuery. (Greg Miller)
+
+* GITHUB#11715: Add Integer awareness to RamUsageEstimator.sizeOf (Mike Drob)
 
 Optimizations
 ---------------------
@@ -110,6 +126,9 @@ Optimizations
 
 * LUCENE-10627: Using ByteBuffersDataInput reduce memory copy on compressing data. (luyuncheng)
 
+* GITHUB#1062: Optimize TermInSetQuery when a term is present that matches all docs in a segment.
+  (Greg Miller)
+
 Bug Fixes
 ---------------------
 * LUCENE-10663: Fix KnnVectorQuery explain with multiple segments. (Shiming Li)
@@ -119,8 +138,16 @@ Bug Fixes
 * LUCENE-10678: Fix potential overflow when building a BKD tree with more than 4 billion points. The overflow
   occurs when computing the partition point. (Ignacio Vera)
 
+* LUCENE-10644: Facets#getAllChildren testing should ignore child order. (Yuting Gan)
+
+* LUCENE-10665, GITHUB#11701: Fix classloading deadlock in analysis factories / AnalysisSPILoader
+  initialization.  (Uwe Schindler)
+
 Build
 ---------------------
+
+* GITHUB#11720: Upgrade randomizedtesting to 2.8.1 (potential fix for odd wall clock - related 
+  timeout failures). (Dawid Weiss)
 
 * LUCENE-10669: The build should be more helpful when generated resources are touched (Dawid Weiss)
 
