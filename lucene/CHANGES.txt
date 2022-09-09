@@ -92,6 +92,11 @@ Bug Fixes
   trying to apply a dictionary whose size is greater than the maximum supported
   window size for LZ4. (Adrien Grand)
 
+Optimizations
+---------------------
+* GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
+  docs in a segment. (Greg Miller)
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
@@ -137,9 +142,6 @@ Optimizations
 
 * GITHUB#1062: Optimize TermInSetQuery when a term is present that matches all docs in a segment.
   (Greg Miller)
-
-* GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
-  docs in a segment. (Greg Miller)
 
 Bug Fixes
 ---------------------
