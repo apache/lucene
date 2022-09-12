@@ -29,7 +29,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
@@ -127,18 +126,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null && fi.getVectorDimension() > 0;
       TopDocs hits = delegate.search(field, target, k, acceptDocs, visitedLimit);
-      assert hits != null;
-      assert hits.scoreDocs.length <= k;
-      return hits;
-    }
-
-    @Override
-    public TopDocs searchExhaustively(
-        String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-      FieldInfo fi = fis.fieldInfo(field);
-      assert fi != null && fi.getVectorDimension() > 0;
-      assert acceptDocs != null;
-      TopDocs hits = delegate.searchExhaustively(field, target, k, acceptDocs);
       assert hits != null;
       assert hits.scoreDocs.length <= k;
       return hits;

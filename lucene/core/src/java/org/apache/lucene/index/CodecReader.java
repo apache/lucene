@@ -25,7 +25,6 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -234,19 +233,6 @@ public abstract class CodecReader extends LeafReader {
     }
 
     return getVectorReader().search(field, target, k, acceptDocs, visitedLimit);
-  }
-
-  @Override
-  public final TopDocs searchNearestVectorsExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    ensureOpen();
-    FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // Field does not exist or does not index vectors
-      return null;
-    }
-
-    return getVectorReader().searchExhaustively(field, target, k, acceptDocs);
   }
 
   @Override

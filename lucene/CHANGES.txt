@@ -52,6 +52,8 @@ Improvements
 
 * LUCENE-10614: Properly support getTopChildren in RangeFacetCounts. (Yuting Gan)
 
+* LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
+
 Optimizations
 ---------------------
 (No changes)
@@ -85,8 +87,11 @@ Other
 
 Bug Fixes
 ---------------------
-* GITHUB#1068, LUCENE-10674: Ensure BitSetConjDISI returns NO_MORE_DOCS when sub-iterator exhausts. (Jack Mazanec)
+* GITHUB#11726: Indexing term vectors on large documents could fail due to
+  trying to apply a dictionary whose size is greater than the maximum supported
+  window size for LZ4. (Adrien Grand)
 
+* LUCENE-10674: Ensure BitSetConjDISI returns NO_MORE_DOCS when sub-iterator exhausts. (Jack Mazanec)
 
 Other
 ---------------------

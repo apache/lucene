@@ -77,8 +77,20 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
           if (VERBOSE) {
             System.out.println("TEST: done adding docs; now commit");
           }
-          writer.commit();
-          indexExists = true;
+          try {
+            // when calling commit(), if the writer is asynchronously closed
+            // by a fatal tragedy (e.g. from disk-full-on-merge with CMS),
+            // then we may receive either AlreadyClosedException OR IllegalStateException,
+            // depending on when it happens.
+            writer.commit();
+            indexExists = true;
+          } catch (IOException | IllegalStateException e) {
+            if (VERBOSE) {
+              System.out.println("TEST: exception on commit");
+              e.printStackTrace(System.out);
+            }
+            hitError = true;
+          }
         } catch (IOException e) {
           if (VERBOSE) {
             System.out.println("TEST: exception on addDoc");

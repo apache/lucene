@@ -175,20 +175,28 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     long neighborArrayBytes0 =
         nsize0 * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + Integer.BYTES * 2;
     long neighborArrayBytes =
         nsize * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + Integer.BYTES * 2;
     long total = 0;
     for (int l = 0; l < numLevels; l++) {
       int numNodesOnLevel = graph.get(l).size();
       if (l == 0) {
-        total += numNodesOnLevel * neighborArrayBytes0; // for graph;
+        total +=
+            numNodesOnLevel * neighborArrayBytes0
+                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
       } else {
-        total += numNodesOnLevel * Integer.BYTES; // for nodesByLevel
-        total += numNodesOnLevel * neighborArrayBytes; // for graph;
+        total +=
+            nodesByLevel.get(l).length * Integer.BYTES
+                + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for nodesByLevel
+        total +=
+            numNodesOnLevel * neighborArrayBytes
+                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
       }
     }
     return total;
