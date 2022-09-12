@@ -85,7 +85,7 @@ Other
 
 Bug Fixes
 ---------------------
-* LUCENE-10674: Update sub-iterators when BitSetConjDISI exhausts. (Jack Mazanec)
+* GITHUB#1068, LUCENE-10674: Ensure BitSetConjDISI returns NO_MORE_DOCS when sub-iterator exhausts. (Jack Mazanec)
 
 
 Other

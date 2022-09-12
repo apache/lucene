@@ -460,7 +460,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
     assertEquals("Sub-iterators of ConjunctionDISI are not on the same document!", ex.getMessage());
   }
 
-  public void testBitSetConjunctionDISIOnExhaustSubIteratorsExhausted() throws IOException {
+  public void testBitSetConjunctionDISIDocIDOnExhaust() throws IOException {
     int numBitSetIterators = TestUtil.nextInt(random(), 2, 5);
     DocIdSetIterator[] iterators = new DocIdSetIterator[numBitSetIterators + 1];
 
@@ -482,8 +482,6 @@ public class TestConjunctionDISI extends LuceneTestCase {
         ConjunctionUtils.intersectIterators(Arrays.asList(iterators));
 
     assertEquals(NO_MORE_DOCS, conjunction.nextDoc());
-    for (DocIdSetIterator docIdSetIterator : iterators) {
-      assertEquals(NO_MORE_DOCS, docIdSetIterator.docID());
-    }
+    assertEquals(NO_MORE_DOCS, conjunction.docID());
   }
 }
