@@ -161,36 +161,43 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
     topN = Math.min(topN, counts.length);
 
     PriorityQueue<Entry> pq =
-        new PriorityQueue<>(topN) {
+        new PriorityQueue<>(topN, () -> new Entry("", 0)) {
           @Override
           protected boolean lessThan(Entry a, Entry b) {
-            int cmp = Integer.compare(a.count, b.count);
-            if (cmp == 0) {
-              cmp = b.label.compareTo(a.label);
-            }
-            return cmp < 0;
+            return compare(a.count, b.count, a.label, b.label) < 0;
           }
         };
 
     int childCount = 0;
-    Entry reuse = null;
+    Entry reuse = pq.top();
     for (int i = 0; i < counts.length; i++) {
       int count = counts[i];
       if (count > 0) {
         childCount++;
-        if (reuse == null) {
-          reuse = new Entry();
+        String label = facetSetMatchers[i].label;
+        if (compare(reuse.count, count, reuse.label, label) < 0) {
+          reuse.label = label;
+          reuse.count = count;
+          reuse = pq.updateTop();
         }
-        reuse.label = facetSetMatchers[i].label;
-        reuse.count = count;
-        reuse = pq.insertWithOverflow(reuse);
       }
     }
 
+    int count = 0;
     LabelAndValue[] labelValues = new LabelAndValue[topN];
     for (int i = topN - 1; i >= 0; i--) {
       Entry e = pq.pop();
+      assert e != null;
+      if (e.count == 0) {
+        continue; // check for sentinel value
+      }
       labelValues[i] = new LabelAndValue(e.label, e.count);
+      count++;
+    }
+    if (count < topN) {
+      LabelAndValue[] truncated = new LabelAndValue[count];
+      System.arraycopy(labelValues, 0, truncated, 0, count);
+      labelValues = truncated;
     }
 
     return new FacetResult(dim, path, totCount, labelValues, childCount);
@@ -214,8 +221,21 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
         .anyMatch(facetSetMatcher -> facetSetMatcher.dims != dims);
   }
 
+  private static int compare(int count1, int count2, String label1, String label2) {
+    int cmp = Integer.compare(count1, count2);
+    if (cmp == 0) {
+      cmp = label2.compareTo(label1);
+    }
+    return cmp;
+  }
+
   private static final class Entry {
     String label;
     int count;
+
+    Entry(String label, int count) {
+      this.label = label;
+      this.count = count;
+    }
   }
 }

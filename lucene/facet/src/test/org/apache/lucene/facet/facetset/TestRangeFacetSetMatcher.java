@@ -16,12 +16,10 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.LongRange;
@@ -35,8 +33,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.InPlaceMergeSorter;
 
 public class TestRangeFacetSetMatcher extends FacetTestCase {
 
@@ -46,114 +42,6 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
   private static final int NISSAN_ORD = 103;
   private static final int[] MANUFACTURER_ORDS = {FORD_ORD, TOYOTA_ORD, CHEVY_ORD, NISSAN_ORD};
   private static final int[] YEARS = {2010, 2011, 2012, 2013, 2014};
-
-  public void testTopChildren() throws Exception {
-    Directory d = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), d);
-
-    // As a test scenario, we're faceting on the number of vehicles produced per hour/make
-    // combination over the past three days (72 hours):
-    final int numBins = 72;
-
-    final int[] expectedCounts = new int[numBins * MANUFACTURER_ORDS.length];
-    FacetSetMatcher[] facetSetMatchers = new FacetSetMatcher[numBins * MANUFACTURER_ORDS.length];
-
-    int totalDocs = 0;
-    int totalNonZeroBins = 0;
-    int index = 0;
-    final int oneHourMills = 60 * 60 * 1000;
-    // Trailing three days from some random "now" time when the test was written:
-    long start = 1662999641984L - (numBins * oneHourMills);
-    for (int i = 0; i < numBins; i++) {
-      long end = start + oneHourMills;
-      for (int ord : MANUFACTURER_ORDS) {
-        facetSetMatchers[index] =
-            new RangeFacetSetMatcher(
-                String.format(Locale.ROOT, "%d:%d", i, ord),
-                new DimRange(start, end - 1),
-                new DimRange(ord, ord));
-
-        int carsManufactured = RandomNumbers.randomIntBetween(random(), 0, 100);
-        for (int k = 0; k < carsManufactured; k++) {
-          // Create a document for every vehicle produced:
-          long manufactureTime =
-              start + RandomNumbers.randomIntBetween(random(), 0, oneHourMills - 1);
-          Document doc = new Document();
-          doc.add(FacetSetsField.create("field", new LongFacetSet(manufactureTime, ord)));
-          w.addDocument(doc);
-        }
-
-        if (carsManufactured > 0) {
-          totalNonZeroBins++;
-        }
-        totalDocs += carsManufactured;
-        expectedCounts[index] = carsManufactured;
-        index++;
-      }
-      start = end;
-    }
-
-    IndexReader r = w.getReader();
-    w.close();
-
-    IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-
-    Facets facets =
-        new MatchingFacetSetsCounts("field", fc, FacetSetDecoder::decodeLongs, facetSetMatchers);
-
-    // Sort by count (high-to-low) and tie-break on label, same as in
-    // MatchingFacetCounts#getTopChildren:
-    final int[] originalIndexes = new int[expectedCounts.length];
-    for (int i = 0; i < originalIndexes.length; i++) {
-      originalIndexes[i] = i;
-    }
-    new InPlaceMergeSorter() {
-      @Override
-      protected int compare(int i, int j) {
-        int cmp = Integer.compare(expectedCounts[j], expectedCounts[i]);
-        if (cmp == 0) {
-          int timeBinI = originalIndexes[i] / MANUFACTURER_ORDS.length;
-          int timeBinJ = originalIndexes[j] / MANUFACTURER_ORDS.length;
-          int ordIndexI = originalIndexes[i] % MANUFACTURER_ORDS.length;
-          int ordIndexJ = originalIndexes[j] % MANUFACTURER_ORDS.length;
-          String labelI =
-              String.format(Locale.ROOT, "%d:%d", timeBinI, MANUFACTURER_ORDS[ordIndexI]);
-          String labelJ =
-              String.format(Locale.ROOT, "%d:%d", timeBinJ, MANUFACTURER_ORDS[ordIndexJ]);
-          cmp = new BytesRef(labelI).compareTo(new BytesRef(labelJ));
-        }
-        return cmp;
-      }
-
-      @Override
-      protected void swap(int i, int j) {
-        int tmp = expectedCounts[i];
-        expectedCounts[i] = expectedCounts[j];
-        expectedCounts[j] = tmp;
-        tmp = originalIndexes[i];
-        originalIndexes[i] = originalIndexes[j];
-        originalIndexes[j] = tmp;
-      }
-    }.sort(0, expectedCounts.length);
-
-    final int topN = 10;
-    final LabelAndValue[] expected = new LabelAndValue[topN];
-    for (int i = 0; i < topN; i++) {
-      int count = expectedCounts[i];
-      int timeBin = originalIndexes[i] / MANUFACTURER_ORDS.length;
-      int ordIndex = originalIndexes[i] % MANUFACTURER_ORDS.length;
-      expected[i] =
-          new LabelAndValue(
-              String.format(Locale.ROOT, "%d:%d", timeBin, MANUFACTURER_ORDS[ordIndex]), count);
-    }
-
-    final FacetResult result = facets.getTopChildren(topN, "field");
-    assertFacetResult(result, "field", new String[0], totalNonZeroBins, totalDocs, expected);
-
-    r.close();
-    d.close();
-  }
 
   public void testLongRangeFacetSetMatching() throws Exception {
     Directory d = newDirectory();
