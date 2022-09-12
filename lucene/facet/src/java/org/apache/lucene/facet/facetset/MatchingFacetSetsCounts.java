@@ -189,7 +189,7 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
       pq.pop();
     }
 
-    LabelAndValue[] labelValues = new LabelAndValue[topN];
+    LabelAndValue[] labelValues = new LabelAndValue[Math.min(topN, childCount)];
     for (int i = pq.size() - 1; i >= 0; i--) {
       Entry e = pq.pop();
       assert e != null;
