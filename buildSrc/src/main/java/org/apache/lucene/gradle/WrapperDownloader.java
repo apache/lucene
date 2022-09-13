@@ -108,6 +108,7 @@ public class WrapperDownloader {
         switch (connection.getResponseCode()) {
           case HttpURLConnection.HTTP_INTERNAL_ERROR:
           case HttpURLConnection.HTTP_UNAVAILABLE:
+          case HttpURLConnection.HTTP_BAD_GATEWAY:
             if (retries-- > 0) {
               // Retry after a short delay.
               System.err.println("Server returned HTTP " + connection.getResponseCode() + ", will retry in " + retryDelay + " seconds.");
