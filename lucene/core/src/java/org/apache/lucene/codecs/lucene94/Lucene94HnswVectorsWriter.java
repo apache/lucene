@@ -173,7 +173,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       case BYTE -> writeByteVectors(fieldData);
       case FLOAT32 -> writeFloat32Vectors(fieldData);
     }
-    ;
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     // write graph
@@ -278,8 +277,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   private long writeSortedByteVectors(FieldWriter<?> fieldData, int[] ordMap) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     for (int ordinal : ordMap) {
-      byte[] vector = (byte[]) fieldData.vectors.get(ordinal);
-      vectorData.writeBytes(vector, 0, vector.length);
+      BytesRef vector = (BytesRef) fieldData.vectors.get(ordinal);
+      vectorData.writeBytes(vector.bytes, vector.offset, vector.length);
     }
     return vectorDataOffset;
   }
@@ -422,7 +421,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                 beamWidth,
                 HnswGraphBuilder.randSeed);
         hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-        graph = hnswGraphBuilder.build(offHeapVectors.randomAccess());
+        graph = hnswGraphBuilder.build(offHeapVectors.copy());
         writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
@@ -594,7 +593,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         case BYTE -> new FieldWriter<BytesRef>(fieldInfo, M, beamWidth, infoStream) {
           @Override
           public BytesRef copyValue(BytesRef value) {
-            return new BytesRef(ArrayUtil.copyOfSubArray(value.bytes, value.offset, dim));
+            return new BytesRef(
+                ArrayUtil.copyOfSubArray(value.bytes, value.offset, value.offset + dim));
           }
         };
         case FLOAT32 -> new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream) {
@@ -617,7 +617,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       hnswGraphBuilder =
           (HnswGraphBuilder<T>)
               HnswGraphBuilder.create(
-                  () -> raVectorValues,
+                  raVectorValues,
                   fieldInfo.getVectorEncoding(),
                   fieldInfo.getVectorSimilarityFunction(),
                   M,
@@ -693,6 +693,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
       return (BytesRef) vectors.get(targetOrd);
+    }
+
+    @Override
+    public RandomAccessVectorValues copy() throws IOException {
+      return this;
     }
   }
 }

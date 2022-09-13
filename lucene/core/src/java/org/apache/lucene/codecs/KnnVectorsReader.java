@@ -20,16 +20,12 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable, Accountable {
@@ -85,34 +81,6 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
-   * Return the k nearest neighbor documents as determined by comparison of their vector values for
-   * this field, to the given vector, by the field's similarity function. The score of each document
-   * is derived from the vector similarity in a way that ensures scores are positive and that a
-   * larger score corresponds to a higher ranking.
-   *
-   * <p>The search is exact, guaranteeing the true k closest neighbors will be returned. Typically
-   * this requires an exhaustive scan of the entire index. It is intended to be used when the number
-   * of potential matches is limited.
-   *
-   * <p>The returned {@link TopDocs} will contain a {@link ScoreDoc} for each nearest neighbor, in
-   * order of their similarity to the query vector (decreasing scores). The {@link TotalHits}
-   * contains the number of documents visited during the search. If the search stopped early because
-   * it hit {@code visitedLimit}, it is indicated through the relation {@code
-   * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
-   *
-   * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
-   *
-   * @param field the vector field to search
-   * @param target the vector-valued query
-   * @param k the number of docs to return
-   * @param acceptDocs {@link DocIdSetIterator} that represents the allowed documents to match.
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
-   */
-  public abstract TopDocs searchExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException;
-
-  /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
    * that called {@link #getMergeInstance()}.
    *
@@ -120,68 +88,5 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    */
   public KnnVectorsReader getMergeInstance() {
     return this;
-  }
-
-  /** {@link #searchExhaustively} */
-  protected static TopDocs exhaustiveSearch(
-      VectorValues vectorValues,
-      DocIdSetIterator acceptDocs,
-      VectorSimilarityFunction similarityFunction,
-      float[] target,
-      int k)
-      throws IOException {
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
-    int doc;
-    while ((doc = acceptDocs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      int vectorDoc = vectorValues.advance(doc);
-      assert vectorDoc == doc;
-      float score = similarityFunction.compare(vectorValues.vectorValue(), target);
-      if (score >= topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = doc;
-        topDoc = queue.updateTop();
-      }
-    }
-    return topDocsFromHitQueue(queue, acceptDocs.cost());
-  }
-
-  /** {@link #searchExhaustively} */
-  protected static TopDocs exhaustiveSearch(
-      VectorValues vectorValues,
-      DocIdSetIterator acceptDocs,
-      VectorSimilarityFunction similarityFunction,
-      BytesRef target,
-      int k)
-      throws IOException {
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
-    int doc;
-    while ((doc = acceptDocs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      int vectorDoc = vectorValues.advance(doc);
-      assert vectorDoc == doc;
-      float score = similarityFunction.compare(vectorValues.binaryValue(), target);
-      if (score >= topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = doc;
-        topDoc = queue.updateTop();
-      }
-    }
-    return topDocsFromHitQueue(queue, acceptDocs.cost());
-  }
-
-  private static TopDocs topDocsFromHitQueue(HitQueue queue, long numHits) {
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
-
-    TotalHits totalHits = new TotalHits(numHits, TotalHits.Relation.EQUAL_TO);
-    return new TopDocs(totalHits, topScoreDocs);
   }
 }

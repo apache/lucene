@@ -245,9 +245,8 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     for (int j = 0; j < 5; j++) {
       vectors[j] = new float[] {j, j};
     }
-    try (Directory d = getIndexStore("field", vectors);
+    try (Directory d = getStableIndexStore("field", vectors);
         IndexReader reader = DirectoryReader.open(d)) {
-      assertEquals(1, reader.leaves().size());
       IndexSearcher searcher = new IndexSearcher(reader);
       KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
       Query rewritten = query.rewrite(reader);
@@ -632,6 +631,48 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  /** Tests filtering when all vectors have the same score. */
+  public void testFilterWithSameScore() throws IOException {
+    int numDocs = 100;
+    int dimension = atLeast(5);
+    try (Directory d = newDirectory()) {
+      // Always use the default kNN format to have predictable behavior around when it hits
+      // visitedLimit. This is fine since the test targets KnnVectorQuery logic, not the kNN format
+      // implementation.
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+      IndexWriter w = new IndexWriter(d, iwc);
+      float[] vector = randomVector(dimension);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(new KnnVectorField("field", vector));
+        doc.add(new IntPoint("tag", i));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      w.close();
+
+      try (DirectoryReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader);
+        int lower = random().nextInt(50);
+        int size = 5;
+
+        // Test a restrictive filter, which usually performs exact search
+        Query filter1 = IntPoint.newRangeQuery("tag", lower, lower + 6);
+        TopDocs results =
+            searcher.search(
+                new KnnVectorQuery("field", randomVector(dimension), size, filter1), size);
+        assertEquals(size, results.scoreDocs.length);
+
+        // Test an unrestrictive filter, which usually performs approximate search
+        Query filter2 = IntPoint.newRangeQuery("tag", lower, numDocs);
+        results =
+            searcher.search(
+                new KnnVectorQuery("field", randomVector(dimension), size, filter2), size);
+        assertEquals(size, results.scoreDocs.length);
+      }
+    }
+  }
+
   public void testDeletes() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -782,8 +823,39 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       doc.add(new StringField("other", "value", Field.Store.NO));
       writer.addDocument(doc);
     }
-
     writer.close();
+    return indexStore;
+  }
+
+  /**
+   * Creates a new directory and adds documents with the given vectors as kNN vector fields,
+   * preserving the order of the added documents.
+   */
+  private Directory getStableIndexStore(String field, float[]... contents) throws IOException {
+    Directory indexStore = newDirectory();
+    try (IndexWriter writer = new IndexWriter(indexStore, newIndexWriterConfig())) {
+      VectorEncoding encoding = randomVectorEncoding();
+      for (int i = 0; i < contents.length; ++i) {
+        Document doc = new Document();
+        if (encoding == VectorEncoding.BYTE) {
+          BytesRef v = new BytesRef(new byte[contents[i].length]);
+          for (int j = 0; j < v.length; j++) {
+            v.bytes[j] = (byte) contents[i][j];
+          }
+          doc.add(new KnnVectorField(field, v, EUCLIDEAN));
+        } else {
+          doc.add(new KnnVectorField(field, contents[i]));
+        }
+        doc.add(new StringField("id", "id" + i, Field.Store.YES));
+        writer.addDocument(doc);
+      }
+      // Add some documents without a vector
+      for (int i = 0; i < 5; i++) {
+        Document doc = new Document();
+        doc.add(new StringField("other", "value", Field.Store.NO));
+        writer.addDocument(doc);
+      }
+    }
     return indexStore;
   }
 

@@ -1,4 +1,4 @@
-### Description (or a Jira issue link if you have one)
+### Description
 
 <!--
 If this is your first contribution to Lucene, please make sure you have reviewed the contribution guide.

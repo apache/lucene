@@ -18,7 +18,6 @@
 package org.apache.lucene.backward_codecs.lucene91;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,12 +32,10 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -269,21 +266,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
-  @Override
-  public TopDocs searchExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
-      // The field does not exist or does not index vectors
-      return EMPTY_TOPDOCS;
-    }
-
-    VectorSimilarityFunction similarityFunction = fieldEntry.similarityFunction;
-    VectorValues vectorValues = getVectorValues(field);
-
-    return exhaustiveSearch(vectorValues, acceptDocs, similarityFunction, target, k);
-  }
-
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
@@ -422,8 +404,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  static class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
 
     private final int dimension;
     private final int size;
@@ -516,7 +497,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
 

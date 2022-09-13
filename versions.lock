@@ -1,6 +1,6 @@
 # Run ./gradlew --write-locks to regenerate this file
 com.carrotsearch:hppc:0.9.1 (1 constraints: 0c050736)
-com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.8.0 (1 constraints: 0c050d36)
+com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.8.1 (1 constraints: 0d050e36)
 com.ibm.icu:icu4j:70.1 (1 constraints: dc040a31)
 commons-codec:commons-codec:1.13 (1 constraints: d904f430)
 commons-logging:commons-logging:1.2 (1 constraints: c20f9771)
