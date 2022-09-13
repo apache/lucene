@@ -635,6 +635,12 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
+  /**
+   * Test that attributes with '>' or '<' characters are parsed correctly.
+   *
+   * @see <a href="https://github.com/apache/lucene/issues/11556">GITHUB#11556</a>
+   * @throws IOException
+   */
   public void testForIssue10520() throws IOException {
     String test =
         "<!DOCTYPE html><html lang=\"en\"><head><title>Test</title></head><body><p class=\"foo>bar\" id=\"baz\">Some text.</p></body></html>";
