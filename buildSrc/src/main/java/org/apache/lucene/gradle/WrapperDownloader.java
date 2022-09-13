@@ -92,7 +92,7 @@ public class WrapperDownloader {
       }
     }
 
-    URL url = new URL("https://github.com/gradle/gradle/raw/v" + wrapperVersion + "/gradle/wrapper/gradle-wrapper.jar");
+    URL url = new URL("https://raw.githubusercontent.com/gradle/gradle/v" + wrapperVersion + "/gradle/wrapper/gradle-wrapper.jar");
     System.err.println("Downloading gradle-wrapper.jar from " + url);
 
     // Zero-copy save the jar to a temp file
