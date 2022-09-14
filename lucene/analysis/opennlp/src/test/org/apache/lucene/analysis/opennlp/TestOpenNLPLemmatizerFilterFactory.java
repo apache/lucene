@@ -17,6 +17,11 @@
 
 package org.apache.lucene.analysis.opennlp;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.analysis.miscellaneous.KeywordRepeatFilterFactory;
 import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilterFactory;
@@ -314,5 +319,29 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
         null,
         null,
         true);
+  }
+
+  public void testPreventEarlyExit() throws IOException {
+    ClasspathResourceLoader loader = new ClasspathResourceLoader(getClass());
+    InputStream earlyExitInput = loader.openResource("data/early-exit-bug-input.txt");
+    String earlyExitInputText = new String(earlyExitInput.readAllBytes(), StandardCharsets.UTF_8);
+
+    InputStream earlyExitOutput = loader.openResource("data/early-exit-bug-output.txt");
+    String earlyExitOutputText = new String(earlyExitOutput.readAllBytes(), StandardCharsets.UTF_8);
+    String[] earlyExitOutputTexts =
+        Arrays.stream(earlyExitOutputText.split("\\s"))
+            .filter(text -> text != "")
+            .collect(Collectors.joining(" "))
+            .split(" ");
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
+            .addTokenFilter(KeywordRepeatFilterFactory.class)
+            .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
+            .build();
+    assertAnalyzesTo(
+        analyzer, earlyExitInputText, earlyExitOutputTexts, null, null, null, null, null, true);
   }
 }
