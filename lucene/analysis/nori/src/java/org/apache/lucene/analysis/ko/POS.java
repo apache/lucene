@@ -54,7 +54,7 @@ public class POS {
     /** Nominal transformative ending */
     ETN(103, "Nominal transformative ending"),
 
-    /** Verbal endings */
+    /** Adnominal form transformative ending */
     ETM(104, "Adnominal form transformative ending"),
 
     /** Interjection */
