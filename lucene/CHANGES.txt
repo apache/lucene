@@ -90,6 +90,9 @@ API Changes
 * GITHUB#11742: MatchingFacetSetsCounts#getTopChildren now properly returns "top" children instead
   of all children. (Greg Miller)
 
+* GITHUB#11772: Removed native subproject and WindowsDirectory implementation from lucene.misc. Recommendation:
+  use MMapDirectory implementation on Windows. (Robert Muir, Uwe Schindler, Dawid Weiss)
+
 Bug Fixes
 ---------------------
 
