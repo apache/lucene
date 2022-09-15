@@ -272,7 +272,9 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME
         },
         new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP});
+        new POS.Tag[] {
+          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
+        });
 
     assertPartsOfSpeech(
         analyzerDecompoundKeep,
