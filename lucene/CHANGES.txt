@@ -61,6 +61,8 @@ Bug Fixes
 * LUCENE-10665, GITHUB#11701: Fix classloading deadlock in analysis factories / AnalysisSPILoader
   initialization.  (Uwe Schindler)
 
+* LUCENE-10674: Ensure BitSetConjDISI returns NO_MORE_DOCS when sub-iterator exhausts. (Jack Mazanec)
+
 Build
 ---------------------
 
