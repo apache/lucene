@@ -273,4 +273,60 @@ public abstract class Terms {
           return false;
         }
       };
+
+  /*
+   Create an Empty Terms with the given fieldInfo object.
+  */
+  public static Terms empty(FieldInfo fieldInfo) {
+    return new Terms() {
+      @Override
+      public TermsEnum iterator() {
+        return TermsEnum.EMPTY;
+      }
+
+      @Override
+      public long size() {
+        return 0;
+      }
+
+      @Override
+      public long getSumTotalTermFreq() {
+        return 0;
+      }
+
+      @Override
+      public long getSumDocFreq() {
+        return 0;
+      }
+
+      @Override
+      public int getDocCount() {
+        return 0;
+      }
+
+      @Override
+      public boolean hasFreqs() {
+        return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      }
+
+      @Override
+      public boolean hasOffsets() {
+        return fieldInfo
+                .getIndexOptions()
+                .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
+            >= 0;
+      }
+
+      @Override
+      public boolean hasPositions() {
+        return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
+            >= 0;
+      }
+
+      @Override
+      public boolean hasPayloads() {
+        return fieldInfo.hasPayloads();
+      }
+    };
+  }
 }

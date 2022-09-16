@@ -124,6 +124,9 @@ public final class DirectPostingsFormat extends PostingsFormat {
     public DirectFields(SegmentReadState state, Fields fields, int minSkipCount, int lowFreqCutoff)
         throws IOException {
       for (String field : fields) {
+        if (fields.terms(field).iterator() == TermsEnum.EMPTY) {
+          continue;
+        }
         this.fields.put(
             field, new DirectField(state, field, fields.terms(field), minSkipCount, lowFreqCutoff));
       }

@@ -104,7 +104,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   // produce DocsEnum on demand
   final PostingsReaderBase postingsReader;
 
-  private final Map<String, FieldReader> fieldMap;
+  private final Map<String, Terms> fieldMap;
   private final List<String> fieldList;
 
   final String segment;
@@ -146,7 +146,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       // Read per-field details
       String metaName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_META_EXTENSION);
-      Map<String, FieldReader> fieldMap = null;
+      Map<String, Terms> fieldMap = null;
       Throwable priorE = null;
       long indexLength = -1, termsLength = -1;
       try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName, state.context)) {
@@ -203,7 +203,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
                   metaIn);
             }
             final long indexStartFP = metaIn.readVLong();
-            FieldReader previous =
+            Terms previous =
                 fieldMap.put(
                     fieldInfo.name,
                     new FieldReader(
@@ -225,6 +225,14 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
           }
           indexLength = metaIn.readLong();
           termsLength = metaIn.readLong();
+
+          // Iterate through all the fieldInfos and if a corresponding entry is not found in
+          // fieldMap then create an entry with empty Terms.
+          for (FieldInfo fieldInfo : state.fieldInfos) {
+            if (fieldMap.containsKey(fieldInfo.name) == false && fieldInfo.hasVectors()) {
+              fieldMap.put(fieldInfo.name, Terms.empty(fieldInfo));
+            }
+          }
         } catch (Throwable exception) {
           priorE = exception;
         } finally {
