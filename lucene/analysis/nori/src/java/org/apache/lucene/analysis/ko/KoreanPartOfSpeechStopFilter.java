@@ -36,9 +36,21 @@ public final class KoreanPartOfSpeechStopFilter extends FilteringTokenFilter {
   public static final Set<POS.Tag> DEFAULT_STOP_TAGS =
       new HashSet<>(
           Arrays.asList(
-              POS.Tag.E,
+              POS.Tag.EP,
+              POS.Tag.EF,
+              POS.Tag.EC,
+              POS.Tag.ETN,
+              POS.Tag.ETM,
               POS.Tag.IC,
-              POS.Tag.J,
+              POS.Tag.JKS,
+              POS.Tag.JKC,
+              POS.Tag.JKG,
+              POS.Tag.JKO,
+              POS.Tag.JKB,
+              POS.Tag.JKV,
+              POS.Tag.JKQ,
+              POS.Tag.JX,
+              POS.Tag.JC,
               POS.Tag.MAG,
               POS.Tag.MAJ,
               POS.Tag.MM,
