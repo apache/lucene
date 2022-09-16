@@ -158,4 +158,14 @@ public class TestOpenNLPPOSFilterFactory extends BaseTokenStreamTestCase {
     assertAnalyzesTo(
         analyzer, NO_BREAK, NO_BREAK_KEYWORD_REPEAT_terms, null, null, null, null, null, true);
   }
+
+  public void testEmptyField() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter("opennlpPOS", "posTaggerModel", posTaggerModelFile)
+            .build();
+    assertAnalyzesTo(analyzer, "", new String[0], null, null, null, null, null, true);
+  }
 }

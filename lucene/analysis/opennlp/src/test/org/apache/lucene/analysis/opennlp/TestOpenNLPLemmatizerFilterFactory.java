@@ -344,4 +344,16 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
     assertAnalyzesTo(
         analyzer, earlyExitInputText, earlyExitOutputTexts, null, null, null, null, null, true);
   }
+
+  public void testEmptyField() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
+            .addTokenFilter(KeywordRepeatFilterFactory.class)
+            .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
+            .build();
+    assertAnalyzesTo(analyzer, "", new String[0], null, null, null, null, null, true);
+  }
 }

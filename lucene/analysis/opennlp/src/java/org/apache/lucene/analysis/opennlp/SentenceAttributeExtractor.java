@@ -62,8 +62,8 @@ public class SentenceAttributeExtractor {
     return sentenceTokenAttrs;
   }
 
-  public boolean areMoreSentencesAvailable() {
-    return hasNextToken;
+  public boolean allSentencesProcessed() {
+    return !hasNextToken;
   }
 
   public void reset() {

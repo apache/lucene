@@ -49,24 +49,26 @@ public final class OpenNLPPOSFilter extends TokenFilter {
     List<AttributeSource> sentenceTokenAttrs = sentenceAttributeExtractor.getSentenceAttributes();
     boolean isEndOfCurrentSentence = tokenNum >= sentenceTokenAttrs.size();
     if (isEndOfCurrentSentence) {
-      if (!sentenceAttributeExtractor.areMoreSentencesAvailable()) {
+      boolean noSentencesLeft =
+          sentenceAttributeExtractor.allSentencesProcessed() || nextSentence().isEmpty();
+      if (noSentencesLeft) {
         return false;
       }
-      nextSentence();
     }
     clearAttributes();
     sentenceTokenAttrs.get(tokenNum++).copyTo(this);
     return true;
   }
 
-  private void nextSentence() throws IOException {
+  private List<AttributeSource> nextSentence() throws IOException {
     tokenNum = 0;
     List<String> termList = new ArrayList<>();
     for (AttributeSource attributeSource : sentenceAttributeExtractor.extractSentenceAttributes()) {
       termList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
     }
-    String[] sentenceTerms = termList.size() > 0 ? termList.toArray(new String[0]) : null;
+    String[] sentenceTerms = termList.toArray(new String[0]);
     assignTokenTypes(posTaggerOp.getPOSTags(sentenceTerms));
+    return sentenceAttributeExtractor.getSentenceAttributes();
   }
 
   private void assignTokenTypes(String[] tags) {
