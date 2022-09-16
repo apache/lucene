@@ -189,7 +189,7 @@ def check_prerequisites(todo=None):
     except:
         sys.exit("You will need git installed")
     try:
-        svn_ver = run("svn --version").splitlines()[0]
+        run("svn --version").splitlines()[0]
     except:
         sys.exit("You will need svn installed")
     if not 'EDITOR' in os.environ:
@@ -414,7 +414,6 @@ class ReleaseState:
     def clear_rc(self):
         if ask_yes_no("Are you sure? This will clear and restart RC%s" % self.rc_number):
             maybe_remove_rc_from_svn()
-            dict = {}
             for g in list(filter(lambda x: x.in_rc_loop(), self.todo_groups)):
                 for t in g.get_todos():
                     t.clear()
@@ -422,7 +421,7 @@ class ReleaseState:
             try:
                 shutil.rmtree(self.get_rc_folder())
                 print("Cleared folder %s" % self.get_rc_folder())
-            except Exception as e:
+            except Exception:
                 print("WARN: Failed to clear %s, please do it manually with higher privileges" % self.get_rc_folder())
             self.save()
 
@@ -583,6 +582,7 @@ class ReleaseState:
             return "%s.%s.0" % (self.release_version_major, self.release_version_minor + 1)
         if self.release_type == 'bugfix':
             return "%s.%s.%s" % (self.release_version_major, self.release_version_minor, self.release_version_bugfix + 1)
+        return None
 
     def get_java_home(self):
         return self.get_java_home_for_version(self.release_version)
@@ -767,7 +767,6 @@ class Todo(SecretYamlObject):
     def display_and_confirm(self):
         try:
             if self.depends:
-                ret_str = ""
                 for dep in ensure_list(self.depends):
                     g = state.get_group_by_id(dep)
                     if not g:
@@ -1113,21 +1112,23 @@ def configure_pgp(gpg_todo):
     if keyid_linenum:
         keyid_line = lines[keyid_linenum]
         assert keyid_line.startswith('LDAP PGP key: ')
-        gpg_id = keyid_line[14:].replace(" ", "")[-8:]
+        gpg_fingerprint = keyid_line[14:].replace(" ", "")
+        gpg_id = gpg_fingerprint[-8:]
         print("Found gpg key id %s on file at Apache (%s)" % (gpg_id, key_url))
     else:
         print(textwrap.dedent("""\
             Could not find your GPG key from Apache servers.
             Please make sure you have registered your key ID in
             id.apache.org, see links for more info."""))
-        gpg_id = str(input("Enter your key ID manually, 8 last characters (ENTER=skip): "))
-        if gpg_id.strip() == '':
+        gpg_fingerprint = str(input("Enter your key fingerprint manually, all 40 characters (ENTER=skip): "))
+        if gpg_fingerprint.strip() == '':
             return False
-        elif len(gpg_id) != 8:
-            print("gpg id must be the last 8 characters of your key id")
-        gpg_id = gpg_id.upper()
+        elif len(gpg_fingerprint) != 40:
+            print("gpg fingerprint must be 40 characters long, do not just input the last 8")
+        gpg_fingerprint = gpg_fingerprint.upper()
+        gpg_id = gpg_fingerprint[-8:]
     try:
-        res = run("gpg --list-secret-keys %s" % gpg_id)
+        res = run("gpg --list-secret-keys %s" % gpg_fingerprint)
         print("Found key %s on your private gpg keychain" % gpg_id)
         # Check rsa and key length >= 4096
         match = re.search(r'^sec +((rsa|dsa)(\d{4})) ', res)
@@ -1165,7 +1166,7 @@ def configure_pgp(gpg_todo):
             need to fix this, then try again"""))
         return False
     try:
-        lines = run("gpg --check-signatures %s" % gpg_id).splitlines()
+        lines = run("gpg --check-signatures %s" % gpg_fingerprint).splitlines()
         sigs = 0
         apache_sigs = 0
         for line in lines:
@@ -1207,6 +1208,7 @@ def configure_pgp(gpg_todo):
 
     gpg_state['apache_id'] = id
     gpg_state['gpg_key'] = gpg_id
+    gpg_state['gpg_fingerprint'] = gpg_fingerprint
 
     print(textwrap.dedent("""\
             You can choose between signing the release with the gpg program or with
@@ -1267,9 +1269,8 @@ class UpdatableSubmenuItem(SubmenuItem):
         """
         :ivar ConsoleMenu self.submenu: The submenu to be opened when this item is selected
         """
-        super(SubmenuItem, self).__init__(text=text, menu=menu, should_exit=should_exit)
+        super(UpdatableSubmenuItem, self).__init__(text=text, menu=menu, should_exit=should_exit, submenu=submenu)
 
-        self.submenu = submenu
         if menu:
             self.get_submenu().parent = menu
 
@@ -1333,7 +1334,7 @@ class MyScreen(Screen):
 
 class CustomExitItem(ExitItem):
     def show(self, index):
-        return super(ExitItem, self).show(index)
+        return super(CustomExitItem, self).show(index)
 
     def get_return(self):
         return ""
@@ -1400,7 +1401,6 @@ def main():
     global lucene_news_file
     lucene_news_file = os.path.join(state.get_website_git_folder(), 'content', 'core', 'core_news',
       "%s-%s-available.md" % (state.get_release_date_iso(), state.release_version.replace(".", "-")))
-    website_folder = state.get_website_git_folder()
 
     main_menu = UpdatableConsoleMenu(title="Lucene ReleaseWizard",
                             subtitle=get_releasing_text,
@@ -1553,7 +1553,7 @@ def run_follow(command, cwd=None, fh=sys.stdout, tee=False, live=False, shell=No
                         lines_written += 1
                         print_line_cr(line, lines_written, stdout=(fh == sys.stdout), tee=tee)
 
-            except Exception as ioe:
+            except Exception:
                 pass
         if not endstderr:
             try:
@@ -1574,7 +1574,7 @@ def run_follow(command, cwd=None, fh=sys.stdout, tee=False, live=False, shell=No
                         errlines.append("%s\n" % line.rstrip())
                         lines_written += 1
                         print_line_cr(line, lines_written, stdout=(fh == sys.stdout), tee=tee)
-            except Exception as e:
+            except Exception:
                 pass
 
         if not lines_written > lines_before:
@@ -1624,7 +1624,7 @@ class Commands(SecretYamlObject):
         fields = loader.construct_mapping(node, deep = True)
         return Commands(**fields)
 
-    def run(self):
+    def run(self): # pylint: disable=inconsistent-return-statements # TODO
         root = self.get_root_folder()
 
         if self.commands_text:
@@ -1651,7 +1651,7 @@ class Commands(SecretYamlObject):
                 print("You will get prompted before running each individual command.")
             else:
                 print(
-                    "You will not be prompted for each command but will see the ouput of each. If one command fails the execution will stop.")
+                    "You will not be prompted for each command but will see the output of each. If one command fails the execution will stop.")
             success = True
             if ask_yes_no("Do you want me to run these commands now?"):
                 if self.remove_files:
@@ -1789,6 +1789,8 @@ def abbreviate_homedir(line):
             return re.sub(r'([^/]|\b)%s' % os.path.expanduser('~'), "\\1%HOME%", line)
         elif 'USERPROFILE' in os.environ:
             return re.sub(r'([^/]|\b)%s' % os.path.expanduser('~'), "\\1%USERPROFILE%", line)
+        else:
+            return None
     else:
         return re.sub(r'([^/]|\b)%s' % os.path.expanduser('~'), "\\1~", line)
 
@@ -1869,7 +1871,6 @@ class Command(SecretYamlObject):
 
     def display_cmd(self):
         lines = []
-        pre = post = ''
         if self.comment:
             if is_windows():
                 lines.append("REM %s" % self.get_comment())
@@ -1915,7 +1916,7 @@ class UserInput(SecretYamlObject):
             return result
 
 
-def create_ical(todo):
+def create_ical(todo): # pylint: disable=unused-argument
     if ask_yes_no("Do you want to add a Calendar reminder for the close vote time?"):
         c = Calendar()
         e = Event()
@@ -1962,7 +1963,7 @@ def vote_close_72h_holidays():
     return holidays if len(holidays) > 0 else None
 
 
-def prepare_announce_lucene(todo):
+def prepare_announce_lucene(todo): # pylint: disable=unused-argument
     if not os.path.exists(lucene_news_file):
         lucene_text = expand_jinja("(( template=announce_lucene ))")
         with open(lucene_news_file, 'w') as fp:
@@ -1973,7 +1974,7 @@ def prepare_announce_lucene(todo):
     return True
 
 
-def check_artifacts_available(todo):
+def check_artifacts_available(todo): # pylint: disable=unused-argument
   try:
     cdnUrl = expand_jinja("https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc")
     load(cdnUrl)
@@ -1983,7 +1984,7 @@ def check_artifacts_available(todo):
     return False
 
   try:
-    mavenUrl = expand_jinja("https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.pom.asc")
+    mavenUrl = expand_jinja("https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.jar.asc")
     load(mavenUrl)
     print("Found %s" % mavenUrl)
   except Exception as e:
