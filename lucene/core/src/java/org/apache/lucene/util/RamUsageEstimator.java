@@ -107,8 +107,7 @@ public final class RamUsageEstimator {
     primitiveSizes = Collections.unmodifiableMap(primitiveSizesMap);
   }
 
-  /** JVMs typically cache small longs. This tries to find out what the range is. */
-  static final int LONG_SIZE, STRING_SIZE;
+  static final int INTEGER_SIZE, LONG_SIZE, STRING_SIZE;
 
   /** For testing only */
   static final boolean JVM_IS_HOTSPOT_64BIT;
@@ -187,6 +186,7 @@ public final class RamUsageEstimator {
       NUM_BYTES_ARRAY_HEADER = NUM_BYTES_OBJECT_HEADER + Integer.BYTES;
     }
 
+    INTEGER_SIZE = (int) shallowSizeOfInstance(Integer.class);
     LONG_SIZE = (int) shallowSizeOfInstance(Long.class);
     STRING_SIZE = (int) shallowSizeOfInstance(String.class);
   }
@@ -208,10 +208,18 @@ public final class RamUsageEstimator {
   }
 
   /**
-   * Return the size of the provided {@link Long} object, returning 0 if it is cached by the JVM and
-   * its shallow size otherwise.
+   * Return the shallow size of the provided {@link Integer} object. Ignores the possibility that
+   * this object is part of the VM IntegerCache
    */
-  public static long sizeOf(Long value) {
+  public static long sizeOf(Integer ignored) {
+    return INTEGER_SIZE;
+  }
+
+  /**
+   * Return the shallow size of the provided {@link Long} object. Ignores the possibility that this
+   * object is part of the VM LongCache
+   */
+  public static long sizeOf(Long ignored) {
     return LONG_SIZE;
   }
 
@@ -456,6 +464,8 @@ public final class RamUsageEstimator {
       size = sizeOf((float[]) o);
     } else if (o instanceof int[]) {
       size = sizeOf((int[]) o);
+    } else if (o instanceof Integer) {
+      size = sizeOf((Integer) o);
     } else if (o instanceof Long) {
       size = sizeOf((Long) o);
     } else if (o instanceof long[]) {
@@ -584,9 +594,10 @@ public final class RamUsageEstimator {
       final Class<?> target = clazz;
       final Field[] fields;
       try {
-        fields =
-            AccessController.doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
-      } catch (AccessControlException e) {
+        fields = doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
+      } catch (
+          @SuppressWarnings("removal")
+          AccessControlException e) {
         throw new RuntimeException("Can't access fields of class: " + target, e);
       }
 
@@ -597,6 +608,13 @@ public final class RamUsageEstimator {
       }
     }
     return alignObjectSize(size);
+  }
+
+  // Extracted to a method to give the SuppressForbidden annotation the smallest possible scope
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 
   /** Return shallow size of any <code>array</code>. */

@@ -41,7 +41,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
   protected final Path delegate;
 
   /** The parent {@code FileSystem} for this path. */
-  protected final FileSystem fileSystem;
+  protected final FilterFileSystem fileSystem;
 
   /**
    * Construct a {@code FilterPath} with parent {@code fileSystem}, based on the specified base
@@ -50,7 +50,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
    * @param delegate specified base path.
    * @param fileSystem parent fileSystem.
    */
-  public FilterPath(Path delegate, FileSystem fileSystem) {
+  public FilterPath(Path delegate, FilterFileSystem fileSystem) {
     this.delegate = delegate;
     this.fileSystem = fileSystem;
   }
@@ -127,8 +127,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   @Override
-  public boolean startsWith(String other) {
-    return delegate.startsWith(other);
+  public final boolean startsWith(String other) {
+    return Path.super.startsWith(other);
   }
 
   @Override
@@ -137,8 +137,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   @Override
-  public boolean endsWith(String other) {
-    return delegate.startsWith(other);
+  public final boolean endsWith(String other) {
+    return Path.super.endsWith(other);
   }
 
   @Override
@@ -152,8 +152,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   @Override
-  public Path resolve(String other) {
-    return wrap(delegate.resolve(other));
+  public final Path resolve(String other) {
+    return Path.super.resolve(other);
   }
 
   @Override
@@ -162,8 +162,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
   }
 
   @Override
-  public Path resolveSibling(String other) {
-    return wrap(delegate.resolveSibling(other));
+  public final Path resolveSibling(String other) {
+    return Path.super.resolveSibling(other);
   }
 
   @Override
@@ -270,9 +270,8 @@ public class FilterPath implements Path, Unwrappable<Path> {
     return Unwrappable.unwrapAll(path);
   }
 
-  /** Override this to customize the return wrapped path from various operations */
-  protected Path wrap(Path other) {
-    return new FilterPath(other, fileSystem);
+  protected final Path wrap(Path other) {
+    return fileSystem.parent.wrapPath(other);
   }
 
   /** Override this to customize the unboxing of Path from various operations */

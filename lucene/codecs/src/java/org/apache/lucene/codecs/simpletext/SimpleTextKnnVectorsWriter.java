@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.BufferingKnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
@@ -35,7 +35,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 
 /** Writes vector-valued fields in a plain text format */
-public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
+public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
 
   static final BytesRef FIELD_NUMBER = new BytesRef("field-number ");
   static final BytesRef FIELD_NAME = new BytesRef("field-name ");
@@ -48,8 +48,6 @@ public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
   SimpleTextKnnVectorsWriter(SegmentWriteState state) throws IOException {
-    assert state.fieldInfos.hasVectorValues();
-
     boolean success = false;
     // exception handling to pass TestSimpleTextKnnVectorsFormat#testRandomExceptions
     try {
@@ -75,7 +73,7 @@ public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
       throws IOException {
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     long vectorDataOffset = vectorData.getFilePointer();

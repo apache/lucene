@@ -149,6 +149,13 @@ public class MultiCollector implements Collector {
     }
   }
 
+  @Override
+  public void setWeight(Weight weight) {
+    for (Collector collector : collectors) {
+      collector.setWeight(weight);
+    }
+  }
+
   /** Provides access to the wrapped {@code Collector}s for advanced use-cases */
   public Collector[] getCollectors() {
     return collectors;

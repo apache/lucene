@@ -356,17 +356,15 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
           new BytesRef(FacetsConfig.pathToString(categoryPath.components, categoryPath.length));
       PostingsEnum docs = null; // reuse
       for (LeafReaderContext ctx : reader.leaves()) {
-        Terms terms = ctx.reader().terms(Consts.FULL);
-        if (terms != null) {
-          // TODO: share per-segment TermsEnum here!
-          TermsEnum termsEnum = terms.iterator();
-          if (termsEnum.seekExact(catTerm)) {
-            // liveDocs=null because the taxonomy has no deletes
-            docs = termsEnum.postings(docs, 0 /* freqs not required */);
-            // if the term was found, we know it has exactly one document.
-            doc = docs.nextDoc() + ctx.docBase;
-            break;
-          }
+        Terms terms = Terms.getTerms(ctx.reader(), Consts.FULL);
+        // TODO: share per-segment TermsEnum here!
+        TermsEnum termsEnum = terms.iterator();
+        if (termsEnum.seekExact(catTerm)) {
+          // liveDocs=null because the taxonomy has no deletes
+          docs = termsEnum.postings(docs, 0 /* freqs not required */);
+          // if the term was found, we know it has exactly one document.
+          doc = docs.nextDoc() + ctx.docBase;
+          break;
         }
       }
     } finally {
@@ -614,28 +612,26 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     try {
       PostingsEnum postingsEnum = null;
       for (LeafReaderContext ctx : reader.leaves()) {
-        Terms terms = ctx.reader().terms(Consts.FULL);
-        if (terms != null) { // cannot really happen, but be on the safe side
-          // TODO: share per-segment TermsEnum here!
-          TermsEnum termsEnum = terms.iterator();
-          while (termsEnum.next() != null) {
-            if (!cache.isFull()) {
-              BytesRef t = termsEnum.term();
-              // Since we guarantee uniqueness of categories, each term has exactly
-              // one document. Also, since we do not allow removing categories (and
-              // hence documents), there are no deletions in the index. Therefore, it
-              // is sufficient to call next(), and then doc(), exactly once with no
-              // 'validation' checks.
-              FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(t.utf8ToString()));
-              postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.NONE);
-              boolean res = cache.put(cp, postingsEnum.nextDoc() + ctx.docBase);
-              assert !res : "entries should not have been evicted from the cache";
-            } else {
-              // the cache is full and the next put() will evict entries from it, therefore abort
-              // the iteration.
-              aborted = true;
-              break;
-            }
+        Terms terms = Terms.getTerms(ctx.reader(), Consts.FULL);
+        // TODO: share per-segment TermsEnum here!
+        TermsEnum termsEnum = terms.iterator();
+        while (termsEnum.next() != null) {
+          if (!cache.isFull()) {
+            BytesRef t = termsEnum.term();
+            // Since we guarantee uniqueness of categories, each term has exactly
+            // one document. Also, since we do not allow removing categories (and
+            // hence documents), there are no deletions in the index. Therefore, it
+            // is sufficient to call next(), and then doc(), exactly once with no
+            // 'validation' checks.
+            FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(t.utf8ToString()));
+            postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.NONE);
+            boolean res = cache.put(cp, postingsEnum.nextDoc() + ctx.docBase);
+            assert !res : "entries should not have been evicted from the cache";
+          } else {
+            // the cache is full and the next put() will evict entries from it, therefore abort
+            // the iteration.
+            aborted = true;
+            break;
           }
         }
         if (aborted) {

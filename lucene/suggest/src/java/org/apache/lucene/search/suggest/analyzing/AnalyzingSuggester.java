@@ -164,7 +164,7 @@ public class AnalyzingSuggester extends Lookup {
   private boolean preservePositionIncrements;
 
   /** Number of entries the lookup was built with */
-  private long count = 0;
+  private volatile long count = 0;
 
   /**
    * Calls {@link #AnalyzingSuggester(Directory,String,Analyzer,Analyzer,int,int,int,boolean)
@@ -407,7 +407,7 @@ public class AnalyzingSuggester extends Lookup {
 
     String tempSortedFileName = null;
 
-    count = 0;
+    long newCount = 0;
     byte[] buffer = new byte[8];
     try {
       ByteArrayDataOutput output = new ByteArrayDataOutput(buffer);
@@ -416,7 +416,7 @@ public class AnalyzingSuggester extends Lookup {
         LimitedFiniteStringsIterator finiteStrings =
             new LimitedFiniteStringsIterator(toAutomaton(surfaceForm, ts2a), maxGraphExpansions);
 
-        for (IntsRef string; (string = finiteStrings.next()) != null; count++) {
+        for (IntsRef string; (string = finiteStrings.next()) != null; newCount++) {
           Util.toBytesRef(string, scratch);
 
           // length of the analyzed text (FST input)
@@ -588,6 +588,7 @@ public class AnalyzingSuggester extends Lookup {
         }
       }
       fst = fstCompiler.compile();
+      count = newCount;
 
       // Util.dotToFile(fst, "/tmp/suggest.dot");
     } finally {

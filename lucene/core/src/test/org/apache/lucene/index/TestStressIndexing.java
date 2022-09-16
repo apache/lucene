@@ -27,7 +27,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestStressIndexing extends LuceneTestCase {
   private abstract static class TimedThread extends Thread {
     volatile boolean failed;
-    private static int RUN_TIME_MSEC = atLeast(1000);
+    private static int RUN_ITERATIONS = atLeast(100);
     private TimedThread[] allThreads;
 
     public abstract void doWork() throws Throwable;
@@ -38,13 +38,12 @@ public class TestStressIndexing extends LuceneTestCase {
 
     @Override
     public void run() {
-      final long stopTime = System.currentTimeMillis() + RUN_TIME_MSEC;
-
+      int iterations = 0;
       try {
         do {
           if (anyErrors()) break;
           doWork();
-        } while (System.currentTimeMillis() < stopTime);
+        } while (++iterations < RUN_ITERATIONS);
       } catch (Throwable e) {
         System.out.println(Thread.currentThread() + ": exc");
         e.printStackTrace(System.out);

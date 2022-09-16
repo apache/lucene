@@ -70,7 +70,7 @@ public class LongValueFacetCounts extends Facets {
    * been indexed).
    */
   public LongValueFacetCounts(String field, FacetsCollector hits) throws IOException {
-    this(field, null, hits);
+    this(field, (LongValuesSource) null, hits);
   }
 
   /**
@@ -88,11 +88,31 @@ public class LongValueFacetCounts extends Facets {
   }
 
   /**
+   * Create {@code LongValueFacetCounts}, using the provided {@link MultiLongValuesSource} if
+   * non-null. If {@code valuesSource} is null, doc values from the provided {@code field} will be
+   * used.
+   */
+  public LongValueFacetCounts(
+      String field, MultiLongValuesSource valuesSource, FacetsCollector hits) throws IOException {
+    this.field = field;
+    if (valuesSource != null) {
+      LongValuesSource singleValues = MultiLongValuesSource.unwrapSingleton(valuesSource);
+      if (singleValues != null) {
+        count(singleValues, hits.getMatchingDocs());
+      } else {
+        count(valuesSource, hits.getMatchingDocs());
+      }
+    } else {
+      count(field, hits.getMatchingDocs());
+    }
+  }
+
+  /**
    * Counts all facet values for this reader. This produces the same result as computing facets on a
    * {@link org.apache.lucene.search.MatchAllDocsQuery}, but is more efficient.
    */
   public LongValueFacetCounts(String field, IndexReader reader) throws IOException {
-    this(field, null, reader);
+    this(field, (LongValuesSource) null, reader);
   }
 
   /**
@@ -106,6 +126,27 @@ public class LongValueFacetCounts extends Facets {
     this.field = field;
     if (valueSource != null) {
       countAll(reader, valueSource);
+    } else {
+      countAll(reader, field);
+    }
+  }
+
+  /**
+   * Counts all facet values for the provided {@link MultiLongValuesSource} if non-null. If {@code
+   * valueSource} is null, doc values from the provided {@code field} will be used. This produces
+   * the same result as computing facets on a {@link org.apache.lucene.search.MatchAllDocsQuery},
+   * but is more efficient.
+   */
+  public LongValueFacetCounts(String field, MultiLongValuesSource valuesSource, IndexReader reader)
+      throws IOException {
+    this.field = field;
+    if (valuesSource != null) {
+      LongValuesSource singleValued = MultiLongValuesSource.unwrapSingleton(valuesSource);
+      if (singleValued != null) {
+        countAll(reader, singleValued);
+      } else {
+        countAll(reader, valuesSource);
+      }
     } else {
       countAll(reader, field);
     }
@@ -130,6 +171,37 @@ public class LongValueFacetCounts extends Facets {
         if (fv.advanceExact(doc)) {
           increment(fv.longValue());
           totCount++;
+        }
+
+        doc = docs.nextDoc();
+      }
+    }
+  }
+
+  /** Counts from the provided valuesSource. */
+  private void count(MultiLongValuesSource valuesSource, List<MatchingDocs> matchingDocs)
+      throws IOException {
+    for (MatchingDocs hits : matchingDocs) {
+
+      MultiLongValues multiValues = valuesSource.getValues(hits.context);
+
+      DocIdSetIterator docs = hits.bits.iterator();
+      for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+        // Skip missing docs:
+        if (multiValues.advanceExact(doc)) {
+          long limit = multiValues.getValueCount();
+          if (limit > 0) {
+            totCount++;
+          }
+          long previousValue = 0;
+          for (int i = 0; i < limit; i++) {
+            long value = multiValues.nextValue();
+            // do not increment the count for duplicate values
+            if (i == 0 || value != previousValue) {
+              increment(value);
+              previousValue = value;
+            }
+          }
         }
 
         doc = docs.nextDoc();
@@ -194,6 +266,34 @@ public class LongValueFacetCounts extends Facets {
     }
   }
 
+  /** Count everything in the provided valueSource. */
+  private void countAll(IndexReader reader, MultiLongValuesSource valueSource) throws IOException {
+
+    for (LeafReaderContext context : reader.leaves()) {
+      MultiLongValues multiValues = valueSource.getValues(context);
+      int maxDoc = context.reader().maxDoc();
+
+      for (int doc = 0; doc < maxDoc; doc++) {
+        // Skip missing docs:
+        if (multiValues.advanceExact(doc)) {
+          long limit = multiValues.getValueCount();
+          if (limit > 0) {
+            totCount++;
+          }
+          long previousValue = 0;
+          for (int i = 0; i < limit; i++) {
+            long value = multiValues.nextValue();
+            // do not increment the count for duplicate values
+            if (i == 0 || value != previousValue) {
+              increment(value);
+              previousValue = value;
+            }
+          }
+        }
+      }
+    }
+  }
+
   /** Count everything in the specified field. */
   private void countAll(IndexReader reader, String field) throws IOException {
 
@@ -247,14 +347,35 @@ public class LongValueFacetCounts extends Facets {
   }
 
   @Override
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    validateDimAndPathForGetChildren(dim, path);
+    List<LabelAndValue> labelValues = new ArrayList<>();
+    for (int i = 0; i < counts.length; i++) {
+      if (counts[i] != 0) {
+        labelValues.add(new LabelAndValue(Long.toString(i), counts[i]));
+      }
+    }
+    if (hashCounts.size() != 0) {
+      for (LongIntCursor c : hashCounts) {
+        int count = c.value;
+        if (count != 0) {
+          labelValues.add(new LabelAndValue(Long.toString(c.key), c.value));
+        }
+      }
+    }
+
+    return new FacetResult(
+        field,
+        new String[0],
+        totCount,
+        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.size());
+  }
+
+  @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) {
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+    validateTopN(topN);
+    validateDimAndPathForGetChildren(dim, path);
     return getTopChildrenSortByCount(topN);
   }
 
@@ -381,6 +502,16 @@ public class LongValueFacetCounts extends Facets {
     }
   }
 
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
+    }
+  }
+
   @Override
   public Number getSpecificValue(String dim, String... path) {
     // TODO: should we impl this?
@@ -389,6 +520,7 @@ public class LongValueFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) {
+    validateTopN(topN);
     return Collections.singletonList(getTopChildren(topN, field));
   }
 

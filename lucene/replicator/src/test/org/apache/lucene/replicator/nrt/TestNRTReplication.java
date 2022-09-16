@@ -103,8 +103,9 @@ public class TestNRTReplication extends LuceneTestCase {
     long seed = random().nextLong() * nodeStartCounter.incrementAndGet();
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(seed));
     cmd.add("-ea");
-    cmd.add("-cp");
-    cmd.add(System.getProperty("java.class.path"));
+
+    cmd.addAll(getJvmForkArguments());
+
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(TestSimpleServer.class.getName());
 
@@ -353,7 +354,6 @@ public class TestNRTReplication extends LuceneTestCase {
   // Start up, index 10 docs, replicate, but crash and restart the replica without committing it:
   @Nightly
   public void testReplicaCrashNoCommit() throws Exception {
-
     Path primaryPath = createTempDir("primary");
     NodeProcess primary = startNode(-1, 0, primaryPath, -1, false);
 

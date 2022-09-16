@@ -19,6 +19,7 @@ package org.apache.lucene.facet.sortedset;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.facet.FacetField;
+import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.IndexOptions;
 
 /**
@@ -40,20 +41,39 @@ public class SortedSetDocValuesFacetField extends Field {
   /** Dimension. */
   public final String dim;
 
-  /** Label. */
-  public final String label;
+  /** Path. */
+  public final String[] path;
+
+  /**
+   * String form of path.
+   *
+   * @deprecated This field will be removed in a future version. {@link
+   *     FacetsConfig#pathToString(String[])} can be applied to {@code path} as a replacement if
+   *     string path is desired.
+   */
+  @Deprecated public final String label;
 
   /** Sole constructor. */
-  public SortedSetDocValuesFacetField(String dim, String label) {
+  public SortedSetDocValuesFacetField(String dim, String... path) {
     super("dummy", TYPE);
-    FacetField.verifyLabel(label);
+    for (String label : path) {
+      FacetField.verifyLabel(label);
+    }
     FacetField.verifyLabel(dim);
+    if (path.length == 0) {
+      throw new IllegalArgumentException("path must have at least one element");
+    }
     this.dim = dim;
-    this.label = label;
+    this.path = path;
+    this.label = FacetsConfig.pathToString(path);
   }
 
   @Override
   public String toString() {
-    return "SortedSetDocValuesFacetField(dim=" + dim + " label=" + label + ")";
+    return "SortedSetDocValuesFacetField(dim="
+        + dim
+        + " path="
+        + FacetsConfig.pathToString(path)
+        + ")";
   }
 }

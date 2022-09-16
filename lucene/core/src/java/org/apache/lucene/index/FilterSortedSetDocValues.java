@@ -44,6 +44,11 @@ public class FilterSortedSetDocValues extends SortedSetDocValues {
   }
 
   @Override
+  public int docValueCount() {
+    return in.docValueCount();
+  }
+
+  @Override
   public BytesRef lookupOrd(long ord) throws IOException {
     return in.lookupOrd(ord);
   }

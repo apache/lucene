@@ -32,8 +32,8 @@ public class LongComparator extends NumericComparator<Long> {
   protected long bottom;
 
   public LongComparator(
-      int numHits, String field, Long missingValue, boolean reverse, int sortPos) {
-    super(field, missingValue != null ? missingValue : 0L, reverse, sortPos, Long.BYTES);
+      int numHits, String field, Long missingValue, boolean reverse, boolean enableSkipping) {
+    super(field, missingValue != null ? missingValue : 0L, reverse, enableSkipping, Long.BYTES);
     values = new long[numHits];
   }
 

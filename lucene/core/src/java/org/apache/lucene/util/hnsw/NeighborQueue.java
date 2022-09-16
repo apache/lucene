@@ -29,17 +29,36 @@ import org.apache.lucene.util.NumericUtils;
  */
 public class NeighborQueue {
 
+  private enum Order {
+    MIN_HEAP {
+      @Override
+      long apply(long v) {
+        return v;
+      }
+    },
+    MAX_HEAP {
+      @Override
+      long apply(long v) {
+        // This cannot be just `-v` since Long.MIN_VALUE doesn't have a positive counterpart. It
+        // needs a function that returns MAX_VALUE for MIN_VALUE and vice-versa.
+        return -1 - v;
+      }
+    };
+
+    abstract long apply(long v);
+  }
+
   private final LongHeap heap;
+  private final Order order;
 
   // Used to track the number of neighbors visited during a single graph traversal
   private int visitedCount;
+  // Whether the search stopped early because it reached the visited nodes limit
+  private boolean incomplete;
 
-  NeighborQueue(int initialSize, boolean reversed) {
-    if (reversed) {
-      heap = LongHeap.create(LongHeap.Order.MAX, initialSize);
-    } else {
-      heap = LongHeap.create(LongHeap.Order.MIN, initialSize);
-    }
+  public NeighborQueue(int initialSize, boolean maxHeap) {
+    this.heap = new LongHeap(initialSize);
+    this.order = maxHeap ? Order.MAX_HEAP : Order.MIN_HEAP;
   }
 
   /** @return the number of elements in the heap */
@@ -70,40 +89,87 @@ public class NeighborQueue {
     return heap.insertWithOverflow(encode(newNode, newScore));
   }
 
+  /**
+   * Encodes the node ID and its similarity score as long, preserving the Lucene tie-breaking rule
+   * that when two scores are equals, the smaller node ID must win.
+   *
+   * <p>The most significant 32 bits represent the float score, encoded as a sortable int.
+   *
+   * <p>The less significant 32 bits represent the node ID.
+   *
+   * <p>The bits representing the node ID are complemented to guarantee the win for the smaller node
+   * Id.
+   *
+   * <p>The AND with 0xFFFFFFFFL (a long with first 32 bit as 1) is necessary to obtain a long that
+   * has
+   *
+   * <p>The most significant 32 bits to 0
+   *
+   * <p>The less significant 32 bits represent the node ID.
+   *
+   * @param node the node ID
+   * @param score the node score
+   * @return the encoded score, node ID
+   */
   private long encode(int node, float score) {
-    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | node;
+    return order.apply(
+        (((long) NumericUtils.floatToSortableInt(score)) << 32) | (0xFFFFFFFFL & ~node));
+  }
+
+  private float decodeScore(long heapValue) {
+    return NumericUtils.sortableIntToFloat((int) (order.apply(heapValue) >> 32));
+  }
+
+  private int decodeNodeId(long heapValue) {
+    return (int) ~(order.apply(heapValue));
   }
 
   /** Removes the top element and returns its node id. */
   public int pop() {
-    return (int) heap.pop();
+    return decodeNodeId(heap.pop());
   }
 
-  int[] nodes() {
+  public int[] nodes() {
     int size = size();
     int[] nodes = new int[size];
     for (int i = 0; i < size; i++) {
-      nodes[i] = (int) heap.get(i + 1);
+      nodes[i] = decodeNodeId(heap.get(i + 1));
     }
     return nodes;
   }
 
   /** Returns the top element's node id. */
   public int topNode() {
-    return (int) heap.top();
+    return decodeNodeId(heap.top());
   }
 
-  /** Returns the top element's node score. */
+  /**
+   * Returns the top element's node score. For the min heap this is the minimum score. For the max
+   * heap this is the maximum score.
+   */
   public float topScore() {
-    return NumericUtils.sortableIntToFloat((int) (heap.top() >> 32));
+    return decodeScore(heap.top());
+  }
+
+  public void clear() {
+    heap.clear();
+    visitedCount = 0;
   }
 
   public int visitedCount() {
     return visitedCount;
   }
 
-  void setVisitedCount(int visitedCount) {
+  public void setVisitedCount(int visitedCount) {
     this.visitedCount = visitedCount;
+  }
+
+  public boolean incomplete() {
+    return incomplete;
+  }
+
+  public void markIncomplete() {
+    this.incomplete = true;
   }
 
   @Override

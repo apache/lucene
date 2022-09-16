@@ -44,7 +44,6 @@ import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -170,49 +169,44 @@ public final class RamUsageTester {
      * and accumulate this object's shallow size.
      */
     try {
-      if (Constants.JRE_IS_MINIMUM_JAVA9) {
-        long alignedShallowInstanceSize = RamUsageEstimator.shallowSizeOf(ob);
+      long alignedShallowInstanceSize = RamUsageEstimator.shallowSizeOf(ob);
 
-        Predicate<Class<?>> isJavaModule = (clazz) -> clazz.getName().startsWith("java.");
+      Predicate<Class<?>> isJavaModule = (clazz) -> clazz.getName().startsWith("java.");
 
-        // Java 9: Best guess for some known types, as we cannot precisely look into runtime
-        // classes:
-        final ToLongFunction<Object> func = SIMPLE_TYPES.get(obClazz);
-        if (func
-            != null) { // some simple type like String where the size is easy to get from public
-          // properties
-          return accumulator.accumulateObject(
-              ob, alignedShallowInstanceSize + func.applyAsLong(ob), Collections.emptyMap(), stack);
-        } else if (ob instanceof Enum) {
-          return alignedShallowInstanceSize;
-        } else if (ob instanceof ByteBuffer) {
-          // Approximate ByteBuffers with their underlying storage (ignores field overhead).
-          return byteArraySize(((ByteBuffer) ob).capacity());
-        } else if (isJavaModule.test(obClazz) && ob instanceof Map) {
-          final List<Object> values =
-              ((Map<?, ?>) ob)
-                  .entrySet().stream()
-                      .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
-                      .collect(Collectors.toList());
-          return accumulator.accumulateArray(
-                  ob,
-                  alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
-                  values,
-                  stack)
-              + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
-        } else if (isJavaModule.test(obClazz) && ob instanceof Iterable) {
-          final List<Object> values =
-              StreamSupport.stream(((Iterable<?>) ob).spliterator(), false)
-                  .collect(Collectors.toList());
-          return accumulator.accumulateArray(
-                  ob,
-                  alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
-                  values,
-                  stack)
-              + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
-        } else {
-          // Fallback to reflective access.
-        }
+      // Java 9+: Best guess for some known types, as we cannot precisely look into runtime
+      // classes:
+      final ToLongFunction<Object> func = SIMPLE_TYPES.get(obClazz);
+      if (func != null) { // some simple type like String where the size is easy to get from public
+        // properties
+        return accumulator.accumulateObject(
+            ob, alignedShallowInstanceSize + func.applyAsLong(ob), Collections.emptyMap(), stack);
+      } else if (ob instanceof Enum) {
+        return alignedShallowInstanceSize;
+      } else if (ob instanceof ByteBuffer) {
+        // Approximate ByteBuffers with their underlying storage (ignores field overhead).
+        return byteArraySize(((ByteBuffer) ob).capacity());
+      } else if (isJavaModule.test(obClazz) && ob instanceof Map) {
+        final List<Object> values =
+            ((Map<?, ?>) ob)
+                .entrySet().stream()
+                    .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
+                    .collect(Collectors.toList());
+        return accumulator.accumulateArray(
+                ob,
+                alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
+                values,
+                stack)
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+      } else if (isJavaModule.test(obClazz) && ob instanceof Iterable) {
+        final List<Object> values =
+            StreamSupport.stream(((Iterable<?>) ob).spliterator(), false)
+                .collect(Collectors.toList());
+        return accumulator.accumulateArray(
+                ob,
+                alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER,
+                values,
+                stack)
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
       }
 
       ClassCache cachedInfo = classCache.get(obClazz);
@@ -323,46 +317,50 @@ public final class RamUsageTester {
   /** Create a cached information about shallow size and reference fields for a given class. */
   @SuppressForbidden(reason = "We need to access private fields of measured objects.")
   private static ClassCache createCacheEntry(final Class<?> clazz) {
-    return AccessController.doPrivileged(
-        (PrivilegedAction<ClassCache>)
-            () -> {
-              ClassCache cachedInfo;
-              long shallowInstanceSize = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
-              final ArrayList<Field> referenceFields = new ArrayList<>(32);
-              for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-                if (c == Class.class) {
-                  // prevent inspection of Class' fields, throws SecurityException in Java 9!
-                  continue;
-                }
-                final Field[] fields = c.getDeclaredFields();
-                for (final Field f : fields) {
-                  if (!Modifier.isStatic(f.getModifiers())) {
-                    shallowInstanceSize = RamUsageEstimator.adjustForField(shallowInstanceSize, f);
+    @SuppressWarnings("removal")
+    ClassCache classCache =
+        AccessController.doPrivileged(
+            (PrivilegedAction<ClassCache>)
+                () -> {
+                  ClassCache cachedInfo;
+                  long shallowInstanceSize = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+                  final ArrayList<Field> referenceFields = new ArrayList<>(32);
+                  for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+                    if (c == Class.class) {
+                      // prevent inspection of Class' fields, throws SecurityException in Java 9!
+                      continue;
+                    }
+                    final Field[] fields = c.getDeclaredFields();
+                    for (final Field f : fields) {
+                      if (!Modifier.isStatic(f.getModifiers())) {
+                        shallowInstanceSize =
+                            RamUsageEstimator.adjustForField(shallowInstanceSize, f);
 
-                    if (!f.getType().isPrimitive()) {
-                      try {
-                        f.setAccessible(true);
-                        referenceFields.add(f);
-                      } catch (RuntimeException re) {
-                        throw new RuntimeException(
-                            String.format(
-                                Locale.ROOT,
-                                "Can't access field '%s' of class '%s' for RAM estimation.",
-                                f.getName(),
-                                clazz.getName()),
-                            re);
+                        if (!f.getType().isPrimitive()) {
+                          try {
+                            f.setAccessible(true);
+                            referenceFields.add(f);
+                          } catch (RuntimeException re) {
+                            throw new RuntimeException(
+                                String.format(
+                                    Locale.ROOT,
+                                    "Can't access field '%s' of class '%s' for RAM estimation.",
+                                    f.getName(),
+                                    clazz.getName()),
+                                re);
+                          }
+                        }
                       }
                     }
                   }
-                }
-              }
 
-              cachedInfo =
-                  new ClassCache(
-                      RamUsageEstimator.alignObjectSize(shallowInstanceSize),
-                      referenceFields.toArray(new Field[referenceFields.size()]));
-              return cachedInfo;
-            });
+                  cachedInfo =
+                      new ClassCache(
+                          RamUsageEstimator.alignObjectSize(shallowInstanceSize),
+                          referenceFields.toArray(new Field[referenceFields.size()]));
+                  return cachedInfo;
+                });
+    return classCache;
   }
 
   private static long byteArraySize(int len) {

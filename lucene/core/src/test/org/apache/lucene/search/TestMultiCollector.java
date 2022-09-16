@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Test;
@@ -99,19 +101,32 @@ public class TestMultiCollector extends LuceneTestCase {
       }
       final IndexReader reader = w.getReader();
       w.close();
-      final IndexSearcher searcher = newSearcher(reader);
-      Map<TotalHitCountCollector, Integer> expectedCounts = new HashMap<>();
+      final IndexSearcher searcher = newSearcher(reader, true, true, false);
+      Map<DummyTotalHitCountCollector, Integer> expectedCounts = new HashMap<>();
       List<Collector> collectors = new ArrayList<>();
       final int numCollectors = TestUtil.nextInt(random(), 1, 5);
       for (int i = 0; i < numCollectors; ++i) {
         final int terminateAfter = random().nextInt(numDocs + 10);
         final int expectedCount = terminateAfter > numDocs ? numDocs : terminateAfter;
-        TotalHitCountCollector collector = new TotalHitCountCollector();
+        DummyTotalHitCountCollector collector = new DummyTotalHitCountCollector();
         expectedCounts.put(collector, expectedCount);
         collectors.add(new TerminateAfterCollector(collector, terminateAfter));
       }
-      searcher.search(new MatchAllDocsQuery(), MultiCollector.wrap(collectors));
-      for (Map.Entry<TotalHitCountCollector, Integer> expectedCount : expectedCounts.entrySet()) {
+      searcher.search(
+          new MatchAllDocsQuery(),
+          new CollectorManager<Collector, Void>() {
+            @Override
+            public Collector newCollector() {
+              return MultiCollector.wrap(collectors);
+            }
+
+            @Override
+            public Void reduce(Collection<Collector> collectors) {
+              return null;
+            }
+          });
+      for (Map.Entry<DummyTotalHitCountCollector, Integer> expectedCount :
+          expectedCounts.entrySet()) {
         assertEquals(expectedCount.getValue().intValue(), expectedCount.getKey().getTotalHits());
       }
       reader.close();
@@ -120,8 +135,8 @@ public class TestMultiCollector extends LuceneTestCase {
   }
 
   public void testSetScorerAfterCollectionTerminated() throws IOException {
-    Collector collector1 = new TotalHitCountCollector();
-    Collector collector2 = new TotalHitCountCollector();
+    Collector collector1 = new DummyTotalHitCountCollector();
+    Collector collector2 = new DummyTotalHitCountCollector();
 
     AtomicBoolean setScorerCalled1 = new AtomicBoolean();
     collector1 = new SetScorerCollector(collector1, setScorerCalled1);
@@ -211,7 +226,7 @@ public class TestMultiCollector extends LuceneTestCase {
             scorer.setMinCompetitiveScore(minScore);
           }
         };
-    Collector multiCollector = MultiCollector.wrap(collector, new TotalHitCountCollector());
+    Collector multiCollector = MultiCollector.wrap(collector, new DummyTotalHitCountCollector());
     LeafCollector leafCollector = multiCollector.getLeafCollector(reader.leaves().get(0));
     leafCollector.setScorer(scorer);
     leafCollector.collect(0); // no exception
@@ -270,7 +285,7 @@ public class TestMultiCollector extends LuceneTestCase {
       List<Collector> cols = new ArrayList<>();
       cols.add(collector);
       for (int col = 0; col < numCol; col++) {
-        cols.add(new TerminateAfterCollector(new TotalHitCountCollector(), 0));
+        cols.add(new TerminateAfterCollector(new DummyTotalHitCountCollector(), 0));
       }
       Collections.shuffle(cols, random());
       Collector multiCollector = MultiCollector.wrap(cols);

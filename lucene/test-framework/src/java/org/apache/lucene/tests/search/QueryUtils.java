@@ -228,7 +228,8 @@ public class QueryUtils {
       }
 
       @Override
-      public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs) {
+      public TopDocs searchNearestVectors(
+          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
         return null;
       }
 
@@ -534,7 +535,7 @@ public class QueryUtils {
           public void collect(int doc) throws IOException {
             float score = scorer.score();
             try {
-              long startMS = System.currentTimeMillis();
+              long startNS = System.nanoTime();
               for (int i = lastDoc[0] + 1; i <= doc; i++) {
                 Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
                 Scorer scorer = w.scorer(context.get(leafPtr));
@@ -564,7 +565,7 @@ public class QueryUtils {
 
                 // Hurry things along if they are going slow (eg
                 // if you got SimpleText codec this will kick in):
-                if (i < doc && System.currentTimeMillis() - startMS > 5) {
+                if (i < doc && System.nanoTime() - startNS > 5_000_000) {
                   i = doc - 1;
                 }
               }

@@ -17,27 +17,16 @@
 package org.apache.lucene.util;
 
 /**
- * A heap that stores longs; a primitive priority queue that like all priority queues maintains a
- * partial ordering of its elements such that the least element can always be found in constant
+ * A min heap that stores longs; a primitive priority queue that like all priority queues maintains
+ * a partial ordering of its elements such that the least element can always be found in constant
  * time. Put()'s and pop()'s require log(size). This heap provides unbounded growth via {@link
  * #push(long)}, and bounded-size insertion based on its nominal maxSize via {@link
- * #insertWithOverflow(long)}. The heap may be either a min heap, in which case the least element is
- * the smallest integer, or a max heap, when it is the largest, depending on the Order parameter.
+ * #insertWithOverflow(long)}. The heap is a min heap, meaning that the top element is the lowest
+ * value of the heap.
  *
  * @lucene.internal
  */
-public abstract class LongHeap {
-
-  /**
-   * Used to specify the ordering of the heap. A min-heap provides access to the minimum element in
-   * constant time, and when bounded, retains the maximum <code>maxSize</code> elements. A max-heap
-   * conversely provides access to the maximum element in constant time, and when bounded retains
-   * the minimum <code>maxSize</code> elements.
-   */
-  public enum Order {
-    MIN,
-    MAX
-  }
+public final class LongHeap {
 
   private final int maxSize;
 
@@ -50,7 +39,7 @@ public abstract class LongHeap {
    * @param maxSize the maximum size of the heap, or if negative, the initial size of an unbounded
    *     heap
    */
-  LongHeap(int maxSize) {
+  public LongHeap(int maxSize) {
     final int heapSize;
     if (maxSize < 1 || maxSize >= ArrayUtil.MAX_ARRAY_LENGTH) {
       // Throw exception to prevent confusing OOME:
@@ -62,33 +51,6 @@ public abstract class LongHeap {
     this.maxSize = maxSize;
     this.heap = new long[heapSize];
   }
-
-  public static LongHeap create(Order order, int maxSize) {
-    // TODO: override push() for unbounded queue
-    if (order == Order.MIN) {
-      return new LongHeap(maxSize) {
-        @Override
-        public boolean lessThan(long a, long b) {
-          return a < b;
-        }
-      };
-    } else {
-      return new LongHeap(maxSize) {
-        @Override
-        public boolean lessThan(long a, long b) {
-          return a > b;
-        }
-      };
-    }
-  }
-
-  /**
-   * Determines the ordering of objects in this priority queue. Subclasses must define this one
-   * method.
-   *
-   * @return <code>true</code> iff parameter <code>a</code> is less than parameter <code>b</code>.
-   */
-  public abstract boolean lessThan(long a, long b);
 
   /**
    * Adds a value in log(size) time. Grows unbounded as needed to accommodate new values.
@@ -114,7 +76,7 @@ public abstract class LongHeap {
    */
   public boolean insertWithOverflow(long value) {
     if (size >= maxSize) {
-      if (lessThan(value, heap[1])) {
+      if (value < heap[1]) {
         return false;
       }
       updateTop(value);
@@ -190,7 +152,7 @@ public abstract class LongHeap {
     int i = origPos;
     long value = heap[i]; // save bottom value
     int j = i >>> 1;
-    while (j > 0 && lessThan(value, heap[j])) {
+    while (j > 0 && value < heap[j]) {
       heap[i] = heap[j]; // shift parents down
       i = j;
       j = j >>> 1;
@@ -202,15 +164,15 @@ public abstract class LongHeap {
     long value = heap[i]; // save top value
     int j = i << 1; // find smaller child
     int k = j + 1;
-    if (k <= size && lessThan(heap[k], heap[j])) {
+    if (k <= size && heap[k] < heap[j]) {
       j = k;
     }
-    while (j <= size && lessThan(heap[j], value)) {
+    while (j <= size && heap[j] < value) {
       heap[i] = heap[j]; // shift up child
       i = j;
       j = i << 1;
       k = j + 1;
-      if (k <= size && lessThan(heap[k], heap[j])) {
+      if (k <= size && heap[k] < heap[j]) {
         j = k;
       }
     }
@@ -236,7 +198,8 @@ public abstract class LongHeap {
    *
    * @lucene.internal
    */
-  protected final long[] getHeapArray() {
+  // pkg-private for testing
+  final long[] getHeapArray() {
     return heap;
   }
 }

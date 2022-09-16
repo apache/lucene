@@ -29,7 +29,6 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -144,29 +143,44 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs) throws IOException {
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
     VectorValues values = getVectorValues(field);
     if (target.length != values.dimension()) {
       throw new IllegalArgumentException(
-          "vector dimensions differ: " + target.length + "!=" + values.dimension());
+          "vector query dimension: "
+              + target.length
+              + " differs from field dimension: "
+              + values.dimension());
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
     HitQueue topK = new HitQueue(k, false);
+
+    int numVisited = 0;
+    TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
+
     int doc;
     while ((doc = values.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
         continue;
       }
+
+      if (numVisited >= visitedLimit) {
+        relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        break;
+      }
+
       float[] vector = values.vectorValue();
-      float score = vectorSimilarity.convertToScore(vectorSimilarity.compare(vector, target));
+      float score = vectorSimilarity.compare(vector, target);
       topK.insertWithOverflow(new ScoreDoc(doc, score));
+      numVisited++;
     }
     ScoreDoc[] topScoreDocs = new ScoreDoc[topK.size()];
     for (int i = topScoreDocs.length - 1; i >= 0; i--) {
       topScoreDocs[i] = topK.pop();
     }
-    return new TopDocs(new TotalHits(values.size(), TotalHits.Relation.EQUAL_TO), topScoreDocs);
+    return new TopDocs(new TotalHits(numVisited, relation), topScoreDocs);
   }
 
   @Override
@@ -245,7 +259,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   private static class SimpleTextVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+      implements RandomAccessVectorValues {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -287,7 +301,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return this;
     }
 

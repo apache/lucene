@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
@@ -63,12 +64,12 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 
 public class TestLRUQueryCache extends LuceneTestCase {
@@ -167,19 +168,36 @@ public class TestLRUQueryCache extends LuceneTestCase {
                         RandomPicks.randomFrom(
                             random(), new String[] {"blue", "red", "yellow", "green"});
                     final Query q = new TermQuery(new Term("color", value));
-                    TotalHitCountCollector collector = new TotalHitCountCollector();
-                    searcher.search(q, collector); // will use the cache
-                    final int totalHits1 = collector.getTotalHits();
-                    TotalHitCountCollector collector2 = new TotalHitCountCollector();
-                    searcher.search(
-                        q,
-                        new FilterCollector(collector2) {
-                          @Override
-                          public ScoreMode scoreMode() {
-                            return ScoreMode.COMPLETE; // will not use the cache because of scores
-                          }
-                        });
-                    final long totalHits2 = collector2.getTotalHits();
+                    CollectorManager<DummyTotalHitCountCollector, Integer> collectorManager =
+                        DummyTotalHitCountCollector.createManager();
+                    // will use the cache
+                    final int totalHits1 = searcher.search(q, collectorManager);
+                    final long totalHits2 =
+                        searcher.search(
+                            q,
+                            new CollectorManager<FilterCollector, Integer>() {
+                              @Override
+                              public FilterCollector newCollector() throws IOException {
+                                return new FilterCollector(collectorManager.newCollector()) {
+                                  @Override
+                                  public ScoreMode scoreMode() {
+                                    // will not use the cache because of scores
+                                    return ScoreMode.COMPLETE;
+                                  }
+                                };
+                              }
+
+                              @Override
+                              public Integer reduce(Collection<FilterCollector> collectors)
+                                  throws IOException {
+                                return collectorManager.reduce(
+                                    collectors.stream()
+                                        .map(
+                                            filterCollector ->
+                                                (DummyTotalHitCountCollector) filterCollector.in)
+                                        .collect(Collectors.toList()));
+                              }
+                            });
                     assertEquals(totalHits2, totalHits1);
                   } finally {
                     mgr.release(searcher);
@@ -337,11 +355,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
   // This test makes sure that by making the same assumptions as LRUQueryCache, RAMUsageTester
   // computes the same memory usage.
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7595")
   public void testRamBytesUsedAgreesWithRamUsageTester() throws IOException {
-    assumeFalse(
-        "LUCENE-7595: RamUsageTester does not work exact in Java 9 (estimations for maps and lists)",
-        Constants.JRE_IS_MINIMUM_JAVA9);
-
     final LRUQueryCache queryCache =
         new LRUQueryCache(
             1 + random().nextInt(5),
@@ -477,11 +492,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
   // that require very little memory. In that case most of the memory is taken
   // by the cache itself, not cache entries, and we want to make sure that
   // memory usage is not grossly underestimated.
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7595")
   public void testRamBytesUsedConstantEntryOverhead() throws IOException {
-    assumeFalse(
-        "LUCENE-7595: RamUsageTester does not work exact in Java 9 (estimations for maps and lists)",
-        Constants.JRE_IS_MINIMUM_JAVA9);
-
     final LRUQueryCache queryCache =
         new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
 
@@ -945,7 +957,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(policy);
-    searcher.search(query.build(), new TotalHitCountCollector());
+    searcher.search(query.build(), DummyTotalHitCountCollector.createManager());
 
     reader.close();
     dir.close();
@@ -1152,10 +1164,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
   }
 
+  @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7604")
   public void testDetectMutatedQueries() throws IOException {
-    LuceneTestCase.assumeFalse(
-        "LUCENE-7604: For some unknown reason the non-constant BadQuery#hashCode() does not trigger ConcurrentModificationException on Java 9 b150",
-        Constants.JRE_IS_MINIMUM_JAVA9);
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     w.addDocument(new Document());
@@ -1169,12 +1179,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
     BadQuery query = new BadQuery();
-    searcher.count(query);
+    searcher.search(query, DummyTotalHitCountCollector.createManager());
     query.i[0] += 1; // change the hashCode!
 
     try {
       // trigger an eviction
-      searcher.search(new MatchAllDocsQuery(), new TotalHitCountCollector());
+      searcher.search(new MatchAllDocsQuery(), DummyTotalHitCountCollector.createManager());
       fail();
     } catch (
         @SuppressWarnings("unused")
@@ -1255,7 +1265,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
           query.add(bar, Occur.FILTER);
           query.add(foo, Occur.FILTER);
         }
-        indexSearcher.count(query.build());
+        indexSearcher.search(query.build(), DummyTotalHitCountCollector.createManager());
         assertEquals(1, policy.frequency(query.build()));
         assertEquals(1, policy.frequency(foo));
         assertEquals(1, policy.frequency(bar));
@@ -1953,7 +1963,19 @@ public class TestLRUQueryCache extends LuceneTestCase {
     w.addDocuments(Arrays.asList(doc1, doc2, doc3));
     final IndexReader reader = w.getReader();
     final IndexSearcher searcher = newSearcher(reader);
-    final UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
+    final QueryCachingPolicy policy =
+        new QueryCachingPolicy() {
+
+          @Override
+          public boolean shouldCache(Query query) throws IOException {
+            return query.getClass() != TermQuery.class;
+          }
+
+          @Override
+          public void onUse(Query query) {
+            // no-op
+          }
+        };
     searcher.setQueryCachingPolicy(policy);
     w.close();
 

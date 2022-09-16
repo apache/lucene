@@ -34,7 +34,7 @@ final class BooleanWeight extends Weight {
 
   final BooleanQuery query;
 
-  private static class WeightedBooleanClause {
+  protected static class WeightedBooleanClause {
     final BooleanClause clause;
     final Weight weight;
 
@@ -191,6 +191,63 @@ final class BooleanWeight extends Weight {
   // or null if it is not applicable
   // pkg-private for forcing use of BooleanScorer in tests
   BulkScorer optionalBulkScorer(LeafReaderContext context) throws IOException {
+    if (scoreMode == ScoreMode.TOP_SCORES) {
+      if (!query.isPureDisjunction() || weightedClauses.size() > 2) {
+        return null;
+      }
+
+      List<ScorerSupplier> optional = new ArrayList<>();
+      for (WeightedBooleanClause wc : weightedClauses) {
+        Weight w = wc.weight;
+        BooleanClause c = wc.clause;
+        if (c.getOccur() != Occur.SHOULD) {
+          continue;
+        }
+        ScorerSupplier scorer = w.scorerSupplier(context);
+        if (scorer != null) {
+          optional.add(scorer);
+        }
+      }
+
+      if (optional.size() <= 1) {
+        return null;
+      }
+
+      List<Scorer> optionalScorers = new ArrayList<>();
+      for (ScorerSupplier ss : optional) {
+        optionalScorers.add(ss.get(Long.MAX_VALUE));
+      }
+
+      return new BulkScorer() {
+        final Scorer bmmScorer = new BlockMaxMaxscoreScorer(BooleanWeight.this, optionalScorers);
+        final DocIdSetIterator iterator = bmmScorer.iterator();
+
+        @Override
+        public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+            throws IOException {
+          collector.setScorer(bmmScorer);
+
+          int doc = bmmScorer.docID();
+          if (doc < min) {
+            doc = iterator.advance(min);
+          }
+          while (doc < max) {
+            if (acceptDocs == null || acceptDocs.get(doc)) {
+              collector.collect(doc);
+            }
+
+            doc = iterator.nextDoc();
+          }
+          return doc;
+        }
+
+        @Override
+        public long cost() {
+          return iterator.cost();
+        }
+      };
+    }
+
     List<BulkScorer> optional = new ArrayList<BulkScorer>();
     for (WeightedBooleanClause wc : weightedClauses) {
       Weight w = wc.weight;
@@ -329,11 +386,6 @@ final class BooleanWeight extends Weight {
 
   @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    if (scoreMode == ScoreMode.TOP_SCORES) {
-      // If only the top docs are requested, use the default bulk scorer
-      // so that we can dynamically prune non-competitive hits.
-      return super.bulkScorer(context);
-    }
     final BulkScorer bulkScorer = booleanScorer(context);
     if (bulkScorer != null) {
       // bulk scoring is applicable, use it
@@ -342,6 +394,104 @@ final class BooleanWeight extends Weight {
       // use a Scorer-based impl (BS2)
       return super.bulkScorer(context);
     }
+  }
+
+  @Override
+  public int count(LeafReaderContext context) throws IOException {
+    final int numDocs = context.reader().numDocs();
+    int positiveCount;
+    if (query.isPureDisjunction()) {
+      positiveCount = optCount(context, Occur.SHOULD);
+    } else if ((query.getClauses(Occur.FILTER).isEmpty() == false
+            || query.getClauses(Occur.MUST).isEmpty() == false)
+        && query.getMinimumNumberShouldMatch() == 0) {
+      positiveCount = reqCount(context);
+    } else {
+      // The query has a non-zero min-should match. We could handles some cases, e.g.
+      // minShouldMatch=N and we can find N SHOULD clauses that match all docs, but are there
+      // real-world queries that would benefit from Lucene handling this case?
+      positiveCount = -1;
+    }
+
+    if (positiveCount == 0) {
+      return 0;
+    }
+
+    int prohibitedCount = optCount(context, Occur.MUST_NOT);
+    if (prohibitedCount == -1) {
+      return -1;
+    } else if (prohibitedCount == 0) {
+      return positiveCount;
+    } else if (prohibitedCount == numDocs) {
+      return 0;
+    } else if (positiveCount == numDocs) {
+      return numDocs - prohibitedCount;
+    } else {
+      return -1;
+    }
+  }
+
+  /**
+   * Return the number of matches of required clauses, or -1 if unknown, or numDocs if there are no
+   * required clauses.
+   */
+  private int reqCount(LeafReaderContext context) throws IOException {
+    final int numDocs = context.reader().numDocs();
+    int reqCount = numDocs;
+    for (WeightedBooleanClause weightedClause : weightedClauses) {
+      if (weightedClause.clause.isRequired() == false) {
+        continue;
+      }
+      int count = weightedClause.weight.count(context);
+      if (count == -1 || count == 0) {
+        // If the count of one clause is unknown, then the count of the conjunction is unknown too.
+        // If one clause doesn't match any docs then the conjunction doesn't match any docs either.
+        return count;
+      } else if (count == numDocs) {
+        // the query matches all docs, it can be safely ignored
+      } else if (reqCount == numDocs) {
+        // all clauses seen so far match all docs, so the count of the new clause is also the count
+        // of the conjunction
+        reqCount = count;
+      } else {
+        // We have two clauses whose count is in [1, numDocs), we can't figure out the number of
+        // docs that match the conjunction without running the query.
+        return -1;
+      }
+    }
+    return reqCount;
+  }
+
+  /**
+   * Return the number of matches of optional clauses, or -1 if unknown, or 0 if there are no
+   * optional clauses.
+   */
+  private int optCount(LeafReaderContext context, Occur occur) throws IOException {
+    final int numDocs = context.reader().numDocs();
+    int optCount = 0;
+    for (WeightedBooleanClause weightedClause : weightedClauses) {
+      if (weightedClause.clause.getOccur() != occur) {
+        continue;
+      }
+      int count = weightedClause.weight.count(context);
+      if (count == -1 || count == numDocs) {
+        // If any of the clauses has a number of matches that is unknown, the number of matches of
+        // the disjunction is unknown.
+        // If either clause matches all docs, then the disjunction matches all docs.
+        return count;
+      } else if (count == 0) {
+        // We can safely ignore this clause, it doesn't affect the count.
+      } else if (optCount == 0) {
+        // This is the first clause we see that has a non-zero count, it becomes the count of the
+        // disjunction.
+        optCount = count;
+      } else {
+        // We have two clauses whose count is in [1, numDocs), we can't figure out the number of
+        // docs that match the disjunction without running the query.
+        return -1;
+      }
+    }
+    return optCount;
   }
 
   @Override
@@ -409,6 +559,13 @@ final class BooleanWeight extends Weight {
       // optional scorer. Therefore if there are not enough optional scorers
       // no documents will be matched by the query
       return null;
+    }
+
+    if (scoreMode.needsScores() == false
+        && minShouldMatch == 0
+        && scorers.get(Occur.MUST).size() + scorers.get(Occur.FILTER).size() > 0) {
+      // Purely optional clauses are useless without scoring.
+      scorers.get(Occur.SHOULD).clear();
     }
 
     return new Boolean2ScorerSupplier(this, scorers, scoreMode, minShouldMatch);

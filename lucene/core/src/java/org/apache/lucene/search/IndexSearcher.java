@@ -37,6 +37,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Term;
@@ -83,6 +84,12 @@ public class IndexSearcher {
   static int maxClauseCount = 1024;
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
+  private QueryTimeout queryTimeout = null;
+  // partialResult may be set on one of the threads of the executor. It may be correct to not make
+  // this variable volatile since joining these threads should ensure a happens-before relationship
+  // that guarantees that writes become visible on the main thread, but making the variable volatile
+  // shouldn't hurt either.
+  private volatile boolean partialResult = false;
 
   static {
     final int maxCachedQueries = 1000;
@@ -412,57 +419,13 @@ public class IndexSearcher {
     return similarity;
   }
 
-  private static class ShortcutHitCountCollector implements Collector {
-    private final Weight weight;
-    private final TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
-    private int weightCount;
-
-    ShortcutHitCountCollector(Weight weight) {
-      this.weight = weight;
-    }
-
-    @Override
-    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-      int count = weight.count(context);
-      // check if the number of hits can be computed in constant time
-      if (count == -1) {
-        // use a TotalHitCountCollector to calculate the number of hits in the usual way
-        return totalHitCountCollector.getLeafCollector(context);
-      } else {
-        weightCount += count;
-        throw new CollectionTerminatedException();
-      }
-    }
-
-    @Override
-    public ScoreMode scoreMode() {
-      return ScoreMode.COMPLETE_NO_SCORES;
-    }
-  }
-
-  /** Count how many documents match the given query. */
+  /**
+   * Count how many documents match the given query. May be faster than counting number of hits by
+   * collecting all matches, as the number of hits is retrieved from the index statistics when
+   * possible.
+   */
   public int count(Query query) throws IOException {
-    query = rewrite(query);
-    final Weight weight = createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
-
-    final CollectorManager<ShortcutHitCountCollector, Integer> shortcutCollectorManager =
-        new CollectorManager<ShortcutHitCountCollector, Integer>() {
-          @Override
-          public ShortcutHitCountCollector newCollector() throws IOException {
-            return new ShortcutHitCountCollector(weight);
-          }
-
-          @Override
-          public Integer reduce(Collection<ShortcutHitCountCollector> collectors)
-              throws IOException {
-            int totalHitCount = 0;
-            for (ShortcutHitCountCollector c : collectors) {
-              totalHitCount += c.weightCount + c.totalHitCountCollector.getTotalHits();
-            }
-            return totalHitCount;
-          }
-        };
-    return search(weight, shortcutCollectorManager, new ShortcutHitCountCollector(weight));
+    return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager());
   }
 
   /**
@@ -528,6 +491,11 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
+  /** Set a {@link QueryTimeout} for all searches that run through this {@link IndexSearcher}. */
+  public void setTimeout(QueryTimeout queryTimeout) {
+    this.queryTimeout = queryTimeout;
+  }
+
   /**
    * Finds the top <code>n</code> hits for <code>query</code>.
    *
@@ -547,8 +515,13 @@ public class IndexSearcher {
    *     clauses.
    */
   public void search(Query query, Collector results) throws IOException {
-    query = rewrite(query);
+    query = rewrite(query, results.scoreMode().needsScores());
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
+  }
+
+  /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
+  public boolean timedOut() {
+    return partialResult;
   }
 
   /**
@@ -678,7 +651,7 @@ public class IndexSearcher {
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
     final C firstCollector = collectorManager.newCollector();
-    query = rewrite(query);
+    query = rewrite(query, firstCollector.scoreMode().needsScores());
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
     return search(weight, collectorManager, firstCollector);
   }
@@ -746,6 +719,8 @@ public class IndexSearcher {
   protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
       throws IOException {
 
+    collector.setWeight(weight);
+
     // TODO: should we make this
     // threaded...? the Collector could be sync'd?
     // always use single thread:
@@ -762,6 +737,9 @@ public class IndexSearcher {
       }
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
+        if (queryTimeout != null && queryTimeout.isTimeoutEnabled()) {
+          scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
+        }
         try {
           scorer.score(leafCollector, ctx.reader().getLiveDocs());
         } catch (
@@ -769,6 +747,10 @@ public class IndexSearcher {
             CollectionTerminatedException e) {
           // collection was terminated prematurely
           // continue with the following leaf
+        } catch (
+            @SuppressWarnings("unused")
+            TimeLimitingBulkScorer.TimeExceededException e) {
+          partialResult = true;
         }
       }
     }
@@ -789,6 +771,15 @@ public class IndexSearcher {
     }
     query.visit(getNumClausesCheckVisitor());
     return query;
+  }
+
+  private Query rewrite(Query original, boolean needsScores) throws IOException {
+    if (needsScores) {
+      return rewrite(original);
+    } else {
+      // Take advantage of the few extra rewrite rules of ConstantScoreQuery.
+      return rewrite(new ConstantScoreQuery(original));
+    }
   }
 
   /**
@@ -959,10 +950,7 @@ public class IndexSearcher {
     long sumTotalTermFreq = 0;
     long sumDocFreq = 0;
     for (LeafReaderContext leaf : reader.leaves()) {
-      final Terms terms = leaf.reader().terms(field);
-      if (terms == null) {
-        continue;
-      }
+      final Terms terms = Terms.getTerms(leaf.reader(), field);
       docCount += terms.getDocCount();
       sumTotalTermFreq += terms.getSumTotalTermFreq();
       sumDocFreq += terms.getSumDocFreq();

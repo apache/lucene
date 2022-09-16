@@ -120,9 +120,9 @@ class GeoSouthRectangle extends GeoBaseBBox {
     this.centerPoint =
         new GeoPoint(planetModel, sinMiddleLat, sinMiddleLon, cosMiddleLat, cosMiddleLon);
 
-    this.topPlane = new SidedPlane(centerPoint, planetModel, sinTopLat);
-    this.leftPlane = new SidedPlane(centerPoint, cosLeftLon, sinLeftLon);
-    this.rightPlane = new SidedPlane(centerPoint, cosRightLon, sinRightLon);
+    this.topPlane = new SidedPlane(planetModel.SOUTH_POLE, planetModel, sinTopLat);
+    this.leftPlane = new SidedPlane(URHC, cosLeftLon, sinLeftLon);
+    this.rightPlane = new SidedPlane(ULHC, cosRightLon, sinRightLon);
 
     assert (topPlane.isWithin(centerPoint));
     assert (leftPlane.isWithin(centerPoint));

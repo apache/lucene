@@ -21,7 +21,7 @@ jobs:
         # Operating systems to run on.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '11' ]
+        java: [ '17' ]
 
     steps:
     - uses: actions/checkout@v2
@@ -29,21 +29,12 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt-hotspot'
+        distribution: 'temurin'
         java-version: ${{ matrix.java }}
         java-package: jdk
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-precommit-
-          ${{ runner.os }}-gradle-
+    - name: Prepare caches
+      uses: ./.github/actions/gradle-caches
 
     - name: Initialize gradle settings
       run: ./gradlew localSettings --max-workers 2
@@ -65,7 +56,7 @@ jobs:
         # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
         os: [ubuntu-latest]
         # Test JVMs.
-        java: [ '11' ]
+        java: [ '17' ]
 
     steps:
     - uses: actions/checkout@v2
@@ -73,18 +64,12 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt-hotspot'
+        distribution: 'temurin'
         java-version: ${{ matrix.java }}
         java-package: jdk
 
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-precommit-
-          ${{ runner.os }}-gradle-
+    - name: Prepare caches
+      uses: ./.github/actions/gradle-caches
 
     - name: Initialize gradle settings
       run: ./gradlew localSettings --max-workers 2
@@ -93,6 +78,4 @@ jobs:
       run: cat gradle.properties
 
     - name: Run gradle tests
-      run: ./gradlew test "-Ptask.times=true" "-Ptests.slow=false" --max-workers 2
-
-    # - uses: gradle/wrapper-validation-action@v1
+      run: ./gradlew test "-Ptask.times=true" --max-workers 2

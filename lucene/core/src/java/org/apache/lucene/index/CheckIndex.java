@@ -56,7 +56,7 @@ import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -506,6 +506,12 @@ public final class CheckIndex implements Closeable {
     setInfoStream(out, false);
   }
 
+  private static void msg(PrintStream out, ByteArrayOutputStream msg) {
+    if (out != null) {
+      out.println(msg.toString(StandardCharsets.UTF_8));
+    }
+  }
+
   private static void msg(PrintStream out, String msg) {
     if (out != null) {
       out.println(msg);
@@ -778,21 +784,21 @@ public final class CheckIndex implements Closeable {
         } catch (InterruptedException e) {
           // the segment test output should come before interrupted exception message that follows,
           // hence it's not emitted from finally clause
-          infoStream.println(output.toString(StandardCharsets.UTF_8));
+          msg(infoStream, output);
           msg(
               infoStream,
               "ERROR: Interrupted exception occurred when getting segment check result for segment "
                   + info.info.name);
           if (infoStream != null) e.printStackTrace(infoStream);
         } catch (ExecutionException e) {
-          infoStream.println(output.toString(StandardCharsets.UTF_8));
+          msg(infoStream, output.toString(StandardCharsets.UTF_8));
 
           assert failFast;
           throw new CheckIndexException(
               "Segment " + info.info.name + " check failed.", e.getCause());
         }
 
-        infoStream.print(output.toString(StandardCharsets.UTF_8));
+        msg(infoStream, output);
 
         processSegmentInfoStatusResult(result, info, segmentInfoStatus);
       }
@@ -1107,7 +1113,7 @@ public final class CheckIndex implements Closeable {
 
       for (int i = 0; i < fields.length; i++) {
         reverseMul[i] = fields[i].getReverse() ? -1 : 1;
-        comparators[i] = fields[i].getComparator(1, i).getLeafComparator(readerContext);
+        comparators[i] = fields[i].getComparator(1, false).getLeafComparator(readerContext);
       }
 
       int maxDoc = reader.maxDoc();
@@ -3331,13 +3337,34 @@ public final class CheckIndex implements Closeable {
     LongBitSet seenOrds = new LongBitSet(dv.getValueCount());
     long maxOrd2 = -1;
     for (int docID = dv.nextDoc(); docID != NO_MORE_DOCS; docID = dv.nextDoc()) {
+      int count = dv.docValueCount();
+      if (count == 0) {
+        throw new CheckIndexException(
+            "sortedset dv for field: "
+                + fieldName
+                + " returned docValueCount=0 for docID="
+                + docID);
+      }
       if (dv2.advanceExact(docID) == false) {
         throw new CheckIndexException("advanceExact did not find matching doc ID: " + docID);
       }
+      int count2 = dv2.docValueCount();
+      if (count != count2) {
+        throw new CheckIndexException(
+            "advanceExact reports different value count: " + count + " != " + count2);
+      }
       long lastOrd = -1;
-      long ord;
       int ordCount = 0;
-      while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+      for (int i = 0; i < count; i++) {
+        if (count != dv.docValueCount()) {
+          throw new CheckIndexException(
+              "value count changed from "
+                  + count
+                  + " to "
+                  + dv.docValueCount()
+                  + " during iterating over all values");
+        }
+        long ord = dv.nextOrd();
         long ord2 = dv2.nextOrd();
         if (ord != ord2) {
           throw new CheckIndexException(
@@ -3355,14 +3382,16 @@ public final class CheckIndex implements Closeable {
         seenOrds.set(ord);
         ordCount++;
       }
+      if (dv.docValueCount() != dv2.docValueCount()) {
+        throw new CheckIndexException(
+            "dv and dv2 report different values count after iterating over all values: "
+                + dv.docValueCount()
+                + " != "
+                + dv2.docValueCount());
+      }
       if (ordCount == 0) {
         throw new CheckIndexException(
             "dv for field: " + fieldName + " returned docID=" + docID + " yet has no ordinals");
-      }
-      long ord2 = dv2.nextOrd();
-      if (ord != ord2) {
-        throw new CheckIndexException(
-            "nextDoc and advanceExact report different ords: " + ord + " != " + ord2);
       }
     }
     if (maxOrd != maxOrd2) {
@@ -4140,7 +4169,7 @@ public final class CheckIndex implements Closeable {
     try {
       int softDeletes =
           PendingSoftDeletes.countSoftDeletes(
-              DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(softDeletesField, reader),
+              FieldExistsQuery.getDocValuesDocIdSetIterator(softDeletesField, reader),
               reader.getLiveDocs());
       if (softDeletes != info.getSoftDelCount()) {
         throw new CheckIndexException(

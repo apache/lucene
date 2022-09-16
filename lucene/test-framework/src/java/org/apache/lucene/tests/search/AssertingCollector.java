@@ -22,10 +22,12 @@ import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.Weight;
 
 /** A collector that asserts that it is used correctly. */
 class AssertingCollector extends FilterCollector {
 
+  private boolean weightSet = false;
   private int maxDoc = -1;
   private int previousLeafMaxDoc = 0;
 
@@ -43,6 +45,7 @@ class AssertingCollector extends FilterCollector {
 
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    assert weightSet : "Set the weight first";
     assert context.docBase >= previousLeafMaxDoc;
     previousLeafMaxDoc = context.docBase + context.reader().maxDoc();
 
@@ -64,5 +67,13 @@ class AssertingCollector extends FilterCollector {
         maxDoc = docBase + doc;
       }
     };
+  }
+
+  @Override
+  public void setWeight(Weight weight) {
+    assert weightSet == false : "Weight set twice";
+    weightSet = true;
+    assert weight != null;
+    in.setWeight(weight);
   }
 }

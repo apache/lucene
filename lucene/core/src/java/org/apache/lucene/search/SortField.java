@@ -31,6 +31,7 @@ import org.apache.lucene.search.comparators.DoubleComparator;
 import org.apache.lucene.search.comparators.FloatComparator;
 import org.apache.lucene.search.comparators.IntComparator;
 import org.apache.lucene.search.comparators.LongComparator;
+import org.apache.lucene.search.comparators.TermOrdValComparator;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BytesRef;
@@ -43,6 +44,10 @@ import org.apache.lucene.util.NumericUtils;
  * <p>Sorting on a numeric field that is indexed with both doc values and points may use an
  * optimization to skip non-competitive documents. This optimization relies on the assumption that
  * the same data is stored in these points and doc values.
+ *
+ * <p>Sorting on a SORTED(_SET) field that is indexed with both doc values and term index may use an
+ * optimization to skip non-competitive documents. This optimization relies on the assumption that
+ * the same data is stored in these term index and doc values.
  *
  * <p>Created: Feb 11, 2004 1:25:29 PM
  *
@@ -130,8 +135,8 @@ public class SortField {
   // Used for 'sortMissingFirst/Last'
   protected Object missingValue = null;
 
-  // Indicates if numeric sort should be optimized with Points index. Set to true by default.
-  @Deprecated private boolean optimizeSortWithPoints = true;
+  // Indicates if sort should be optimized with indexed data. Set to true by default.
+  @Deprecated private boolean optimizeSortWithIndexedData = true;
 
   /**
    * Creates a sort by terms in the given field with the type of term values explicitly given.
@@ -495,12 +500,11 @@ public class SortField {
    *
    * @lucene.experimental
    * @param numHits number of top hits the queue will store
-   * @param sortPos position of this SortField within {@link Sort}. The comparator is primary if
-   *     sortPos==0, secondary if sortPos==1, etc. Some comparators can optimize themselves when
-   *     they are the primary sort.
+   * @param enableSkipping true if the comparator can skip documents via {@link
+   *     LeafFieldComparator#competitiveIterator()}
    * @return {@link FieldComparator} to use when sorting
    */
-  public FieldComparator<?> getComparator(final int numHits, final int sortPos) {
+  public FieldComparator<?> getComparator(final int numHits, boolean enableSkipping) {
     final FieldComparator<?> fieldComparator;
     switch (type) {
       case SCORE:
@@ -508,36 +512,39 @@ public class SortField {
         break;
 
       case DOC:
-        fieldComparator = new DocComparator(numHits, reverse, sortPos);
+        fieldComparator = new DocComparator(numHits, reverse, enableSkipping);
         break;
 
       case INT:
         fieldComparator =
-            new IntComparator(numHits, field, (Integer) missingValue, reverse, sortPos);
+            new IntComparator(numHits, field, (Integer) missingValue, reverse, enableSkipping);
         break;
 
       case FLOAT:
         fieldComparator =
-            new FloatComparator(numHits, field, (Float) missingValue, reverse, sortPos);
+            new FloatComparator(numHits, field, (Float) missingValue, reverse, enableSkipping);
         break;
 
       case LONG:
-        fieldComparator = new LongComparator(numHits, field, (Long) missingValue, reverse, sortPos);
+        fieldComparator =
+            new LongComparator(numHits, field, (Long) missingValue, reverse, enableSkipping);
         break;
 
       case DOUBLE:
         fieldComparator =
-            new DoubleComparator(numHits, field, (Double) missingValue, reverse, sortPos);
+            new DoubleComparator(numHits, field, (Double) missingValue, reverse, enableSkipping);
         break;
 
       case CUSTOM:
         assert comparatorSource != null;
-        fieldComparator = comparatorSource.newComparator(field, numHits, sortPos, reverse);
+        fieldComparator = comparatorSource.newComparator(field, numHits, enableSkipping, reverse);
         break;
 
       case STRING:
-        return new FieldComparator.TermOrdValComparator(
-            numHits, field, missingValue == STRING_LAST);
+        fieldComparator =
+            new TermOrdValComparator(
+                numHits, field, missingValue == STRING_LAST, reverse, enableSkipping);
+        break;
 
       case STRING_VAL:
         fieldComparator =
@@ -551,7 +558,7 @@ public class SortField {
       default:
         throw new IllegalStateException("Illegal sort type: " + type);
     }
-    if (getOptimizeSortWithPoints() == false) {
+    if (getOptimizeSortWithIndexedData() == false) {
       fieldComparator.disableSkipping();
     }
     return fieldComparator;
@@ -627,6 +634,39 @@ public class SortField {
   }
 
   /**
+   * Enables/disables numeric sort optimization to use the indexed data.
+   *
+   * <p>Enabled by default. By default, sorting on a numeric field activates point sort optimization
+   * that can efficiently skip over non-competitive hits. Sort optimization has a number of
+   * requirements, one of which is that SortField.Type matches the Point type with which the field
+   * was indexed (e.g. sort on IntPoint field should use SortField.Type.INT). Another requirement is
+   * that the same data is indexed with points and doc values for the field.
+   *
+   * <p>By default, sorting on a SORTED(_SET) field activates sort optimization that can efficiently
+   * skip over non-competitive hits. Sort optimization requires that the same data is indexed with
+   * term index and doc values for the field.
+   *
+   * @param optimizeSortWithIndexedData providing {@code false} disables the optimization, in cases
+   *     where these requirements can't be met.
+   * @deprecated should only be used for compatibility with 8.x indices that got created with
+   *     inconsistent data across fields, or the wrong sort configuration in the index sort
+   */
+  @Deprecated // Remove in Lucene 10
+  public void setOptimizeSortWithIndexedData(boolean optimizeSortWithIndexedData) {
+    this.optimizeSortWithIndexedData = optimizeSortWithIndexedData;
+  }
+
+  /**
+   * Returns whether sort optimization should be optimized with indexed data
+   *
+   * @return whether sort optimization should be optimized with indexed data
+   */
+  @Deprecated // Remove in Lucene 10
+  public boolean getOptimizeSortWithIndexedData() {
+    return optimizeSortWithIndexedData;
+  }
+
+  /**
    * Enables/disables numeric sort optimization to use the Points index.
    *
    * <p>Enabled by default. By default, sorting on a numeric field activates point sort optimization
@@ -638,20 +678,22 @@ public class SortField {
    * @param optimizeSortWithPoints providing {@code false} disables the optimization, in cases where
    *     these requirements can't be met.
    * @deprecated should only be used for compatibility with 8.x indices that got created with
-   *     inconsistent data across fields, or the wrong sort configuration in the index sort
+   *     inconsistent data across fields, or the wrong sort configuration in the index sort. This is
+   *     a duplicate method for {@code SortField#setOptimizeSortWithIndexedData}.
    */
   @Deprecated // Remove in Lucene 10
   public void setOptimizeSortWithPoints(boolean optimizeSortWithPoints) {
-    this.optimizeSortWithPoints = optimizeSortWithPoints;
+    setOptimizeSortWithIndexedData(optimizeSortWithPoints);
   }
 
   /**
    * Returns whether sort optimization should be optimized with points index
    *
    * @return whether sort optimization should be optimized with points index
+   * @deprecated This is a duplicate method for {@code SortField#getOptimizeSortWithIndexedData}.
    */
   @Deprecated // Remove in Lucene 10
   public boolean getOptimizeSortWithPoints() {
-    return optimizeSortWithPoints;
+    return getOptimizeSortWithIndexedData();
   }
 }

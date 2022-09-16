@@ -559,7 +559,7 @@ public class TestJoinUtil extends LuceneTestCase {
   static Query numericDocValuesScoreQuery(final String field) {
     return new Query() {
 
-      private final Query fieldQuery = new DocValuesFieldExistsQuery(field);
+      private final Query fieldQuery = new FieldExistsQuery(field);
 
       @Override
       public Weight createWeight(
@@ -681,15 +681,14 @@ public class TestJoinUtil extends LuceneTestCase {
       Query joinQuery =
           JoinUtil.createJoinQuery(
               "join_field", fromQuery, toQuery, searcher, scoreMode, ordinalMap, min, max);
-      TotalHitCountCollector collector = new TotalHitCountCollector();
-      searcher.search(joinQuery, collector);
+      int totalHits = searcher.count(joinQuery);
       int expectedCount = 0;
       for (int numChildDocs : childDocsPerParent) {
         if (numChildDocs >= min && numChildDocs <= max) {
           expectedCount++;
         }
       }
-      assertEquals(expectedCount, collector.getTotalHits());
+      assertEquals(expectedCount, totalHits);
     }
     searcher.getIndexReader().close();
     dir.close();
@@ -1421,7 +1420,6 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   @Test
-  @Slow
   public void testSingleValueRandomJoin() throws Exception {
     int maxIndexIter = atLeast(1);
     int maxSearchIter = atLeast(1);
@@ -1429,7 +1427,6 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   @Test
-  @Slow
   // This test really takes more time, that is why the number of iterations are smaller.
   public void testMultiValueRandomJoin() throws Exception {
     int maxIndexIter = atLeast(1);
@@ -1763,7 +1760,8 @@ public class TestJoinUtil extends LuceneTestCase {
                 }
                 if (doc == docTermOrds.docID()) {
                   long ord;
-                  while ((ord = docTermOrds.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+                  for (int j = 0; j < docTermOrds.docValueCount(); j++) {
+                    ord = docTermOrds.nextOrd();
                     final BytesRef joinValue = docTermOrds.lookupOrd(ord);
                     JoinScore joinScore = joinValueToJoinScores.get(joinValue);
                     if (joinScore == null) {

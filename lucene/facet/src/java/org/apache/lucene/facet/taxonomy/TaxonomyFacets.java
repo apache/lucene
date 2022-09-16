@@ -19,7 +19,6 @@ package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +28,7 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 
 /** Base class for all taxonomy-based facets impls. */
-public abstract class TaxonomyFacets extends Facets {
+abstract class TaxonomyFacets extends Facets {
 
   private static final Comparator<FacetResult> BY_VALUE_THEN_DIM =
       new Comparator<FacetResult>() {
@@ -46,13 +45,13 @@ public abstract class TaxonomyFacets extends Facets {
       };
 
   /** Index field name provided to the constructor. */
-  protected final String indexFieldName;
+  final String indexFieldName;
 
   /** {@code TaxonomyReader} provided to the constructor. */
-  protected final TaxonomyReader taxoReader;
+  final TaxonomyReader taxoReader;
 
   /** {@code FacetsConfig} provided to the constructor. */
-  protected final FacetsConfig config;
+  final FacetsConfig config;
 
   /** Maps parent ordinal to its child, or -1 if the parent is childless. */
   private int[] children;
@@ -61,10 +60,10 @@ public abstract class TaxonomyFacets extends Facets {
   private int[] siblings;
 
   /** Maps an ordinal to its parent, or -1 if there is no parent (root node). */
-  protected final int[] parents;
+  final int[] parents;
 
   /** Sole constructor. */
-  protected TaxonomyFacets(String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config)
+  TaxonomyFacets(String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config)
       throws IOException {
     this.indexFieldName = indexFieldName;
     this.taxoReader = taxoReader;
@@ -76,7 +75,7 @@ public abstract class TaxonomyFacets extends Facets {
    * Returns int[] mapping each ordinal to its first child; this is a large array and is computed
    * (and then saved) the first time this method is invoked.
    */
-  protected int[] getChildren() throws IOException {
+  int[] getChildren() throws IOException {
     if (children == null) {
       children = taxoReader.getParallelTaxonomyArrays().children();
     }
@@ -87,7 +86,7 @@ public abstract class TaxonomyFacets extends Facets {
    * Returns int[] mapping each ordinal to its next sibling; this is a large array and is computed
    * (and then saved) the first time this method is invoked.
    */
-  protected int[] getSiblings() throws IOException {
+  int[] getSiblings() throws IOException {
     if (siblings == null) {
       siblings = taxoReader.getParallelTaxonomyArrays().siblings();
     }
@@ -109,7 +108,7 @@ public abstract class TaxonomyFacets extends Facets {
    * @lucene.experimental
    */
   public boolean siblingsLoaded() {
-    return children != null;
+    return siblings != null;
   }
 
   /**
@@ -120,7 +119,7 @@ public abstract class TaxonomyFacets extends Facets {
    * @throws IllegalArgumentException if the provided dimension was manually configured, but its
    *     {@link DimConfig#indexFieldName} does not match {@link #indexFieldName}.
    */
-  protected DimConfig verifyDim(String dim) {
+  DimConfig verifyDim(String dim) {
     FacetsConfig.DimConfig dimConfig = config.getDimConfig(dim);
     if (config.isDimConfigured(dim) == true
         && dimConfig.indexFieldName.equals(indexFieldName) == false) {
@@ -138,6 +137,7 @@ public abstract class TaxonomyFacets extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
+    validateTopN(topN);
     int[] children = getChildren();
     int[] siblings = getSiblings();
     int ord = children[TaxonomyReader.ROOT_ORDINAL];
@@ -155,7 +155,7 @@ public abstract class TaxonomyFacets extends Facets {
     }
 
     // Sort by highest value, tie break by dim:
-    Collections.sort(results, BY_VALUE_THEN_DIM);
+    results.sort(BY_VALUE_THEN_DIM);
     return results;
   }
 }

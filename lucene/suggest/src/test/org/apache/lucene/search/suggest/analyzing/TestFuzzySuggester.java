@@ -607,7 +607,6 @@ public class TestFuzzySuggester extends LuceneTestCase {
     }
   }
 
-  @Slow
   public void testRandom() throws Exception {
 
     int numQueries = atLeast(20);

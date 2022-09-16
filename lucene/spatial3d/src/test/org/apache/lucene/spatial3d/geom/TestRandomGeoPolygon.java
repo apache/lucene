@@ -103,14 +103,12 @@ public class TestRandomGeoPolygon extends LuceneTestCase {
 
   /** Test comparing different polygon (Big) technologies using random biased doubles. */
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8281")
   public void testCompareBigPolygons() {
     testComparePolygons(Math.PI);
   }
 
   /** Test comparing different polygon (Small) technologies using random biased doubles. */
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8281")
   public void testCompareSmallPolygons() {
     testComparePolygons(1e-4 * Math.PI);
   }

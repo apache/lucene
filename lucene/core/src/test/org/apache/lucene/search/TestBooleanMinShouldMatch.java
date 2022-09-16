@@ -92,9 +92,9 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     assertEquals("result count", expected, h.length);
     // System.out.println("TEST: now check");
     // bs2
-    TopScoreDocCollector collector = TopScoreDocCollector.create(1000, Integer.MAX_VALUE);
-    s.search(q, collector);
-    ScoreDoc[] h2 = collector.topDocs().scoreDocs;
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(1000, null, Integer.MAX_VALUE);
+    ScoreDoc[] h2 = s.search(q, manager).scoreDocs;
     if (expected != h2.length) {
       printHits(getTestName(), h2, s);
     }
@@ -434,6 +434,31 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     TopDocs top1 = s.search(q1.build(), 100);
     TopDocs top2 = s.search(q2.build(), 100);
     assertSubsetOfSameScores(q2.build(), top1, top2);
+  }
+
+  public void testFlattenInnerDisjunctions() throws Exception {
+    Query q =
+        new BooleanQuery.Builder()
+            .setMinimumNumberShouldMatch(2)
+            .add(new TermQuery(new Term("all", "all")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "1")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "2")), BooleanClause.Occur.MUST)
+            .build();
+    verifyNrHits(q, 1);
+
+    Query inner =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("all", "all")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "1")), BooleanClause.Occur.SHOULD)
+            .build();
+    q =
+        new BooleanQuery.Builder()
+            .setMinimumNumberShouldMatch(2)
+            .add(inner, BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "2")), BooleanClause.Occur.MUST)
+            .build();
+
+    verifyNrHits(q, 0);
   }
 
   protected void printHits(String test, ScoreDoc[] h, IndexSearcher searcher) throws Exception {

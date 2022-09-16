@@ -90,7 +90,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     }
   }
 
-  @Slow
   public void testSortedVariableLengthBigVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -153,7 +152,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     }
   }
 
-  @Slow
   public void testSparseDocValuesVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -259,16 +257,12 @@ public abstract class BaseLucene80DocValuesFormatTestCase
             assertTrue(valueSet.contains(sortedNumeric.nextValue()));
           }
           assertEquals(i, sortedSet.nextDoc());
-          int sortedSetCount = 0;
-          while (true) {
+
+          assertEquals(valueSet.size(), sortedSet.docValueCount());
+          for (int j = 0; j < sortedSet.docValueCount(); ++j) {
             long ord = sortedSet.nextOrd();
-            if (ord == SortedSetDocValues.NO_MORE_ORDS) {
-              break;
-            }
             assertTrue(valueSet.contains(Long.parseLong(sortedSet.lookupOrd(ord).utf8ToString())));
-            sortedSetCount++;
           }
-          assertEquals(valueSet.size(), sortedSetCount);
         }
       }
     }
@@ -482,6 +476,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
       for (int i = 0; i < maxDoc; ++i) {
         assertEquals(i, values.nextDoc());
         final int numValues = in.readVInt();
+        assertEquals(numValues, values.docValueCount());
 
         for (int j = 0; j < numValues; ++j) {
           b.setLength(in.readVInt());
@@ -489,8 +484,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
           in.readBytes(b.bytes(), 0, b.length());
           assertEquals(b.get(), values.lookupOrd(values.nextOrd()));
         }
-
-        assertEquals(SortedSetDocValues.NO_MORE_ORDS, values.nextOrd());
       }
       r.close();
       dir.close();

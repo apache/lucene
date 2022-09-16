@@ -29,7 +29,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.FieldValueHitQueue.Entry;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
@@ -38,12 +37,15 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestElevationComparator extends LuceneTestCase {
-
+  private Directory directory;
+  private IndexReader reader;
+  private IndexSearcher searcher;
   private final Map<BytesRef, Integer> priority = new HashMap<>();
 
-  // @Test
-  public void testSorting() throws Throwable {
-    Directory directory = newDirectory();
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    directory = newDirectory();
     IndexWriter writer =
         new IndexWriter(
             directory,
@@ -59,20 +61,29 @@ public class TestElevationComparator extends LuceneTestCase {
     writer.addDocument(
         adoc(new String[] {"id", "z", "title", "boosted boosted boosted", "str_s", "z"}));
 
-    IndexReader r = DirectoryReader.open(writer);
+    reader = DirectoryReader.open(writer);
     writer.close();
 
-    IndexSearcher searcher = newSearcher(r);
+    searcher = newSearcher(reader);
     searcher.setSimilarity(new BM25Similarity());
+  }
 
-    runTest(searcher, true);
-    runTest(searcher, false);
-
-    r.close();
+  @Override
+  public void tearDown() throws Exception {
+    super.tearDown();
+    reader.close();
     directory.close();
   }
 
-  private void runTest(IndexSearcher searcher, boolean reversed) throws Throwable {
+  public void testSorting() throws Throwable {
+    runTest(false);
+  }
+
+  public void testSortingReversed() throws Throwable {
+    runTest(true);
+  }
+
+  private void runTest(boolean reversed) throws Throwable {
 
     BooleanQuery.Builder newq = new BooleanQuery.Builder();
     TermQuery query = new TermQuery(new Term("title", "ipod"));
@@ -85,10 +96,9 @@ public class TestElevationComparator extends LuceneTestCase {
             new SortField("id", new ElevationComparatorSource(priority), false),
             new SortField(null, SortField.Type.SCORE, reversed));
 
-    TopDocsCollector<Entry> topCollector = TopFieldCollector.create(sort, 50, Integer.MAX_VALUE);
-    searcher.search(newq.build(), topCollector);
-
-    TopDocs topDocs = topCollector.topDocs(0, 10);
+    TopDocs topDocs =
+        searcher.search(
+            newq.build(), TopFieldCollector.createSharedManager(sort, 50, null, Integer.MAX_VALUE));
     int nDocsReturned = topDocs.scoreDocs.length;
 
     assertEquals(4, nDocsReturned);
@@ -151,7 +161,7 @@ class ElevationComparatorSource extends FieldComparatorSource {
 
   @Override
   public FieldComparator<Integer> newComparator(
-      final String fieldname, final int numHits, int sortPos, boolean reversed) {
+      final String fieldname, final int numHits, boolean enableSkipping, boolean reversed) {
     return new FieldComparator<Integer>() {
 
       private final int[] values = new int[numHits];
@@ -199,8 +209,14 @@ class ElevationComparatorSource extends FieldComparatorSource {
 
       @Override
       public int compare(int slot1, int slot2) {
-        return values[slot2]
-            - values[slot1]; // values will be small enough that there is no overflow concern
+        // values will be small enough that there is no overflow concern
+        return values[slot2] - values[slot1];
+      }
+
+      @Override
+      public int compareValues(Integer first, Integer second) {
+        // values will be small enough that there is no overflow concern
+        return second - first;
       }
 
       @Override

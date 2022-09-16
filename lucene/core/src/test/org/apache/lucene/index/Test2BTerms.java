@@ -199,10 +199,10 @@ public class Test2BTerms extends LuceneTestCase {
       System.out.println("numDocs=" + numDocs);
 
       for (int i = 0; i < numDocs; i++) {
-        final long t0 = System.currentTimeMillis();
+        final long t0 = System.nanoTime();
         w.addDocument(doc);
         System.out.println(
-            i + " of " + numDocs + " " + (System.currentTimeMillis() - t0) + " msec");
+            i + " of " + numDocs + " " + (System.nanoTime() - t0) / 1_000_000 + " msec");
       }
       savedTerms = ts.savedTerms;
 
@@ -260,14 +260,14 @@ public class Test2BTerms extends LuceneTestCase {
     for (int iter = 0; iter < 10 * terms.size(); iter++) {
       final BytesRef term = terms.get(random().nextInt(terms.size()));
       System.out.println("TEST: search " + term);
-      final long t0 = System.currentTimeMillis();
+      final long t0 = System.nanoTime();
       final long count = s.count(new TermQuery(new Term("field", term)));
       if (count <= 0) {
         System.out.println("  FAILED: count=" + count);
         failed = true;
       }
-      final long t1 = System.currentTimeMillis();
-      System.out.println("  took " + (t1 - t0) + " millis");
+      final long t1 = System.nanoTime();
+      System.out.println("  took " + (t1 - t0) / 1_000_000 + " millis");
 
       TermsEnum.SeekStatus result = termsEnum.seekCeil(term);
       if (result != TermsEnum.SeekStatus.FOUND) {

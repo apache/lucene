@@ -585,17 +585,13 @@ public class UnifiedHighlighter {
     return breakIterator.get();
   }
 
-  /**
-   * Returns the {@link PassageScorer} to use for ranking passages. This returns a new {@code
-   * PassageScorer} by default; subclasses can override to customize.
-   */
+  /** Returns the {@link PassageScorer} to use for ranking passages. */
   protected PassageScorer getScorer(String field) {
     return scorer;
   }
 
   /**
    * Returns the {@link PassageFormatter} to use for formatting passages into highlighted snippets.
-   * This returns a new {@code PassageFormatter} by default; subclasses can override to customize.
    */
   protected PassageFormatter getFormatter(String field) {
     return formatter;
@@ -1081,7 +1077,7 @@ public class UnifiedHighlighter {
       String field, Query query, Set<Term> allTerms, int maxPassages) {
     UHComponents components = getHighlightComponents(field, query, allTerms);
     OffsetSource offsetSource = getOptimizedOffsetSource(components);
-    return new FieldHighlighter(
+    return newFieldHighlighter(
         field,
         getOffsetStrategy(offsetSource, components),
         new SplittingBreakIterator(getBreakIterator(field), UnifiedHighlighter.MULTIVAL_SEP_CHAR),
@@ -1089,6 +1085,24 @@ public class UnifiedHighlighter {
         maxPassages,
         getMaxNoHighlightPassages(field),
         getFormatter(field));
+  }
+
+  protected FieldHighlighter newFieldHighlighter(
+      String field,
+      FieldOffsetStrategy fieldOffsetStrategy,
+      BreakIterator breakIterator,
+      PassageScorer passageScorer,
+      int maxPassages,
+      int maxNoHighlightPassages,
+      PassageFormatter passageFormatter) {
+    return new FieldHighlighter(
+        field,
+        fieldOffsetStrategy,
+        breakIterator,
+        passageScorer,
+        maxPassages,
+        maxNoHighlightPassages,
+        passageFormatter);
   }
 
   protected UHComponents getHighlightComponents(String field, Query query, Set<Term> allTerms) {

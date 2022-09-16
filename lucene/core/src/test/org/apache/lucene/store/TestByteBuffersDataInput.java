@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.IOUtils.IOConsumer;
+import org.apache.lucene.util.IOConsumer;
 import org.junit.Test;
 
 public final class TestByteBuffersDataInput extends RandomizedTest {

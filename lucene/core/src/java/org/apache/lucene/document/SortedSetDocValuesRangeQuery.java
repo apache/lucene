@@ -26,7 +26,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -105,7 +105,7 @@ abstract class SortedSetDocValuesRangeQuery extends Query {
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
     if (lowerValue == null && upperValue == null) {
-      return new DocValuesFieldExistsQuery(field);
+      return new FieldExistsQuery(field);
     }
     return super.rewrite(reader);
   }
@@ -176,9 +176,8 @@ abstract class SortedSetDocValuesRangeQuery extends Query {
               new TwoPhaseIterator(values) {
                 @Override
                 public boolean matches() throws IOException {
-                  for (long ord = values.nextOrd();
-                      ord != SortedSetDocValues.NO_MORE_ORDS;
-                      ord = values.nextOrd()) {
+                  for (int i = 0; i < values.docValueCount(); i++) {
+                    long ord = values.nextOrd();
                     if (ord < minOrd) {
                       continue;
                     }

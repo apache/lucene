@@ -170,8 +170,8 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       final Field idField = newField(r, "id", "", DocCopyIterator.custom2);
       doc.add(idField);
 
-      final long stopTime = System.currentTimeMillis() + 500;
-
+      final int maxIterations = 250;
+      int iterations = 0;
       do {
         if (VERBOSE) {
           System.out.println(Thread.currentThread().getName() + ": TEST: IndexerThread: cycle");
@@ -219,7 +219,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           failure = t;
           break;
         }
-      } while (System.currentTimeMillis() < stopTime);
+      } while (++iterations < maxIterations);
     }
   }
 
@@ -2168,6 +2168,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           @SuppressWarnings("unused")
           FakeIOException fioe) {
         // OK: e.g. SMS hit the exception
+        break;
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalStateException ise) {
+        // OK: Merge-on-refresh refuses to run because IndexWriter hit a tragedy
         break;
       }
     }

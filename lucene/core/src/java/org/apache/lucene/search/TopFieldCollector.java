@@ -91,7 +91,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     boolean thresholdCheck(int doc) throws IOException {
       if (collectedAllCompetitiveHits || reverseMul * comparator.compareBottom(doc) <= 0) {
         // since docs are visited in doc Id order, if compare is 0, it means
-        // this document is largest than anything else in the queue, and
+        // this document is larger than anything else in the queue, and
         // therefore not competitive.
         if (searchSortPartOfIndexSort) {
           if (hitsThresholdChecker.isThresholdReached()) {
@@ -488,11 +488,13 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
    */
   public static CollectorManager<TopFieldCollector, TopFieldDocs> createSharedManager(
       Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
-    return new CollectorManager<>() {
 
+    int totalHitsMax = Math.max(totalHitsThreshold, numHits);
+    return new CollectorManager<>() {
       private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits));
-      private final MaxScoreAccumulator minScoreAcc = new MaxScoreAccumulator();
+          HitsThresholdChecker.createShared(totalHitsMax);
+      private final MaxScoreAccumulator minScoreAcc =
+          totalHitsMax == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
 
       @Override
       public TopFieldCollector newCollector() throws IOException {

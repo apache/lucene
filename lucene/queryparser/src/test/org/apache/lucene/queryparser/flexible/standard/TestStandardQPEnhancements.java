@@ -106,6 +106,9 @@ public class TestStandardQPEnhancements extends LuceneTestCase {
   @Test
   public void testWildcard() throws Exception {
     checkIntervalQueryNode("fn:wildcard(foo*)");
+
+    // Explicit maxExpansions.
+    checkIntervalQueryNode("fn:wildcard(foo* 128)");
   }
 
   @Test
@@ -171,6 +174,15 @@ public class TestStandardQPEnhancements extends LuceneTestCase {
   @Test
   public void testExtend() throws Exception {
     checkIntervalQueryNode("fn:extend(fn:ordered(big foo) 2 5)");
+  }
+
+  @Test
+  public void testFuzzy() throws Exception {
+    checkIntervalQueryNode("fn:fuzzyTerm(dfe)");
+    // Explicit maxEdits
+    checkIntervalQueryNode("fn:fuzzyTerm(dfe 2)");
+    // Explicit maxExpansions
+    checkIntervalQueryNode("fn:fuzzyTerm(dfe 2 128)");
   }
 
   protected void checkIntervalQueryNode(String query) throws Exception {

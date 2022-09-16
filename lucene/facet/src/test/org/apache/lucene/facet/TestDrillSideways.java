@@ -132,7 +132,11 @@ public class TestDrillSideways extends FacetTestCase {
   private IndexSearcher getNewSearcher(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
-    return newSearcher(reader, true, false, random().nextBoolean());
+    IndexSearcher searcher = newSearcher(reader, true, false, random().nextBoolean());
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    searcher.setTimeout(null);
+    return searcher;
   }
 
   // See LUCENE-10060:
@@ -234,21 +238,12 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
         concurrentResult.facets.getTopChildren(10, "Size").toString());
 
-    // Now do the same thing but use a Collector directly:
-    SimpleCollector collector = new SimpleCollector(ScoreMode.COMPLETE_NO_SCORES);
-    // Make sure our Collector _does not_ need scores to ensure IndexSearcher tries to cache:
-    assertFalse(collector.scoreMode().needsScores());
-    // If we incorrectly cache here, the "sideways" FacetsCollectors will get populated with counts
-    // for the deleted
-    // docs. Make sure they don't:
-    DrillSidewaysResult result = ds.search(ddq, collector);
-    assertEquals(2, collector.hits.size());
-    assertEquals(
-        "dim=Color path=[] value=4 childCount=3\n  Blue (2)\n  Red (1)\n  Green (1)\n",
-        result.facets.getTopChildren(10, "Color").toString());
-    assertEquals(
-        "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
-        result.facets.getTopChildren(10, "Size").toString());
+    // test getTopChildren(0, dim)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          concurrentResult.facets.getTopChildren(0, "Color");
+        });
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
@@ -374,6 +369,27 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n  2012 (1)\n",
         allResults.get(1).toString());
 
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = r.facets.getTopDims(2, 1);
+    assertEquals(2, topNDimsResult.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n", topNDimsResult.get(0).toString());
+    assertEquals(
+        "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n",
+        topNDimsResult.get(1).toString());
+
+    // test getTopDims(0, 1)
+    List<FacetResult> topDimsResults2 = r.facets.getTopDims(0, 1);
+    assertEquals(0, topDimsResults2.size());
+
+    // test getAllDims(0)
+    DrillSidewaysResult finalR1 = r;
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          finalR1.facets.getAllDims(0);
+        });
+
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
@@ -459,6 +475,15 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(0, r.hits.totalHits.value);
     assertNull(r.facets.getTopChildren(10, "Publish Date"));
     assertNull(r.facets.getTopChildren(10, "Author"));
+
+    // test getTopChildren(0, dim)
+    DrillSidewaysResult finalR = r;
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          finalR.facets.getTopChildren(0, "Author");
+        });
+
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
@@ -596,6 +621,17 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(
         "dim=Publish Date path=[] value=3 childCount=2\n  2010 (2)\n  2012 (1)\n",
         allResults.get(1).toString());
+
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = r.facets.getTopDims(1, 2);
+    assertEquals(1, topNDimsResult.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Susan (1)\n",
+        topNDimsResult.get(0).toString());
+
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allDimsResults = r.facets.getTopDims(10, 10);
+    assertEquals(allResults, allDimsResults);
 
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
@@ -1068,7 +1104,7 @@ public class TestDrillSideways extends FacetTestCase {
     IndexSearcher s = getNewSearcher(r);
 
     if (doUseDV) {
-      sortedSetDVState = new DefaultSortedSetDocValuesReaderState(s.getIndexReader());
+      sortedSetDVState = new DefaultSortedSetDocValuesReaderState(s.getIndexReader(), config);
     } else {
       sortedSetDVState = null;
     }
@@ -1230,25 +1266,10 @@ public class TestDrillSideways extends FacetTestCase {
       getNewDrillSideways(s, config, tr)
           .search(
               ddq,
-              new org.apache.lucene.search.SimpleCollector() {
-                int lastDocID;
-
-                @Override
-                public void collect(int doc) {
-                  assert doc > lastDocID;
-                  lastDocID = doc;
-                }
-
-                @Override
-                protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                  lastDocID = -1;
-                }
-
-                @Override
-                public ScoreMode scoreMode() {
-                  return ScoreMode.COMPLETE_NO_SCORES;
-                }
-              });
+              new SimpleCollectorManager(
+                  numDocs,
+                  Comparator.comparing(cr -> cr.docAndScore.doc),
+                  ScoreMode.COMPLETE_NO_SCORES));
 
       // Also separately verify that DS respects the
       // scoreSubDocsAtOnce method, to ensure that all
@@ -1259,7 +1280,7 @@ public class TestDrillSideways extends FacetTestCase {
         // easily possible for one of the DD terms to be on
         // a future docID:
         getNewDrillSidewaysScoreSubdocsAtOnce(s, config, tr)
-            .search(ddq, new AssertingSubDocsAtOnceCollector());
+            .search(ddq, new AssertingSubDocsAtOnceCollectorManager());
       }
 
       Sort sort = new Sort(new SortField("id", SortField.Type.STRING));
@@ -1874,6 +1895,19 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
         allResults.get(0).toString());
 
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = facets.getTopDims(1, 2);
+    assertEquals(1, topNDimsResult.size());
+    assertEquals(
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Susan (1)\n",
+        topNDimsResult.get(0).toString());
+
+    // test getAllDims(0)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
@@ -1970,16 +2004,8 @@ public class TestDrillSideways extends FacetTestCase {
     SimpleCollectorManager manager =
         new SimpleCollectorManager(
             10, (a, b) -> Float.compare(b.docAndScore.score, a.docAndScore.score));
-    SimpleCollector collector = manager.newCollector();
 
-    // Sometimes pass in a Collector and sometimes CollectorManager
-    // so that we can test both DrillSidewaysResult and ConcurrentDrillSidewaysResult
-    DrillSidewaysResult r;
-    if (random().nextBoolean()) {
-      r = ds.search(ddq, collector);
-    } else {
-      r = ds.search(ddq, manager);
-    }
+    DrillSidewaysResult r = ds.search(ddq, manager);
 
     // compute Facets using exposed FacetCollectors from DrillSidewaysResult
     Map<String, Facets> drillSidewaysFacets = new HashMap<>();

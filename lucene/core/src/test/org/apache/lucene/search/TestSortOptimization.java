@@ -26,23 +26,40 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.IntRange;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FilterDirectoryReader;
+import org.apache.lucene.index.FilterLeafReader;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 public class TestSortOptimization extends LuceneTestCase {
@@ -50,7 +67,12 @@ public class TestSortOptimization extends LuceneTestCase {
   public void testLongSortOptimization() throws IOException {
 
     final Directory dir = newDirectory();
-    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    IndexWriterConfig config =
+        new IndexWriterConfig()
+            // Make sure to use the default codec, otherwise some random points formats that have
+            // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+            .setCodec(TestUtil.getDefaultCodec());
+    final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
@@ -61,48 +83,46 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
     { // simple sort
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
         assertEquals(i, ((Long) fieldDoc.fields[0]).intValue());
       }
-      assertTrue(collector.isEarlyTerminated());
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // paging sort with after
       long afterValue = 2;
       FieldDoc after = new FieldDoc(2, Float.NaN, new Long[] {afterValue});
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, after, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
         assertEquals(afterValue + 1 + i, fieldDoc.fields[0]);
       }
-      assertTrue(collector.isEarlyTerminated());
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // test that if there is the secondary sort on _score, scores are filled correctly
-      final TopFieldCollector collector =
-          TopFieldCollector.create(
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(
               new Sort(sortField, FIELD_SCORE), numHits, null, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
@@ -110,16 +130,15 @@ public class TestSortOptimization extends LuceneTestCase {
         float score = (float) fieldDoc.fields[1];
         assertEquals(1.0, score, 0.001);
       }
-      assertTrue(collector.isEarlyTerminated());
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // test that if numeric field is a secondary sort, no optimization is run
-      final TopFieldCollector collector =
-          TopFieldCollector.create(
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(
               new Sort(FIELD_SCORE, sortField), numHits, null, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertEquals(
           topDocs.totalHits.value,
@@ -146,16 +165,17 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
-    final TopFieldCollector collector =
-        TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-    searcher.search(new MatchAllDocsQuery(), collector);
-    TopDocs topDocs = collector.topDocs();
+    CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+        TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+    TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
     assertEquals(
         topDocs.scoreDocs.length, numHits); // sort still works and returns expected number of docs
     for (int i = 0; i < numHits; i++) {
@@ -172,7 +192,12 @@ public class TestSortOptimization extends LuceneTestCase {
 
   public void testSortOptimizationWithMissingValues() throws IOException {
     final Directory dir = newDirectory();
-    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    IndexWriterConfig config =
+        new IndexWriterConfig()
+            // Make sure to use the default codec, otherwise some random points formats that have
+            // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+            .setCodec(TestUtil.getDefaultCodec());
+    final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
@@ -185,7 +210,9 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
@@ -193,10 +220,9 @@ public class TestSortOptimization extends LuceneTestCase {
       final SortField sortField = new SortField("my_field", SortField.Type.LONG);
       sortField.setMissingValue(0L); // set a competitive missing value
       final Sort sort = new Sort(sortField);
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertEquals(
           topDocs.totalHits.value,
@@ -206,10 +232,9 @@ public class TestSortOptimization extends LuceneTestCase {
       final SortField sortField = new SortField("my_field", SortField.Type.LONG);
       sortField.setMissingValue(100L); // set a NON competitive missing value
       final Sort sort = new Sort(sortField);
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
@@ -220,7 +245,12 @@ public class TestSortOptimization extends LuceneTestCase {
 
   public void testSortOptimizationEqualValues() throws IOException {
     final Directory dir = newDirectory();
-    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    IndexWriterConfig config =
+        new IndexWriterConfig()
+            // Make sure to use the default codec, otherwise some random points formats that have
+            // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+            .setCodec(TestUtil.getDefaultCodec());
+    final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(TEST_NIGHTLY ? 50_000 : 10_000);
     for (int i = 1; i <= numDocs; ++i) {
       final Document doc = new Document();
@@ -235,17 +265,18 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
     { // test that sorting on a single field with equal values uses the optimization
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
       final Sort sort = new Sort(sortField);
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
@@ -261,10 +292,9 @@ public class TestSortOptimization extends LuceneTestCase {
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
       final Sort sort = new Sort(sortField);
       FieldDoc after = new FieldDoc(afterDocID, Float.NaN, new Integer[] {afterValue});
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, after, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
@@ -279,10 +309,9 @@ public class TestSortOptimization extends LuceneTestCase {
       final SortField sortField1 = new SortField("my_field1", SortField.Type.INT);
       final SortField sortField2 = new SortField("my_field2", SortField.Type.INT);
       final Sort sort = new Sort(sortField1, sortField2);
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
@@ -312,23 +341,24 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final SortField sortField = new SortField("my_field", SortField.Type.FLOAT);
     final Sort sort = new Sort(sortField);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
     { // simple sort
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       for (int i = 0; i < numHits; i++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
         assertEquals(1f * i, fieldDoc.fields[0]);
       }
-      assertTrue(collector.isEarlyTerminated());
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
@@ -347,7 +377,12 @@ public class TestSortOptimization extends LuceneTestCase {
     IndexReader[] readers = new IndexReader[numIndices];
     for (int i = 0; i < numIndices; i++) {
       dirs[i] = newDirectory();
-      try (IndexWriter writer = new IndexWriter(dirs[i], new IndexWriterConfig())) {
+      IndexWriterConfig config =
+          new IndexWriterConfig()
+              // Make sure to use the default codec, otherwise some random points formats that have
+              // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+              .setCodec(TestUtil.getDefaultCodec());
+      try (IndexWriter writer = new IndexWriter(dirs[i], config)) {
         for (int docID = 0; docID < numDocsInIndex; docID++) {
           final Document doc = new Document();
           doc.add(new NumericDocValuesField("my_field", docID * numIndices + i));
@@ -369,12 +404,12 @@ public class TestSortOptimization extends LuceneTestCase {
     int numHits = 0;
     do {
       for (int i = 0; i < numIndices; i++) {
+        // single threaded so totalhits is deterministic
         IndexSearcher searcher =
-            newSearcher(readers[i], random().nextBoolean(), random().nextBoolean());
-        final TopFieldCollector collector =
-            TopFieldCollector.create(sort, size, after, totalHitsThreshold);
-        searcher.search(new MatchAllDocsQuery(), collector);
-        topDocs[i] = collector.topDocs();
+            newSearcher(readers[i], random().nextBoolean(), random().nextBoolean(), false);
+        CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+            TopFieldCollector.createSharedManager(sort, size, after, totalHitsThreshold);
+        topDocs[i] = searcher.search(new MatchAllDocsQuery(), manager);
         for (int docID = 0; docID < topDocs[i].scoreDocs.length; docID++) {
           topDocs[i].scoreDocs[docID].shardIndex = i;
         }
@@ -413,7 +448,9 @@ public class TestSortOptimization extends LuceneTestCase {
 
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 10;
     final int totalHitsThreshold = 10;
     final int[] searchAfters = {3, 10, numDocs - 10};
@@ -422,10 +459,9 @@ public class TestSortOptimization extends LuceneTestCase {
       {
         final Sort sort = new Sort(FIELD_DOC);
         FieldDoc after = new FieldDoc(searchAfter, Float.NaN, new Integer[] {searchAfter});
-        final TopFieldCollector collector =
-            TopFieldCollector.create(sort, numHits, after, totalHitsThreshold);
-        searcher.search(new MatchAllDocsQuery(), collector);
-        TopDocs topDocs = collector.topDocs();
+        CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+            TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
+        TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
         int expNumHits =
             (searchAfter >= (numDocs - numHits)) ? (numDocs - searchAfter - 1) : numHits;
         assertEquals(expNumHits, topDocs.scoreDocs.length);
@@ -433,7 +469,7 @@ public class TestSortOptimization extends LuceneTestCase {
           int expectedDocID = searchAfter + 1 + i;
           assertEquals(expectedDocID, topDocs.scoreDocs[i].doc);
         }
-        assertTrue(collector.isEarlyTerminated());
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
         assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
       }
 
@@ -441,10 +477,9 @@ public class TestSortOptimization extends LuceneTestCase {
       {
         final Sort sort = new Sort(FIELD_DOC, FIELD_SCORE);
         FieldDoc after = new FieldDoc(searchAfter, Float.NaN, new Object[] {searchAfter, 1.0f});
-        final TopFieldCollector collector =
-            TopFieldCollector.create(sort, numHits, after, totalHitsThreshold);
-        searcher.search(new MatchAllDocsQuery(), collector);
-        TopDocs topDocs = collector.topDocs();
+        CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+            TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
+        TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
         int expNumHits =
             (searchAfter >= (numDocs - numHits)) ? (numDocs - searchAfter - 1) : numHits;
         assertEquals(expNumHits, topDocs.scoreDocs.length);
@@ -452,7 +487,7 @@ public class TestSortOptimization extends LuceneTestCase {
           int expectedDocID = searchAfter + 1 + i;
           assertEquals(expectedDocID, topDocs.scoreDocs[i].doc);
         }
-        assertTrue(collector.isEarlyTerminated());
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
         assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
       }
 
@@ -460,10 +495,9 @@ public class TestSortOptimization extends LuceneTestCase {
       {
         final Sort sort = new Sort(new SortField(null, SortField.Type.DOC, true));
         FieldDoc after = new FieldDoc(searchAfter, Float.NaN, new Integer[] {searchAfter});
-        final TopFieldCollector collector =
-            TopFieldCollector.create(sort, numHits, after, totalHitsThreshold);
-        searcher.search(new MatchAllDocsQuery(), collector);
-        TopDocs topDocs = collector.topDocs();
+        CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+            TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
+        TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
         int expNumHits = (searchAfter < numHits) ? searchAfter : numHits;
         assertEquals(expNumHits, topDocs.scoreDocs.length);
         for (int i = 0; i < topDocs.scoreDocs.length; i++) {
@@ -533,6 +567,9 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
 
     final int numHits = 3;
     final int totalHitsThreshold = 3;
@@ -540,38 +577,34 @@ public class TestSortOptimization extends LuceneTestCase {
 
     // sort by _doc should skip all non-competitive documents
     {
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
-      IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
-      searcher.search(new MatchAllDocsQuery(), collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(numHits, topDocs.scoreDocs.length);
       for (int i = 0; i < numHits; i++) {
         assertEquals(i, topDocs.scoreDocs[i].doc);
       }
-      assertTrue(collector.isEarlyTerminated());
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, 10);
     }
 
     // sort by _doc with a bool query should skip all non-competitive documents
     {
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
       int lowerRange = 40;
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       bq.add(LongPoint.newRangeQuery("lf", lowerRange, Long.MAX_VALUE), BooleanClause.Occur.MUST);
       bq.add(new TermQuery(new Term("tf", "seg1")), BooleanClause.Occur.MUST);
-      IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
-      searcher.search(bq.build(), collector);
+      TopDocs topDocs = searcher.search(bq.build(), manager);
 
-      TopDocs topDocs = collector.topDocs();
       assertEquals(numHits, topDocs.scoreDocs.length);
       for (int i = 0; i < numHits; i++) {
         Document d = searcher.doc(topDocs.scoreDocs[i].doc);
         assertEquals(Integer.toString(i + lowerRange), d.get("slf"));
         assertEquals("seg1", d.get("tf"));
       }
-      assertTrue(collector.isEarlyTerminated());
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, 10);
     }
 
@@ -608,13 +641,12 @@ public class TestSortOptimization extends LuceneTestCase {
     final Sort sort = new Sort(FIELD_DOC);
 
     {
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, numHits, null, totalHitsThreshold);
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       bq.add(LongPoint.newExactQuery("lf", 1), BooleanClause.Occur.MUST);
       bq.add(new TermQuery(new Term("id", "id3")), BooleanClause.Occur.MUST_NOT);
-      searcher.search(bq.build(), collector);
-      TopDocs topDocs = collector.topDocs();
+      TopDocs topDocs = searcher.search(bq.build(), manager);
       assertEquals(2, topDocs.scoreDocs.length);
     }
 
@@ -647,7 +679,7 @@ public class TestSortOptimization extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField)));
     // assert that when sort optimization is disabled we can use LONG sort on int field
-    longSortOnIntField.setOptimizeSortWithPoints(false);
+    longSortOnIntField.setOptimizeSortWithIndexedData(false);
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField));
 
     SortField intSortOnLongField = new SortField("longField", SortField.Type.INT);
@@ -655,7 +687,7 @@ public class TestSortOptimization extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField)));
     // assert that when sort optimization is disabled we can use INT sort on long field
-    intSortOnLongField.setOptimizeSortWithPoints(false);
+    intSortOnLongField.setOptimizeSortWithIndexedData(false);
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField));
 
     SortField intSortOnIntRangeField = new SortField("intRange", SortField.Type.INT);
@@ -663,7 +695,7 @@ public class TestSortOptimization extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField)));
     // assert that when sort optimization is disabled we can use INT sort on intRange field
-    intSortOnIntRangeField.setOptimizeSortWithPoints(false);
+    intSortOnIntRangeField.setOptimizeSortWithIndexedData(false);
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField));
 
     reader.close();
@@ -783,14 +815,15 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    IndexSearcher searcher = newSearcher(reader);
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
 
     SortedNumericSelector.Type type =
         RandomPicks.randomFrom(random(), SortedNumericSelector.Type.values());
     boolean reverse = random().nextBoolean();
     final SortField sortField =
         new SortedNumericSortField("my_field", SortField.Type.LONG, reverse, type);
-    sortField.setOptimizeSortWithPoints(false);
+    sortField.setOptimizeSortWithIndexedData(false);
     final Sort sort = new Sort(sortField); // sort without sort optimization
     final SortField sortField2 =
         new SortedNumericSortField("my_field", SortField.Type.LONG, reverse, type);
@@ -807,16 +840,14 @@ public class TestSortOptimization extends LuceneTestCase {
       int batch = 1 + random().nextInt(100);
       int expectedHits = Math.min(numDocs - visitedHits, batch);
 
-      final TopFieldCollector collector =
-          TopFieldCollector.create(sort, batch, (FieldDoc) after, totalHitsThreshold);
-      searcher.search(query, collector);
-      TopDocs topDocs = collector.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, batch, (FieldDoc) after, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(query, manager);
       ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
-      final TopFieldCollector collector2 =
-          TopFieldCollector.create(sort2, batch, (FieldDoc) after, totalHitsThreshold);
-      searcher.search(query, collector2);
-      TopDocs topDocs2 = collector2.topDocs();
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager2 =
+          TopFieldCollector.createSharedManager(sort2, batch, (FieldDoc) after, totalHitsThreshold);
+      TopDocs topDocs2 = searcher.search(query, manager2);
       ScoreDoc[] scoreDocs2 = topDocs2.scoreDocs;
 
       // assert that the resulting hits are the same
@@ -852,6 +883,279 @@ public class TestSortOptimization extends LuceneTestCase {
               + collectedHits
               + " num_docs="
               + numDocs);
+    }
+  }
+
+  public void testStringSortOptimization() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    final int numDocs = atLeast(10000);
+    for (int i = 0; i < numDocs; ++i) {
+      final Document doc = new Document();
+      final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
+      doc.add(new StringField("my_field", value, Store.NO));
+      doc.add(new SortedDocValuesField("my_field", value));
+      writer.addDocument(doc);
+      if (i % 2000 == 0) writer.flush(); // multiple segments
+    }
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+    doTestStringSortOptimization(reader);
+    doTestStringSortOptimizationDisabled(reader);
+    reader.close();
+    dir.close();
+  }
+
+  public void testStringSortOptimizationWithMissingValues() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer =
+        new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    final int numDocs = atLeast(10000);
+    // one segment with all values missing to start with
+    writer.addDocument(new Document());
+    for (int i = 0; i < numDocs - 2; ++i) {
+      if (i % 2000 == 0) writer.flush(); // multiple segments
+      final Document doc = new Document();
+      if (random().nextInt(2) == 0) {
+        final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
+        doc.add(new StringField("my_field", value, Store.NO));
+        doc.add(new SortedDocValuesField("my_field", value));
+      }
+      writer.addDocument(doc);
+    }
+    writer.flush();
+    // And one empty segment with all values missing to finish with
+    writer.addDocument(new Document());
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+    doTestStringSortOptimization(reader);
+    reader.close();
+    dir.close();
+  }
+
+  private void doTestStringSortOptimization(DirectoryReader reader) throws IOException {
+    final int numDocs = reader.numDocs();
+    final int numHits = 5;
+
+    { // simple ascending sort
+      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      sortField.setMissingValue(SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSort(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    { // simple descending sort
+      SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
+      sortField.setMissingValue(SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSort(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    { // ascending sort that returns missing values first
+      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      sortField.setMissingValue(SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      assertSort(reader, sort, numHits, null);
+    }
+
+    { // descending sort that returns missing values last
+      SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
+      sortField.setMissingValue(SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      assertSort(reader, sort, numHits, null);
+    }
+
+    { // paging ascending sort with after
+      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      sortField.setMissingValue(SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      BytesRef afterValue = new BytesRef(random().nextBoolean() ? "23" : "230000000");
+      FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
+      TopDocs topDocs = assertSort(reader, sort, numHits, after);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    { // paging descending sort with after
+      SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
+      sortField.setMissingValue(SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      BytesRef afterValue = new BytesRef(random().nextBoolean() ? "17" : "170000000");
+      FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
+      TopDocs topDocs = assertSort(reader, sort, numHits, after);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    { // paging ascending sort with after that returns missing values first
+      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      sortField.setMissingValue(SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      BytesRef afterValue = new BytesRef(random().nextBoolean() ? "23" : "230000000");
+      FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
+      TopDocs topDocs = assertSort(reader, sort, numHits, after);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    { // paging descending sort with after that returns missing values first
+      SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
+      sortField.setMissingValue(SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      BytesRef afterValue = new BytesRef(random().nextBoolean() ? "17" : "170000000");
+      FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
+      TopDocs topDocs = assertSort(reader, sort, numHits, after);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    { // test that if there is the secondary sort on _score, hits are still skipped
+      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      sortField.setMissingValue(SortField.STRING_LAST);
+      Sort sort = new Sort(sortField, FIELD_SCORE);
+      TopDocs topDocs = assertSort(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    { // test that if string field is a secondary sort, no optimization is run
+      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      sortField.setMissingValue(SortField.STRING_LAST);
+      Sort sort = new Sort(FIELD_SCORE, sortField);
+      TopDocs topDocs = assertSort(reader, sort, numHits, null);
+      assertEquals(
+          topDocs.totalHits.value,
+          numDocs); // assert that all documents were collected => optimization was not run
+    }
+  }
+
+  public void doTestStringSortOptimizationDisabled(DirectoryReader reader) throws IOException {
+    SortField sortField =
+        random().nextBoolean()
+            ? new SortedSetSortField("my_field", false)
+            : new SortField("my_field", SortField.Type.STRING);
+    sortField.setMissingValue(SortField.STRING_LAST);
+    sortField.setOptimizeSortWithIndexedData(false);
+
+    Sort sort = new Sort(sortField);
+    final int numDocs = reader.numDocs();
+    final int numHits = 5;
+    final int totalHitsThreshold = 5;
+
+    CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+        TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
+    TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
+    assertEquals(numDocs, topDocs.totalHits.value);
+  }
+
+  private TopDocs assertSort(DirectoryReader reader, Sort sort, int n, FieldDoc after)
+      throws IOException {
+    TopDocs topDocs = assertSearchHits(reader, sort, n, after);
+    SortField[] sortField2 = ArrayUtil.growExact(sort.getSort(), sort.getSort().length + 1);
+    // A secondary sort on reverse doc ID is the best way to catch bugs if the comparator filters
+    // too aggressively
+    sortField2[sortField2.length - 1] = new SortField(null, Type.DOC, true);
+    FieldDoc after2 = null;
+    if (after != null) {
+      Object[] afterFields2 = ArrayUtil.growExact(after.fields, after.fields.length + 1);
+      afterFields2[afterFields2.length - 1] = Integer.MAX_VALUE;
+      after2 = new FieldDoc(after.doc, after.score, afterFields2);
+    }
+    assertSearchHits(reader, new Sort(sortField2), n, after2);
+    return topDocs;
+  }
+
+  private TopDocs assertSearchHits(DirectoryReader reader, Sort sort, int n, FieldDoc after)
+      throws IOException {
+    // single threaded so totalhits is deterministic
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
+    Query query = new MatchAllDocsQuery();
+    CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+        TopFieldCollector.createSharedManager(sort, n, after, n);
+    TopDocs topDocs = searcher.search(query, manager);
+    IndexSearcher unoptimizedSearcher =
+        newSearcher(new NoIndexDirectoryReader(reader), true, true, false);
+    TopDocs unoptimizedTopDocs = unoptimizedSearcher.search(query, manager);
+    CheckHits.checkEqual(query, unoptimizedTopDocs.scoreDocs, topDocs.scoreDocs);
+    return topDocs;
+  }
+
+  private static final class NoIndexDirectoryReader extends FilterDirectoryReader {
+
+    public NoIndexDirectoryReader(DirectoryReader in) throws IOException {
+      super(
+          in,
+          new SubReaderWrapper() {
+            @Override
+            public LeafReader wrap(LeafReader reader) {
+              return new NoIndexLeafReader(reader);
+            }
+          });
+    }
+
+    @Override
+    protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return null;
+    }
+  }
+
+  private static final class NoIndexLeafReader extends FilterLeafReader {
+
+    NoIndexLeafReader(LeafReader in) {
+      super(in);
+    }
+
+    @Override
+    public CacheHelper getCoreCacheHelper() {
+      return null;
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return null;
+    }
+
+    @Override
+    public Terms terms(String field) throws IOException {
+      return null;
+    }
+
+    @Override
+    public PointValues getPointValues(String field) throws IOException {
+      return null;
+    }
+
+    @Override
+    public FieldInfos getFieldInfos() {
+      FieldInfo[] newInfos = new FieldInfo[super.getFieldInfos().size()];
+      int i = 0;
+      for (FieldInfo fi : super.getFieldInfos()) {
+        FieldInfo noIndexFI =
+            new FieldInfo(
+                fi.name,
+                fi.number,
+                false,
+                false,
+                false,
+                IndexOptions.NONE,
+                fi.getDocValuesType(),
+                fi.getDocValuesGen(),
+                fi.attributes(),
+                0,
+                0,
+                0,
+                0,
+                VectorEncoding.FLOAT32,
+                VectorSimilarityFunction.DOT_PRODUCT,
+                fi.isSoftDeletesField());
+        newInfos[i] = noIndexFI;
+        i++;
+      }
+      return new FieldInfos(newInfos);
     }
   }
 }

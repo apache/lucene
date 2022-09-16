@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -328,21 +328,31 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
   protected static SegmentInfos applyMerge(
       SegmentInfos infos, OneMerge merge, String mergedSegmentName, IOStats stats)
       throws IOException {
-    LinkedHashSet<SegmentCommitInfo> scis = new LinkedHashSet<>(infos.asList());
+
     int newMaxDoc = 0;
     double newSize = 0;
     for (SegmentCommitInfo sci : merge.segments) {
       int numLiveDocs = sci.info.maxDoc() - sci.getDelCount();
       newSize += (double) sci.sizeInBytes() * numLiveDocs / sci.info.maxDoc() / 1024 / 1024;
       newMaxDoc += numLiveDocs;
-      boolean removed = scis.remove(sci);
-      assertTrue(removed);
     }
+    SegmentCommitInfo mergedInfo =
+        makeSegmentCommitInfo(mergedSegmentName, newMaxDoc, 0, newSize, IndexWriter.SOURCE_MERGE);
+
+    Set<SegmentCommitInfo> mergedAway = new HashSet<>(merge.segments);
+    boolean mergedSegmentAdded = false;
     SegmentInfos newInfos = new SegmentInfos(Version.LATEST.major);
-    newInfos.addAll(scis);
-    // Now add the merged segment
-    newInfos.add(
-        makeSegmentCommitInfo(mergedSegmentName, newMaxDoc, 0, newSize, IndexWriter.SOURCE_MERGE));
+    for (int i = 0; i < infos.size(); ++i) {
+      SegmentCommitInfo info = infos.info(i);
+      if (mergedAway.contains(info)) {
+        if (mergedSegmentAdded == false) {
+          newInfos.add(mergedInfo);
+          mergedSegmentAdded = true;
+        }
+      } else {
+        newInfos.add(info);
+      }
+    }
     stats.mergeBytesWritten += newSize * 1024 * 1024;
     return newInfos;
   }
@@ -418,7 +428,10 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
               IndexWriter.SOURCE_FLUSH));
 
       MergeSpecification merges =
-          mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+          mergePolicy.findFullFlushMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      if (merges == null) {
+        merges = mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      }
       while (merges != null) {
         assertTrue(merges.merges.size() > 0);
         assertMerge(mergePolicy, merges);
@@ -480,7 +493,10 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
               flushSize,
               IndexWriter.SOURCE_FLUSH));
       MergeSpecification merges =
-          mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+          mergePolicy.findFullFlushMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      if (merges == null) {
+        merges = mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      }
       while (merges != null) {
         assertMerge(mergePolicy, merges);
         for (OneMerge oneMerge : merges.merges) {
@@ -511,5 +527,55 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
     long flushBytesWritten;
     /** Bytes written through merges. */
     long mergeBytesWritten;
+  }
+
+  public void testNoPathologicalMerges() throws IOException {
+    MergePolicy mergePolicy = mergePolicy();
+    IOStats stats = new IOStats();
+    AtomicLong segNameGenerator = new AtomicLong();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+    // Both the docs per flush and doc size are small because these are the typical cases that used
+    // to trigger pathological O(n^2) merging due to floor segment sizes
+    final double avgDocSizeMB = 10. / 1024 / 1024;
+    final int maxDocsPerFlush = 3;
+    final int totalDocs = 10_000;
+    int numFlushes = 0;
+    for (int numDocs = 0; numDocs < totalDocs; ) {
+      int flushDocCount = TestUtil.nextInt(random(), 1, maxDocsPerFlush);
+      numDocs += flushDocCount;
+      double flushSizeMB = flushDocCount * avgDocSizeMB;
+      stats.flushBytesWritten += flushSizeMB * 1024 * 1024;
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(),
+              flushDocCount,
+              0,
+              flushSizeMB,
+              IndexWriter.SOURCE_FLUSH));
+      ++numFlushes;
+
+      MergeSpecification merges =
+          mergePolicy.findMerges(MergeTrigger.SEGMENT_FLUSH, segmentInfos, mergeContext);
+      while (merges != null) {
+        assertTrue(merges.merges.size() > 0);
+        assertMerge(mergePolicy, merges);
+        for (OneMerge oneMerge : merges.merges) {
+          segmentInfos =
+              applyMerge(segmentInfos, oneMerge, "_" + segNameGenerator.getAndIncrement(), stats);
+        }
+        merges = mergePolicy.findMerges(MergeTrigger.MERGE_FINISHED, segmentInfos, mergeContext);
+      }
+      assertSegmentInfos(mergePolicy, segmentInfos);
+    }
+
+    final double writeAmplification =
+        (double) (stats.flushBytesWritten + stats.mergeBytesWritten) / stats.flushBytesWritten;
+    // Assuming a merge factor of 2, which is the value that triggers the most write amplification,
+    // the total write amplification would be ~ log(numFlushes)/log(2). We allow merge policies to
+    // have a write amplification up to log(numFlushes)/log(1.5). Greater values would indicate a
+    // problem with the merge policy.
+    final double maxAllowedWriteAmplification = Math.log(numFlushes) / Math.log(1.5);
+    assertTrue(writeAmplification < maxAllowedWriteAmplification);
   }
 }

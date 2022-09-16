@@ -103,8 +103,8 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   }
 
   /**
-   * Advance the given pos enum to the first doc on or after {@code target}. Return {@code false} if
-   * the enum was exhausted before reaching {@code target} and {@code true} otherwise.
+   * Advance the given pos enum to the first position on or after {@code target}. Return {@code
+   * false} if the enum was exhausted before reaching {@code target} and {@code true} otherwise.
    */
   private static boolean advancePosition(PostingsAndPosition posting, int target)
       throws IOException {
@@ -269,6 +269,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
 
             boolean hasImpacts = false;
             List<Impact> onlyImpactList = null;
+            List<SubIterator> subIterators = new ArrayList<>(impacts.length);
             for (int i = 0; i < impacts.length; ++i) {
               int impactsLevel = getLevel(impacts[i], docIdUpTo);
               if (impactsLevel == -1) {
@@ -284,7 +285,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
               }
 
               SubIterator subIterator = new SubIterator(impactList);
-              pq.add(subIterator);
+              subIterators.add(subIterator);
               if (hasImpacts == false) {
                 hasImpacts = true;
                 onlyImpactList = impactList;
@@ -308,6 +309,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
             // We walk impacts in parallel through a PQ ordered by freq. At any time,
             // the competitive impact consists of the lowest freq among all entries of
             // the PQ (the top) and the highest norm (tracked separately).
+            pq.addAll(subIterators);
             List<Impact> mergedImpacts = new ArrayList<>();
             SubIterator top = pq.top();
             int currentFreq = top.current.freq;

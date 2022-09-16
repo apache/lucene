@@ -58,6 +58,7 @@ import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Before;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.ContainedBy;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Containing;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Extend;
+import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.FuzzyTerm;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.IntervalFunction;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.MaxGaps;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.MaxWidth;
@@ -176,6 +177,7 @@ PARSER_END(StandardSyntaxParser)
     | <CONTAINING:    ("containing") >
     | <EXTEND:        ("extend") >
     | <FN_OR:         ("or") >
+    | <FUZZYTERM:     ("fuzzyterm" | "fuzzyTerm") >
     | <MAXGAPS:       ("maxgaps" | "maxGaps") >
     | <MAXWIDTH:      ("maxwidth" | "maxWidth") >
     | <NON_OVERLAPPING:  ("nonOverlapping" | "nonoverlapping") >
@@ -403,6 +405,7 @@ private IntervalFunction IntervalFun() : {
   | LOOKAHEAD(2) source = IntervalOverlapping() { return source; }
   | LOOKAHEAD(2) source = IntervalNonOverlapping() { return source; }
   | LOOKAHEAD(2) source = IntervalExtend() { return source; }
+  | LOOKAHEAD(2) source = IntervalFuzzyTerm() { return source; }
   | LOOKAHEAD(2) source = IntervalText()      { return source; }
 }
 
@@ -638,6 +641,7 @@ private IntervalFunction IntervalNonOverlapping() : {
 
 private IntervalFunction IntervalWildcard() : {
   String wildcard;
+  Token maxExpansions = null;
 }
 {
   <FN_PREFIX> <WILDCARD>
@@ -646,9 +650,32 @@ private IntervalFunction IntervalWildcard() : {
      (<TERM> | <NUMBER>)   { wildcard = token.image; }
      | <QUOTED>            { wildcard = token.image.substring(1, token.image.length() - 1); }
    )
+   (maxExpansions = <NUMBER>)?
   <RPAREN>
   {
-    return new Wildcard(wildcard);
+    return new Wildcard(wildcard, maxExpansions == null ? 0 : parseInt(maxExpansions));
+  }
+}
+
+private IntervalFunction IntervalFuzzyTerm() : {
+  String term;
+  Token maxEdits = null;
+  Token maxExpansions = null;
+}
+{
+  <FN_PREFIX> <FUZZYTERM>
+  <LPAREN>
+   (
+     (<TERM> | <NUMBER>)   { term = token.image; }
+     | <QUOTED>            { term = token.image.substring(1, token.image.length() - 1); }
+   )
+   (LOOKAHEAD(2) maxEdits = <NUMBER>)?
+   (LOOKAHEAD(2) maxExpansions = <NUMBER>)?
+  <RPAREN>
+  {
+    return new FuzzyTerm(term,
+      maxEdits == null ? null : parseInt(maxEdits),
+      maxExpansions == null ? null : parseInt(maxExpansions));
   }
 }
 

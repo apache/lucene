@@ -31,6 +31,20 @@ public abstract class Terms {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected Terms() {}
 
+  /**
+   * Returns the {@link Terms} index for this field, or {@link #EMPTY} if it has none.
+   *
+   * @return terms instance, or an empty instance if {@code field} does not exist in this reader
+   * @throws IOException if an I/O error occurs.
+   */
+  public static Terms getTerms(LeafReader reader, String field) throws IOException {
+    Terms terms = reader.terms(field);
+    if (terms == null) {
+      return EMPTY;
+    }
+    return terms;
+  }
+
   /** Returns an iterator that will step through all terms. This method will not return null. */
   public abstract TermsEnum iterator() throws IOException;
 
@@ -213,4 +227,53 @@ public abstract class Terms {
     sb.append(",sumDocFreq=").append(getSumDocFreq());
     return sb.toString();
   }
+
+  /** An empty {@link Terms} which returns no terms */
+  private static final Terms EMPTY =
+      new Terms() {
+        @Override
+        public TermsEnum iterator() throws IOException {
+          return TermsEnum.EMPTY;
+        }
+
+        @Override
+        public long size() throws IOException {
+          return 0;
+        }
+
+        @Override
+        public long getSumTotalTermFreq() throws IOException {
+          return 0;
+        }
+
+        @Override
+        public long getSumDocFreq() throws IOException {
+          return 0;
+        }
+
+        @Override
+        public int getDocCount() throws IOException {
+          return 0;
+        }
+
+        @Override
+        public boolean hasFreqs() {
+          return false;
+        }
+
+        @Override
+        public boolean hasOffsets() {
+          return false;
+        }
+
+        @Override
+        public boolean hasPositions() {
+          return false;
+        }
+
+        @Override
+        public boolean hasPayloads() {
+          return false;
+        }
+      };
 }

@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -83,21 +84,25 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
 
         @Override
         public Matches matches(LeafReaderContext context, int doc) throws IOException {
-          final SortedSetDocValues fcsi = DocValues.getSortedSet(context.reader(), query.field);
+          final SortedSetDocValues values = DocValues.getSortedSet(context.reader(), query.field);
           return MatchesUtils.forField(
               query.field,
               () ->
                   DisjunctionMatchesIterator.fromTermsEnum(
-                      context, doc, query, query.field, getTermsEnum(fcsi)));
+                      context, doc, query, query.field, getTermsEnum(values)));
         }
 
-        private TermsEnum getTermsEnum(SortedSetDocValues fcsi) throws IOException {
+        /**
+         * Create a TermsEnum that provides the intersection of the query terms with the terms
+         * present in the doc values.
+         */
+        private TermsEnum getTermsEnum(SortedSetDocValues values) throws IOException {
           return query.getTermsEnum(
               new Terms() {
 
                 @Override
                 public TermsEnum iterator() throws IOException {
-                  return fcsi.termsEnum();
+                  return values.termsEnum();
                 }
 
                 @Override
@@ -143,47 +148,92 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
         }
 
         @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final SortedSetDocValues values = DocValues.getSortedSet(context.reader(), query.field);
+          if (values.getValueCount() == 0) {
+            return null; // no values/docs so nothing can match
+          }
+
+          final Weight weight = this;
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              // Create a TermsEnum that will provide the intersection of the terms specified in the
+              // query with the values present in the doc values:
+              TermsEnum termsEnum = getTermsEnum(values);
+              assert termsEnum != null;
+
+              if (termsEnum.next() == null) {
+                // no matching terms
+                return new ConstantScoreScorer(
+                    weight, score(), scoreMode, DocIdSetIterator.empty());
+              }
+
+              // Create a bit set for the "term set" ordinals (these are the terms provided by the
+              // query that are actually present in the doc values field). Cannot use FixedBitSet
+              // because we require long index (ord):
+              final LongBitSet termSet = new LongBitSet(values.getValueCount());
+              do {
+                long ord = termsEnum.ord();
+                if (ord >= 0) {
+                  termSet.set(ord);
+                }
+              } while (termsEnum.next() != null);
+
+              final SortedDocValues singleton = DocValues.unwrapSingleton(values);
+              final TwoPhaseIterator iterator;
+              if (singleton != null) {
+                iterator =
+                    new TwoPhaseIterator(singleton) {
+                      @Override
+                      public boolean matches() throws IOException {
+                        return termSet.get(singleton.ordValue());
+                      }
+
+                      @Override
+                      public float matchCost() {
+                        return 3; // lookup in a bitset
+                      }
+                    };
+              } else {
+                iterator =
+                    new TwoPhaseIterator(values) {
+                      @Override
+                      public boolean matches() throws IOException {
+                        for (int i = 0; i < values.docValueCount(); i++) {
+                          if (termSet.get(values.nextOrd())) {
+                            return true;
+                          }
+                        }
+                        return false;
+                      }
+
+                      @Override
+                      public float matchCost() {
+                        return 3; // lookup in a bitset
+                      }
+                    };
+              }
+
+              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+            }
+
+            @Override
+            public long cost() {
+              // We have no prior knowledge of how many docs might match for any given query term,
+              // so we assume that all docs with a value could be a match:
+              return values.cost();
+            }
+          };
+        }
+
+        @Override
         public Scorer scorer(LeafReaderContext context) throws IOException {
-          final SortedSetDocValues fcsi = DocValues.getSortedSet(context.reader(), query.field);
-          TermsEnum termsEnum = getTermsEnum(fcsi);
-          assert termsEnum != null;
-          if (termsEnum.next() == null) {
-            // no matching terms
+          final ScorerSupplier scorerSupplier = scorerSupplier(context);
+          if (scorerSupplier == null) {
             return null;
           }
-          // fill into a bitset
-          // Cannot use FixedBitSet because we require long index (ord):
-          final LongBitSet termSet = new LongBitSet(fcsi.getValueCount());
-          do {
-            long ord = termsEnum.ord();
-            if (ord >= 0) {
-              termSet.set(ord);
-            }
-          } while (termsEnum.next() != null);
-
-          return new ConstantScoreScorer(
-              this,
-              score(),
-              scoreMode,
-              new TwoPhaseIterator(fcsi) {
-
-                @Override
-                public boolean matches() throws IOException {
-                  for (long ord = fcsi.nextOrd();
-                      ord != SortedSetDocValues.NO_MORE_ORDS;
-                      ord = fcsi.nextOrd()) {
-                    if (termSet.get(ord)) {
-                      return true;
-                    }
-                  }
-                  return false;
-                }
-
-                @Override
-                public float matchCost() {
-                  return 3; // lookup in a bitset
-                }
-              });
+          return scorerSupplier.get(Long.MAX_VALUE);
         }
 
         @Override

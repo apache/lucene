@@ -112,6 +112,7 @@ public class TestCodecs extends LuceneTestCase {
                     0,
                     0,
                     0,
+                    VectorEncoding.FLOAT32,
                     VectorSimilarityFunction.EUCLIDEAN,
                     false));
       }

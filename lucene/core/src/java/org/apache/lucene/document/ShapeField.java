@@ -371,7 +371,7 @@ public final class ShapeField {
     resolveTriangleType(triangle);
   }
 
-  private static void resolveTriangleType(DecodedTriangle triangle) {
+  static void resolveTriangleType(DecodedTriangle triangle) {
     if (triangle.aX == triangle.bX && triangle.aY == triangle.bY) {
       if (triangle.aX == triangle.cX && triangle.aY == triangle.cY) {
         triangle.type = DecodedTriangle.TYPE.POINT;
@@ -430,7 +430,8 @@ public final class ShapeField {
     /** default xtor */
     public DecodedTriangle() {}
 
-    private void setValues(
+    /** Sets the values of the DecodedTriangle */
+    protected void setValues(
         int aX, int aY, boolean ab, int bX, int bY, boolean bc, int cX, int cY, boolean ca) {
       this.aX = aX;
       this.aY = aY;

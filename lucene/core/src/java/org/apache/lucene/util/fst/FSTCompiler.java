@@ -713,7 +713,7 @@ public class FSTCompiler<T> {
               + " numArcs="
               + numArcs;
       if (numArcs == arcs.length) {
-        final Arc<T>[] newArcs = ArrayUtil.grow(arcs, numArcs + 1);
+        final Arc<T>[] newArcs = ArrayUtil.grow(arcs);
         for (int arcIdx = numArcs; arcIdx < newArcs.length; arcIdx++) {
           newArcs[arcIdx] = new Arc<>();
         }

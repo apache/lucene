@@ -67,12 +67,13 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     'dvupdates': 'testCreateIndexWithDocValuesUpdates',
     'emptyIndex': 'testCreateEmptyIndex'
   }[indextype]
-  ant_args = ' '.join([
+  gradle_args = ' '.join([
+    '-Ptests.useSecurityManager=false',
+    '-p lucene/%s' % module,
+    'test',
+    '--tests TestBackwardsCompatibility.%s' % test,
     '-Dtests.bwcdir=%s' % temp_dir,
-    '-Dtests.codec=default',
-    '-Dtests.useSecurityManager=false',
-    '-Dtestcase=TestBackwardsCompatibility',
-    '-Dtestmethod=%s' % test
+    '-Dtests.codec=default'
   ])
   base_dir = os.getcwd()
   bc_index_dir = os.path.join(temp_dir, dirname)
@@ -83,8 +84,8 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
   else:
     if os.path.exists(bc_index_dir):
       shutil.rmtree(bc_index_dir)
-    os.chdir(os.path.join(source, module))
-    scriptutil.run('ant test %s' % ant_args)
+    os.chdir(source)
+    scriptutil.run('./gradlew %s' % gradle_args)
     os.chdir(bc_index_dir)
     scriptutil.run('zip %s *' % filename)
     print('done')
@@ -243,7 +244,7 @@ def main():
                        and (c.version.major > 6 or (c.version.major == 6 and c.version.minor >= 2))
   if should_make_sorted:
     create_and_add_index(source, 'sorted', c.version, current_version, c.temp_dir)
-  if c.version.minor == 0 and c.version.bugfix == 0 and c.version.major < current_version.major:
+  if c.version.minor == 0 and c.version.bugfix == 0 and current_version.is_back_compat_with(c.version):
     create_and_add_index(source, 'moreterms', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'dvupdates', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'emptyIndex', c.version, current_version, c.temp_dir)

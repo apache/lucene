@@ -380,11 +380,12 @@ public final class SortingCodecReader extends FilterCodecReader {
 
       @Override
       public VectorValues getVectorValues(String field) throws IOException {
-        return new VectorValuesWriter.SortingVectorValues(delegate.getVectorValues(field), docMap);
+        return new VectorValues.SortingVectorValues(delegate.getVectorValues(field), docMap);
       }
 
       @Override
-      public TopDocs search(String field, float[] target, int k, Bits acceptDocs) {
+      public TopDocs search(
+          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
         throw new UnsupportedOperationException();
       }
 
@@ -482,7 +483,11 @@ public final class SortingCodecReader extends FilterCodecReader {
                 field.name,
                 () ->
                     new SortedSetDocValuesWriter.DocOrds(
-                        maxDoc(), docMap, oldDocValues, PackedInts.FAST)));
+                        maxDoc(),
+                        docMap,
+                        oldDocValues,
+                        PackedInts.FAST,
+                        SortedSetDocValuesWriter.DocOrds.START_BITS_PER_VALUE)));
       }
 
       @Override

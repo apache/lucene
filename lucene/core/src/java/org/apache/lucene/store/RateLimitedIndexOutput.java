@@ -70,6 +70,10 @@ public final class RateLimitedIndexOutput extends IndexOutput {
   public void writeBytes(byte[] b, int offset, int length) throws IOException {
     bytesSinceLastPause += length;
     checkRate();
+    // The bytes array slice is written without pauses.
+    // This can cause instant write rate to breach rate limit if there have
+    // been no writes for enough time to keep the average write rate within limit.
+    // See https://issues.apache.org/jira/browse/LUCENE-10448
     delegate.writeBytes(b, offset, length);
   }
 

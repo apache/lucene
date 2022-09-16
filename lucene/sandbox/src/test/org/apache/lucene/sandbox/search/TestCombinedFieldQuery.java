@@ -32,6 +32,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
@@ -152,11 +153,10 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addField("g", 1f)
             .addTerm(new BytesRef("a"))
             .build();
-    TopScoreDocCollector collector =
-        TopScoreDocCollector.create(
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(
             Math.min(reader.numDocs(), Integer.MAX_VALUE), null, Integer.MAX_VALUE);
-    searcher.search(query, collector);
-    TopDocs topDocs = collector.topDocs();
+    TopDocs topDocs = searcher.search(query, manager);
     assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     // All docs must have the same score
     for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
@@ -233,9 +233,9 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addTerm(new BytesRef("zoo"))
             .build();
 
-    TopScoreDocCollector completeCollector =
-        TopScoreDocCollector.create(numHits, null, Integer.MAX_VALUE);
-    searcher.search(query, completeCollector);
+    CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
+        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+    searcher.search(query, completeManager);
 
     reader.close();
     w.close();
@@ -267,7 +267,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     Similarity searchSimilarity = randomCompatibleSimilarity();
     searcher.setSimilarity(searchSimilarity);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(10, null, 10);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(10, null, 10);
 
     CombinedFieldQuery query =
         new CombinedFieldQuery.Builder()
@@ -275,8 +276,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addField("b", 1.0f)
             .addTerm(new BytesRef("value"))
             .build();
-    searcher.search(query, collector);
-    TopDocs topDocs = collector.topDocs();
+    TopDocs topDocs = searcher.search(query, manager);
     assertEquals(new TotalHits(2, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
 
     CombinedFieldQuery invalidQuery =
@@ -286,8 +286,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .addTerm(new BytesRef("value"))
             .build();
     IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class, () -> searcher.search(invalidQuery, collector));
+        expectThrows(IllegalArgumentException.class, () -> searcher.search(invalidQuery, manager));
     assertTrue(e.getMessage().contains("requires norms to be consistent across fields"));
 
     reader.close();
@@ -499,16 +498,14 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
   private void checkExpectedHits(
       IndexSearcher searcher, int numHits, Query firstQuery, Query secondQuery) throws IOException {
-    TopScoreDocCollector firstCollector =
-        TopScoreDocCollector.create(numHits, null, Integer.MAX_VALUE);
-    searcher.search(firstQuery, firstCollector);
-    TopDocs firstTopDocs = firstCollector.topDocs();
+    CollectorManager<TopScoreDocCollector, TopDocs> firstManager =
+        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+    TopDocs firstTopDocs = searcher.search(firstQuery, firstManager);
     assertEquals(numHits, firstTopDocs.totalHits.value);
 
-    TopScoreDocCollector secondCollector =
-        TopScoreDocCollector.create(numHits, null, Integer.MAX_VALUE);
-    searcher.search(secondQuery, secondCollector);
-    TopDocs secondTopDocs = secondCollector.topDocs();
+    CollectorManager<TopScoreDocCollector, TopDocs> secondManager =
+        TopScoreDocCollector.createSharedManager(numHits, null, Integer.MAX_VALUE);
+    TopDocs secondTopDocs = searcher.search(secondQuery, secondManager);
     CheckHits.checkEqual(firstQuery, secondTopDocs.scoreDocs, firstTopDocs.scoreDocs);
   }
 
@@ -591,5 +588,87 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
         float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
       return new BM25Similarity().scorer(boost, collectionStats, termStats);
     }
+  }
+
+  public void testOverrideCollectionStatistics() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    Similarity similarity = randomCompatibleSimilarity();
+    iwc.setSimilarity(similarity);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numMatch = atLeast(10);
+    for (int i = 0; i < numMatch; i++) {
+      Document doc = new Document();
+      if (random().nextBoolean()) {
+        doc.add(new TextField("a", "baz", Store.NO));
+        doc.add(new TextField("b", "baz", Store.NO));
+        for (int k = 0; k < 2; k++) {
+          doc.add(new TextField("ab", "baz", Store.NO));
+        }
+        w.addDocument(doc);
+        doc.clear();
+      }
+      int freqA = random().nextInt(5) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "foo", Store.NO));
+      }
+      int freqB = random().nextInt(5) + 1;
+      for (int j = 0; j < freqB; j++) {
+        doc.add(new TextField("b", "foo", Store.NO));
+      }
+      int freqAB = freqA + freqB;
+      for (int j = 0; j < freqAB; j++) {
+        doc.add(new TextField("ab", "foo", Store.NO));
+      }
+      w.addDocument(doc);
+    }
+
+    IndexReader reader = w.getReader();
+
+    int extraMaxDoc = randomIntBetween(0, 10);
+    int extraDocCount = randomIntBetween(0, extraMaxDoc);
+    int extraSumDocFreq = extraDocCount + randomIntBetween(0, 10);
+
+    int extraSumTotalTermFreqA = extraSumDocFreq + randomIntBetween(0, 10);
+    int extraSumTotalTermFreqB = extraSumDocFreq + randomIntBetween(0, 10);
+    int extraSumTotalTermFreqAB = extraSumTotalTermFreqA + extraSumTotalTermFreqB;
+
+    IndexSearcher searcher =
+        new IndexSearcher(reader) {
+          @Override
+          public CollectionStatistics collectionStatistics(String field) throws IOException {
+            CollectionStatistics shardStatistics = super.collectionStatistics(field);
+            int extraSumTotalTermFreq;
+            if (field.equals("a")) {
+              extraSumTotalTermFreq = extraSumTotalTermFreqA;
+            } else if (field.equals("b")) {
+              extraSumTotalTermFreq = extraSumTotalTermFreqB;
+            } else if (field.equals("ab")) {
+              extraSumTotalTermFreq = extraSumTotalTermFreqAB;
+            } else {
+              throw new AssertionError("should never be called");
+            }
+            return new CollectionStatistics(
+                field,
+                shardStatistics.maxDoc() + extraMaxDoc,
+                shardStatistics.docCount() + extraDocCount,
+                shardStatistics.sumTotalTermFreq() + extraSumTotalTermFreq,
+                shardStatistics.sumDocFreq() + extraSumDocFreq);
+          }
+        };
+    searcher.setSimilarity(similarity);
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("a")
+            .addField("b")
+            .addTerm(new BytesRef("foo"))
+            .build();
+
+    checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("ab", "foo")));
+
+    reader.close();
+    w.close();
+    dir.close();
   }
 }

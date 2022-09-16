@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -38,6 +39,8 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOConsumer;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -191,6 +194,7 @@ public abstract class MergePolicy {
     long mergeGen; // used by IndexWriter
     boolean isExternal; // used by IndexWriter
     int maxNumSegments = -1; // used by IndexWriter
+    boolean usesPooledReaders; // used by IndexWriter to drop readers while closing
 
     /** Estimated size in bytes of the merged segment. */
     public volatile long estimatedMergeBytes; // used by IndexWriter
@@ -227,6 +231,28 @@ public abstract class MergePolicy {
       totalMaxDoc = segments.stream().mapToInt(i -> i.info.maxDoc()).sum();
       mergeProgress = new OneMergeProgress();
       mergeReaders = List.of();
+      usesPooledReaders = true;
+    }
+
+    /**
+     * Create a OneMerge directly from CodecReaders. Used to merge incoming readers in {@link
+     * IndexWriter#addIndexes(CodecReader...)}. This OneMerge works directly on readers and has an
+     * empty segments list.
+     *
+     * @param codecReaders Codec readers to merge
+     */
+    public OneMerge(CodecReader... codecReaders) {
+      List<MergeReader> readers = new ArrayList<>(codecReaders.length);
+      int totalDocs = 0;
+      for (CodecReader r : codecReaders) {
+        readers.add(new MergeReader(r, r.getLiveDocs()));
+        totalDocs += r.numDocs();
+      }
+      mergeReaders = List.copyOf(readers);
+      segments = List.of();
+      totalMaxDoc = totalDocs;
+      mergeProgress = new OneMergeProgress();
+      usesPooledReaders = false;
     }
 
     /**
@@ -247,7 +273,7 @@ public abstract class MergePolicy {
 
     /** Closes this merge and releases all merge readers */
     final void close(
-        boolean success, boolean segmentDropped, IOUtils.IOConsumer<MergeReader> readerConsumer)
+        boolean success, boolean segmentDropped, IOConsumer<MergeReader> readerConsumer)
         throws IOException {
       // this method is final to ensure we never miss a super call to cleanup and finish the merge
       if (mergeCompleted.complete(success) == false) {
@@ -406,7 +432,7 @@ public abstract class MergePolicy {
     void onMergeComplete() throws IOException {}
 
     /** Sets the merge readers for this merge. */
-    void initMergeReaders(IOUtils.IOFunction<SegmentCommitInfo, MergeReader> readerFactory)
+    void initMergeReaders(IOFunction<SegmentCommitInfo, MergeReader> readerFactory)
         throws IOException {
       assert mergeReaders.isEmpty() : "merge readers must be empty";
       assert mergeCompleted.isDone() == false : "merge is already done";
@@ -470,15 +496,31 @@ public abstract class MergePolicy {
       return b.toString();
     }
 
+    CompletableFuture<Void> getMergeCompletedFutures() {
+      return CompletableFuture.allOf(
+          merges.stream()
+              .map(m -> m.mergeCompleted)
+              .collect(Collectors.toList())
+              .toArray(CompletableFuture<?>[]::new));
+    }
+
+    /** Waits, until interrupted, for all merges to complete. */
+    boolean await() {
+      try {
+        CompletableFuture<Void> future = getMergeCompletedFutures();
+        future.get();
+        return true;
+      } catch (InterruptedException e) {
+        throw new ThreadInterruptedException(e);
+      } catch (@SuppressWarnings("unused") ExecutionException | CancellationException e) {
+        return false;
+      }
+    }
+
     /** Waits if necessary for at most the given time for all merges. */
     boolean await(long timeout, TimeUnit unit) {
       try {
-        CompletableFuture<Void> future =
-            CompletableFuture.allOf(
-                merges.stream()
-                    .map(m -> m.mergeCompleted)
-                    .collect(Collectors.toList())
-                    .toArray(CompletableFuture<?>[]::new));
+        CompletableFuture<Void> future = getMergeCompletedFutures();
         future.get(timeout, unit);
         return true;
       } catch (InterruptedException e) {
@@ -568,6 +610,24 @@ public abstract class MergePolicy {
       throws IOException;
 
   /**
+   * Define the set of merge operations to perform on provided codec readers in {@link
+   * IndexWriter#addIndexes(CodecReader...)}.
+   *
+   * <p>The merge operation is required to convert provided readers into segments that can be added
+   * to the writer. This API can be overridden in custom merge policies to control the concurrency
+   * for addIndexes. Default implementation creates a single merge operation for all provided
+   * readers (lowest concurrency). Creating a merge for each reader, would provide the highest level
+   * of concurrency possible with the configured merge scheduler.
+   *
+   * @param readers CodecReader(s) to merge into the main index
+   */
+  public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+    MergeSpecification mergeSpec = new MergeSpecification();
+    mergeSpec.add(new OneMerge(readers));
+    return mergeSpec;
+  }
+
+  /**
    * Determine what set of merge operations is necessary in order to merge to {@code <=} the
    * specified segment count. {@link IndexWriter} calls this when its {@link IndexWriter#forceMerge}
    * method is called. This call is always synchronized on the {@link IndexWriter} instance so only
@@ -599,9 +659,9 @@ public abstract class MergePolicy {
       SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException;
 
   /**
-   * Identifies merges that we want to execute (synchronously) on commit. By default, this will do
-   * no merging on commit. If you implement this method in your {@code MergePolicy} you must also
-   * set a non-zero timeout using {@link IndexWriterConfig#setMaxFullFlushMergeWaitMillis}.
+   * Identifies merges that we want to execute (synchronously) on commit. By default, this will
+   * return {@link #findMerges natural merges} whose segments are all less than the {@link
+   * #maxFullFlushMergeSize() max segment size for full flushes}.
    *
    * <p>Any merges returned here will make {@link IndexWriter#commit()}, {@link
    * IndexWriter#prepareCommit()} or {@link IndexWriter#getReader(boolean, boolean)} block until the
@@ -626,7 +686,28 @@ public abstract class MergePolicy {
   public MergeSpecification findFullFlushMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {
-    return null;
+    // This returns natural merges that contain segments below the minimum size
+    MergeSpecification mergeSpec = findMerges(mergeTrigger, segmentInfos, mergeContext);
+    if (mergeSpec == null) {
+      return null;
+    }
+    MergeSpecification newMergeSpec = null;
+    for (OneMerge oneMerge : mergeSpec.merges) {
+      boolean belowMaxFullFlushSize = true;
+      for (SegmentCommitInfo sci : oneMerge.segments) {
+        if (size(sci, mergeContext) >= maxFullFlushMergeSize()) {
+          belowMaxFullFlushSize = false;
+          break;
+        }
+      }
+      if (belowMaxFullFlushSize) {
+        if (newMergeSpec == null) {
+          newMergeSpec = new MergeSpecification();
+        }
+        newMergeSpec.add(oneMerge);
+      }
+    }
+    return newMergeSpec;
   }
 
   /**
@@ -667,6 +748,14 @@ public abstract class MergePolicy {
         info.info.maxDoc() <= 0 ? 0d : (double) delCount / (double) info.info.maxDoc();
     assert delRatio <= 1.0;
     return (info.info.maxDoc() <= 0 ? byteSize : (long) (byteSize * (1.0 - delRatio)));
+  }
+
+  /**
+   * Return the maximum size of segments to be included in full-flush merges by the default
+   * implementation of {@link #findFullFlushMerges}.
+   */
+  protected long maxFullFlushMergeSize() {
+    return 0L;
   }
 
   /** Asserts that the delCount for this SegmentCommitInfo is valid */
@@ -813,11 +902,23 @@ public abstract class MergePolicy {
   }
 
   static final class MergeReader {
+    final CodecReader codecReader;
     final SegmentReader reader;
     final Bits hardLiveDocs;
 
     MergeReader(SegmentReader reader, Bits hardLiveDocs) {
+      this.codecReader = reader;
       this.reader = reader;
+      this.hardLiveDocs = hardLiveDocs;
+    }
+
+    MergeReader(CodecReader reader, Bits hardLiveDocs) {
+      if (SegmentReader.class.isAssignableFrom(reader.getClass())) {
+        this.reader = (SegmentReader) reader;
+      } else {
+        this.reader = null;
+      }
+      this.codecReader = reader;
       this.hardLiveDocs = hardLiveDocs;
     }
   }

@@ -24,6 +24,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortFieldProvider;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.search.comparators.TermOrdValComparator;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
@@ -177,9 +178,10 @@ public class SortedSetSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, int sortPos) {
-    return new FieldComparator.TermOrdValComparator(
-        numHits, getField(), missingValue == STRING_LAST) {
+  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
+    boolean finalEnableSkipping = enableSkipping && getOptimizeSortWithIndexedData();
+    return new TermOrdValComparator(
+        numHits, getField(), missingValue == STRING_LAST, reverse, finalEnableSkipping) {
       @Override
       protected SortedDocValues getSortedDocValues(LeafReaderContext context, String field)
           throws IOException {

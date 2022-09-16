@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.OptionalInt;
 
 /**
  * This implements the WAND (Weak AND) algorithm for dynamic pruning described in "Efficient Query
@@ -53,28 +52,31 @@ import java.util.OptionalInt;
  */
 final class WANDScorer extends Scorer {
 
+  static final int FLOAT_MANTISSA_BITS = 24;
+  private static final long MAX_SCALED_SCORE = (1L << 24) - 1;
+
   /**
    * Return a scaling factor for the given float so that {@code f x 2^scalingFactor} would be in
-   * {@code ]2^15, 2^16]}. Special cases:
+   * {@code [2^23, 2^24[}. Special cases:
    *
    * <pre>
-   *    scalingFactor(0) = scalingFactor(MIN_VALUE) - 1
-   *    scalingFactor(+Infty) = scalingFactor(MAX_VALUE) + 1
-   *  </pre>
+   *    scalingFactor(0) = scalingFactor(MIN_VALUE) + 1
+   *    scalingFactor(+Infty) = scalingFactor(MAX_VALUE) - 1
+   * </pre>
    */
   static int scalingFactor(float f) {
     if (f < 0) {
       throw new IllegalArgumentException("Scores must be positive or null");
     } else if (f == 0) {
-      return scalingFactor(Float.MIN_VALUE) - 1;
+      return scalingFactor(Float.MIN_VALUE) + 1;
     } else if (Float.isInfinite(f)) {
-      return scalingFactor(Float.MAX_VALUE) + 1;
+      return scalingFactor(Float.MAX_VALUE) - 1;
     } else {
       double d = f;
       // Since doubles have more amplitude than floats for the
       // exponent, the cast produces a normal value.
       assert d == 0 || Math.getExponent(d) >= Double.MIN_EXPONENT; // normal double
-      return 15 - Math.getExponent(Math.nextDown(d));
+      return FLOAT_MANTISSA_BITS - 1 - Math.getExponent(d);
     }
   }
 
@@ -83,23 +85,21 @@ final class WANDScorer extends Scorer {
    * are used) as well as floating-point arithmetic errors. Those are rounded up in order to make
    * sure we do not miss any matches.
    */
-  private static long scaleMaxScore(float maxScore, int scalingFactor) {
+  static long scaleMaxScore(float maxScore, int scalingFactor) {
     assert Float.isNaN(maxScore) == false;
     assert maxScore >= 0;
 
     // NOTE: because doubles have more amplitude than floats for the
     // exponent, the scalb call produces an accurate value.
-    double scaled = Math.scalb((double) maxScore, scalingFactor);
+    final double scaled = Math.scalb((double) maxScore, scalingFactor);
 
-    if (scaled > 1 << 16) {
-      // This happens if either maxScore is +Infty, or we have a scorer that
-      // returned +Infty as its maximum score over the whole range of doc IDs
-      // when computing the scaling factor in the constructor, and now returned
-      // a finite maximum score for a smaller range of doc IDs.
-      return (1L << 32) - 1; // means +Infinity in practice for this scorer
+    if (scaled > MAX_SCALED_SCORE) {
+      // This happens if one scorer returns +Infty as a max score, or if the scorer returns greater
+      // max scores locally than globally - which shouldn't happen with well-behaved scorers
+      return MAX_SCALED_SCORE;
     }
 
-    return (long) Math.ceil(scaled); // round up, cast is accurate since value is <= 2^16
+    return (long) Math.ceil(scaled); // round up, cast is accurate since value is < 2^24
   }
 
   /**
@@ -107,7 +107,7 @@ final class WANDScorer extends Scorer {
    * to make sure that we do not miss any matches.
    */
   private static long scaleMinScore(float minScore, int scalingFactor) {
-    assert Float.isNaN(minScore) == false;
+    assert Float.isFinite(minScore);
     assert minScore >= 0;
 
     // like for scaleMaxScore, this scalb call is accurate
@@ -171,21 +171,23 @@ final class WANDScorer extends Scorer {
     tail = new DisiWrapper[scorers.size()];
 
     if (this.scoreMode == ScoreMode.TOP_SCORES) {
-      OptionalInt scalingFactor = OptionalInt.empty();
+      // To avoid accuracy issues with floating-point numbers, this scorer operates on scaled longs.
+      // How do you choose the scaling factor? The thing is that we want to retain as many
+      // significant bits as possible, but not too many, otherwise operations on longs would be more
+      // precise than the equivalent operations on their unscaled counterparts and we might skip too
+      // many hits. So we compute the maximum possible score produced by this scorer, which is the
+      // sum of the maximum scores of each clause, and compute a scaling factor that would preserve
+      // 24 bits of accuracy - the number of mantissa bits of single-precision floating-point
+      // numbers.
+      double maxScoreSumDouble = 0;
       for (Scorer scorer : scorers) {
         scorer.advanceShallow(0);
         float maxScore = scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS);
-        if (maxScore != 0 && Float.isFinite(maxScore)) {
-          // 0 and +Infty should not impact the scale
-          scalingFactor =
-              OptionalInt.of(
-                  Math.min(scalingFactor.orElse(Integer.MAX_VALUE), scalingFactor(maxScore)));
-        }
+        maxScoreSumDouble += maxScore;
       }
-
-      // Use a scaling factor of 0 if all max scores are either 0 or +Infty
-      this.scalingFactor = scalingFactor.orElse(0);
       this.maxScorePropagator = new MaxScoreSumPropagator(scorers);
+      final float maxScoreSum = maxScorePropagator.scoreSumUpperBound(maxScoreSumDouble);
+      this.scalingFactor = scalingFactor(maxScoreSum);
     } else {
       this.scalingFactor = 0;
       this.maxScorePropagator = null;
@@ -209,14 +211,14 @@ final class WANDScorer extends Scorer {
       long maxScoreSum = 0;
       for (int i = 0; i < tailSize; ++i) {
         assert tail[i].doc < doc;
-        maxScoreSum = Math.addExact(maxScoreSum, tail[i].maxScore);
+        maxScoreSum = Math.addExact(maxScoreSum, tail[i].scaledMaxScore);
       }
       assert maxScoreSum == tailMaxScore : maxScoreSum + " " + tailMaxScore;
 
       maxScoreSum = 0;
       for (DisiWrapper w = lead; w != null; w = w.next) {
         assert w.doc == doc;
-        maxScoreSum = Math.addExact(maxScoreSum, w.maxScore);
+        maxScoreSum = Math.addExact(maxScoreSum, w.scaledMaxScore);
       }
       assert maxScoreSum == leadMaxScore : maxScoreSum + " " + leadMaxScore;
 
@@ -334,7 +336,7 @@ final class WANDScorer extends Scorer {
   private void addLead(DisiWrapper lead) {
     lead.next = this.lead;
     this.lead = lead;
-    leadMaxScore += lead.maxScore;
+    leadMaxScore += lead.scaledMaxScore;
     freq += 1;
   }
 
@@ -400,7 +402,7 @@ final class WANDScorer extends Scorer {
       for (DisiWrapper w : head) {
         if (w.doc <= newUpTo) {
           newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
-          w.maxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
+          w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
         }
       }
       upTo = newUpTo;
@@ -410,9 +412,9 @@ final class WANDScorer extends Scorer {
     for (int i = 0; i < tailSize; ++i) {
       DisiWrapper w = tail[i];
       w.scorer.advanceShallow(target);
-      w.maxScore = scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
+      w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(upTo), scalingFactor);
       upHeapMaxScore(tail, i); // the heap might need to be reordered
-      tailMaxScore += w.maxScore;
+      tailMaxScore += w.scaledMaxScore;
     }
 
     // We need to make sure that entries in 'tail' alone cannot match
@@ -478,7 +480,7 @@ final class WANDScorer extends Scorer {
     // pop all documents which are on this doc
     lead = head.pop();
     lead.next = null;
-    leadMaxScore = lead.maxScore;
+    leadMaxScore = lead.scaledMaxScore;
     freq = 1;
     doc = lead.doc;
     while (head.size() > 0 && head.top().doc == doc) {
@@ -550,10 +552,10 @@ final class WANDScorer extends Scorer {
 
   /** Insert an entry in 'tail' and evict the least-costly scorer if full. */
   private DisiWrapper insertTailWithOverFlow(DisiWrapper s) {
-    if (tailMaxScore + s.maxScore < minCompetitiveScore || tailSize + 1 < minShouldMatch) {
+    if (tailMaxScore + s.scaledMaxScore < minCompetitiveScore || tailSize + 1 < minShouldMatch) {
       // we have free room for this new entry
       addTail(s);
-      tailMaxScore += s.maxScore;
+      tailMaxScore += s.scaledMaxScore;
       return null;
     } else if (tailSize == 0) {
       return s;
@@ -565,7 +567,7 @@ final class WANDScorer extends Scorer {
       // Swap top and s
       tail[0] = s;
       downHeapMaxScore(tail, tailSize);
-      tailMaxScore = tailMaxScore - top.maxScore + s.maxScore;
+      tailMaxScore = tailMaxScore - top.scaledMaxScore + s.scaledMaxScore;
       return top;
     }
   }
@@ -583,7 +585,7 @@ final class WANDScorer extends Scorer {
     final DisiWrapper result = tail[0];
     tail[0] = tail[--tailSize];
     downHeapMaxScore(tail, tailSize);
-    tailMaxScore -= result.maxScore;
+    tailMaxScore -= result.scaledMaxScore;
     return result;
   }
 
@@ -629,9 +631,9 @@ final class WANDScorer extends Scorer {
    * further.
    */
   private static boolean greaterMaxScore(DisiWrapper w1, DisiWrapper w2) {
-    if (w1.maxScore > w2.maxScore) {
+    if (w1.scaledMaxScore > w2.scaledMaxScore) {
       return true;
-    } else if (w1.maxScore < w2.maxScore) {
+    } else if (w1.scaledMaxScore < w2.scaledMaxScore) {
       return false;
     } else {
       return w1.cost < w2.cost;
