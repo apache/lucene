@@ -636,7 +636,7 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
   }
 
   /**
-   * Test that attributes with '>' or '<' characters are parsed correctly.
+   * Test that attributes with {@code '>'} or {@code '<'} characters are parsed correctly.
    *
    * @see <a href="https://github.com/apache/lucene/issues/11556">GITHUB#11556</a>
    * @throws IOException on IO error
