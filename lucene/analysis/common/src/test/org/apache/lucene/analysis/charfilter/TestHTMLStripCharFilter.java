@@ -639,7 +639,7 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
    * Test that attributes with '>' or '<' characters are parsed correctly.
    *
    * @see <a href="https://github.com/apache/lucene/issues/11556">GITHUB#11556</a>
-   * @throws IOException
+   * @throws IOException on IO error
    */
   public void testForIssue10520() throws IOException {
     String test =
