@@ -42,7 +42,7 @@ templates:
 
     As you complete each step the tool will ask you if the task is complete, making
     it easy for you to know what is done and what is left to do. If you need to
-    re-spin a Release Candidata (RC) the Wizard will also help.
+    re-spin a Release Candidate (RC) the Wizard will also help.
 
     The Lucene project has automated much of the release process with various scripts,
     and this wizard is the glue that binds it all together.
@@ -216,7 +216,6 @@ groups:
     - https://infra.apache.org/release-publishing.html
     - https://www.apache.org/legal/release-policy.html
     - https://infra.apache.org/release-signing.html
-    - https://cwiki.apache.org/confluence/display/LUCENE/ReleaseTodo
   - !Todo
     id: tools
     title: Necessary tools are installed
@@ -286,6 +285,12 @@ groups:
     title: Select JIRA issues to be included
     description: Set the appropriate "Fix Version" in JIRA for the issues that should be included in the release.
   - !Todo
+    id: fix_build_failures
+    title: Look into common build failures
+    description: |
+      Look over recent build results sent to the builds@lucene.apache.org list and try to address any recurring
+      failures.
+  - !Todo
     id: decide_branch_date
     title: Decide the date for branching
     types:
@@ -296,7 +301,7 @@ groups:
       name: branch_date
   - !Todo
     id: decide_freeze_length
-    title: Decide the lenght of feature freeze
+    title: Decide the length of feature freeze
     types:
     - major
     - minor
@@ -437,7 +442,7 @@ groups:
       There may be other steps needed as well
   - !Todo
     id: add_version_minor
-    title: Add a new minor version on stable branch
+    title: Add a new minor version on stable and unstable branches
     types:
     - major
     - minor
@@ -446,10 +451,23 @@ groups:
       next_version: "{{ release_version_major }}.{{ release_version_minor + 1 }}.0"
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
-      commands_text: Run these commands to add the new minor version {{ next_version }} to the stable branch
+      commands_text: Run these commands to add the new minor version {{ next_version }} to the stable and unstable branches
       commands:
       - !Command
         cmd: git checkout {{ stable_branch }}
+        tee: true
+      - !Command
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
+        tee: true
+      - !Command
+        comment: Make sure the edits done by `addVersion.py` are ok, then push
+        cmd: git add -u .  && git commit -m "Add next minor version {{ next_version }}"  && git push
+        logfile: commit-stable.log
+      - !Command
+        cmd: git checkout main
+        tee: true
+      - !Command
+        cmd: git pull --ff-only
         tee: true
       - !Command
         cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
@@ -603,6 +621,14 @@ groups:
       - !Command
         cmd: git checkout {{ release_branch }}
         stdout: true
+      - !Command
+        cmd: git clean -df && git checkout -- .
+        comment: Make sure checkout is clean and up to date
+        logfile: git_clean.log
+        tee: true
+      - !Command
+        cmd: git pull --ff-only
+        tee: true
       - !Command
         cmd: "{{ gradle_cmd }} documentation"
     post_description: Check that the task passed. If it failed, commit fixes for the failures before proceeding.
@@ -944,7 +970,7 @@ groups:
     function: check_artifacts_available
     description: |
       The task will attempt to fetch https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc
-      to validate ASF repo, and https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.pom.asc
+      to validate ASF repo, and https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.jar.asc
       to validate Maven repo.
 
       If the check fails, please re-run the task, until it succeeds.
@@ -1151,9 +1177,9 @@ groups:
       - http://lucene.apache.org/core/api/core/
   - !Todo
     id: update_doap
-    title: Update the DOAP files
+    title: Update the DOAP file
     description: |
-      Update the DOAP RDF files on the unstable, stable and release branches to
+      Update the Solr DOAP RDF file on the unstable, stable and release branches to
       reflect the new versions (note that the website .htaccess file redirects from their 
       canonical URLs to their locations in the Lucene Git source repository - see
       dev-tools/doap/README.txt for more info)
