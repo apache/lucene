@@ -184,14 +184,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs searchExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    FieldInfo info = readState.fieldInfos.fieldInfo(field);
-    VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
-    return exhaustiveSearch(getVectorValues(field), acceptDocs, vectorSimilarity, target, k);
-  }
-
-  @Override
   public void checkIntegrity() throws IOException {
     IndexInput clone = dataIn.clone();
     clone.seek(0);

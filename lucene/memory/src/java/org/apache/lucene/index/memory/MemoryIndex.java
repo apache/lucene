@@ -37,7 +37,6 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
@@ -1371,12 +1370,6 @@ public class MemoryIndex {
     @Override
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-      return null;
-    }
-
-    @Override
-    public TopDocs searchNearestVectorsExhaustively(
-        String field, float[] target, int k, DocIdSetIterator acceptDocs) {
       return null;
     }
 

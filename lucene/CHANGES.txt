@@ -52,6 +52,8 @@ Improvements
 
 * LUCENE-10614: Properly support getTopChildren in RangeFacetCounts. (Yuting Gan)
 
+* LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
+
 * LUCENE-10357: Ghost fields and postings/points. (Rushabh Shah)
 
 Optimizations
@@ -82,6 +84,29 @@ Other
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
+
+======================== Lucene 9.5.0 =======================
+
+API Changes
+---------------------
+* GITHUB#11742: MatchingFacetSetsCounts#getTopChildren now properly returns "top" children instead
+  of all children. (Greg Miller)
+
+* GITHUB#11772: Removed native subproject and WindowsDirectory implementation from lucene.misc. Recommendation:
+  use MMapDirectory implementation on Windows. (Robert Muir, Uwe Schindler, Dawid Weiss)
+
+Bug Fixes
+---------------------
+* GITHUB#11726: Indexing term vectors on large documents could fail due to
+  trying to apply a dictionary whose size is greater than the maximum supported
+  window size for LZ4. (Adrien Grand)
+
+* LUCENE-10674: Ensure BitSetConjDISI returns NO_MORE_DOCS when sub-iterator exhausts. (Jack Mazanec)
+
+Other
+---------------------
+* LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
+
 
 ======================== Lucene 9.4.0 =======================
 

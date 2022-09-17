@@ -173,7 +173,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       case BYTE -> writeByteVectors(fieldData);
       case FLOAT32 -> writeFloat32Vectors(fieldData);
     }
-    ;
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     // write graph

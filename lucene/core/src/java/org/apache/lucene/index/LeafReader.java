@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -235,30 +234,6 @@ public abstract class LeafReader extends IndexReader {
    */
   public abstract TopDocs searchNearestVectors(
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
-
-  /**
-   * Return the k nearest neighbor documents as determined by comparison of their vector values for
-   * this field, to the given vector, by the field's similarity function. The score of each document
-   * is derived from the vector similarity in a way that ensures scores are positive and that a
-   * larger score corresponds to a higher ranking.
-   *
-   * <p>The search is exact, meaning the results are guaranteed to be the true k closest neighbors.
-   * This typically requires an exhaustive scan of all candidate documents.
-   *
-   * <p>The returned {@link TopDocs} will contain a {@link ScoreDoc} for each nearest neighbor,
-   * sorted in order of their similarity to the query vector (decreasing scores). The {@link
-   * TotalHits} contains the number of documents visited during the search.
-   *
-   * @param field the vector field to search
-   * @param target the vector-valued query
-   * @param k the number of docs to return
-   * @param acceptDocs {@link DocIdSetIterator} that represents the allowed documents to match, or
-   *     {@code null} if they are all allowed to match.
-   * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
-   * @lucene.experimental
-   */
-  public abstract TopDocs searchNearestVectorsExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

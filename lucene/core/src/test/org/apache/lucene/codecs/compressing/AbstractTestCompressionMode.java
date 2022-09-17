@@ -154,4 +154,12 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
     Arrays.fill(decompressed, (byte) random().nextInt());
     test(decompressed);
   }
+
+  public void testExtremelyLargeInput() throws IOException {
+    final byte[] decompressed = new byte[1 << 24]; // 16MB
+    for (int i = 0; i < decompressed.length; ++i) {
+      decompressed[i] = (byte) (i & 0x0F);
+    }
+    test(decompressed);
+  }
 }
