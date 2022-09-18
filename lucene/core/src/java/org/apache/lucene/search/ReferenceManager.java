@@ -219,6 +219,36 @@ public abstract class ReferenceManager<G> implements Closeable {
     return doTryRefresh;
   }
 
+  /** Compute some state of the reference using a parameter. */
+  @FunctionalInterface
+  public interface StateCalculator<R, G, P> {
+    R calculate(G current, P param);
+  }
+
+  /**
+   * If you need to compute something after the refresh, you can use this method instead of {@link
+   * #maybeRefresh()}.
+   *
+   * @throws IOException if refreshing the resource causes an {@link IOException}
+   */
+  public final <R, P> R maybeRefreshAndReturnState(
+      StateCalculator<R, G, P> refreshedStateCalculator, P param) throws IOException {
+    ensureOpen();
+
+    // Ensure only 1 thread does refresh at once; other threads just return immediately:
+    final boolean doTryRefresh = refreshLock.tryLock();
+    if (doTryRefresh) {
+      try {
+        doMaybeRefresh();
+        return refreshedStateCalculator.calculate(current, param);
+      } finally {
+        refreshLock.unlock();
+      }
+    }
+
+    return null;
+  }
+
   /**
    * You must call this (or {@link #maybeRefresh()}), periodically, if you want that {@link
    * #acquire()} will return refreshed instances.
