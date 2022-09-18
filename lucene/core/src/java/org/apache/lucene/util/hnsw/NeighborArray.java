@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import java.util.Arrays;
-import org.apache.lucene.util.ArrayUtil;
 
 /**
  * NeighborArray encodes the neighbors of a node and their mutual scores in the HNSW graph as a pair
@@ -36,8 +35,8 @@ public class NeighborArray {
   int[] node;
 
   public NeighborArray(int maxSize, boolean descOrder) {
-    node = new int[maxSize];
-    score = new float[maxSize];
+    node = new int[maxSize + 1];
+    score = new float[maxSize + 1];
     this.scoresDescOrder = descOrder;
   }
 
@@ -46,27 +45,23 @@ public class NeighborArray {
    * nodes.
    */
   public void add(int newNode, float newScore) {
-    if (size == node.length) {
-      node = ArrayUtil.grow(node);
-      score = ArrayUtil.growExact(score, node.length);
-    }
-    if (size > 0) {
-      float previousScore = score[size - 1];
-      assert ((scoresDescOrder && (previousScore >= newScore))
-              || (scoresDescOrder == false && (previousScore <= newScore)))
-          : "Nodes are added in the incorrect order!";
-    }
+    assert isSorted(newScore) : "Nodes are added in the incorrect order!";
     node[size] = newNode;
     score[size] = newScore;
     ++size;
   }
 
+  private boolean isSorted(float newScore) {
+    if (size > 0) {
+      float previousScore = score[size - 1];
+      return ((scoresDescOrder && (previousScore >= newScore))
+          || (scoresDescOrder == false && (previousScore <= newScore)));
+    }
+    return true;
+  }
+
   /** Add a new node to the NeighborArray into a correct sort position according to its score. */
   public void insertSorted(int newNode, float newScore) {
-    if (size == node.length) {
-      node = ArrayUtil.grow(node);
-      score = ArrayUtil.growExact(score, node.length);
-    }
     int insertionPoint =
         scoresDescOrder
             ? descSortFindRightMostInsertionPoint(newScore)
