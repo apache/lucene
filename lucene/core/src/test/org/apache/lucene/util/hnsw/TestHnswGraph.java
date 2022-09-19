@@ -565,10 +565,10 @@ public class TestHnswGraph extends LuceneTestCase {
     // than to the target -- ie they all remain diverse, so we simply drop the farthest one.
     float[][] values = {
       {0, 0, 0},
-      {0, 1, 0},
-      {0, 0, 2},
-      {1, 0, 0},
-      {0, 0.4f, 0}
+      {0, 10, 0},
+      {0, 0, 20},
+      {10, 0, 0},
+      {0, 4, 0}
     };
     MockVectorValues vectors = new MockVectorValues(values);
     // First add nodes until everybody gets a full neighbor list
