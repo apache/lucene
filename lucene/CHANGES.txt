@@ -85,6 +85,11 @@ Other
 
 ======================== Lucene 9.5.0 =======================
 
+Optimizations
+---------------------
+* GITHUB#11785: Improve tessellator performance by delaying calls to the method
+  #isIntersectingPolygon (Ignacio Vera) 
+
 Bug Fixes
 ---------------------
 
