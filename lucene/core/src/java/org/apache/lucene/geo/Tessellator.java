@@ -783,7 +783,7 @@ public final class Tessellator {
               b.getY())
           && isLocallyInside(a, b)
           && isLocallyInside(b, a)
-          // this call is expensive so do it last    
+          // this call is expensive so do it last
           && isIntersectingPolygon(a, a.getX(), a.getY(), b.getX(), b.getY()) == false) {
         // compute edges from polygon
         boolean abFromPolygon =
@@ -1128,7 +1128,7 @@ public final class Tessellator {
         && area(a.getX(), a.getY(), b.getX(), b.getY(), b.next.getX(), b.next.getY()) != 0
         && area(a.next.getX(), a.next.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
         && area(a.getX(), a.getY(), b.getX(), b.getY(), b.previous.getX(), b.previous.getY()) != 0
-        // this call is expensive so do it last    
+        // this call is expensive so do it last
         && isIntersectingPolygon(a, a.getX(), a.getY(), b.getX(), b.getY()) == false;
   }
 
