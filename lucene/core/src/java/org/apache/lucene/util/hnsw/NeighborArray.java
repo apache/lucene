@@ -35,8 +35,8 @@ public class NeighborArray {
   int[] node;
 
   public NeighborArray(int maxSize, boolean descOrder) {
-    node = new int[maxSize + 1];
-    score = new float[maxSize + 1];
+    node = new int[maxSize];
+    score = new float[maxSize];
     this.scoresDescOrder = descOrder;
   }
 
