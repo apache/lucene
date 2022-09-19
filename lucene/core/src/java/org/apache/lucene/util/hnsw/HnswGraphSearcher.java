@@ -267,6 +267,9 @@ public class HnswGraphSearcher<T> {
     while (results.size() > topK) {
       results.pop();
     }
+    if (level == 0 && results.size() < topK && numVisited < size) {
+      results.markIncomplete();
+    }
     results.setVisitedCount(numVisited);
     return results;
   }
