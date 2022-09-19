@@ -109,7 +109,7 @@ public final class HnswGraphBuilder<T> {
     this.M = M;
     this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
-    this.ml = 1 / Math.log(1.0 * M);
+    this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
     this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode);
@@ -322,52 +322,51 @@ public final class HnswGraphBuilder<T> {
    */
   private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
     for (int i = neighbors.size() - 1; i > 0; i--) {
-      if (isWorstNonDiverse(i, neighbors, neighbors.score[i])) {
+      if (isWorstNonDiverse(i, neighbors)) {
         return i;
       }
     }
     return neighbors.size() - 1;
   }
 
-  private boolean isWorstNonDiverse(
-      int candidate, NeighborArray neighbors, float minAcceptedSimilarity) throws IOException {
+  private boolean isWorstNonDiverse(int candidateIndex, NeighborArray neighbors)
+      throws IOException {
+    int candidateNode = neighbors.node[candidateIndex];
     switch (vectorEncoding) {
       case BYTE:
-        return isWorstNonDiverse(
-            candidate, vectors.binaryValue(candidate), neighbors, minAcceptedSimilarity);
+        return isWorstNonDiverse(candidateIndex, vectors.binaryValue(candidateNode), neighbors);
       default:
       case FLOAT32:
-        return isWorstNonDiverse(
-            candidate, vectors.vectorValue(candidate), neighbors, minAcceptedSimilarity);
+        return isWorstNonDiverse(candidateIndex, vectors.vectorValue(candidateNode), neighbors);
     }
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, float[] candidate, NeighborArray neighbors, float minAcceptedSimilarity)
-      throws IOException {
-    for (int i = candidateIndex - 1; i > -0; i--) {
+      int candidateIndex, float[] candidateVector, NeighborArray neighbors) throws IOException {
+    float minAcceptedSimilarity = neighbors.score[candidateIndex];
+    for (int i = candidateIndex - 1; i >= 0; i--) {
       float neighborSimilarity =
-          similarityFunction.compare(candidate, vectorsCopy.vectorValue(neighbors.node[i]));
-      // node i is too similar to node j given its score relative to the base node
+          similarityFunction.compare(candidateVector, vectorsCopy.vectorValue(neighbors.node[i]));
+      // candidate node is too similar to node i given its score relative to the base node
       if (neighborSimilarity >= minAcceptedSimilarity) {
-        return false;
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, BytesRef candidate, NeighborArray neighbors, float minAcceptedSimilarity)
-      throws IOException {
-    for (int i = candidateIndex - 1; i > -0; i--) {
+      int candidateIndex, BytesRef candidateVector, NeighborArray neighbors) throws IOException {
+    float minAcceptedSimilarity = neighbors.score[candidateIndex];
+    for (int i = candidateIndex - 1; i >= 0; i--) {
       float neighborSimilarity =
-          similarityFunction.compare(candidate, vectorsCopy.binaryValue(neighbors.node[i]));
-      // node i is too similar to node j given its score relative to the base node
+          similarityFunction.compare(candidateVector, vectorsCopy.binaryValue(neighbors.node[i]));
+      // candidate node is too similar to node i given its score relative to the base node
       if (neighborSimilarity >= minAcceptedSimilarity) {
-        return false;
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   private static int getRandomGraphLevel(double ml, SplittableRandom random) {
