@@ -1171,7 +1171,7 @@ groups:
     id: update_doap
     title: Update the DOAP file
     description: |
-      Update the Solr DOAP RDF file on the unstable, stable and release branches to
+      Update the Lucene DOAP RDF file on the unstable, stable and release branches to
       reflect the new versions (note that the website .htaccess file redirects from their 
       canonical URLs to their locations in the Lucene Git source repository - see
       dev-tools/doap/README.txt for more info)
