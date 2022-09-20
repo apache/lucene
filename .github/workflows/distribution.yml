@@ -13,6 +13,9 @@ on:
       - 'main'
       - 'branch_9x'
 
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
 jobs:
   test:
     name: Run distribution tests
