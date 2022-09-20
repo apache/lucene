@@ -90,6 +90,11 @@ API Changes
 * GITHUB#11742: MatchingFacetSetsCounts#getTopChildren now properly returns "top" children instead
   of all children. (Greg Miller)
 
+Optimizations
+---------------------
+* GITHUB#11797: DrillSidewaysScorer has improved logic to "advance" baseIterator instead of using
+  "next" when more than one dim misses. (Greg Miller)
+
 Bug Fixes
 ---------------------
 
