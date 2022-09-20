@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
