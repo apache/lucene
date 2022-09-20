@@ -468,7 +468,8 @@ public abstract class PointValues {
   /** Returns the total number of documents that have indexed at least one point. */
   public abstract int getDocCount();
 
-  public static PointValues empty(int numDimensions, int numIndexDimensions, int bytesPerDimension) {
+  public static PointValues empty(
+      int numDimensions, int numIndexDimensions, int bytesPerDimension) {
     return new PointValues() {
       @Override
       public PointTree getPointTree() {
