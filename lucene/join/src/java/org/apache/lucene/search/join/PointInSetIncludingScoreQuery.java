@@ -195,10 +195,6 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
                   + bytesPerDim);
         }
         PointValues values = reader.getPointValues(field);
-        if (values == null) {
-          return null;
-        }
-
         FixedBitSet result = new FixedBitSet(reader.maxDoc());
         float[] scores = new float[reader.maxDoc()];
         values.intersect(new MergePointVisitor(sortedPackedPoints, result, scores));

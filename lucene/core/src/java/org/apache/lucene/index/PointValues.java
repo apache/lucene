@@ -468,6 +468,7 @@ public abstract class PointValues {
   /** Returns the total number of documents that have indexed at least one point. */
   public abstract int getDocCount();
 
+  /** Returns an empty instance that exposes the provided info taken from {@link FieldInfo} */
   public static PointValues empty(
       int numDimensions, int numIndexDimensions, int bytesPerDimension) {
     return new PointValues() {
@@ -476,7 +477,7 @@ public abstract class PointValues {
         return new PointTree() {
           @Override
           public PointTree clone() {
-            throw new UnsupportedOperationException();
+            return this;
           }
 
           @Override
@@ -496,12 +497,12 @@ public abstract class PointValues {
 
           @Override
           public byte[] getMinPackedValue() {
-            return new byte[0];
+            return null;
           }
 
           @Override
           public byte[] getMaxPackedValue() {
-            return new byte[0];
+            return null;
           }
 
           @Override
@@ -529,7 +530,7 @@ public abstract class PointValues {
 
       @Override
       public int getNumDimensions() {
-        return 0;
+        return numDimensions;
       }
 
       @Override

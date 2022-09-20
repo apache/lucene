@@ -135,11 +135,6 @@ final class LatLonPointDistanceQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
-        PointValues values = reader.getPointValues(field);
-        if (values == null) {
-          // No docs in this segment had any points fields
-          return null;
-        }
         FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
         if (fieldInfo == null) {
           // No docs in this segment indexed this field at all
@@ -147,6 +142,7 @@ final class LatLonPointDistanceQuery extends Query {
         }
         LatLonPoint.checkCompatible(fieldInfo);
 
+        PointValues values = reader.getPointValues(field);
         // matching docids
         DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
         final IntersectVisitor visitor = getIntersectVisitor(result);

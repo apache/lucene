@@ -153,17 +153,12 @@ abstract class SpatialQuery extends Query {
       float boost,
       float score)
       throws IOException {
-    final PointValues values = reader.getPointValues(field);
-    if (values == null) {
-      // No docs in this segment had any points fields
-      return null;
-    }
     final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
-    if (fieldInfo == null) {
+    if (fieldInfo == null || fieldInfo.getPointDimensionCount() == 0) {
       // No docs in this segment indexed this field at all
       return null;
     }
-
+    final PointValues values = reader.getPointValues(field);
     final Relation rel =
         spatialVisitor
             .getInnerFunction(queryRelation)

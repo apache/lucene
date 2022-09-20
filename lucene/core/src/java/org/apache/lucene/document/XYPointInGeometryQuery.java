@@ -130,17 +130,13 @@ final class XYPointInGeometryQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
-        PointValues values = reader.getPointValues(field);
-        if (values == null) {
-          // No docs in this segment had any points fields
-          return null;
-        }
         FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
         if (fieldInfo == null) {
           // No docs in this segment indexed this field at all
           return null;
         }
         XYPointField.checkCompatible(fieldInfo);
+        PointValues values = reader.getPointValues(field);
         final Weight weight = this;
 
         return new ScorerSupplier() {

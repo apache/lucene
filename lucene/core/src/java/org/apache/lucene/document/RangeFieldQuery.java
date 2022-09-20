@@ -495,11 +495,6 @@ public abstract class RangeFieldQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
-        PointValues values = reader.getPointValues(field);
-        if (values == null) {
-          // no docs in this segment indexed any ranges
-          return null;
-        }
         FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
         if (fieldInfo == null) {
           // no docs in this segment indexed this field
@@ -507,6 +502,7 @@ public abstract class RangeFieldQuery extends Query {
         }
         checkFieldInfo(fieldInfo);
         boolean allDocsMatch = false;
+        PointValues values = reader.getPointValues(field);
         if (values.getDocCount() == reader.maxDoc()
             && queryType.compare(
                     ranges,
