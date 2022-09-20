@@ -731,6 +731,64 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     return v;
   }
 
+  public void testDeleteAllPointDocs() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+
+      Document doc = new Document();
+      doc.add(new StringField("id", "0", Field.Store.NO));
+      doc.add(new LongPoint("long", 17));
+      doc.add(new NumericDocValuesField("long", 17));
+      iw.addDocument(doc);
+      // add another document before the flush, otherwise the segment only has the document that
+      // we are going to delete and the merge simply ignores the segment without carrying over its
+      // field infos
+      iw.addDocument(new Document());
+      // make sure there are two segments or force merge will be a no-op
+      iw.flush();
+      iw.addDocument(new Document());
+      iw.commit();
+
+      iw.deleteDocuments(new Term("id", "0"));
+      iw.forceMerge(1);
+
+      try (IndexReader reader = iw.getReader()) {
+        assertTrue(reader.leaves().size() == 1 && reader.hasDeletions() == false);
+        IndexSearcher searcher = newSearcher(reader);
+        assertEquals(0, searcher.count(new FieldExistsQuery("long")));
+      }
+    }
+  }
+
+  public void testDeleteAllTermDocs() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+
+      Document doc = new Document();
+      doc.add(new StringField("id", "0", Field.Store.NO));
+      doc.add(new StringField("str", "foo", Store.NO));
+      doc.add(new SortedDocValuesField("str", new BytesRef("foo")));
+      iw.addDocument(doc);
+      // add another document before the flush, otherwise the segment only has the document that
+      // we are going to delete and the merge simply ignores the segment without carrying over its
+      // field infos
+      iw.addDocument(new Document());
+      // make sure there are two segments or force merge will be a no-op
+      iw.flush();
+      iw.addDocument(new Document());
+      iw.commit();
+
+      iw.deleteDocuments(new Term("id", "0"));
+      iw.forceMerge(1);
+
+      try (IndexReader reader = iw.getReader()) {
+        assertTrue(reader.leaves().size() == 1 && reader.hasDeletions() == false);
+        IndexSearcher searcher = newSearcher(reader);
+        assertEquals(0, searcher.count(new FieldExistsQuery("str")));
+      }
+    }
+  }
+
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
