@@ -20,11 +20,21 @@ import java.io.IOException;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
+import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatDocValuesField;
+import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -846,5 +856,188 @@ public class TestSort extends LuceneTestCase {
 
       assertSame(sort, sort.rewrite(searcher));
     }
+  }
+
+  // Ghost tests make sure that sorting can cope with segments that are missing values while their
+  // FieldInfo reports that the field exists.
+
+  public void testStringGhost() throws IOException {
+    doTestStringGhost(true);
+    doTestStringGhost(false);
+  }
+
+  private void doTestStringGhost(boolean indexed) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new SortedDocValuesField("value", newBytesRef("foo")));
+    if (indexed) {
+      doc.add(newStringField("value", "foo", Field.Store.YES));
+    }
+    doc.add(new StringField("id", "0", Store.NO));
+    writer.addDocument(doc);
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.deleteDocuments(new Term("id", "0"));
+    writer.forceMerge(1);
+    IndexReader ir = DirectoryReader.open(writer);
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(ir);
+    Sort sort = new Sort(new SortField("value", SortField.Type.STRING));
+
+    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    assertEquals(2, td.totalHits.value);
+    assertNull(((FieldDoc) td.scoreDocs[0]).fields[0]);
+    assertNull(((FieldDoc) td.scoreDocs[1]).fields[0]);
+
+    ir.close();
+    dir.close();
+  }
+
+  public void testIntGhost() throws IOException {
+    doTestIntGhost(true);
+    doTestIntGhost(false);
+  }
+
+  private void doTestIntGhost(boolean indexed) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new NumericDocValuesField("value", 3));
+    if (indexed) {
+      doc.add(new IntPoint("value", 3));
+    }
+    doc.add(new StringField("id", "0", Store.NO));
+    writer.addDocument(doc);
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.deleteDocuments(new Term("id", "0"));
+    writer.forceMerge(1);
+    IndexReader ir = DirectoryReader.open(writer);
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(ir);
+    Sort sort = new Sort(new SortField("value", SortField.Type.INT));
+
+    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    assertEquals(2, td.totalHits.value);
+    assertEquals(0, ((FieldDoc) td.scoreDocs[0]).fields[0]);
+    assertEquals(0, ((FieldDoc) td.scoreDocs[1]).fields[0]);
+
+    ir.close();
+    dir.close();
+  }
+
+  public void testLongGhost() throws IOException {
+    doTestLongGhost(true);
+    doTestLongGhost(false);
+  }
+
+  private void doTestLongGhost(boolean indexed) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new NumericDocValuesField("value", 3L));
+    if (indexed) {
+      doc.add(new LongPoint("value", 3L));
+    }
+    doc.add(new StringField("id", "0", Store.NO));
+    writer.addDocument(doc);
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.deleteDocuments(new Term("id", "0"));
+    writer.forceMerge(1);
+    IndexReader ir = DirectoryReader.open(writer);
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(ir);
+    Sort sort = new Sort(new SortField("value", SortField.Type.LONG));
+
+    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    assertEquals(2, td.totalHits.value);
+    assertEquals(0L, ((FieldDoc) td.scoreDocs[0]).fields[0]);
+    assertEquals(0L, ((FieldDoc) td.scoreDocs[1]).fields[0]);
+
+    ir.close();
+    dir.close();
+  }
+
+  public void testDoubleGhost() throws IOException {
+    doTestDoubleGhost(true);
+    doTestDoubleGhost(false);
+  }
+
+  private void doTestDoubleGhost(boolean indexed) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new DoubleDocValuesField("value", 1.25));
+    if (indexed) {
+      doc.add(new DoublePoint("value", 1.25));
+    }
+    doc.add(new StringField("id", "0", Store.NO));
+    writer.addDocument(doc);
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.deleteDocuments(new Term("id", "0"));
+    writer.forceMerge(1);
+    IndexReader ir = DirectoryReader.open(writer);
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(ir);
+    Sort sort = new Sort(new SortField("value", SortField.Type.DOUBLE));
+
+    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    assertEquals(2, td.totalHits.value);
+    assertEquals(0.0, ((FieldDoc) td.scoreDocs[0]).fields[0]);
+    assertEquals(0.0, ((FieldDoc) td.scoreDocs[1]).fields[0]);
+
+    ir.close();
+    dir.close();
+  }
+
+  public void testFloatGhost() throws IOException {
+    doTestFloatGhost(true);
+    doTestFloatGhost(false);
+  }
+
+  private void doTestFloatGhost(boolean indexed) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new FloatDocValuesField("value", 1.25f));
+    if (indexed) {
+      doc.add(new FloatPoint("value", 1.25f));
+    }
+    doc.add(new StringField("id", "0", Store.NO));
+    writer.addDocument(doc);
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.addDocument(new Document());
+    writer.flush();
+    writer.deleteDocuments(new Term("id", "0"));
+    writer.forceMerge(1);
+    IndexReader ir = DirectoryReader.open(writer);
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(ir);
+    Sort sort = new Sort(new SortField("value", SortField.Type.FLOAT));
+
+    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    assertEquals(2, td.totalHits.value);
+    assertEquals(0.0f, ((FieldDoc) td.scoreDocs[0]).fields[0]);
+    assertEquals(0.0f, ((FieldDoc) td.scoreDocs[1]).fields[0]);
+
+    ir.close();
+    dir.close();
   }
 }
