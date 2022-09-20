@@ -646,7 +646,16 @@ public class TestPointValues extends LuceneTestCase {
 
     w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
-    assertNull(r.leaves().get(0).reader().getPointValues("int"));
+    PointValues emptyValues = r.leaves().get(0).reader().getPointValues("int");
+    assertEquals(0, emptyValues.getDocCount());
+    assertEquals(0, emptyValues.size());
+    assertEquals(0, emptyValues.getNumDimensions());
+    assertEquals(0, emptyValues.getNumIndexDimensions());
+    assertEquals(0, emptyValues.getBytesPerDimension());
+    assertEquals(0, emptyValues.getPointTree().size());
+    assertFalse(emptyValues.getPointTree().moveToChild());
+    assertFalse(emptyValues.getPointTree().moveToParent());
+    assertFalse(emptyValues.getPointTree().moveToSibling());
     w.close();
     r.close();
     dir.close();

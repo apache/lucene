@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
@@ -1112,8 +1111,8 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     private void assertStats(int maxDoc) {
-      assert in.size() > 0;
-      assert in.getDocCount() > 0;
+      assert in.size() >= 0;
+      assert in.getDocCount() >= 0;
       assert in.getDocCount() <= in.size();
       assert in.getDocCount() <= maxDoc;
     }
@@ -1127,13 +1126,13 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public byte[] getMinPackedValue() throws IOException {
       assertThread("Points", creationThread);
-      return Objects.requireNonNull(in.getMinPackedValue());
+      return in.getMinPackedValue();
     }
 
     @Override
     public byte[] getMaxPackedValue() throws IOException {
       assertThread("Points", creationThread);
-      return Objects.requireNonNull(in.getMaxPackedValue());
+      return in.getMaxPackedValue();
     }
 
     @Override
@@ -1210,7 +1209,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public long size() {
       final long size = in.size();
-      assert size > 0;
+      assert size >= 0;
       return size;
     }
 

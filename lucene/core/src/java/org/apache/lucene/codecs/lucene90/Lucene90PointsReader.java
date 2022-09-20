@@ -137,7 +137,8 @@ public class Lucene90PointsReader extends PointsReader {
       throw new IllegalArgumentException("field=\"" + fieldName + "\" did not index point values");
     }
 
-    return readers.get(fieldInfo.number);
+    PointValues pointValues = readers.get(fieldInfo.number);
+    return pointValues == null ? PointValues.EMPTY : pointValues;
   }
 
   @Override
