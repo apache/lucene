@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
@@ -712,10 +711,11 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       doc.add(new LongPoint("long", 17));
       doc.add(new NumericDocValuesField("long", 17));
       iw.addDocument(doc);
-      //add another document before the flush, otherwise the segment only has the document that
-      // we are going to delete and the merge simply ignores the segment without carrying over its field infos
+      // add another document before the flush, otherwise the segment only has the document that
+      // we are going to delete and the merge simply ignores the segment without carrying over its
+      // field infos
       iw.addDocument(new Document());
-      //make sure there are two segments or force merge will be a no-op
+      // make sure there are two segments or force merge will be a no-op
       iw.flush();
       iw.addDocument(new Document());
       iw.commit();
@@ -733,17 +733,18 @@ public class TestFieldExistsQuery extends LuceneTestCase {
 
   public void testDeleteAllTermDocs() throws Exception {
     try (Directory dir = newDirectory();
-         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
 
       Document doc = new Document();
       doc.add(new StringField("id", "0", Field.Store.NO));
       doc.add(new StringField("str", "foo", Store.NO));
       doc.add(new SortedDocValuesField("str", new BytesRef("foo")));
       iw.addDocument(doc);
-      //add another document before the flush, otherwise the segment only has the document that
-      // we are going to delete and the merge simply ignores the segment without carrying over its field infos
+      // add another document before the flush, otherwise the segment only has the document that
+      // we are going to delete and the merge simply ignores the segment without carrying over its
+      // field infos
       iw.addDocument(new Document());
-      //make sure there are two segments or force merge will be a no-op
+      // make sure there are two segments or force merge will be a no-op
       iw.flush();
       iw.addDocument(new Document());
       iw.commit();
