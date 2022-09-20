@@ -129,6 +129,9 @@ Optimizations
 * GITHUB#11771: KeywordRepeatFilter + OpenNLPLemmatizer sometimes arbitrarily exits token stream.
   (Luke Kot-Zaniewski)
 
+* GITHUB#11797: DrillSidewaysScorer has improved logic to "advance" baseIterator instead of using
+  "next" when more than one dim misses. (Greg Miller)
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
