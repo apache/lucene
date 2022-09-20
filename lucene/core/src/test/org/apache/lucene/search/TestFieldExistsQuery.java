@@ -711,6 +711,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       doc.add(new LongPoint("long", 17));
       doc.add(new NumericDocValuesField("long", 17));
       iw.addDocument(doc);
+      iw.flush();
       iw.addDocument(new Document());
       iw.commit();
 
@@ -718,6 +719,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       iw.forceMerge(1);
 
       try (IndexReader reader = iw.getReader()) {
+        assert reader.leaves().size() == 1 && reader.hasDeletions() == false;
         IndexSearcher searcher = newSearcher(reader);
         assertEquals(0, searcher.count(new FieldExistsQuery("long")));
       }
