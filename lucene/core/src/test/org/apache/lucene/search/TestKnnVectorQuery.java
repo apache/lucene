@@ -833,7 +833,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
    */
   private Directory getStableIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
-    try (IndexWriter writer = new IndexWriter(indexStore, newIndexWriterConfig())) {
+    try (IndexWriter writer = new IndexWriter(indexStore, new IndexWriterConfig())) {
       VectorEncoding encoding = randomVectorEncoding();
       for (int i = 0; i < contents.length; ++i) {
         Document doc = new Document();
