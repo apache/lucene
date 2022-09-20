@@ -162,7 +162,7 @@ class DrillSidewaysScorer extends BulkScorer {
         docID = baseIterator.nextDoc();
         continue;
       }
-      LeafCollector failedCollector = null;
+      DocsAndCost failedDim = null;
       for (DocsAndCost dim : dims) {
         // TODO: should we sort this 2nd dimension of
         // docsEnums from most frequent to least?
@@ -180,26 +180,28 @@ class DrillSidewaysScorer extends BulkScorer {
         }
 
         if (matches == false) {
-          if (failedCollector != null) {
+          if (failedDim != null) {
             // More than one dim fails on this document, so
             // it's neither a hit nor a near-miss; move to
             // next doc:
-            docID = baseIterator.nextDoc();
+            int nextCandidate =
+                Math.min(failedDim.approximation.docID(), dim.approximation.docID());
+            docID = baseIterator.advance(nextCandidate);
             continue nextDoc;
           } else {
-            failedCollector = dim.sidewaysLeafCollector;
+            failedDim = dim;
           }
         }
       }
 
       collectDocID = docID;
 
-      if (failedCollector == null) {
+      if (failedDim == null) {
         // Hit passed all filters, so it's "real":
         collectHit(collector, dims);
       } else {
         // Hit missed exactly one filter:
-        collectNearMiss(failedCollector);
+        collectNearMiss(failedDim.sidewaysLeafCollector);
       }
 
       docID = baseIterator.nextDoc();
