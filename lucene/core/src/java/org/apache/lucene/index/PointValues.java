@@ -468,90 +468,88 @@ public abstract class PointValues {
   /** Returns the total number of documents that have indexed at least one point. */
   public abstract int getDocCount();
 
-  private static final PointTree EMPTY_POINT_TREE =
-      new PointTree() {
-        @Override
-        public PointTree clone() {
-          throw new UnsupportedOperationException();
-        }
+  public static PointValues empty(int numDimensions, int numIndexDimensions, int bytesPerDimension) {
+    return new PointValues() {
+      @Override
+      public PointTree getPointTree() {
+        return new PointTree() {
+          @Override
+          public PointTree clone() {
+            throw new UnsupportedOperationException();
+          }
 
-        @Override
-        public boolean moveToChild() {
-          return false;
-        }
+          @Override
+          public boolean moveToChild() {
+            return false;
+          }
 
-        @Override
-        public boolean moveToSibling() {
-          return false;
-        }
+          @Override
+          public boolean moveToSibling() {
+            return false;
+          }
 
-        @Override
-        public boolean moveToParent() {
-          return false;
-        }
+          @Override
+          public boolean moveToParent() {
+            return false;
+          }
 
-        @Override
-        public byte[] getMinPackedValue() {
-          return new byte[0];
-        }
+          @Override
+          public byte[] getMinPackedValue() {
+            return new byte[0];
+          }
 
-        @Override
-        public byte[] getMaxPackedValue() {
-          return new byte[0];
-        }
+          @Override
+          public byte[] getMaxPackedValue() {
+            return new byte[0];
+          }
 
-        @Override
-        public long size() {
-          return 0;
-        }
+          @Override
+          public long size() {
+            return 0;
+          }
 
-        @Override
-        public void visitDocIDs(IntersectVisitor visitor) {}
+          @Override
+          public void visitDocIDs(IntersectVisitor visitor) {}
 
-        @Override
-        public void visitDocValues(IntersectVisitor visitor) {}
-      };
+          @Override
+          public void visitDocValues(IntersectVisitor visitor) {}
+        };
+      }
 
-  public static final PointValues EMPTY =
-      new PointValues() {
-        @Override
-        public PointTree getPointTree() {
-          return EMPTY_POINT_TREE;
-        }
+      @Override
+      public byte[] getMinPackedValue() {
+        return null;
+      }
 
-        @Override
-        public byte[] getMinPackedValue() {
-          return null;
-        }
+      @Override
+      public byte[] getMaxPackedValue() {
+        return null;
+      }
 
-        @Override
-        public byte[] getMaxPackedValue() {
-          return null;
-        }
+      @Override
+      public int getNumDimensions() {
+        return 0;
+      }
 
-        @Override
-        public int getNumDimensions() {
-          return 0;
-        }
+      @Override
+      public int getNumIndexDimensions() {
+        return numIndexDimensions;
+      }
 
-        @Override
-        public int getNumIndexDimensions() {
-          return 0;
-        }
+      @Override
+      public int getBytesPerDimension() {
+        return bytesPerDimension;
+      }
 
-        @Override
-        public int getBytesPerDimension() {
-          return 0;
-        }
+      @Override
+      public long size() {
+        return 0;
+      }
 
-        @Override
-        public long size() {
-          return 0;
-        }
-
-        @Override
-        public int getDocCount() {
-          return 0;
-        }
-      };
+      @Override
+      public int getDocCount() {
+        return 0;
+      }
+    };
+  }
 }

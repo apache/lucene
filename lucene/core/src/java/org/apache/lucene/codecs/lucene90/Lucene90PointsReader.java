@@ -138,7 +138,8 @@ public class Lucene90PointsReader extends PointsReader {
     }
 
     PointValues pointValues = readers.get(fieldInfo.number);
-    return pointValues == null ? PointValues.EMPTY : pointValues;
+    return pointValues == null ? PointValues.empty(fieldInfo.getPointDimensionCount(),
+            fieldInfo.getPointIndexDimensionCount(), fieldInfo.getPointNumBytes()) : pointValues;
   }
 
   @Override
