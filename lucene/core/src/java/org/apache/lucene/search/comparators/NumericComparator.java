@@ -107,22 +107,22 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       FieldInfo info = context.reader().getFieldInfos().fieldInfo(field);
       if (info == null || info.getPointDimensionCount() == 0) {
         throw new IllegalStateException(
-                "Field "
-                        + field
-                        + " doesn't index points according to FieldInfos yet returns non-null PointValues");
+            "Field "
+                + field
+                + " doesn't index points according to FieldInfos yet returns non-null PointValues");
       } else if (info.getPointDimensionCount() > 1) {
         throw new IllegalArgumentException(
-                "Field " + field + " is indexed with multiple dimensions, sorting is not supported");
+            "Field " + field + " is indexed with multiple dimensions, sorting is not supported");
       } else if (info.getPointNumBytes() != bytesCount) {
         throw new IllegalArgumentException(
-                "Field "
-                        + field
-                        + " is indexed with "
-                        + info.getPointNumBytes()
-                        + " bytes per dimension, but "
-                        + NumericComparator.this
-                        + " expected "
-                        + bytesCount);
+            "Field "
+                + field
+                + " is indexed with "
+                + info.getPointNumBytes()
+                + " bytes per dimension, but "
+                + NumericComparator.this
+                + " expected "
+                + bytesCount);
       }
       if (canSkipDocuments) {
         this.pointValues = context.reader().getPointValues(field);
