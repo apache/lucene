@@ -632,6 +632,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
   }
 
   /** Tests filtering when all vectors have the same score. */
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/11787")
   public void testFilterWithSameScore() throws IOException {
     int numDocs = 100;
     int dimension = atLeast(5);
