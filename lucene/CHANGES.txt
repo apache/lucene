@@ -93,13 +93,19 @@ API Changes
 * GITHUB#11772: Removed native subproject and WindowsDirectory implementation from lucene.misc. Recommendation:
   use MMapDirectory implementation on Windows. (Robert Muir, Uwe Schindler, Dawid Weiss)
 
+Improvements
+---------------------
+* GITHUB#11778: Detailed part-of-speech information for particle(조사) and ending(어미) on Nori
+  is now tagged. (Namgyu Kim)
+
+* GITHUB#11785: Improve Tessellator performance by delaying calls to the method
+  #isIntersectingPolygon (Ignacio Vera)   
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
   trying to apply a dictionary whose size is greater than the maximum supported
   window size for LZ4. (Adrien Grand)
-
-* LUCENE-10674: Ensure BitSetConjDISI returns NO_MORE_DOCS when sub-iterator exhausts. (Jack Mazanec)
 
 Other
 ---------------------
@@ -160,6 +166,10 @@ Bug Fixes
 
 * LUCENE-10665, GITHUB#11701: Fix classloading deadlock in analysis factories / AnalysisSPILoader
   initialization.  (Uwe Schindler)
+
+* LUCENE-10674: Ensure BitSetConjDISI returns NO_MORE_DOCS when sub-iterator exhausts. (Jack Mazanec)
+
+* GITHUB#11794: Guard FieldExistsQuery against null pointers (Luca Cavanna)
 
 Build
 ---------------------
