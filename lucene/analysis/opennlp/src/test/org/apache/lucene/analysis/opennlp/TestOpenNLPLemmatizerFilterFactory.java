@@ -321,28 +321,40 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
         true);
   }
 
+  // checks for bug described in https://github.com/apache/lucene/issues/11771
   public void testPreventEarlyExit() throws IOException {
     ClasspathResourceLoader loader = new ClasspathResourceLoader(getClass());
-    InputStream earlyExitInput = loader.openResource("data/early-exit-bug-input.txt");
-    String earlyExitInputText = new String(earlyExitInput.readAllBytes(), StandardCharsets.UTF_8);
+    try (InputStream earlyExitInput = loader.openResource("data/early-exit-bug-input.txt")) {
+      String earlyExitInputText = new String(earlyExitInput.readAllBytes(), StandardCharsets.UTF_8);
+      verifyNoEarlyExitWithInput(earlyExitInputText, loader);
+    }
+  }
 
-    InputStream earlyExitOutput = loader.openResource("data/early-exit-bug-output.txt");
-    String earlyExitOutputText = new String(earlyExitOutput.readAllBytes(), StandardCharsets.UTF_8);
-    String[] earlyExitOutputTexts =
-        Arrays.stream(earlyExitOutputText.split("\\s"))
-            .filter(text -> text != "")
-            .collect(Collectors.joining(" "))
-            .split(" ");
-    CustomAnalyzer analyzer =
-        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
-            .withTokenizer(
-                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
-            .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
-            .addTokenFilter(KeywordRepeatFilterFactory.class)
-            .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
-            .build();
-    assertAnalyzesTo(
-        analyzer, earlyExitInputText, earlyExitOutputTexts, null, null, null, null, null, true);
+  private void verifyNoEarlyExitWithInput(String earlyExitInputText, ClasspathResourceLoader loader)
+      throws IOException {
+    try (InputStream earlyExitOutput = loader.openResource("data/early-exit-bug-output.txt")) {
+      String earlyExitOutputText =
+          new String(earlyExitOutput.readAllBytes(), StandardCharsets.UTF_8);
+      String[] earlyExitOutputTexts =
+          Arrays.stream(earlyExitOutputText.split("\\s"))
+              .filter(text -> text != "")
+              .collect(Collectors.joining(" "))
+              .split(" ");
+      CustomAnalyzer analyzer =
+          CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+              .withTokenizer(
+                  "opennlp",
+                  "tokenizerModel",
+                  tokenizerModelFile,
+                  "sentenceModel",
+                  sentenceModelFile)
+              .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
+              .addTokenFilter(KeywordRepeatFilterFactory.class)
+              .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
+              .build();
+      assertAnalyzesTo(
+          analyzer, earlyExitInputText, earlyExitOutputTexts, null, null, null, null, null, true);
+    }
   }
 
   public void testEmptyField() throws Exception {

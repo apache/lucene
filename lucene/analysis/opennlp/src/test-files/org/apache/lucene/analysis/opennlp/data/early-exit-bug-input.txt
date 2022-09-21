@@ -18,6 +18,6 @@ Quick brown fox jumped over the lazy dog.
 x
 Quick brown fox jumped over the lazy dog.
 x
-This will not get indexed.
+This should hopefully get analyzed.
 x
-And neither will this.
+And so should this.
