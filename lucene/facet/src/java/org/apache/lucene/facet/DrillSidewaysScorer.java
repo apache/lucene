@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.search.BulkScorer;
@@ -178,12 +177,14 @@ class DrillSidewaysScorer extends BulkScorer {
       }
     }
     if (twoPhaseDims != null) {
-      CollectionUtil.timSort(twoPhaseDims, new Comparator<DocsAndCost>() {
-        @Override
-        public int compare(DocsAndCost o1, DocsAndCost o2) {
-          return Float.compare(o1.twoPhase.matchCost(), o2.twoPhase.matchCost());
-        }
-      });
+      CollectionUtil.timSort(
+          twoPhaseDims,
+          new Comparator<DocsAndCost>() {
+            @Override
+            public int compare(DocsAndCost o1, DocsAndCost o2) {
+              return Float.compare(o1.twoPhase.matchCost(), o2.twoPhase.matchCost());
+            }
+          });
     }
 
     int docID = baseApproximation.docID();
@@ -250,7 +251,8 @@ class DrillSidewaysScorer extends BulkScorer {
         }
       }
 
-      assert(validateState(docID, baseApproximation, baseTwoPhase, allDims, twoPhaseDims, failedDim, acceptDocs));
+      assert (validateState(
+          docID, baseApproximation, baseTwoPhase, allDims, twoPhaseDims, failedDim, acceptDocs));
       collectDocID = docID;
       if (failedDim == null) {
         // Hit passed all filters, so it's "real":
@@ -264,13 +266,15 @@ class DrillSidewaysScorer extends BulkScorer {
     }
   }
 
-  private static boolean validateState(int currentDocID,
-                                       DocIdSetIterator baseApproximation,
-                                       TwoPhaseIterator baseTwoPhase,
-                                       List<DocsAndCost> allDims,
-                                       List<DocsAndCost> twoPhaseDims,
-                                       DocsAndCost failedDim,
-                                       Bits acceptDocs) throws IOException {
+  private static boolean validateState(
+      int currentDocID,
+      DocIdSetIterator baseApproximation,
+      TwoPhaseIterator baseTwoPhase,
+      List<DocsAndCost> allDims,
+      List<DocsAndCost> twoPhaseDims,
+      DocsAndCost failedDim,
+      Bits acceptDocs)
+      throws IOException {
     if (acceptDocs != null && acceptDocs.get(currentDocID) == false) {
       return false;
     }
