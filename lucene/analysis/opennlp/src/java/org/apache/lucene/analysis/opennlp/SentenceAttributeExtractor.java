@@ -27,6 +27,9 @@ import org.apache.lucene.util.AttributeSource;
 /**
  * Iterate through sentence tokens and cache their attributes. Could consider moving this to a more
  * central location to be used by other sentence-aware components.
+ *
+ * <p>May want to consider making this its own Filter so that extracted sentence token attributes
+ * can be shared by downstream sentence-aware filters.
  */
 public class SentenceAttributeExtractor {
 
@@ -42,6 +45,9 @@ public class SentenceAttributeExtractor {
     this.sentenceAtt = sentenceAtt;
   }
 
+  // If this class were a stand-alone filter it could conceivably extract the attributes once
+  // and cache a reference to those attributes in SentenceAttribute. That way downstream filters
+  // could read the full sentence without having to independently extract it.
   public List<AttributeSource> extractSentenceAttributes() throws IOException {
     sentenceTokenAttrs.clear();
     boolean hasNext;
