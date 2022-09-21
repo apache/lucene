@@ -97,12 +97,11 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.NormsFieldExistsQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -354,7 +353,11 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.0.0-cfs", // Force on separate lines
     "9.0.0-nocfs",
     "9.1.0-cfs",
-    "9.1.0-nocfs"
+    "9.1.0-nocfs",
+    "9.2.0-cfs",
+    "9.2.0-nocfs",
+    "9.3.0-cfs",
+    "9.3.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -363,7 +366,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
   static final String[] oldSortedNames = {
     "sorted.9.0.0", // Force on separate lines
-    "sorted.9.1.0"
+    "sorted.9.1.0",
+    "sorted.9.2.0",
+    "sorted.9.3.0"
   };
 
   public static String[] getOldSortedNames() {
@@ -615,7 +620,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "8.11.0-cfs",
     "8.11.0-nocfs",
     "8.11.1-cfs",
-    "8.11.1-nocfs"
+    "8.11.1-nocfs",
+    "8.11.2-cfs",
+    "8.11.2-nocfs"
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
@@ -1201,8 +1208,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(id, dvShort.longValue());
 
       assertEquals(i, dvSortedSet.nextDoc());
+      assertEquals(1, dvSortedSet.docValueCount());
       long ord = dvSortedSet.nextOrd();
-      assertEquals(SortedSetDocValues.NO_MORE_ORDS, dvSortedSet.nextOrd());
       term = dvSortedSet.lookupOrd(ord);
       assertEquals(expectedRef, term);
 
@@ -2132,10 +2139,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private void searchExampleIndex(DirectoryReader reader) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
 
-    TopDocs topDocs = searcher.search(new NormsFieldExistsQuery("titleTokenized"), 10);
+    TopDocs topDocs = searcher.search(new FieldExistsQuery("titleTokenized"), 10);
     assertEquals(50, topDocs.totalHits.value);
 
-    topDocs = searcher.search(new DocValuesFieldExistsQuery("titleDV"), 10);
+    topDocs = searcher.search(new FieldExistsQuery("titleDV"), 10);
     assertEquals(50, topDocs.totalHits.value);
 
     topDocs = searcher.search(new TermQuery(new Term("body", "ja")), 10);

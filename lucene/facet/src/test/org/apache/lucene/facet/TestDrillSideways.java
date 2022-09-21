@@ -132,7 +132,11 @@ public class TestDrillSideways extends FacetTestCase {
   private IndexSearcher getNewSearcher(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
-    return newSearcher(reader, true, false, random().nextBoolean());
+    IndexSearcher searcher = newSearcher(reader, true, false, random().nextBoolean());
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    searcher.setTimeout(null);
+    return searcher;
   }
 
   // See LUCENE-10060:
@@ -233,6 +237,13 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(
         "dim=Size path=[] value=2 childCount=2\n  Small (1)\n  Medium (1)\n",
         concurrentResult.facets.getTopChildren(10, "Size").toString());
+
+    // test getTopChildren(0, dim)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          concurrentResult.facets.getTopChildren(0, "Color");
+        });
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
@@ -371,6 +382,14 @@ public class TestDrillSideways extends FacetTestCase {
     List<FacetResult> topDimsResults2 = r.facets.getTopDims(0, 1);
     assertEquals(0, topDimsResults2.size());
 
+    // test getAllDims(0)
+    DrillSidewaysResult finalR1 = r;
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          finalR1.facets.getAllDims(0);
+        });
+
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
@@ -456,6 +475,15 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(0, r.hits.totalHits.value);
     assertNull(r.facets.getTopChildren(10, "Publish Date"));
     assertNull(r.facets.getTopChildren(10, "Author"));
+
+    // test getTopChildren(0, dim)
+    DrillSidewaysResult finalR = r;
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          finalR.facets.getTopChildren(0, "Author");
+        });
+
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
@@ -1874,6 +1902,12 @@ public class TestDrillSideways extends FacetTestCase {
         "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Susan (1)\n",
         topNDimsResult.get(0).toString());
 
+    // test getAllDims(0)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllDims(0);
+        });
     // More interesting case: drill-down on two fields
     ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");

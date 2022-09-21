@@ -17,15 +17,15 @@
 package org.apache.lucene.analysis.ko;
 
 import org.apache.lucene.analysis.ko.dict.KoMorphData;
+import org.apache.lucene.analysis.morph.TokenType;
 
 /** A token stored in a {@link KoMorphData}. */
 public class DictionaryToken extends Token {
   private final int wordId;
-  private final KoreanTokenizer.Type type;
   private final KoMorphData morphAtts;
 
   public DictionaryToken(
-      KoreanTokenizer.Type type,
+      TokenType type,
       KoMorphData morphAtts,
       int wordId,
       char[] surfaceForm,
@@ -33,8 +33,7 @@ public class DictionaryToken extends Token {
       int length,
       int startOffset,
       int endOffset) {
-    super(surfaceForm, offset, length, startOffset, endOffset);
-    this.type = type;
+    super(surfaceForm, offset, length, startOffset, endOffset, type);
     this.morphAtts = morphAtts;
     this.wordId = wordId;
   }
@@ -59,21 +58,12 @@ public class DictionaryToken extends Token {
   }
 
   /**
-   * Returns the type of this token
-   *
-   * @return token type, not null
-   */
-  public KoreanTokenizer.Type getType() {
-    return type;
-  }
-
-  /**
    * Returns true if this token is known word
    *
    * @return true if this token is in standard dictionary. false if not.
    */
   public boolean isKnown() {
-    return type == KoreanTokenizer.Type.KNOWN;
+    return type == TokenType.KNOWN;
   }
 
   /**
@@ -82,7 +72,7 @@ public class DictionaryToken extends Token {
    * @return true if this token is unknown word. false if not.
    */
   public boolean isUnknown() {
-    return type == KoreanTokenizer.Type.UNKNOWN;
+    return type == TokenType.UNKNOWN;
   }
 
   /**
@@ -91,7 +81,7 @@ public class DictionaryToken extends Token {
    * @return true if this token is in user dictionary. false if not.
    */
   public boolean isUser() {
-    return type == KoreanTokenizer.Type.USER;
+    return type == TokenType.USER;
   }
 
   @Override

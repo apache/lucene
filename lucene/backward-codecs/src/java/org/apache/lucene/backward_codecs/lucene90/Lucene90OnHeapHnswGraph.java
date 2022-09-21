@@ -27,9 +27,7 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
-import org.apache.lucene.util.hnsw.BoundsChecker;
 import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -43,17 +41,17 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
   // Each entry lists the top maxConn neighbors of a node. The nodes correspond to vectors added to
   // HnswBuilder, and the
   // node values are the ordinals of those vectors.
-  private final List<NeighborArray> graph;
+  private final List<Lucene90NeighborArray> graph;
 
   // KnnGraphValues iterator members
   private int upto;
-  private NeighborArray cur;
+  private Lucene90NeighborArray cur;
 
   Lucene90OnHeapHnswGraph(int maxConn) {
     graph = new ArrayList<>();
     // Typically with diversity criteria we see nodes not fully occupied; average fanout seems to be
     // about 1/2 maxConn. There is some indexing time penalty for under-allocating, but saves RAM
-    graph.add(new NeighborArray(Math.max(32, maxConn / 4)));
+    graph.add(new Lucene90NeighborArray(Math.max(32, maxConn / 4)));
     this.maxConn = maxConn;
   }
 
@@ -86,9 +84,9 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
     int size = graphValues.size();
 
     // MIN heap, holding the top results
-    NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
+    NeighborQueue results = new NeighborQueue(numSeed, false);
     // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = new NeighborQueue(numSeed, !similarityFunction.reversed);
+    NeighborQueue candidates = new NeighborQueue(numSeed, true);
 
     int numVisited = 0;
     // set of ordinals that have been visited by search on this layer, used to avoid backtracking
@@ -115,13 +113,13 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
     // Set the bound to the worst current result and below reject any newly-generated candidates
     // failing
     // to exceed this bound
-    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
+    Lucene90BoundsChecker bound = Lucene90BoundsChecker.create(false);
     bound.set(results.topScore());
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
-      float topCandidateScore = candidates.topScore();
+      float topCandidateSimilarity = candidates.topScore();
       if (results.size() >= topK) {
-        if (bound.check(topCandidateScore)) {
+        if (bound.check(topCandidateSimilarity)) {
           break;
         }
       }
@@ -139,11 +137,11 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
           break;
         }
 
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.size() < numSeed || bound.check(score) == false) {
-          candidates.add(friendOrd, score);
+        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
+        if (results.size() < numSeed || bound.check(friendSimilarity) == false) {
+          candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            results.insertWithOverflow(friendOrd, score);
+            results.insertWithOverflow(friendOrd, friendSimilarity);
             bound.set(results.topScore());
           }
         }
@@ -162,7 +160,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
    *
    * @param node the node whose neighbors are returned
    */
-  public NeighborArray getNeighbors(int node) {
+  public Lucene90NeighborArray getNeighbors(int node) {
     return graph.get(node);
   }
 
@@ -172,7 +170,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
   }
 
   int addNode() {
-    graph.add(new NeighborArray(maxConn + 1));
+    graph.add(new Lucene90NeighborArray(maxConn + 1));
     return graph.size() - 1;
   }
 

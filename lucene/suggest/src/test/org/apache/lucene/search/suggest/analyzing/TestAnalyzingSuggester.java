@@ -23,6 +23,7 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -42,6 +43,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.search.suggest.Input;
 import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
+import org.apache.lucene.search.suggest.SuggestRebuildTestUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.CannedBinaryTokenStream;
 import org.apache.lucene.tests.analysis.CannedBinaryTokenStream.BinaryToken;
@@ -166,6 +168,42 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
       assertEquals(6, results.get(2).value);
       assertEquals(new BytesRef("for all the fish"), results.get(2).payload);
     }
+    IOUtils.close(analyzer, tempDir);
+  }
+
+  public void testLookupsDuringReBuild() throws Exception {
+    Directory tempDir = getDirectory();
+    Analyzer analyzer = new MockAnalyzer(random(), MockTokenizer.KEYWORD, false);
+    AnalyzingSuggester suggester = new AnalyzingSuggester(tempDir, "suggest", analyzer);
+    SuggestRebuildTestUtil.testLookupsDuringReBuild(
+        suggester,
+        Arrays.asList(new Input("foo", 50), new Input("bar", 10), new Input("barbar", 12)),
+        s -> {
+          assertEquals(3, s.getCount());
+          // top 3, but only 2 found
+          List<LookupResult> results =
+              s.lookup(TestUtil.stringToCharSequence("ba", random()), false, 3);
+          assertEquals(2, results.size());
+          assertEquals("barbar", results.get(0).key.toString());
+          assertEquals(12, results.get(0).value);
+          assertEquals("bar", results.get(1).key.toString());
+          assertEquals(10, results.get(1).value);
+        },
+        Arrays.asList(new Input("barbara", 6)),
+        s -> {
+          assertEquals(4, s.getCount());
+          // top 3
+          List<LookupResult> results =
+              s.lookup(TestUtil.stringToCharSequence("ba", random()), false, 3);
+          assertEquals(3, results.size());
+          assertEquals("barbar", results.get(0).key.toString());
+          assertEquals(12, results.get(0).value);
+          assertEquals("bar", results.get(1).key.toString());
+          assertEquals(10, results.get(1).value);
+          assertEquals("barbara", results.get(2).key.toString());
+          assertEquals(6, results.get(2).value);
+        });
+
     IOUtils.close(analyzer, tempDir);
   }
 
@@ -695,7 +733,6 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
 
   private static char SEP = '\u001F';
 
-  @Slow
   public void testRandom() throws Exception {
 
     int numQueries = atLeast(200);

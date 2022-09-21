@@ -42,6 +42,10 @@ import org.apache.lucene.util.DocIdSetBuilder;
  * but in this case you must override both of these methods.
  */
 public abstract class NumericComparator<T extends Number> extends FieldComparator<T> {
+
+  // MIN_SKIP_INTERVAL and MAX_SKIP_INTERVAL both should be powers of 2
+  private static final int MIN_SKIP_INTERVAL = 32;
+  private static final int MAX_SKIP_INTERVAL = 8192;
   protected final T missingValue;
   protected final String field;
   protected final boolean reverse;
@@ -91,9 +95,12 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private final byte[] maxValueAsBytes;
 
     private DocIdSetIterator competitiveIterator;
-    private long iteratorCost;
+    private long iteratorCost = -1;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
+    private int currentSkipInterval = MIN_SKIP_INTERVAL;
+    // helps to be conservative about increasing the sampling interval
+    private int tryUpdateFailCount = 0;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);
@@ -126,7 +133,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         this.minValueAsBytes =
             reverse ? new byte[bytesCount] : topValueSet ? new byte[bytesCount] : null;
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
-        this.iteratorCost = maxDoc;
       } else {
         this.enableSkipping = false;
         this.maxDoc = 0;
@@ -165,9 +171,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      if (scorer instanceof Scorer) {
-        iteratorCost =
-            ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
+      if (iteratorCost == -1) {
+        if (scorer instanceof Scorer) {
+          iteratorCost =
+              ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
+        } else {
+          iteratorCost = maxDoc;
+        }
         updateCompetitiveIterator(); // update an iterator when we have a new segment
       }
     }
@@ -188,8 +198,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
 
       updateCounter++;
+      // Start sampling if we get called too much
       if (updateCounter > 256
-          && (updateCounter & 0x1f) != 0x1f) { // Start sampling if we get called too much
+          && (updateCounter & (currentSkipInterval - 1)) != currentSkipInterval - 1) {
         return;
       }
       if (reverse == false) {
@@ -269,11 +280,29 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (estimatedNumberOfMatches >= threshold) {
         // the new range is not selective enough to be worth materializing, it doesn't reduce number
         // of docs at least 8x
+        updateSkipInterval(false);
         return;
       }
       pointValues.intersect(visitor);
       competitiveIterator = result.build().iterator();
       iteratorCost = competitiveIterator.cost();
+      updateSkipInterval(true);
+    }
+
+    private void updateSkipInterval(boolean success) {
+      if (updateCounter > 256) {
+        if (success) {
+          currentSkipInterval = Math.max(currentSkipInterval / 2, MIN_SKIP_INTERVAL);
+          tryUpdateFailCount = 0;
+        } else {
+          if (tryUpdateFailCount >= 3) {
+            currentSkipInterval = Math.min(currentSkipInterval * 2, MAX_SKIP_INTERVAL);
+            tryUpdateFailCount = 0;
+          } else {
+            tryUpdateFailCount++;
+          }
+        }
+      }
     }
 
     @Override

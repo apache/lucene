@@ -41,14 +41,12 @@ import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Slow;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** MultiThreaded IndexWriter tests */
-@Slow
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestIndexWriterWithThreads extends LuceneTestCase {
 
@@ -118,7 +116,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
           }
         } catch (
             @SuppressWarnings("unused")
-            AlreadyClosedException ace) {
+            IllegalStateException ise) {
           // OK: abort closes the writer
           break;
         } catch (Throwable t) {

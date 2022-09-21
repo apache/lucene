@@ -533,6 +533,30 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
+    // SHOULD clause count less than or equal to minimumNumberShouldMatch
+    // Important(this can only be processed after nested clauses have been flattened)
+    {
+      final Collection<Query> shoulds = clauseSets.get(Occur.SHOULD);
+      if (shoulds.size() > 0) {
+        if (shoulds.size() < minimumNumberShouldMatch) {
+          return new MatchNoDocsQuery("SHOULD clause count less than minimumNumberShouldMatch");
+        }
+
+        if (shoulds.size() == minimumNumberShouldMatch) {
+          BooleanQuery.Builder builder = new BooleanQuery.Builder();
+          for (BooleanClause clause : clauses) {
+            if (clause.getOccur() == Occur.SHOULD) {
+              builder.add(clause.getQuery(), Occur.MUST);
+            } else {
+              builder.add(clause);
+            }
+          }
+
+          return builder.build();
+        }
+      }
+    }
+
     return super.rewrite(reader);
   }
 

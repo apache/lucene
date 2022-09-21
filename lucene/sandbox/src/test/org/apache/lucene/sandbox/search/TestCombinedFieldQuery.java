@@ -589,4 +589,86 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
       return new BM25Similarity().scorer(boost, collectionStats, termStats);
     }
   }
+
+  public void testOverrideCollectionStatistics() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    Similarity similarity = randomCompatibleSimilarity();
+    iwc.setSimilarity(similarity);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numMatch = atLeast(10);
+    for (int i = 0; i < numMatch; i++) {
+      Document doc = new Document();
+      if (random().nextBoolean()) {
+        doc.add(new TextField("a", "baz", Store.NO));
+        doc.add(new TextField("b", "baz", Store.NO));
+        for (int k = 0; k < 2; k++) {
+          doc.add(new TextField("ab", "baz", Store.NO));
+        }
+        w.addDocument(doc);
+        doc.clear();
+      }
+      int freqA = random().nextInt(5) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "foo", Store.NO));
+      }
+      int freqB = random().nextInt(5) + 1;
+      for (int j = 0; j < freqB; j++) {
+        doc.add(new TextField("b", "foo", Store.NO));
+      }
+      int freqAB = freqA + freqB;
+      for (int j = 0; j < freqAB; j++) {
+        doc.add(new TextField("ab", "foo", Store.NO));
+      }
+      w.addDocument(doc);
+    }
+
+    IndexReader reader = w.getReader();
+
+    int extraMaxDoc = randomIntBetween(0, 10);
+    int extraDocCount = randomIntBetween(0, extraMaxDoc);
+    int extraSumDocFreq = extraDocCount + randomIntBetween(0, 10);
+
+    int extraSumTotalTermFreqA = extraSumDocFreq + randomIntBetween(0, 10);
+    int extraSumTotalTermFreqB = extraSumDocFreq + randomIntBetween(0, 10);
+    int extraSumTotalTermFreqAB = extraSumTotalTermFreqA + extraSumTotalTermFreqB;
+
+    IndexSearcher searcher =
+        new IndexSearcher(reader) {
+          @Override
+          public CollectionStatistics collectionStatistics(String field) throws IOException {
+            CollectionStatistics shardStatistics = super.collectionStatistics(field);
+            int extraSumTotalTermFreq;
+            if (field.equals("a")) {
+              extraSumTotalTermFreq = extraSumTotalTermFreqA;
+            } else if (field.equals("b")) {
+              extraSumTotalTermFreq = extraSumTotalTermFreqB;
+            } else if (field.equals("ab")) {
+              extraSumTotalTermFreq = extraSumTotalTermFreqAB;
+            } else {
+              throw new AssertionError("should never be called");
+            }
+            return new CollectionStatistics(
+                field,
+                shardStatistics.maxDoc() + extraMaxDoc,
+                shardStatistics.docCount() + extraDocCount,
+                shardStatistics.sumTotalTermFreq() + extraSumTotalTermFreq,
+                shardStatistics.sumDocFreq() + extraSumDocFreq);
+          }
+        };
+    searcher.setSimilarity(similarity);
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("a")
+            .addField("b")
+            .addTerm(new BytesRef("foo"))
+            .build();
+
+    checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("ab", "foo")));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
 }

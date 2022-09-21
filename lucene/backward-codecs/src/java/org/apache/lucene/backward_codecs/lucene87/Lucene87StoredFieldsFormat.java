@@ -18,11 +18,11 @@ package org.apache.lucene.backward_codecs.lucene87;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
 import org.apache.lucene.backward_codecs.lucene50.compressing.Lucene50CompressingStoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldVisitor;

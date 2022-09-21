@@ -82,7 +82,6 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
   }
 
   // Force low cardinality leaves
-  @Slow
   public void testLowCardinalityShapeManyTimes() throws Exception {
     int numShapes = atLeast(20);
     int cardinality = TestUtil.nextInt(random(), 2, 20);
@@ -105,12 +104,10 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     doTestRandom(10);
   }
 
-  @Slow
   public void testRandomMedium() throws Exception {
     doTestRandom(atLeast(20));
   }
 
-  @Slow
   @Nightly
   public void testRandomBig() throws Exception {
     doTestRandom(20000);
@@ -176,6 +173,10 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
   protected abstract double rectMaxY(Object rect);
 
   protected abstract boolean rectCrossesDateline(Object rect);
+
+  protected QueryRelation[] getSupportedQueryRelations() {
+    return QueryRelation.values();
+  }
 
   /**
    * return a semi-random line used for queries
@@ -307,7 +308,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
 
       // BBox
       Object rect = randomQueryBox();
-      QueryRelation queryRelation = RandomPicks.randomFrom(random(), QueryRelation.values());
+      QueryRelation queryRelation = RandomPicks.randomFrom(random(), getSupportedQueryRelations());
       Query query =
           newRectQuery(
               FIELD_NAME,

@@ -24,6 +24,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSearchWithThreads extends LuceneTestCase {
@@ -57,7 +58,7 @@ public class TestSearchWithThreads extends LuceneTestCase {
 
     final AtomicBoolean failed = new AtomicBoolean();
     final AtomicLong netSearch = new AtomicLong();
-    TotalHitCountCollectorManager collectorManager = new TotalHitCountCollectorManager();
+    CollectorManager<?, Integer> collectorManager = DummyTotalHitCountCollector.createManager();
     Thread[] threads = new Thread[numThreads];
     for (int threadID = 0; threadID < numThreads; threadID++) {
       threads[threadID] =

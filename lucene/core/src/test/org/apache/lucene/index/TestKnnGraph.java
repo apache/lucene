@@ -30,9 +30,9 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene91.Lucene91Codec;
-import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene91.Lucene91HnswVectorsReader;
+import org.apache.lucene.codecs.lucene94.Lucene94Codec;
+import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -64,34 +64,60 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int maxConn = Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
+  private static int M = Lucene94HnswVectorsFormat.DEFAULT_MAX_CONN;
 
   private Codec codec;
+  private Codec float32Codec;
+  private VectorEncoding vectorEncoding;
   private VectorSimilarityFunction similarityFunction;
 
   @Before
   public void setup() {
     randSeed = random().nextLong();
     if (random().nextBoolean()) {
-      maxConn = random().nextInt(256) + 3;
+      M = random().nextInt(256) + 3;
     }
 
     codec =
-        new Lucene91Codec() {
+        new Lucene94Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene91HnswVectorsFormat(
-                maxConn, Lucene91HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            return new Lucene94HnswVectorsFormat(M, Lucene94HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
           }
         };
 
     int similarity = random().nextInt(VectorSimilarityFunction.values().length - 1) + 1;
     similarityFunction = VectorSimilarityFunction.values()[similarity];
+    vectorEncoding = randomVectorEncoding();
+
+    codec =
+        new Lucene94Codec() {
+          @Override
+          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+            return new Lucene94HnswVectorsFormat(M, Lucene94HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+          }
+        };
+
+    if (vectorEncoding == VectorEncoding.FLOAT32) {
+      float32Codec = codec;
+    } else {
+      float32Codec =
+          new Lucene94Codec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return new Lucene94HnswVectorsFormat(M, Lucene94HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            }
+          };
+    }
+  }
+
+  private VectorEncoding randomVectorEncoding() {
+    return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
   }
 
   @After
   public void cleanup() {
-    maxConn = Lucene91HnswVectorsFormat.DEFAULT_MAX_CONN;
+    M = Lucene94HnswVectorsFormat.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */
@@ -103,10 +129,7 @@ public class TestKnnGraph extends LuceneTestCase {
       float[][] values = new float[numDoc][];
       for (int i = 0; i < numDoc; i++) {
         if (random().nextBoolean()) {
-          values[i] = new float[dimension];
-          for (int j = 0; j < dimension; j++) {
-            values[i][j] = random().nextFloat();
-          }
+          values[i] = randomVector(dimension);
         }
         add(iw, i, values[i]);
       }
@@ -118,6 +141,14 @@ public class TestKnnGraph extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       float[][] values = new float[][] {new float[] {0, 1, 2}};
+      if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+        VectorUtil.l2normalize(values[0]);
+      }
+      if (vectorEncoding == VectorEncoding.BYTE) {
+        for (int i = 0; i < 3; i++) {
+          values[0][i] = (float) Math.floor(values[0][i] * 127);
+        }
+      }
       add(iw, 0, values[0]);
       assertConsistentGraph(iw, values);
       iw.commit();
@@ -134,11 +165,7 @@ public class TestKnnGraph extends LuceneTestCase {
       float[][] values = randomVectors(numDoc, dimension);
       for (int i = 0; i < numDoc; i++) {
         if (random().nextBoolean()) {
-          values[i] = new float[dimension];
-          for (int j = 0; j < dimension; j++) {
-            values[i][j] = random().nextFloat();
-          }
-          VectorUtil.l2normalize(values[i]);
+          values[i] = randomVector(dimension);
         }
         add(iw, i, values[i]);
         if (random().nextInt(10) == 3) {
@@ -238,8 +265,8 @@ public class TestKnnGraph extends LuceneTestCase {
         PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
             (PerFieldKnnVectorsFormat.FieldsReader)
                 ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
-        Lucene91HnswVectorsReader vectorReader =
-            (Lucene91HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
+        Lucene94HnswVectorsReader vectorReader =
+            (Lucene94HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
         graph = copyGraph(vectorReader.getGraph(KNN_GRAPH_FIELD));
       }
     }
@@ -250,20 +277,30 @@ public class TestKnnGraph extends LuceneTestCase {
     float[][] values = new float[numDoc][];
     for (int i = 0; i < numDoc; i++) {
       if (random().nextBoolean()) {
-        values[i] = new float[dimension];
-        for (int j = 0; j < dimension; j++) {
-          values[i][j] = random().nextFloat();
-        }
-        VectorUtil.l2normalize(values[i]);
+        values[i] = randomVector(dimension);
       }
     }
     return values;
   }
 
+  private float[] randomVector(int dimension) {
+    float[] value = new float[dimension];
+    for (int j = 0; j < dimension; j++) {
+      value[j] = random().nextFloat();
+    }
+    VectorUtil.l2normalize(value);
+    if (vectorEncoding == VectorEncoding.BYTE) {
+      for (int j = 0; j < dimension; j++) {
+        value[j] = (byte) (value[j] * 127);
+      }
+    }
+    return value;
+  }
+
   int[][][] copyGraph(HnswGraph graphValues) throws IOException {
     int[][][] graph = new int[graphValues.numLevels()][][];
     int size = graphValues.size();
-    int[] scratch = new int[maxConn];
+    int[] scratch = new int[M * 2];
 
     for (int level = 0; level < graphValues.numLevels(); level++) {
       NodesIterator nodesItr = graphValues.getNodesOnLevel(level);
@@ -286,7 +323,7 @@ public class TestKnnGraph extends LuceneTestCase {
     // We can't use dot product here since the vectors are laid out on a grid, not a sphere.
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
-    config.setCodec(codec); // test is not compatible with simpletext
+    config.setCodec(float32Codec);
     try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, config)) {
       indexData(iw);
@@ -342,7 +379,7 @@ public class TestKnnGraph extends LuceneTestCase {
   public void testMultiThreadedSearch() throws Exception {
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     IndexWriterConfig config = newIndexWriterConfig();
-    config.setCodec(codec);
+    config.setCodec(float32Codec);
     Directory dir = newDirectory();
     IndexWriter iw = new IndexWriter(dir, config);
     indexData(iw);
@@ -437,8 +474,8 @@ public class TestKnnGraph extends LuceneTestCase {
         if (perFieldReader == null) {
           continue;
         }
-        Lucene91HnswVectorsReader vectorReader =
-            (Lucene91HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
+        Lucene94HnswVectorsReader vectorReader =
+            (Lucene94HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
         if (vectorReader == null) {
           continue;
         }
@@ -451,8 +488,9 @@ public class TestKnnGraph extends LuceneTestCase {
 
         // assert vector values:
         // stored vector values are the same as original
+        int nextDocWithVectors = 0;
         for (int i = 0; i < reader.maxDoc(); i++) {
-          int nextDocWithVectors = vectorValues.advance(i);
+          nextDocWithVectors = vectorValues.advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
             int id = Integer.parseInt(reader.document(i).get("id"));
             assertNull("document " + id + " has no vector, but was expected to", values[id]);
@@ -468,19 +506,27 @@ public class TestKnnGraph extends LuceneTestCase {
               "vector did not match for doc " + i + ", id=" + id + ": " + Arrays.toString(scratch),
               values[id],
               scratch,
-              0f);
+              0);
           numDocsWithVectors++;
         }
-        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        // if IndexDisi.doc == NO_MORE_DOCS, we should not call IndexDisi.nextDoc()
+        if (nextDocWithVectors != NO_MORE_DOCS) {
+          assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+        } else {
+          assertEquals(NO_MORE_DOCS, vectorValues.docID());
+        }
 
         // assert graph values:
         // For each level of the graph assert that:
         // 1. There are no orphan nodes without any friends
         // 2. If orphans are found, than the level must contain only 0 or a single node
-        // 3. If the number of nodes on the level doesn't exceed maxConn, assert that the graph is
+        // 3. If the number of nodes on the level doesn't exceed maxConnOnLevel, assert that the
+        // graph is
         //   fully connected, i.e. any node is reachable from any other node.
-        // 4. If the number of nodes on the level exceeds maxConn, assert that maxConn is respected.
+        // 4. If the number of nodes on the level exceeds maxConnOnLevel, assert that maxConnOnLevel
+        // is respected.
         for (int level = 0; level < graphValues.numLevels(); level++) {
+          int maxConnOnLevel = level == 0 ? M * 2 : M;
           int[][] graphOnLevel = new int[graphValues.size()][];
           int countOnLevel = 0;
           boolean foundOrphan = false;
@@ -502,7 +548,6 @@ public class TestKnnGraph extends LuceneTestCase {
             }
             countOnLevel++;
           }
-          // System.out.println("Level[" + level + "] has [" + nodesCount + "] nodes.");
           assertEquals(nodesItr.size(), countOnLevel);
           assertFalse("No nodes on level [" + level + "]", countOnLevel == 0);
           if (countOnLevel == 1) {
@@ -511,13 +556,13 @@ public class TestKnnGraph extends LuceneTestCase {
           } else {
             assertFalse(
                 "Graph has orphan nodes with no friends on level [" + level + "]", foundOrphan);
-            if (maxConn > countOnLevel) {
+            if (maxConnOnLevel > countOnLevel) {
               // assert that the graph is fully connected,
               // i.e. any node can be reached from any other node
               assertConnected(graphOnLevel);
             } else {
               // assert that max-connections was respected
-              assertMaxConn(graphOnLevel, maxConn);
+              assertMaxConn(graphOnLevel, maxConnOnLevel);
             }
           }
         }

@@ -31,7 +31,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
@@ -41,11 +41,11 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -222,7 +222,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   private static void assertNumberOfHits(IndexSearcher searcher, Query query, int numberOfHits)
       throws IOException {
     assertEquals(
-        numberOfHits, searcher.search(query, new TotalHitCountCollectorManager()).intValue());
+        numberOfHits,
+        searcher.search(query, DummyTotalHitCountCollector.createManager()).intValue());
     assertEquals(numberOfHits, searcher.count(query));
   }
 
@@ -372,7 +373,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     Query query = createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE);
     Query rewrittenQuery = query.rewrite(reader);
-    assertEquals(new DocValuesFieldExistsQuery("field"), rewrittenQuery);
+    assertEquals(new FieldExistsQuery("field"), rewrittenQuery);
 
     writer.close();
     reader.close();

@@ -17,43 +17,30 @@
 package org.apache.lucene.facet.range;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.lucene.facet.FacetCountsWithFilterQuery;
 import org.apache.lucene.facet.FacetResult;
-import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Base class for range faceting.
  *
  * @lucene.experimental
  */
-abstract class RangeFacetCounts extends Facets {
+abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
   /** Ranges passed to constructor. */
   protected final Range[] ranges;
 
   /** Counts, initialized in by subclass. */
   protected final int[] counts;
-
-  /**
-   * Optional: if specified, we first test this Query to see whether the document should be checked
-   * for matching ranges. If this is null, all documents are checked.
-   */
-  protected final Query fastMatchQuery;
 
   /** Our field name. */
   protected final String field;
@@ -62,40 +49,11 @@ abstract class RangeFacetCounts extends Facets {
   protected int totCount;
 
   /** Create {@code RangeFacetCounts} */
-  protected RangeFacetCounts(String field, Range[] ranges, Query fastMatchQuery)
-      throws IOException {
+  protected RangeFacetCounts(String field, Range[] ranges, Query fastMatchQuery) {
+    super(fastMatchQuery);
     this.field = field;
     this.ranges = ranges;
-    this.fastMatchQuery = fastMatchQuery;
     counts = new int[ranges.length];
-  }
-
-  /**
-   * Create a {@link org.apache.lucene.search.DocIdSetIterator} from the provided {@code hits} that
-   * relies on {@code fastMatchQuery} if available for first-pass filtering. A null response
-   * indicates no documents will match.
-   */
-  protected DocIdSetIterator createIterator(FacetsCollector.MatchingDocs hits) throws IOException {
-
-    if (fastMatchQuery != null) {
-
-      final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(hits.context);
-      final IndexSearcher searcher = new IndexSearcher(topLevelContext);
-      searcher.setQueryCache(null);
-      final Weight fastMatchWeight =
-          searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
-      final Scorer s = fastMatchWeight.scorer(hits.context);
-      if (s == null) {
-        return null; // no hits from the fastMatchQuery; return null
-      } else {
-        DocIdSetIterator fastMatchDocs = s.iterator();
-        return ConjunctionUtils.intersectIterators(
-            Arrays.asList(hits.bits.iterator(), fastMatchDocs));
-      }
-
-    } else {
-      return hits.bits.iterator();
-    }
   }
 
   protected abstract LongRange[] getLongRanges();
@@ -216,20 +174,59 @@ abstract class RangeFacetCounts extends Facets {
     totCount -= missingCount;
   }
 
+  /**
+   * {@inheritDoc}
+   *
+   * <p>NOTE: This implementation guarantees that ranges will be returned in the order specified by
+   * the user when calling the constructor.
+   */
   @Override
-  public FacetResult getTopChildren(int topN, String dim, String... path) {
-    if (dim.equals(field) == false) {
-      throw new IllegalArgumentException(
-          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
-    }
-    if (path.length != 0) {
-      throw new IllegalArgumentException("path.length should be 0");
-    }
+  public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    validateDimAndPathForGetChildren(dim, path);
     LabelAndValue[] labelValues = new LabelAndValue[counts.length];
     for (int i = 0; i < counts.length; i++) {
       labelValues[i] = new LabelAndValue(ranges[i].label, counts[i]);
     }
     return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
+  }
+
+  @Override
+  public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
+    validateTopN(topN);
+    validateDimAndPathForGetChildren(dim, path);
+
+    PriorityQueue<Entry> pq =
+        new PriorityQueue<>(Math.min(topN, counts.length)) {
+          @Override
+          protected boolean lessThan(Entry a, Entry b) {
+            int cmp = Integer.compare(a.count, b.count);
+            if (cmp == 0) {
+              cmp = b.label.compareTo(a.label);
+            }
+            return cmp < 0;
+          }
+        };
+
+    int childCount = 0;
+    Entry e = null;
+    for (int i = 0; i < counts.length; i++) {
+      if (counts[i] != 0) {
+        childCount++;
+        if (e == null) {
+          e = new Entry();
+        }
+        e.label = ranges[i].label;
+        e.count = counts[i];
+        e = pq.insertWithOverflow(e);
+      }
+    }
+
+    LabelAndValue[] results = new LabelAndValue[pq.size()];
+    while (pq.size() != 0) {
+      Entry entry = pq.pop();
+      results[pq.size()] = new LabelAndValue(entry.label, entry.count);
+    }
+    return new FacetResult(dim, path, totCount, results, childCount);
   }
 
   @Override
@@ -240,6 +237,7 @@ abstract class RangeFacetCounts extends Facets {
 
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
+    validateTopN(topN);
     return Collections.singletonList(getTopChildren(topN, field));
   }
 
@@ -257,5 +255,21 @@ abstract class RangeFacetCounts extends Facets {
       b.append('\n');
     }
     return b.toString();
+  }
+
+  private void validateDimAndPathForGetChildren(String dim, String... path) {
+    if (dim.equals(field) == false) {
+      throw new IllegalArgumentException(
+          "invalid dim \"" + dim + "\"; should be \"" + field + "\"");
+    }
+    if (path.length != 0) {
+      throw new IllegalArgumentException("path.length should be 0");
+    }
+  }
+
+  /** Reusable entry to hold range label and int count. */
+  private static final class Entry {
+    int count;
+    String label;
   }
 }

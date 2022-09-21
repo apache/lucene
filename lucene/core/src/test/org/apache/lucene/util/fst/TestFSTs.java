@@ -310,7 +310,6 @@ public class TestFSTs extends LuceneTestCase {
 
   // Build FST for all unique terms in the test line docs
   // file, up until a doc limit
-  @Slow
   public void testRealTerms() throws Exception {
 
     final LineFileDocs docs = new LineFileDocs(random());
@@ -529,7 +528,7 @@ public class TestFSTs extends LuceneTestCase {
       BufferedReader is = Files.newBufferedReader(wordsFileIn, StandardCharsets.UTF_8);
       try {
         final IntsRefBuilder intsRefBuilder = new IntsRefBuilder();
-        long tStart = System.currentTimeMillis();
+        long tStart = System.nanoTime();
         int ord = 0;
         while (true) {
           String w = is.readLine();
@@ -544,7 +543,7 @@ public class TestFSTs extends LuceneTestCase {
             System.out.printf(
                 Locale.ROOT,
                 "%6.2fs: %9d...",
-                ((System.currentTimeMillis() - tStart) / 1000.0),
+                ((System.nanoTime() - tStart) / 1_000_000_000.0),
                 ord);
           }
           if (ord >= limit) {
@@ -552,13 +551,13 @@ public class TestFSTs extends LuceneTestCase {
           }
         }
 
-        long tMid = System.currentTimeMillis();
-        System.out.println(((tMid - tStart) / 1000.0) + " sec to add all terms");
+        long tMid = System.nanoTime();
+        System.out.println(((tMid - tStart) / 1_000_000_000.0) + " sec to add all terms");
 
         assert fstCompiler.getTermCount() == ord;
         FST<T> fst = fstCompiler.compile();
-        long tEnd = System.currentTimeMillis();
-        System.out.println(((tEnd - tMid) / 1000.0) + " sec to finish/pack");
+        long tEnd = System.nanoTime();
+        System.out.println(((tEnd - tMid) / 1_000_000_000.0) + " sec to finish/pack");
         if (fst == null) {
           System.out.println("FST was fully pruned!");
           System.exit(0);
@@ -599,7 +598,7 @@ public class TestFSTs extends LuceneTestCase {
         is = Files.newBufferedReader(wordsFileIn, StandardCharsets.UTF_8);
 
         ord = 0;
-        tStart = System.currentTimeMillis();
+        tStart = System.nanoTime();
         while (true) {
           String w = is.readLine();
           if (w == null) {
@@ -623,14 +622,14 @@ public class TestFSTs extends LuceneTestCase {
           ord++;
           if (ord % 500000 == 0) {
             System.out.println(
-                ((System.currentTimeMillis() - tStart) / 1000.0) + "s: " + ord + "...");
+                ((System.nanoTime() - tStart) / 1_000_000_000.0) + "s: " + ord + "...");
           }
           if (ord >= limit) {
             break;
           }
         }
 
-        double totSec = ((System.currentTimeMillis() - tStart) / 1000.0);
+        double totSec = ((System.nanoTime() - tStart) / 1_000_000_000.0);
         System.out.println(
             "Verify took "
                 + totSec

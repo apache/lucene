@@ -2453,7 +2453,6 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8276")
   public void testLUCENE8276_case3() {
     // POLYGON((2.693381024483753E-4 -0.001073608118084019,1.5848404608659423E-4
     // -2.6378130512803985E-4,8.981079660799132E-4 -6.4697719116416E-4,-7.934854852157693E-5
@@ -2507,7 +2506,6 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8281")
   public void testLUCENE8281() {
     /*
     [junit4]    > Standard polygon: GeoCompositePolygon: {[GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[[lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=-2.8213942160840002E-6, lon=1.608008770581648E-5([X=1.0011188538590383, Y=1.60980789753873E-5, Z=-2.8245509442632E-6])], [lat=3.8977187534179774E-6, lon=1.9713406091526053E-5([X=1.0011188537902969, Y=1.973546251320774E-5, Z=3.902079731596721E-6])], [lat=1.980614928404974E-5, lon=4.069266235973146E-6([X=1.0011188537865057, Y=4.07381914993205E-6, Z=1.982830947192924E-5])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])]], internalEdges={4}}, GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[[lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])], [lat=-1.261719663233924E-5, lon=-1.5701544210600105E-5([X=1.001118853788849, Y=-1.5719111944122703E-5, Z=-1.2631313432823314E-5])]], internalEdges={0}}]}
@@ -2574,7 +2572,6 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8280")
   public void testLUCENE8280() {
     /*
     [junit4]   1>       unquantized=[lat=0.16367268756896675, lon=-3.141592653589793([X=-0.9876510422569805, Y=-1.2095236875745584E-16, Z=0.16311061810965483])]
@@ -2622,7 +2619,6 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8337")
   public void testLUCENE8337() {
     /*
        {planetmodel=PlanetModel.WGS84, number of shapes=1, address=c865f21d,
@@ -2754,7 +2750,6 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8451")
   public void testLUCENE8451() {
     // POLYGON((-2.5185339401969213 -24.093993739745027,0.0
     // 8.828539494442529E-27,5.495998489568957E-11 -8.321407453133E-11,2.7174659198424288E-11
@@ -2813,7 +2808,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8512")
   public void testLUCENE8512() {
     // POLYGON((35.4190030282028 -67.85799140154762,35.420218772379776
     // -67.85786846162631,35.42021877254679 -67.85786846168897,35.420218772734266

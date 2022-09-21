@@ -56,4 +56,11 @@ public interface Collector {
 
   /** Indicates what features are required from the scorer. */
   ScoreMode scoreMode();
+
+  /**
+   * Set the {@link Weight} that will be used to produce scorers that will feed {@link
+   * LeafCollector}s. This is typically useful to have access to {@link Weight#count} from {@link
+   * Collector#getLeafCollector}.
+   */
+  default void setWeight(Weight weight) {}
 }

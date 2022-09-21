@@ -10,6 +10,9 @@ on:
     - main
     - branch_9x
 
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
 jobs:
   # This runs all validation checks without tests.
   checks:
@@ -33,17 +36,8 @@ jobs:
         java-version: ${{ matrix.java }}
         java-package: jdk
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-precommit-
-          ${{ runner.os }}-gradle-
+    - name: Prepare caches
+      uses: ./.github/actions/gradle-caches
 
     - name: Initialize gradle settings
       run: ./gradlew localSettings --max-workers 2
@@ -77,14 +71,8 @@ jobs:
         java-version: ${{ matrix.java }}
         java-package: jdk
 
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-precommit-${{ hashFiles('versions.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-precommit-
-          ${{ runner.os }}-gradle-
+    - name: Prepare caches
+      uses: ./.github/actions/gradle-caches
 
     - name: Initialize gradle settings
       run: ./gradlew localSettings --max-workers 2
@@ -93,6 +81,4 @@ jobs:
       run: cat gradle.properties
 
     - name: Run gradle tests
-      run: ./gradlew test "-Ptask.times=true" "-Ptests.slow=false" --max-workers 2
-
-    # - uses: gradle/wrapper-validation-action@v1
+      run: ./gradlew test "-Ptask.times=true" --max-workers 2

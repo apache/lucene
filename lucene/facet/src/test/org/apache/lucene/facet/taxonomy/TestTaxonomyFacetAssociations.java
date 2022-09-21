@@ -16,20 +16,35 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.DrillDownQuery;
+import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -44,6 +59,11 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
   private static FacetsConfig config;
 
+  private static Map<String, List<Integer>> randomIntValues;
+  private static Map<String, List<Float>> randomFloatValues;
+  private static Map<String, List<Integer>> randomIntSingleValued;
+  private static Map<String, List<Float>> randomFloatSingleValued;
+
   @BeforeClass
   public static void beforeClass() throws Exception {
     dir = newDirectory();
@@ -56,8 +76,14 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     config = new FacetsConfig();
     config.setIndexFieldName("int", "$facets.int");
     config.setMultiValued("int", true);
+    config.setIndexFieldName("int_random", "$facets.int");
+    config.setMultiValued("int_random", true);
+    config.setIndexFieldName("int_single_valued", "$facets.int");
     config.setIndexFieldName("float", "$facets.float");
     config.setMultiValued("float", true);
+    config.setIndexFieldName("float_random", "$facets.float");
+    config.setMultiValued("float_random", true);
+    config.setIndexFieldName("float_single_valued", "$facets.float");
 
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
@@ -77,10 +103,79 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
       writer.addDocument(config.build(taxoWriter, doc));
     }
 
+    // Also index random content for more random testing:
+    String[] paths = new String[] {"a", "b", "c"};
+    int count = random().nextInt(1000);
+    randomIntValues = new HashMap<>();
+    randomFloatValues = new HashMap<>();
+    randomIntSingleValued = new HashMap<>();
+    randomFloatSingleValued = new HashMap<>();
+    for (int i = 0; i < count; i++) {
+      Document doc = new Document();
+
+      if (random().nextInt(10) >= 2) { // occasionally don't add any fields
+        // Add up to five ordinals + values for each doc. Note that duplicates are totally fine:
+        for (int j = 0; j < 5; j++) {
+          String path = paths[random().nextInt(3)];
+          if (random().nextBoolean()) { // maybe index an int association with the dim
+            int nextInt = atLeast(1);
+            randomIntValues.computeIfAbsent(path, k -> new ArrayList<>()).add(nextInt);
+            doc.add(new IntAssociationFacetField(nextInt, "int_random", path));
+          }
+          if (random().nextBoolean()) { // maybe index a float association with the dim
+            float nextFloat = random().nextFloat() * 10000f;
+            doc.add(new FloatAssociationFacetField(nextFloat, "float_random", path));
+          }
+        }
+
+        // Also, (maybe) add to the single-valued association fields:
+        String path = paths[random().nextInt(3)];
+        if (random().nextBoolean()) {
+          int nextInt = atLeast(1);
+          randomIntSingleValued.computeIfAbsent(path, k -> new ArrayList<>()).add(nextInt);
+          doc.add(new IntAssociationFacetField(nextInt, "int_single_valued", path));
+        }
+        if (random().nextBoolean()) {
+          float nextFloat = random().nextFloat() * 10000f;
+          doc.add(new FloatAssociationFacetField(nextFloat, "float_single_valued", path));
+        }
+      }
+
+      writer.addDocument(config.build(taxoWriter, doc));
+    }
+
     taxoWriter.close();
     reader = writer.getReader();
     writer.close();
     taxoReader = new DirectoryTaxonomyReader(taxoDir);
+
+    // To avoid floating point precision issues, it's useful to keep track of the values in the
+    // exact same order they appear when iterating the doc values in the index. This ensures we
+    // sum them in the same order when determining expected values for tests cases and when the
+    // actual facets implementation sums them. See LUCENE-10530:
+    for (LeafReaderContext ctx : reader.leaves()) {
+      BinaryDocValues dv = DocValues.getBinary(ctx.reader(), "$facets.float");
+      for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
+        final BytesRef bytesRef = dv.binaryValue();
+        byte[] bytes = bytesRef.bytes;
+        int end = bytesRef.offset + bytesRef.length;
+        int offset = bytesRef.offset;
+        while (offset < end) {
+          int ord = (int) BitUtil.VH_BE_INT.get(bytes, offset);
+          offset += 4;
+          float value = (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
+          offset += 4;
+          FacetLabel label = taxoReader.getPath(ord);
+          String dim = label.components[0];
+          String child = label.components[1];
+          if ("float_random".equals(dim)) {
+            randomFloatValues.computeIfAbsent(child, k -> new ArrayList<>()).add(value);
+          } else if ("float_single_valued".equals(dim)) {
+            randomFloatSingleValued.computeIfAbsent(child, k -> new ArrayList<>()).add(value);
+          }
+        }
+      }
+    }
   }
 
   @AfterClass
@@ -100,24 +195,104 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     IndexSearcher searcher = newSearcher(reader);
     FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
-    Facets facets = new TaxonomyFacetSumIntAssociations("$facets.int", taxoReader, config, fc);
+    Facets facets =
+        new TaxonomyFacetIntAssociations(
+            "$facets.int", taxoReader, config, fc, AssociationAggregationFunction.SUM);
     assertEquals(
         "dim=int path=[] value=-1 childCount=2\n  a (200)\n  b (150)\n",
         facets.getTopChildren(10, "int").toString());
+    assertFacetResult(
+        facets.getAllChildren("int"),
+        "int",
+        new String[0],
+        2,
+        -1,
+        new LabelAndValue[] {
+          new LabelAndValue("a", 200), new LabelAndValue("b", 150),
+        });
     assertEquals(
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
+
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
+  }
+
+  public void testIntAssociationRandom() throws Exception {
+
+    FacetsCollector fc = new FacetsCollector();
+
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.search(new MatchAllDocsQuery(), fc);
+
+    Map<String, Integer> expected;
+    Facets facets;
+
+    // SUM:
+    facets =
+        new TaxonomyFacetIntAssociations(
+            "$facets.int", taxoReader, config, fc, AssociationAggregationFunction.SUM);
+    expected = new HashMap<>();
+    for (Map.Entry<String, List<Integer>> e : randomIntValues.entrySet()) {
+      expected.put(e.getKey(), e.getValue().stream().reduce(Integer::sum).orElse(0));
+    }
+    validateInts("int_random", expected, AssociationAggregationFunction.SUM, true, facets);
+    expected = new HashMap<>();
+    for (Map.Entry<String, List<Integer>> e : randomIntSingleValued.entrySet()) {
+      expected.put(e.getKey(), e.getValue().stream().reduce(Integer::sum).orElse(0));
+    }
+    validateInts("int_single_valued", expected, AssociationAggregationFunction.SUM, false, facets);
+
+    // test getAllDims and getTopDims
+    List<FacetResult> allDims = facets.getAllDims(10);
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    assertEquals(topDims, allDims);
+
+    // MAX:
+    facets =
+        new TaxonomyFacetIntAssociations(
+            "$facets.int", taxoReader, config, fc, AssociationAggregationFunction.MAX);
+    expected = new HashMap<>();
+    for (Map.Entry<String, List<Integer>> e : randomIntValues.entrySet()) {
+      expected.put(e.getKey(), e.getValue().stream().max(Integer::compareTo).orElse(0));
+    }
+    validateInts("int_random", expected, AssociationAggregationFunction.MAX, true, facets);
+    expected = new HashMap<>();
+    for (Map.Entry<String, List<Integer>> e : randomIntSingleValued.entrySet()) {
+      expected.put(e.getKey(), e.getValue().stream().max(Integer::compareTo).orElse(0));
+    }
+    validateInts("int_single_valued", expected, AssociationAggregationFunction.MAX, false, facets);
+
+    // test getAllDims and getTopDims
+    topDims = facets.getTopDims(10, 10);
+    allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   public void testFloatSumAssociation() throws Exception {
     IndexSearcher searcher = newSearcher(reader);
     FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
-    Facets facets = new TaxonomyFacetSumFloatAssociations("$facets.float", taxoReader, config, fc);
+    Facets facets =
+        new TaxonomyFacetFloatAssociations(
+            "$facets.float", taxoReader, config, fc, AssociationAggregationFunction.SUM);
     assertEquals(
         "dim=float path=[] value=-1.0 childCount=2\n  a (50.0)\n  b (9.999995)\n",
         facets.getTopChildren(10, "float").toString());
+
+    assertFacetResult(
+        facets.getAllChildren("float"),
+        "float",
+        new String[0],
+        2,
+        -1.0f,
+        new LabelAndValue[] {
+          new LabelAndValue("a", 50.0f), new LabelAndValue("b", 9.999995f),
+        });
+
     assertEquals(
         "Wrong count for category 'a'!",
         50f,
@@ -128,6 +303,64 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         10f,
         facets.getSpecificValue("float", "b").floatValue(),
         0.00001);
+
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
+  }
+
+  public void testFloatAssociationRandom() throws Exception {
+
+    FacetsCollector fc = new FacetsCollector();
+
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.search(new MatchAllDocsQuery(), fc);
+
+    Map<String, Float> expected;
+    Facets facets;
+
+    // SUM:
+    facets =
+        new TaxonomyFacetFloatAssociations(
+            "$facets.float", taxoReader, config, fc, AssociationAggregationFunction.SUM);
+    expected = new HashMap<>();
+    for (Map.Entry<String, List<Float>> e : randomFloatValues.entrySet()) {
+      expected.put(e.getKey(), e.getValue().stream().reduce(Float::sum).orElse(0f));
+    }
+    validateFloats("float_random", expected, AssociationAggregationFunction.SUM, true, facets);
+    expected = new HashMap<>();
+    for (Map.Entry<String, List<Float>> e : randomFloatSingleValued.entrySet()) {
+      expected.put(e.getKey(), e.getValue().stream().reduce(Float::sum).orElse(0f));
+    }
+    validateFloats(
+        "float_single_valued", expected, AssociationAggregationFunction.SUM, false, facets);
+
+    // test getAllDims and getTopDims
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    List<FacetResult> allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
+
+    // MAX:
+    facets =
+        new TaxonomyFacetFloatAssociations(
+            "$facets.float", taxoReader, config, fc, AssociationAggregationFunction.MAX);
+    expected = new HashMap<>();
+    for (Map.Entry<String, List<Float>> e : randomFloatValues.entrySet()) {
+      expected.put(e.getKey(), e.getValue().stream().max(Float::compareTo).orElse(0f));
+    }
+    validateFloats("float_random", expected, AssociationAggregationFunction.MAX, true, facets);
+    expected = new HashMap<>();
+    for (Map.Entry<String, List<Float>> e : randomFloatSingleValued.entrySet()) {
+      expected.put(e.getKey(), e.getValue().stream().max(Float::compareTo).orElse(0f));
+    }
+    validateFloats(
+        "float_single_valued", expected, AssociationAggregationFunction.MAX, false, facets);
+
+    // test getAllDims and getTopDims
+    topDims = facets.getTopDims(10, 10);
+    allDims = facets.getAllDims(10);
+    assertEquals(topDims, allDims);
   }
 
   /**
@@ -138,7 +371,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     IndexSearcher searcher = newSearcher(reader);
     FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
-    Facets facets = new TaxonomyFacetSumFloatAssociations("$facets.float", taxoReader, config, fc);
+    Facets facets =
+        new TaxonomyFacetFloatAssociations(
+            "$facets.float", taxoReader, config, fc, AssociationAggregationFunction.SUM);
     assertEquals(
         "Wrong count for category 'a'!",
         50f,
@@ -150,7 +385,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         facets.getSpecificValue("float", "b").floatValue(),
         0.00001);
 
-    facets = new TaxonomyFacetSumIntAssociations("$facets.int", taxoReader, config, fc);
+    facets =
+        new TaxonomyFacetIntAssociations(
+            "$facets.int", taxoReader, config, fc, AssociationAggregationFunction.SUM);
     assertEquals(
         "Wrong count for category 'a'!", 200, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
@@ -160,7 +397,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
   public void testWrongIndexFieldName() throws Exception {
     IndexSearcher searcher = newSearcher(reader);
     FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-    Facets facets = new TaxonomyFacetSumFloatAssociations(taxoReader, config, fc);
+    Facets facets =
+        new TaxonomyFacetFloatAssociations(
+            "wrong_field", taxoReader, config, fc, AssociationAggregationFunction.SUM);
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -171,6 +410,12 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         IllegalArgumentException.class,
         () -> {
           facets.getTopChildren(10, "float");
+        });
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getAllChildren("float");
         });
   }
 
@@ -242,13 +487,116 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     q.add("int", "b");
     FacetsCollector fc = searcher.search(q, new FacetsCollectorManager());
 
-    Facets facets = new TaxonomyFacetSumIntAssociations("$facets.int", taxoReader, config, fc);
+    Facets facets =
+        new TaxonomyFacetIntAssociations(
+            "$facets.int", taxoReader, config, fc, AssociationAggregationFunction.SUM);
     assertEquals(
         "dim=int path=[] value=-1 childCount=2\n  b (150)\n  a (100)\n",
         facets.getTopChildren(10, "int").toString());
+
+    assertEquals(
+        "dim=int path=[] value=-1 childCount=2\n  a (100)\n  b (150)\n",
+        sortAllChildren(facets.getAllChildren("int")).toString());
+
+    assertFacetResult(
+        facets.getAllChildren("int"),
+        "int",
+        new String[0],
+        2,
+        -1,
+        new LabelAndValue[] {
+          new LabelAndValue("a", 100), new LabelAndValue("b", 150),
+        });
+
     assertEquals(
         "Wrong count for category 'a'!", 100, facets.getSpecificValue("int", "a").intValue());
     assertEquals(
         "Wrong count for category 'b'!", 150, facets.getSpecificValue("int", "b").intValue());
+  }
+
+  private void validateInts(
+      String dim,
+      Map<String, Integer> expected,
+      AssociationAggregationFunction aggregationFunction,
+      boolean isMultiValued,
+      Facets facets)
+      throws IOException {
+    int aggregatedValue = 0;
+    for (Map.Entry<String, Integer> e : expected.entrySet()) {
+      int value = e.getValue();
+      assertEquals(value, facets.getSpecificValue(dim, e.getKey()).intValue());
+      aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+    }
+
+    if (isMultiValued) {
+      aggregatedValue = -1;
+    }
+
+    FacetResult facetResult = facets.getTopChildren(10, dim);
+    FacetResult allChildrenResult = facets.getAllChildren(dim);
+
+    if (expected.isEmpty()) {
+      // If we hit the rare random case where nothing is indexed for the dim, we expect a null
+      // facetResult (see: LUCENE-10529)
+      assertNull(facetResult);
+      assertNull(allChildrenResult);
+    } else {
+      assertEquals(dim, facetResult.dim);
+      assertEquals(dim, allChildrenResult.dim);
+      assertEquals(aggregatedValue, facetResult.value.intValue());
+      assertEquals(aggregatedValue, allChildrenResult.value.intValue());
+      assertEquals(expected.size(), facetResult.childCount);
+      assertEquals(expected.size(), allChildrenResult.childCount);
+    }
+  }
+
+  private void validateFloats(
+      String dim,
+      Map<String, Float> expected,
+      AssociationAggregationFunction aggregationFunction,
+      boolean isMultiValued,
+      Facets facets)
+      throws IOException {
+    float aggregatedValue = 0f;
+    for (Map.Entry<String, Float> e : expected.entrySet()) {
+      float value = e.getValue();
+      // We can expect the floats to be exactly equal here since we're ensuring that we sum them
+      // in the same order when determining expected values and when computing facets. See
+      // LUCENE-10530:
+      assertEquals(value, facets.getSpecificValue(dim, e.getKey()).floatValue(), 0f);
+      aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+    }
+
+    if (isMultiValued) {
+      aggregatedValue = -1;
+    }
+
+    FacetResult facetResult = facets.getTopChildren(10, dim);
+    FacetResult allChildrenResult = facets.getAllChildren(dim);
+
+    if (expected.isEmpty()) {
+      // If we hit the rare random case where nothing is indexed for the dim, we expect a null
+      // facetResult (see: LUCENE-10529)
+      assertNull(facetResult);
+      assertNull(allChildrenResult);
+    } else {
+      assertEquals(dim, facetResult.dim);
+      assertEquals(dim, allChildrenResult.dim);
+      assertEquals(aggregatedValue, facetResult.value.floatValue(), 1f);
+      assertEquals(aggregatedValue, allChildrenResult.value.floatValue(), 1f);
+      assertEquals(expected.size(), facetResult.childCount);
+      assertEquals(expected.size(), allChildrenResult.childCount);
+    }
+  }
+
+  // since we have no insight into the ordinals assigned to the values, we sort labels by value and
+  // count in
+  // ascending order in order to compare with expected results
+  private static FacetResult sortAllChildren(FacetResult allChildrenResult) {
+    Arrays.sort(
+        allChildrenResult.labelValues,
+        Comparator.comparing((LabelAndValue a) -> a.label)
+            .thenComparingLong(a -> a.value.longValue()));
+    return allChildrenResult;
   }
 }

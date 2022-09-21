@@ -27,8 +27,6 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.net.URI;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -100,7 +98,6 @@ import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.index.SuppressingConcurrentMergeScheduler;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
-import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.mockfile.WindowsFS;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -1272,8 +1269,8 @@ public class TestIndexWriter extends LuceneTestCase {
     for (int iter = 0; iter < 2; iter++) {
       // relies on windows semantics
       Path path = createTempDir();
-      FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-      Path indexPath = new FilterPath(path, fs);
+      WindowsFS provider = new WindowsFS(path.getFileSystem());
+      Path indexPath = provider.wrapPath(path);
 
       // NOTE: on Unix, we cannot use MMapDir, because WindowsFS doesn't see/think it keeps file
       // handles open.  Yet, on Windows, we MUST use
@@ -2807,8 +2804,8 @@ public class TestIndexWriter extends LuceneTestCase {
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    Path root = new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    Path root = provider.wrapPath(path);
 
     // MMapDirectory doesn't work because it closes its file handles after mapping!
     List<Closeable> toClose = new ArrayList<>();
@@ -2879,8 +2876,8 @@ public class TestIndexWriter extends LuceneTestCase {
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    Path root = new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    Path root = provider.wrapPath(path);
     try (FSDirectory _dir = new NIOFSDirectory(root)) {
       Directory dir = new FilterDirectory(_dir) {};
 
@@ -2918,8 +2915,8 @@ public class TestIndexWriter extends LuceneTestCase {
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    Path root = new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    Path root = provider.wrapPath(path);
     IndexCommit indexCommit;
     DirectoryReader reader;
     // MMapDirectory doesn't work because it closes its file handles after mapping!
@@ -2973,8 +2970,8 @@ public class TestIndexWriter extends LuceneTestCase {
     assumeFalse("windows is not supported", Constants.WINDOWS);
 
     // Use WindowsFS to prevent open files from being deleted:
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    Path root = new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    Path root = provider.wrapPath(path);
     // MMapDirectory doesn't work because it closes its file handles after mapping!
     try (FSDirectory dir = new NIOFSDirectory(root)) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));

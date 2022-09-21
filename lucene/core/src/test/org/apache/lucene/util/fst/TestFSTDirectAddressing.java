@@ -267,24 +267,24 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
         new InputStreamDataInput(newInputStream(Paths.get(fstFilePath)))) {
 
       System.out.println("Reading FST");
-      long startTimeMs = System.currentTimeMillis();
+      long startTimeMs = System.nanoTime();
       FST<CharsRef> originalFst = new FST<>(in, in, CharSequenceOutputs.getSingleton());
-      long endTimeMs = System.currentTimeMillis();
-      System.out.println("time = " + (endTimeMs - startTimeMs) + " ms");
+      long endTimeMs = System.nanoTime();
+      System.out.println("time = " + (endTimeMs - startTimeMs) / 100_000 + " ms");
 
       for (float oversizingFactor : List.of(0f, 0f, 0f, 1f, 1f, 1f)) {
         System.out.println("\nFST construction (oversizingFactor=" + oversizingFactor + ")");
-        startTimeMs = System.currentTimeMillis();
+        startTimeMs = System.nanoTime();
         FST<CharsRef> fst = recompile(originalFst, oversizingFactor);
-        endTimeMs = System.currentTimeMillis();
-        System.out.println("time = " + (endTimeMs - startTimeMs) + " ms");
+        endTimeMs = System.nanoTime();
+        System.out.println("time = " + (endTimeMs - startTimeMs) / 100_000 + " ms");
         System.out.println("FST RAM = " + fst.ramBytesUsed() + " B");
 
         System.out.println("FST enum");
-        startTimeMs = System.currentTimeMillis();
+        startTimeMs = System.nanoTime();
         walk(fst);
-        endTimeMs = System.currentTimeMillis();
-        System.out.println("time = " + (endTimeMs - startTimeMs) + " ms");
+        endTimeMs = System.nanoTime();
+        System.out.println("time = " + (endTimeMs - startTimeMs) / 100_000 + " ms");
       }
     }
   }

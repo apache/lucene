@@ -1076,8 +1076,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       indexBytes = data.slice("terms-index", entry.termsIndexOffset, entry.termsIndexLength);
       term = new BytesRef(entry.maxTermLength);
 
+      // add the max term length for the dictionary
       // add 7 padding bytes can help decompression run faster.
-      int bufferSize = entry.maxBlockLength + LZ4_DECOMPRESSOR_PADDING;
+      int bufferSize = entry.maxBlockLength + entry.maxTermLength + LZ4_DECOMPRESSOR_PADDING;
       blockBuffer = new BytesRef(new byte[bufferSize], 0, bufferSize);
     }
 
@@ -1111,13 +1112,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (ord < 0 || ord >= entry.termsDictSize) {
         throw new IndexOutOfBoundsException();
       }
-      final long blockIndex = ord >>> TERMS_DICT_BLOCK_LZ4_SHIFT;
-      final long blockAddress = blockAddresses.get(blockIndex);
-      bytes.seek(blockAddress);
-      this.ord = (blockIndex << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1;
-      do {
+      // Signed shift since ord is -1 when the terms enum is not positioned
+      final long currentBlockIndex = this.ord >> TERMS_DICT_BLOCK_LZ4_SHIFT;
+      final long blockIndex = ord >> TERMS_DICT_BLOCK_LZ4_SHIFT;
+      if (ord < this.ord || blockIndex != currentBlockIndex) {
+        // The looked up ord is before the current ord or belongs to a different block, seek again
+        final long blockAddress = blockAddresses.get(blockIndex);
+        bytes.seek(blockAddress);
+        this.ord = (blockIndex << TERMS_DICT_BLOCK_LZ4_SHIFT) - 1;
+      }
+      // Scan to the looked up ord
+      while (this.ord < ord) {
         next();
-      } while (this.ord < ord);
+      }
     }
 
     private BytesRef getTermFromIndex(long index) throws IOException {
@@ -1229,9 +1236,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       if (offset < entry.termsDataLength - 1) {
         // Avoid decompress again if we are reading a same block.
         if (currentCompressedBlockStart != offset) {
-          int decompressLength = bytes.readVInt();
-          // Decompress the remaining of current block
-          LZ4.decompress(bytes, decompressLength, blockBuffer.bytes, 0);
+          blockBuffer.offset = term.length;
+          blockBuffer.length = bytes.readVInt();
+          // Decompress the remaining of current block, using the first term as a dictionary
+          System.arraycopy(term.bytes, 0, blockBuffer.bytes, 0, blockBuffer.offset);
+          LZ4.decompress(bytes, blockBuffer.length, blockBuffer.bytes, blockBuffer.offset);
           currentCompressedBlockStart = offset;
           currentCompressedBlockEnd = bytes.getFilePointer();
         } else {
@@ -1240,7 +1249,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         // Reset the buffer.
-        blockInput = new ByteArrayDataInput(blockBuffer.bytes, 0, blockBuffer.length);
+        blockInput =
+            new ByteArrayDataInput(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
       }
     }
 
@@ -1422,29 +1432,159 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.singleton(getSorted(entry.singleValueEntry));
     }
 
-    final SortedNumericDocValues ords = getSortedNumeric(entry.ordsEntry);
-    return new BaseSortedSetDocValues(entry, data) {
+    // Specialize the common case for ordinals: single block of packed integers.
+    SortedNumericEntry ordsEntry = entry.ordsEntry;
+    if (ordsEntry.blockShift < 0 && ordsEntry.bitsPerValue > 0) {
+      if (ordsEntry.gcd != 1 || ordsEntry.minValue != 0 || ordsEntry.table != null) {
+        throw new IllegalStateException("Ordinals shouldn't use GCD, offset or table compression");
+      }
 
-      int i = 0;
-      int count = 0;
-      boolean set = false;
+      final RandomAccessInput addressesInput =
+          data.randomAccessSlice(ordsEntry.addressesOffset, ordsEntry.addressesLength);
+      final LongValues addresses =
+          DirectMonotonicReader.getInstance(ordsEntry.addressesMeta, addressesInput);
+
+      final RandomAccessInput slice =
+          data.randomAccessSlice(ordsEntry.valuesOffset, ordsEntry.valuesLength);
+      final LongValues values = DirectReader.getInstance(slice, ordsEntry.bitsPerValue);
+
+      if (ordsEntry.docsWithFieldOffset == -1) { // dense
+        return new BaseSortedSetDocValues(entry, data) {
+
+          private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
+          private int doc = -1;
+          private long curr;
+          private int count;
+
+          @Override
+          public long nextOrd() throws IOException {
+            return values.get(curr++);
+          }
+
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            curr = addresses.get(target);
+            long end = addresses.get(target + 1L);
+            count = (int) (end - curr);
+            doc = target;
+            return true;
+          }
+
+          @Override
+          public int docValueCount() {
+            return count;
+          }
+
+          @Override
+          public int docID() {
+            return doc;
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            return advance(doc + 1);
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            if (target >= maxDoc) {
+              return doc = NO_MORE_DOCS;
+            }
+            curr = addresses.get(target);
+            long end = addresses.get(target + 1L);
+            count = (int) (end - curr);
+            return doc = target;
+          }
+
+          @Override
+          public long cost() {
+            return maxDoc;
+          }
+        };
+      } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
+        final IndexedDISI disi =
+            new IndexedDISI(
+                data,
+                ordsEntry.docsWithFieldOffset,
+                ordsEntry.docsWithFieldLength,
+                ordsEntry.jumpTableEntryCount,
+                ordsEntry.denseRankPower,
+                ordsEntry.numValues);
+
+        return new BaseSortedSetDocValues(entry, data) {
+
+          boolean set;
+          long curr;
+          int count;
+
+          @Override
+          public long nextOrd() throws IOException {
+            set();
+            return values.get(curr++);
+          }
+
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            set = false;
+            return disi.advanceExact(target);
+          }
+
+          @Override
+          public int docValueCount() {
+            set();
+            return count;
+          }
+
+          @Override
+          public int docID() {
+            return disi.docID();
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            set = false;
+            return disi.nextDoc();
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            set = false;
+            return disi.advance(target);
+          }
+
+          @Override
+          public long cost() {
+            return disi.cost();
+          }
+
+          private void set() {
+            if (set == false) {
+              final int index = disi.index();
+              curr = addresses.get(index);
+              long end = addresses.get(index + 1L);
+              count = (int) (end - curr);
+              set = true;
+            }
+          }
+        };
+      }
+    }
+
+    final SortedNumericDocValues ords = getSortedNumeric(ordsEntry);
+    return new BaseSortedSetDocValues(entry, data) {
 
       @Override
       public long nextOrd() throws IOException {
-        if (set == false) {
-          set = true;
-          i = 0;
-          count = ords.docValueCount();
-        }
-        if (i++ == count) {
-          return NO_MORE_ORDS;
-        }
         return ords.nextValue();
       }
 
       @Override
+      public int docValueCount() {
+        return ords.docValueCount();
+      }
+
+      @Override
       public boolean advanceExact(int target) throws IOException {
-        set = false;
         return ords.advanceExact(target);
       }
 
@@ -1455,13 +1595,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public int nextDoc() throws IOException {
-        set = false;
         return ords.nextDoc();
       }
 
       @Override
       public int advance(int target) throws IOException {
-        set = false;
         return ords.advance(target);
       }
 

@@ -17,6 +17,8 @@
 package org.apache.lucene.geo;
 
 import static org.apache.lucene.tests.geo.GeoTestUtil.nextBoxNotCrossingDateline;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 
 import java.text.ParseException;
 import java.util.List;
@@ -128,9 +130,18 @@ public class TestTessellator extends LuceneTestCase {
   public void testInvalidPolygonIntersects() throws Exception {
     String wkt = "POLYGON((0 0, 1 1, 0 1, 1 0, 0 0))";
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    IllegalArgumentException ex =
-        expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
-    assertEquals("Polygon self-intersection at lat=0.5 lon=0.5", ex.getMessage());
+    {
+      IllegalArgumentException ex =
+          expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+      assertEquals("Polygon self-intersection at lat=0.5 lon=0.5", ex.getMessage());
+    }
+    {
+      IllegalArgumentException ex =
+          expectThrows(
+              IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, false));
+      assertEquals(
+          "Unable to Tessellate shape. Possible malformed shape detected.", ex.getMessage());
+    }
   }
 
   public void testInvalidPolygonOverlap() throws Exception {
@@ -143,9 +154,19 @@ public class TestTessellator extends LuceneTestCase {
             + " (6.0391557 52.0929189, 6.0388667 52.0928373, 6.0387045 52.0928107, 6.038578 52.0927855, 6.0384897 52.0927195, 6.0384626 52.0927036, 6.0384412 52.0926911, 6.0382642 52.0926086, 6.0380309 52.092529, 6.0377877 52.0924683, 6.0377571 52.0924499, 6.0377263 52.0924189, 6.037857 52.0923747, 6.0383203 52.0923097, 6.0385012 52.0922528, 6.0385416 52.0922588, 6.0385632 52.0923458, 6.0386452 52.0924386, 6.0387875 52.0925001, 6.0391495 52.0926998, 6.0393437 52.0928496, 6.0393774 52.0928918, 6.0393715 52.092914, 6.0393239 52.0929308, 6.039246 52.0929349, 6.0391557 52.0929189),"
             + " (6.0377263 52.0924189, 6.0377571 52.0924499, 6.0377877 52.0924683, 6.0380309 52.092529, 6.0382642 52.0926086, 6.0384412 52.0926911, 6.0384626 52.0927036, 6.0384897 52.0927195, 6.038578 52.0927855, 6.0387045 52.0928107, 6.0388667 52.0928373, 6.0391557 52.0929189, 6.039246 52.0929349, 6.0393239 52.0929308, 6.0393715 52.092914, 6.0393774 52.0928918, 6.0393437 52.0928496, 6.0391495 52.0926998, 6.0387875 52.0925001, 6.0386452 52.0924386, 6.0385632 52.0923458, 6.0385416 52.0922588, 6.0385012 52.0922528, 6.0383203 52.0923097, 6.037857 52.0923747, 6.0377263 52.0924189))";
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    IllegalArgumentException ex =
-        expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
-    assertEquals("Polygon ring self-intersection at lat=52.0924189 lon=6.0377263", ex.getMessage());
+    {
+      IllegalArgumentException ex =
+          expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+      assertEquals(
+          "Polygon ring self-intersection at lat=52.0924189 lon=6.0377263", ex.getMessage());
+    }
+    {
+      IllegalArgumentException ex =
+          expectThrows(
+              IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, false));
+      assertEquals(
+          "Unable to Tessellate shape. Possible malformed shape detected.", ex.getMessage());
+    }
   }
 
   public void testLUCENE8559() throws Exception {
@@ -685,13 +706,13 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon42() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-9417.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (int i = 0; i < polygons.length; i++) {
+    for (Polygon polygon : polygons) {
       List<Tessellator.Triangle> tessellation =
-          Tessellator.tessellate(polygons[i], random().nextBoolean());
+          Tessellator.tessellate(polygon, random().nextBoolean());
       // calculate the area of big polygons have numerical error
-      assertEquals(area(polygons[i]), area(tessellation), 1e-11);
+      assertEquals(area(polygon), area(tessellation), 1e-11);
       for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygons[i], t);
+        checkTriangleEdgesFromPolygon(polygon, t);
       }
     }
   }
@@ -734,6 +755,161 @@ public class TestTessellator extends LuceneTestCase {
           checkTriangleEdgesFromPolygon(polygons[i], t);
         }
       }
+    }
+  }
+
+  public void testComplexPolygon45() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10470.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation =
+          Tessellator.tessellate(polygon, random().nextBoolean());
+      // calculate the area of big polygons have numerical error
+      assertEquals(area(polygon), area(tessellation), 1e-11);
+      for (Tessellator.Triangle t : tessellation) {
+        checkTriangleEdgesFromPolygon(polygon, t);
+      }
+    }
+  }
+
+  public void testComplexPolygon46() throws Exception {
+    String wkt = GeoTestUtil.readShape("lucene-10470.wkt.gz");
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    List<Tessellator.Triangle> tessellation =
+        Tessellator.tessellate(polygon, random().nextBoolean());
+    // calculate the area of big polygons have numerical error
+    assertEquals(area(polygon), area(tessellation), 1e-11);
+    for (Tessellator.Triangle t : tessellation) {
+      checkTriangleEdgesFromPolygon(polygon, t);
+    }
+  }
+
+  public void testComplexPolygon47() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10470-2.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation =
+          Tessellator.tessellate(polygon, random().nextBoolean());
+      // calculate the area of big polygons have numerical error
+      assertEquals(area(polygon), area(tessellation), 1e-11);
+      for (Tessellator.Triangle t : tessellation) {
+        checkTriangleEdgesFromPolygon(polygon, t);
+      }
+    }
+  }
+
+  @Nightly
+  public void testComplexPolygon48() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10470-3.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
+      // calculate the area of big polygons have numerical error
+      assertEquals(area(polygon), area(tessellation), 1e-11);
+      for (Tessellator.Triangle t : tessellation) {
+        checkTriangleEdgesFromPolygon(polygon, t);
+      }
+    }
+  }
+
+  public void testComplexPolygon49() throws Exception {
+    String wkt =
+        "POLYGON((77.500 13.500, 77.550 13.500, 77.530 13.470, 77.570 13.470,"
+            + "77.550 13.500, 77.600 13.500, 77.600 13.400, 77.500 13.400, 77.500 13.500))";
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    List<Tessellator.Triangle> tessellation =
+        Tessellator.tessellate(polygon, random().nextBoolean());
+    assertEquals(area(polygon), area(tessellation), 1e-11);
+    for (Tessellator.Triangle t : tessellation) {
+      checkTriangleEdgesFromPolygon(polygon, t);
+    }
+  }
+
+  public void testComplexPolygon50() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertThat("Only one polygon", polygons.length, equalTo(1));
+    Polygon polygon = polygons[0];
+    List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
+    // calculate the area of big polygons have numerical error
+    assertEquals(area(polygon), area(tessellation), 1e-11);
+    for (Tessellator.Triangle t : tessellation) {
+      checkTriangleEdgesFromPolygon(polygon, t);
+    }
+  }
+
+  public void testComplexPolygon50_WithMonitor() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertThat("Only one polygon", polygons.length, equalTo(1));
+    Polygon polygon = polygons[0];
+    TestCountingMonitor monitor = new TestCountingMonitor();
+    Tessellator.tessellate(polygon, true, monitor);
+    assertThat("Expected many monitor calls", monitor.count, greaterThan(400));
+    assertThat("Expected specific number of splits", monitor.splitsStarted, equalTo(3));
+    assertThat(
+        "Expected splits to start and end", monitor.splitsStarted, equalTo(monitor.splitsEnded));
+  }
+
+  public void testComplexPolygon51() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-2.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertThat("Only one polygon", polygons.length, equalTo(1));
+    Polygon polygon = polygons[0];
+    boolean checkSelfIntersections = random().nextBoolean();
+    IllegalArgumentException ex =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> Tessellator.tessellate(polygon, checkSelfIntersections));
+    String error =
+        checkSelfIntersections
+            ? "Polygon self-intersection at lat=2.8440144262027296 lon=177.96701124393607"
+            : "Unable to Tessellate shape. Possible malformed shape detected.";
+    assertEquals(
+        "Expected specific error depending on checkSelfIntersections=" + checkSelfIntersections,
+        error,
+        ex.getMessage());
+  }
+
+  public void testComplexPolygon52() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-3.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertThat("Only one polygon", polygons.length, equalTo(1));
+    Polygon polygon = polygons[0];
+    boolean checkSelfIntersections = random().nextBoolean();
+    IllegalArgumentException ex =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> Tessellator.tessellate(polygon, checkSelfIntersections));
+    String error =
+        checkSelfIntersections
+            ? "Polygon self-intersection at lat=-11.22876335157631 lon=126.94854431224186"
+            : "Unable to Tessellate shape. Possible malformed shape detected.";
+    assertEquals(
+        "Expected specific error depending on checkSelfIntersections=" + checkSelfIntersections,
+        error,
+        ex.getMessage());
+  }
+
+  private static class TestCountingMonitor implements Tessellator.Monitor {
+    private int count = 0;
+    private int splitsStarted = 0;
+    private int splitsEnded = 0;
+
+    @Override
+    public void currentState(
+        String status, List<Point> points, List<Tessellator.Triangle> tessellation) {
+      count++;
+    }
+
+    @Override
+    public void startSplit(String status, List<Point> leftPolygon, List<Point> rightPolygon) {
+      splitsStarted++;
+    }
+
+    @Override
+    public void endSplit(String status) {
+      splitsEnded++;
     }
   }
 

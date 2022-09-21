@@ -35,6 +35,7 @@ final class MaxScoreCache {
 
   private final ImpactsSource impactsSource;
   private final SimScorer scorer;
+  private final float globalMaxScore;
   private float[] maxScoreCache;
   private int[] maxScoreCacheUpTo;
 
@@ -42,6 +43,7 @@ final class MaxScoreCache {
   public MaxScoreCache(ImpactsSource impactsSource, SimScorer scorer) {
     this.impactsSource = impactsSource;
     this.scorer = scorer;
+    this.globalMaxScore = scorer.score(Float.MAX_VALUE, 1L);
     maxScoreCache = new float[0];
     maxScoreCacheUpTo = new int[0];
   }
@@ -63,11 +65,19 @@ final class MaxScoreCache {
     return maxScore;
   }
 
+  float getMaxScore(int upTo) throws IOException {
+    final int level = getLevel(upTo);
+    if (level == -1) {
+      return globalMaxScore;
+    }
+    return getMaxScoreForLevel(level);
+  }
+
   /**
    * Return the first level that includes all doc IDs up to {@code upTo}, or -1 if there is no such
    * level.
    */
-  int getLevel(int upTo) throws IOException {
+  private int getLevel(int upTo) throws IOException {
     final Impacts impacts = impactsSource.getImpacts();
     for (int level = 0, numLevels = impacts.numLevels(); level < numLevels; ++level) {
       final int impactsUpTo = impacts.getDocIdUpTo(level);
@@ -78,8 +88,13 @@ final class MaxScoreCache {
     return -1;
   }
 
+  float getMaxScoreForLevelZero() throws IOException {
+    return getMaxScoreForLevel(0);
+  }
+
   /** Return the maximum score for the given {@code level}. */
-  float getMaxScoreForLevel(int level) throws IOException {
+  private float getMaxScoreForLevel(int level) throws IOException {
+    assert level >= 0 : "level must not be a negative integer; got " + level;
     final Impacts impacts = impactsSource.getImpacts();
     ensureCacheSize(level + 1);
     final int levelUpTo = impacts.getDocIdUpTo(level);

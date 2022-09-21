@@ -130,6 +130,7 @@ public class BKDWriter implements Closeable {
   private final long totalPointCount;
 
   private final int maxDoc;
+  private final DocIdsWriter docIdsWriter;
 
   public BKDWriter(
       int maxDoc,
@@ -165,7 +166,7 @@ public class BKDWriter implements Closeable {
 
     // Maximum number of points we hold in memory at any time
     maxPointsSortInHeap = (int) ((maxMBSortInHeap * 1024 * 1024) / (config.bytesPerDoc));
-
+    docIdsWriter = new DocIdsWriter(config.maxPointsInLeafNode);
     // Finally, we must be able to hold at least the leaf node in heap during build:
     if (maxPointsSortInHeap < config.maxPointsInLeafNode) {
       throw new IllegalArgumentException(
@@ -396,8 +397,8 @@ public class BKDWriter implements Closeable {
     int numLeaves();
     /**
      * pointer to the leaf node previously written. Leaves are order from left to right, so leaf at
-     * {@code index} 0 is the leftmost leaf and the the leaf at {@code numleaves()} -1 is the
-     * rightmost leaf
+     * {@code index} 0 is the leftmost leaf and the leaf at {@code numleaves()} -1 is the rightmost
+     * leaf
      */
     long getLeafLP(int index);
     /**
@@ -1288,7 +1289,7 @@ public class BKDWriter implements Closeable {
       throws IOException {
     assert count > 0 : "config.maxPointsInLeafNode=" + config.maxPointsInLeafNode;
     out.writeVInt(count);
-    DocIdsWriter.writeDocIds(docIDs, start, count, out);
+    docIdsWriter.writeDocIds(docIDs, start, count, out);
   }
 
   private void writeLeafBlockPackedValues(
@@ -2017,7 +2018,7 @@ public class BKDWriter implements Closeable {
       // How many leaves will be in the left tree:
       final int numLeftLeafNodes = getNumLeftLeafNodes(numLeaves);
       // How many points will be in the left tree:
-      final long leftCount = numLeftLeafNodes * config.maxPointsInLeafNode;
+      final long leftCount = numLeftLeafNodes * (long) config.maxPointsInLeafNode;
 
       BKDRadixSelector.PathSlice[] slices = new BKDRadixSelector.PathSlice[2];
 

@@ -297,10 +297,10 @@ public class TestMemoryIndex extends LuceneTestCase {
     SortedSetDocValues sortedSetDocValues = leafReader.getSortedSetDocValues("sorted_set");
     assertEquals(3, sortedSetDocValues.getValueCount());
     assertEquals(0, sortedSetDocValues.nextDoc());
+    assertEquals(3, sortedSetDocValues.docValueCount());
     assertEquals(0L, sortedSetDocValues.nextOrd());
     assertEquals(1L, sortedSetDocValues.nextOrd());
     assertEquals(2L, sortedSetDocValues.nextOrd());
-    assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSetDocValues.nextOrd());
     assertEquals("c", sortedSetDocValues.lookupOrd(0L).utf8ToString());
     assertEquals("d", sortedSetDocValues.lookupOrd(1L).utf8ToString());
     assertEquals("f", sortedSetDocValues.lookupOrd(2L).utf8ToString());
@@ -328,10 +328,10 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(3, sortedSetDocValues.getValueCount());
     for (int times = 0; times < 3; times++) {
       assertTrue(sortedSetDocValues.advanceExact(0));
+      assertEquals(3, sortedSetDocValues.docValueCount());
       assertEquals(0L, sortedSetDocValues.nextOrd());
       assertEquals(1L, sortedSetDocValues.nextOrd());
       assertEquals(2L, sortedSetDocValues.nextOrd());
-      assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSetDocValues.nextOrd());
     }
 
     SortedNumericDocValues sortedNumericDocValues =

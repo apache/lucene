@@ -434,13 +434,11 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     SortedSetDocValues values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       sb2.setLength(0);
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
+      for (int i = 0; i < values.docValueCount(); i++) {
         if (sb2.length() > 0) {
           sb2.append(",");
         }
-        sb2.append(Long.toString(ord));
+        sb2.append(Long.toString(values.nextOrd()));
       }
       maxOrdListLength = Math.max(maxOrdListLength, sb2.length());
     }
@@ -490,13 +488,11 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       }
       sb2.setLength(0);
       if (values.docID() == i) {
-        for (long ord = values.nextOrd();
-            ord != SortedSetDocValues.NO_MORE_ORDS;
-            ord = values.nextOrd()) {
+        for (int j = 0; j < values.docValueCount(); j++) {
           if (sb2.length() > 0) {
             sb2.append(",");
           }
-          sb2.append(Long.toString(ord));
+          sb2.append(Long.toString(values.nextOrd()));
         }
       }
       // now pad to fit: these are numbers so spaces work well. reader calls trim()

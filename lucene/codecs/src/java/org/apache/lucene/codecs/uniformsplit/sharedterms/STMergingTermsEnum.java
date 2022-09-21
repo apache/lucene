@@ -34,7 +34,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public class STMergingTermsEnum extends TermsEnum {
+class STMergingTermsEnum extends TermsEnum {
 
   protected final String fieldName;
   protected final MultiSegmentsPostingsEnum multiPostingsEnum;

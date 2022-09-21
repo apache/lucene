@@ -39,7 +39,7 @@ comprehensive documentation, visit:
 
 ### Basic steps:
   
-1. Install OpenJDK 17 (or greater).
+1. Install OpenJDK 17 (exactly this version).
 2. Clone Lucene's git repository (or download the source distribution).
 3. Run gradle launcher script (`gradlew`).
 
@@ -58,5 +58,4 @@ contributing.
 
 - [Users Mailing List](https://lucene.apache.org/core/discussion.html#java-user-list-java-userluceneapacheorg)
 - [Developers Mailing List](https://lucene.apache.org/core/discussion.html#developer-lists)
-- [Issue Tracker](https://issues.apache.org/jira/browse/LUCENE)
 - IRC: `#lucene` and `#lucene-dev` on freenode.net

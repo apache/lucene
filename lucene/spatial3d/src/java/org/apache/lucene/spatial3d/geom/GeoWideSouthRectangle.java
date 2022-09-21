@@ -87,7 +87,7 @@ class GeoWideSouthRectangle extends GeoBaseBBox {
     if (extent < 0.0) {
       extent += 2.0 * Math.PI;
     }
-    if (extent < Math.PI) {
+    if (extent < GeoWideRectangle.MIN_WIDE_EXTENT) {
       throw new IllegalArgumentException("Width of rectangle too small");
     }
 
