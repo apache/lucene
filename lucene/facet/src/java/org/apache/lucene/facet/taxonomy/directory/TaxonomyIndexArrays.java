@@ -81,7 +81,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     }
   }
 
-  private final synchronized void initChildrenSiblings(TaxonomyIndexArrays copyFrom) {
+  private synchronized void initChildrenSiblings(TaxonomyIndexArrays copyFrom) {
     if (!initializedChildren) { // must do this check !
       children = new int[parents.length];
       siblings = new int[parents.length];
@@ -149,7 +149,6 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
           throw new CorruptIndexException(
               "Missing parent data for category " + (doc + leafContext.docBase), reader.toString());
         }
-        // we're putting an int and converting it back so it should be safe
         parents[doc + leafContext.docBase] = Math.toIntExact(parentValues.longValue());
       }
     }
@@ -260,7 +259,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
   @Override
   public synchronized long ramBytesUsed() {
     long ramBytesUsed =
-        RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + 3 * RamUsageEstimator.NUM_BYTES_OBJECT_REF + 1;
+        RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + 1;
     ramBytesUsed += RamUsageEstimator.shallowSizeOf(parents);
     if (children != null) {
       ramBytesUsed += RamUsageEstimator.shallowSizeOf(children);
