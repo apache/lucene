@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.search;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.function.Predicate;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
@@ -231,16 +232,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     final Predicate<byte[]> biggerThan =
         testPackedValue -> {
-          if (allowEqual) {
-            if (comparator.compare(testPackedValue, 0, packedValue, 0) < 0) {
-              return false;
-            }
-          } else {
-            if (comparator.compare(testPackedValue, 0, packedValue, 0) <= 0) {
-              return false;
-            }
-          }
-          return true;
+          int cmp = comparator.compare(testPackedValue, 0, packedValue, 0);
+          return cmp > 0 || (cmp == 0 && allowEqual);
         };
     return nextDoc(values.getPointTree(), biggerThan);
   }
@@ -332,39 +325,53 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         return null;
       }
 
+      if (points.getNumDimensions() != 1) {
+        return null;
+      }
+
+      if (points.getBytesPerDimension() != Long.BYTES
+          && points.getBytesPerDimension() != Integer.BYTES) {
+        return null;
+      }
+
       // Each doc that has points has exactly one point.
       if (points.size() == points.getDocCount()) {
-        if (points.getDocCount() == context.reader().maxDoc()) {
-          delegate = null;
+
+        byte[] queryLowerPoint;
+        byte[] queryUpperPoint;
+        if (points.getBytesPerDimension() == Integer.BYTES) {
+          queryLowerPoint = IntPoint.pack((int) lowerValue).bytes;
+          queryUpperPoint = IntPoint.pack((int) upperValue).bytes;
+        } else {
+          queryLowerPoint = LongPoint.pack(lowerValue).bytes;
+          queryUpperPoint = LongPoint.pack(upperValue).bytes;
+        }
+        if (lowerValue > upperValue || matchNone(points, queryLowerPoint, queryUpperPoint)) {
+          return new BoundedDocIdSetIterator(0, 0, null);
+        }
+        int minDocId, maxDocId;
+        if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
+          minDocId = 0;
+          maxDocId = context.reader().maxDoc();
+        } else {
+          // >=queryLowerPoint
+          minDocId = nextDoc(points, queryLowerPoint, true);
+
+          if (minDocId == -1) {
+            return new BoundedDocIdSetIterator(0, 0, null);
+          }
+          // >queryUpperPoint,
+          maxDocId = nextDoc(points, queryUpperPoint, false);
+          if (maxDocId == -1) {
+            maxDocId = context.reader().maxDoc();
+          }
         }
 
-        byte[] queryLowerPoint = LongPoint.pack(lowerValue).bytes;
-        byte[] queryUpperPoint = LongPoint.pack(upperValue).bytes;
-        if (matchNone(points, queryLowerPoint, queryUpperPoint)) {
-          return new BoundedDocIdSetIterator(-1, -1, delegate);
-        }
-        if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
-          return new BoundedDocIdSetIterator(0, points.getDocCount(), delegate);
-        }
-        if (points.getNumDimensions() != 1) {
-          return null;
-        }
-        // >=queryLowerPoint
-        int minDocId = nextDoc(points, queryLowerPoint, true);
-        if (minDocId == -1) {
-          return new BoundedDocIdSetIterator(-1, -1, delegate);
-        }
-        // >queryUpperPoint,
-        int maxDocId = nextDoc(points, queryUpperPoint, false);
-        if (maxDocId == -1) {
-          maxDocId = context.reader().numDocs() - 1;
+        if ((points.getDocCount() == context.reader().maxDoc())) {
+          return new BoundedDocIdSetIterator(minDocId, maxDocId, null);
         } else {
-          // return maxDocId the smallest doc id whose value >queryUpperPoint, so maxDocId-1 is
-          // biggest doc id whose value
-          // <=queryUpperPoint
-          maxDocId = maxDocId - 1;
+          return new BoundedDocIdSetIterator(minDocId, maxDocId, delegate);
         }
-        return new BoundedDocIdSetIterator(minDocId, maxDocId + 1, delegate);
       }
     }
     return null;
