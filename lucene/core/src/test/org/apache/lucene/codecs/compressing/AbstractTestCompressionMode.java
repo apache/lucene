@@ -18,10 +18,12 @@ package org.apache.lucene.codecs.compressing;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
@@ -53,9 +55,13 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
 
   static byte[] compress(Compressor compressor, byte[] decompressed, int off, int len)
       throws IOException {
-    byte[] compressed = new byte[len * 2 + 16]; // should be enough
+    byte[] compressed = new byte[len * 3 + 16]; // should be enough
+    ByteBuffer bb = ByteBuffer.wrap(decompressed);
+    ByteBuffersDataInput input = new ByteBuffersDataInput(Arrays.asList(bb)).slice(off, len);
+
     ByteArrayDataOutput out = new ByteArrayDataOutput(compressed);
-    compressor.compress(decompressed, off, len, out);
+
+    compressor.compress(input, out);
     final int compressedLen = out.getPosition();
     return ArrayUtil.copyOfSubArray(compressed, 0, compressedLen);
   }
@@ -146,6 +152,14 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
   public void testConstant() throws IOException {
     final byte[] decompressed = new byte[TestUtil.nextInt(random(), 1, 10000)];
     Arrays.fill(decompressed, (byte) random().nextInt());
+    test(decompressed);
+  }
+
+  public void testExtremelyLargeInput() throws IOException {
+    final byte[] decompressed = new byte[1 << 24]; // 16MB
+    for (int i = 0; i < decompressed.length; ++i) {
+      decompressed[i] = (byte) (i & 0x0F);
+    }
     test(decompressed);
   }
 }

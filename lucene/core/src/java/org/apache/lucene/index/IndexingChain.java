@@ -30,8 +30,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
@@ -68,6 +67,7 @@ final class IndexingChain implements Accountable {
   final ByteBlockPool docValuesBytePool;
   // Writes stored fields
   final StoredFieldsConsumer storedFieldsConsumer;
+  final VectorValuesConsumer vectorValuesConsumer;
   final TermVectorsConsumer termVectorsWriter;
 
   // NOTE: I tried using Hash Map<String,PerField>
@@ -104,6 +104,8 @@ final class IndexingChain implements Accountable {
     this.fieldInfos = fieldInfos;
     this.infoStream = indexWriterConfig.getInfoStream();
     this.abortingExceptionConsumer = abortingExceptionConsumer;
+    this.vectorValuesConsumer =
+        new VectorValuesConsumer(indexWriterConfig.getCodec(), directory, segmentInfo, infoStream);
 
     if (segmentInfo.getIndexSort() == null) {
       storedFieldsConsumer =
@@ -262,7 +264,7 @@ final class IndexingChain implements Accountable {
     }
 
     t0 = System.nanoTime();
-    writeVectors(state, sortMap);
+    vectorValuesConsumer.flush(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write vectors");
     }
@@ -428,63 +430,6 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  /** Writes all buffered vectors. */
-  private void writeVectors(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    KnnVectorsWriter knnVectorsWriter = null;
-    boolean success = false;
-    try {
-      for (int i = 0; i < fieldHash.length; i++) {
-        PerField perField = fieldHash[i];
-        while (perField != null) {
-          if (perField.vectorValuesWriter != null) {
-            if (perField.fieldInfo.getVectorDimension() == 0) {
-              // BUG
-              throw new AssertionError(
-                  "segment="
-                      + state.segmentInfo
-                      + ": field=\""
-                      + perField.fieldInfo.name
-                      + "\" has no vectors but wrote them");
-            }
-            if (knnVectorsWriter == null) {
-              // lazy init
-              KnnVectorsFormat fmt = state.segmentInfo.getCodec().knnVectorsFormat();
-              if (fmt == null) {
-                throw new IllegalStateException(
-                    "field=\""
-                        + perField.fieldInfo.name
-                        + "\" was indexed as vectors but codec does not support vectors");
-              }
-              knnVectorsWriter = fmt.fieldsWriter(state);
-            }
-
-            perField.vectorValuesWriter.flush(sortMap, knnVectorsWriter);
-            perField.vectorValuesWriter = null;
-          } else if (perField.fieldInfo != null && perField.fieldInfo.getVectorDimension() != 0) {
-            // BUG
-            throw new AssertionError(
-                "segment="
-                    + state.segmentInfo
-                    + ": field=\""
-                    + perField.fieldInfo.name
-                    + "\" has vectors but did not write them");
-          }
-          perField = perField.next;
-        }
-      }
-      if (knnVectorsWriter != null) {
-        knnVectorsWriter.finish();
-      }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(knnVectorsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(knnVectorsWriter);
-      }
-    }
-  }
-
   private void writeNorms(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     boolean success = false;
     NormsConsumer normsConsumer = null;
@@ -522,6 +467,7 @@ final class IndexingChain implements Accountable {
     // finalizer will e.g. close any open files in the term vectors writer:
     try (Closeable finalizer = termsHash::abort) {
       storedFieldsConsumer.abort();
+      vectorValuesConsumer.abort();
     } finally {
       Arrays.fill(fieldHash, null);
     }
@@ -590,7 +536,7 @@ final class IndexingChain implements Accountable {
       // build schema for each unique doc field
       for (IndexableField field : document) {
         IndexableFieldType fieldType = field.fieldType();
-        PerField pf = getOrAddPerField(field.name(), fieldType);
+        PerField pf = getOrAddPerField(field.name());
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
           fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
@@ -682,6 +628,7 @@ final class IndexingChain implements Accountable {
                 s.pointIndexDimensionCount,
                 s.pointNumBytes,
                 s.vectorDimension,
+                s.vectorEncoding,
                 s.vectorSimilarityFunction,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
     pf.setFieldInfo(fi);
@@ -714,7 +661,12 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
     if (fi.getVectorDimension() != 0) {
-      pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed);
+      try {
+        pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
+      } catch (Throwable th) {
+        onAbortingException(th);
+        throw th;
+      }
     }
   }
 
@@ -761,7 +713,11 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      pf.vectorValuesWriter.addValue(docID, ((KnnVectorField) field).vectorValue());
+      switch (fieldType.vectorEncoding()) {
+        case BYTE -> pf.knnFieldVectorsWriter.addValue(docID, field.binaryValue());
+        case FLOAT32 -> pf.knnFieldVectorsWriter.addValue(
+            docID, ((KnnVectorField) field).vectorValue());
+      }
     }
     return indexedField;
   }
@@ -770,7 +726,7 @@ final class IndexingChain implements Accountable {
    * Returns a previously created {@link PerField}, absorbing the type information from {@link
    * FieldType}, and creates a new {@link PerField} if this field name wasn't seen yet.
    */
-  private PerField getOrAddPerField(String fieldName, IndexableFieldType fieldType) {
+  private PerField getOrAddPerField(String fieldName) {
     final int hashPos = fieldName.hashCode() & hashMask;
     PerField pf = fieldHash[hashPos];
     while (pf != null && pf.fieldName.equals(fieldName) == false) {
@@ -825,7 +781,10 @@ final class IndexingChain implements Accountable {
           fieldType.pointNumBytes());
     }
     if (fieldType.vectorDimension() != 0) {
-      schema.setVectors(fieldType.vectorSimilarityFunction(), fieldType.vectorDimension());
+      schema.setVectors(
+          fieldType.vectorEncoding(),
+          fieldType.vectorSimilarityFunction(),
+          fieldType.vectorDimension());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1006,12 +965,16 @@ final class IndexingChain implements Accountable {
   public long ramBytesUsed() {
     return bytesUsed.get()
         + storedFieldsConsumer.accountable.ramBytesUsed()
-        + termVectorsWriter.accountable.ramBytesUsed();
+        + termVectorsWriter.accountable.ramBytesUsed()
+        + vectorValuesConsumer.getAccountable().ramBytesUsed();
   }
 
   @Override
   public Collection<Accountable> getChildResources() {
-    return List.of(storedFieldsConsumer.accountable, termVectorsWriter.accountable);
+    return List.of(
+        storedFieldsConsumer.accountable,
+        termVectorsWriter.accountable,
+        vectorValuesConsumer.getAccountable());
   }
 
   /** NOTE: not static: accesses at least docState, termsHash. */
@@ -1032,8 +995,8 @@ final class IndexingChain implements Accountable {
     // Non-null if this field ever had points in this segment:
     PointValuesWriter pointValuesWriter;
 
-    // Non-null if this field ever had vector values in this segment:
-    VectorValuesWriter vectorValuesWriter;
+    // Non-null if this field had vectors in this segment
+    KnnFieldVectorsWriter<?> knnFieldVectorsWriter;
 
     /** We use this to know when a PerField is seen for the first time in the current document. */
     long fieldGen = -1;
@@ -1326,6 +1289,7 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
+    private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
     private static String errMsg =
@@ -1406,11 +1370,14 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setVectors(VectorSimilarityFunction similarityFunction, int dimension) {
+    void setVectors(
+        VectorEncoding encoding, VectorSimilarityFunction similarityFunction, int dimension) {
       if (vectorDimension == 0) {
-        this.vectorDimension = dimension;
+        this.vectorEncoding = encoding;
         this.vectorSimilarityFunction = similarityFunction;
+        this.vectorDimension = dimension;
       } else {
+        assertSame("vector encoding", vectorEncoding, encoding);
         assertSame("vector similarity function", vectorSimilarityFunction, similarityFunction);
         assertSame("vector dimension", vectorDimension, dimension);
       }
@@ -1426,6 +1393,7 @@ final class IndexingChain implements Accountable {
       pointIndexDimensionCount = 0;
       pointNumBytes = 0;
       vectorDimension = 0;
+      vectorEncoding = VectorEncoding.FLOAT32;
       vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     }
 
@@ -1436,6 +1404,7 @@ final class IndexingChain implements Accountable {
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
       assertSame(
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
+      assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(

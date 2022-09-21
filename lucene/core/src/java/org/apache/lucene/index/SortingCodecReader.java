@@ -380,7 +380,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
       @Override
       public VectorValues getVectorValues(String field) throws IOException {
-        return new VectorValuesWriter.SortingVectorValues(delegate.getVectorValues(field), docMap);
+        return new VectorValues.SortingVectorValues(delegate.getVectorValues(field), docMap);
       }
 
       @Override
@@ -483,7 +483,11 @@ public final class SortingCodecReader extends FilterCodecReader {
                 field.name,
                 () ->
                     new SortedSetDocValuesWriter.DocOrds(
-                        maxDoc(), docMap, oldDocValues, PackedInts.FAST)));
+                        maxDoc(),
+                        docMap,
+                        oldDocValues,
+                        PackedInts.FAST,
+                        SortedSetDocValuesWriter.DocOrds.START_BITS_PER_VALUE)));
       }
 
       @Override

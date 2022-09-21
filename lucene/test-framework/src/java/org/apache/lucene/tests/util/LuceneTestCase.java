@@ -17,6 +17,8 @@
 
 package org.apache.lucene.tests.util;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -46,7 +48,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import com.carrotsearch.randomizedtesting.rules.NoClassHooksShadowingRule;
 import com.carrotsearch.randomizedtesting.rules.NoInstanceHooksOverridesRule;
-import com.carrotsearch.randomizedtesting.rules.StaticFieldsInvariantRule;
 import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -81,7 +82,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -138,6 +138,7 @@ import org.apache.lucene.index.ParallelCompositeReader;
 import org.apache.lucene.index.ParallelLeafReader;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SimpleMergedSegmentWarmer;
 import org.apache.lucene.index.SortedDocValues;
@@ -610,24 +611,6 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Max 10mb of static data stored in a test suite class after the suite is complete. Prevents
-   * static data structures leaking and causing OOMs in subsequent tests.
-   */
-  private static final long STATIC_LEAK_THRESHOLD = 10 * 1024 * 1024;
-
-  /** By-name list of ignored types like loggers etc. */
-  private static final Set<String> STATIC_LEAK_IGNORED_TYPES =
-      Set.of(
-          "org.slf4j.Logger",
-          "org.apache.solr.SolrLogFormatter",
-          "java.io.File", // Solr sometimes refers to this in a static way, but it has a
-          // "java.nio.fs.Path" inside
-          Path.class
-              .getName(), // causes problems because interface is implemented by hidden classes
-          Class.class.getName(),
-          EnumSet.class.getName());
-
-  /**
    * This controls how suite-level rules are nested. It is important that _all_ rules declared in
    * {@link LuceneTestCase} are executed in proper order if they depend on each other.
    */
@@ -644,26 +627,6 @@ public abstract class LuceneTestCase extends Assert {
             .around(new TestRuleAssertionsRequired())
             .around(new TestRuleLimitSysouts(suiteFailureMarker))
             .around(tempFilesCleanupRule = new TestRuleTemporaryFilesCleanup(suiteFailureMarker));
-    // TODO LUCENE-7595: Java 9 does not allow to look into runtime classes, so we have to fix the
-    // RAM usage checker!
-    if (!Constants.JRE_IS_MINIMUM_JAVA9) {
-      r =
-          r.around(
-              new StaticFieldsInvariantRule(STATIC_LEAK_THRESHOLD, true) {
-                @Override
-                protected boolean accept(java.lang.reflect.Field field) {
-                  // Don't count known classes that consume memory once.
-                  if (STATIC_LEAK_IGNORED_TYPES.contains(field.getType().getName())) {
-                    return false;
-                  }
-                  // Don't count references from ourselves, we're top-level.
-                  if (field.getDeclaringClass() == LuceneTestCase.class) {
-                    return false;
-                  }
-                  return super.accept(field);
-                }
-              });
-    }
     classRules =
         r.around(new NoClassHooksShadowingRule())
             .around(
@@ -1040,6 +1003,20 @@ public abstract class LuceneTestCase extends Assert {
 
     if (rarely(r)) {
       c.setIndexWriterEventListener(new MockIndexWriterEventListener());
+    }
+    switch (r.nextInt(3)) {
+      case 0:
+        // Disable merge on refresh
+        c.setMaxFullFlushMergeWaitMillis(0L);
+        break;
+      case 1:
+        // Very low timeout, merges will likely not be able to run in time
+        c.setMaxFullFlushMergeWaitMillis(1L);
+        break;
+      default:
+        // Very long timeout, merges will almost always be able to run in time
+        c.setMaxFullFlushMergeWaitMillis(1000L);
+        break;
     }
 
     c.setMaxFullFlushMergeWaitMillis(rarely() ? atLeast(r, 1000) : atLeast(r, 200));
@@ -1910,7 +1887,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static IndexSearcher newSearcher(
       IndexReader r, boolean maybeWrap, boolean wrapWithAssertions) {
-    return newSearcher(r, maybeWrap, wrapWithAssertions, rarely());
+    return newSearcher(r, maybeWrap, wrapWithAssertions, randomBoolean());
   }
 
   /**
@@ -1982,13 +1959,28 @@ public abstract class LuceneTestCase extends Assert {
       }
       IndexSearcher ret;
       if (wrapWithAssertions) {
-        ret =
-            random.nextBoolean()
-                ? new AssertingIndexSearcher(random, r, ex)
-                : new AssertingIndexSearcher(random, r.getContext(), ex);
-      } else if (random.nextBoolean()) {
-        int maxDocPerSlice = 1 + random.nextInt(100000);
-        int maxSegmentsPerSlice = 1 + random.nextInt(20);
+        int maxDocPerSlice = 1 + random.nextInt(1000);
+        int maxSegmentsPerSlice = 1 + random.nextInt(10);
+        if (random.nextBoolean()) {
+          ret =
+              new AssertingIndexSearcher(random, r, ex) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                }
+              };
+        } else {
+          ret =
+              new AssertingIndexSearcher(random, r.getContext(), ex) {
+                @Override
+                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                }
+              };
+        }
+      } else if (frequently()) {
+        int maxDocPerSlice = 1 + random.nextInt(1000);
+        int maxSegmentsPerSlice = 1 + random.nextInt(10);
         ret =
             new IndexSearcher(r, ex) {
               @Override
@@ -2002,6 +1994,15 @@ public abstract class LuceneTestCase extends Assert {
       }
       ret.setSimilarity(classEnvRule.similarity);
       ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
+      if (random().nextBoolean()) {
+        ret.setTimeout(
+            new QueryTimeout() {
+              @Override
+              public boolean shouldExit() {
+                return false;
+              }
+            });
+      }
       return ret;
     }
   }
@@ -2585,11 +2586,10 @@ public abstract class LuceneTestCase extends Assert {
             if (docID == NO_MORE_DOCS) {
               break;
             }
-            long ord;
-            while ((ord = leftValues.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-              assertEquals(info, ord, rightValues.nextOrd());
+            assertEquals(info, leftValues.docValueCount(), rightValues.docValueCount());
+            for (int i = 0; i < leftValues.docValueCount(); i++) {
+              assertEquals(info, leftValues.nextOrd(), rightValues.nextOrd());
             }
-            assertEquals(info, SortedSetDocValues.NO_MORE_ORDS, rightValues.nextOrd());
           }
         } else {
           assertNull(info, leftValues);

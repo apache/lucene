@@ -836,9 +836,8 @@ public abstract class DocValuesConsumer implements Closeable {
         int docID;
         while ((docID = dv.nextDoc()) != NO_MORE_DOCS) {
           if (liveDocs.get(docID)) {
-            long ord;
-            while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-              bitset.set(ord);
+            for (int i = 0; i < dv.docValueCount(); i++) {
+              bitset.set(dv.nextOrd());
             }
           }
         }
@@ -941,14 +940,11 @@ public abstract class DocValuesConsumer implements Closeable {
               @Override
               public long nextOrd() throws IOException {
                 long subOrd = currentSub.values.nextOrd();
-                if (subOrd == NO_MORE_ORDS) {
-                  return NO_MORE_ORDS;
-                }
                 return currentSub.map.get(subOrd);
               }
 
               @Override
-              public long docValueCount() {
+              public int docValueCount() {
                 return currentSub.values.docValueCount();
               }
 

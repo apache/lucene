@@ -32,8 +32,8 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
@@ -244,6 +244,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             target,
             k,
             vectorValues,
+            VectorEncoding.FLOAT32,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             getAcceptOrds(acceptDocs, fieldEntry),
@@ -253,9 +254,9 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
       int node = results.topNode();
-      float score = fieldEntry.similarityFunction.convertToScore(results.topScore());
+      float minSimilarity = results.topScore();
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc(node), score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc(node), minSimilarity);
     }
 
     TotalHits.Relation relation =
@@ -403,8 +404,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+  static class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
 
     private final int dimension;
     private final int size;
@@ -497,7 +497,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
 

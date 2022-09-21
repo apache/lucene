@@ -604,7 +604,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(inner, Occur.SHOULD)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
             .build();
-    assertSame(query, searcher.rewrite(query));
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
 
     inner =
         new BooleanQuery.Builder()
@@ -782,5 +782,86 @@ public class TestBooleanRewrites extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
                 .build());
     assertEquals(expected, searcher.rewrite(query));
+  }
+
+  public void testShouldClausesLessThanOrEqualToMinimumNumberShouldMatch() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    // The only one SHOULD clause is MatchNoDocsQuery
+    BooleanQuery query =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    query =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(0)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+
+    // Meaningful SHOULD clause count is less than MinimumNumberShouldMatch
+    query =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
+            .add(new PhraseQuery.Builder().add(new Term("field", "a")).build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+
+    // Meaningful SHOULD clause count is equal to MinimumNumberShouldMatch
+    query =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().add(new Term("field", "b")).build(), Occur.SHOULD)
+            .add(
+                new PhraseQuery.Builder()
+                    .add(new Term("field", "a"))
+                    .add(new Term("field", "c"))
+                    .build(),
+                Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    BooleanQuery expected =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "b")), Occur.MUST)
+            .add(
+                new PhraseQuery.Builder()
+                    .add(new Term("field", "a"))
+                    .add(new Term("field", "c"))
+                    .build(),
+                Occur.MUST)
+            .build();
+    assertEquals(expected, searcher.rewrite(query));
+
+    // Invalid Inner query get removed after rewrite
+    Query inner =
+        new BooleanQuery.Builder()
+            .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
+            .add(new PhraseQuery.Builder().add(new Term("field", "a")).build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+
+    query =
+        new BooleanQuery.Builder()
+            .add(inner, Occur.SHOULD)
+            .add(new PhraseQuery.Builder().add(new Term("field", "b")).build(), Occur.SHOULD)
+            .add(
+                new PhraseQuery.Builder()
+                    .add(new Term("field", "a"))
+                    .add(new Term("field", "c"))
+                    .build(),
+                Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    assertEquals(expected, searcher.rewrite(query));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(inner, Occur.SHOULD)
+            .add(new PhraseQuery.Builder().add(new Term("field", "b")).build(), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
   }
 }

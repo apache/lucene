@@ -346,7 +346,7 @@ public class TestIndexWriterCommit extends LuceneTestCase {
   // index
   public void testCommitThreadSafety() throws Throwable {
     final int NUM_THREADS = 5;
-    final double RUN_SEC = 0.5;
+    final int maxIterations = 10;
     final Directory dir = newDirectory();
     final RandomIndexWriter w =
         new RandomIndexWriter(
@@ -357,7 +357,6 @@ public class TestIndexWriterCommit extends LuceneTestCase {
     w.commit();
     final AtomicBoolean failed = new AtomicBoolean();
     Thread[] threads = new Thread[NUM_THREADS];
-    final long endTime = System.currentTimeMillis() + ((long) (RUN_SEC * 1000));
     for (int i = 0; i < NUM_THREADS; i++) {
       final int finalI = i;
       threads[i] =
@@ -369,6 +368,7 @@ public class TestIndexWriterCommit extends LuceneTestCase {
                 DirectoryReader r = DirectoryReader.open(dir);
                 Field f = newStringField("f", "", Field.Store.NO);
                 doc.add(f);
+                int iterations = 0;
                 int count = 0;
                 do {
                   if (failed.get()) break;
@@ -384,7 +384,7 @@ public class TestIndexWriterCommit extends LuceneTestCase {
                     r = r2;
                     assertEquals("term=f:" + s + "; r=" + r, 1, r.docFreq(new Term("f", s)));
                   }
-                } while (System.currentTimeMillis() < endTime);
+                } while (++iterations < maxIterations);
                 r.close();
               } catch (Throwable t) {
                 failed.set(true);

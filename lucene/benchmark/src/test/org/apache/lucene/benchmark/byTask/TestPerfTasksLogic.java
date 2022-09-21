@@ -125,7 +125,8 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     CountingSearchTestTask.numSearches = 0;
     execBenchmark(algLines);
     assertTrue(CountingSearchTestTask.numSearches > 0);
-    long elapsed = CountingSearchTestTask.prevLastMillis - CountingSearchTestTask.startMillis;
+    long elapsed =
+        (CountingSearchTestTask.prevLastNanos - CountingSearchTestTask.startNanos) / 1_000_000;
     assertTrue("elapsed time was " + elapsed + " msec", elapsed <= 1500);
   }
 

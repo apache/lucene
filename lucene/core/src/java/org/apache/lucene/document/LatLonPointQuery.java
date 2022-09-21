@@ -27,6 +27,7 @@ import java.util.function.Predicate;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.GeoEncodingUtils;
+import org.apache.lucene.geo.Geometry;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
@@ -41,53 +42,62 @@ import org.apache.lucene.util.NumericUtils;
  * <p>The field must be indexed using one or more {@link LatLonPoint} added per document.
  */
 final class LatLonPointQuery extends SpatialQuery {
-  private final LatLonGeometry[] geometries;
-  private final Component2D component2D;
 
   /**
    * Creates a query that matches all indexed shapes to the provided array of {@link LatLonGeometry}
    */
   LatLonPointQuery(String field, QueryRelation queryRelation, LatLonGeometry... geometries) {
-    super(field, queryRelation);
-    if (queryRelation == QueryRelation.WITHIN) {
-      for (LatLonGeometry geometry : geometries) {
-        if (geometry instanceof Line) {
-          // TODO: line queries do not support within relations
-          throw new IllegalArgumentException(
-              "LatLonPointQuery does not support "
-                  + QueryRelation.WITHIN
-                  + " queries with line geometries");
+    super(field, queryRelation, validateGeometry(queryRelation, geometries));
+  }
+
+  private static LatLonGeometry[] validateGeometry(
+      QueryRelation queryRelation, LatLonGeometry... geometries) {
+    if (geometries != null) {
+      if (queryRelation == QueryRelation.WITHIN) {
+        for (LatLonGeometry geometry : geometries) {
+          if (geometry instanceof Line) {
+            // TODO: line queries do not support within relations
+            throw new IllegalArgumentException(
+                "LatLonPointQuery does not support "
+                    + QueryRelation.WITHIN
+                    + " queries with line geometries");
+          }
+        }
+      }
+      if (queryRelation == ShapeField.QueryRelation.CONTAINS) {
+        for (LatLonGeometry geometry : geometries) {
+          if ((geometry instanceof Point) == false) {
+            throw new IllegalArgumentException(
+                "LatLonPointQuery does not support "
+                    + ShapeField.QueryRelation.CONTAINS
+                    + " queries with non-points geometries");
+          }
         }
       }
     }
-    if (queryRelation == ShapeField.QueryRelation.CONTAINS) {
-      for (LatLonGeometry geometry : geometries) {
-        if ((geometry instanceof Point) == false) {
-          throw new IllegalArgumentException(
-              "LatLonPointQuery does not support "
-                  + ShapeField.QueryRelation.CONTAINS
-                  + " queries with non-points geometries");
-        }
-      }
-    }
-    this.component2D = LatLonGeometry.create(geometries);
-    this.geometries = geometries.clone();
+
+    return geometries;
+  }
+
+  @Override
+  protected Component2D createComponent2D(Geometry... geometries) {
+    return LatLonGeometry.create((LatLonGeometry[]) geometries);
   }
 
   @Override
   protected SpatialVisitor getSpatialVisitor() {
     final GeoEncodingUtils.Component2DPredicate component2DPredicate =
-        GeoEncodingUtils.createComponentPredicate(component2D);
+        GeoEncodingUtils.createComponentPredicate(queryComponent2D);
     // bounding box over all geometries, this can speed up tree intersection/cheaply improve
     // approximation for complex multi-geometries
     final byte[] minLat = new byte[Integer.BYTES];
     final byte[] maxLat = new byte[Integer.BYTES];
     final byte[] minLon = new byte[Integer.BYTES];
     final byte[] maxLon = new byte[Integer.BYTES];
-    NumericUtils.intToSortableBytes(encodeLatitude(component2D.getMinY()), minLat, 0);
-    NumericUtils.intToSortableBytes(encodeLatitude(component2D.getMaxY()), maxLat, 0);
-    NumericUtils.intToSortableBytes(encodeLongitude(component2D.getMinX()), minLon, 0);
-    NumericUtils.intToSortableBytes(encodeLongitude(component2D.getMaxX()), maxLon, 0);
+    NumericUtils.intToSortableBytes(encodeLatitude(queryComponent2D.getMinY()), minLat, 0);
+    NumericUtils.intToSortableBytes(encodeLatitude(queryComponent2D.getMaxY()), maxLat, 0);
+    NumericUtils.intToSortableBytes(encodeLongitude(queryComponent2D.getMinX()), minLon, 0);
+    NumericUtils.intToSortableBytes(encodeLongitude(queryComponent2D.getMaxX()), maxLon, 0);
 
     return new SpatialVisitor() {
 
@@ -106,7 +116,7 @@ final class LatLonPointQuery extends SpatialQuery {
         double cellMaxLat = decodeLatitude(maxPackedValue, 0);
         double cellMaxLon = decodeLongitude(maxPackedValue, Integer.BYTES);
 
-        return component2D.relate(cellMinLon, cellMaxLon, cellMinLat, cellMaxLat);
+        return queryComponent2D.relate(cellMinLon, cellMaxLon, cellMinLat, cellMaxLat);
       }
 
       @Override
@@ -128,7 +138,7 @@ final class LatLonPointQuery extends SpatialQuery {
       @Override
       protected Function<byte[], Component2D.WithinRelation> contains() {
         return packedValue ->
-            component2D.withinPoint(
+            queryComponent2D.withinPoint(
                 GeoEncodingUtils.decodeLongitude(
                     NumericUtils.sortableBytesToInt(packedValue, Integer.BYTES)),
                 GeoEncodingUtils.decodeLatitude(NumericUtils.sortableBytesToInt(packedValue, 0)));

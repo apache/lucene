@@ -55,7 +55,7 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
       return LOADER;
     }
 
-    static Codec defaultCodec = LOADER.lookup("Lucene92");
+    static Codec defaultCodec = LOADER.lookup("Lucene94");
   }
 
   private final String name;

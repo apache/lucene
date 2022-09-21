@@ -23,10 +23,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.BufferingKnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
+import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -41,7 +41,7 @@ import org.apache.lucene.util.IOUtils;
  *
  * @lucene.experimental
  */
-public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
+public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
@@ -55,7 +55,6 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
-    assert state.fieldInfos.hasVectorValues();
     segmentWriteState = state;
 
     String metaFileName =
@@ -107,7 +106,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
@@ -225,7 +224,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValuesProducer vectorValues,
+      RandomAccessVectorValues vectorValues,
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,
@@ -240,7 +239,7 @@ public final class Lucene90HnswVectorsWriter extends KnnVectorsWriter {
             beamWidth,
             Lucene90HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    Lucene90OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
+    Lucene90OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.copy());
 
     for (int ord = 0; ord < offsets.length; ord++) {
       // write graph

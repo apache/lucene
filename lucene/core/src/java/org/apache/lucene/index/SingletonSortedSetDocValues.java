@@ -52,13 +52,11 @@ final class SingletonSortedSetDocValues extends SortedSetDocValues {
 
   @Override
   public long nextOrd() {
-    long v = ord;
-    ord = NO_MORE_ORDS;
-    return v;
+    return ord;
   }
 
   @Override
-  public long docValueCount() {
+  public int docValueCount() {
     return 1;
   }
 

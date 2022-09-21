@@ -35,6 +35,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -245,23 +246,18 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     final boolean sliced = bufferedDocs.size() >= 2 * chunkSize;
     final boolean dirtyChunk = force;
     writeHeader(docBase, numBufferedDocs, numStoredFields, lengths, sliced, dirtyChunk);
-
+    ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
     // compress stored fields to fieldsStream.
-    //
-    // TODO: do we need to slice it since we already have the slices in the buffer? Perhaps
-    // we should use max-block-bits restriction on the buffer itself, then we won't have to check it
-    // here.
-    byte[] content = bufferedDocs.toArrayCopy();
-    bufferedDocs.reset();
-
     if (sliced) {
-      // big chunk, slice it
-      for (int compressed = 0; compressed < content.length; compressed += chunkSize) {
-        compressor.compress(
-            content, compressed, Math.min(chunkSize, content.length - compressed), fieldsStream);
+      // big chunk, slice it, using ByteBuffersDataInput ignore memory copy
+      final int capacity = (int) bytebuffers.size();
+      for (int compressed = 0; compressed < capacity; compressed += chunkSize) {
+        int l = Math.min(chunkSize, capacity - compressed);
+        ByteBuffersDataInput bbdi = bytebuffers.slice(compressed, l);
+        compressor.compress(bbdi, fieldsStream);
       }
     } else {
-      compressor.compress(content, 0, content.length, fieldsStream);
+      compressor.compress(bytebuffers, fieldsStream);
     }
 
     // reset

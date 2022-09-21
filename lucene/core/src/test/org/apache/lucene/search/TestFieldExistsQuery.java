@@ -626,13 +626,18 @@ public class TestFieldExistsQuery extends LuceneTestCase {
   public void testKnnVectorAllDocsHaveField() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
-      Document doc = new Document();
-      doc.add(new KnnVectorField("vector", randomVector(3)));
-      iw.addDocument(doc);
+      for (int i = 0; i < 100; ++i) {
+        Document doc = new Document();
+        doc.add(new KnnVectorField("vector", randomVector(5)));
+        iw.addDocument(doc);
+      }
       iw.commit();
+
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = newSearcher(reader);
-        assertEquals(1, searcher.count(new FieldExistsQuery("vector")));
+        Query query = new FieldExistsQuery("vector");
+        assertTrue(searcher.rewrite(query) instanceof MatchAllDocsQuery);
+        assertEquals(100, searcher.count(query));
       }
     }
   }
@@ -695,6 +700,64 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     }
     VectorUtil.l2normalize(v);
     return v;
+  }
+
+  public void testDeleteAllPointDocs() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+
+      Document doc = new Document();
+      doc.add(new StringField("id", "0", Field.Store.NO));
+      doc.add(new LongPoint("long", 17));
+      doc.add(new NumericDocValuesField("long", 17));
+      iw.addDocument(doc);
+      // add another document before the flush, otherwise the segment only has the document that
+      // we are going to delete and the merge simply ignores the segment without carrying over its
+      // field infos
+      iw.addDocument(new Document());
+      // make sure there are two segments or force merge will be a no-op
+      iw.flush();
+      iw.addDocument(new Document());
+      iw.commit();
+
+      iw.deleteDocuments(new Term("id", "0"));
+      iw.forceMerge(1);
+
+      try (IndexReader reader = iw.getReader()) {
+        assertTrue(reader.leaves().size() == 1 && reader.hasDeletions() == false);
+        IndexSearcher searcher = newSearcher(reader);
+        assertEquals(0, searcher.count(new FieldExistsQuery("long")));
+      }
+    }
+  }
+
+  public void testDeleteAllTermDocs() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+
+      Document doc = new Document();
+      doc.add(new StringField("id", "0", Field.Store.NO));
+      doc.add(new StringField("str", "foo", Store.NO));
+      doc.add(new SortedDocValuesField("str", new BytesRef("foo")));
+      iw.addDocument(doc);
+      // add another document before the flush, otherwise the segment only has the document that
+      // we are going to delete and the merge simply ignores the segment without carrying over its
+      // field infos
+      iw.addDocument(new Document());
+      // make sure there are two segments or force merge will be a no-op
+      iw.flush();
+      iw.addDocument(new Document());
+      iw.commit();
+
+      iw.deleteDocuments(new Term("id", "0"));
+      iw.forceMerge(1);
+
+      try (IndexReader reader = iw.getReader()) {
+        assertTrue(reader.leaves().size() == 1 && reader.hasDeletions() == false);
+        IndexSearcher searcher = newSearcher(reader);
+        assertEquals(0, searcher.count(new FieldExistsQuery("str")));
+      }
+    }
   }
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
