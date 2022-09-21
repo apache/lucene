@@ -107,6 +107,12 @@ Bug Fixes
   trying to apply a dictionary whose size is greater than the maximum supported
   window size for LZ4. (Adrien Grand)
 
+* GITHUB#11735: KeywordRepeatFilter + OpenNLPLemmatizer always drops last token of a stream.
+  (Luke Kot-Zaniewski)
+
+* GITHUB#11771: KeywordRepeatFilter + OpenNLPLemmatizer sometimes arbitrarily exits token stream.
+  (Luke Kot-Zaniewski)
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
