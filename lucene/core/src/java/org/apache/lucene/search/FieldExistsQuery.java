@@ -230,11 +230,9 @@ public class FieldExistsQuery extends Query {
             != DocValuesType.NONE) { // the field indexes doc values
           if (reader.hasDeletions() == false) {
             if (fieldInfo.getPointDimensionCount() > 0) {
-              PointValues pointValues = reader.getPointValues(field);
-              return pointValues == null ? 0 : pointValues.getDocCount();
+              return reader.getPointValues(field).getDocCount();
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
-              Terms terms = reader.terms(field);
-              return terms == null ? 0 : terms.getDocCount();
+              return reader.terms(field).getDocCount();
             }
           }
 
