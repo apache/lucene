@@ -120,10 +120,11 @@ public class FacetLabel implements Comparable<FacetLabel> {
 
   @Override
   public boolean equals(Object obj) {
-    if (!(obj instanceof FacetLabel other)) {
+    if (obj instanceof FacetLabel == false) {
       return false;
     }
 
+    FacetLabel other = (FacetLabel) obj;
     if (length != other.length) {
       return false; // not same length, cannot be equal
     }
