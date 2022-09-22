@@ -14,16 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.misc.store;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.lucene.store.IndexOutput;
 
 /** An {@link IndexOutput} that wraps another instance and tracks the number of bytes written */
 public class ByteTrackingIndexOutput extends IndexOutput {
 
   private final IndexOutput output;
   private final AtomicLong byteTracker;
+  private long intermittentByteTracker = 0L;
 
   protected ByteTrackingIndexOutput(IndexOutput output, AtomicLong byteTracker) {
     super(
@@ -35,18 +37,19 @@ public class ByteTrackingIndexOutput extends IndexOutput {
 
   @Override
   public void writeByte(byte b) throws IOException {
-    byteTracker.incrementAndGet();
     output.writeByte(b);
+    intermittentByteTracker++;
   }
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) throws IOException {
-    byteTracker.addAndGet(length);
     output.writeBytes(b, offset, length);
+    intermittentByteTracker += length;
   }
 
   @Override
   public void close() throws IOException {
+    byteTracker.addAndGet(intermittentByteTracker);
     output.close();
   }
 

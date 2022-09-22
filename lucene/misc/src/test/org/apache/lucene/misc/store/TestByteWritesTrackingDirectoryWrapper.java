@@ -14,27 +14,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.misc.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FlushInfo;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 
-public class TestWriteAmplificationTrackingDirectoryWrapper extends BaseDirectoryTestCase {
+public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCase {
 
   public void testEmptyDir() throws Exception {
-    WriteAmplificationTrackingDirectoryWrapper dir =
-        new WriteAmplificationTrackingDirectoryWrapper(new ByteBuffersDirectory());
+    ByteWritesTrackingDirectoryWrapper dir =
+        new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
     assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
   }
 
   public void testRandom() throws Exception {
-    WriteAmplificationTrackingDirectoryWrapper dir =
-        new WriteAmplificationTrackingDirectoryWrapper(new ByteBuffersDirectory());
+    ByteWritesTrackingDirectoryWrapper dir =
+        new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
 
     int flushBytes = random().nextInt(100);
     int mergeBytes = random().nextInt(100);
-    double expectedBytes = ((double) flushBytes + (double) mergeBytes) / (double) flushBytes;
+    double expectedWriteAmplification =
+        ((double) flushBytes + (double) mergeBytes) / (double) flushBytes;
 
     IndexOutput output = dir.createOutput("write", new IOContext(new FlushInfo(10, flushBytes)));
     byte[] flushBytesArr = new byte[flushBytes];
@@ -52,13 +59,13 @@ public class TestWriteAmplificationTrackingDirectoryWrapper extends BaseDirector
       mergeBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(mergeBytesArr, mergeBytesArr.length);
-
-    assertEquals(expectedBytes, dir.getApproximateWriteAmplificationFactor(), 0.0);
     output.close();
+
+    assertEquals(expectedWriteAmplification, dir.getApproximateWriteAmplificationFactor(), 0.0);
   }
 
   @Override
   protected Directory getDirectory(Path path) throws IOException {
-    return new WriteAmplificationTrackingDirectoryWrapper(new ByteBuffersDirectory());
+    return new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
   }
 }

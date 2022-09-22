@@ -14,13 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.misc.store;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexOutput;
 
 /** {@link FilterDirectory} that tracks write amplification factor */
-public final class WriteAmplificationTrackingDirectoryWrapper extends FilterDirectory {
+public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
 
   private final AtomicLong flushedBytes = new AtomicLong();
   private final AtomicLong mergedBytes = new AtomicLong();
@@ -30,7 +34,7 @@ public final class WriteAmplificationTrackingDirectoryWrapper extends FilterDire
    *
    * @param in input Directory
    */
-  public WriteAmplificationTrackingDirectoryWrapper(Directory in) {
+  public ByteWritesTrackingDirectoryWrapper(Directory in) {
     super(in);
   }
 
@@ -55,5 +59,13 @@ public final class WriteAmplificationTrackingDirectoryWrapper extends FilterDire
     }
     double mergedBytes = (double) this.mergedBytes.get();
     return (flushedBytes + mergedBytes) / flushedBytes;
+  }
+
+  public long getFlushedBytes() {
+    return flushedBytes.get();
+  }
+
+  public long getMergedBytes() {
+    return mergedBytes.get();
   }
 }
