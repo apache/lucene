@@ -17,6 +17,9 @@ Improvements
 ---------------------
 * GITHUB#11785: Improve Tessellator performance by delaying calls to the method
   #isIntersectingPolygon (Ignacio Vera) 
+
+* GITHUB#687: speed up IndexSortSortedNumericDocValuesRangeQuery#BoundedDocIdSetIterator
+  construction using bkd binary search. (Jianping Weng)
   
 Bug Fixes
 ---------------------
