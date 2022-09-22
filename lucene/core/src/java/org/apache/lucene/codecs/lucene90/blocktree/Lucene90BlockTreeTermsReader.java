@@ -229,7 +229,8 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
           // Iterate through all the fieldInfos and if a corresponding entry is not found in
           // fieldMap then create an entry with empty Terms.
           for (FieldInfo fieldInfo : state.fieldInfos) {
-            if (fieldMap.containsKey(fieldInfo.name) == false && fieldInfo.hasVectors()) {
+            if (fieldMap.containsKey(fieldInfo.name) == false
+                && fieldInfo.getIndexOptions() != IndexOptions.NONE) {
               fieldMap.put(fieldInfo.name, Terms.empty(fieldInfo));
             }
           }

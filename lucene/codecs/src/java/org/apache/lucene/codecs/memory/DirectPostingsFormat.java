@@ -119,16 +119,18 @@ public final class DirectPostingsFormat extends PostingsFormat {
   }
 
   private static final class DirectFields extends FieldsProducer {
-    private final Map<String, DirectField> fields = new TreeMap<>();
+    private final Map<String, Terms> fields = new TreeMap<>();
 
     public DirectFields(SegmentReadState state, Fields fields, int minSkipCount, int lowFreqCutoff)
         throws IOException {
       for (String field : fields) {
         if (fields.terms(field).iterator() == TermsEnum.EMPTY) {
-          continue;
+          this.fields.put(field, Terms.empty(state.fieldInfos.fieldInfo(field)));
+        } else {
+          this.fields.put(
+              field,
+              new DirectField(state, field, fields.terms(field), minSkipCount, lowFreqCutoff));
         }
-        this.fields.put(
-            field, new DirectField(state, field, fields.terms(field), minSkipCount, lowFreqCutoff));
       }
     }
 

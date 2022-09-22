@@ -50,7 +50,7 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
   // produce DocsEnum on demand
   final PostingsReaderBase postingsReader;
 
-  private final TreeMap<String, OrdsFieldReader> fields = new TreeMap<>();
+  private final TreeMap<String, Terms> fields = new TreeMap<>();
 
   /** Sole constructor. */
   public OrdsBlockTreeTermsReader(PostingsReaderBase postingsReader, SegmentReadState state)
@@ -153,7 +153,7 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
               "invalid sumTotalTermFreq: " + sumTotalTermFreq + " sumDocFreq: " + sumDocFreq, in);
         }
         final long indexStartFP = indexIn.readVLong();
-        OrdsFieldReader previous =
+        Terms previous =
             fields.put(
                 fieldInfo.name,
                 new OrdsFieldReader(
@@ -174,6 +174,14 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
       }
       indexIn.close();
 
+      // Iterate through all the fieldInfos and if a corresponding entry is not found in
+      // fieldMap then create an entry with empty Terms.
+      for (FieldInfo fieldInfo : state.fieldInfos) {
+        if (fields.containsKey(fieldInfo.name) == false
+            && fieldInfo.getIndexOptions() != IndexOptions.NONE /*&& fieldInfo.hasVectors()*/) {
+          fields.put(fieldInfo.name, Terms.empty(fieldInfo));
+        }
+      }
       success = true;
     } finally {
       if (!success) {

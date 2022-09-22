@@ -61,7 +61,7 @@ import org.apache.lucene.util.fst.Util;
  * @lucene.experimental
  */
 public class FSTTermsReader extends FieldsProducer {
-  final TreeMap<String, TermsReader> fields = new TreeMap<>();
+  final TreeMap<String, Terms> fields = new TreeMap<>();
   final PostingsReaderBase postingsReader;
   // static boolean TEST = false;
 
@@ -100,8 +100,16 @@ public class FSTTermsReader extends FieldsProducer {
         int docCount = in.readVInt();
         TermsReader current =
             new TermsReader(fieldInfo, in, numTerms, sumTotalTermFreq, sumDocFreq, docCount);
-        TermsReader previous = fields.put(fieldInfo.name, current);
+        Terms previous = fields.put(fieldInfo.name, current);
         checkFieldSummary(state.segmentInfo, in, current, previous);
+      }
+      // Iterate through all the fieldInfos and if a corresponding entry is not found in
+      // fieldMap then create an entry with empty Terms.
+      for (FieldInfo fieldInfo : state.fieldInfos) {
+        if (fields.containsKey(fieldInfo.name) == false
+            && fieldInfo.getIndexOptions() != IndexOptions.NONE) {
+          fields.put(fieldInfo.name, Terms.empty(fieldInfo));
+        }
       }
       success = true;
     } finally {
@@ -118,8 +126,8 @@ public class FSTTermsReader extends FieldsProducer {
     in.seek(in.readLong());
   }
 
-  private void checkFieldSummary(
-      SegmentInfo info, IndexInput in, TermsReader field, TermsReader previous) throws IOException {
+  private void checkFieldSummary(SegmentInfo info, IndexInput in, TermsReader field, Terms previous)
+      throws IOException {
     // #docs with field must be <= #docs
     if (field.docCount < 0 || field.docCount > info.maxDoc()) {
       throw new CorruptIndexException(

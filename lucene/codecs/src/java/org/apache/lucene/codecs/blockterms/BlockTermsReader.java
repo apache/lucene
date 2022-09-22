@@ -61,7 +61,7 @@ public class BlockTermsReader extends FieldsProducer {
   // produce DocsEnum on demand
   private final PostingsReaderBase postingsReader;
 
-  private final TreeMap<String, FieldReader> fields = new TreeMap<>();
+  private final TreeMap<String, Terms> fields = new TreeMap<>();
 
   // Reads the terms index
   private TermsIndexReaderBase indexReader;
@@ -156,7 +156,7 @@ public class BlockTermsReader extends FieldsProducer {
           throw new CorruptIndexException(
               "invalid sumTotalTermFreq: " + sumTotalTermFreq + " sumDocFreq: " + sumDocFreq, in);
         }
-        FieldReader previous =
+        Terms previous =
             fields.put(
                 fieldInfo.name,
                 new FieldReader(
@@ -168,6 +168,14 @@ public class BlockTermsReader extends FieldsProducer {
                     docCount));
         if (previous != null) {
           throw new CorruptIndexException("duplicate fields: " + fieldInfo.name, in);
+        }
+      }
+      // Iterate through all the fieldInfos and if a corresponding entry is not found in
+      // fieldMap then create an entry with empty Terms.
+      for (FieldInfo fieldInfo : state.fieldInfos) {
+        if (fields.containsKey(fieldInfo.name) == false
+            && fieldInfo.getIndexOptions() != IndexOptions.NONE) {
+          fields.put(fieldInfo.name, Terms.empty(fieldInfo));
         }
       }
       success = true;
