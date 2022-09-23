@@ -79,7 +79,7 @@ public final class AssertingPostingsFormat extends PostingsFormat {
     @Override
     public Terms terms(String field) throws IOException {
       Terms terms = in.terms(field);
-      return terms == Terms.EMPTY ? terms : new AssertingLeafReader.AssertingTerms(terms);
+      return new AssertingLeafReader.AssertingTerms(terms);
     }
 
     @Override

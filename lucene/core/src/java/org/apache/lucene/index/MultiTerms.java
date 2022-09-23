@@ -258,18 +258,4 @@ public final class MultiTerms extends Terms {
   public boolean hasPayloads() {
     return hasPayloads;
   }
-
-  /**
-   * Tests whether all terms within MultiTerms is Empty
-   *
-   * @return true if all terms within MultiTerms is Empty, false otherwise
-   */
-  public boolean isEmpty() {
-    for (int i = 0; i < subs.length; i++) {
-      if (subs[i] != Terms.EMPTY) {
-        return false;
-      }
-    }
-    return true;
-  }
 }
