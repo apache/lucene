@@ -334,7 +334,7 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
           new String(earlyExitOutput.readAllBytes(), StandardCharsets.UTF_8);
       String[] earlyExitOutputTexts =
           Arrays.stream(earlyExitOutputText.split("\\s"))
-              .filter(text -> text != "")
+              .filter(text -> !text.equals(""))
               .collect(Collectors.joining(" "))
               .split(" ");
       CustomAnalyzer analyzer =
