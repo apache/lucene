@@ -673,12 +673,12 @@ final class SegmentTermsEnumFrame {
     suffix = suffixLengthsReader.readVInt();
     int start = nextEnt;
     int end = entCount - 1;
-    //Binary search the entries (terms) in this leaf block:
+    // Binary search the entries (terms) in this leaf block:
     while (start <= end) {
       int mid = (start + end) / 2;
       nextEnt = mid + 1;
       startBytePos = mid * suffix;
-      // Loop over bytes in the suffix, comparing to the target
+      // Binary search bytes in the suffix, comparing to the target
       final int cmp =
               Arrays.compareUnsigned(
                       suffixBytes,
@@ -706,7 +706,7 @@ final class SegmentTermsEnumFrame {
     }
 
     // It is possible (and OK) that terms index pointed us
-    // at this block, but, we scanned the entire block and
+    // at this block, but, we searched the entire block and
     // did not find the term to position to.  This happens
     // when the target is after the last term in the block
     // (but, before the next term in the index).  EG
