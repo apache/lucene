@@ -274,9 +274,12 @@ public abstract class Terms {
         }
       };
 
-  /*
-   Create an Empty Terms with the given fieldInfo object.
-  */
+  /**
+   * Create an Empty Terms with the given fieldInfo object.
+   *
+   * @param fieldInfo fieldinfo
+   * @return empty Terms
+   */
   public static Terms empty(FieldInfo fieldInfo) {
     return new Terms() {
       @Override
