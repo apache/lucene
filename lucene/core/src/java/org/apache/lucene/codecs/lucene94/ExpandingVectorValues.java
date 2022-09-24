@@ -27,7 +27,9 @@ public class ExpandingVectorValues extends FilterVectorValues {
 
   private final float[] value;
 
-  /** @param in the wrapped values */
+  /**
+   * @param in the wrapped values
+   */
   protected ExpandingVectorValues(VectorValues in) {
     super(in);
     value = new float[in.dimension()];

@@ -31,12 +31,16 @@ public class MapOfSets<K, V> {
 
   private final Map<K, Set<V>> theMap;
 
-  /** @param m the backing store for this object */
+  /**
+   * @param m the backing store for this object
+   */
   public MapOfSets(Map<K, Set<V>> m) {
     theMap = m;
   }
 
-  /** @return direct access to the map backing this object. */
+  /**
+   * @return direct access to the map backing this object.
+   */
   public Map<K, Set<V>> getMap() {
     return theMap;
   }

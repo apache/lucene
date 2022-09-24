@@ -140,7 +140,9 @@ public class NLS {
     }
   }
 
-  /** @param key - Message Key */
+  /**
+   * @param key - Message Key
+   */
   private static void validateMessage(String key, Class<? extends NLS> clazz) {
     // Test if the message is present in the resource bundle
     try {

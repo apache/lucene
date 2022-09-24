@@ -84,27 +84,37 @@ public class MultiMatchingQueries<T extends QueryMatch> {
     return docMatches.size();
   }
 
-  /** @return how long (in ns) it took to build the Presearcher query for the matcher run */
+  /**
+   * @return how long (in ns) it took to build the Presearcher query for the matcher run
+   */
   public long getQueryBuildTime() {
     return queryBuildTime;
   }
 
-  /** @return how long (in ms) it took to run the selected queries */
+  /**
+   * @return how long (in ms) it took to run the selected queries
+   */
   public long getSearchTime() {
     return searchTime;
   }
 
-  /** @return the number of queries passed to this CandidateMatcher during the matcher run */
+  /**
+   * @return the number of queries passed to this CandidateMatcher during the matcher run
+   */
   public int getQueriesRun() {
     return queriesRun;
   }
 
-  /** @return the number of documents in the batch */
+  /**
+   * @return the number of documents in the batch
+   */
   public int getBatchSize() {
     return batchSize;
   }
 
-  /** @return a List of any MatchErrors created during the matcher run */
+  /**
+   * @return a List of any MatchErrors created during the matcher run
+   */
   public Map<String, Exception> getErrors() {
     return errors;
   }

@@ -68,7 +68,9 @@ public class IndexAndTaxonomyRevision implements Revision {
       super(directory, openMode);
     }
 
-    /** @see DirectoryTaxonomyWriter#DirectoryTaxonomyWriter(Directory) */
+    /**
+     * @see DirectoryTaxonomyWriter#DirectoryTaxonomyWriter(Directory)
+     */
     public SnapshotDirectoryTaxonomyWriter(Directory d) throws IOException {
       super(d);
     }
