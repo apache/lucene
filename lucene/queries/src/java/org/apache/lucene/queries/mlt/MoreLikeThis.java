@@ -879,7 +879,9 @@ public final class MoreLikeThis {
     return createQueue(field2termFreqMap);
   }
 
-  /** @see #retrieveInterestingTerms(java.io.Reader, String) */
+  /**
+   * @see #retrieveInterestingTerms(java.io.Reader, String)
+   */
   public String[] retrieveInterestingTerms(int docNum) throws IOException {
     ArrayList<String> al = new ArrayList<>(maxQueryTerms);
     PriorityQueue<ScoreTerm> pq = retrieveTerms(docNum);

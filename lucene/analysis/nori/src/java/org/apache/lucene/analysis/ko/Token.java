@@ -38,22 +38,30 @@ public abstract class Token {
     this.endOffset = endOffset;
   }
 
-  /** @return surfaceForm */
+  /**
+   * @return surfaceForm
+   */
   public char[] getSurfaceForm() {
     return surfaceForm;
   }
 
-  /** @return offset into surfaceForm */
+  /**
+   * @return offset into surfaceForm
+   */
   public int getOffset() {
     return offset;
   }
 
-  /** @return length of surfaceForm */
+  /**
+   * @return length of surfaceForm
+   */
   public int getLength() {
     return length;
   }
 
-  /** @return surfaceForm as a String */
+  /**
+   * @return surfaceForm as a String
+   */
   public String getSurfaceFormString() {
     return new String(surfaceForm, offset, length);
   }

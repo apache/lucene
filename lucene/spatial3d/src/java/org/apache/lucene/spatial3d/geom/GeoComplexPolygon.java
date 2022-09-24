@@ -1134,10 +1134,14 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * will cause this object to be called.
    */
   private static interface CountingEdgeIterator extends EdgeIterator {
-    /** @return the number of edges that were crossed. */
+    /**
+     * @return the number of edges that were crossed.
+     */
     public int getCrossingCount();
 
-    /** @return true if the endpoint was on an edge. */
+    /**
+     * @return true if the endpoint was on an edge.
+     */
     public boolean isOnEdge();
   }
 

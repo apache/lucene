@@ -70,52 +70,72 @@ public class Token {
         + ")";
   }
 
-  /** @return surfaceForm */
+  /**
+   * @return surfaceForm
+   */
   public char[] getSurfaceForm() {
     return surfaceForm;
   }
 
-  /** @return offset into surfaceForm */
+  /**
+   * @return offset into surfaceForm
+   */
   public int getOffset() {
     return offset;
   }
 
-  /** @return length of surfaceForm */
+  /**
+   * @return length of surfaceForm
+   */
   public int getLength() {
     return length;
   }
 
-  /** @return surfaceForm as a String */
+  /**
+   * @return surfaceForm as a String
+   */
   public String getSurfaceFormString() {
     return new String(surfaceForm, offset, length);
   }
 
-  /** @return reading. null if token doesn't have reading. */
+  /**
+   * @return reading. null if token doesn't have reading.
+   */
   public String getReading() {
     return dictionary.getReading(wordId, surfaceForm, offset, length);
   }
 
-  /** @return pronunciation. null if token doesn't have pronunciation. */
+  /**
+   * @return pronunciation. null if token doesn't have pronunciation.
+   */
   public String getPronunciation() {
     return dictionary.getPronunciation(wordId, surfaceForm, offset, length);
   }
 
-  /** @return part of speech. */
+  /**
+   * @return part of speech.
+   */
   public String getPartOfSpeech() {
     return dictionary.getPartOfSpeech(wordId);
   }
 
-  /** @return inflection type or null */
+  /**
+   * @return inflection type or null
+   */
   public String getInflectionType() {
     return dictionary.getInflectionType(wordId);
   }
 
-  /** @return inflection form or null */
+  /**
+   * @return inflection form or null
+   */
   public String getInflectionForm() {
     return dictionary.getInflectionForm(wordId);
   }
 
-  /** @return base form or null if token is not inflected */
+  /**
+   * @return base form or null if token is not inflected
+   */
   public String getBaseForm() {
     return dictionary.getBaseForm(wordId, surfaceForm, offset, length);
   }

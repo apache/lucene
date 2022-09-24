@@ -213,19 +213,29 @@ public final class Version {
    */
   @Deprecated public static final Version LUCENE_8_12_0 = new Version(8, 12, 0);
 
-  /** @deprecated (9.1.0) Use latest */
+  /**
+   * @deprecated (9.1.0) Use latest
+   */
   @Deprecated public static final Version LUCENE_9_0_0 = new Version(9, 0, 0);
 
-  /** @deprecated (9.2.0) Use latest */
+  /**
+   * @deprecated (9.2.0) Use latest
+   */
   @Deprecated public static final Version LUCENE_9_1_0 = new Version(9, 1, 0);
 
-  /** @deprecated (9.3.0) Use latest */
+  /**
+   * @deprecated (9.3.0) Use latest
+   */
   @Deprecated public static final Version LUCENE_9_2_0 = new Version(9, 2, 0);
 
-  /** @deprecated (9.4.0) Use latest */
+  /**
+   * @deprecated (9.4.0) Use latest
+   */
   @Deprecated public static final Version LUCENE_9_3_0 = new Version(9, 3, 0);
 
-  /** @deprecated (9.5.0) Use latest */
+  /**
+   * @deprecated (9.5.0) Use latest
+   */
   @Deprecated public static final Version LUCENE_9_4_0 = new Version(9, 4, 0);
 
   /**
@@ -264,7 +274,9 @@ public final class Version {
    */
   public static final int MIN_SUPPORTED_MAJOR = Version.LATEST.major - 1;
 
-  /** @see #getPackageImplementationVersion() */
+  /**
+   * @see #getPackageImplementationVersion()
+   */
   private static String implementationVersion;
 
   /**

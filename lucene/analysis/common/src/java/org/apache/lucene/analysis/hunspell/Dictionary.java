@@ -1003,7 +1003,9 @@ public class Dictionary {
     return wordCount;
   }
 
-  /** @return the number of word entries written */
+  /**
+   * @return the number of word entries written
+   */
   private int writeNormalizedWordEntry(StringBuilder reuse, ByteSequencesWriter writer, String line)
       throws IOException {
     int flagSep = line.indexOf(FLAG_SEPARATOR);

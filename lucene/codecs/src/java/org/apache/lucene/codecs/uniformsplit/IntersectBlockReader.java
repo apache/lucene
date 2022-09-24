@@ -400,7 +400,9 @@ public class IntersectBlockReader extends BlockReader {
       return linear && term.compareTo(linearUpperBound) < 0;
     }
 
-    /** @see org.apache.lucene.index.FilteredTermsEnum#nextSeekTerm(BytesRef) */
+    /**
+     * @see org.apache.lucene.index.FilteredTermsEnum#nextSeekTerm(BytesRef)
+     */
     protected BytesRef nextSeekTerm(final BytesRef term) {
       // System.out.println("ATE.nextSeekTerm term=" + term);
       if (term == null) {

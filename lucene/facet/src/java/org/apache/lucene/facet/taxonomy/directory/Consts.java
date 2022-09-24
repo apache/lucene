@@ -18,7 +18,9 @@ package org.apache.lucene.facet.taxonomy.directory;
 
 import org.apache.lucene.util.BytesRef;
 
-/** @lucene.experimental */
+/**
+ * @lucene.experimental
+ */
 abstract class Consts {
   static final String FULL = "$full_path$";
 

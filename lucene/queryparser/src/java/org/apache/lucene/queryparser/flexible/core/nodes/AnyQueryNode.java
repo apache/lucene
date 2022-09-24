@@ -24,7 +24,9 @@ public class AnyQueryNode extends AndQueryNode {
   private CharSequence field = null;
   private int minimumMatchingmElements = 0;
 
-  /** @param clauses - the query nodes to be or'ed */
+  /**
+   * @param clauses - the query nodes to be or'ed
+   */
   public AnyQueryNode(List<QueryNode> clauses, CharSequence field, int minimumMatchingElements) {
     super(clauses);
     this.field = field;
@@ -71,7 +73,9 @@ public class AnyQueryNode extends AndQueryNode {
     else return this.field.toString();
   }
 
-  /** @param field - the field to set */
+  /**
+   * @param field - the field to set
+   */
   public void setField(CharSequence field) {
     this.field = field;
   }

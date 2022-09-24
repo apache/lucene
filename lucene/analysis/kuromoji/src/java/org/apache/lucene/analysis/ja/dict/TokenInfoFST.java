@@ -86,7 +86,9 @@ public final class TokenInfoFST {
     return fst.getBytesReader();
   }
 
-  /** @lucene.internal for testing only */
+  /**
+   * @lucene.internal for testing only
+   */
   FST<Long> getInternalFST() {
     return fst;
   }
