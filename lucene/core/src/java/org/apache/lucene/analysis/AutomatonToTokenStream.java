@@ -41,7 +41,7 @@ public class AutomatonToTokenStream {
    * position nodes for the TokenStream. The resulting TokenStream releases edges from the automaton
    * as tokens in order from the position nodes. This requires the automaton be a finite DAG.
    *
-   * @param automaton automaton to convert. Must be a finite DAG.
+   * @param automaton automaton to convert. Must be a finite DAG to avoid infinite loops!
    * @return TokenStream representation of automaton.
    */
   public static TokenStream toTokenStream(Automaton automaton) {
