@@ -31,6 +31,9 @@ API Changes
 
 * LUCENE-10603: Remove SortedSetDocValues#NO_MORE_ORDS definition. (Greg Miller)
 
+* GITHUB#11813: Remove Operations.isFinite: the recursive implementation could be problematic
+  for large automatons (WildcardQuery, PrefixQuery, RegExpQuery, etc).  (taroplus, Robert Muir)
+
 New Features
 ---------------------
 
