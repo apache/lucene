@@ -120,6 +120,7 @@ Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
 
+* GITHUB#11811: upgrade google java format to 1.15.0 (Dawid Weiss)
 
 ======================== Lucene 9.4.0 =======================
 
