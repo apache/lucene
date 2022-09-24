@@ -28,7 +28,6 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.Transition;
 
 /** Converts an Automaton into a TokenStream. */
@@ -46,10 +45,6 @@ public class AutomatonToTokenStream {
    * @return TokenStream representation of automaton.
    */
   public static TokenStream toTokenStream(Automaton automaton) {
-    if (Operations.isFinite(automaton) == false) {
-      throw new IllegalArgumentException("Automaton must be finite");
-    }
-
     List<List<Integer>> positionNodes = new ArrayList<>();
 
     Transition[][] transitions = automaton.getSortedTransitions();
