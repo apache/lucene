@@ -127,7 +127,9 @@ class JavascriptLexer extends Lexer {
   };
   public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
-  /** @deprecated Use {@link #VOCABULARY} instead. */
+  /**
+   * @deprecated Use {@link #VOCABULARY} instead.
+   */
   @Deprecated public static final String[] tokenNames;
 
   static {

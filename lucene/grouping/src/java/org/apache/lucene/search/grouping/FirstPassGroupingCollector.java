@@ -52,7 +52,9 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
   private final int compIDXEnd;
 
   // Set once we reach topNGroups unique groups:
-  /** @lucene.internal */
+  /**
+   * @lucene.internal
+   */
   protected TreeSet<CollectedSearchGroup<T>> orderedGroups;
 
   private int docBase;
@@ -353,7 +355,9 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     groupSelector.setNextReader(readerContext);
   }
 
-  /** @return the GroupSelector used for this Collector */
+  /**
+   * @return the GroupSelector used for this Collector
+   */
   public GroupSelector<T> getGroupSelector() {
     return groupSelector;
   }

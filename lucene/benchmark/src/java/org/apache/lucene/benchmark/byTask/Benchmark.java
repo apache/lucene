@@ -132,12 +132,16 @@ public class Benchmark {
     System.out.println("####################");
   }
 
-  /** @return Returns the algorithm. */
+  /**
+   * @return Returns the algorithm.
+   */
   public Algorithm getAlgorithm() {
     return algorithm;
   }
 
-  /** @return Returns the runData. */
+  /**
+   * @return Returns the runData.
+   */
   public PerfRunData getRunData() {
     return runData;
   }

@@ -41,7 +41,9 @@ public class EntrySuggestion {
     return toEdit;
   }
 
-  /** @return new dictionary entries to be added to accommodate the given word list */
+  /**
+   * @return new dictionary entries to be added to accommodate the given word list
+   */
   public List<DictEntry> getEntriesToAdd() {
     return toAdd;
   }

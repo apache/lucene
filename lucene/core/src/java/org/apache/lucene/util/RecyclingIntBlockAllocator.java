@@ -99,17 +99,23 @@ public final class RecyclingIntBlockAllocator extends Allocator {
     assert bytesUsed.get() >= 0;
   }
 
-  /** @return the number of currently buffered blocks */
+  /**
+   * @return the number of currently buffered blocks
+   */
   public int numBufferedBlocks() {
     return freeBlocks;
   }
 
-  /** @return the number of bytes currently allocated by this {@link Allocator} */
+  /**
+   * @return the number of bytes currently allocated by this {@link Allocator}
+   */
   public long bytesUsed() {
     return bytesUsed.get();
   }
 
-  /** @return the maximum number of buffered byte blocks */
+  /**
+   * @return the maximum number of buffered byte blocks
+   */
   public int maxBufferedBlocks() {
     return maxBufferedBlocks;
   }

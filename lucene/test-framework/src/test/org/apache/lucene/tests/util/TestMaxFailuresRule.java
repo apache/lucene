@@ -33,7 +33,9 @@ import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 
-/** @see TestRuleIgnoreAfterMaxFailures */
+/**
+ * @see TestRuleIgnoreAfterMaxFailures
+ */
 public class TestMaxFailuresRule extends WithNestedTests {
   public TestMaxFailuresRule() {
     super(true);
