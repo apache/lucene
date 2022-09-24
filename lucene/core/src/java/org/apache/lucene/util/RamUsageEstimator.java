@@ -199,7 +199,7 @@ public final class RamUsageEstimator {
 
   /** Approximate memory usage that we assign to a LinkedHashMap entry. */
   public static final long LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY =
-      HASHTABLE_RAM_BYTES_PER_ENTRY + 2 * NUM_BYTES_OBJECT_REF; // previous & next references
+      HASHTABLE_RAM_BYTES_PER_ENTRY + 2L * NUM_BYTES_OBJECT_REF; // previous & next references
 
   /** Aligns an object size to be the next multiple of {@link #NUM_BYTES_OBJECT_ALIGNMENT}. */
   public static long alignObjectSize(long size) {
