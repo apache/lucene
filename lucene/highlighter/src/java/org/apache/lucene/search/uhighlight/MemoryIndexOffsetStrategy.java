@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -28,6 +29,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.memory.MemoryIndex;
 import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 
 /**
  * Uses an {@link Analyzer} on content to get offsets and then populates a {@link MemoryIndex}.
@@ -60,7 +63,13 @@ public class MemoryIndexOffsetStrategy extends AnalysisOffsetStrategy {
 
     List<CharArrayMatcher> allAutomata = new ArrayList<>();
     if (components.getTerms().length > 0) {
-      allAutomata.add(CharArrayMatcher.fromTerms(Arrays.asList(components.getTerms())));
+      // Filter out any long terms that would otherwise cause exceptions if we tried
+      // to build an automaton on them
+      List<BytesRef> filteredTerms =
+          Arrays.stream(components.getTerms())
+              .filter(b -> b.length < DaciukMihovAutomatonBuilder.MAX_TERM_LENGTH)
+              .collect(Collectors.toList());
+      allAutomata.add(CharArrayMatcher.fromTerms(filteredTerms));
     }
     Collections.addAll(allAutomata, components.getAutomata());
     for (SpanQuery spanQuery : components.getPhraseHelper().getSpanQueries()) {
