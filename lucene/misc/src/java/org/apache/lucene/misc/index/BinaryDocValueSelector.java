@@ -26,6 +26,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BitSet;
@@ -58,6 +59,11 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
       }
     }
     return bits;
+  }
+
+  @Override
+  public boolean isDeleted(LeafReader reader, int idx) {
+    return false;
   }
 
   public static List<IndexRearranger.DocumentSelector> createFromExistingIndex(

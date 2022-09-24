@@ -24,12 +24,15 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterCodecReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentCommitInfo;
@@ -55,6 +58,7 @@ public class IndexRearranger {
   protected final Directory input, output;
   protected final IndexWriterConfig config;
   protected final List<DocumentSelector> documentSelectors;
+  private static final Lock accessNewestSegmentLock = new ReentrantLock();
 
   /**
    * Constructor
@@ -136,7 +140,30 @@ public class IndexRearranger {
       readers[context.ord] =
           new DocSelectorFilteredCodecReader((CodecReader) context.reader(), selector);
     }
+    // Lock to make sure we can access the segment we are about to produce
+    // when we need to mark the deleted documents.
+    accessNewestSegmentLock.lock();
     writer.addIndexes(readers);
+
+    DirectoryReader directoryReader = DirectoryReader.open(writer);
+    int n = directoryReader.leaves().size();
+    // Because we locked we know the segment we are working with is the last one
+    LeafReader segmentReader = directoryReader.leaves().get(n - 1).reader();
+    accessNewestSegmentLock.unlock();
+    applyDeletes(writer, segmentReader, selector);
+    directoryReader.close();
+  }
+
+  private static void applyDeletes(
+      IndexWriter writer, LeafReader segmentReader, DocumentSelector selector) throws IOException {
+    for (int i = 0; i < segmentReader.maxDoc(); ++i) {
+      if (selector.isDeleted(segmentReader, i)) {
+        if (writer.tryDeleteDocument(segmentReader, i) == -1) {
+          // TODO: How can we handle this case?
+          throw new IllegalStateException("tryDeleteDocument failed and there's no plan B");
+        }
+      }
+    }
   }
 
   private static class DocSelectorFilteredCodecReader extends FilterCodecReader {
@@ -175,5 +202,7 @@ public class IndexRearranger {
   /** Select document within a CodecReader */
   public interface DocumentSelector {
     BitSet getFilteredLiveDocs(CodecReader reader) throws IOException;
+
+    boolean isDeleted(LeafReader reader, int idx) throws IOException;
   }
 }
