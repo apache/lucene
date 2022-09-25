@@ -459,7 +459,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     // any special distinction for direct memory buffers.
     assert ramBytesUsed
         == blocks.stream().mapToLong(ByteBuffer::capacity).sum()
-            + blocks.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+            + (long) blocks.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     return ramBytesUsed;
   }
 
