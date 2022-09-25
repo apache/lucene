@@ -947,7 +947,7 @@ public class Automaton implements Accountable {
         + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
         + (isAccept.size() / 8)
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-        + 2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+        + 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF
         + 3 * Integer.BYTES
         + 1;
   }
