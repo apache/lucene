@@ -315,7 +315,7 @@ public class MMapDirectory extends FSDirectory {
                   "%s: %s [this may be caused by lack of enough unfragmented virtual address space "
                       + "or too restrictive virtual memory limits enforced by the operating system, "
                       + "preventing us to map a chunk of %d bytes. %sMore information: "
-                      + "http://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html]",
+                      + "https://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html]",
                   originalMessage,
                   resourceDescription,
                   bufSize,
@@ -329,16 +329,12 @@ public class MMapDirectory extends FSDirectory {
   private static MMapIndexInputProvider lookupProvider() {
     final var lookup = MethodHandles.lookup();
     try {
-      final var pkg = lookup.lookupClass().getPackageName();
-      final var cls = lookup.findClass(pkg + ".MemorySegmentIndexInputProvider");
+      final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
       // we use method handles, so we do not need to deal with setAccessible as we have private
       // access through the lookup:
-      final var constr =
-          lookup
-              .findConstructor(cls, MethodType.methodType(void.class))
-              .asType(MethodType.methodType(MMapIndexInputProvider.class));
+      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
       try {
-        return (MMapIndexInputProvider) constr.invokeExact();
+        return (MMapIndexInputProvider) constr.invoke();
       } catch (RuntimeException | Error e) {
         throw e;
       } catch (Throwable th) {

@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-import org.gradle.internal.jvm.Jvm
-import org.gradle.internal.jvm.inspection.JvmMetadataDetector
-
 // Configure Java project defaults.
 
 allprojects {
@@ -104,39 +101,15 @@ configure(project(":lucene:core")) {
     }
 
     tasks.named('compileMain19Java').configure {
-      /* This will work when JDK 19 comes out:
-    
-      // select EA build:
       javaCompiler = javaToolchains.compilerFor {
         languageVersion = JavaLanguageVersion.of(19)
-        vendor = JvmVendorSpec.ADOPTOPENJDK
+        // TODO enable after release: vendor = JvmVendorSpec.ADOPTOPENJDK
+        // Gradle 7.4: vendor = JvmVendorSpec.ADOPTIUM
+        implementation = JvmImplementation.VENDOR_SPECIFIC
       }
       
       // undo alternative JDK support:
       options.forkOptions.javaHome = null
-      */
-      
-      // TODO: Remove this when Java 19 is out
-      if (rootProject.ext.runtimeJavaVersion != JavaVersion.VERSION_19) {
-        def jvmJava19 = {
-          def home = propertyOrDefault("java19.home", System.getenv('JAVA19_HOME'))
-          if (home != null) {
-            def jvm = Jvm.forHome(file(home))
-            def languageVersion = project.services.get(JvmMetadataDetector).getMetadata(jvm.javaHome).languageVersion
-            if (languageVersion == JavaVersion.VERSION_19) {
-              return jvm;
-            } else {
-              throw new GradleException('Cannot find a Java 19 compiler. [JAVA19_HOME] environment or property [java19.home] '
-                + 'must exactly point to a Java 19 installation; you passed a home directory of version ' + languageVersion);
-            }
-          }
-          throw new GradleException('The current Java version is not exactly Java 19, so we cannot compile a MR-JAR. '
-            + 'Please pass [JAVA19_HOME] environment or set the [java19.home] property. If you want to run whole '
-            + 'testsuite with Java 19, pass [RUNTIME_JAVA_HOME].')
-        }()
-        options.fork = true
-        options.forkOptions.javaHome = jvmJava19.javaHome
-      }
       
       sourceCompatibility = 19
       targetCompatibility = 19
