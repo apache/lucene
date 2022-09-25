@@ -81,12 +81,6 @@ def commonCleanups = { FileTree generatedFiles ->
       text = text.replace(
           "public  void setDebugStream(java.io.PrintStream ds) { debugStream = ds; }",
           "// (setDebugStream omitted).")
-      text = text.replace(
-          "public class QueryParserTokenManager ",
-          '@SuppressWarnings("unused") public class QueryParserTokenManager ')
-      text = text.replace(
-          "public class StandardSyntaxParserTokenManager ",
-          '@SuppressWarnings("unused") public class StandardSyntaxParserTokenManager ')
       return text
     })
   }
