@@ -26,7 +26,9 @@ import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
  */
 public class BooleanQueryNode extends QueryNodeImpl {
 
-  /** @param clauses - the query nodes to be and'ed */
+  /**
+   * @param clauses - the query nodes to be and'ed
+   */
   public BooleanQueryNode(List<QueryNode> clauses) {
     setLeaf(false);
     allocate();

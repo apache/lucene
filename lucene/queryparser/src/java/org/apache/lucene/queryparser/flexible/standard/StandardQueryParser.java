@@ -326,7 +326,9 @@ public class StandardQueryParser extends QueryParserHelper
     getQueryConfigHandler().set(ConfigurationKeys.ENABLE_POSITION_INCREMENTS, enabled);
   }
 
-  /** @see #setEnablePositionIncrements(boolean) */
+  /**
+   * @see #setEnablePositionIncrements(boolean)
+   */
   @Override
   public boolean getEnablePositionIncrements() {
     Boolean enablePositionsIncrements =
@@ -353,7 +355,9 @@ public class StandardQueryParser extends QueryParserHelper
     getQueryConfigHandler().set(ConfigurationKeys.MULTI_TERM_REWRITE_METHOD, method);
   }
 
-  /** @see #setMultiTermRewriteMethod(org.apache.lucene.search.MultiTermQuery.RewriteMethod) */
+  /**
+   * @see #setMultiTermRewriteMethod(org.apache.lucene.search.MultiTermQuery.RewriteMethod)
+   */
   @Override
   public MultiTermQuery.RewriteMethod getMultiTermRewriteMethod() {
     return getQueryConfigHandler().get(ConfigurationKeys.MULTI_TERM_REWRITE_METHOD);
@@ -449,7 +453,9 @@ public class StandardQueryParser extends QueryParserHelper
     return getQueryConfigHandler().get(ConfigurationKeys.ANALYZER);
   }
 
-  /** @see #setAllowLeadingWildcard(boolean) */
+  /**
+   * @see #setAllowLeadingWildcard(boolean)
+   */
   @Override
   public boolean getAllowLeadingWildcard() {
     Boolean allowLeadingWildcard =

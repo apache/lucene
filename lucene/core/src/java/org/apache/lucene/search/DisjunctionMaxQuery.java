@@ -68,18 +68,24 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
     this.disjuncts.addAll(disjuncts);
   }
 
-  /** @return An {@code Iterator<Query>} over the disjuncts */
+  /**
+   * @return An {@code Iterator<Query>} over the disjuncts
+   */
   @Override
   public Iterator<Query> iterator() {
     return getDisjuncts().iterator();
   }
 
-  /** @return the disjuncts. */
+  /**
+   * @return the disjuncts.
+   */
   public Collection<Query> getDisjuncts() {
     return Collections.unmodifiableCollection(disjuncts);
   }
 
-  /** @return tie breaker value for multiple matches. */
+  /**
+   * @return tie breaker value for multiple matches.
+   */
   public float getTieBreakerMultiplier() {
     return tieBreakerMultiplier;
   }

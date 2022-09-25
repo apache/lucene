@@ -344,7 +344,9 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     }
   }
 
-  /** @return The number of bytes written to this output so far. */
+  /**
+   * @return The number of bytes written to this output so far.
+   */
   public long size() {
     long size = 0;
     int blockCount = blocks.size();
@@ -477,7 +479,9 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     currentBlock = EMPTY;
   }
 
-  /** @return Returns a new {@link ByteBuffersDataOutput} with the {@link #reset()} capability. */
+  /**
+   * @return Returns a new {@link ByteBuffersDataOutput} with the {@link #reset()} capability.
+   */
   // TODO: perhaps we can move it out to an utility class (as a supplier of preconfigured
   // instances?)
   public static ByteBuffersDataOutput newResettableInstance() {

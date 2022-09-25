@@ -61,7 +61,9 @@ public class NeighborQueue {
     this.order = maxHeap ? Order.MAX_HEAP : Order.MIN_HEAP;
   }
 
-  /** @return the number of elements in the heap */
+  /**
+   * @return the number of elements in the heap
+   */
   public int size() {
     return heap.size();
   }

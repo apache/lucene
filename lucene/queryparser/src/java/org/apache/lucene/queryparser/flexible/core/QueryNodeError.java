@@ -28,14 +28,18 @@ import org.apache.lucene.queryparser.flexible.messages.NLSException;
 public class QueryNodeError extends Error implements NLSException {
   private Message message;
 
-  /** @param message - NLS Message Object */
+  /**
+   * @param message - NLS Message Object
+   */
   public QueryNodeError(Message message) {
     super(message.getKey());
 
     this.message = message;
   }
 
-  /** @param throwable - @see java.lang.Error */
+  /**
+   * @param throwable - @see java.lang.Error
+   */
   public QueryNodeError(Throwable throwable) {
     super(throwable);
   }

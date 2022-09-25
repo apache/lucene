@@ -1038,44 +1038,6 @@ public final class Operations {
   }
 
   /**
-   * Returns true if the language of this automaton is finite. The automaton must not have any dead
-   * states.
-   */
-  public static boolean isFinite(Automaton a) {
-    if (a.getNumStates() == 0) {
-      return true;
-    }
-    return isFinite(
-        new Transition(), a, 0, new BitSet(a.getNumStates()), new BitSet(a.getNumStates()), 0);
-  }
-
-  /**
-   * Checks whether there is a loop containing state. (This is sufficient since there are never
-   * transitions to dead states.)
-   */
-  // TODO: not great that this is recursive... in theory a
-  // large automata could exceed java's stack so the maximum level of recursion is bounded to 1000
-  private static boolean isFinite(
-      Transition scratch, Automaton a, int state, BitSet path, BitSet visited, int level) {
-    if (level > MAX_RECURSION_LEVEL) {
-      throw new IllegalArgumentException("input automaton is too large: " + level);
-    }
-    path.set(state);
-    int numTransitions = a.initTransition(state, scratch);
-    for (int t = 0; t < numTransitions; t++) {
-      a.getTransition(state, t, scratch);
-      if (path.get(scratch.dest)
-          || (!visited.get(scratch.dest)
-              && !isFinite(scratch, a, scratch.dest, path, visited, level + 1))) {
-        return false;
-      }
-    }
-    path.clear(state);
-    visited.set(state);
-    return true;
-  }
-
-  /**
    * Returns the longest string that is a prefix of all accepted strings and visits each state at
    * most once. The automaton must not have dead states. If this automaton has already been
    * converted to UTF-8 (e.g. using {@link UTF32ToUTF8}) then you should use {@link
