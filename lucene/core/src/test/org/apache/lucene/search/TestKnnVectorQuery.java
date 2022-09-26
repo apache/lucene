@@ -632,6 +632,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
   }
 
   /** Tests filtering when all vectors have the same score. */
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/11787")
   public void testFilterWithSameScore() throws IOException {
     int numDocs = 100;
     int dimension = atLeast(5);
@@ -833,7 +834,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
    */
   private Directory getStableIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
-    try (IndexWriter writer = new IndexWriter(indexStore, newIndexWriterConfig())) {
+    try (IndexWriter writer = new IndexWriter(indexStore, new IndexWriterConfig())) {
       VectorEncoding encoding = randomVectorEncoding();
       for (int i = 0; i < contents.length; ++i) {
         Document doc = new Document();

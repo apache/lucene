@@ -1006,7 +1006,9 @@ public class Dictionary {
     return wordCount;
   }
 
-  /** @return the number of word entries written */
+  /**
+   * @return the number of word entries written
+   */
   private int writeNormalizedWordEntry(StringBuilder reuse, ByteSequencesWriter writer, String line)
       throws IOException {
     int flagSep = line.indexOf(FLAG_SEPARATOR);
@@ -1369,7 +1371,9 @@ public class Dictionary {
      */
     abstract String printFlag(char flag);
 
-    /** @return a presentable sorted concatenation of {@link #printFlag} results */
+    /**
+     * @return a presentable sorted concatenation of {@link #printFlag} results
+     */
     String printFlags(char[] encodedFlags) {
       List<String> printed = new ArrayList<>();
       for (char c : encodedFlags) {

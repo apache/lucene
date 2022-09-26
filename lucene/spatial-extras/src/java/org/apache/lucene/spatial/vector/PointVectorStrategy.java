@@ -154,7 +154,9 @@ public class PointVectorStrategy extends SpatialStrategy {
     throw new UnsupportedOperationException("Can only index Point, not " + shape);
   }
 
-  /** @see #createIndexableFields(org.locationtech.spatial4j.shape.Shape) */
+  /**
+   * @see #createIndexableFields(org.locationtech.spatial4j.shape.Shape)
+   */
   public Field[] createIndexableFields(Point point) {
     Field[] fields = new Field[fieldsLen];
     int idx = -1;

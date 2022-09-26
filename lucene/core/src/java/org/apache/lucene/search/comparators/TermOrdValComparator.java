@@ -251,7 +251,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           enableSkipping = false;
         } else {
           Terms terms = context.reader().terms(field);
-          dense = terms.getDocCount() == context.reader().maxDoc();
+          dense = terms != null && terms.getDocCount() == context.reader().maxDoc();
           if (dense || topValue != null) {
             enableSkipping = true;
           } else if (reverse == sortMissingLast) {
