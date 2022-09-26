@@ -3,7 +3,7 @@ name: Hunspell regression tests
 on:
   pull_request:
     branches:
-      - 'NA'
+      - 'main'
     paths:
       - '.github/workflows/hunspell.yml'
       - 'lucene/analysis/common/**'

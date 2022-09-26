@@ -6,11 +6,11 @@ on:
 
   pull_request:
     branches:
-      - 'NA'
+      - 'main'
 
   push:
     branches:
-      - 'NA'
+      - 'main'
 
 permissions:
   contents: read # to fetch code (actions/checkout)
