@@ -199,6 +199,7 @@ public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     TopOrdAndFloatQueue q = new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
     float bottomValue = 0;
+    int bottomOrd = Integer.MAX_VALUE;
 
     int[] children = getChildren();
     int[] siblings = getSiblings();
@@ -209,18 +210,20 @@ public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     TopOrdAndFloatQueue.OrdAndValue reuse = null;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      if (values[ord] > 0) {
-        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, values[ord]);
+      float value = values[ord];
+      if (value > 0) {
+        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
         childCount++;
-        if (values[ord] > bottomValue) {
+        if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
           if (reuse == null) {
             reuse = new TopOrdAndFloatQueue.OrdAndValue();
           }
           reuse.ord = ord;
-          reuse.value = values[ord];
+          reuse.value = value;
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomValue = q.top().value;
+            bottomOrd = q.top().ord;
           }
         }
       }

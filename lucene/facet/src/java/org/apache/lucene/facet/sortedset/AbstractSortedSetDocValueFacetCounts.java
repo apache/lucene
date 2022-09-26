@@ -304,6 +304,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       PrimitiveIterator.OfInt childOrds, int topN, DimConfig dimConfig, int pathOrd) {
     TopOrdAndIntQueue q = null;
     int bottomCount = 0;
+    int bottomOrd = Integer.MAX_VALUE;
     int pathCount = 0;
     int childCount = 0;
 
@@ -314,7 +315,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       if (count > 0) {
         pathCount += count;
         childCount++;
-        if (count > bottomCount) {
+        if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
           if (reuse == null) {
             reuse = new TopOrdAndIntQueue.OrdAndValue();
           }
@@ -328,6 +329,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomCount = q.top().value;
+            bottomOrd = q.top().value;
           }
         }
       }
