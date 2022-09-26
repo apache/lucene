@@ -85,3 +85,48 @@ allprojects {
     }
   }
 }
+
+configure(project(":lucene:core")) {
+  plugins.withType(JavaPlugin) {
+    sourceSets {
+      main19 {
+        java {
+          srcDirs = ['src/java19']
+        }
+      }
+    }
+
+    configurations {
+      // Inherit any dependencies from the main source set.
+      main19Implementation.extendsFrom implementation
+    }
+    
+    dependencies {
+      // We need the main classes to compile our Java 19 pieces.
+      main19Implementation sourceSets.main.output
+    }
+
+    tasks.named('compileMain19Java').configure {
+      javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(19)
+      }
+      
+      // undo alternative JDK support:
+      options.forkOptions.javaHome = null
+      
+      sourceCompatibility = 19
+      targetCompatibility = 19
+      options.compilerArgs += ["--release", 19 as String, "--enable-preview"]
+    }
+    
+    tasks.named('jar').configure {
+      into('META-INF/versions/19') {
+        from sourceSets.main19.output
+      }
+
+      manifest.attributes(
+        'Multi-Release': 'true'
+      )
+    }
+  }
+}

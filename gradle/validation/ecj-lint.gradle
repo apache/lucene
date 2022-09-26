@@ -34,7 +34,9 @@ allprojects {
     // Create a [sourceSetName]EcjLint task for each source set
     // with a non-empty java.srcDirs. These tasks are then
     // attached to project's "ecjLint" task.
-    def lintTasks = sourceSets.collect { sourceSet ->
+
+    // TODO: Better way to disable on our MR-JAR
+    def lintTasks = sourceSets.findAll { it.name != 'main19' }.collect { sourceSet ->
       def srcDirs = sourceSet.java.sourceDirectories
           .filter { dir -> dir.exists() }
 
