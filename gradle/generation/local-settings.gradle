@@ -102,7 +102,7 @@ tests.jvms=${testsJvms}
 org.gradle.java.installations.auto-download=true
 
 # Set these to enable automatic JVM location discovery.
-org.gradle.java.installations.fromEnv=JDK17,JDK19,JAVA19_HOME
+org.gradle.java.installations.fromEnv=JAVA17_HOME,JAVA19_HOME
 #org.gradle.java.installations.paths=(custom paths)
 
 """, "UTF-8")
