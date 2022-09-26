@@ -103,9 +103,6 @@ configure(project(":lucene:core")) {
     tasks.named('compileMain19Java').configure {
       javaCompiler = javaToolchains.compilerFor {
         languageVersion = JavaLanguageVersion.of(19)
-        // TODO enable after release: vendor = JvmVendorSpec.ADOPTOPENJDK
-        // Gradle 7.4: vendor = JvmVendorSpec.ADOPTIUM
-        implementation = JvmImplementation.VENDOR_SPECIFIC
       }
       
       // undo alternative JDK support:
