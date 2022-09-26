@@ -13,6 +13,8 @@ API Changes
 * GITHUB#11772: Removed native subproject and WindowsDirectory implementation from lucene.misc. Recommendation:
   use MMapDirectory implementation on Windows. (Robert Muir, Uwe Schindler, Dawid Weiss)
 
+* GITHUB#11804: FacetsCollector#collect is no longer final, allowing extension. (Greg Miller)
+
 Improvements
 ---------------------
 * GITHUB#11785: Improve Tessellator performance by delaying calls to the method
