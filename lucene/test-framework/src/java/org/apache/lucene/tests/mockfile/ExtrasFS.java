@@ -78,7 +78,9 @@ public class ExtrasFS extends FilterFileSystemProvider {
   // our fake files. But this is tricky because its hooked into several places.
   // Currently MDW has a hack so we don't break disk full tests.
 
-  /** @return Return true if {@code fileName} is one of the extra files added by this class. */
+  /**
+   * @return Return true if {@code fileName} is one of the extra files added by this class.
+   */
   public static boolean isExtra(String fileName) {
     return fileName.equals(EXTRA_FILE_NAME);
   }

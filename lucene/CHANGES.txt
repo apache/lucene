@@ -31,6 +31,9 @@ API Changes
 
 * LUCENE-10603: Remove SortedSetDocValues#NO_MORE_ORDS definition. (Greg Miller)
 
+* GITHUB#11813: Remove Operations.isFinite: the recursive implementation could be problematic
+  for large automatons (WildcardQuery, PrefixQuery, RegExpQuery, etc).  (taroplus, Robert Muir)
+
 New Features
 ---------------------
 
@@ -101,16 +104,26 @@ Improvements
 * GITHUB#11785: Improve Tessellator performance by delaying calls to the method
   #isIntersectingPolygon (Ignacio Vera)   
 
+* GITHUB#687: speed up IndexSortSortedNumericDocValuesRangeQuery#BoundedDocIdSetIterator
+  construction using bkd binary search. (Jianping Weng)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
   trying to apply a dictionary whose size is greater than the maximum supported
   window size for LZ4. (Adrien Grand)
 
+* GITHUB#11735: KeywordRepeatFilter + OpenNLPLemmatizer always drops last token of a stream.
+  (Luke Kot-Zaniewski)
+
+* GITHUB#11771: KeywordRepeatFilter + OpenNLPLemmatizer sometimes arbitrarily exits token stream.
+  (Luke Kot-Zaniewski)
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
 
+* GITHUB#11811: upgrade google java format to 1.15.0 (Dawid Weiss)
 
 ======================== Lucene 9.4.0 =======================
 

@@ -71,7 +71,9 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
   /** Indicates whether the rule has executed its {@link #before()} method fully. */
   private boolean initialized;
 
-  /** @see SuppressCodecs */
+  /**
+   * @see SuppressCodecs
+   */
   HashSet<String> avoidCodecs;
 
   static class ThreadNameFixingPrintStreamInfoStream extends PrintStreamInfoStream {

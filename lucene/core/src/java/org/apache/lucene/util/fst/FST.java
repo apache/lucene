@@ -94,13 +94,19 @@ public final class FST<T> implements Accountable {
    */
   static final byte ARCS_FOR_DIRECT_ADDRESSING = 1 << 6;
 
-  /** @see #shouldExpandNodeWithFixedLengthArcs */
+  /**
+   * @see #shouldExpandNodeWithFixedLengthArcs
+   */
   static final int FIXED_LENGTH_ARC_SHALLOW_DEPTH = 3; // 0 => only root node.
 
-  /** @see #shouldExpandNodeWithFixedLengthArcs */
+  /**
+   * @see #shouldExpandNodeWithFixedLengthArcs
+   */
   static final int FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS = 5;
 
-  /** @see #shouldExpandNodeWithFixedLengthArcs */
+  /**
+   * @see #shouldExpandNodeWithFixedLengthArcs
+   */
   static final int FIXED_LENGTH_ARC_DEEP_NUM_ARCS = 10;
 
   /**
