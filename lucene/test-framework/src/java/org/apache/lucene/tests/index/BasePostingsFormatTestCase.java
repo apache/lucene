@@ -367,6 +367,49 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     dir.close();
   }
 
+  public void testBinarySearchTermLeaf() throws Exception {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = newIndexWriterConfig(null);
+    iwc.setCodec(getCodec());
+    iwc.setMergePolicy(newTieredMergePolicy());
+    IndexWriter iw = new IndexWriter(dir, iwc);
+
+    for (int i = 100_000; i <= 100_400; i++){
+      // only add odd number
+      if (i % 2 == 1) {
+        Document document = new Document();
+        document.add(new StringField("id", i + "", Field.Store.NO));
+        iw.addDocument(document);
+      }
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    DirectoryReader reader = DirectoryReader.open(iw);
+    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
+    // test seekExact
+    for (int i = 100000; i <= 100400; i++){
+      if (i % 2 == 1) {
+        assertTrue(termsEnum.seekExact(new BytesRef(i + "")));
+      } else {
+        assertFalse(termsEnum.seekExact(new BytesRef(i + "")));
+      }
+    }
+    // test seekCeil
+    for (int i = 100000; i < 100400; i++){
+      if (i % 2 == 1) {
+        assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef(i + "")));
+      } else {
+        assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(new BytesRef(i + "")));
+      }
+    }
+    assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef(100400 + "")));
+    reader.close();
+    iw.close();
+    dir.close();
+  }
+
   // tests that level 2 ghost fields still work
   public void testLevel2Ghosts() throws Exception {
     Directory dir = newDirectory();
