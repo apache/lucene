@@ -34,7 +34,7 @@ import org.apache.lucene.util.Constants;
  * process equal to the size of the file being mapped. Before using this class, be sure your have
  * plenty of virtual address space, e.g. by using a 64 bit JRE, or a 32 bit JRE with indexes that
  * are guaranteed to fit within the address space. On 32 bit platforms also consult {@link
- * #MMapDirectory(Path, LockFactory, int)} if you have problems with mmap failing because of
+ * #MMapDirectory(Path, LockFactory, long)} if you have problems with mmap failing because of
  * fragmented address space. If you get an OutOfMemoryException, it is recommended to reduce the
  * chunk size, until it works.
  *
@@ -118,17 +118,6 @@ public class MMapDirectory extends FSDirectory {
    * Create a new MMapDirectory for the named location and {@link FSLockFactory#getDefault()}. The
    * directory is created at the named location if it does not yet exist.
    *
-   * @deprecated use {@link #MMapDirectory(Path, long)} instead.
-   */
-  @Deprecated
-  public MMapDirectory(Path path, int maxChunkSize) throws IOException {
-    this(path, (long) maxChunkSize);
-  }
-
-  /**
-   * Create a new MMapDirectory for the named location and {@link FSLockFactory#getDefault()}. The
-   * directory is created at the named location if it does not yet exist.
-   *
    * @param path the path of the directory
    * @param maxChunkSize maximum chunk size (for default see {@link #DEFAULT_MAX_CHUNK_SIZE}) used
    *     for memory mapping.
@@ -136,17 +125,6 @@ public class MMapDirectory extends FSDirectory {
    */
   public MMapDirectory(Path path, long maxChunkSize) throws IOException {
     this(path, FSLockFactory.getDefault(), maxChunkSize);
-  }
-
-  /**
-   * Create a new MMapDirectory for the named location and {@link FSLockFactory#getDefault()}. The
-   * directory is created at the named location if it does not yet exist.
-   *
-   * @deprecated use {@link #MMapDirectory(Path, LockFactory, long)} instead.
-   */
-  @Deprecated
-  public MMapDirectory(Path path, LockFactory lockFactory, int maxChunkSize) throws IOException {
-    this(path, lockFactory, (long) maxChunkSize);
   }
 
   /**
