@@ -192,14 +192,14 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
       float value = values[ord];
       if (value > 0) {
-        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, values[ord]);
+        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
         childCount++;
         if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
           if (reuse == null) {
             reuse = new TopOrdAndFloatQueue.OrdAndValue();
           }
           reuse.ord = ord;
-          reuse.value = values[ord];
+          reuse.value = value;
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomValue = q.top().value;
