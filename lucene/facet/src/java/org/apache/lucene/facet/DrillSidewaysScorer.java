@@ -225,11 +225,11 @@ class DrillSidewaysScorer extends BulkScorer {
       if (twoPhaseDims != null) {
         if (failedDim == null) {
           for (DocsAndCost dim : twoPhaseDims) {
-            assert dim.approximation.docID() == docID;
+            assert dim.approximation.docID() == baseApproximation.docID();
             if (dim.twoPhase.matches() == false) {
               if (failedDim != null) {
-                assert dim.approximation.docID() + 1 <= failedDim.approximation.docID();
-                docID = baseApproximation.advance(dim.approximation.docID() + 1);
+                int next = Math.min(dim.approximation.nextDoc(), failedDim.approximation.nextDoc());
+                docID = baseApproximation.advance(next);
                 continue nextDoc;
               } else {
                 failedDim = dim;
@@ -241,10 +241,10 @@ class DrillSidewaysScorer extends BulkScorer {
             if (failedDim == dim) {
               continue;
             }
-            assert dim.approximation.docID() == docID;
+            assert dim.approximation.docID() == baseApproximation.docID();
             if (dim.twoPhase.matches() == false) {
-              assert dim.approximation.docID() + 1 <= failedDim.approximation.docID();
-              docID = baseApproximation.advance(dim.approximation.docID() + 1);
+              int next = Math.min(failedDim.approximation.docID(), dim.approximation.nextDoc());
+              docID = baseApproximation.advance(next);
               continue nextDoc;
             }
           }
