@@ -183,6 +183,42 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             });
   }
 
+  /** Checks that Lucene Core is a MR-JAR and has JDK 19 classes */
+  @Test
+  public void testMultiReleaseJar() {
+    ModuleLayer bootLayer = ModuleLayer.boot();
+    Assertions.assertThatNoException()
+        .isThrownBy(
+            () -> {
+              String coreModuleId = "org.apache.lucene.core";
+
+              Configuration configuration =
+                  bootLayer
+                      .configuration()
+                      .resolve(
+                          luceneCoreAndThirdPartyModulesFinder,
+                          ModuleFinder.of(),
+                          List.of(coreModuleId));
+
+              ModuleLayer layer =
+                  bootLayer.defineModulesWithOneLoader(
+                      configuration, ClassLoader.getSystemClassLoader());
+
+              ClassLoader loader = layer.findLoader(coreModuleId);
+
+              Assertions.assertThat(
+                      loader.getResource(
+                          "META-INF/versions/19/org/apache/lucene/store/MemorySegmentIndexInput.class"))
+                  .isNotNull();
+
+              if (Runtime.version().feature() == 19) {
+                Assertions.assertThat(
+                        loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
+                    .isNotNull();
+              }
+            });
+  }
+
   /** Make sure we don't publish automatic modules. */
   @Test
   public void testAllCoreModulesAreNamedModules() {
