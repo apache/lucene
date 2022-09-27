@@ -375,7 +375,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     iwc.setMergePolicy(newTieredMergePolicy());
     IndexWriter iw = new IndexWriter(dir, iwc);
 
-    for (int i = 100_000; i <= 100_400; i++){
+    for (int i = 100000; i <= 100400; i++){
       // only add odd number
       if (i % 2 == 1) {
         Document document = new Document();
