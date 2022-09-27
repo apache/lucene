@@ -610,7 +610,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
       raise RuntimeError('source release has WARs...')
 
     print('    initialize local settings for Gradle...')
-    java.run_java17('./gradlew --no-daemon localSettings')
+    java.run_java17('./gradlew --no-daemon localSettings', '%s/localsettings.log' % unpackPath)
 
     validateCmd = './gradlew --no-daemon check -p lucene/documentation'
     print('    run "%s"' % validateCmd)
