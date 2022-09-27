@@ -25,31 +25,51 @@ public class ByteTrackingIndexOutput extends IndexOutput {
 
   private final IndexOutput output;
   private final AtomicLong byteTracker;
-  private long intermittentByteTracker = 0L;
+  private final AtomicLong realTimeByteTracker;
 
-  protected ByteTrackingIndexOutput(IndexOutput output, AtomicLong byteTracker) {
+  protected ByteTrackingIndexOutput(
+      IndexOutput output, AtomicLong byteTracker, AtomicLong realTimeByteTracker) {
     super(
         "Byte tracking wrapper for: " + output.getName(),
         "ByteTrackingIndexOutput{" + output.getName() + "}");
     this.output = output;
     this.byteTracker = byteTracker;
+    this.realTimeByteTracker = realTimeByteTracker;
   }
 
   @Override
   public void writeByte(byte b) throws IOException {
     output.writeByte(b);
-    intermittentByteTracker++;
+    realTimeByteTracker.incrementAndGet();
   }
 
   @Override
   public void writeBytes(byte[] b, int offset, int length) throws IOException {
     output.writeBytes(b, offset, length);
-    intermittentByteTracker += length;
+    realTimeByteTracker.addAndGet(length);
+  }
+
+  @Override
+  public void writeShort(short i) throws IOException {
+    output.writeShort(i);
+    realTimeByteTracker.addAndGet(Short.BYTES);
+  }
+
+  @Override
+  public void writeInt(int i) throws IOException {
+    output.writeInt(i);
+    realTimeByteTracker.addAndGet(Integer.BYTES);
+  }
+
+  @Override
+  public void writeLong(long i) throws IOException {
+    output.writeLong(i);
+    realTimeByteTracker.addAndGet(Long.BYTES);
   }
 
   @Override
   public void close() throws IOException {
-    byteTracker.addAndGet(intermittentByteTracker);
+    byteTracker.addAndGet(realTimeByteTracker.get());
     output.close();
   }
 

@@ -28,14 +28,29 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
 
   private final AtomicLong flushedBytes = new AtomicLong();
   private final AtomicLong mergedBytes = new AtomicLong();
+  private final AtomicLong realTimeFlushedBytes = new AtomicLong();
+  private final AtomicLong realTimeMergedBytes = new AtomicLong();
+
+  public final boolean trackTempOutput;
 
   /**
-   * Sole constructor, typically called from sub-classes.
+   * Constructor defaults to not tracking temp outputs
    *
    * @param in input Directory
    */
   public ByteWritesTrackingDirectoryWrapper(Directory in) {
+    this(in, false);
+  }
+
+  /**
+   * Constructor with option to track tempOutput
+   *
+   * @param in input Directory
+   * @param trackTempOutput if true, will also track temporary outputs created by this directory
+   */
+  public ByteWritesTrackingDirectoryWrapper(Directory in, boolean trackTempOutput) {
     super(in);
+    this.trackTempOutput = trackTempOutput;
   }
 
   @Override
@@ -43,13 +58,35 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
     IndexOutput output = in.createOutput(name, ioContext);
     IndexOutput byteTrackingIndexOutput;
     if (ioContext.context.equals(IOContext.Context.FLUSH)) {
-      byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, flushedBytes);
+      byteTrackingIndexOutput =
+          new ByteTrackingIndexOutput(output, flushedBytes, realTimeFlushedBytes);
     } else if (ioContext.context.equals(IOContext.Context.MERGE)) {
-      byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, mergedBytes);
+      byteTrackingIndexOutput =
+          new ByteTrackingIndexOutput(output, mergedBytes, realTimeMergedBytes);
     } else {
       return output;
     }
     return byteTrackingIndexOutput;
+  }
+
+  @Override
+  public IndexOutput createTempOutput(String prefix, String suffix, IOContext ioContext)
+      throws IOException {
+    IndexOutput output = in.createTempOutput(prefix, suffix, ioContext);
+    if (trackTempOutput) {
+      IndexOutput byteTrackingIndexOutput;
+      if (ioContext.context.equals(IOContext.Context.FLUSH)) {
+        byteTrackingIndexOutput =
+            new ByteTrackingIndexOutput(output, flushedBytes, realTimeFlushedBytes);
+      } else if (ioContext.context.equals(IOContext.Context.MERGE)) {
+        byteTrackingIndexOutput =
+            new ByteTrackingIndexOutput(output, mergedBytes, realTimeMergedBytes);
+      } else {
+        return output;
+      }
+      return byteTrackingIndexOutput;
+    }
+    return output;
   }
 
   public double getApproximateWriteAmplificationFactor() {
@@ -58,6 +95,16 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
       return 1.0;
     }
     double mergedBytes = (double) this.mergedBytes.get();
+    return (flushedBytes + mergedBytes) / flushedBytes;
+  }
+
+  /** Gets a more up-to-date but less accurate write amplification factor */
+  public double getRealTimeApproximateWriteAmplificationFactor() {
+    double flushedBytes = (double) this.realTimeFlushedBytes.get();
+    if (flushedBytes == 0.0) {
+      return 1.0;
+    }
+    double mergedBytes = (double) this.realTimeMergedBytes.get();
     return (flushedBytes + mergedBytes) / flushedBytes;
   }
 
