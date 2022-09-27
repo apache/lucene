@@ -622,12 +622,12 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     java.run_java17('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
     testDemo(java.run_java17, isSrc, version, '17')
 
-    if java.run_java18:
-      print("    run tests w/ Java 18 and testArgs='%s'..." % testArgs)
-      java.run_java18('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
-      print("    compile jars w/ Java 18")
-      java.run_java18('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
-      testDemo(java.run_java18, isSrc, version, '18')
+    if java.run_java19:
+      print("    run tests w/ Java 19 and testArgs='%s'..." % testArgs)
+      java.run_java19('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
+      print("    compile jars w/ Java 19")
+      java.run_java19('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+      testDemo(java.run_java19, isSrc, version, '19')
 
     print('  confirm all releases have coverage in TestBackwardsCompatibility')
     confirmAllReleasesAreTestedForBackCompat(version, unpackPath)
@@ -637,8 +637,8 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
     checkAllJARs(os.getcwd(), gitRevision, version)
 
     testDemo(java.run_java17, isSrc, version, '17')
-    if java.run_java18:
-      testDemo(java.run_java18, isSrc, version, '18')
+    if java.run_java19:
+      testDemo(java.run_java19, isSrc, version, '19')
 
   testChangesText('.', version)
 
@@ -914,7 +914,7 @@ def crawl(downloadedFiles, urlString, targetDir, exclusions=set()):
         sys.stdout.write('.')
 
 
-def make_java_config(parser, java18_home):
+def make_java_config(parser, java19_home):
   def _make_runner(java_home, version):
     print('Java %s JAVA_HOME=%s' % (version, java_home))
     if cygwin:
@@ -932,12 +932,12 @@ def make_java_config(parser, java18_home):
   if java17_home is None:
     parser.error('JAVA_HOME must be set')
   run_java17 = _make_runner(java17_home, '17')
-  run_java18 = None
-  if java18_home is not None:
-    run_java18 = _make_runner(java18_home, '18')
+  run_java19 = None
+  if java19_home is not None:
+    run_java19 = _make_runner(java19_home, '19')
 
-  jc = namedtuple('JavaConfig', 'run_java17 java17_home run_java18 java18_home')
-  return jc(run_java17, java17_home, run_java18, java18_home)
+  jc = namedtuple('JavaConfig', 'run_java17 java17_home run_java19 java19_home')
+  return jc(run_java17, java17_home, run_java19, java19_home)
 
 version_re = re.compile(r'(\d+\.\d+\.\d+(-ALPHA|-BETA)?)')
 revision_re = re.compile(r'rev-([a-f\d]+)')
@@ -959,7 +959,7 @@ def parse_config():
                       help='GIT revision number that release was built with, defaults to that in URL')
   parser.add_argument('--version', metavar='X.Y.Z(-ALPHA|-BETA)?',
                       help='Version of the release, defaults to that in URL')
-  parser.add_argument('--test-java18', metavar='java18_home',
+  parser.add_argument('--test-java19', metavar='java19_home',
                       help='Path to Java home directory, to run tests with if specified')
   parser.add_argument('--download-only', action='store_true', default=False,
                       help='Only perform download and sha hash check steps')
@@ -987,7 +987,7 @@ def parse_config():
   if c.local_keys is not None and not os.path.exists(c.local_keys):
     parser.error('Local KEYS file "%s" not found' % c.local_keys)
 
-  c.java = make_java_config(parser, c.test_java18)
+  c.java = make_java_config(parser, c.test_java19)
 
   if c.tmp_dir:
     c.tmp_dir = os.path.abspath(c.tmp_dir)
