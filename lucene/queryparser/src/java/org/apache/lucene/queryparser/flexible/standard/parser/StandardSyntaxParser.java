@@ -1383,23 +1383,23 @@ if (left.kind == RANGE_QUOTED) {
     finally { jj_save(27, xla); }
   }
 
-  private boolean jj_3R_17()
+  private boolean jj_3R_IntervalUnorderedNoOverlaps_465_3_17()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(UNORDERED_NO_OVERLAPS)) return true;
     return false;
   }
 
-  private boolean jj_3R_25()
+  private boolean jj_3R_IntervalContainedBy_557_3_25()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(CONTAINED_BY)) return true;
     return false;
   }
 
-  private boolean jj_3R_11()
+  private boolean jj_3R_FieldRangeExpr_744_3_11()
  {
-    if (jj_3R_9()) return true;
+    if (jj_3R_FieldName_344_3_9()) return true;
     Token xsp;
     xsp = jj_scanpos;
     if (jj_scan_token(17)) {
@@ -1415,50 +1415,50 @@ if (left.kind == RANGE_QUOTED) {
     return false;
   }
 
-  private boolean jj_3R_19()
+  private boolean jj_3R_IntervalWildcard_647_3_19()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(WILDCARD)) return true;
     return false;
   }
 
-  private boolean jj_3R_47()
+  private boolean jj_3R_QuotedTerm_834_5_47()
  {
     if (jj_scan_token(TILDE)) return true;
     return false;
   }
 
-  private boolean jj_3R_16()
+  private boolean jj_3R_IntervalUnordered_454_3_16()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(UNORDERED)) return true;
     return false;
   }
 
-  private boolean jj_3R_24()
+  private boolean jj_3R_IntervalNotContaining_546_3_24()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(NOT_CONTAINING)) return true;
     return false;
   }
 
-  private boolean jj_3R_43()
+  private boolean jj_3R_QuotedTerm_829_3_43()
  {
     if (jj_scan_token(QUOTED)) return true;
     Token xsp;
     xsp = jj_scanpos;
-    if (jj_3R_47()) jj_scanpos = xsp;
+    if (jj_3R_QuotedTerm_834_5_47()) jj_scanpos = xsp;
     return false;
   }
 
-  private boolean jj_3R_30()
+  private boolean jj_3R_IntervalNonOverlapping_636_3_30()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(NON_OVERLAPPING)) return true;
     return false;
   }
 
-  private boolean jj_3R_14()
+  private boolean jj_3R_IntervalMaxGaps_442_3_14()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(MAXGAPS)) return true;
@@ -1471,70 +1471,70 @@ if (left.kind == RANGE_QUOTED) {
     return false;
   }
 
-  private boolean jj_3R_23()
+  private boolean jj_3R_IntervalContaining_535_3_23()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(CONTAINING)) return true;
     return false;
   }
 
-  private boolean jj_3R_9()
+  private boolean jj_3R_FieldName_344_3_9()
  {
     if (jj_scan_token(TERM)) return true;
     return false;
   }
 
-  private boolean jj_3R_29()
+  private boolean jj_3R_IntervalOverlapping_626_3_29()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(OVERLAPPING)) return true;
     return false;
   }
 
-  private boolean jj_3R_41()
+  private boolean jj_3R_Term_806_10_41()
  {
-    if (jj_3R_45()) return true;
+    if (jj_3R_FuzzyOp_717_3_45()) return true;
     return false;
   }
 
-  private boolean jj_3R_37()
+  private boolean jj_3R_Term_808_8_37()
  {
-    if (jj_3R_43()) return true;
+    if (jj_3R_QuotedTerm_829_3_43()) return true;
     return false;
   }
 
-  private boolean jj_3R_45()
+  private boolean jj_3R_FuzzyOp_717_3_45()
  {
     if (jj_scan_token(TILDE)) return true;
     return false;
   }
 
-  private boolean jj_3R_38()
+  private boolean jj_3R_Term_810_5_38()
  {
-    if (jj_3R_44()) return true;
+    if (jj_3R_Boost_700_3_44()) return true;
     return false;
   }
 
-  private boolean jj_3R_36()
+  private boolean jj_3R_Term_807_8_36()
  {
-    if (jj_3R_42()) return true;
+    if (jj_3R_TermRangeExpr_855_3_42()) return true;
     return false;
   }
 
   private boolean jj_3_2()
  {
-    if (jj_3R_10()) return true;
+    if (jj_3R_Term_798_3_10()) return true;
     return false;
   }
 
-  private boolean jj_3R_13()
+  private boolean jj_3R_IntervalMaxWidth_430_3_13()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(MAXWIDTH)) return true;
     return false;
   }
 
-  private boolean jj_3R_35()
+  private boolean jj_3R_Term_804_8_35()
  {
     Token xsp;
     xsp = jj_scanpos;
@@ -1543,11 +1543,11 @@ if (left.kind == RANGE_QUOTED) {
     if (jj_scan_token(24)) return true;
     }
     xsp = jj_scanpos;
-    if (jj_3R_41()) jj_scanpos = xsp;
+    if (jj_3R_Term_806_10_41()) jj_scanpos = xsp;
     return false;
   }
 
-  private boolean jj_3R_20()
+  private boolean jj_3R_IntervalAfter_524_3_20()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(AFTER)) return true;
@@ -1556,7 +1556,7 @@ if (left.kind == RANGE_QUOTED) {
 
   private boolean jj_3_1()
  {
-    if (jj_3R_9()) return true;
+    if (jj_3R_FieldName_344_3_9()) return true;
     Token xsp;
     xsp = jj_scanpos;
     if (jj_scan_token(15)) {
@@ -1568,57 +1568,57 @@ if (left.kind == RANGE_QUOTED) {
 
   private boolean jj_3_3()
  {
-    if (jj_3R_11()) return true;
+    if (jj_3R_FieldRangeExpr_744_3_11()) return true;
     return false;
   }
 
-  private boolean jj_3R_34()
+  private boolean jj_3R_Term_799_8_34()
  {
     if (jj_scan_token(REGEXPTERM)) return true;
     return false;
   }
 
-  private boolean jj_3R_28()
+  private boolean jj_3R_IntervalNotWithin_611_3_28()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(NOT_WITHIN)) return true;
     return false;
   }
 
-  private boolean jj_3R_21()
+  private boolean jj_3R_IntervalBefore_513_3_21()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(BEFORE)) return true;
     return false;
   }
 
-  private boolean jj_3R_10()
+  private boolean jj_3R_Term_798_3_10()
  {
     Token xsp;
     xsp = jj_scanpos;
-    if (jj_3R_34()) {
+    if (jj_3R_Term_799_8_34()) {
     jj_scanpos = xsp;
-    if (jj_3R_35()) {
+    if (jj_3R_Term_804_8_35()) {
     jj_scanpos = xsp;
-    if (jj_3R_36()) {
+    if (jj_3R_Term_807_8_36()) {
     jj_scanpos = xsp;
-    if (jj_3R_37()) return true;
+    if (jj_3R_Term_808_8_37()) return true;
     }
     }
     }
     xsp = jj_scanpos;
-    if (jj_3R_38()) jj_scanpos = xsp;
+    if (jj_3R_Term_810_5_38()) jj_scanpos = xsp;
     return false;
   }
 
-  private boolean jj_3R_12()
+  private boolean jj_3R_IntervalAtLeast_418_3_12()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(ATLEAST)) return true;
     return false;
   }
 
-  private boolean jj_3R_44()
+  private boolean jj_3R_Boost_700_3_44()
  {
     if (jj_scan_token(CARAT)) return true;
     return false;
@@ -1626,35 +1626,35 @@ if (left.kind == RANGE_QUOTED) {
 
   private boolean jj_3_25()
  {
-    if (jj_3R_33()) return true;
+    if (jj_3R_IntervalText_685_5_33()) return true;
     return false;
   }
 
   private boolean jj_3_24()
  {
-    if (jj_3R_32()) return true;
+    if (jj_3R_IntervalFuzzyTerm_666_3_32()) return true;
     return false;
   }
 
   private boolean jj_3_23()
  {
-    if (jj_3R_31()) return true;
+    if (jj_3R_IntervalExtend_595_3_31()) return true;
     return false;
   }
 
   private boolean jj_3_22()
  {
-    if (jj_3R_30()) return true;
+    if (jj_3R_IntervalNonOverlapping_636_3_30()) return true;
     return false;
   }
 
   private boolean jj_3_21()
  {
-    if (jj_3R_29()) return true;
+    if (jj_3R_IntervalOverlapping_626_3_29()) return true;
     return false;
   }
 
-  private boolean jj_3R_22()
+  private boolean jj_3R_IntervalPhrase_501_3_22()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(PHRASE)) return true;
@@ -1663,11 +1663,11 @@ if (left.kind == RANGE_QUOTED) {
 
   private boolean jj_3_20()
  {
-    if (jj_3R_28()) return true;
+    if (jj_3R_IntervalNotWithin_611_3_28()) return true;
     return false;
   }
 
-  private boolean jj_3R_31()
+  private boolean jj_3R_IntervalExtend_595_3_31()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(EXTEND)) return true;
@@ -1676,17 +1676,17 @@ if (left.kind == RANGE_QUOTED) {
 
   private boolean jj_3_19()
  {
-    if (jj_3R_27()) return true;
+    if (jj_3R_IntervalWithin_579_3_27()) return true;
     return false;
   }
 
   private boolean jj_3_18()
  {
-    if (jj_3R_26()) return true;
+    if (jj_3R_IntervalNotContainedBy_568_3_26()) return true;
     return false;
   }
 
-  private boolean jj_3R_40()
+  private boolean jj_3R_IntervalText_686_5_40()
  {
     Token xsp;
     xsp = jj_scanpos;
@@ -1699,76 +1699,76 @@ if (left.kind == RANGE_QUOTED) {
 
   private boolean jj_3_17()
  {
-    if (jj_3R_25()) return true;
+    if (jj_3R_IntervalContainedBy_557_3_25()) return true;
     return false;
   }
 
-  private boolean jj_3R_39()
+  private boolean jj_3R_IntervalText_685_5_39()
  {
     if (jj_scan_token(QUOTED)) return true;
     return false;
   }
 
-  private boolean jj_3R_33()
+  private boolean jj_3R_IntervalText_685_5_33()
  {
     Token xsp;
     xsp = jj_scanpos;
-    if (jj_3R_39()) {
+    if (jj_3R_IntervalText_685_5_39()) {
     jj_scanpos = xsp;
-    if (jj_3R_40()) return true;
+    if (jj_3R_IntervalText_686_5_40()) return true;
     }
     return false;
   }
 
   private boolean jj_3_16()
  {
-    if (jj_3R_24()) return true;
+    if (jj_3R_IntervalNotContaining_546_3_24()) return true;
     return false;
   }
 
   private boolean jj_3_15()
  {
-    if (jj_3R_23()) return true;
+    if (jj_3R_IntervalContaining_535_3_23()) return true;
     return false;
   }
 
   private boolean jj_3_14()
  {
-    if (jj_3R_22()) return true;
+    if (jj_3R_IntervalPhrase_501_3_22()) return true;
     return false;
   }
 
   private boolean jj_3_13()
  {
-    if (jj_3R_21()) return true;
+    if (jj_3R_IntervalBefore_513_3_21()) return true;
     return false;
   }
 
   private boolean jj_3_12()
  {
-    if (jj_3R_20()) return true;
+    if (jj_3R_IntervalAfter_524_3_20()) return true;
     return false;
   }
 
   private boolean jj_3_11()
  {
-    if (jj_3R_19()) return true;
+    if (jj_3R_IntervalWildcard_647_3_19()) return true;
     return false;
   }
 
   private boolean jj_3_10()
  {
-    if (jj_3R_18()) return true;
+    if (jj_3R_IntervalOr_489_3_18()) return true;
     return false;
   }
 
   private boolean jj_3_9()
  {
-    if (jj_3R_17()) return true;
+    if (jj_3R_IntervalUnorderedNoOverlaps_465_3_17()) return true;
     return false;
   }
 
-  private boolean jj_3R_18()
+  private boolean jj_3R_IntervalOr_489_3_18()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(FN_OR)) return true;
@@ -1777,31 +1777,31 @@ if (left.kind == RANGE_QUOTED) {
 
   private boolean jj_3_8()
  {
-    if (jj_3R_16()) return true;
+    if (jj_3R_IntervalUnordered_454_3_16()) return true;
     return false;
   }
 
   private boolean jj_3_7()
  {
-    if (jj_3R_15()) return true;
+    if (jj_3R_IntervalOrdered_477_3_15()) return true;
     return false;
   }
 
   private boolean jj_3_6()
  {
-    if (jj_3R_14()) return true;
+    if (jj_3R_IntervalMaxGaps_442_3_14()) return true;
     return false;
   }
 
   private boolean jj_3_5()
  {
-    if (jj_3R_13()) return true;
+    if (jj_3R_IntervalMaxWidth_430_3_13()) return true;
     return false;
   }
 
   private boolean jj_3_4()
  {
-    if (jj_3R_12()) return true;
+    if (jj_3R_IntervalAtLeast_418_3_12()) return true;
     return false;
   }
 
@@ -1811,7 +1811,7 @@ if (left.kind == RANGE_QUOTED) {
     return false;
   }
 
-  private boolean jj_3R_27()
+  private boolean jj_3R_IntervalWithin_579_3_27()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(WITHIN)) return true;
@@ -1824,31 +1824,31 @@ if (left.kind == RANGE_QUOTED) {
     return false;
   }
 
-  private boolean jj_3R_46()
+  private boolean jj_3R_TermRangeExpr_856_6_46()
  {
     if (jj_scan_token(RANGEIN_START)) return true;
     return false;
   }
 
-  private boolean jj_3R_15()
+  private boolean jj_3R_IntervalOrdered_477_3_15()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(ORDERED)) return true;
     return false;
   }
 
-  private boolean jj_3R_32()
+  private boolean jj_3R_IntervalFuzzyTerm_666_3_32()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(FUZZYTERM)) return true;
     return false;
   }
 
-  private boolean jj_3R_42()
+  private boolean jj_3R_TermRangeExpr_855_3_42()
  {
     Token xsp;
     xsp = jj_scanpos;
-    if (jj_3R_46()) {
+    if (jj_3R_TermRangeExpr_856_6_46()) {
     jj_scanpos = xsp;
     if (jj_scan_token(28)) return true;
     }
@@ -1863,7 +1863,7 @@ if (left.kind == RANGE_QUOTED) {
     return false;
   }
 
-  private boolean jj_3R_26()
+  private boolean jj_3R_IntervalNotContainedBy_568_3_26()
  {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(NOT_CONTAINED_BY)) return true;
@@ -1962,8 +1962,13 @@ if (left.kind == RANGE_QUOTED) {
   }
 
   @SuppressWarnings("serial")
-  static private final class LookaheadSuccess extends java.lang.Error { }
-  final private LookaheadSuccess jj_ls = new LookaheadSuccess();
+  static private final class LookaheadSuccess extends java.lang.Error {
+    @Override
+    public Throwable fillInStackTrace() {
+      return this;
+    }
+  }
+  static private final LookaheadSuccess jj_ls = new LookaheadSuccess();
   private boolean jj_scan_token(int kind) {
      if (jj_scanpos == jj_lastpos) {
        jj_la--;
@@ -2093,7 +2098,6 @@ if (left.kind == RANGE_QUOTED) {
      return new ParseException(token, exptokseq, tokenImage);
   }
 
-  private int trace_indent = 0;
   private boolean trace_enabled;
 
 /** Trace enabled. */

@@ -115,6 +115,11 @@ allprojects { prj ->
       inputs.dir(file(resources))
     }
 
+    // TODO: Remove this when forbiddenapis supports Java 19 class files
+    tasks.matching { it.name == "forbiddenApisMain19" }.all {
+      enabled = false
+    }
+
     // We rely on resolved configurations to compute the relevant set of rule
     // files for forbiddenApis. Since we don't want to resolve these configurations until
     // the task is executed, we can't really use them as task inputs properly. This is a

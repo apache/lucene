@@ -626,7 +626,7 @@ public class TestDrillSideways extends FacetTestCase {
     List<FacetResult> topNDimsResult = r.facets.getTopDims(1, 2);
     assertEquals(1, topNDimsResult.size());
     assertEquals(
-        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Susan (1)\n",
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n",
         topNDimsResult.get(0).toString());
 
     // test getTopDims(10, 10) and expect same results from getAllDims(10)
@@ -1899,7 +1899,7 @@ public class TestDrillSideways extends FacetTestCase {
     List<FacetResult> topNDimsResult = facets.getTopDims(1, 2);
     assertEquals(1, topNDimsResult.size());
     assertEquals(
-        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Susan (1)\n",
+        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n",
         topNDimsResult.get(0).toString());
 
     // test getAllDims(0)

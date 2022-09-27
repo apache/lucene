@@ -114,7 +114,7 @@ public class FacetsCollector extends SimpleCollector {
   }
 
   @Override
-  public final void collect(int doc) throws IOException {
+  public void collect(int doc) throws IOException {
     docsBuilder.grow(1).add(doc);
     if (keepScores) {
       if (totalHits >= scores.length) {
