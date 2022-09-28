@@ -81,6 +81,12 @@ Other
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
 
+======================== Lucene 9.5.0 =======================
+
+Improvements
+---------------------
+* GITHUB#11722: Binary search the entries when all suffixes have the same length in a leaf block. (zhouhui)
+
 ======================== Lucene 9.4.0 =======================
 
 API Changes
