@@ -678,6 +678,8 @@ final class SegmentTermsEnumFrame {
       int mid = (start + end) / 2;
       nextEnt = mid + 1;
       startBytePos = mid * suffix;
+      suffixesReader.setPosition(startBytePos + suffix);
+
       // Binary search bytes in the suffix, comparing to the target
       final int cmp =
               Arrays.compareUnsigned(
