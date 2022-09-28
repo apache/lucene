@@ -255,9 +255,6 @@ class DrillSidewaysScorer extends BulkScorer {
         }
       }
 
-      assert (validateState(
-          docID, baseApproximation, baseTwoPhase, allDims, twoPhaseDims, failedDim, acceptDocs));
-
       collectDocID = docID;
       if (failedDim == null) {
         // Hit passed all filters, so it's "real":
@@ -269,43 +266,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
       docID = baseApproximation.nextDoc();
     }
-  }
-
-  private static boolean validateState(
-      int currentDocID,
-      DocIdSetIterator baseApproximation,
-      TwoPhaseIterator baseTwoPhase,
-      List<DocsAndCost> allDims,
-      List<DocsAndCost> twoPhaseDims,
-      DocsAndCost failedDim,
-      Bits acceptDocs)
-      throws IOException {
-    if (acceptDocs != null && acceptDocs.get(currentDocID) == false) {
-      return false;
-    }
-    if (baseApproximation.docID() != currentDocID) {
-      return false;
-    }
-    if (baseTwoPhase != null && baseTwoPhase.matches() == false) {
-      return false;
-    }
-    for (DocsAndCost dim : allDims) {
-      if (dim.approximation.docID() < currentDocID) {
-        return false;
-      }
-      if (dim.approximation.docID() != currentDocID && failedDim != dim) {
-        return false;
-      }
-    }
-    if (twoPhaseDims != null) {
-      for (DocsAndCost dim : twoPhaseDims) {
-        if (dim.twoPhase.matches() == false && dim != failedDim) {
-          return false;
-        }
-      }
-    }
-
-    return true;
   }
 
   /** Used when drill downs are highly constraining vs baseQuery. */

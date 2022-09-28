@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.DrillSideways.DrillSidewaysResult;
 import org.apache.lucene.facet.sortedset.DefaultSortedSetDocValuesReaderState;
@@ -1051,6 +1052,7 @@ public class TestDrillSideways extends FacetTestCase {
             doc.add(new FacetField("dim" + dim, dimValues[dim][dimValue]));
           }
           doc.add(new StringField("dim" + dim, dimValues[dim][dimValue], Field.Store.YES));
+          doc.add(new SortedSetDocValuesField("dim" + dim, new BytesRef(dimValues[dim][dimValue])));
           if (VERBOSE) {
             System.out.println("    dim" + dim + "=" + new BytesRef(dimValues[dim][dimValue]));
           }
@@ -1063,6 +1065,8 @@ public class TestDrillSideways extends FacetTestCase {
             doc.add(new FacetField("dim" + dim, dimValues[dim][dimValue2]));
           }
           doc.add(new StringField("dim" + dim, dimValues[dim][dimValue2], Field.Store.YES));
+          doc.add(
+              new SortedSetDocValuesField("dim" + dim, new BytesRef(dimValues[dim][dimValue2])));
           if (VERBOSE) {
             System.out.println("      dim" + dim + "=" + new BytesRef(dimValues[dim][dimValue2]));
           }
@@ -1188,7 +1192,15 @@ public class TestDrillSideways extends FacetTestCase {
       for (int dim = 0; dim < numDims; dim++) {
         if (drillDowns[dim] != null) {
           for (String value : drillDowns[dim]) {
-            ddq.add("dim" + dim, value);
+            // Sometimes use a "traditional" term query and sometimes use a two-phase approach to
+            // ensure code coverage:
+            if (random().nextBoolean()) {
+              ddq.add("dim" + dim, value);
+            } else {
+              ddq.add(
+                  "dim" + dim,
+                  SortedSetDocValuesField.newSlowExactQuery("dim" + dim, new BytesRef(value)));
+            }
           }
         }
       }
