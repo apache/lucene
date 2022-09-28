@@ -262,7 +262,9 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  /** @throws AlreadyClosedException if this FieldsReader is closed */
+  /**
+   * @throws AlreadyClosedException if this FieldsReader is closed
+   */
   private void ensureOpen() throws AlreadyClosedException {
     if (closed) {
       throw new AlreadyClosedException("this FieldsReader is closed");

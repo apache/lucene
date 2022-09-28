@@ -170,17 +170,19 @@ public class StringValueFacetCounts extends Facets {
     TopOrdAndIntQueue q = null;
     TopOrdAndIntQueue.OrdAndValue reuse = null;
     int bottomCount = 0;
+    int bottomOrd = Integer.MAX_VALUE;
     int childCount = 0; // total number of labels with non-zero count
 
     if (sparseCounts != null) {
       for (IntIntCursor cursor : sparseCounts) {
         childCount++; // every count in sparseValues should be non-zero
+        int ord = cursor.key;
         int count = cursor.value;
-        if (count > bottomCount) {
+        if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
           if (reuse == null) {
             reuse = new TopOrdAndIntQueue.OrdAndValue();
           }
-          reuse.ord = cursor.key;
+          reuse.ord = ord;
           reuse.value = count;
           if (q == null) {
             // Lazy init for sparse case:
@@ -189,6 +191,7 @@ public class StringValueFacetCounts extends Facets {
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomCount = q.top().value;
+            bottomOrd = q.top().ord;
           }
         }
       }
@@ -197,7 +200,7 @@ public class StringValueFacetCounts extends Facets {
         int count = denseCounts[i];
         if (count != 0) {
           childCount++;
-          if (count > bottomCount) {
+          if (count > bottomCount || (count == bottomCount && i < bottomOrd)) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
@@ -210,6 +213,7 @@ public class StringValueFacetCounts extends Facets {
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomCount = q.top().value;
+              bottomOrd = q.top().ord;
             }
           }
         }

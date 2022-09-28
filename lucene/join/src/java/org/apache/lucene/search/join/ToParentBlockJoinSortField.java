@@ -135,25 +135,22 @@ public class ToParentBlockJoinSortField extends SortField {
   }
 
   private FieldComparator<?> getStringComparator(int numHits) {
-    FieldComparator<?> cmp =
-        new TermOrdValComparator(numHits, getField(), missingValue == STRING_LAST, getReverse()) {
-
-          @Override
-          protected SortedDocValues getSortedDocValues(LeafReaderContext context, String field)
-              throws IOException {
-            SortedSetDocValues sortedSet = DocValues.getSortedSet(context.reader(), field);
-            final BlockJoinSelector.Type type =
-                order ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
-            final BitSet parents = parentFilter.getBitSet(context);
-            final BitSet children = childFilter.getBitSet(context);
-            if (children == null) {
-              return DocValues.emptySorted();
-            }
-            return BlockJoinSelector.wrap(sortedSet, type, parents, toIter(children));
-          }
-        };
-    cmp.disableSkipping();
-    return cmp;
+    return new TermOrdValComparator(
+        numHits, getField(), missingValue == STRING_LAST, getReverse(), false) {
+      @Override
+      protected SortedDocValues getSortedDocValues(LeafReaderContext context, String field)
+          throws IOException {
+        SortedSetDocValues sortedSet = DocValues.getSortedSet(context.reader(), field);
+        final BlockJoinSelector.Type type =
+            order ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
+        final BitSet parents = parentFilter.getBitSet(context);
+        final BitSet children = childFilter.getBitSet(context);
+        if (children == null) {
+          return DocValues.emptySorted();
+        }
+        return BlockJoinSelector.wrap(sortedSet, type, parents, toIter(children));
+      }
+    };
   }
 
   private FieldComparator<?> getIntComparator(int numHits) {

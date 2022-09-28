@@ -38,7 +38,9 @@ public abstract class SpanPositionCheckQuery extends SpanQuery implements Clonea
     this.match = Objects.requireNonNull(match);
   }
 
-  /** @return the SpanQuery whose matches are filtered. */
+  /**
+   * @return the SpanQuery whose matches are filtered.
+   */
   public SpanQuery getMatch() {
     return match;
   }

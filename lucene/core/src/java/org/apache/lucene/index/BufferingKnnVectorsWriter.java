@@ -88,12 +88,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
                 String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
               throw new UnsupportedOperationException();
             }
-
-            @Override
-            public TopDocs searchExhaustively(
-                String field, float[] target, int k, DocIdSetIterator acceptDocs) {
-              throw new UnsupportedOperationException();
-            }
           };
 
       writeField(fieldData.fieldInfo, knnVectorsReader, maxDoc);
@@ -125,12 +119,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
           @Override
           public TopDocs search(
               String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public TopDocs searchExhaustively(
-              String field, float[] target, int k, DocIdSetIterator acceptDocs) {
             throw new UnsupportedOperationException();
           }
 
@@ -208,7 +196,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   private static class BufferedVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+      implements RandomAccessVectorValues {
 
     final DocsWithFieldSet docsWithField;
 
@@ -236,7 +224,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return new BufferedVectorValues(docsWithField, vectors, dimension);
     }
 

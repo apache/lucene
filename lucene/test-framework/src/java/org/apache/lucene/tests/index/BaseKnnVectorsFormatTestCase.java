@@ -670,14 +670,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         random().nextInt(VectorSimilarityFunction.values().length)];
   }
 
-  private VectorEncoding randomVectorEncoding() {
-    Codec codec = getCodec();
-    if (codec.knnVectorsFormat().currentVersion()
-        >= Codec.forName("Lucene94").knnVectorsFormat().currentVersion()) {
-      return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
-    } else {
-      return VectorEncoding.FLOAT32;
-    }
+  /**
+   * This method is overrideable since old codec versions only support {@link
+   * VectorEncoding#FLOAT32}.
+   */
+  protected VectorEncoding randomVectorEncoding() {
+    return VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
   }
 
   public void testIndexedValueNotAliased() throws Exception {
@@ -720,8 +718,36 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         IndexWriter iw = new IndexWriter(dir, iwc)) {
       add(iw, fieldName, 1, 1, new float[] {-1, 0});
       add(iw, fieldName, 4, 4, new float[] {0, 1});
-      add(iw, fieldName, 3, 3, null);
+      add(iw, fieldName, 3, 3, (float[]) null);
       add(iw, fieldName, 2, 2, new float[] {1, 0});
+      iw.forceMerge(1);
+      try (IndexReader reader = DirectoryReader.open(iw)) {
+        LeafReader leaf = getOnlyLeafReader(reader);
+
+        VectorValues vectorValues = leaf.getVectorValues(fieldName);
+        assertEquals(2, vectorValues.dimension());
+        assertEquals(3, vectorValues.size());
+        assertEquals("1", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals(-1f, vectorValues.vectorValue()[0], 0);
+        assertEquals("2", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals(1, vectorValues.vectorValue()[0], 0);
+        assertEquals("4", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals(0, vectorValues.vectorValue()[0], 0);
+        assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+      }
+    }
+  }
+
+  public void testSortedIndexBytes() throws Exception {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setIndexSort(new Sort(new SortField("sortkey", SortField.Type.INT)));
+    String fieldName = "field";
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, iwc)) {
+      add(iw, fieldName, 1, 1, new BytesRef(new byte[] {-1, 0}));
+      add(iw, fieldName, 4, 4, new BytesRef(new byte[] {0, 1}));
+      add(iw, fieldName, 3, 3, (BytesRef) null);
+      add(iw, fieldName, 2, 2, new BytesRef(new byte[] {1, 0}));
       iw.forceMerge(1);
       try (IndexReader reader = DirectoryReader.open(iw)) {
         LeafReader leaf = getOnlyLeafReader(reader);
@@ -850,6 +876,82 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             int id = Integer.parseInt(idString);
             if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
               assertArrayEquals(idString, values[id], v, 0);
+              ++valueCount;
+            } else {
+              ++numDeletes;
+              assertNull(values[id]);
+            }
+          }
+        }
+        assertEquals(numValues, valueCount);
+        assertEquals(numValues, totalSize - numDeletes);
+      }
+    }
+  }
+
+  /**
+   * Index random vectors as bytes, sometimes skipping documents, sometimes deleting a document,
+   * sometimes merging, sometimes sorting the index, and verify that the expected values can be read
+   * back consistently.
+   */
+  public void testRandomBytes() throws Exception {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    if (random().nextBoolean()) {
+      iwc.setIndexSort(new Sort(new SortField("sortkey", SortField.Type.INT)));
+    }
+    String fieldName = "field";
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, iwc)) {
+      int numDoc = atLeast(100);
+      int dimension = atLeast(10);
+      BytesRef scratch = new BytesRef(dimension);
+      scratch.length = dimension;
+      int numValues = 0;
+      BytesRef[] values = new BytesRef[numDoc];
+      for (int i = 0; i < numDoc; i++) {
+        if (random().nextInt(7) != 3) {
+          // usually index a vector value for a doc
+          values[i] = randomVector8(dimension);
+          ++numValues;
+        }
+        if (random().nextBoolean() && values[i] != null) {
+          // sometimes use a shared scratch array
+          System.arraycopy(values[i].bytes, 0, scratch.bytes, 0, dimension);
+          add(iw, fieldName, i, scratch, similarityFunction);
+        } else {
+          add(iw, fieldName, i, values[i], similarityFunction);
+        }
+        if (random().nextInt(10) == 2) {
+          // sometimes delete a random document
+          int idToDelete = random().nextInt(i + 1);
+          iw.deleteDocuments(new Term("id", Integer.toString(idToDelete)));
+          // and remember that it was deleted
+          if (values[idToDelete] != null) {
+            values[idToDelete] = null;
+            --numValues;
+          }
+        }
+        if (random().nextInt(10) == 3) {
+          iw.commit();
+        }
+      }
+      int numDeletes = 0;
+      try (IndexReader reader = DirectoryReader.open(iw)) {
+        int valueCount = 0, totalSize = 0;
+        for (LeafReaderContext ctx : reader.leaves()) {
+          VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
+          if (vectorValues == null) {
+            continue;
+          }
+          totalSize += vectorValues.size();
+          int docId;
+          while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
+            BytesRef v = vectorValues.binaryValue();
+            assertEquals(dimension, v.length);
+            String idString = ctx.reader().document(docId).getField("id").stringValue();
+            int id = Integer.parseInt(idString);
+            if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
+              assertEquals(idString, 0, values[id].compareTo(v));
               ++valueCount;
             } else {
               ++numDeletes;
@@ -1010,6 +1112,36 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       VectorSimilarityFunction similarityFunction)
       throws IOException {
     add(iw, field, id, random().nextInt(100), vector, similarityFunction);
+  }
+
+  private void add(
+      IndexWriter iw, String field, int id, BytesRef vector, VectorSimilarityFunction similarity)
+      throws IOException {
+    add(iw, field, id, random().nextInt(100), vector, similarity);
+  }
+
+  private void add(IndexWriter iw, String field, int id, int sortKey, BytesRef vector)
+      throws IOException {
+    add(iw, field, id, sortKey, vector, VectorSimilarityFunction.EUCLIDEAN);
+  }
+
+  private void add(
+      IndexWriter iw,
+      String field,
+      int id,
+      int sortKey,
+      BytesRef vector,
+      VectorSimilarityFunction similarityFunction)
+      throws IOException {
+    Document doc = new Document();
+    if (vector != null) {
+      doc.add(new KnnVectorField(field, vector, similarityFunction));
+    }
+    doc.add(new NumericDocValuesField("sortkey", sortKey));
+    String idString = Integer.toString(id);
+    doc.add(new StringField("id", idString, Field.Store.YES));
+    Term idTerm = new Term("id", idString);
+    iw.updateDocument(idTerm, doc);
   }
 
   private void add(IndexWriter iw, String field, int id, int sortkey, float[] vector)

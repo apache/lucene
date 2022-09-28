@@ -45,7 +45,9 @@ public class MoreLikeThisQuery extends Query {
   private Set<?> stopWords = null;
   private int minDocFreq = -1;
 
-  /** @param moreLikeFields fields used for similarity measure */
+  /**
+   * @param moreLikeFields fields used for similarity measure
+   */
   public MoreLikeThisQuery(
       String likeText, String[] moreLikeFields, Analyzer analyzer, String fieldName) {
     this.likeText = Objects.requireNonNull(likeText);

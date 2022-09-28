@@ -15,21 +15,28 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.index;
+package org.apache.lucene.analysis.tokenattributes;
 
-import java.io.IOException;
+import org.apache.lucene.util.Attribute;
 
 /**
- * Something (generally a {@link VectorValues}) that provides a {@link RandomAccessVectorValues}.
- *
- * @lucene.experimental
+ * This attribute tracks what sentence a given token belongs to as well as potentially other
+ * sentence specific attributes.
  */
-public interface RandomAccessVectorValuesProducer {
+public interface SentenceAttribute extends Attribute {
+
   /**
-   * Return a random access interface over this iterator's vectors. Calling the RandomAccess methods
-   * will have no effect on the progress of the iteration or the values returned by this iterator.
-   * Successive calls will retrieve independent copies that do not overwrite each others' returned
-   * values.
+   * Get the sentence index for the current token
+   *
+   * @return The index of the sentence
+   * @see #getSentenceIndex()
    */
-  RandomAccessVectorValues randomAccess() throws IOException;
+  int getSentenceIndex();
+
+  /**
+   * Set the sentence of the current token
+   *
+   * @see #setSentenceIndex(int sentenceIndex)
+   */
+  void setSentenceIndex(int sentenceIndex);
 }

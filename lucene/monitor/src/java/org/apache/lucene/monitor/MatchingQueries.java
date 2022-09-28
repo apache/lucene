@@ -56,32 +56,44 @@ public class MatchingQueries<T extends QueryMatch> {
     return matches.get(queryId);
   }
 
-  /** @return all matches */
+  /**
+   * @return all matches
+   */
   public Collection<T> getMatches() {
     return matches.values();
   }
 
-  /** @return the number of queries that matched */
+  /**
+   * @return the number of queries that matched
+   */
   public int getMatchCount() {
     return matches.size();
   }
 
-  /** @return how long (in ns) it took to build the Presearcher query for the matcher run */
+  /**
+   * @return how long (in ns) it took to build the Presearcher query for the matcher run
+   */
   public long getQueryBuildTime() {
     return queryBuildTime;
   }
 
-  /** @return how long (in ms) it took to run the selected queries */
+  /**
+   * @return how long (in ms) it took to run the selected queries
+   */
   public long getSearchTime() {
     return searchTime;
   }
 
-  /** @return the number of queries passed to this CandidateMatcher during the matcher run */
+  /**
+   * @return the number of queries passed to this CandidateMatcher during the matcher run
+   */
   public int getQueriesRun() {
     return queriesRun;
   }
 
-  /** @return a List of any MatchErrors created during the matcher run */
+  /**
+   * @return a List of any MatchErrors created during the matcher run
+   */
   public Map<String, Exception> getErrors() {
     return errors;
   }

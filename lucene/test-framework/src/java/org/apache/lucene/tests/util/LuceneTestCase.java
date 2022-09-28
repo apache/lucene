@@ -275,10 +275,14 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_MONSTER = "tests.monster";
   public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
 
-  /** @see #ignoreAfterMaxFailures */
+  /**
+   * @see #ignoreAfterMaxFailures
+   */
   public static final String SYSPROP_MAXFAILURES = "tests.maxfailures";
 
-  /** @see #ignoreAfterMaxFailures */
+  /**
+   * @see #ignoreAfterMaxFailures
+   */
   public static final String SYSPROP_FAILFAST = "tests.failfast";
 
   /** Annotation for tests that should only be run during nightly builds. */

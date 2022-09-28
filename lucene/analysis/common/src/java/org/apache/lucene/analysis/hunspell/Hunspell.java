@@ -75,7 +75,9 @@ public class Hunspell {
     stemmer = new Stemmer(dictionary);
   }
 
-  /** @return whether the given word's spelling is considered correct according to Hunspell rules */
+  /**
+   * @return whether the given word's spelling is considered correct according to Hunspell rules
+   */
   public boolean spell(String word) {
     checkCanceled.run();
     if (word.isEmpty()) return true;

@@ -344,13 +344,17 @@ public class FieldQuery {
     return termSetMap.get(fieldMatch ? field : null);
   }
 
-  /** @return QueryPhraseMap */
+  /**
+   * @return QueryPhraseMap
+   */
   public QueryPhraseMap getFieldTermMap(String fieldName, String term) {
     QueryPhraseMap rootMap = getRootMap(fieldName);
     return rootMap == null ? null : rootMap.subMap.get(term);
   }
 
-  /** @return QueryPhraseMap */
+  /**
+   * @return QueryPhraseMap
+   */
   public QueryPhraseMap searchPhrase(String fieldName, final List<TermInfo> phraseCandidate) {
     QueryPhraseMap root = getRootMap(fieldName);
     if (root == null) return null;

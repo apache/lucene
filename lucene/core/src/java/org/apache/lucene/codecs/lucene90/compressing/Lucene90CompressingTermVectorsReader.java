@@ -284,7 +284,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return numDocs;
   }
 
-  /** @throws AlreadyClosedException if this TermVectorsReader is closed */
+  /**
+   * @throws AlreadyClosedException if this TermVectorsReader is closed
+   */
   private void ensureOpen() throws AlreadyClosedException {
     if (closed) {
       throw new AlreadyClosedException("this FieldsReader is closed");
