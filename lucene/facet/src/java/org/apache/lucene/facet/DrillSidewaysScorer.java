@@ -39,6 +39,17 @@ import org.apache.lucene.util.FixedBitSet;
 
 class DrillSidewaysScorer extends BulkScorer {
 
+  private static final Comparator<DocsAndCost> APPROXIMATION_COMPARATOR =
+      Comparator.comparingLong(e -> e.approximation.cost());
+
+  private static final Comparator<DocsAndCost> TWO_PHASE_COMPARATOR =
+      new Comparator<DocsAndCost>() {
+        @Override
+        public int compare(DocsAndCost o1, DocsAndCost o2) {
+          return Float.compare(o1.twoPhase.matchCost(), o2.twoPhase.matchCost());
+        }
+      };
+
   // private static boolean DEBUG = false;
 
   private final Collector drillDownCollector;
@@ -165,7 +176,7 @@ class DrillSidewaysScorer extends BulkScorer {
     setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
 
     List<DocsAndCost> allDims = Arrays.asList(dims);
-    CollectionUtil.timSort(allDims, Comparator.comparingLong(e -> e.approximation.cost()));
+    CollectionUtil.timSort(allDims, APPROXIMATION_COMPARATOR);
 
     List<DocsAndCost> twoPhaseDims = null;
     for (DocsAndCost dim : dims) {
@@ -177,14 +188,7 @@ class DrillSidewaysScorer extends BulkScorer {
       }
     }
     if (twoPhaseDims != null) {
-      CollectionUtil.timSort(
-          twoPhaseDims,
-          new Comparator<DocsAndCost>() {
-            @Override
-            public int compare(DocsAndCost o1, DocsAndCost o2) {
-              return Float.compare(o1.twoPhase.matchCost(), o2.twoPhase.matchCost());
-            }
-          });
+      CollectionUtil.timSort(twoPhaseDims, TWO_PHASE_COMPARATOR);
     }
 
     int docID = baseApproximation.docID();
@@ -253,6 +257,7 @@ class DrillSidewaysScorer extends BulkScorer {
 
       assert (validateState(
           docID, baseApproximation, baseTwoPhase, allDims, twoPhaseDims, failedDim, acceptDocs));
+
       collectDocID = docID;
       if (failedDim == null) {
         // Hit passed all filters, so it's "real":
