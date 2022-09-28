@@ -390,18 +390,22 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
     // test seekExact
     for (int i = 100000; i <= 100400; i++){
+      BytesRef target = new BytesRef(i + "");
       if (i % 2 == 1) {
-        assertTrue(termsEnum.seekExact(new BytesRef(i + "")));
+        assertTrue(termsEnum.seekExact(target));
+        assertEquals(termsEnum.term(), target);
       } else {
-        assertFalse(termsEnum.seekExact(new BytesRef(i + "")));
+        assertFalse(termsEnum.seekExact(target));
       }
     }
     // test seekCeil
     for (int i = 100000; i < 100400; i++){
+      BytesRef target = new BytesRef(i + "");
       if (i % 2 == 1) {
-        assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef(i + "")));
+        assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+        assertEquals(termsEnum.term(), target);
       } else {
-        assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(new BytesRef(i + "")));
+        assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(target));
       }
     }
     assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef(100400 + "")));
