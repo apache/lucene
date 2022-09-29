@@ -17,8 +17,12 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.search.BulkScorer;
@@ -30,9 +34,21 @@ import org.apache.lucene.search.ScoreCachingWrappingScorer;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.FixedBitSet;
 
 class DrillSidewaysScorer extends BulkScorer {
+
+  private static final Comparator<DocsAndCost> APPROXIMATION_COMPARATOR =
+      Comparator.comparingLong(e -> e.approximation.cost());
+
+  private static final Comparator<DocsAndCost> TWO_PHASE_COMPARATOR =
+      new Comparator<DocsAndCost>() {
+        @Override
+        public int compare(DocsAndCost o1, DocsAndCost o2) {
+          return Float.compare(o1.twoPhase.matchCost(), o2.twoPhase.matchCost());
+        }
+      };
 
   // private static boolean DEBUG = false;
 
@@ -44,6 +60,8 @@ class DrillSidewaysScorer extends BulkScorer {
   // DrillDown DocsEnums:
   private final Scorer baseScorer;
   private final DocIdSetIterator baseIterator;
+  private final DocIdSetIterator baseApproximation;
+  private final TwoPhaseIterator baseTwoPhase;
 
   private final LeafReaderContext context;
 
@@ -65,6 +83,12 @@ class DrillSidewaysScorer extends BulkScorer {
     this.context = context;
     this.baseScorer = baseScorer;
     this.baseIterator = baseScorer.iterator();
+    this.baseTwoPhase = baseScorer.twoPhaseIterator();
+    if (baseTwoPhase != null) {
+      this.baseApproximation = baseTwoPhase.approximation();
+    } else {
+      this.baseApproximation = baseIterator;
+    }
     this.drillDownCollector = drillDownCollector;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
@@ -149,60 +173,98 @@ class DrillSidewaysScorer extends BulkScorer {
    */
   private void doQueryFirstScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
       throws IOException {
-    // if (DEBUG) {
-    //  System.out.println("  doQueryFirstScoring");
-    // }
     setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
 
-    int docID = baseScorer.docID();
+    List<DocsAndCost> allDims = Arrays.asList(dims);
+    CollectionUtil.timSort(allDims, APPROXIMATION_COMPARATOR);
+
+    List<DocsAndCost> twoPhaseDims = null;
+    for (DocsAndCost dim : dims) {
+      if (dim.twoPhase != null) {
+        if (twoPhaseDims == null) {
+          twoPhaseDims = new ArrayList<>(dims.length);
+        }
+        twoPhaseDims.add(dim);
+      }
+    }
+    if (twoPhaseDims != null) {
+      CollectionUtil.timSort(twoPhaseDims, TWO_PHASE_COMPARATOR);
+    }
+
+    int docID = baseApproximation.docID();
 
     nextDoc:
     while (docID != PostingsEnum.NO_MORE_DOCS) {
+      assert docID == baseApproximation.docID();
+
       if (acceptDocs != null && acceptDocs.get(docID) == false) {
-        docID = baseIterator.nextDoc();
+        docID = baseApproximation.nextDoc();
         continue;
       }
-      LeafCollector failedCollector = null;
-      for (DocsAndCost dim : dims) {
-        // TODO: should we sort this 2nd dimension of
-        // docsEnums from most frequent to least?
+
+      DocsAndCost failedDim = null;
+      for (DocsAndCost dim : allDims) {
+        final int dimDocID;
         if (dim.approximation.docID() < docID) {
-          dim.approximation.advance(docID);
+          dimDocID = dim.approximation.advance(docID);
+        } else {
+          dimDocID = dim.approximation.docID();
         }
-
-        boolean matches = false;
-        if (dim.approximation.docID() == docID) {
-          if (dim.twoPhase == null) {
-            matches = true;
-          } else {
-            matches = dim.twoPhase.matches();
-          }
-        }
-
-        if (matches == false) {
-          if (failedCollector != null) {
-            // More than one dim fails on this document, so
-            // it's neither a hit nor a near-miss; move to
-            // next doc:
-            docID = baseIterator.nextDoc();
+        if (dimDocID != docID) {
+          if (failedDim != null) {
+            int next = Math.min(dimDocID, failedDim.approximation.docID());
+            docID = baseApproximation.advance(next);
             continue nextDoc;
           } else {
-            failedCollector = dim.sidewaysLeafCollector;
+            failedDim = dim;
+          }
+        }
+      }
+
+      if (baseTwoPhase != null && baseTwoPhase.matches() == false) {
+        docID = baseApproximation.nextDoc();
+        continue;
+      }
+
+      if (twoPhaseDims != null) {
+        if (failedDim == null) {
+          for (DocsAndCost dim : twoPhaseDims) {
+            assert dim.approximation.docID() == baseApproximation.docID();
+            if (dim.twoPhase.matches() == false) {
+              if (failedDim != null) {
+                int next = Math.min(dim.approximation.nextDoc(), failedDim.approximation.nextDoc());
+                docID = baseApproximation.advance(next);
+                continue nextDoc;
+              } else {
+                failedDim = dim;
+              }
+            }
+          }
+        } else {
+          for (DocsAndCost dim : twoPhaseDims) {
+            if (failedDim == dim) {
+              continue;
+            }
+            assert dim.approximation.docID() == baseApproximation.docID();
+            if (dim.twoPhase.matches() == false) {
+              int next = Math.min(failedDim.approximation.docID(), dim.approximation.nextDoc());
+              docID = baseApproximation.advance(next);
+              continue nextDoc;
+            }
           }
         }
       }
 
       collectDocID = docID;
-
-      if (failedCollector == null) {
+      if (failedDim == null) {
         // Hit passed all filters, so it's "real":
         collectHit(collector, dims);
       } else {
         // Hit missed exactly one filter:
-        collectNearMiss(failedCollector);
+        collectNearMiss(failedDim.sidewaysLeafCollector);
       }
 
-      docID = baseIterator.nextDoc();
+      docID = baseApproximation.nextDoc();
     }
   }
 
