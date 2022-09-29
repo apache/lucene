@@ -28,20 +28,11 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
 
   private final AtomicLong flushedBytes = new AtomicLong();
   private final AtomicLong mergedBytes = new AtomicLong();
-  private final AtomicLong realTimeFlushedBytes = new AtomicLong();
-  private final AtomicLong realTimeMergedBytes = new AtomicLong();
-
   public final boolean trackTempOutput;
 
-  /**
-   * Constructor defaults to not tracking temp outputs
-   *
-   * @param in input Directory
-   */
   public ByteWritesTrackingDirectoryWrapper(Directory in) {
     this(in, false);
   }
-
   /**
    * Constructor with option to track tempOutput
    *
@@ -56,13 +47,11 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
   @Override
   public IndexOutput createOutput(String name, IOContext ioContext) throws IOException {
     IndexOutput output = in.createOutput(name, ioContext);
-    IndexOutput byteTrackingIndexOutput;
+    ByteTrackingIndexOutput byteTrackingIndexOutput;
     if (ioContext.context.equals(IOContext.Context.FLUSH)) {
-      byteTrackingIndexOutput =
-          new ByteTrackingIndexOutput(output, flushedBytes, realTimeFlushedBytes);
+      byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, flushedBytes);
     } else if (ioContext.context.equals(IOContext.Context.MERGE)) {
-      byteTrackingIndexOutput =
-          new ByteTrackingIndexOutput(output, mergedBytes, realTimeMergedBytes);
+      byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, mergedBytes);
     } else {
       return output;
     }
@@ -74,13 +63,11 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
       throws IOException {
     IndexOutput output = in.createTempOutput(prefix, suffix, ioContext);
     if (trackTempOutput) {
-      IndexOutput byteTrackingIndexOutput;
+      ByteTrackingIndexOutput byteTrackingIndexOutput;
       if (ioContext.context.equals(IOContext.Context.FLUSH)) {
-        byteTrackingIndexOutput =
-            new ByteTrackingIndexOutput(output, flushedBytes, realTimeFlushedBytes);
+        byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, flushedBytes);
       } else if (ioContext.context.equals(IOContext.Context.MERGE)) {
-        byteTrackingIndexOutput =
-            new ByteTrackingIndexOutput(output, mergedBytes, realTimeMergedBytes);
+        byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, mergedBytes);
       } else {
         return output;
       }
@@ -89,22 +76,19 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
     return output;
   }
 
+  /**
+   * The write amplification factor gets tracked on output close, so bytes written in open outputs
+   * will not be tracked. This means that the write amplification factor won't necessarily be
+   * realtime.
+   *
+   * @return An approximate (non-realtime) write amplification factor
+   */
   public double getApproximateWriteAmplificationFactor() {
     double flushedBytes = (double) this.flushedBytes.get();
     if (flushedBytes == 0.0) {
       return 1.0;
     }
     double mergedBytes = (double) this.mergedBytes.get();
-    return (flushedBytes + mergedBytes) / flushedBytes;
-  }
-
-  /** Gets a more up-to-date but less accurate write amplification factor */
-  public double getRealTimeApproximateWriteAmplificationFactor() {
-    double flushedBytes = (double) this.realTimeFlushedBytes.get();
-    if (flushedBytes == 0.0) {
-      return 1.0;
-    }
-    double mergedBytes = (double) this.realTimeMergedBytes.get();
     return (flushedBytes + mergedBytes) / flushedBytes;
   }
 

@@ -32,7 +32,6 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     ByteWritesTrackingDirectoryWrapper dir =
         new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
     assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
-    assertEquals(1.0, dir.getRealTimeApproximateWriteAmplificationFactor(), 0.0);
   }
 
   public void testRandomOutput() throws Exception {
@@ -51,7 +50,6 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     }
     output.writeBytes(flushBytesArr, flushBytesArr.length);
     assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
-    assertEquals(1.0, dir.getRealTimeApproximateWriteAmplificationFactor(), 0.0);
     output.close();
 
     // now merge bytes
@@ -62,8 +60,6 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     }
     output.writeBytes(mergeBytesArr, mergeBytesArr.length);
     assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
-    assertEquals(
-        expectedWriteAmplification, dir.getRealTimeApproximateWriteAmplificationFactor(), 0.0);
     output.close();
 
     assertEquals(expectedWriteAmplification, dir.getApproximateWriteAmplificationFactor(), 0.0);
@@ -86,7 +82,6 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     }
     output.writeBytes(flushBytesArr, flushBytesArr.length);
     assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
-    assertEquals(1.0, dir.getRealTimeApproximateWriteAmplificationFactor(), 0.0);
     output.close();
 
     // now merge bytes
@@ -99,8 +94,6 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     }
     output.writeBytes(mergeBytesArr, mergeBytesArr.length);
     assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
-    assertEquals(
-        expectedWriteAmplification, dir.getRealTimeApproximateWriteAmplificationFactor(), 0.0);
     output.close();
 
     assertEquals(expectedWriteAmplification, dir.getApproximateWriteAmplificationFactor(), 0.0);
