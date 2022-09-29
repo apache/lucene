@@ -69,6 +69,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
       otherTerms[idx++] = term;
     }
 
+    // Every doc in the index will contain `denseTerm`:
     int numDocs = 10 * otherTerms.length;
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
@@ -76,6 +77,55 @@ public class TestTermInSetQuery extends LuceneTestCase {
       BytesRef sparseTerm = otherTerms[i % otherTerms.length];
       doc.add(new StringField(field, sparseTerm, Store.NO));
       iw.addDocument(doc);
+    }
+
+    IndexReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    List<BytesRef> queryTerms = Arrays.stream(otherTerms).collect(Collectors.toList());
+    queryTerms.add(denseTerm);
+
+    TermInSetQuery query = new TermInSetQuery(field, queryTerms);
+    TopDocs topDocs = searcher.search(query, numDocs);
+    assertEquals(numDocs, topDocs.totalHits.value);
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testAllDocsInFieldTerm() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    String field = "f";
+
+    BytesRef denseTerm = new BytesRef(TestUtil.randomAnalysisString(random(), 10, true));
+
+    Set<BytesRef> randomTerms = new HashSet<>();
+    while (randomTerms.size() < TermInSetQuery.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD) {
+      randomTerms.add(new BytesRef(TestUtil.randomAnalysisString(random(), 10, true)));
+    }
+    assert randomTerms.size() == TermInSetQuery.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD;
+    BytesRef[] otherTerms = new BytesRef[randomTerms.size()];
+    int idx = 0;
+    for (BytesRef term : randomTerms) {
+      otherTerms[idx++] = term;
+    }
+
+    // Every doc with a value for `field` will contain `denseTerm`:
+    int numDocs = 10 * otherTerms.length;
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new StringField(field, denseTerm, Store.NO));
+      BytesRef sparseTerm = otherTerms[i % otherTerms.length];
+      doc.add(new StringField(field, sparseTerm, Store.NO));
+      iw.addDocument(doc);
+    }
+
+    // Make sure there are some docs in the index that don't contain a value for the field at all:
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.NO));
     }
 
     IndexReader reader = iw.getReader();
