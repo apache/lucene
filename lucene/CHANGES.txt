@@ -129,7 +129,7 @@ Optimizations
 * GITHUB#11771: KeywordRepeatFilter + OpenNLPLemmatizer sometimes arbitrarily exits token stream.
   (Luke Kot-Zaniewski)
 
-* GITHUB#11797: DrillSidewaysScorer has improved to leverage "advance" instead of "next" where
+* GITHUB#11803: DrillSidewaysScorer has improved to leverage "advance" instead of "next" where
   possible, and splits out first and second phase checks to delay match confirmation. (Greg Miller)
 
 Other
