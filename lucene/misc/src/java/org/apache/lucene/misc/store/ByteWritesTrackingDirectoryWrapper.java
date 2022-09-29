@@ -47,33 +47,27 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
   @Override
   public IndexOutput createOutput(String name, IOContext ioContext) throws IOException {
     IndexOutput output = in.createOutput(name, ioContext);
-    ByteTrackingIndexOutput byteTrackingIndexOutput;
-    if (ioContext.context.equals(IOContext.Context.FLUSH)) {
-      byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, flushedBytes);
-    } else if (ioContext.context.equals(IOContext.Context.MERGE)) {
-      byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, mergedBytes);
-    } else {
-      return output;
-    }
-    return byteTrackingIndexOutput;
+    return createByteTrackingOutput(output, ioContext.context);
   }
 
   @Override
   public IndexOutput createTempOutput(String prefix, String suffix, IOContext ioContext)
       throws IOException {
     IndexOutput output = in.createTempOutput(prefix, suffix, ioContext);
-    if (trackTempOutput) {
-      ByteTrackingIndexOutput byteTrackingIndexOutput;
-      if (ioContext.context.equals(IOContext.Context.FLUSH)) {
-        byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, flushedBytes);
-      } else if (ioContext.context.equals(IOContext.Context.MERGE)) {
-        byteTrackingIndexOutput = new ByteTrackingIndexOutput(output, mergedBytes);
-      } else {
+    return trackTempOutput ? createByteTrackingOutput(output, ioContext.context) : output;
+  }
+
+  private IndexOutput createByteTrackingOutput(IndexOutput output, IOContext.Context context) {
+    switch (context) {
+      case FLUSH:
+        return new ByteTrackingIndexOutput(output, flushedBytes);
+      case MERGE:
+        return new ByteTrackingIndexOutput(output, mergedBytes);
+      case DEFAULT:
+      case READ:
+      default:
         return output;
-      }
-      return byteTrackingIndexOutput;
     }
-    return output;
   }
 
   /**
