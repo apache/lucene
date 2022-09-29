@@ -51,7 +51,7 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 public class TestTermInSetQuery extends LuceneTestCase {
 
-  public void testAllDocsTerm() throws IOException {
+  public void testAllDocsInFieldTerm() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     String field = "f";
@@ -69,6 +69,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
       otherTerms[idx++] = term;
     }
 
+    // Every doc with a value for `field` will contain `denseTerm`:
     int numDocs = 10 * otherTerms.length;
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
@@ -76,6 +77,12 @@ public class TestTermInSetQuery extends LuceneTestCase {
       BytesRef sparseTerm = otherTerms[i % otherTerms.length];
       doc.add(new StringField(field, sparseTerm, Store.NO));
       iw.addDocument(doc);
+    }
+
+    // Make sure there are some docs in the index that don't contain a value for the field at all:
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.NO));
     }
 
     IndexReader reader = iw.getReader();

@@ -266,6 +266,7 @@ public class TermInSetQuery extends Query implements Accountable {
         if (terms == null) {
           return null;
         }
+        final int fieldDocCount = terms.getDocCount();
         TermsEnum termsEnum = terms.iterator();
         PostingsEnum docs = null;
         TermIterator iterator = termData.iterator();
@@ -281,8 +282,18 @@ public class TermInSetQuery extends Query implements Accountable {
         for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
           assert field.equals(iterator.field());
           if (termsEnum.seekExact(term)) {
-            if (reader.maxDoc() == termsEnum.docFreq()) {
-              return new WeightOrDocIdSet(DocIdSet.all(reader.maxDoc()));
+            // If a term contains all docs with a value for the specified field (likely rare),
+            // we can discard the other terms and just use the dense term's postings:
+            int docFreq = termsEnum.docFreq();
+            if (fieldDocCount == docFreq) {
+              TermStates termStates = new TermStates(searcher.getTopReaderContext());
+              termStates.register(
+                  termsEnum.termState(), context.ord, docFreq, termsEnum.totalTermFreq());
+              Query q =
+                  new ConstantScoreQuery(
+                      new TermQuery(new Term(field, termsEnum.term()), termStates));
+              Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+              return new WeightOrDocIdSet(weight);
             }
 
             if (matchingTerms == null) {
@@ -304,6 +315,7 @@ public class TermInSetQuery extends Query implements Accountable {
             }
           }
         }
+
         if (matchingTerms != null) {
           assert builder == null;
           BooleanQuery.Builder bq = new BooleanQuery.Builder();
