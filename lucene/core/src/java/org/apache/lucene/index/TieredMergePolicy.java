@@ -151,12 +151,17 @@ public class TieredMergePolicy extends MergePolicy {
   /**
    * Controls the maximum percentage of deleted documents that is tolerated in the index. Lower
    * values make the index more space efficient at the expense of increased CPU and I/O activity.
-   * Values must be between 20 and 50. Default value is 33.
+   * Values must be between 5 and 50. Default value is 33.
+   *
+   * <p>When the maximum delete percentage is lowered, the indexing thread will call for merges more
+   * often, meaning that write amplification factor will be increased. Write amplification factor
+   * measures the number of times each document in the index is written. A higher write
+   * amplification factor will lead to higher CPU and I/O activity as indicated above.
    */
   public TieredMergePolicy setDeletesPctAllowed(double v) {
-    if (v < 20 || v > 50) {
+    if (v < 5 || v > 50) {
       throw new IllegalArgumentException(
-          "indexPctDeletedTarget must be >= 20.0 and <= 50 (got " + v + ")");
+          "indexPctDeletedTarget must be >= 5.0 and <= 50 (got " + v + ")");
     }
     deletesPctAllowed = v;
     return this;
