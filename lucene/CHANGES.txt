@@ -46,6 +46,10 @@ Optimizations
 * GITHUB#11803: DrillSidewaysScorer has improved to leverage "advance" instead of "next" where
   possible, and splits out first and second phase checks to delay match confirmation. (Greg Miller)
 
+* GITHUB#11828: Tweak TermInSetQuery "dense" optimization to only require all terms present in a
+  given field to match a term (rather than all docs in a segment). This is consistent with
+  MultiTermQueryConstantScoreWrapper. (Greg Miller)
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
