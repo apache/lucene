@@ -101,7 +101,7 @@ API Changes
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
-write amplification factor. (Marc D'Mello)
+  write amplification factor. (Marc D'Mello)
 
 Improvements
 ---------------------
