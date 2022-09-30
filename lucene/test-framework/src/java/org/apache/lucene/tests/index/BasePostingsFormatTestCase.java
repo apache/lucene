@@ -404,8 +404,12 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
       if (i % 2 == 1) {
         assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
         assertEquals(termsEnum.term(), target);
+        if (i <= 100397) {
+          assertEquals(new BytesRef(i + 2 + ""), termsEnum.next());
+        }
       } else {
         assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(target));
+        assertEquals(new BytesRef(i + 1 + ""), termsEnum.term());
       }
     }
     assertEquals(SeekStatus.END, termsEnum.seekCeil(new BytesRef(100400 + "")));
