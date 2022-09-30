@@ -35,6 +35,27 @@ public abstract class VectorValues extends DocIdSetIterator {
   /** Sole constructor */
   protected VectorValues() {}
 
+  /**
+   * Returns the {@link VectorValues} instance for this field, or {@link #EMPTY} if it has none.
+   *
+   * @param reader Leaf reader instance
+   * @param field Field name
+   * @return VectorValues instance, or an empty instance if {@code field} does not exist in this
+   *     reader
+   * @throws IOException if the field exists but does not have any vector values
+   */
+  public static VectorValues getVectorValues(LeafReader reader, String field) throws IOException {
+    VectorValues values = reader.getVectorValues(field);
+    if (values == null) {
+      FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+      if (fieldInfo != null) {
+        throw new IllegalArgumentException("Field does not have any vector values");
+      }
+      return EMPTY;
+    }
+    return values;
+  }
+
   /** Return the dimension of the vectors */
   public abstract int dimension();
 

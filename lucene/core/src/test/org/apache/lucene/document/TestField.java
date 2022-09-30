@@ -535,14 +535,15 @@ public class TestField extends LuceneTestCase {
       doc.add(field2);
       w.addDocument(doc);
       try (IndexReader r = DirectoryReader.open(w)) {
-        VectorValues binary = r.leaves().get(0).reader().getVectorValues("binary");
+        VectorValues binary = VectorValues.getVectorValues(r.leaves().get(0).reader(), "binary");
         assertEquals(1, binary.size());
         assertNotEquals(NO_MORE_DOCS, binary.nextDoc());
         assertEquals(br, binary.binaryValue());
         assertNotNull(binary.vectorValue());
         assertEquals(NO_MORE_DOCS, binary.nextDoc());
 
-        VectorValues floatValues = r.leaves().get(0).reader().getVectorValues("float");
+        VectorValues floatValues =
+            VectorValues.getVectorValues(r.leaves().get(0).reader(), "float");
         assertEquals(1, floatValues.size());
         assertNotEquals(NO_MORE_DOCS, floatValues.nextDoc());
         assertNotNull(floatValues.binaryValue());

@@ -486,7 +486,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       expectThrows(
           ExitingReaderException.class,
           () -> {
-            DocIdSetIterator iter = leaf.getVectorValues("vector");
+            DocIdSetIterator iter = VectorValues.getVectorValues(leaf, "vector");
             scanAndRetrieve(leaf, iter);
           });
 
@@ -496,7 +496,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
               leaf.searchNearestVectors(
                   "vector", new float[dimension], 5, leaf.getLiveDocs(), Integer.MAX_VALUE));
     } else {
-      DocIdSetIterator iter = leaf.getVectorValues("vector");
+      DocIdSetIterator iter = VectorValues.getVectorValues(leaf, "vector");
       scanAndRetrieve(leaf, iter);
 
       leaf.searchNearestVectors(

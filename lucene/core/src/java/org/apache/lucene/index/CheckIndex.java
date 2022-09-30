@@ -2587,7 +2587,8 @@ public final class CheckIndex implements Closeable {
             }
             VectorValues values = reader.getVectorValues(fieldInfo.name);
             if (values == null) {
-              continue;
+              throw new CheckIndexException(
+                  "Field \"" + fieldInfo.name + "\" has null vector values");
             }
 
             status.totalKnnVectorFields++;

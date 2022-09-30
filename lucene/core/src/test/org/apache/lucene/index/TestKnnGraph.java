@@ -480,11 +480,7 @@ public class TestKnnGraph extends LuceneTestCase {
           continue;
         }
         HnswGraph graphValues = vectorReader.getGraph(vectorField);
-        VectorValues vectorValues = reader.getVectorValues(vectorField);
-        if (vectorValues == null) {
-          assert graphValues == null;
-          continue;
-        }
+        VectorValues vectorValues = VectorValues.getVectorValues(reader, vectorField);
 
         // assert vector values:
         // stored vector values are the same as original

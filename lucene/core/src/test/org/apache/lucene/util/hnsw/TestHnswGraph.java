@@ -124,7 +124,7 @@ public class TestHnswGraph extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
-          VectorValues values = ctx.reader().getVectorValues("field");
+          VectorValues values = VectorValues.getVectorValues(ctx.reader(), "field");
           assertEquals(dim, values.dimension());
           assertEquals(nVec, values.size());
           assertEquals(indexedDoc, ctx.reader().maxDoc());

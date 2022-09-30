@@ -163,7 +163,7 @@ public final class SlowCodecReaderWrapper {
     return new KnnVectorsReader() {
       @Override
       public VectorValues getVectorValues(String field) throws IOException {
-        return reader.getVectorValues(field);
+        return VectorValues.getVectorValues(reader, field);
       }
 
       @Override
