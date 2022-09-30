@@ -674,6 +674,7 @@ final class SegmentTermsEnumFrame {
     int start = nextEnt;
     int end = entCount - 1;
     // Binary search the entries (terms) in this leaf block:
+    int cmp = 0;
     while (start <= end) {
       int mid = (start + end) / 2;
       nextEnt = mid + 1;
@@ -681,7 +682,7 @@ final class SegmentTermsEnumFrame {
       suffixesReader.setPosition(startBytePos + suffix);
 
       // Binary search bytes in the suffix, comparing to the target
-      final int cmp =
+      cmp =
               Arrays.compareUnsigned(
                       suffixBytes,
                       startBytePos,
@@ -719,6 +720,11 @@ final class SegmentTermsEnumFrame {
     // if (DEBUG) System.out.println("      block end");
     SeekStatus seekStatus = end < entCount - 1 ? SeekStatus.NOT_FOUND : SeekStatus.END;
     if (exactOnly || seekStatus == SeekStatus.NOT_FOUND) {
+      // If binary search ended at the less term, we need to advance to the greater term.
+      if (cmp < 0){
+        startBytePos += suffix;
+        suffixesReader.skipBytes(suffix);
+      }
       fillTerm();
     }
 
