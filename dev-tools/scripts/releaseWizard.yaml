@@ -523,7 +523,7 @@ groups:
         addition wait a couple more days? Merges of bug fixes into the branch
         may become more difficult.
       * Only Github issues with Milestone {{ release_version_major }}.{{ release_version_minor }}
-        and priority "Blocker" will delay a release candidate build.
+        will delay a release candidate build.
       ----
     types:
     - major
@@ -550,12 +550,12 @@ groups:
 
       * Before committing to the branch, reply to this thread and argue
         why the fix needs backporting and how long it will take.
-      * All issues accepted for backporting should be marked with {{ release_version }}
-        in JIRA, and issues that should delay the release must be marked as Blocker
+      * All issues accepted for backporting should be added to milestone {{ release_version }} 
+        in Github, and issues that should delay the release must be marked as Blocker
       * All patches that are intended for the branch should first be committed
         to the unstable branch, merged into the stable branch, and then into
         the current release branch.
-      * Only Jira issues with Fix version {{ release_version }} and priority "Blocker" will delay
+      * Only Github issues with milestone {{ release_version }} will delay
         a release candidate build.
       ----
     types:
@@ -571,30 +571,22 @@ groups:
       Ask on dev@ for input. Ideally the timing of this request mostly coincides with the
       release branch creation. It's a good idea to remind the devs of this later in the release too.
 
-      NOTE: Do not add every single JIRA issue, but distill the Release note into important changes!
+      NOTE: Do not add every single issue, but distill the Release note into important changes!
     links:
     - https://cwiki.apache.org/confluence/display/LUCENE/Release+Notes
   - !Todo
-    id: new_jira_versions
-    title: Add a new version in JIRA for the next release
+    id: new_github_versions
+    title: Add a new milestone in Github for the next release
     description: |-
-      Go to the JIRA "Manage Versions" Administration pages and add the new version:
-
-      {% if release_type == 'major' -%}
-      . Change name of version `main ({{ release_version_major }}.0)` into `{{ release_version_major }}.0`
-      {%- endif %}
-      . Create a new (unreleased) version `{{ get_next_version }}`
-    types:
-    - major
-    - minor
+      Go to the Github "Milestones" page and add the new version milestone
     links:
-    - https://issues.apache.org/jira/plugins/servlet/project-config/LUCENE/versions
+    - https://github.com/apache/lucene/milestones
 - !TodoGroup
   id: artifacts
   title: Build the release artifacts
   description: |-
     If after the last day of the feature freeze phase no blocking issues are
-    in JIRA with "Fix Version" {{ release_version }}, then it's time to build the
+    in Github with "Milestone" {{ release_version }}, then it's time to build the
     release artifacts, run the smoke tester and stage the RC in svn
   depends:
   - test
@@ -1343,8 +1335,8 @@ groups:
       CHANGES.txt files, removing any duplicate entries, but only from sections for as-yet 
       unreleased versions; leave intact duplicate entries for already-released versions.
 
-      There is a script to generate a regex that will match JIRAs fixed in a release: 
-      `releasedJirasRegex.py`. The following examples will print regexes matching all JIRAs 
+      There is a script to generate a regex that will match issues fixed in a release: 
+      `releasedJirasRegex.py`. The following examples will print regexes matching all issues 
       fixed in {{ release_version }}, which can then be used to find duplicates in unreleased 
       version sections of the corresponding CHANGES.txt files.
     commands: !Commands
@@ -1516,55 +1508,23 @@ groups:
       because there was no released Lucene version to test against.
       {{ set_java_home(release_version) }}
   - !Todo
-    id: jira_release
-    title: Mark version as released in JIRA
+    id: github_release
+    title: Create release in Github
     description: |-
-      Go to the JIRA "Manage Versions" Administration pages.
-
-      . Next to version {{ release_version }}, click the gear pop-up menu icon and choose "Release"
-      . Fill in the release date ({{ release_date | formatdate }})
-      . It will give the option of transitioning issues marked fix-for the released version to the 
-        next version, but do not do this as it will send an email for each issue :)
+      Go to the Github "Releases" page and create the new release.
     links:
-    - https://issues.apache.org/jira/plugins/servlet/project-config/LUCENE/versions
+    - https://github.com/apache/lucene/releases
   - !Todo
-    id: jira_close_resolved
+    id: github_close_resolved
     title: Close all issues resolved in the release
     description: |-
-      Go to JIRA search to find all issues that were fixed in the release
-      you just made, whose Status is Resolved.
-
-      . Go to https://issues.apache.org/jira/issues/?jql=project+in+(LUCENE)+AND+status=Resolved+AND+fixVersion={{ release_version }}
-      . Do a bulk change (Under Tools... menu) to close all of these issues. This is a workflow transition task
+      Go to Github milestone for the release. If any issues are still open that should be closed, close them.
+      Remove any remaining issues from the milestone.
+      . TBD: is there a bulk change API that will not send email notices?
       . In the 'Comment' box type `Closing after the {{ release_version }} release`
       . *Uncheck* the box that says `Send mail for this update`
     links:
-    - https://issues.apache.org/jira/issues/?jql=project+in+(LUCENE)+AND+status=Resolved+AND+fixVersion={{ release_version }}
-  - !Todo
-    id: jira_change_unresolved
-    title: Remove fixVersion for unresolved
-    description: |-
-      Do another JIRA search to find all issues with Resolution=_Unresolved_ and fixVersion=_{{ release_version }}_.
-
-      . Open https://issues.apache.org/jira/issues/?jql=project+=+LUCENE+AND+resolution=Unresolved+AND+fixVersion={{ release_version }}
-      . In the `Tools` menu, start a bulk change - operation="Edit issues"
-      . Identify issues that *are included* in the release, but are unresolved e.g. due to being REOPENED. These shall *not* be bulk changed!
-      . Check the box next to `Change Fix Version/s` and in the dropdown `Find and remove these`, selecting v {{ release_version }}
-      . On the bottom of the form, uncheck the box that says `Send mail for this update`
-      . Click `Next`, review the changes and click `Confirm`
-    links:
-    - https://issues.apache.org/jira/issues/?jql=project+=+LUCENE+AND+resolution=Unresolved+AND+fixVersion={{ release_version }}
-  - !Todo
-    id: new_jira_versions_bugfix
-    title: Add a new version in JIRA for the next release
-    description: |-
-      Go to the JIRA "Manage Versions" Administration pages and add the new version:
-
-      . Create a new (unreleased) version `{{ get_next_version }}`
-    types:
-    - bugfix
-    links:
-    - https://issues.apache.org/jira/plugins/servlet/project-config/LUCENE/versions
+    - https://github.com/apache/lucene/milestones
   - !Todo
     id: stop_promoting_old
     title: Stop promoting old releases
