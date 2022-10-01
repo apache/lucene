@@ -972,8 +972,8 @@ groups:
     title: Publish docs, changes and javadocs
     description: |
       Ensure your refrigerator has at least 2 beers - the svn import operation can take a while,
-      depending on your upload bandwidth. We'll publish this directly to the production tree.
-      At the end of the task, the two links below shall work.
+      depending on your upload bandwidth. We'll publish this directly to the production tree.  At
+      the end of the task, the two links below shall work.
     links:
     - http://lucene.apache.org/core/{{ version }}
     vars:
@@ -1119,12 +1119,18 @@ groups:
         comment: Push all changes
         logfile: push-website.log
     post_description: |
-      Wait a few minutes for the build to happen. You can follow the site build at https://ci2.apache.org/#/builders/3
-      and view the staged site at https://lucene.staged.apache.org
-      Verify that correct links and versions are mentioned in download pages, download buttons etc.
-      If you find anything wrong, then commit and push any changes and check again.
-
-      Next step is to merge the changes to branch 'production' in order to publish the site.
+      Wait a few minutes for the build to happen. You can follow the site build at
+      https://ci2.apache.org/#/builders/3 and view the staged site at
+      https://lucene.staged.apache.org Verify that correct links and versions are mentioned in
+      download pages, download buttons etc.  If you find anything wrong, then commit and push any
+      changes and check again.  You may find that the publish fails, leaving a directory listing
+      instead a beautiful website. If this happens, check the "builder" link and click through into
+      its details to find possible error messages produced by the website publication process. You
+      may have produced malformed Markdown. Or the website publish may just fail for some reason out
+      of your control. If this happens, you can attempt to retrigger the publishing with some
+      innocuous changes.  Next step is to merge the changes to branch 'production' in order to
+      publish the site. Before doing this, you may want to replenish your stock of beers, or get
+      stronger stuff.
     links:
     - https://ci2.apache.org/#/builders/3
     - https://lucene.staged.apache.org
@@ -1152,7 +1158,8 @@ groups:
     post_description: |
       Wait a few minutes for the build to happen. You can follow the site build at https://ci2.apache.org/#/builders/3
 
-      Verify on https://lucene.apache.org that the site is OK.
+      Verify on https://lucene.apache.org that the site is OK. It really should be, but see staging
+      site publication instructions for possible debugging/recovery options if it is not.
 
       You can now also verify that http://lucene.apache.org/core/api/core/ redirects to the latest version
     links:
