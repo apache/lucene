@@ -24,6 +24,7 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -408,7 +409,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
     // we always allocate one more slice, the last one may be a 0 byte one after truncating with
     // asSlice():
-    final MemorySegment slices[] = Arrays.copyOfRange(segments, startIndex, endIndex + 1);
+    final MemorySegment slices[] = ArrayUtil.copyOfSubArray(segments, startIndex, endIndex + 1);
 
     // set the last segment's limit for the sliced view.
     slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
