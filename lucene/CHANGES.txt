@@ -140,7 +140,9 @@ Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
 
-* GITHUB#11811: upgrade google java format to 1.15.0 (Dawid Weiss)
+* GITHUB#11811: Upgrade google java format to 1.15.0 (Dawid Weiss)
+
+* GITHUB#11834: Upgrade forbiddenapis to version 3.4.  (Uwe Schindler)
 
 ======================== Lucene 9.4.0 =======================
 
