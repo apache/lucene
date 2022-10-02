@@ -57,7 +57,7 @@ allprojects { prj ->
     }
 
     // Configure defaults for sourceSets.main
-    forbiddenApisMain {
+    tasks.matching { it.name in ["forbiddenApisMain", "forbiddenApisMain19"] }.all {
       bundledSignatures += [
           'jdk-unsafe',
           'jdk-deprecated',
@@ -71,6 +71,13 @@ allprojects { prj ->
       ]
 
       doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
+    }
+
+    // Configure defaults for the MR-JAR feature sourceSets by setting java version and ignore missing classes
+    // TODO: Get hold of warning messages, see https://github.com/policeman-tools/forbidden-apis/issues/207
+    tasks.matching { it.name == "forbiddenApisMain19" }.all {
+      failOnMissingClasses = false
+      targetCompatibility = 19
     }
 
     // Configure defaults for sourceSets.test
@@ -113,11 +120,6 @@ allprojects { prj ->
       doFirst dynamicSignatures.curry(configurations.toolsCompileClasspath, "lucene")
 
       inputs.dir(file(resources))
-    }
-
-    // TODO: Remove this when forbiddenapis supports Java 19 class files
-    tasks.matching { it.name == "forbiddenApisMain19" }.all {
-      enabled = false
     }
 
     // We rely on resolved configurations to compute the relevant set of rule
