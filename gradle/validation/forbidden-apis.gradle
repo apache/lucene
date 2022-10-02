@@ -77,6 +77,7 @@ allprojects { prj ->
     // TODO: Get hold of warning messages, see https://github.com/policeman-tools/forbidden-apis/issues/207
     tasks.matching { it.name == "forbiddenApisMain19" }.all {
       failOnMissingClasses = false
+      failOnUnresolvableSignatures = false
       targetCompatibility = 19
     }
 
