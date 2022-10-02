@@ -73,6 +73,21 @@ allprojects { prj ->
       doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
     }
 
+    // Configure defaults for the MR-JAR feature sourceSets
+    // TODO: Get hold of warning messages!
+    tasks.matching { it.name == "forbiddenApisMain19" }.all {
+      failOnMissingClasses = false
+      targetCompatibility = 19
+      
+      bundledSignatures += forbiddenApisMain.bundledSignatures
+
+      suppressAnnotations += [
+          "**.SuppressForbidden"
+      ]
+
+      doFirst dynamicSignatures.curry(configurations.compileClasspath, "lucene")
+    }
+
     // Configure defaults for sourceSets.test
     tasks.matching { it.name in ["forbiddenApisTest", "forbiddenApisTestFixtures"] }.all {
       bundledSignatures += [
@@ -113,11 +128,6 @@ allprojects { prj ->
       doFirst dynamicSignatures.curry(configurations.toolsCompileClasspath, "lucene")
 
       inputs.dir(file(resources))
-    }
-
-    // TODO: Remove this when forbiddenapis supports Java 19 class files
-    tasks.matching { it.name == "forbiddenApisMain19" }.all {
-      enabled = false
     }
 
     // We rely on resolved configurations to compute the relevant set of rule
