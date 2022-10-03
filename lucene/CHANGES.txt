@@ -118,6 +118,8 @@ Bug Fixes
 * GITHUB#11768: Taxonomy and SSDV faceting now correctly breaks ties by preferring smaller ordinal
   values. (Greg Miller)
 
+* GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
