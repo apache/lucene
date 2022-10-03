@@ -41,12 +41,11 @@ if (isIdeaSync) {
   allprojects {
     // disable all MR-JAR folders by hiding them from IDE after evaluation:
     plugins.withType(JavaPlugin) {
-      project.afterEvaluate {
-        sourceSets.matching{ it.name ==~ /main\d+/ }.all{ sourceSet ->
+      sourceSets.matching{ it.name ==~ /main\d+/ }.all{ SourceSet sourceSet ->
+        project.afterEvaluate {
           logger.lifecycle("Skipping MR-JAR sourceSet on IntelliJ Idea: " + sourceSet.name)
-          project.idea.module.excludeDirs += sourceSet.java.srcDirs
           sourceSet.java.srcDirs = []
-          logger.debug("New excludeDirs: " + project.idea.module.excludeDirs)
+          sourceSet.resources.srcDirs = []
         }
       }
     }
