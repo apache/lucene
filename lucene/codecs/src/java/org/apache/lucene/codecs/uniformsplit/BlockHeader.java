@@ -99,17 +99,23 @@ public class BlockHeader implements Accountable {
     return this;
   }
 
-  /** @return The number of lines in the block. */
+  /**
+   * @return The number of lines in the block.
+   */
   public int getLinesCount() {
     return linesCount;
   }
 
-  /** @return The index of the middle line of the block. */
+  /**
+   * @return The index of the middle line of the block.
+   */
   public int getMiddleLineIndex() {
     return middleLineIndex;
   }
 
-  /** @return The offset to the middle line of the block, relative to the block start. */
+  /**
+   * @return The offset to the middle line of the block, relative to the block start.
+   */
   public int getMiddleLineOffset() {
     return middleLineOffset;
   }
@@ -122,17 +128,23 @@ public class BlockHeader implements Accountable {
     return termStatesBaseOffset;
   }
 
-  /** @return The file pointer to the docs of the first term with docs in the block. */
+  /**
+   * @return The file pointer to the docs of the first term with docs in the block.
+   */
   public long getBaseDocsFP() {
     return baseDocsFP;
   }
 
-  /** @return The file pointer to the positions of the first term with positions in the block. */
+  /**
+   * @return The file pointer to the positions of the first term with positions in the block.
+   */
   public long getBasePositionsFP() {
     return basePositionsFP;
   }
 
-  /** @return The file pointer to the payloads of the first term with payloads in the block. */
+  /**
+   * @return The file pointer to the payloads of the first term with payloads in the block.
+   */
   public long getBasePayloadsFP() {
     return basePayloadsFP;
   }

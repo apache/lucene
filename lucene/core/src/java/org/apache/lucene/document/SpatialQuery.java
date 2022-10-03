@@ -208,6 +208,7 @@ abstract class SpatialQuery extends Query {
   @Override
   public final Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
     final SpatialQuery query = this;
+    final SpatialVisitor spatialVisitor = getSpatialVisitor();
     return new ConstantScoreWeight(query, boost) {
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
@@ -221,7 +222,7 @@ abstract class SpatialQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final LeafReader reader = context.reader();
-        return getScorerSupplier(reader, getSpatialVisitor(), scoreMode, this, boost, score());
+        return getScorerSupplier(reader, spatialVisitor, scoreMode, this, boost, score());
       }
 
       @Override

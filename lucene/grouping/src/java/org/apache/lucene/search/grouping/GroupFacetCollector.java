@@ -263,12 +263,16 @@ public abstract class GroupFacetCollector extends SimpleCollector {
       return "FacetEntry{" + "value=" + value.utf8ToString() + ", count=" + count + '}';
     }
 
-    /** @return The value of this facet entry */
+    /**
+     * @return The value of this facet entry
+     */
     public BytesRef getValue() {
       return value;
     }
 
-    /** @return The count (number of groups) of this facet entry. */
+    /**
+     * @return The count (number of groups) of this facet entry.
+     */
     public int getCount() {
       return count;
     }

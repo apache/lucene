@@ -70,9 +70,6 @@ public final class Polygon extends LatLonGeometry {
     if (polyLats.length != polyLons.length) {
       throw new IllegalArgumentException("polyLats and polyLons must be equal length");
     }
-    if (polyLats.length != polyLons.length) {
-      throw new IllegalArgumentException("polyLats and polyLons must be equal length");
-    }
     if (polyLats.length < 4) {
       throw new IllegalArgumentException("at least 4 polygon points required");
     }

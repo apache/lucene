@@ -251,6 +251,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       throws IOException {
     TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
     int bottomValue = 0;
+    int bottomOrd = Integer.MAX_VALUE;
 
     int aggregatedValue = 0;
     int childCount = 0;
@@ -265,7 +266,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         if (parents[ord] == pathOrd && value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
-          if (value > bottomValue) {
+          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
@@ -274,6 +275,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomValue = q.top().value;
+              bottomOrd = q.top().ord;
             }
           }
         }
@@ -287,7 +289,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         if (value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
-          if (value > bottomValue) {
+          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
@@ -296,6 +298,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomValue = q.top().value;
+              bottomOrd = q.top().ord;
             }
           }
         }

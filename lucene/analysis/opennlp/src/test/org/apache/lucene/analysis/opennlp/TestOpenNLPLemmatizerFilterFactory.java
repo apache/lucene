@@ -20,8 +20,6 @@ package org.apache.lucene.analysis.opennlp;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.analysis.miscellaneous.KeywordRepeatFilterFactory;
 import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilterFactory;
@@ -332,11 +330,8 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
       earlyExitOutput = loader.openResource("data/early-exit-bug-output.txt");
       String earlyExitOutputText =
           new String(earlyExitOutput.readAllBytes(), StandardCharsets.UTF_8);
-      String[] earlyExitOutputTexts =
-          Arrays.stream(earlyExitOutputText.split("\\s"))
-              .filter(text -> text != "")
-              .collect(Collectors.joining(" "))
-              .split(" ");
+      String[] earlyExitOutputTexts = earlyExitOutputText.split("[\\s\\r\\n]+");
+
       CustomAnalyzer analyzer =
           CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
               .withTokenizer(

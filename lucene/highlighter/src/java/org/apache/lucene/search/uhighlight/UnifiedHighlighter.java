@@ -1336,7 +1336,9 @@ public class UnifiedHighlighter {
     return docListOfFields;
   }
 
-  /** @lucene.internal */
+  /**
+   * @lucene.internal
+   */
   protected LimitedStoredFieldVisitor newLimitedStoredFieldsVisitor(String[] fields) {
     return new LimitedStoredFieldVisitor(fields, MULTIVAL_SEP_CHAR, getMaxLength());
   }
@@ -1468,16 +1470,24 @@ public class UnifiedHighlighter {
 
   /** Flags for controlling highlighting behavior. */
   public enum HighlightFlag {
-    /** @see Builder#withHighlightPhrasesStrictly(boolean) */
+    /**
+     * @see Builder#withHighlightPhrasesStrictly(boolean)
+     */
     PHRASES,
 
-    /** @see Builder#withHandleMultiTermQuery(boolean) */
+    /**
+     * @see Builder#withHandleMultiTermQuery(boolean)
+     */
     MULTI_TERM_QUERY,
 
-    /** @see Builder#withPassageRelevancyOverSpeed(boolean) */
+    /**
+     * @see Builder#withPassageRelevancyOverSpeed(boolean)
+     */
     PASSAGE_RELEVANCY_OVER_SPEED,
 
-    /** @see Builder#withWeightMatches(boolean) */
+    /**
+     * @see Builder#withWeightMatches(boolean)
+     */
     WEIGHT_MATCHES
 
     // TODO: useQueryBoosts

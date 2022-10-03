@@ -972,8 +972,12 @@ public class TestValueSources extends LuceneTestCase {
     }
   }
 
-  /** @see ExistsValueSource */
+  /**
+   * @see ExistsValueSource
+   */
   private static final ValueSource ALL_EXIST_VS = new ExistsValueSource(true);
-  /** @see ExistsValueSource */
+  /**
+   * @see ExistsValueSource
+   */
   private static final ValueSource NONE_EXIST_VS = new ExistsValueSource(false);
 }

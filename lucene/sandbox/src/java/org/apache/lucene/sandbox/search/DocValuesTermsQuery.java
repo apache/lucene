@@ -157,12 +157,16 @@ public class DocValuesTermsQuery extends Query implements Accountable {
     return builder.toString();
   }
 
-  /** @return the name of the field searched by this query. */
+  /**
+   * @return the name of the field searched by this query.
+   */
   public String getField() {
     return field;
   }
 
-  /** @return the terms looked up by this query, prefix-encoded. */
+  /**
+   * @return the terms looked up by this query, prefix-encoded.
+   */
   public PrefixCodedTerms getTerms() {
     return termData;
   }

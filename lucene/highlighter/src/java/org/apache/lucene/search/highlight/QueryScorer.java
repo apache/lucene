@@ -53,7 +53,9 @@ public class QueryScorer implements Scorer {
   private int maxCharsToAnalyze;
   private boolean usePayloads = false;
 
-  /** @param query Query to use for highlighting */
+  /**
+   * @param query Query to use for highlighting
+   */
   public QueryScorer(Query query) {
     init(query, null, null, true);
   }
@@ -85,13 +87,17 @@ public class QueryScorer implements Scorer {
     init(query, field, reader, true);
   }
 
-  /** @param defaultField - The default field for queries with the field name unspecified */
+  /**
+   * @param defaultField - The default field for queries with the field name unspecified
+   */
   public QueryScorer(Query query, String field, String defaultField) {
     this.defaultField = defaultField;
     init(query, field, null, true);
   }
 
-  /** @param weightedTerms an array of pre-created {@link WeightedSpanTerm}s */
+  /**
+   * @param weightedTerms an array of pre-created {@link WeightedSpanTerm}s
+   */
   public QueryScorer(WeightedSpanTerm[] weightedTerms) {
     this.fieldWeightedSpanTerms = new HashMap<>(weightedTerms.length);
 
@@ -228,7 +234,9 @@ public class QueryScorer implements Scorer {
     totalScore = 0;
   }
 
-  /** @return true if multi-term queries should be expanded */
+  /**
+   * @return true if multi-term queries should be expanded
+   */
   public boolean isExpandMultiTermQuery() {
     return expandMultiTermQuery;
   }

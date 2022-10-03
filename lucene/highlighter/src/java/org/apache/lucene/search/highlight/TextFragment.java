@@ -36,17 +36,23 @@ public class TextFragment {
   public float getScore() {
     return score;
   }
-  /** @param frag2 Fragment to be merged into this one */
+  /**
+   * @param frag2 Fragment to be merged into this one
+   */
   public void merge(TextFragment frag2) {
     textEndPos = frag2.textEndPos;
     score = Math.max(score, frag2.score);
   }
-  /** @return true if this fragment follows the one passed */
+  /**
+   * @return true if this fragment follows the one passed
+   */
   public boolean follows(TextFragment fragment) {
     return textStartPos == fragment.textEndPos;
   }
 
-  /** @return the fragment sequence number */
+  /**
+   * @return the fragment sequence number
+   */
   public int getFragNum() {
     return fragNum;
   }
