@@ -141,6 +141,9 @@ Bug Fixes
 * GITHUB#12072: Fix exponential runtime for nested BooleanQuery#rewrite when a
   BooleanClause is non-scoring. (Ben Trent)
 
+* GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
+
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
