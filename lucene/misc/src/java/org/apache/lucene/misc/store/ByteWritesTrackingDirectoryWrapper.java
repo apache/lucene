@@ -70,22 +70,6 @@ public final class ByteWritesTrackingDirectoryWrapper extends FilterDirectory {
     }
   }
 
-  /**
-   * The write amplification factor gets tracked on output close, so bytes written in open outputs
-   * will not be tracked. This means that the write amplification factor won't necessarily be
-   * realtime.
-   *
-   * @return An approximate (non-realtime) write amplification factor
-   */
-  public double getApproximateWriteAmplificationFactor() {
-    double flushedBytes = (double) this.flushedBytes.get();
-    if (flushedBytes == 0.0) {
-      return 1.0;
-    }
-    double mergedBytes = (double) this.mergedBytes.get();
-    return (flushedBytes + mergedBytes) / flushedBytes;
-  }
-
   public long getFlushedBytes() {
     return flushedBytes.get();
   }

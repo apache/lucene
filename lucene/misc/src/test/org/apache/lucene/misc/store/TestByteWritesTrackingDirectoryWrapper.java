@@ -31,72 +31,77 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
   public void testEmptyDir() throws Exception {
     ByteWritesTrackingDirectoryWrapper dir =
         new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
-    assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
+    assertEquals(0.0, dir.getFlushedBytes(), 0.0);
+    assertEquals(0.0, dir.getMergedBytes(), 0.0);
   }
 
   public void testRandomOutput() throws Exception {
     ByteWritesTrackingDirectoryWrapper dir =
         new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
 
-    int flushBytes = random().nextInt(100);
-    int mergeBytes = random().nextInt(100);
-    double expectedWriteAmplification =
-        ((double) flushBytes + (double) mergeBytes) / (double) flushBytes;
+    int expectedFlushBytes = random().nextInt(100);
+    int expectedMergeBytes = random().nextInt(100);
 
-    IndexOutput output = dir.createOutput("write", new IOContext(new FlushInfo(10, flushBytes)));
-    byte[] flushBytesArr = new byte[flushBytes];
-    for (int i = 0; i < flushBytes; i++) {
+    IndexOutput output =
+        dir.createOutput("write", new IOContext(new FlushInfo(10, expectedFlushBytes)));
+    byte[] flushBytesArr = new byte[expectedFlushBytes];
+    for (int i = 0; i < expectedFlushBytes; i++) {
       flushBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(flushBytesArr, flushBytesArr.length);
-    assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
+    assertEquals(0.0, dir.getFlushedBytes(), 0.0);
+    assertEquals(0.0, dir.getMergedBytes(), 0.0);
     output.close();
 
     // now merge bytes
-    output = dir.createOutput("merge", new IOContext(new MergeInfo(10, mergeBytes, false, 2)));
-    byte[] mergeBytesArr = new byte[mergeBytes];
-    for (int i = 0; i < mergeBytes; i++) {
+    output =
+        dir.createOutput("merge", new IOContext(new MergeInfo(10, expectedMergeBytes, false, 2)));
+    byte[] mergeBytesArr = new byte[expectedMergeBytes];
+    for (int i = 0; i < expectedMergeBytes; i++) {
       mergeBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(mergeBytesArr, mergeBytesArr.length);
-    assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
+    assertEquals(expectedFlushBytes, dir.getFlushedBytes(), 0.0);
+    assertEquals(0.0, dir.getMergedBytes(), 0.0);
     output.close();
 
-    assertEquals(expectedWriteAmplification, dir.getApproximateWriteAmplificationFactor(), 0.0);
+    assertEquals(expectedFlushBytes, dir.getFlushedBytes(), 0.0);
+    assertEquals(expectedMergeBytes, dir.getMergedBytes(), 0.0);
   }
 
   public void testRandomTempOutput() throws Exception {
     ByteWritesTrackingDirectoryWrapper dir =
         new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory(), true);
 
-    int flushBytes = random().nextInt(100);
-    int mergeBytes = random().nextInt(100);
-    double expectedWriteAmplification =
-        ((double) flushBytes + (double) mergeBytes) / (double) flushBytes;
+    int expectedFlushBytes = random().nextInt(100);
+    int expectedMergeBytes = random().nextInt(100);
 
     IndexOutput output =
-        dir.createTempOutput("temp", "write", new IOContext(new FlushInfo(10, flushBytes)));
-    byte[] flushBytesArr = new byte[flushBytes];
-    for (int i = 0; i < flushBytes; i++) {
+        dir.createTempOutput("temp", "write", new IOContext(new FlushInfo(10, expectedFlushBytes)));
+    byte[] flushBytesArr = new byte[expectedFlushBytes];
+    for (int i = 0; i < expectedFlushBytes; i++) {
       flushBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(flushBytesArr, flushBytesArr.length);
-    assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
+    assertEquals(0.0, dir.getFlushedBytes(), 0.0);
+    assertEquals(0.0, dir.getMergedBytes(), 0.0);
     output.close();
 
     // now merge bytes
     output =
         dir.createTempOutput(
-            "temp", "merge", new IOContext(new MergeInfo(10, mergeBytes, false, 2)));
-    byte[] mergeBytesArr = new byte[mergeBytes];
-    for (int i = 0; i < mergeBytes; i++) {
+            "temp", "merge", new IOContext(new MergeInfo(10, expectedMergeBytes, false, 2)));
+    byte[] mergeBytesArr = new byte[expectedMergeBytes];
+    for (int i = 0; i < expectedMergeBytes; i++) {
       mergeBytesArr[i] = (byte) random().nextInt(127);
     }
     output.writeBytes(mergeBytesArr, mergeBytesArr.length);
-    assertEquals(1.0, dir.getApproximateWriteAmplificationFactor(), 0.0);
+    assertEquals(expectedFlushBytes, dir.getFlushedBytes(), 0.0);
+    assertEquals(0.0, dir.getMergedBytes(), 0.0);
     output.close();
 
-    assertEquals(expectedWriteAmplification, dir.getApproximateWriteAmplificationFactor(), 0.0);
+    assertEquals(expectedFlushBytes, dir.getFlushedBytes(), 0.0);
+    assertEquals(expectedMergeBytes, dir.getMergedBytes(), 0.0);
   }
 
   @Override
