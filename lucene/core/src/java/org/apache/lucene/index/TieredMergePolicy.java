@@ -92,7 +92,7 @@ public class TieredMergePolicy extends MergePolicy {
   private long floorSegmentBytes = 2 * 1024 * 1024L;
   private double segsPerTier = 10.0;
   private double forceMergeDeletesPctAllowed = 10.0;
-  private double deletesPctAllowed = 33.0;
+  private double deletesPctAllowed = 20.0;
 
   /** Sole constructor, setting all settings to their defaults. */
   public TieredMergePolicy() {
@@ -151,7 +151,7 @@ public class TieredMergePolicy extends MergePolicy {
   /**
    * Controls the maximum percentage of deleted documents that is tolerated in the index. Lower
    * values make the index more space efficient at the expense of increased CPU and I/O activity.
-   * Values must be between 5 and 50. Default value is 33.
+   * Values must be between 5 and 50. Default value is 20.
    *
    * <p>When the maximum delete percentage is lowered, the indexing thread will call for merges more
    * often, meaning that write amplification factor will be increased. Write amplification factor

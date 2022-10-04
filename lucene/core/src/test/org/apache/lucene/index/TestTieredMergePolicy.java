@@ -310,6 +310,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             ((1024.0 * 1024.0)); // fudge it up, we're trying to catch egregious errors and segbytes
     // don't really reflect the number for original merges.
     tmp.setMaxMergedSegmentMB(mbSize);
+    tmp.setDeletesPctAllowed(33.0);
     conf.setMaxBufferedDocs(100);
     conf.setMergePolicy(tmp);
 
