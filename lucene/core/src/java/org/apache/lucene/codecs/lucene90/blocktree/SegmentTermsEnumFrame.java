@@ -726,6 +726,7 @@ final class SegmentTermsEnumFrame {
       if (cmp < 0) {
         startBytePos += suffix;
         suffixesReader.skipBytes(suffix);
+        nextEnt++;
       }
       fillTerm();
     }
