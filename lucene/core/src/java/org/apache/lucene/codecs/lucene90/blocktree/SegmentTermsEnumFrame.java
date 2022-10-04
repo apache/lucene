@@ -530,8 +530,9 @@ final class SegmentTermsEnumFrame {
 
   // NOTE: sets startBytePos/suffix as a side effect
   public SeekStatus scanToTerm(BytesRef target, boolean exactOnly) throws IOException {
-    return isLeafBlock ? allEqual ? binarySearchTermLeaf(target, exactOnly) : scanToTermLeaf(target, exactOnly)
-            : scanToTermNonLeaf(target, exactOnly);
+    return isLeafBlock
+        ? allEqual ? binarySearchTermLeaf(target, exactOnly) : scanToTermLeaf(target, exactOnly)
+        : scanToTermNonLeaf(target, exactOnly);
   }
 
   private int startBytePos;
@@ -652,7 +653,8 @@ final class SegmentTermsEnumFrame {
   // And all suffixes have the same length in this block,
   // we binary search the entries check if the suffix matches.
   public SeekStatus binarySearchTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
-    // if (DEBUG) System.out.println("    binarySearchTermLeaf: block fp=" + fp + " prefix=" + prefix + "
+    // if (DEBUG) System.out.println("    binarySearchTermLeaf: block fp=" + fp + " prefix=" +
+    // prefix + "
     // nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
     // brToString(term));
 
@@ -683,13 +685,13 @@ final class SegmentTermsEnumFrame {
 
       // Binary search bytes in the suffix, comparing to the target
       cmp =
-              Arrays.compareUnsigned(
-                      suffixBytes,
-                      startBytePos,
-                      startBytePos + suffix,
-                      target.bytes,
-                      target.offset + prefix,
-                      target.offset + target.length);
+          Arrays.compareUnsigned(
+              suffixBytes,
+              startBytePos,
+              startBytePos + suffix,
+              target.bytes,
+              target.offset + prefix,
+              target.offset + target.length);
       if (cmp < 0) {
         start = mid + 1;
       } else if (cmp > 0) {
@@ -721,7 +723,7 @@ final class SegmentTermsEnumFrame {
     SeekStatus seekStatus = end < entCount - 1 ? SeekStatus.NOT_FOUND : SeekStatus.END;
     if (exactOnly || seekStatus == SeekStatus.NOT_FOUND) {
       // If binary search ended at the less term, we need to advance to the greater term.
-      if (cmp < 0){
+      if (cmp < 0) {
         startBytePos += suffix;
         suffixesReader.skipBytes(suffix);
       }
