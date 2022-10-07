@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.concurrent.Executor;
+
 import org.apache.lucene.index.IndexReader;
 
 /**
@@ -81,6 +83,18 @@ public abstract class Query {
    */
   public Query rewrite(IndexReader reader) throws IOException {
     return this;
+  }
+
+  /**
+   * Expert: should behave the same as {@link #rewrite(IndexReader)} besides possibly making use
+   * of multi-threading execution
+   *
+   * The default behavior is to not using the executor passed in since most query rewrite should
+   * be fast. But several queries may be able to make use of parallelism and speed up the rewrite
+   * process, such as KnnVectorQuery and AutomatonQuery
+   */
+  public Query rewrite(IndexReader reader, Executor exec) throws IOException {
+    return rewrite(reader);
   }
 
   /**

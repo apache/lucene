@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.Executor;
+
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.Bits;
@@ -41,8 +43,15 @@ public final class ConstantScoreQuery extends Query {
 
   @Override
   public Query rewrite(IndexReader reader) throws IOException {
-    Query rewritten = query.rewrite(reader);
+    return followingRewrite(query.rewrite(reader), reader);
+  }
 
+  @Override
+  public Query rewrite(IndexReader reader, Executor exec) throws IOException {
+    return followingRewrite(query.rewrite(reader, exec), reader);
+  }
+
+  private Query followingRewrite(Query rewritten, IndexReader reader) throws IOException {
     // Do some extra simplifications that are legal since scores are not needed on the wrapped
     // query.
     if (rewritten instanceof BoostQuery) {
