@@ -14,31 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene94;
+package org.apache.lucene.codecs.lucene95;
 
 import java.util.Objects;
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.CompoundFormat;
-import org.apache.lucene.codecs.DocValuesFormat;
-import org.apache.lucene.codecs.FieldInfosFormat;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.LiveDocsFormat;
-import org.apache.lucene.codecs.NormsFormat;
-import org.apache.lucene.codecs.PointsFormat;
-import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.SegmentInfoFormat;
-import org.apache.lucene.codecs.StoredFieldsFormat;
-import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90CompoundFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90LiveDocsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90NormsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90SegmentInfoFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90TermVectorsFormat;
+import org.apache.lucene.codecs.*;
+import org.apache.lucene.codecs.lucene90.*;
+import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -48,10 +29,10 @@ import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *
- * @see org.apache.lucene.codecs.lucene94 package documentation for file format details.
+ * @see org.apache.lucene.codecs.lucene95 package documentation for file format details.
  * @lucene.experimental
  */
-public class Lucene94Codec extends Codec {
+public class Lucene95Codec extends Codec {
 
   /** Configuration option for the codec. */
   public enum Mode {
@@ -79,7 +60,7 @@ public class Lucene94Codec extends Codec {
       new PerFieldPostingsFormat() {
         @Override
         public PostingsFormat getPostingsFormatForField(String field) {
-          return Lucene94Codec.this.getPostingsFormatForField(field);
+          return Lucene95Codec.this.getPostingsFormatForField(field);
         }
       };
 
@@ -88,7 +69,7 @@ public class Lucene94Codec extends Codec {
       new PerFieldDocValuesFormat() {
         @Override
         public DocValuesFormat getDocValuesFormatForField(String field) {
-          return Lucene94Codec.this.getDocValuesFormatForField(field);
+          return Lucene95Codec.this.getDocValuesFormatForField(field);
         }
       };
 
@@ -97,14 +78,14 @@ public class Lucene94Codec extends Codec {
       new PerFieldKnnVectorsFormat() {
         @Override
         public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-          return Lucene94Codec.this.getKnnVectorsFormatForField(field);
+          return Lucene95Codec.this.getKnnVectorsFormatForField(field);
         }
       };
 
   private final StoredFieldsFormat storedFieldsFormat;
 
   /** Instantiates a new codec. */
-  public Lucene94Codec() {
+  public Lucene95Codec() {
     this(Mode.BEST_SPEED);
   }
 
@@ -113,13 +94,13 @@ public class Lucene94Codec extends Codec {
    *
    * @param mode stored fields compression mode to use for newly flushed/merged segments.
    */
-  public Lucene94Codec(Mode mode) {
-    super("Lucene94");
+  public Lucene95Codec(Mode mode) {
+    super("Lucene95");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
     this.defaultPostingsFormat = new Lucene90PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
-    this.defaultKnnVectorsFormat = new Lucene94HnswVectorsFormat();
+    this.defaultKnnVectorsFormat = new Lucene95HnswVectorsFormat();
   }
 
   @Override
@@ -195,7 +176,7 @@ public class Lucene94Codec extends Codec {
   /**
    * Returns the vectors format that should be used for writing new segments of <code>field</code>
    *
-   * <p>The default implementation always returns "lucene94".
+   * <p>The default implementation always returns "lucene95".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation.

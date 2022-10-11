@@ -15,5 +15,33 @@
  * limitations under the License.
  */
 
-/** Lucene 9.4 file format. */
-package org.apache.lucene.codecs.lucene94;
+package org.apache.lucene.codecs.lucene95;
+
+import java.io.IOException;
+import org.apache.lucene.index.FilterVectorValues;
+import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.util.BytesRef;
+
+/** reads from byte-encoded data */
+public class ExpandingVectorValues extends FilterVectorValues {
+
+  private final float[] value;
+
+  /**
+   * @param in the wrapped values
+   */
+  protected ExpandingVectorValues(VectorValues in) {
+    super(in);
+    value = new float[in.dimension()];
+  }
+
+  @Override
+  public float[] vectorValue() throws IOException {
+    BytesRef binaryValue = binaryValue();
+    byte[] bytes = binaryValue.bytes;
+    for (int i = 0, j = binaryValue.offset; i < value.length; i++, j++) {
+      value[i] = bytes[j];
+    }
+    return value;
+  }
+}

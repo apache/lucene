@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene94;
+package org.apache.lucene.codecs.lucene95;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -25,14 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -46,20 +39,21 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
+import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
  *
  * @lucene.experimental
  */
-public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
+public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
 
-  Lucene94HnswVectorsReader(SegmentReadState state) throws IOException {
+  Lucene95HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;
@@ -68,14 +62,14 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene94HnswVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene94HnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
+              Lucene95HnswVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene95HnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
       vectorIndex =
           openDataInput(
               state,
               versionMeta,
-              Lucene94HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
-              Lucene94HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
+              Lucene95HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
+              Lucene95HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
       success = true;
     } finally {
       if (success == false) {
@@ -87,7 +81,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   private int readMetadata(SegmentReadState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene94HnswVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene95HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
       Throwable priorE = null;
@@ -95,9 +89,9 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene94HnswVectorsFormat.META_CODEC_NAME,
-                Lucene94HnswVectorsFormat.VERSION_START,
-                Lucene94HnswVectorsFormat.VERSION_CURRENT,
+                Lucene95HnswVectorsFormat.META_CODEC_NAME,
+                Lucene95HnswVectorsFormat.VERSION_START,
+                Lucene95HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -122,8 +116,8 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene94HnswVectorsFormat.VERSION_START,
-              Lucene94HnswVectorsFormat.VERSION_CURRENT,
+              Lucene95HnswVectorsFormat.VERSION_START,
+              Lucene95HnswVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -217,7 +211,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
   @Override
   public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene94HnswVectorsFormat.class);
+    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene95HnswVectorsFormat.class);
     totalBytes +=
         RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
@@ -338,6 +332,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     final int blockShift;
     final DirectMonotonicReader.Meta meta;
     final long addressesLength;
+    final int packedIntsVersion;
 
     FieldEntry(
         IndexInput input,
@@ -374,6 +369,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
       // read nodes by level
       M = input.readInt();
+      packedIntsVersion = input.readVInt();
       numLevels = input.readInt();
       nodesByLevel = new int[numLevels][];
       for (int level = 0; level < numLevels; level++) {
@@ -393,16 +389,22 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
       // calculate for each level the start offsets in vectorIndex file from where to read
       // neighbours
       graphOffsetsByLevel = new long[numLevels];
+      final int packedBitsRequired = PackedInts.bitsRequired(size);
       for (int level = 0; level < numLevels; level++) {
         if (level == 0) {
           graphOffsetsByLevel[level] = 0;
         } else if (level == 1) {
-          int numNodesOnLevel0 = size;
-          graphOffsetsByLevel[level] = (1 + (M * 2)) * Integer.BYTES * numNodesOnLevel0;
+          graphOffsetsByLevel[level] =
+              (PackedInts.Format.PACKED.byteCount(packedIntsVersion, M * 2, packedBitsRequired)
+                      + Integer.BYTES)
+                  * size;
         } else {
           int numNodesOnPrevLevel = nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              graphOffsetsByLevel[level - 1] + (1 + M) * Integer.BYTES * numNodesOnPrevLevel;
+              graphOffsetsByLevel[level - 1]
+                  + (PackedInts.Format.PACKED.byteCount(packedIntsVersion, M, packedBitsRequired)
+                          + Integer.BYTES)
+                      * numNodesOnPrevLevel;
         }
       }
     }
@@ -423,10 +425,12 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     final int size;
     final long bytesForConns;
     final long bytesForConns0;
-
+    final int packedBitsRequired;
+    final int packedIntsVersion;
     int arcCount;
     int arcUpTo;
     int arc;
+    PackedInts.ReaderIterator connReader;
 
     OffHeapHnswGraph(FieldEntry entry, IndexInput dataIn) {
       this.dataIn = dataIn;
@@ -434,9 +438,15 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
       this.numLevels = entry.numLevels;
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
+      this.packedBitsRequired = PackedInts.bitsRequired(size);
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = ((long) entry.M + 1) * Integer.BYTES;
-      this.bytesForConns0 = ((long) (entry.M * 2) + 1) * Integer.BYTES;
+      this.packedIntsVersion = entry.packedIntsVersion;
+      this.bytesForConns =
+          PackedInts.Format.PACKED.byteCount(packedIntsVersion, entry.M, packedBitsRequired)
+              + Integer.BYTES;
+      this.bytesForConns0 =
+          PackedInts.Format.PACKED.byteCount(packedIntsVersion, entry.M * 2, packedBitsRequired)
+              + Integer.BYTES;
     }
 
     @Override
@@ -451,6 +461,9 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
       // unsafe; no bounds checking
       dataIn.seek(graphDataOffset);
       arcCount = dataIn.readInt();
+      connReader =
+          PackedInts.getReaderIteratorNoHeader(
+              dataIn, PackedInts.Format.PACKED, packedIntsVersion, arcCount, packedBitsRequired, 1);
       arc = -1;
       arcUpTo = 0;
     }
@@ -466,7 +479,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
         return NO_MORE_DOCS;
       }
       ++arcUpTo;
-      arc = dataIn.readInt();
+      arc = (int) connReader.next();
       return arc;
     }
 
