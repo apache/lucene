@@ -468,63 +468,117 @@ public class KnnGraphTester {
 
   private abstract static class VectorReader {
     final float[] target;
-    final ByteBuffer bytes;
+    ByteBuffer bytes;
+    final long totalSize;
+    final int maxBlockSize;
+    final FileChannel input;
+    int offset = 0;
 
     static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding, int n)
         throws IOException {
-      int bufferSize = n * dim * vectorEncoding.byteSize;
+      long totalSize = (long) n * dim * vectorEncoding.byteSize;
+      int maxBlockSize =
+          (Integer.MAX_VALUE / (dim * vectorEncoding.byteSize)) * (dim * vectorEncoding.byteSize);
       return switch (vectorEncoding) {
-        case BYTE -> new VectorReaderByte(input, dim, bufferSize);
-        case FLOAT32 -> new VectorReaderFloat32(input, dim, bufferSize);
+        case BYTE -> new VectorReaderByte(input, dim, totalSize, maxBlockSize);
+        case FLOAT32 -> new VectorReaderFloat32(input, dim, totalSize, maxBlockSize);
       };
     }
 
-    VectorReader(FileChannel input, int dim, int bufferSize) throws IOException {
-      bytes =
-          input.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize).order(ByteOrder.LITTLE_ENDIAN);
-      target = new float[dim];
+    VectorReader(FileChannel input, int dim, long bufferSize, int maxBlockSize) throws IOException {
+      this.totalSize = bufferSize;
+      this.maxBlockSize = maxBlockSize;
+      this.input = input;
+      this.target = new float[dim];
+      int blockSize = (int) Math.min(totalSize - offset, maxBlockSize);
+      this.bytes =
+          input
+              .map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
+              .order(ByteOrder.LITTLE_ENDIAN);
+      offset += blockSize;
     }
 
     void reset() {
+      if (maxBlockSize < totalSize) {
+        throw new UnsupportedOperationException("Cannot reset stream on exceptionally large input");
+      }
+      offset = 0;
       bytes.position(0);
     }
 
-    abstract float[] next();
+    final void nextBuffer() throws IOException {
+      int blockSize = (int) Math.min(totalSize - offset, maxBlockSize);
+      setBuffer(
+          input
+              .map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
+              .order(ByteOrder.LITTLE_ENDIAN));
+      this.offset += blockSize;
+    }
+
+    protected void setBuffer(ByteBuffer buffer) {
+      this.bytes = buffer;
+    }
+
+    protected boolean hasRemaining() {
+      return this.bytes.hasRemaining();
+    }
+
+    final float[] next() throws IOException {
+      if (this.hasRemaining() == false) {
+        nextBuffer();
+      }
+      return nextImpl();
+    }
+
+    abstract float[] nextImpl();
   }
 
   private static class VectorReaderFloat32 extends VectorReader {
-    private final FloatBuffer floats;
+    private FloatBuffer floats;
 
-    VectorReaderFloat32(FileChannel input, int dim, int bufferSize) throws IOException {
-      super(input, dim, bufferSize);
-      floats = bytes.asFloatBuffer();
+    VectorReaderFloat32(FileChannel input, int dim, long bufferSize, int blockSize)
+        throws IOException {
+      super(input, dim, bufferSize, blockSize);
+      this.floats = bytes.asFloatBuffer();
     }
 
     @Override
     void reset() {
       super.reset();
-      floats.position(0);
+      this.floats.position(0);
     }
 
     @Override
-    float[] next() {
+    protected void setBuffer(ByteBuffer buffer) {
+      super.setBuffer(buffer);
+      this.floats = buffer.asFloatBuffer();
+    }
+
+    @Override
+    protected boolean hasRemaining() {
+      return this.floats.hasRemaining();
+    }
+
+    @Override
+    float[] nextImpl() {
       floats.get(target);
       return target;
     }
   }
 
   private static class VectorReaderByte extends VectorReader {
-    private byte[] scratch;
-    private BytesRef bytesRef;
+    private final byte[] scratch;
+    private final BytesRef bytesRef;
 
-    VectorReaderByte(FileChannel input, int dim, int bufferSize) throws IOException {
-      super(input, dim, bufferSize);
+    VectorReaderByte(FileChannel input, int dim, long bufferSize, int blockSize)
+        throws IOException {
+      super(input, dim, bufferSize, blockSize);
       scratch = new byte[dim];
       bytesRef = new BytesRef(scratch);
     }
 
     @Override
-    float[] next() {
+    float[] nextImpl() {
       bytes.get(scratch);
       for (int i = 0; i < scratch.length; i++) {
         target[i] = scratch[i];
