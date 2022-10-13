@@ -207,8 +207,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   /**
    * Optimize our representation and our subqueries representations
    *
-   * @param indexSearcher@return an optimized copy of us (which may not be a copy if there is
-   *     nothing to optimize)
+   * @return an optimized copy of us (which may not be a copy if there is nothing to optimize)
    */
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
