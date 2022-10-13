@@ -95,7 +95,16 @@ public class WrapperDownloader {
       HttpURLConnection connection;
       while (true) {
         connection = (HttpURLConnection) url.openConnection();
-        connection.connect();
+        try {
+          connection.connect();
+        } catch (IOException e) {
+          if (retries-- > 0) {
+            // Retry after a short delay
+            System.err.println("Error connecting to server: " + e + ", will retry in " + retryDelay + " seconds.");
+            Thread.sleep(TimeUnit.SECONDS.toMillis(retryDelay));
+            continue;
+          }
+        }
 
         switch (connection.getResponseCode()) {
           case HttpURLConnection.HTTP_INTERNAL_ERROR:
