@@ -164,7 +164,7 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
     Map<String, String> lastAttributes = Collections.emptyMap();
 
     for (int i = 0; i < size; i++) {
-      String name = input.readString();
+      String name = input.readCanonicalString();
       final int fieldNumber = input.readVInt();
       if (fieldNumber < 0) {
         throw new CorruptIndexException(

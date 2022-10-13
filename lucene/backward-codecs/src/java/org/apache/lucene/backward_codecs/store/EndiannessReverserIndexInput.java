@@ -113,6 +113,11 @@ final class EndiannessReverserIndexInput extends IndexInput {
   }
 
   @Override
+  public String readCanonicalString() throws IOException {
+    return in.readCanonicalString();
+  }
+
+  @Override
   public IndexInput clone() {
     return new EndiannessReverserIndexInput(in.clone());
   }
