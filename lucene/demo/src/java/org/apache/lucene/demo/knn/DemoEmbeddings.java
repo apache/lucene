@@ -45,7 +45,7 @@ public class DemoEmbeddings {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new StandardTokenizer();
             TokenStream output =
-              new KnnVectorDictFilter(new LowerCaseFilter(tokenizer), vectorDict.copy());
+                new KnnVectorDictFilter(new LowerCaseFilter(tokenizer), vectorDict);
             return new TokenStreamComponents(tokenizer, output);
           }
         };
