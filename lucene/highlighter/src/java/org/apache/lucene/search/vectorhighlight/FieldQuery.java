@@ -56,7 +56,12 @@ public class FieldQuery {
       throws IOException {
     this.fieldMatch = fieldMatch;
     Set<Query> flatQueries = new LinkedHashSet<>();
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher;
+    if (reader == null) {
+      searcher = null;
+    } else {
+      searcher = new IndexSearcher(reader);
+    }
     flatten(query, searcher, flatQueries, 1f);
     saveTerms(flatQueries, searcher);
     Collection<Query> expandQueries = expand(flatQueries);
