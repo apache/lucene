@@ -86,12 +86,12 @@ public class KnnVectorQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    IndexReader reader = indexSearcher.getIndexReader();
     TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
 
     Weight filterWeight = null;
     if (filter != null) {
-      IndexSearcher indexSearcher = new IndexSearcher(reader);
       BooleanQuery booleanQuery =
           new BooleanQuery.Builder()
               .add(filter, BooleanClause.Occur.FILTER)

@@ -23,17 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BoostQuery;
-import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.PrefixQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryVisitor;
-import org.apache.lucene.search.RegexpQuery;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermRangeQuery;
-import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.vectorhighlight.FieldQuery.QueryPhraseMap;
 import org.apache.lucene.search.vectorhighlight.FieldTermStack.TermInfo;
 import org.apache.lucene.util.BytesRef;
@@ -63,7 +54,7 @@ public class TestFieldQuery extends AbstractTestCase {
 
     FieldQuery fq = new FieldQuery(booleanQuery, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(booleanQuery, reader, flatQueries, 1f);
+    fq.flatten(booleanQuery, new IndexSearcher(reader), flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"), tq(boost, "B"), tq(boost, "C"));
   }
 
@@ -73,7 +64,7 @@ public class TestFieldQuery extends AbstractTestCase {
     query = new BoostQuery(query, boost);
     FieldQuery fq = new FieldQuery(query, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(query, reader, flatQueries, 1f);
+    fq.flatten(query, new IndexSearcher(reader), flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"), tq(boost, "B"), pqF(boost, "C", "D"));
   }
 
@@ -87,7 +78,7 @@ public class TestFieldQuery extends AbstractTestCase {
 
     FieldQuery fq = new FieldQuery(booleanQuery, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(booleanQuery, reader, flatQueries, 1f);
+    fq.flatten(booleanQuery, new IndexSearcher(reader), flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"), pqF(boost, "B", "C"));
   }
 
@@ -99,7 +90,7 @@ public class TestFieldQuery extends AbstractTestCase {
 
     FieldQuery fq = new FieldQuery(query.build(), true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(query.build(), reader, flatQueries, 1f);
+    fq.flatten(query.build(), new IndexSearcher(reader), flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq("AA"), pqF("BC", "CD"), pqF("EF", "FG", "GH"));
   }
 
@@ -107,7 +98,7 @@ public class TestFieldQuery extends AbstractTestCase {
     Query query = pqF("A");
     FieldQuery fq = new FieldQuery(query, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(query, reader, flatQueries, 1f);
+    fq.flatten(query, new IndexSearcher(reader), flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq("A"));
   }
 
@@ -950,7 +941,7 @@ public class TestFieldQuery extends AbstractTestCase {
     query = new BoostQuery(query, boost);
     FieldQuery fq = new FieldQuery(query, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(query, reader, flatQueries, 1f);
+    fq.flatten(query, new IndexSearcher(reader), flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"));
   }
 }

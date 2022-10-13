@@ -117,8 +117,8 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    return rewriteMethod.rewrite(reader, query);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    return rewriteMethod.rewrite(indexSearcher.getIndexReader(), query);
   }
 
   @Override

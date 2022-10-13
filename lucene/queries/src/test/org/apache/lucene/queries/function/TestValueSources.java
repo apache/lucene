@@ -781,8 +781,8 @@ public class TestValueSources extends LuceneTestCase {
       }
 
       @Override
-      public Query rewrite(IndexReader reader) throws IOException {
-        var rewrite = in.rewrite(reader);
+      public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+        var rewrite = in.rewrite(indexSearcher);
         return rewrite == in ? this : new AssertScoreComputedOnceQuery(rewrite);
       }
 

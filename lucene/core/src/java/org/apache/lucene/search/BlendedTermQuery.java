@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
@@ -268,11 +267,12 @@ public final class BlendedTermQuery extends Query {
   }
 
   @Override
-  public final Query rewrite(IndexReader reader) throws IOException {
+  public final Query rewrite(IndexSearcher indexSearcher) throws IOException {
     final TermStates[] contexts = ArrayUtil.copyOfSubArray(this.contexts, 0, this.contexts.length);
     for (int i = 0; i < contexts.length; ++i) {
-      if (contexts[i] == null || contexts[i].wasBuiltFor(reader.getContext()) == false) {
-        contexts[i] = TermStates.build(reader.getContext(), terms[i], true);
+      if (contexts[i] == null
+          || contexts[i].wasBuiltFor(indexSearcher.getTopReaderContext()) == false) {
+        contexts[i] = TermStates.build(indexSearcher.getTopReaderContext(), terms[i], true);
       }
     }
 
@@ -287,7 +287,7 @@ public final class BlendedTermQuery extends Query {
     }
 
     for (int i = 0; i < contexts.length; ++i) {
-      contexts[i] = adjustFrequencies(reader.getContext(), contexts[i], df, ttf);
+      contexts[i] = adjustFrequencies(indexSearcher.getTopReaderContext(), contexts[i], df, ttf);
     }
 
     Query[] termQueries = new Query[terms.length];

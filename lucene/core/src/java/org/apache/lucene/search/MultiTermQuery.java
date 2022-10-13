@@ -279,8 +279,8 @@ public abstract class MultiTermQuery extends Query {
    * AttributeSource)}. For example, to rewrite to a single term, return a {@link SingleTermsEnum}
    */
   @Override
-  public final Query rewrite(IndexReader reader) throws IOException {
-    return rewriteMethod.rewrite(reader, this);
+  public final Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    return rewriteMethod.rewrite(indexSearcher.getIndexReader(), this);
   }
 
   /**

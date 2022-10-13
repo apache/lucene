@@ -18,8 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.concurrent.Executor;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.Bits;
 
@@ -41,16 +39,10 @@ public final class ConstantScoreQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    return followingRewrite(query.rewrite(reader), reader);
-  }
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
 
-  @Override
-  public Query rewrite(IndexReader reader, Executor exec) throws IOException {
-    return followingRewrite(query.rewrite(reader, exec), reader);
-  }
+    Query rewritten = query.rewrite(indexSearcher);
 
-  private Query followingRewrite(Query rewritten, IndexReader reader) throws IOException {
     // Do some extra simplifications that are legal since scores are not needed on the wrapped
     // query.
     if (rewritten instanceof BoostQuery) {
@@ -58,7 +50,7 @@ public final class ConstantScoreQuery extends Query {
     } else if (rewritten instanceof ConstantScoreQuery) {
       rewritten = ((ConstantScoreQuery) rewritten).getQuery();
     } else if (rewritten instanceof BooleanQuery) {
-      rewritten = ((BooleanQuery) rewritten).rewriteNoScoring(reader);
+      rewritten = ((BooleanQuery) rewritten).rewriteNoScoring(indexSearcher);
     }
 
     if (rewritten.getClass() == MatchNoDocsQuery.class) {
@@ -78,7 +70,7 @@ public final class ConstantScoreQuery extends Query {
       return new ConstantScoreQuery(((BoostQuery) rewritten).getQuery());
     }
 
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

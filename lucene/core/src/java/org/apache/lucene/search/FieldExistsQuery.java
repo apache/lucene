@@ -18,16 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.*;
 
 /**
  * A {@link Query} that matches documents that contain either a {@link
@@ -107,7 +98,8 @@ public class FieldExistsQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    IndexReader reader = indexSearcher.getIndexReader();
     boolean allReadersRewritable = true;
 
     for (LeafReaderContext context : reader.leaves()) {
@@ -155,7 +147,7 @@ public class FieldExistsQuery extends Query {
     if (allReadersRewritable) {
       return new MatchAllDocsQuery();
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

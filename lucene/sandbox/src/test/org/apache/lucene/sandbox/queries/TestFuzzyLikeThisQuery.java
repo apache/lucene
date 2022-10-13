@@ -81,7 +81,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
   public void testClosestEditDistanceMatchComesFirst() throws Throwable {
     FuzzyLikeThisQuery flt = new FuzzyLikeThisQuery(10, analyzer);
     flt.addTerms("smith", "name", 2, 1);
-    Query q = flt.rewrite(searcher.getIndexReader());
+    Query q = flt.rewrite(searcher);
     HashSet<Term> queryTerms = new HashSet<>();
     q.visit(QueryVisitor.termCollector(queryTerms));
     assertTrue("Should have variant smythe", queryTerms.contains(new Term("name", "smythe")));
@@ -98,7 +98,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
   public void testMultiWord() throws Throwable {
     FuzzyLikeThisQuery flt = new FuzzyLikeThisQuery(10, analyzer);
     flt.addTerms("jonathin smoth", "name", 2, 1);
-    Query q = flt.rewrite(searcher.getIndexReader());
+    Query q = flt.rewrite(searcher);
     HashSet<Term> queryTerms = new HashSet<>();
     q.visit(QueryVisitor.termCollector(queryTerms));
     assertTrue("Should have variant jonathan", queryTerms.contains(new Term("name", "jonathan")));
@@ -116,7 +116,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     flt.addTerms("jonathin smoth", "name", 2, 1);
     flt.addTerms("jonathin smoth", "this field does not exist", 2, 1);
     // don't fail here just because the field doesn't exits
-    Query q = flt.rewrite(searcher.getIndexReader());
+    Query q = flt.rewrite(searcher);
     HashSet<Term> queryTerms = new HashSet<>();
     q.visit(QueryVisitor.termCollector(queryTerms));
     assertTrue("Should have variant jonathan", queryTerms.contains(new Term("name", "jonathan")));
@@ -132,7 +132,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
   public void testNoMatchFirstWordBug() throws Throwable {
     FuzzyLikeThisQuery flt = new FuzzyLikeThisQuery(10, analyzer);
     flt.addTerms("fernando smith", "name", 2, 1);
-    Query q = flt.rewrite(searcher.getIndexReader());
+    Query q = flt.rewrite(searcher);
     HashSet<Term> queryTerms = new HashSet<>();
     q.visit(QueryVisitor.termCollector(queryTerms));
     assertTrue("Should have variant smith", queryTerms.contains(new Term("name", "smith")));

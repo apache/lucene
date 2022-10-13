@@ -764,9 +764,9 @@ public class IndexSearcher {
    */
   public Query rewrite(Query original) throws IOException {
     Query query = original;
-    for (Query rewrittenQuery = query.rewrite(reader, executor);
+    for (Query rewrittenQuery = query.rewrite(this);
         rewrittenQuery != query;
-        rewrittenQuery = query.rewrite(reader, executor)) {
+        rewrittenQuery = query.rewrite(this)) {
       query = rewrittenQuery;
     }
     query.visit(getNumClausesCheckVisitor());

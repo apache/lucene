@@ -34,6 +34,9 @@ API Changes
 * GITHUB#11813: Remove Operations.isFinite: the recursive implementation could be problematic
   for large automatons (WildcardQuery, PrefixQuery, RegExpQuery, etc).  (taroplus, Robert Muir)
 
+* GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
+  rewriting. (Patrick Zhai)
+
 New Features
 ---------------------
 

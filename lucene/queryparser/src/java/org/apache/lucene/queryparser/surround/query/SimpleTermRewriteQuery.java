@@ -19,12 +19,8 @@ package org.apache.lucene.queryparser.surround.query;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.MatchNoDocsQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.*;
 
 class SimpleTermRewriteQuery extends RewriteQuery<SimpleTerm> {
 
@@ -33,10 +29,10 @@ class SimpleTermRewriteQuery extends RewriteQuery<SimpleTerm> {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     final List<Query> luceneSubQueries = new ArrayList<>();
     srndQuery.visitMatchingTerms(
-        reader,
+        indexSearcher.getIndexReader(),
         fieldName,
         new SimpleTerm.MatchingTermVisitor() {
           @Override
