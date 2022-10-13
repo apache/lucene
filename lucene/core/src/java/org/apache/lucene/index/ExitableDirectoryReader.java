@@ -347,7 +347,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
       Bits timeoutCheckingAcceptDocs =
           new Bits() {
-            private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 10;
+            private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;
             private int calls;
 
             @Override
@@ -539,7 +539,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
   private static class ExitablePointTree implements PointValues.PointTree {
 
-    private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 10;
+    private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;
 
     private final PointValues pointValues;
     private final PointValues.PointTree in;
@@ -636,7 +636,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
   private static class ExitableIntersectVisitor implements PointValues.IntersectVisitor {
 
-    private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 10;
+    private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;
 
     private PointValues.IntersectVisitor in;
     private final QueryTimeout queryTimeout;
