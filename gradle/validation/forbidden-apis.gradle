@@ -144,6 +144,13 @@ allprojects { prj ->
       ]
     }
 
+    // Allow com.sun.net.httpserver in Luke
+    if (prj.path in [":lucene:luke"]) {
+      forbiddenApisMain.bundledSignatures -= [
+          'jdk-non-portable'
+      ]
+    }
+
     // the test-framework module is special in that its main sources are exported for all tests.
     // include the test signature file (defaults.tests.txt) to the main sourceset.
     if (prj.path in [

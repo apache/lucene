@@ -229,9 +229,6 @@ public class TestHttpService extends LuceneTestCase {
       }
       break;
     }
-    if (servicePort == -1) {
-      serviceThread.stop();
-    }
   }
 
   private org.w3c.dom.Document httpGetHtml(String path) throws Exception {

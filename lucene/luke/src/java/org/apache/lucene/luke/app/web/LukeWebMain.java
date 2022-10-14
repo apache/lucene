@@ -21,6 +21,8 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.lucene.luke.app.IndexHandler;
 import org.apache.lucene.luke.util.LoggerFactory;
 
@@ -32,6 +34,8 @@ public final class LukeWebMain {
   static {
     LoggerFactory.initGuiLogging();
   }
+
+  private static final Logger LOG = LoggerFactory.getLogger(LukeWebMain.class);
 
   public static void main(String[] args) throws Exception {
     Map<String, Object> parsed = null;
@@ -87,7 +91,8 @@ public final class LukeWebMain {
   }
 
   private static void usage(String message) {
-    System.err.println(
+    LOG.log(
+        Level.SEVERE,
         message + "; usage: LukeWebMain --index <path-to-index> [--port <port>] [--host <host>]");
     Runtime.getRuntime().exit(1);
   }

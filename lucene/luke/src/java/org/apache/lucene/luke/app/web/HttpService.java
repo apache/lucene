@@ -30,7 +30,9 @@ import org.apache.lucene.luke.app.IndexHandler;
 import org.apache.lucene.luke.models.search.Search;
 import org.apache.lucene.luke.models.search.SearchFactory;
 import org.apache.lucene.luke.util.LoggerFactory;
+import org.apache.lucene.util.NamedThreadFactory;
 
+/** HTTP service for Luke */
 public class HttpService {
 
   private static final Logger LOG = LoggerFactory.getLogger(HttpService.class);
@@ -60,7 +62,7 @@ public class HttpService {
     server.createContext("/ping", new PingHandler());
     server.createContext("/www", new ResourceHandler());
     server.createContext("/", new RedirectHandler("/www/"));
-    server.setExecutor(Executors.newFixedThreadPool(2));
+    server.setExecutor(Executors.newFixedThreadPool(2, new NamedThreadFactory("LukeWeb")));
     server.start();
     LOG.info(LISTENING_MESSAGE + server.getAddress());
   }

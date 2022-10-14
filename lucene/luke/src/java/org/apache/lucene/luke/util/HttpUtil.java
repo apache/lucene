@@ -17,10 +17,13 @@
 
 package org.apache.lucene.luke.util;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.Map;
 
+/** Utilities for handling HTTP requests and responses */
 public final class HttpUtil {
 
   private HttpUtil() {}
@@ -38,7 +41,7 @@ public final class HttpUtil {
       if (kv.length == 1) {
         result.put(kv[0], "");
       } else {
-        result.put(kv[0], URLDecoder.decode(kv[1]));
+        result.put(kv[0], URLDecoder.decode(kv[1], UTF_8));
       }
     }
     return result;

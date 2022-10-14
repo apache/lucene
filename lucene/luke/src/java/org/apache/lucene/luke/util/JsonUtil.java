@@ -453,16 +453,16 @@ public final class JsonUtil {
             break OUTER;
         }
       }
+      String value = new String(buf, 0, len, UTF_8);
       try {
-        Double result = Double.parseDouble(new String(buf, 0, len));
+        Double result = Double.parseDouble(value);
         if (b != -1) {
           // we had to look ahead to find the termination of the number; push back the last byte
           in.unread((byte) b);
         }
         return result;
       } catch (NumberFormatException nfe) {
-        throw new ParseException(
-            "malformed number: '" + new String(buf, 0, len) + "' " + nfe.getMessage(), offset);
+        throw new ParseException("malformed number: '" + value + "' " + nfe.getMessage(), offset);
       }
     }
 
