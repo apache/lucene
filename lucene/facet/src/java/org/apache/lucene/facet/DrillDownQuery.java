@@ -25,8 +25,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.TermQuery;
 
 /**
  * A {@link Query} for drill-down over facet categories. You should call {@link #add(String,

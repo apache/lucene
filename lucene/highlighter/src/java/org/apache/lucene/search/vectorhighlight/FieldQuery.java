@@ -28,7 +28,17 @@ import java.util.Set;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.FunctionScoreQuery;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.DisjunctionMaxQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MultiTermQuery;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SynonymQuery;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.vectorhighlight.FieldTermStack.TermInfo;
 
 /**
@@ -145,7 +155,7 @@ public class FieldQuery {
       if (sourceQuery instanceof MultiTermQuery) {
         rewritten =
             new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(MAX_MTQ_TERMS)
-                .rewrite(searcher.getIndexReader(), (MultiTermQuery) query);
+                .rewrite(searcher, (MultiTermQuery) query);
       } else {
         rewritten = query.rewrite(searcher);
       }

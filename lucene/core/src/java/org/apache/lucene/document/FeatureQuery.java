@@ -50,7 +50,7 @@ final class FeatureQuery extends Query {
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    FeatureFunction rewritten = function.rewrite(indexSearcher.getIndexReader());
+    FeatureFunction rewritten = function.rewrite(indexSearcher);
     if (function != rewritten) {
       return new FeatureQuery(fieldName, featureName, rewritten);
     }

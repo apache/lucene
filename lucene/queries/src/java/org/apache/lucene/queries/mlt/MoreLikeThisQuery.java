@@ -22,7 +22,11 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
 
 /**
  * A simple wrapper for MoreLikeThis for use in scenarios where a Query object is required eg in
