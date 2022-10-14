@@ -98,20 +98,6 @@ final class SearchHandler extends HandlerBase {
 
   private Query parse(String expr, String scope, String operatorString, boolean rewrite) {
     String df = "text";
-    // TODO: enable choosing which kind of query to run
-    QueryParserConfig.HnswQualifier hnswQualifier;
-    switch (scope) {
-      case "knn":
-        hnswQualifier = QueryParserConfig.HnswQualifier.ONLY;
-        break;
-      case "both":
-        hnswQualifier = QueryParserConfig.HnswQualifier.ALSO;
-        break;
-      case "text":
-      default:
-        hnswQualifier = QueryParserConfig.HnswQualifier.NONE;
-        break;
-    }
     QueryParserConfig.Operator operator;
     switch (operatorString) {
       default:
@@ -124,7 +110,6 @@ final class SearchHandler extends HandlerBase {
     }
     QueryParserConfig config =
         new QueryParserConfig.Builder()
-            .qualifyHnsw(hnswQualifier)
             .defaultOperator(operator)
             .build();
     Analyzer analyzer = new StandardAnalyzer();

@@ -17,31 +17,78 @@
 
 package org.apache.lucene.luke.app.web;
 
+import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.luke.app.IndexHandler;
 import org.apache.lucene.luke.util.LoggerFactory;
 
 /** Entry class for web Luke */
-public class LukeWebMain {
+public final class LukeWebMain {
+
+  private LukeWebMain() {
+  }
 
   static {
     LoggerFactory.initGuiLogging();
   }
 
   public static void main(String[] args) throws Exception {
-    String index = null;
-    if (args.length == 2 && args[0].equals("--index")) {
-      index = args[1];
-    } else {
-      System.err.println("usage: LukeWebMain --index <path-to-index>");
-      Runtime.getRuntime().exit(1);
+    Map<String, Object> parsed = null;
+    try {
+      parsed = parseArgs(args);
+    } catch (Exception e) {
+      usage(e.getMessage());
     }
-
     IndexHandler indexHandler = IndexHandler.getInstance();
-    indexHandler.open(index, "org.apache.lucene.store.FSDirectory", true, true, false);
+    indexHandler.open(getIndex(parsed), "org.apache.lucene.store.FSDirectory", true, true, false);
     CountDownLatch tombstone = new CountDownLatch(1);
-    HttpService httpService = new HttpService(indexHandler, tombstone);
+    HttpService httpService = new HttpService(getSockAddr(parsed), indexHandler, tombstone);
     httpService.start();
     tombstone.await();
+  }
+
+  private static String getIndex(Map<String, Object> args) {
+    String index = (String) args.get("index");
+    if (index == null) {
+      usage("index arg is required");
+    }
+    return index;
+  }
+
+  private static InetSocketAddress getSockAddr(Map<String, Object> args) {
+    String host = (String) args.get("host");
+    int port = (Integer) args.getOrDefault("port", 8080);
+    if (host == null) {
+      return new InetSocketAddress(port);
+    } else {
+      return new InetSocketAddress(host, port);
+    }
+  }
+
+  private static Map<String, Object> parseArgs(String[] args) {
+    HashMap<String, Object> parsed = new HashMap<>();
+    for (int i = 0; i < args.length; i++) {
+      switch (args[i]) {
+        case "--index":
+          parsed.put("index", args[++i]);
+          break;
+        case "--port":
+          parsed.put("port", Integer.parseInt(args[++i]));
+          break;
+        case "--host":
+          parsed.put("host", args[++i]);
+          break;
+        default:
+          usage("unknown arg: " + args[i]);
+      }
+    }
+    return parsed;
+  }
+
+  private static void usage(String message) {
+    System.err.println(message + "; usage: LukeWebMain --index <path-to-index> [--port <port>] [--host <host>]");
+    Runtime.getRuntime().exit(1);
   }
 }

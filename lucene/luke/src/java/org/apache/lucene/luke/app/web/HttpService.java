@@ -35,19 +35,22 @@ public class HttpService {
 
   private static final Logger LOG = LoggerFactory.getLogger(HttpService.class);
 
+  public static final String LISTENING_MESSAGE = "HTTP service listening on ";
+
+  private final InetSocketAddress sockaddr;
   private final IndexHandler indexHandler;
   private final CountDownLatch tombstone;
 
   private HttpServer server;
 
-  public HttpService(IndexHandler indexHandler, CountDownLatch tombstone) {
+  public HttpService(InetSocketAddress sockaddr, IndexHandler indexHandler, CountDownLatch tombstone) {
+    this.sockaddr = sockaddr;
     this.indexHandler = indexHandler;
     this.tombstone = tombstone;
   }
 
   public void start() throws IOException {
-    LOG.info("start HTTP service on port 8080");
-    server = HttpServer.create(new InetSocketAddress(8080), 2);
+    server = HttpServer.create(sockaddr, 2);
     server.createContext("/exit", new ExitHandler());
     Search search = new SearchFactory().newInstance(indexHandler.getState().getIndexReader());
     server.createContext("/search", new SearchHandler(search));
@@ -58,7 +61,7 @@ public class HttpService {
     server.createContext("/", new RedirectHandler("/www/"));
     server.setExecutor(Executors.newFixedThreadPool(2));
     server.start();
-    LOG.info("HTTP service started OK");
+    LOG.info(LISTENING_MESSAGE + server.getAddress());
   }
 
   public void close() {

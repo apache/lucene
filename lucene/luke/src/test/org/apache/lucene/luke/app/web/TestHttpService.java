@@ -42,6 +42,8 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.luke.util.JsonUtil;
+import org.apache.lucene.luke.util.CircularLogBufferHandler;
+import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestRuleLimitSysouts;
@@ -59,10 +61,11 @@ import org.xml.sax.InputSource;
 public class TestHttpService extends LuceneTestCase {
 
   // TODO: use a random free port and discover it
-  private static final String URL_PREFIX = "http://localhost:8080";
+  private static final String URL_PREFIX = "http://localhost:";
   private static XPath xpath;
   private static DocumentBuilder documentBuilder;
 
+  private int servicePort;
   private boolean serviceStarted;
 
   @BeforeClass
@@ -151,7 +154,7 @@ public class TestHttpService extends LuceneTestCase {
     assertTrue(e.getMessage(), e.getMessage().contains("/blahblahblah"));
   }
 
-  private static void stop() throws IOException {
+  private void stop() throws IOException {
     httpGet("/exit");
   }
 
@@ -168,18 +171,36 @@ public class TestHttpService extends LuceneTestCase {
 
   @SuppressWarnings("unused")
   private void start(Path indexPath) throws Exception {
-    new Thread(
+    Thread serviceThread = new Thread(
             () -> {
               try {
-                LukeWebMain.main(new String[] {"--index", indexPath.toString()});
+                LukeWebMain.main(new String[] {"--index", indexPath.toString(),
+                                               "--host", "127.0.0.1",
+                                               "--port", "0"});
               } catch (Exception e) {
                 fail("caught exception: " + e);
               }
-            })
-        .start();
+            });
+    serviceThread.start();
     serviceStarted = true;
-    for (int retries = 10; retries > 0; retries--) {
+    for (int retries = 5; retries > 0; retries--) {
       try {
+        if (LoggerFactory.circularBuffer == null) {
+          Thread.sleep(10);
+          continue;
+        }
+        for (CircularLogBufferHandler.ImmutableLogRecord logRecord : LoggerFactory.circularBuffer.getLogRecords()) {
+          // wait for log message telling which port the service is listening on
+          String message = logRecord.getMessage();
+          if (message.startsWith(HttpService.LISTENING_MESSAGE)) {
+            System.out.println(message);
+            servicePort = Integer.parseInt(message.substring(message.lastIndexOf(':') + 1));
+          }
+        }
+        if (servicePort == -1) {
+          Thread.sleep(20);
+          continue;
+        }
         httpGet("/ping");
       } catch (IOException e) {
         Thread.sleep(200);
@@ -187,9 +208,12 @@ public class TestHttpService extends LuceneTestCase {
       }
       break;
     }
+    if (servicePort == -1) {
+      serviceThread.stop();
+    }
   }
 
-  private static org.w3c.dom.Document httpGetHtml(String path) throws Exception {
+  private org.w3c.dom.Document httpGetHtml(String path) throws Exception {
     // ignores all headers; assumes UTF-8 text
     String text = httpGetText(path);
     InputSource inputSource = new InputSource(new StringReader(text));
@@ -200,17 +224,17 @@ public class TestHttpService extends LuceneTestCase {
     }
   }
 
-  private static Object httpGetJson(String path) throws Exception {
+  private Object httpGetJson(String path) throws Exception {
     return JsonUtil.parse(httpGetText(path));
   }
 
-  private static String httpGetText(String path) throws IOException {
+  private String httpGetText(String path) throws IOException {
     // ignores all headers; assumes UTF-8 text
     return new String(httpGet(path), UTF_8);
   }
 
-  private static byte[] httpGet(String path) throws IOException {
-    URLConnection conn = new URL(URL_PREFIX + path).openConnection();
+  private byte[] httpGet(String path) throws IOException {
+    URLConnection conn = new URL(URL_PREFIX + servicePort + path).openConnection();
     ((HttpURLConnection) conn).setRequestMethod("GET");
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     byte[] buf = new byte[4096];
