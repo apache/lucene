@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Lucene Index Overview</title>
+    <title>Luke Index Overview</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta>
     <link rel="stylesheet" type="text/css" href="styles.css"></link>
+    <script src="common.js"></script>
     <script src="overview.js"></script>
     <script src="xmlhttp.js"></script>
   </head>
-  <body onLoad="on_load()">
-    <h1>Index Overview</h1>
+  <body onLoad="on_load('/www/index.html')">
+    <ul id="nav" class="horz"></ul>
     <ul id="overview">Loading...</ul>
-    <ul id="bottom_panel">
+    <ul id="bottom_panel" class="horz">
       <li id="fields">
         <h2>Fields</h2>
         <p>Select a field from the list to see its most frequent terms.</p>

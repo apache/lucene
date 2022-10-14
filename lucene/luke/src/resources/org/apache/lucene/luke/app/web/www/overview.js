@@ -1,4 +1,4 @@
-function on_load() {
+function on_load_page() {
   get_request("/overview", on_data, null);
 }
 
@@ -9,7 +9,7 @@ function on_data(req, user_data) {
   for (key in summary) {
     html +=`
   <li>
-    <ul>
+    <ul class="horz">
       <li class="label">${key}</li>
       <li>${summary[key]}</li>
     </ul>

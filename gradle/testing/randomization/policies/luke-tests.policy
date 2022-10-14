@@ -16,8 +16,8 @@
  */
 
 // Policy file for :lucene:luke tests. Please keep minimal and avoid wildcards.
-// this differs from the standard lucene policy in that it must allow opening port 8080
-// and allow JDK logging configuration.
+// this differs from the standard lucene policy in that it must allow opening network ports
+// and JDK logging configuration.
 
 grant {
   // configure java.util.logging

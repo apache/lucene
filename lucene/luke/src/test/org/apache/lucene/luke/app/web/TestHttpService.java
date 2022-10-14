@@ -41,8 +41,8 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.luke.util.JsonUtil;
 import org.apache.lucene.luke.util.CircularLogBufferHandler;
+import org.apache.lucene.luke.util.JsonUtil;
 import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -91,7 +91,7 @@ public class TestHttpService extends LuceneTestCase {
     start(createTestIndex());
     // check HTML content of template
     org.w3c.dom.Document html = httpGetHtml("/");
-    assertEquals("Index Overview", xpath.evaluate("/html/body/h1", html));
+    assertEquals("Luke Index Overview", xpath.evaluate("/html/head/title", html));
 
     // check response to /overview data call
     Map<?, ?> response = (Map<?, ?>) httpGetJson("/overview");
@@ -120,8 +120,7 @@ public class TestHttpService extends LuceneTestCase {
   public void testSearch() throws Exception {
     start(createTestIndex());
     org.w3c.dom.Document html = httpGetHtml("/www/search.html");
-    assertEquals("Search", xpath.evaluate("/html/body/h1", html));
-    assertEquals("Lucene Search", xpath.evaluate("/html/head/title", html));
+    assertEquals("Luke Search", xpath.evaluate("/html/head/title", html));
 
     Map<?, ?> response = (Map<?, ?>) httpGetJson("/search?q=life");
     assertEquals(0d, response.get("start"));
@@ -134,6 +133,23 @@ public class TestHttpService extends LuceneTestCase {
     assertEquals(Set.of("doc_id", "score", "field_values"), hit.keySet());
     // we didn't index any stored fields
     assertEquals(Map.of(), hit.get("field_values"));
+  }
+
+  public void testSearchInitial() throws Exception {
+    start(createTestIndex());
+    Map<?, ?> response = (Map<?, ?>) httpGetJson("/search");
+    assertEquals(
+        Map.of(
+            "field_infos",
+            List.of(
+                Map.of(
+                    "name",
+                    "text",
+                    "doc_values_type",
+                    "NONE",
+                    "index_options",
+                    "DOCS_AND_FREQS_AND_POSITIONS"))),
+        response);
   }
 
   public void testParseQueryString() {
@@ -171,12 +187,16 @@ public class TestHttpService extends LuceneTestCase {
 
   @SuppressWarnings("unused")
   private void start(Path indexPath) throws Exception {
-    Thread serviceThread = new Thread(
+    Thread serviceThread =
+        new Thread(
             () -> {
               try {
-                LukeWebMain.main(new String[] {"--index", indexPath.toString(),
-                                               "--host", "127.0.0.1",
-                                               "--port", "0"});
+                LukeWebMain.main(
+                    new String[] {
+                      "--index", indexPath.toString(),
+                      "--host", "127.0.0.1",
+                      "--port", "0"
+                    });
               } catch (Exception e) {
                 fail("caught exception: " + e);
               }
@@ -189,7 +209,8 @@ public class TestHttpService extends LuceneTestCase {
           Thread.sleep(10);
           continue;
         }
-        for (CircularLogBufferHandler.ImmutableLogRecord logRecord : LoggerFactory.circularBuffer.getLogRecords()) {
+        for (CircularLogBufferHandler.ImmutableLogRecord logRecord :
+            LoggerFactory.circularBuffer.getLogRecords()) {
           // wait for log message telling which port the service is listening on
           String message = logRecord.getMessage();
           if (message.startsWith(HttpService.LISTENING_MESSAGE)) {

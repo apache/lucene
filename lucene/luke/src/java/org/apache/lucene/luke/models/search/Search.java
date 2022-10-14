@@ -43,6 +43,9 @@ public interface Search {
   /** Returns field names those are searchable by range query. */
   Collection<String> getRangeSearchableFieldNames();
 
+  /** Returns names of stored fields. */
+  List<LukeFieldInfo> getFieldInfos();
+
   /** Returns the current query. */
   Query getCurrentQuery();
 

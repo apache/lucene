@@ -43,7 +43,8 @@ public class HttpService {
 
   private HttpServer server;
 
-  public HttpService(InetSocketAddress sockaddr, IndexHandler indexHandler, CountDownLatch tombstone) {
+  public HttpService(
+      InetSocketAddress sockaddr, IndexHandler indexHandler, CountDownLatch tombstone) {
     this.sockaddr = sockaddr;
     this.indexHandler = indexHandler;
     this.tombstone = tombstone;

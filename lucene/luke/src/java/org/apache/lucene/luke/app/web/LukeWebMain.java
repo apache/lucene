@@ -18,17 +18,16 @@
 package org.apache.lucene.luke.app.web;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.CountDownLatch;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.luke.app.IndexHandler;
 import org.apache.lucene.luke.util.LoggerFactory;
 
 /** Entry class for web Luke */
 public final class LukeWebMain {
 
-  private LukeWebMain() {
-  }
+  private LukeWebMain() {}
 
   static {
     LoggerFactory.initGuiLogging();
@@ -61,7 +60,7 @@ public final class LukeWebMain {
     String host = (String) args.get("host");
     int port = (Integer) args.getOrDefault("port", 8080);
     if (host == null) {
-      return new InetSocketAddress(port);
+      return new InetSocketAddress("127.0.0.1", port);
     } else {
       return new InetSocketAddress(host, port);
     }
@@ -88,7 +87,8 @@ public final class LukeWebMain {
   }
 
   private static void usage(String message) {
-    System.err.println(message + "; usage: LukeWebMain --index <path-to-index> [--port <port>] [--host <host>]");
+    System.err.println(
+        message + "; usage: LukeWebMain --index <path-to-index> [--port <port>] [--host <host>]");
     Runtime.getRuntime().exit(1);
   }
 }

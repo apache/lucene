@@ -51,6 +51,10 @@ final class SearchHandler extends HandlerBase {
   @Override
   public void handle(HttpExchange exchange) throws IOException {
     String queryString = exchange.getRequestURI().getRawQuery(); // only GET supported
+    if (queryString == null) {
+      handleInitialData(exchange);
+      return;
+    }
     LOG.info("GET /search?" + queryString);
     Map<String, String> params = parseQueryString(queryString);
     String q = params.getOrDefault("q", "");
@@ -108,11 +112,14 @@ final class SearchHandler extends HandlerBase {
         operator = QueryParserConfig.Operator.AND;
         break;
     }
-    QueryParserConfig config =
-        new QueryParserConfig.Builder()
-            .defaultOperator(operator)
-            .build();
+    QueryParserConfig config = new QueryParserConfig.Builder().defaultOperator(operator).build();
     Analyzer analyzer = new StandardAnalyzer();
     return searcher.parseQuery(expr, df, analyzer, config, rewrite);
+  }
+
+  private void handleInitialData(HttpExchange exchange) throws IOException {
+    LOG.info("GET /search");
+    sendResponse(
+        exchange, JsonUtil.asJson(Map.of("field_infos", searcher.getFieldInfos())), MIME_JSON);
   }
 }

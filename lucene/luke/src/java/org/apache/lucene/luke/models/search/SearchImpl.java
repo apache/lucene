@@ -129,6 +129,13 @@ public final class SearchImpl extends LukeModel implements Search {
   }
 
   @Override
+  public List<LukeFieldInfo> getFieldInfos() {
+    return IndexUtils.getFieldNames(reader).stream()
+        .map(f -> new LukeFieldInfo(IndexUtils.getFieldInfo(reader, f)))
+        .collect(Collectors.toList());
+  }
+
+  @Override
   public Query getCurrentQuery() {
     return this.query;
   }

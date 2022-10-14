@@ -1,28 +1,29 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Lucene Search</title>
+    <title>Luke Search</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta>
     <link rel="stylesheet" type="text/css" href="styles.css"></link>
+    <script src="common.js"></script>
     <script src="search.js"></script>
     <script src="xmlhttp.js"></script>
   </head>
-  <body>
-    <h1>Search</h1>
+  <body onload="on_load('/www/search.html')">
+    <ul id="nav" class="horz"></ul>
     <form name="search" onsubmit="run(); return false;">
-      <p>
-        OR<input type="radio" name="operator" value="or" checked="checked"></input>
-        AND<input type="radio" name="operator" value="and"></input>
-      </p>
-      <p>
-        text<input type="radio" name="scope" value="text" checked="checked"></input>
-        knn<input type="radio" name="scope" value="knn"></input>
-        both<input type="radio" name="scope" value="both"></input>
-      </p>
-      <p>
-        <input type="text" id="q" name="q"></input>
-        <input type="button" id="search" value="go" onclick="run();"></input>
-      </p>
+      <ul class="horz">
+        <li>
+          <input type="text" id="q" name="q"></input>
+          <input type="button" id="search" value="go" onclick="run();"></input>
+        </li>
+        <li>
+          OR<input type="radio" name="operator" value="or" checked="checked"></input>
+          AND<input type="radio" name="operator" value="and"></input>
+        </li>
+        <li>
+          show: <select id="display_field" name="display_field"></select>
+        </li>
+      </ul>
     </form>
     <span id="query"></span>
     <div id="results">
