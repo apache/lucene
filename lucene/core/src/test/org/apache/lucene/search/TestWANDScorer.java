@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -1041,7 +1042,7 @@ public class TestWANDScorer extends LuceneTestCase {
                           throw new AssertionError(e);
                         }
                       })
-                  .toList();
+                  .collect(Collectors.toList());
 
           if (optionalScorers.size() > 0) {
             return new WANDScorer(
