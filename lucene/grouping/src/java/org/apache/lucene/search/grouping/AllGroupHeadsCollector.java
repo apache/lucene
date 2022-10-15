@@ -109,7 +109,9 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     return docHeads;
   }
 
-  /** @return the number of group heads found for a query. */
+  /**
+   * @return the number of group heads found for a query.
+   */
   public int groupHeadsSize() {
     return getCollectedGroupHeads().size();
   }

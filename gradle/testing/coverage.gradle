@@ -26,7 +26,7 @@ if (withCoverage) {
   allprojects {
     plugins.withType(JavaPlugin) {
       // Apply jacoco once we know the project has a Java plugin too.
-      project.plugins.apply("jacoco")
+      project.plugins.apply("org.barfuin.gradle.jacocolog")
 
       // Synthetic task to enable test coverage (and reports).
       task coverage() {

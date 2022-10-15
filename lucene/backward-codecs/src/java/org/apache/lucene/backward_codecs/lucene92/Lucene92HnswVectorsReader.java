@@ -30,6 +30,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
@@ -237,6 +238,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
             target,
             k,
             vectorValues,
+            VectorEncoding.FLOAT32,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),

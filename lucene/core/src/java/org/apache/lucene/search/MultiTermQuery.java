@@ -283,7 +283,9 @@ public abstract class MultiTermQuery extends Query {
     return rewriteMethod.rewrite(reader, this);
   }
 
-  /** @return the rewrite method used to build the final query */
+  /**
+   * @return the rewrite method used to build the final query
+   */
   public RewriteMethod getRewriteMethod() {
     return rewriteMethod;
   }

@@ -24,7 +24,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment;
 import org.apache.lucene.util.IOConsumer;
 
-/** @lucene.internal */
+/**
+ * @lucene.internal
+ */
 final class DocumentsWriterFlushQueue {
   private final Queue<FlushTicket> queue = new ArrayDeque<>();
   // we track tickets separately since count must be present even before the ticket is

@@ -79,7 +79,9 @@ public final class UAX29URLEmailAnalyzer extends StopwordAnalyzerBase {
     maxTokenLength = length;
   }
 
-  /** @see #setMaxTokenLength */
+  /**
+   * @see #setMaxTokenLength
+   */
   public int getMaxTokenLength() {
     return maxTokenLength;
   }

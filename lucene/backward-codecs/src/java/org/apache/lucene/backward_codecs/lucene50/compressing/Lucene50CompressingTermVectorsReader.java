@@ -19,12 +19,12 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
+import org.apache.lucene.backward_codecs.compressing.Decompressor;
 import org.apache.lucene.backward_codecs.packed.LegacyPackedInts;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -254,7 +254,9 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
     }
   }
 
-  /** @throws AlreadyClosedException if this TermVectorsReader is closed */
+  /**
+   * @throws AlreadyClosedException if this TermVectorsReader is closed
+   */
   private void ensureOpen() throws AlreadyClosedException {
     if (closed) {
       throw new AlreadyClosedException("this FieldsReader is closed");

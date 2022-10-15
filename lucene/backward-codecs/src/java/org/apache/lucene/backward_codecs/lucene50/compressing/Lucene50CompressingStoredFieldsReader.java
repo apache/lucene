@@ -19,11 +19,11 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
+import org.apache.lucene.backward_codecs.compressing.Decompressor;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -262,7 +262,9 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  /** @throws AlreadyClosedException if this FieldsReader is closed */
+  /**
+   * @throws AlreadyClosedException if this FieldsReader is closed
+   */
   private void ensureOpen() throws AlreadyClosedException {
     if (closed) {
       throw new AlreadyClosedException("this FieldsReader is closed");

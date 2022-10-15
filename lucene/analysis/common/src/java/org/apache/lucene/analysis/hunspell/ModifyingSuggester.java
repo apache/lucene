@@ -40,7 +40,9 @@ class ModifyingSuggester {
     this.wordCase = wordCase;
   }
 
-  /** @return whether any of the added suggestions are considered "good" */
+  /**
+   * @return whether any of the added suggestions are considered "good"
+   */
   boolean suggest() {
     String low =
         wordCase != WordCase.LOWER ? speller.dictionary.toLowerCase(misspelled) : misspelled;

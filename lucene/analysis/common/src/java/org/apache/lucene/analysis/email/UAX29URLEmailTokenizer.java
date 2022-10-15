@@ -100,7 +100,9 @@ public final class UAX29URLEmailTokenizer extends Tokenizer {
     }
   }
 
-  /** @see #setMaxTokenLength */
+  /**
+   * @see #setMaxTokenLength
+   */
   public int getMaxTokenLength() {
     return maxTokenLength;
   }

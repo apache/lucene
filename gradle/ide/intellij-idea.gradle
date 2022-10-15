@@ -37,6 +37,21 @@ if (isIdea) {
   }
 }
 
+if (isIdeaSync) {
+  allprojects {
+    // disable all MR-JAR folders by hiding them from IDE after evaluation:
+    plugins.withType(JavaPlugin) {
+      sourceSets.matching{ it.name ==~ /main\d+/ }.all{ SourceSet sourceSet ->
+        project.afterEvaluate {
+          logger.lifecycle("Skipping MR-JAR sourceSet on IntelliJ Idea: " + sourceSet.name)
+          sourceSet.java.srcDirs = []
+          sourceSet.resources.srcDirs = []
+        }
+      }
+    }
+  }
+}
+
 if (isIdeaBuild) {
   // Skip certain long tasks that are dependencies
   // of 'assemble' if we're building from within IntelliJ.

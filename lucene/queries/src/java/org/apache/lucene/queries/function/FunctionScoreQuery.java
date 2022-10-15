@@ -57,12 +57,16 @@ public final class FunctionScoreQuery extends Query {
     this.source = source;
   }
 
-  /** @return the wrapped Query */
+  /**
+   * @return the wrapped Query
+   */
   public Query getWrappedQuery() {
     return in;
   }
 
-  /** @return the underlying value source */
+  /**
+   * @return the underlying value source
+   */
   public DoubleValuesSource getSource() {
     return source;
   }

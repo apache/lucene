@@ -20,6 +20,7 @@ module org.apache.lucene.backward_codecs {
   requires org.apache.lucene.core;
 
   exports org.apache.lucene.backward_codecs;
+  exports org.apache.lucene.backward_codecs.compressing;
   exports org.apache.lucene.backward_codecs.lucene40.blocktree;
   exports org.apache.lucene.backward_codecs.lucene50;
   exports org.apache.lucene.backward_codecs.lucene50.compressing;

@@ -89,10 +89,14 @@ public class FSTCompletion {
    */
   private final Arc<Object>[] rootArcs;
 
-  /** @see #FSTCompletion(FST, boolean, boolean) */
+  /**
+   * @see #FSTCompletion(FST, boolean, boolean)
+   */
   private boolean exactFirst;
 
-  /** @see #FSTCompletion(FST, boolean, boolean) */
+  /**
+   * @see #FSTCompletion(FST, boolean, boolean)
+   */
   private boolean higherWeightsFirst;
 
   /**

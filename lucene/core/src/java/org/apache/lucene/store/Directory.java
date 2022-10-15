@@ -40,6 +40,10 @@ import org.apache.lucene.util.IOUtils;
  *       java.nio.file.FileAlreadyExistsException}.
  * </ul>
  *
+ * <p><b>NOTE:</b> If your application requires external synchronization, you should <b>not</b>
+ * synchronize on the <code>Directory</code> implementation instance as this may cause deadlock; use
+ * your own (non-Lucene) objects instead.
+ *
  * @see FSDirectory
  * @see ByteBuffersDirectory
  * @see FilterDirectory

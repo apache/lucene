@@ -312,6 +312,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     tmp.setMaxMergedSegmentMB(mbSize);
     conf.setMaxBufferedDocs(100);
     conf.setMergePolicy(tmp);
+    conf.setMergeScheduler(new SerialMergeScheduler());
 
     final IndexWriter w = new IndexWriter(dir, conf);
 

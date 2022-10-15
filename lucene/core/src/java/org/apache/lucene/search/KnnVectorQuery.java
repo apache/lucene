@@ -27,8 +27,6 @@ import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -133,22 +131,22 @@ public class KnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    BitSet bitSet = createBitSet(scorer.iterator(), liveDocs, maxDoc);
-    BitSetIterator filterIterator = new BitSetIterator(bitSet, bitSet.cardinality());
+    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, maxDoc);
+    int cost = acceptDocs.cardinality();
 
-    if (filterIterator.cost() <= k) {
+    if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      return exactSearch(ctx, filterIterator);
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, bitSet, (int) filterIterator.cost());
+    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, filterIterator);
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
     }
   }
 
@@ -186,19 +184,16 @@ public class KnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    VectorSimilarityFunction similarityFunction = fi.getVectorSimilarityFunction();
-    VectorValues vectorValues = context.reader().getVectorValues(field);
-
+    VectorScorer vectorScorer = VectorScorer.create(context, fi, target);
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     int doc;
     while ((doc = acceptIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      int vectorDoc = vectorValues.advance(doc);
-      assert vectorDoc == doc;
-      float[] vector = vectorValues.vectorValue();
+      boolean advanced = vectorScorer.advanceExact(doc);
+      assert advanced;
 
-      float score = similarityFunction.compare(vector, target);
-      if (score >= topDoc.score) {
+      float score = vectorScorer.score();
+      if (score > topDoc.score) {
         topDoc.score = score;
         topDoc.doc = doc;
         topDoc = queue.updateTop();
@@ -318,7 +313,7 @@ public class KnnVectorQuery extends Query {
       return new Weight(this) {
         @Override
         public Explanation explain(LeafReaderContext context, int doc) {
-          int found = Arrays.binarySearch(docs, doc);
+          int found = Arrays.binarySearch(docs, doc + context.docBase);
           if (found < 0) {
             return Explanation.noMatch("not in top " + k);
           }

@@ -16,13 +16,19 @@
  */
 package org.apache.lucene.document;
 
+import static org.apache.lucene.geo.GeoEncodingUtils.MAX_LON_ENCODED;
+import static org.apache.lucene.geo.GeoEncodingUtils.MIN_LON_ENCODED;
+
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.GeoUtils;
+import org.apache.lucene.geo.Geometry;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -47,6 +53,8 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * Base query class for all spatial geometries: {@link LatLonShape}, {@link LatLonPoint} and {@link
  * XYShape}. In order to create a query, use the factory methods on those classes.
+ *
+ * @lucene.internal
  */
 abstract class SpatialQuery extends Query {
   /** field name */
@@ -58,7 +66,10 @@ abstract class SpatialQuery extends Query {
    */
   final QueryRelation queryRelation;
 
-  protected SpatialQuery(String field, final QueryRelation queryRelation) {
+  final Geometry[] geometries;
+  final Component2D queryComponent2D;
+
+  protected SpatialQuery(String field, final QueryRelation queryRelation, Geometry... geometries) {
     if (field == null) {
       throw new IllegalArgumentException("field must not be null");
     }
@@ -67,7 +78,11 @@ abstract class SpatialQuery extends Query {
     }
     this.field = field;
     this.queryRelation = queryRelation;
+    this.geometries = geometries.clone();
+    this.queryComponent2D = createComponent2D(geometries);
   }
+
+  protected abstract Component2D createComponent2D(Geometry... geometries);
 
   /**
    * returns the spatial visitor to be used for this query. Called before generating the query
@@ -126,12 +141,75 @@ abstract class SpatialQuery extends Query {
     }
   }
 
+  protected boolean queryIsCacheable(LeafReaderContext ctx) {
+    return true;
+  }
+
+  protected ScorerSupplier getScorerSupplier(
+      LeafReader reader,
+      SpatialVisitor spatialVisitor,
+      ScoreMode scoreMode,
+      ConstantScoreWeight weight,
+      float boost,
+      float score)
+      throws IOException {
+    final PointValues values = reader.getPointValues(field);
+    if (values == null) {
+      // No docs in this segment had any points fields
+      return null;
+    }
+    final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+    if (fieldInfo == null) {
+      // No docs in this segment indexed this field at all
+      return null;
+    }
+
+    final Relation rel =
+        spatialVisitor
+            .getInnerFunction(queryRelation)
+            .apply(values.getMinPackedValue(), values.getMaxPackedValue());
+    if (rel == Relation.CELL_OUTSIDE_QUERY
+        || (rel == Relation.CELL_INSIDE_QUERY && queryRelation == QueryRelation.CONTAINS)) {
+      // no documents match the query
+      return null;
+    } else if (values.getDocCount() == reader.maxDoc() && rel == Relation.CELL_INSIDE_QUERY) {
+      // all documents match the query
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) {
+          return new ConstantScoreScorer(
+              weight, score, scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+        }
+
+        @Override
+        public long cost() {
+          return reader.maxDoc();
+        }
+      };
+    } else {
+      if (queryRelation != QueryRelation.INTERSECTS
+          && queryRelation != QueryRelation.CONTAINS
+          && values.getDocCount() != values.size()
+          && hasAnyHits(spatialVisitor, queryRelation, values) == false) {
+        // First we check if we have any hits so we are fast in the adversarial case where
+        // the shape does not match any documents and we are in the dense case
+        return null;
+      }
+      // walk the tree to get matching documents
+      return new RelationScorerSupplier(values, spatialVisitor, queryRelation, field) {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          return getScorer(reader, weight, score, scoreMode);
+        }
+      };
+    }
+  }
+
   @Override
   public final Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
     final SpatialQuery query = this;
     final SpatialVisitor spatialVisitor = getSpatialVisitor();
     return new ConstantScoreWeight(query, boost) {
-
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
         final ScorerSupplier scorerSupplier = scorerSupplier(context);
@@ -144,61 +222,12 @@ abstract class SpatialQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final LeafReader reader = context.reader();
-        final PointValues values = reader.getPointValues(field);
-        if (values == null) {
-          // No docs in this segment had any points fields
-          return null;
-        }
-        final FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
-        if (fieldInfo == null) {
-          // No docs in this segment indexed this field at all
-          return null;
-        }
-        final Weight weight = this;
-        final Relation rel =
-            spatialVisitor
-                .getInnerFunction(queryRelation)
-                .apply(values.getMinPackedValue(), values.getMaxPackedValue());
-        if (rel == Relation.CELL_OUTSIDE_QUERY
-            || (rel == Relation.CELL_INSIDE_QUERY && queryRelation == QueryRelation.CONTAINS)) {
-          // no documents match the query
-          return null;
-        } else if (values.getDocCount() == reader.maxDoc() && rel == Relation.CELL_INSIDE_QUERY) {
-          // all documents match the query
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) {
-              return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
-            }
-
-            @Override
-            public long cost() {
-              return reader.maxDoc();
-            }
-          };
-        } else {
-          if (queryRelation != QueryRelation.INTERSECTS
-              && queryRelation != QueryRelation.CONTAINS
-              && values.getDocCount() != values.size()
-              && hasAnyHits(spatialVisitor, queryRelation, values) == false) {
-            // First we check if we have any hits so we are fast in the adversarial case where
-            // the shape does not match any documents and we are in the dense case
-            return null;
-          }
-          // walk the tree to get matching documents
-          return new RelationScorerSupplier(values, spatialVisitor, queryRelation, field) {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return getScorer(reader, weight, score(), scoreMode);
-            }
-          };
-        }
+        return getScorerSupplier(reader, spatialVisitor, scoreMode, this, boost, score());
       }
 
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
-        return true;
+        return queryIsCacheable(ctx);
       }
     };
   }
@@ -218,6 +247,7 @@ abstract class SpatialQuery extends Query {
     int hash = classHash();
     hash = 31 * hash + field.hashCode();
     hash = 31 * hash + queryRelation.hashCode();
+    hash = 31 * hash + Arrays.hashCode(geometries);
     return hash;
   }
 
@@ -229,7 +259,8 @@ abstract class SpatialQuery extends Query {
   /** class specific equals check */
   protected boolean equalsTo(Object o) {
     return Objects.equals(field, ((SpatialQuery) o).field)
-        && this.queryRelation == ((SpatialQuery) o).queryRelation;
+        && this.queryRelation == ((SpatialQuery) o).queryRelation
+        && Arrays.equals(geometries, ((SpatialQuery) o).geometries);
   }
 
   /**
@@ -740,5 +771,255 @@ abstract class SpatialQuery extends Query {
       return true;
     }
     return false;
+  }
+
+  /** Holds spatial logic for a bounding box that works in the encoded space */
+  public static class EncodedRectangle {
+    protected int minX;
+    protected int maxX;
+    protected int minY;
+    protected int maxY;
+    protected boolean wrapsCoordinateSystem;
+
+    protected EncodedRectangle(
+        int minX, int maxX, int minY, int maxY, boolean wrapsCoordinateSystem) {
+      this.minX = minX;
+      this.maxX = maxX;
+      this.minY = minY;
+      this.maxY = maxY;
+      this.wrapsCoordinateSystem = wrapsCoordinateSystem;
+    }
+
+    protected boolean wrapsCoordinateSystem() {
+      return wrapsCoordinateSystem;
+    }
+
+    /** Checks if the rectangle contains the provided point */
+    boolean contains(int x, int y) {
+      if (y < minY || y > maxY) {
+        return false;
+      }
+      if (wrapsCoordinateSystem()) {
+        return (x > maxX && x < minX) == false;
+      } else {
+        return (x > maxX || x < minX) == false;
+      }
+    }
+
+    /** Checks if the rectangle intersects the provided LINE */
+    boolean intersectsLine(int aX, int aY, int bX, int bY) {
+      if (contains(aX, aY) || contains(bX, bY)) {
+        return true;
+      }
+      // check bounding boxes are disjoint
+      if (StrictMath.max(aY, bY) < minY || StrictMath.min(aY, bY) > maxY) {
+        return false;
+      }
+      if (wrapsCoordinateSystem) { // crosses dateline
+        if (StrictMath.min(aX, bX) > maxX && StrictMath.max(aX, bX) < minX) {
+          return false;
+        }
+      } else {
+        if (StrictMath.min(aX, bX) > maxX || StrictMath.max(aX, bX) < minX) {
+          return false;
+        }
+      }
+      // expensive part
+      return edgeIntersectsQuery(aX, aY, bX, bY);
+    }
+
+    /** Checks if the rectangle intersects the provided triangle */
+    boolean intersectsTriangle(int aX, int aY, int bX, int bY, int cX, int cY) {
+      // query contains any triangle points
+      if (contains(aX, aY) || contains(bX, bY) || contains(cX, cY)) {
+        return true;
+      }
+      // check bounding box of triangle
+      int tMinY = StrictMath.min(StrictMath.min(aY, bY), cY);
+      int tMaxY = StrictMath.max(StrictMath.max(aY, bY), cY);
+      // check bounding boxes are disjoint
+      if (tMaxY < minY || tMinY > maxY) {
+        return false;
+      }
+      int tMinX = StrictMath.min(StrictMath.min(aX, bX), cX);
+      int tMaxX = StrictMath.max(StrictMath.max(aX, bX), cX);
+      if (wrapsCoordinateSystem) { // wraps coordinate system
+        if (tMinX > maxX && tMaxX < minX) {
+          return false;
+        }
+      } else {
+        if (tMinX > maxX || tMaxX < minX) {
+          return false;
+        }
+      }
+      // expensive part
+      return Component2D.pointInTriangle(
+              tMinX, tMaxX, tMinY, tMaxY, minX, minY, aX, aY, bX, bY, cX, cY)
+          || edgeIntersectsQuery(aX, aY, bX, bY)
+          || edgeIntersectsQuery(bX, bY, cX, cY)
+          || edgeIntersectsQuery(cX, cY, aX, aY);
+    }
+
+    boolean intersectsRectangle(final int minX, final int maxX, final int minY, final int maxY) {
+      // simple Y check
+      if (this.minY > maxY || this.maxY < minY) {
+        return false;
+      }
+
+      if (this.minX <= maxX) {
+        // if the triangle's minX is less than the query maxX
+        if (wrapsCoordinateSystem || this.maxX >= minX) {
+          // intersects if the query box is wrapping (western box) or
+          // the triangle maxX is greater than the query minX
+          return true;
+        }
+      }
+
+      return wrapsCoordinateSystem;
+    }
+
+    boolean containsRectangle(final int minX, final int maxX, final int minY, final int maxY) {
+      return this.minX <= minX && this.maxX >= maxX && this.minY <= minY && this.maxY >= maxY;
+    }
+
+    /** Checks if the rectangle contains the provided LINE */
+    boolean containsLine(int aX, int aY, int bX, int bY) {
+      if (aY < minY || bY < minY || aY > maxY || bY > maxY) {
+        return false;
+      }
+      if (wrapsCoordinateSystem) { // wraps coordinate system
+        return (aX >= minX && bX >= minX) || (aX <= maxX && bX <= maxX);
+      } else {
+        return aX >= minX && bX >= minX && aX <= maxX && bX <= maxX;
+      }
+    }
+
+    /** Checks if the rectangle contains the provided triangle */
+    boolean containsTriangle(int aX, int aY, int bX, int bY, int cX, int cY) {
+      if (aY < minY || bY < minY || cY < minY || aY > maxY || bY > maxY || cY > maxY) {
+        return false;
+      }
+      if (wrapsCoordinateSystem) { // wraps coordinate system
+        return (aX >= minX && bX >= minX && cX >= minX) || (aX <= maxX && bX <= maxX && cX <= maxX);
+      } else {
+        return aX >= minX && bX >= minX && cX >= minX && aX <= maxX && bX <= maxX && cX <= maxX;
+      }
+    }
+
+    /** Returns the Within relation to the provided triangle */
+    Component2D.WithinRelation withinLine(int aX, int aY, boolean ab, int bX, int bY) {
+      if (contains(aX, aY) || contains(bX, bY)) {
+        return Component2D.WithinRelation.NOTWITHIN;
+      }
+      if (ab == true && edgeIntersectsBox(aX, aY, bX, bY, minX, maxX, minY, maxY) == true) {
+        return Component2D.WithinRelation.NOTWITHIN;
+      }
+      return Component2D.WithinRelation.DISJOINT;
+    }
+
+    /** Returns the Within relation to the provided triangle */
+    Component2D.WithinRelation withinTriangle(
+        int aX, int aY, boolean ab, int bX, int bY, boolean bc, int cX, int cY, boolean ca) {
+      // Points belong to the shape so if points are inside the rectangle then it cannot be within.
+      if (contains(aX, aY) || contains(bX, bY) || contains(cX, cY)) {
+        return Component2D.WithinRelation.NOTWITHIN;
+      }
+
+      // Bounding boxes disjoint?
+      int tMinY = StrictMath.min(StrictMath.min(aY, bY), cY);
+      int tMaxY = StrictMath.max(StrictMath.max(aY, bY), cY);
+      // check bounding boxes are disjoint
+      if (tMaxY < minY || tMinY > maxY) {
+        return Component2D.WithinRelation.DISJOINT;
+      }
+      int tMinX = StrictMath.min(StrictMath.min(aX, bX), cX);
+      int tMaxX = StrictMath.max(StrictMath.max(aX, bX), cX);
+      if (wrapsCoordinateSystem) { // wraps coordinate system
+        if (tMinX > maxX && tMaxX < minX) {
+          return Component2D.WithinRelation.DISJOINT;
+        }
+      } else {
+        if (tMinX > maxX || tMaxX < minX) {
+          return Component2D.WithinRelation.DISJOINT;
+        }
+      }
+      // If any of the edges intersects an edge belonging to the shape then it cannot be within.
+      Component2D.WithinRelation relation = Component2D.WithinRelation.DISJOINT;
+      if (edgeIntersectsBox(aX, aY, bX, bY, minX, maxX, minY, maxY) == true) {
+        if (ab == true) {
+          return Component2D.WithinRelation.NOTWITHIN;
+        } else {
+          relation = Component2D.WithinRelation.CANDIDATE;
+        }
+      }
+      if (edgeIntersectsBox(bX, bY, cX, cY, minX, maxX, minY, maxY) == true) {
+        if (bc == true) {
+          return Component2D.WithinRelation.NOTWITHIN;
+        } else {
+          relation = Component2D.WithinRelation.CANDIDATE;
+        }
+      }
+
+      if (edgeIntersectsBox(cX, cY, aX, aY, minX, maxX, minY, maxY) == true) {
+        if (ca == true) {
+          return Component2D.WithinRelation.NOTWITHIN;
+        } else {
+          relation = Component2D.WithinRelation.CANDIDATE;
+        }
+      }
+      // Check if shape is within the triangle
+      if (relation == Component2D.WithinRelation.CANDIDATE
+          || Component2D.pointInTriangle(
+              tMinX, tMaxX, tMinY, tMaxY, minX, minY, aX, aY, bX, bY, cX, cY)) {
+        return Component2D.WithinRelation.CANDIDATE;
+      }
+      return relation;
+    }
+
+    /** returns true if the edge (defined by (aX, aY) (bX, bY)) intersects the query */
+    private boolean edgeIntersectsQuery(int aX, int aY, int bX, int bY) {
+      if (wrapsCoordinateSystem) {
+        return edgeIntersectsBox(aX, aY, bX, bY, MIN_LON_ENCODED, this.maxX, this.minY, this.maxY)
+            || edgeIntersectsBox(aX, aY, bX, bY, this.minX, MAX_LON_ENCODED, this.minY, this.maxY);
+      }
+      return edgeIntersectsBox(aX, aY, bX, bY, this.minX, this.maxX, this.minY, this.maxY);
+    }
+
+    /** returns true if the edge (defined by (aX, aY) (bX, bY)) intersects the box */
+    private static boolean edgeIntersectsBox(
+        int aX, int aY, int bX, int bY, int minX, int maxX, int minY, int maxY) {
+      if (Math.max(aX, bX) < minX
+          || Math.min(aX, bX) > maxX
+          || Math.min(aY, bY) > maxY
+          || Math.max(aY, bY) < minY) {
+        return false;
+      }
+      return GeoUtils.lineCrossesLineWithBoundary(aX, aY, bX, bY, minX, maxY, maxX, maxY)
+          || // top
+          GeoUtils.lineCrossesLineWithBoundary(aX, aY, bX, bY, maxX, maxY, maxX, minY)
+          || // bottom
+          GeoUtils.lineCrossesLineWithBoundary(aX, aY, bX, bY, maxX, minY, minX, minY)
+          || // left
+          GeoUtils.lineCrossesLineWithBoundary(aX, aY, bX, bY, minX, minY, minX, maxY); // right
+    }
+  }
+
+  @Override
+  public String toString(String field) {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(getClass().getSimpleName());
+    sb.append(':');
+    if (this.field.equals(field) == false) {
+      sb.append(" field=");
+      sb.append(this.field);
+      sb.append(':');
+    }
+    sb.append("[");
+    for (int i = 0; i < geometries.length; i++) {
+      sb.append(geometries[i].toString());
+      sb.append(',');
+    }
+    sb.append(']');
+    return sb.toString();
   }
 }
