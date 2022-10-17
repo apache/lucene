@@ -617,6 +617,9 @@ public class Hunspell {
       Runnable checkCanceled) {
     Hunspell suggestionSpeller =
         new Hunspell(dictionary, policy, checkCanceled) {
+          // Cache for expensive "findStem" requests issued when trying to split a compound word.
+          // The suggestion algorithm issues many of them, often with the same text.
+          // The cache can be large, but will be GC-ed after the "suggest" call.
           final Map<String, Optional<Root<CharsRef>>> compoundCache = new HashMap<>();
 
           @Override
