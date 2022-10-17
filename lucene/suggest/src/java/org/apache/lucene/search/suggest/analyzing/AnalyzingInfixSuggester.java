@@ -751,7 +751,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       mgr.release(searcher);
     }
 
-    // System.out.println((System.currentTimeMillis() - t0) + " msec for infix suggest");
+    // System.out.println((System.currentTimeMillis() - t0) + " ms for infix suggest");
     // System.out.println(results);
 
     return results;

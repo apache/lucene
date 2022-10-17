@@ -275,7 +275,7 @@ final class SegmentMerger {
       mergeState.infoStream.message(
           "SM",
           TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
-              + " msec to merge "
+              + " ms to merge "
               + formatName
               + " ["
               + numMerged
@@ -301,7 +301,7 @@ final class SegmentMerger {
       mergeState.infoStream.message(
           "SM",
           TimeUnit.NANOSECONDS.toMillis(t1 - t0)
-              + " msec to merge "
+              + " ms to merge "
               + formatName
               + " ["
               + numMerged

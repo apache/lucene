@@ -696,8 +696,7 @@ public class IndexWriter
         maybeMerge(config.getMergePolicy(), MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);
       }
       if (infoStream.isEnabled("IW")) {
-        infoStream.message(
-            "IW", "getReader took " + (System.currentTimeMillis() - tStart) + " msec");
+        infoStream.message("IW", "getReader took " + (System.currentTimeMillis() - tStart) + " ms");
       }
       success2 = true;
     } catch (VirtualMachineError tragedy) {

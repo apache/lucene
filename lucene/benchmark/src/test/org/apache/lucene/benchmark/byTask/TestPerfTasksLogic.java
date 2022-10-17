@@ -129,7 +129,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     long elapsed =
         TimeUnit.NANOSECONDS.toMillis(
             CountingSearchTestTask.prevLastNanos - CountingSearchTestTask.startNanos);
-    assertTrue("elapsed time was " + elapsed + " msec", elapsed <= 1500);
+    assertTrue("elapsed time was " + elapsed + " ms", elapsed <= 1500);
   }
 
   // disabled until we fix BG thread prio -- this test

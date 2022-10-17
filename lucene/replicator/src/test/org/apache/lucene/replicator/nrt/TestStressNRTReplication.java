@@ -528,7 +528,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     message(
         "top: done translog replay; took "
             + ((t1 - t0) / (double) TimeUnit.MILLISECONDS.toNanos(1))
-            + " msec; now publish primary");
+            + " ms; now publish primary");
 
     // Publish new primary only after translog has succeeded in replaying; this is important, for
     // this test anyway, so we keep a "linear"
@@ -1294,7 +1294,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
           if (random().nextInt(100) == 17) {
             int pauseMS = TestUtil.nextInt(random(), 500, 2000);
-            System.out.println("Indexer: now pause for " + pauseMS + " msec...");
+            System.out.println("Indexer: now pause for " + pauseMS + " ms...");
             Thread.sleep(pauseMS);
             System.out.println("Indexer: done pause for a bit...");
           }

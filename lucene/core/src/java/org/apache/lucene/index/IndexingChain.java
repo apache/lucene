@@ -243,7 +243,7 @@ final class IndexingChain implements Accountable {
     writeNorms(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
-          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " msec to write norms");
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write norms");
     }
     SegmentReadState readState =
         new SegmentReadState(
@@ -257,21 +257,21 @@ final class IndexingChain implements Accountable {
     writeDocValues(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
-          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " msec to write docValues");
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write docValues");
     }
 
     t0 = System.nanoTime();
     writePoints(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
-          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " msec to write points");
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write points");
     }
 
     t0 = System.nanoTime();
     vectorValuesConsumer.flush(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
-          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " msec to write vectors");
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write vectors");
     }
 
     // it's possible all docs hit non-aborting exceptions...
@@ -281,7 +281,7 @@ final class IndexingChain implements Accountable {
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
           "IW",
-          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " msec to finish stored fields");
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to finish stored fields");
     }
 
     t0 = System.nanoTime();
@@ -311,7 +311,7 @@ final class IndexingChain implements Accountable {
       infoStream.message(
           "IW",
           TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
-              + " msec to write postings and finish vectors");
+              + " ms to write postings and finish vectors");
     }
 
     // Important to save after asking consumer to flush so
@@ -325,8 +325,7 @@ final class IndexingChain implements Accountable {
         .write(state.directory, state.segmentInfo, "", state.fieldInfos, IOContext.DEFAULT);
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
-          "IW",
-          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " msec to write fieldInfos");
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write fieldInfos");
     }
 
     return sortMap;

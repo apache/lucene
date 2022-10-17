@@ -989,7 +989,7 @@ public class BKDWriter implements Closeable {
       // If no exception, we should have cleaned everything up:
       assert tempDir.getCreatedFiles().isEmpty();
       // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
-      // TimeUnit.SECONDS.toNanos(1)) + " msec");
+      //   TimeUnit.SECONDS.toNanos(1)) + " ms");
 
       success = true;
     } finally {
