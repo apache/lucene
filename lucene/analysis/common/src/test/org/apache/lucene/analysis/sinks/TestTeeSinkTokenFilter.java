@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.sinks;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.FilteringTokenFilter;
@@ -199,7 +200,11 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
         }
         long finish = System.nanoTime();
         System.out.println(
-            "ModCount: " + modCounts[j] + " Two fields took " + (finish - start) / 100_000 + " ms");
+            "ModCount: "
+                + modCounts[j]
+                + " Two fields took "
+                + TimeUnit.NANOSECONDS.toMillis(finish - start)
+                + " ms");
         int sinkPos = 0;
         // simulate one field with one sink
         start = System.nanoTime();
@@ -219,7 +224,11 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
         }
         finish = System.nanoTime();
         System.out.println(
-            "ModCount: " + modCounts[j] + " Tee fields took " + (finish - start) / 100_000 + " ms");
+            "ModCount: "
+                + modCounts[j]
+                + " Tee fields took "
+                + TimeUnit.NANOSECONDS.toMillis(finish - start)
+                + " ms");
         assertTrue(sinkPos + " does not equal: " + tfPos, sinkPos == tfPos);
       }
       System.out.println("- End Tokens: " + tokCount[k] + "-----");

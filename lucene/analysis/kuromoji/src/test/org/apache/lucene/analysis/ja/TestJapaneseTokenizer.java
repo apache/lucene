@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -764,7 +765,8 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     }
     String[] sentences = line.split("、|。");
     if (VERBOSE) {
-      System.out.println("Total time : " + (System.nanoTime() - totalStart) / 100_000);
+      System.out.println(
+          "Total time : " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - totalStart) + " ms");
       System.out.println(
           "Test for Bocchan with pre-splitting sentences (" + sentences.length + " sentences)");
     }
@@ -780,7 +782,8 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
       }
     }
     if (VERBOSE) {
-      System.out.println("Total time : " + (System.nanoTime() - totalStart) / 100_000);
+      System.out.println(
+          "Total time : " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - totalStart) + " ms");
     }
   }
 
