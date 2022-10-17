@@ -59,7 +59,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#11857: Hunspell: improved suggestion performance
 
 Bug Fixes
 ---------------------
