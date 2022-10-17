@@ -25,7 +25,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -361,7 +360,7 @@ public class KnnGraphTester {
     TopDocs[] results = new TopDocs[numIters];
     long elapsed, totalCpuTime, totalVisited = 0;
     try (FileChannel input = FileChannel.open(queryPath)) {
-      VectorReader targetReader = VectorReader.create(input, dim, vectorEncoding, numIters);
+      VectorReader targetReader = VectorReader.create(input, dim, vectorEncoding);
       if (quiet == false) {
         System.out.println("running " + numIters + " targets; topK=" + topK + ", fanout=" + fanout);
       }
@@ -468,100 +467,44 @@ public class KnnGraphTester {
 
   private abstract static class VectorReader {
     final float[] target;
-    ByteBuffer bytes;
-    final long totalSize;
-    final int maxBlockSize;
+    final ByteBuffer bytes;
     final FileChannel input;
-    int offset = 0;
 
-    static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding, int n)
-        throws IOException {
-      long totalSize = (long) n * dim * vectorEncoding.byteSize;
-      int maxBlockSize =
-          (Integer.MAX_VALUE / (dim * vectorEncoding.byteSize)) * (dim * vectorEncoding.byteSize);
+    static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding) {
+      int bufferSize = dim * vectorEncoding.byteSize;
       return switch (vectorEncoding) {
-        case BYTE -> new VectorReaderByte(input, dim, totalSize, maxBlockSize);
-        case FLOAT32 -> new VectorReaderFloat32(input, dim, totalSize, maxBlockSize);
+        case BYTE -> new VectorReaderByte(input, dim, bufferSize);
+        case FLOAT32 -> new VectorReaderFloat32(input, dim, bufferSize);
       };
     }
 
-    VectorReader(FileChannel input, int dim, long bufferSize, int maxBlockSize) throws IOException {
-      this.totalSize = bufferSize;
-      this.maxBlockSize = maxBlockSize;
+    VectorReader(FileChannel input, int dim, int bufferSize) {
+      this.bytes = ByteBuffer.wrap(new byte[bufferSize]).order(ByteOrder.LITTLE_ENDIAN);
       this.input = input;
-      this.target = new float[dim];
-      int blockSize = (int) Math.min(totalSize - offset, maxBlockSize);
-      this.bytes =
-          input
-              .map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
-              .order(ByteOrder.LITTLE_ENDIAN);
-      offset += blockSize;
+      target = new float[dim];
     }
 
-    void reset() {
-      if (maxBlockSize < totalSize) {
-        throw new UnsupportedOperationException("Cannot reset stream on exceptionally large input");
-      }
-      offset = 0;
+    void reset() throws IOException {
+      input.position(0);
+    }
+
+    protected final void readNext() throws IOException {
+      this.input.read(bytes);
       bytes.position(0);
     }
 
-    final void nextBuffer() throws IOException {
-      int blockSize = (int) Math.min(totalSize - offset, maxBlockSize);
-      setBuffer(
-          input
-              .map(FileChannel.MapMode.READ_ONLY, offset, blockSize)
-              .order(ByteOrder.LITTLE_ENDIAN));
-      this.offset += blockSize;
-    }
-
-    protected void setBuffer(ByteBuffer buffer) {
-      this.bytes = buffer;
-    }
-
-    protected boolean hasRemaining() {
-      return this.bytes.hasRemaining();
-    }
-
-    final float[] next() throws IOException {
-      if (this.hasRemaining() == false) {
-        nextBuffer();
-      }
-      return nextImpl();
-    }
-
-    abstract float[] nextImpl();
+    abstract float[] next() throws IOException;
   }
 
   private static class VectorReaderFloat32 extends VectorReader {
-    private FloatBuffer floats;
-
-    VectorReaderFloat32(FileChannel input, int dim, long bufferSize, int blockSize)
-        throws IOException {
-      super(input, dim, bufferSize, blockSize);
-      this.floats = bytes.asFloatBuffer();
+    VectorReaderFloat32(FileChannel input, int dim, int bufferSize) {
+      super(input, dim, bufferSize);
     }
 
     @Override
-    void reset() {
-      super.reset();
-      this.floats.position(0);
-    }
-
-    @Override
-    protected void setBuffer(ByteBuffer buffer) {
-      super.setBuffer(buffer);
-      this.floats = buffer.asFloatBuffer();
-    }
-
-    @Override
-    protected boolean hasRemaining() {
-      return this.floats.hasRemaining();
-    }
-
-    @Override
-    float[] nextImpl() {
-      floats.get(target);
+    float[] next() throws IOException {
+      readNext();
+      bytes.asFloatBuffer().get(target);
       return target;
     }
   }
@@ -570,15 +513,15 @@ public class KnnGraphTester {
     private final byte[] scratch;
     private final BytesRef bytesRef;
 
-    VectorReaderByte(FileChannel input, int dim, long bufferSize, int blockSize)
-        throws IOException {
-      super(input, dim, bufferSize, blockSize);
+    VectorReaderByte(FileChannel input, int dim, int bufferSize) {
+      super(input, dim, bufferSize);
       scratch = new byte[dim];
       bytesRef = new BytesRef(scratch);
     }
 
     @Override
-    float[] nextImpl() {
+    float[] next() throws IOException {
+      readNext();
       bytes.get(scratch);
       for (int i = 0; i < scratch.length; i++) {
         target[i] = scratch[i];
@@ -586,7 +529,8 @@ public class KnnGraphTester {
       return target;
     }
 
-    BytesRef nextBytes() {
+    BytesRef nextBytes() throws IOException {
+      readNext();
       bytes.get(scratch);
       return bytesRef;
     }
@@ -714,8 +658,8 @@ public class KnnGraphTester {
     }
     try (FileChannel in = FileChannel.open(docPath);
         FileChannel qIn = FileChannel.open(queryPath)) {
-      VectorReader docReader = VectorReader.create(in, dim, encoding, numDocs);
-      VectorReader queryReader = VectorReader.create(qIn, dim, encoding, numIters);
+      VectorReader docReader = VectorReader.create(in, dim, encoding);
+      VectorReader queryReader = VectorReader.create(qIn, dim, encoding);
       for (int i = 0; i < numIters; i++) {
         float[] query = queryReader.next();
         NeighborQueue queue = new NeighborQueue(topK, false);
@@ -765,7 +709,7 @@ public class KnnGraphTester {
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter iw = new IndexWriter(dir, iwc)) {
       try (FileChannel in = FileChannel.open(docsPath)) {
-        VectorReader vectorReader = VectorReader.create(in, dim, vectorEncoding, numDocs);
+        VectorReader vectorReader = VectorReader.create(in, dim, vectorEncoding);
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
           switch (vectorEncoding) {
