@@ -712,7 +712,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
           nonCompoundCount++;
           if (nonCompoundCount % 1000000 == 0) {
             System.out.println(String.format("%.2f msec [pos=%d, %d, %d]",
-                                             (System.nanoTime()-startTimeNS)/1000000.0,
+                                             (System.nanoTime() - startTimeNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
                                              netOffset + offsetAtt.startOffset(),
                                              nonCompoundCount,
                                              compoundCount));
