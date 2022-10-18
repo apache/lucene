@@ -112,6 +112,9 @@ Improvements
 
 * GITHUB#687: speed up IndexSortSortedNumericDocValuesRangeQuery#BoundedDocIdSetIterator
   construction using bkd binary search. (Jianping Weng)
+  
+* GITHUB#11722: Binary search the entries when all suffixes have the same length
+  in a leaf block of the terms dictionary. (zhouhui)
 
 Bug Fixes
 ---------------------
