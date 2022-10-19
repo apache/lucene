@@ -27,7 +27,6 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -41,21 +40,10 @@ import org.apache.lucene.util.BytesRef;
 
 public class TestFieldQuery extends AbstractTestCase {
   private float boost;
-  private IndexSearcher searcher;
 
   /** Set boost to a random value each time it is called. */
   private void initBoost() {
     boost = usually() ? 1F : random().nextFloat() * 10000;
-  }
-
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    if (reader == null) {
-      searcher = null;
-    } else {
-      searcher = newSearcher(reader);
-    }
   }
 
   public void testFlattenBoolean() throws Exception {
