@@ -52,7 +52,8 @@ class WordStorage {
   private static final int OFFSET_BITS = 25;
   private static final int OFFSET_MASK = (1 << OFFSET_BITS) - 1;
   private static final int COLLISION_MASK = 0x40;
-  private static final int MAX_STORED_LENGTH = COLLISION_MASK - 1;
+  private static final int SUGGESTIBLE_MASK = 0x20;
+  private static final int MAX_STORED_LENGTH = SUGGESTIBLE_MASK - 1;
 
   /**
    * A map from word's hash (modulo array's length) into an int containing:
@@ -60,9 +61,10 @@ class WordStorage {
    * <ul>
    *   <li>lower {@link #OFFSET_BITS}: the offset in {@link #wordData} of the last entry with this
    *       hash
-   *   <li>the remaining highest bits: COLLISION+LENGTH info for that entry, i.e. one bit indicating
-   *       whether there are other entries with the same hash, and the length of the entry in chars,
-   *       or {@link #MAX_STORED_LENGTH} if the length exceeds that limit (next highest bits)
+   *   <li>the remaining highest bits: COLLISION+SUGGESTIBLE+LENGTH info for that entry, i.e. one
+   *       bit indicating whether there are other entries with the same hash, one bit indicating
+   *       whether this entry makes sense to be used in suggestions, and the length of the entry in
+   *       chars, or {@link #MAX_STORED_LENGTH} if the length exceeds that limit (next highest bits)
    * </ul>
    */
   private final int[] hashTable;
@@ -77,8 +79,8 @@ class WordStorage {
    *       single-character entries
    *   <li>(Optional, for hash-colliding entries only)
    *       <ul>
-   *         <li>BYTE: COLLISION+LENGTH info (see {@link #hashTable}) for the previous entry with
-   *             the same hash
+   *         <li>BYTE: COLLISION+SUGGESTIBLE+LENGTH info (see {@link #hashTable}) for the previous
+   *             entry with the same hash
    *         <li>VINT: (delta) pointer to the previous entry
    *       </ul>
    *   <li>(Optional, for non-leaf entries only) VINT+: word form data, returned from {@link
@@ -140,12 +142,18 @@ class WordStorage {
     return (mask & COLLISION_MASK) != 0;
   }
 
+  private static boolean hasSuggestibleEntries(int mask) {
+    return (mask & SUGGESTIBLE_MASK) != 0;
+  }
+
   /**
    * Calls the processor for every dictionary entry with length between minLength and maxLength,
-   * both ends inclusive. Note that the callback arguments (word and forms) are reused, so they can
-   * be modified in any way, but may not be saved for later by the processor
+   * both ends inclusive, and at least one suggestible alternative (without NOSUGGEST, FORBIDDENWORD
+   * or ONLYINCOMPOUND flags). Note that the callback arguments (word and forms) are reused, so they
+   * can be modified in any way, but may not be saved for later by the processor
    */
-  void processAllWords(int minLength, int maxLength, BiConsumer<CharsRef, IntsRef> processor) {
+  void processSuggestibleWords(
+      int minLength, int maxLength, BiConsumer<CharsRef, IntsRef> processor) {
     assert minLength <= maxLength;
     CharsRef chars = new CharsRef(maxLength);
     IntsRef forms = new IntsRef();
@@ -162,7 +170,8 @@ class WordStorage {
         int prevPos = pos - in.readVInt();
 
         boolean last = !hasCollision(mask);
-        boolean mightMatch = hasLengthInRange(mask, minLength, maxLength);
+        boolean mightMatch =
+            hasSuggestibleEntries(mask) && hasLengthInRange(mask, minLength, maxLength);
 
         if (!last) {
           mask = in.readByte();
@@ -235,6 +244,7 @@ class WordStorage {
     private final boolean hasCustomMorphData;
     private final int[] hashTable;
     private byte[] wordData;
+    private final char[] noSuggestFlags;
     private final int[] chainLengths;
 
     private final IntsRefBuilder currentOrds = new IntsRefBuilder();
@@ -253,10 +263,15 @@ class WordStorage {
      *     pre-size the hash table. This argument can be a bit larger than the actual word count,
      *     but not smaller.
      */
-    Builder(int wordCount, boolean hasCustomMorphData, FlagEnumerator flagEnumerator) {
+    Builder(
+        int wordCount,
+        boolean hasCustomMorphData,
+        FlagEnumerator flagEnumerator,
+        char[] noSuggestFlags) {
       this.wordCount = wordCount;
       this.flagEnumerator = flagEnumerator;
       this.hasCustomMorphData = hasCustomMorphData;
+      this.noSuggestFlags = noSuggestFlags;
 
       hashTable = new int[wordCount];
       wordData = new byte[wordCount * 6];
@@ -317,7 +332,7 @@ class WordStorage {
       currentOrds.clear();
       boolean hasNonHidden = false;
       for (char[] flags : group) {
-        if (!hasHiddenFlag(flags)) {
+        if (!hasFlag(flags, Dictionary.HIDDEN_FLAG)) {
           hasNonHidden = true;
           break;
         }
@@ -325,7 +340,7 @@ class WordStorage {
 
       for (int i = 0; i < group.size(); i++) {
         char[] flags = group.get(i);
-        if (hasNonHidden && hasHiddenFlag(flags)) {
+        if (hasNonHidden && hasFlag(flags, Dictionary.HIDDEN_FLAG)) {
           continue;
         }
 
@@ -353,7 +368,9 @@ class WordStorage {
       int prevCode = hashTable[hash];
 
       int mask =
-          (prevCode == 0 ? 0 : COLLISION_MASK) | Math.min(currentEntry.length(), MAX_STORED_LENGTH);
+          (prevCode == 0 ? 0 : COLLISION_MASK)
+              | (group.stream().anyMatch(flags -> !hasNoSuggestFlag(flags)) ? SUGGESTIBLE_MASK : 0)
+              | Math.min(currentEntry.length(), MAX_STORED_LENGTH);
       hashTable[hash] = (mask << OFFSET_BITS) | pos;
 
       if (++chainLengths[hash] > 20) {
@@ -375,9 +392,16 @@ class WordStorage {
       return pos;
     }
 
-    private static boolean hasHiddenFlag(char[] flags) {
+    private boolean hasNoSuggestFlag(char[] flags) {
       for (char flag : flags) {
-        if (flag == Dictionary.HIDDEN_FLAG) {
+        if (hasFlag(noSuggestFlags, flag)) return true;
+      }
+      return false;
+    }
+
+    private static boolean hasFlag(char[] flags, char flag) {
+      for (char f : flags) {
+        if (f == flag) {
           return true;
         }
       }

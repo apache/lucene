@@ -60,7 +60,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#11857: Hunspell: improved suggestion performance
+* GITHUB#11857, GITHUB#11859: Hunspell: improved suggestion performance
 
 Bug Fixes
 ---------------------
