@@ -152,6 +152,14 @@ Other
 
 * LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
 
+======================== Lucene 9.4.1 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#11858: Fix kNN vectors format validation on large segments. This
+ addresses a regression in 9.4.0 where validation could fail, preventing
+ further writes or searches on the index. (Julie Tibshirani)
+
 ======================== Lucene 9.4.0 =======================
 
 API Changes
