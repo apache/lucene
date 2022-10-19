@@ -650,6 +650,10 @@ class SimplePrimaryNode extends PrimaryNode {
   // merges:
   static final byte CMD_NEW_REPLICA = 20;
 
+  // Leak a CopyState to simulate failure
+  static final byte CMD_LEAK_COPY_STATE = 24;
+  static final byte CMD_SET_CLOSE_WAIT_MS = 25;
+
   /** Handles incoming request to the naive TCP server wrapping this node */
   void handleOneConnection(
       Random random,
@@ -820,6 +824,15 @@ class SimplePrimaryNode extends PrimaryNode {
             }
           }
           break;
+
+        case CMD_LEAK_COPY_STATE:
+          message("leaking a CopyState");
+          getCopyState();
+          continue outer;
+
+        case CMD_SET_CLOSE_WAIT_MS:
+          setRemoteCloseTimeoutMs(in.readInt());
+          continue outer;
 
         default:
           throw new IllegalArgumentException("unrecognized cmd=" + cmd + " via socket=" + socket);
