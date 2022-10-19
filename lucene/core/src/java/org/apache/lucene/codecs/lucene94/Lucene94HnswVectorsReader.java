@@ -180,7 +180,9 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
         byteSize = Float.BYTES;
         break;
     }
-    int numBytes = fieldEntry.size * dimension * byteSize;
+    long vectorBytes = Math.multiplyExact((long) dimension, byteSize);
+    long numBytes = Math.multiplyExact(vectorBytes, fieldEntry.size);
+
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "Vector data length "
