@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -67,19 +66,19 @@ public final class SpanOrQuery extends SpanQuery {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     SpanOrQuery rewritten = new SpanOrQuery();
     boolean actuallyRewritten = false;
     for (int i = 0; i < clauses.size(); i++) {
       SpanQuery c = clauses.get(i);
-      SpanQuery query = (SpanQuery) c.rewrite(reader);
+      SpanQuery query = (SpanQuery) c.rewrite(indexSearcher);
       actuallyRewritten |= query != c;
       rewritten.addClause(query);
     }
     if (actuallyRewritten) {
       return rewritten;
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

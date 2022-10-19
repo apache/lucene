@@ -1252,11 +1252,11 @@ public class UnifiedHighlighter {
 
   /**
    * When highlighting phrases accurately, we need to know which {@link SpanQuery}'s need to have
-   * {@link Query#rewrite(IndexReader)} called on them. It helps performance to avoid it if it's not
-   * needed. This method will be invoked on all SpanQuery instances recursively. If you have custom
-   * SpanQuery queries then override this to check instanceof and provide a definitive answer. If
-   * the query isn't your custom one, simply return null to have the default rules apply, which
-   * govern the ones included in Lucene.
+   * {@link Query#rewrite(IndexSearcher)} called on them. It helps performance to avoid it if it's
+   * not needed. This method will be invoked on all SpanQuery instances recursively. If you have
+   * custom SpanQuery queries then override this to check instanceof and provide a definitive
+   * answer. If the query isn't your custom one, simply return null to have the default rules apply,
+   * which govern the ones included in Lucene.
    */
   protected Boolean requiresRewrite(SpanQuery spanQuery) {
     return null;

@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.Bits;
 
@@ -40,8 +39,9 @@ public final class ConstantScoreQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query rewritten = query.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+
+    Query rewritten = query.rewrite(indexSearcher);
 
     // Do some extra simplifications that are legal since scores are not needed on the wrapped
     // query.
@@ -70,7 +70,7 @@ public final class ConstantScoreQuery extends Query {
       return new ConstantScoreQuery(((BoostQuery) rewritten).getQuery());
     }
 
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

@@ -23,7 +23,6 @@ import java.util.Objects;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
@@ -133,12 +132,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (lowerValue == Long.MIN_VALUE && upperValue == Long.MAX_VALUE) {
       return new FieldExistsQuery(field);
     }
 
-    Query rewrittenFallback = fallbackQuery.rewrite(reader);
+    Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
     if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
       return new MatchAllDocsQuery();
     }

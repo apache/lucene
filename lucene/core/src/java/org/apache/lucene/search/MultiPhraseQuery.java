@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -185,7 +184,7 @@ public class MultiPhraseQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (termArrays.length == 0) {
       return new MatchNoDocsQuery("empty MultiPhraseQuery");
     } else if (termArrays.length == 1) { // optimize one-term case
@@ -196,7 +195,7 @@ public class MultiPhraseQuery extends Query {
       }
       return builder.build();
     } else {
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
   }
 

@@ -261,7 +261,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
         new Query() {
 
           @Override
-          public Query rewrite(IndexReader reader) throws IOException {
+          public Query rewrite(IndexSearcher indexSearcher) throws IOException {
             CommonTermsQuery query = new CommonTermsQuery(Occur.MUST, Occur.SHOULD, 3);
             query.add(new Term(FIELD_NAME, "this")); // stop-word
             query.add(new Term(FIELD_NAME, "long"));
@@ -2223,7 +2223,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
     searcher = newSearcher(reader);
     // for any multi-term queries to work (prefix, wildcard, range,fuzzy etc)
     // you must use a rewritten query!
-    query = unReWrittenQuery.rewrite(reader);
+    query = unReWrittenQuery.rewrite(searcher);
     if (VERBOSE) System.out.println("Searching for: " + query.toString(FIELD_NAME));
     hits = searcher.search(query, 1000);
   }
