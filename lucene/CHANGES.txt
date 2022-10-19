@@ -194,7 +194,7 @@ Optimizations
 
 * GITHUB#12078: Enhance XXXField#newRangeQuery. (Lu Xugang)
 
-* GITHUB#11857: Hunspell: improved suggestion performance (Peter Gromov)
+* GITHUB#11857, GITHUB#11859: Hunspell: improved suggestion performance (Peter Gromov)
 
 Other
 ---------------------

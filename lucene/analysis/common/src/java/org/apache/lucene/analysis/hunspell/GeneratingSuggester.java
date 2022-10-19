@@ -19,8 +19,6 @@ package org.apache.lucene.analysis.hunspell;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_APPEND;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_FLAG;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_STRIP_ORD;
-import static org.apache.lucene.analysis.hunspell.Dictionary.FLAG_UNSET;
-import static org.apache.lucene.analysis.hunspell.Dictionary.HIDDEN_FLAG;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,7 +29,6 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
 
@@ -73,19 +70,10 @@ class GeneratingSuggester {
           }
         };
 
-    dictionary.words.processAllWords(
-        Math.max(1, word.length() - 4),
-        word.length() + 4,
+    dictionary.words.processSuggestibleWords(
+        Math.max(1, word.length() - MAX_ROOT_LENGTH_DIFF),
+        word.length() + MAX_ROOT_LENGTH_DIFF,
         (rootChars, forms) -> {
-          assert rootChars.length > 0;
-          if (Math.abs(rootChars.length - word.length()) > MAX_ROOT_LENGTH_DIFF) {
-            assert rootChars.length < word.length(); // processAllWords takes care of longer keys
-            return;
-          }
-
-          int suitable = filter.findSuitableFormIndex(forms, 0);
-          if (suitable < 0) return;
-
           if (ignoreTitleCaseRoots
               && Character.isUpperCase(rootChars.charAt(0))
               && WordCase.caseOf(rootChars) == WordCase.TITLE) {
@@ -99,13 +87,14 @@ class GeneratingSuggester {
 
           sc += commonPrefix(word, rootChars) - longerWorsePenalty(word.length(), rootChars.length);
 
-          if (roots.size() == MAX_ROOTS && sc < roots.peek().score) {
+          if (roots.size() == MAX_ROOTS && sc <= roots.peek().score) {
             return;
           }
 
           speller.checkCanceled.run();
 
           String root = rootChars.toString();
+          int suitable = filter.findSuitableFormIndex(forms, 0);
           do {
             roots.add(new Weighted<>(new Root<>(root, forms.ints[forms.offset + suitable]), sc));
             suitable = filter.findSuitableFormIndex(forms, suitable + filter.formStep);
@@ -126,11 +115,7 @@ class GeneratingSuggester {
     EntryFilter(Dictionary dic) {
       formStep = dic.formStep();
       flagLookup = dic.flagLookup;
-
-      Character[] flags = {HIDDEN_FLAG, dic.noSuggest, dic.forbiddenword, dic.onlyincompound};
-      excludeFlags =
-          Dictionary.toSortedCharArray(
-              Stream.of(flags).filter(c -> c != FLAG_UNSET).collect(Collectors.toSet()));
+      excludeFlags = dic.allNonSuggestibleFlags();
     }
 
     int findSuitableFormIndex(IntsRef forms, int start) {
