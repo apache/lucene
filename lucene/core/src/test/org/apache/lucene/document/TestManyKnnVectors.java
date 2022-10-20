@@ -59,7 +59,7 @@ public class TestManyKnnVectors extends LuceneTestCase {
   public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setCodec(TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
-    iwc.setRAMBufferSizeMB(3_000); // Use a 3GB buffer to create a single large segment
+    iwc.setRAMBufferSizeMB(200); // Use a 200MB buffer to create larger initial segments
 
     String fieldName = "field";
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
