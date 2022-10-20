@@ -138,6 +138,7 @@ public class Lucene90PointsReader extends PointsReader {
     }
 
     PointValues pointValues = readers.get(fieldInfo.number);
+    //pointValues would be null for ghost fields, in case an entire segment was without points for the field after merge
     return pointValues == null
         ? PointValues.empty(
             fieldInfo.getPointDimensionCount(),
