@@ -58,8 +58,8 @@ allprojects { prj ->
       }
 
       tasks.withType(JavaCompile) { task ->
-        // TODO: Better way to disable on our MR-JAR
-        if (task.name == 'compileMain19Java') {
+        // Disable errorprone on the MR-JAR tasks
+        if (task.name ==~ /compileMain\d+Java/) {
           options.errorprone.enabled = false
           return
         }

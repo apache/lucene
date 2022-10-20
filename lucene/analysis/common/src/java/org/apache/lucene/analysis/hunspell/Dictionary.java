@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -1131,7 +1132,8 @@ public class Dictionary {
 
     Map<String, Integer> morphIndices = new HashMap<>();
 
-    WordStorage.Builder builder = new WordStorage.Builder(wordCount, hasCustomMorphData, flags);
+    WordStorage.Builder builder =
+        new WordStorage.Builder(wordCount, hasCustomMorphData, flags, allNonSuggestibleFlags());
 
     try (ByteSequencesReader reader =
         new ByteSequencesReader(tempDir.openChecksumInput(sorted, IOContext.READONCE), sorted)) {
@@ -1195,6 +1197,13 @@ public class Dictionary {
         IOUtils.deleteFilesIgnoringExceptions(tempDir, sorted);
       }
     }
+  }
+
+  char[] allNonSuggestibleFlags() {
+    return Dictionary.toSortedCharArray(
+        Stream.of(HIDDEN_FLAG, noSuggest, forbiddenword, onlyincompound, subStandard)
+            .filter(c -> c != FLAG_UNSET)
+            .collect(Collectors.toSet()));
   }
 
   private List<String> readMorphFields(String word, String unparsed) {

@@ -44,7 +44,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Term;
@@ -96,18 +95,6 @@ public class UnifiedHighlighter {
   public static final int DEFAULT_MAX_LENGTH = 10000;
 
   public static final int DEFAULT_CACHE_CHARS_THRESHOLD = 524288; // ~ 1 MB (2 byte chars)
-
-  static final IndexSearcher EMPTY_INDEXSEARCHER;
-
-  static {
-    try {
-      IndexReader emptyReader = new MultiReader();
-      EMPTY_INDEXSEARCHER = new IndexSearcher(emptyReader);
-      EMPTY_INDEXSEARCHER.setQueryCache(null);
-    } catch (IOException bogus) {
-      throw new RuntimeException(bogus);
-    }
-  }
 
   protected static final LabelledCharArrayMatcher[] ZERO_LEN_AUTOMATA_ARRAY =
       new LabelledCharArrayMatcher[0];
@@ -452,10 +439,10 @@ public class UnifiedHighlighter {
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
   }
 
-  /** Extracts matching terms after rewriting against an empty index */
-  protected static Set<Term> extractTerms(Query query) throws IOException {
+  /** Extracts matching terms */
+  protected static Set<Term> extractTerms(Query query) {
     Set<Term> queryTerms = new HashSet<>();
-    EMPTY_INDEXSEARCHER.rewrite(query).visit(QueryVisitor.termCollector(queryTerms));
+    query.visit(QueryVisitor.termCollector(queryTerms));
     return queryTerms;
   }
 
@@ -1262,11 +1249,11 @@ public class UnifiedHighlighter {
 
   /**
    * When highlighting phrases accurately, we need to know which {@link SpanQuery}'s need to have
-   * {@link Query#rewrite(IndexReader)} called on them. It helps performance to avoid it if it's not
-   * needed. This method will be invoked on all SpanQuery instances recursively. If you have custom
-   * SpanQuery queries then override this to check instanceof and provide a definitive answer. If
-   * the query isn't your custom one, simply return null to have the default rules apply, which
-   * govern the ones included in Lucene.
+   * {@link Query#rewrite(IndexSearcher)} called on them. It helps performance to avoid it if it's
+   * not needed. This method will be invoked on all SpanQuery instances recursively. If you have
+   * custom SpanQuery queries then override this to check instanceof and provide a definitive
+   * answer. If the query isn't your custom one, simply return null to have the default rules apply,
+   * which govern the ones included in Lucene.
    */
   protected Boolean requiresRewrite(SpanQuery spanQuery) {
     return null;

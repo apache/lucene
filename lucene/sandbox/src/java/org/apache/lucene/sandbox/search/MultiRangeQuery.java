@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
@@ -169,7 +168,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
    * #mergeOverlappingRanges}
    */
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (numDims != 1) {
       return this;
     }

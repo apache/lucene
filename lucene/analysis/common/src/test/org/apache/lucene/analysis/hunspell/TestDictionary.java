@@ -86,11 +86,16 @@ public class TestDictionary extends LuceneTestCase {
     }
   }
 
+  public void testProcessSuggestibleWords() throws Exception {
+    Dictionary dictionary = loadDictionary("suggestible.aff", "suggestible.dic");
+
+    Set<String> processed = processSuggestibleWords(dictionary, 1, 100);
+    assertEquals(Set.of("normal", "ambiguous"), processed);
+  }
+
   private void checkProcessWords(
       Dictionary dictionary, Set<String> allWords, int minLength, int maxLength) {
-    Set<String> processed = new HashSet<>();
-    dictionary.words.processAllWords(
-        minLength, maxLength, (word, __) -> processed.add(word.toString()));
+    Set<String> processed = processSuggestibleWords(dictionary, minLength, maxLength);
 
     Set<String> filtered =
         allWords.stream()
@@ -98,6 +103,14 @@ public class TestDictionary extends LuceneTestCase {
             .collect(Collectors.toSet());
 
     assertEquals("For lengths [" + minLength + "," + maxLength + "]", filtered, processed);
+  }
+
+  private static Set<String> processSuggestibleWords(
+      Dictionary dictionary, int minLength, int maxLength) {
+    Set<String> processed = new HashSet<>();
+    dictionary.words.processSuggestibleWords(
+        minLength, maxLength, (word, __) -> processed.add(word.toString()));
+    return processed;
   }
 
   public void testCompressedDictionary() throws Exception {

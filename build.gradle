@@ -22,10 +22,11 @@ plugins {
   id "base"
   id "com.palantir.consistent-versions" version "2.11.0"
   id "org.owasp.dependencycheck" version "7.2.0"
-  id 'de.thetaphi.forbiddenapis' version '3.3' apply false
+  id 'de.thetaphi.forbiddenapis' version '3.4' apply false
   id "de.undercouch.download" version "5.2.0" apply false
   id "net.ltgt.errorprone" version "2.0.2" apply false
   id 'com.diffplug.spotless' version "6.5.2" apply false
+  id 'org.barfuin.gradle.jacocolog' version "2.0.0" apply false
 }
 
 apply from: file('gradle/globals.gradle')

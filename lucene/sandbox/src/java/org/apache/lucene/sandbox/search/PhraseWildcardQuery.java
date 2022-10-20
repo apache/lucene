@@ -113,14 +113,14 @@ public class PhraseWildcardQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (phraseTerms.isEmpty()) {
       return NO_MATCH_QUERY;
     }
     if (phraseTerms.size() == 1) {
       return phraseTerms.get(0).getQuery();
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
