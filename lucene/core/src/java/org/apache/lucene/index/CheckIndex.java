@@ -2665,6 +2665,7 @@ public final class CheckIndex implements Closeable {
     private final int numIndexDims;
     private final int bytesPerDim;
     private final String fieldName;
+    private final long size;
 
     /** Sole constructor */
     public VerifyPointsVisitor(String fieldName, int maxDoc, PointValues values)
@@ -2681,6 +2682,7 @@ public final class CheckIndex implements Closeable {
       lastMinPackedValue = new byte[packedIndexBytesCount];
       lastMaxPackedValue = new byte[packedIndexBytesCount];
       lastPackedValue = new byte[packedBytesCount];
+      size = values.size();
 
       if (values.getDocCount() > values.size()) {
         throw new CheckIndexException(
@@ -2852,6 +2854,10 @@ public final class CheckIndex implements Closeable {
 
     @Override
     public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+      //packed values may be null, but only when there are no points
+      if (minPackedValue == null && maxPackedValue == null && size == 0) {
+        return Relation.CELL_CROSSES_QUERY;
+      }
       checkPackedValue("min packed value", minPackedValue, -1);
       System.arraycopy(minPackedValue, 0, lastMinPackedValue, 0, packedIndexBytesCount);
       checkPackedValue("max packed value", maxPackedValue, -1);
