@@ -30,6 +30,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Monster;
+import org.apache.lucene.tests.util.TestUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -60,7 +61,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 @Monster("takes ~2 hours and needs 2GB heap")
 public class TestManyKnnVectors extends LuceneTestCase {
   public void testLargeSegment() throws Exception {
-    IndexWriterConfig iwc = newIndexWriterConfig();
+    // Make sure to use the default codec instead of a random one
+    IndexWriterConfig iwc = newIndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
     if (random().nextBoolean()) {
       iwc.setIndexSort(new Sort(new SortField("sortkey", SortField.Type.INT)));
     }
