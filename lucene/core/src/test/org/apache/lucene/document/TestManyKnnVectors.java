@@ -61,11 +61,13 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 @Monster("takes ~2 hours and needs 2GB heap")
 public class TestManyKnnVectors extends LuceneTestCase {
   public void testLargeSegment() throws Exception {
-    // Make sure to use the default codec instead of a random one
-    IndexWriterConfig iwc = newIndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setCodec(TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
+    iwc.setRAMBufferSizeMB(3_000); // Use a 3GB buffer to create a single large segment
     if (random().nextBoolean()) {
       iwc.setIndexSort(new Sort(new SortField("sortkey", SortField.Type.INT)));
     }
+
     String fieldName = "field";
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
 
