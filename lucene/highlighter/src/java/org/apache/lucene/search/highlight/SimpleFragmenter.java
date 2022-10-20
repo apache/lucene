@@ -33,7 +33,9 @@ public class SimpleFragmenter implements Fragmenter {
     this(DEFAULT_FRAGMENT_SIZE);
   }
 
-  /** @param fragmentSize size in number of characters of each fragment */
+  /**
+   * @param fragmentSize size in number of characters of each fragment
+   */
   public SimpleFragmenter(int fragmentSize) {
     this.fragmentSize = fragmentSize;
   }
@@ -59,12 +61,16 @@ public class SimpleFragmenter implements Fragmenter {
     return isNewFrag;
   }
 
-  /** @return size in number of characters of each fragment */
+  /**
+   * @return size in number of characters of each fragment
+   */
   public int getFragmentSize() {
     return fragmentSize;
   }
 
-  /** @param size size in characters of each fragment */
+  /**
+   * @param size size in characters of each fragment
+   */
   public void setFragmentSize(int size) {
     fragmentSize = size;
   }

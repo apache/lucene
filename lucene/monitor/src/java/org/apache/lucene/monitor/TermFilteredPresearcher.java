@@ -202,7 +202,9 @@ public class TermFilteredPresearcher extends Presearcher {
     /** Add a term from this document */
     void addTerm(String field, BytesRef term) throws IOException;
 
-    /** @return the final Query */
+    /**
+     * @return the final Query
+     */
     Query build();
   }
 

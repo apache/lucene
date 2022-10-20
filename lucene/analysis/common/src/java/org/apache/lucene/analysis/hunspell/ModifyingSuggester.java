@@ -18,9 +18,11 @@ package org.apache.lucene.analysis.hunspell;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /** A class that modifies the given misspelled word in various ways to get correct suggestions */
 class ModifyingSuggester {
@@ -40,7 +42,9 @@ class ModifyingSuggester {
     this.wordCase = wordCase;
   }
 
-  /** @return whether any of the added suggestions are considered "good" */
+  /**
+   * @return whether any of the added suggestions are considered "good"
+   */
   boolean suggest() {
     String low =
         wordCase != WordCase.LOWER ? speller.dictionary.toLowerCase(misspelled) : misspelled;
@@ -347,7 +351,11 @@ class ModifyingSuggester {
     return speller.dictionary.tryChars.contains("-") || speller.dictionary.tryChars.contains("a");
   }
 
+  private final Set<String> tried = new HashSet<>();
+
   private boolean trySuggestion(String candidate) {
-    return speller.checkWord(candidate) && result.add(createSuggestion(candidate));
+    return tried.add(candidate)
+        && speller.checkWord(candidate)
+        && result.add(createSuggestion(candidate));
   }
 }

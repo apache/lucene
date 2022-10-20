@@ -66,12 +66,16 @@ public class QueryProfilerIndexSearcher extends IndexSearcher {
     return new QueryProfilerWeight(query, weight, profile);
   }
 
-  /** @return total time taken to rewrite all queries in this profile */
+  /**
+   * @return total time taken to rewrite all queries in this profile
+   */
   public long getRewriteTime() {
     return profiler.getRewriteTime();
   }
 
-  /** @return a hierarchical representation of the profiled tree */
+  /**
+   * @return a hierarchical representation of the profiled tree
+   */
   public List<QueryProfilerResult> getProfileResult() {
     return profiler.getTree();
   }

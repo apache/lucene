@@ -26,7 +26,9 @@ public final class TokenInfoFST extends org.apache.lucene.analysis.morph.TokenIn
     super(fst, 0xD7A3, 0xAC00);
   }
 
-  /** @lucene.internal for testing only */
+  /**
+   * @lucene.internal for testing only
+   */
   FST<Long> getInternalFST() {
     return fst;
   }

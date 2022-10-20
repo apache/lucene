@@ -79,7 +79,9 @@ public class TermBytes implements Accountable {
     return mdpLength;
   }
 
-  /** @return This term bytes. */
+  /**
+   * @return This term bytes.
+   */
   public BytesRef getTerm() {
     return term;
   }

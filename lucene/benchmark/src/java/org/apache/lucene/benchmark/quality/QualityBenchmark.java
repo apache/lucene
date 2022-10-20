@@ -142,7 +142,9 @@ public class QualityBenchmark {
     return stts;
   }
 
-  /** @return the maximum number of quality queries to run. Useful at debugging. */
+  /**
+   * @return the maximum number of quality queries to run. Useful at debugging.
+   */
   public int getMaxQueries() {
     return maxQueries;
   }
@@ -152,7 +154,9 @@ public class QualityBenchmark {
     this.maxQueries = maxQueries;
   }
 
-  /** @return the maximum number of results to collect for each quality query. */
+  /**
+   * @return the maximum number of results to collect for each quality query.
+   */
   public int getMaxResults() {
     return maxResults;
   }

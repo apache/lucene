@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
@@ -116,13 +115,13 @@ public class SpanPayloadCheckQuery extends SpanQuery {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query matchRewritten = match.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    Query matchRewritten = match.rewrite(indexSearcher);
     if (match != matchRewritten && matchRewritten instanceof SpanQuery) {
       return new SpanPayloadCheckQuery(
           (SpanQuery) matchRewritten, payloadToMatch, payloadType, operation);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

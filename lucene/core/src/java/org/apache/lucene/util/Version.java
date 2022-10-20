@@ -95,7 +95,9 @@ public final class Version {
    */
   public static final int MIN_SUPPORTED_MAJOR = Version.LATEST.major - 1;
 
-  /** @see #getPackageImplementationVersion() */
+  /**
+   * @see #getPackageImplementationVersion()
+   */
   private static String implementationVersion;
 
   /**

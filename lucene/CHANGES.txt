@@ -31,6 +31,12 @@ API Changes
 
 * LUCENE-10603: Remove SortedSetDocValues#NO_MORE_ORDS definition. (Greg Miller)
 
+* GITHUB#11813: Remove Operations.isFinite: the recursive implementation could be problematic
+  for large automatons (WildcardQuery, PrefixQuery, RegExpQuery, etc).  (taroplus, Robert Muir)
+
+* GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
+  rewriting. (Patrick Zhai)
+
 New Features
 ---------------------
 
@@ -56,7 +62,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#11857, GITHUB#11859: Hunspell: improved suggestion performance
 
 Bug Fixes
 ---------------------
@@ -93,13 +100,23 @@ API Changes
 * GITHUB#11772: Removed native subproject and WindowsDirectory implementation from lucene.misc. Recommendation:
   use MMapDirectory implementation on Windows. (Robert Muir, Uwe Schindler, Dawid Weiss)
 
+* GITHUB#11804: FacetsCollector#collect is no longer final, allowing extension. (Greg Miller)
+
+* GITHUB#11761: TieredMergePolicy now allowed a maximum allowable deletes percentage of down to 5%, and the default
+  maximum allowable deletes percentage is changed from 33% to 20%. (Marc D'Mello)
+
+* GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
+
 Improvements
 ---------------------
 * GITHUB#11778: Detailed part-of-speech information for particle(조사) and ending(어미) on Nori
   is now tagged. (Namgyu Kim)
 
 * GITHUB#11785: Improve Tessellator performance by delaying calls to the method
-  #isIntersectingPolygon (Ignacio Vera)   
+  #isIntersectingPolygon (Ignacio Vera)
+
+* GITHUB#687: speed up IndexSortSortedNumericDocValuesRangeQuery#BoundedDocIdSetIterator
+  construction using bkd binary search. (Jianping Weng)
 
 Bug Fixes
 ---------------------
@@ -107,12 +124,48 @@ Bug Fixes
   trying to apply a dictionary whose size is greater than the maximum supported
   window size for LZ4. (Adrien Grand)
 
+* GITHUB#11768: Taxonomy and SSDV faceting now correctly breaks ties by preferring smaller ordinal
+  values. (Greg Miller)
+
+* GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
+
+Optimizations
+---------------------
+* GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
+  docs in a segment. (Greg Miller)
+
+* GITHUB#11735: KeywordRepeatFilter + OpenNLPLemmatizer always drops last token of a stream.
+  (Luke Kot-Zaniewski)
+
+* GITHUB#11771: KeywordRepeatFilter + OpenNLPLemmatizer sometimes arbitrarily exits token stream.
+  (Luke Kot-Zaniewski)
+
+* GITHUB#11803: DrillSidewaysScorer has improved to leverage "advance" instead of "next" where
+  possible, and splits out first and second phase checks to delay match confirmation. (Greg Miller)
+
+* GITHUB#11828: Tweak TermInSetQuery "dense" optimization to only require all terms present in a
+  given field to match a term (rather than all docs in a segment). This is consistent with
+  MultiTermQueryConstantScoreWrapper. (Greg Miller)
+
 * GITHUB#11793: Prevent PointValues from returning null for ghost fields. (Luca Cavanna)
 
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
 
+* GITHUB#11811: Upgrade google java format to 1.15.0 (Dawid Weiss)
+
+* GITHUB#11834: Upgrade forbiddenapis to version 3.4.  (Uwe Schindler)
+
+* LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
+
+======================== Lucene 9.4.1 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#11858: Fix kNN vectors format validation on large segments. This
+ addresses a regression in 9.4.0 where validation could fail, preventing
+ further writes or searches on the index. (Julie Tibshirani)
 
 ======================== Lucene 9.4.0 =======================
 
@@ -129,6 +182,15 @@ New Features
 * LUCENE-10633: SortField#setOptimizeSortWithIndexedData and
   SortField#getOptimizeSortWithIndexedData were introduce to provide
   an option to disable sort optimization for various sort fields. (Mayya Sharipova)
+
+* GITHUB#912: Support for Java 19 foreign memory support was added. Applications started
+  with command line parameter "java --enable-preview" will automatically use the new
+  foreign memory API of Java 19 to access indexes on disk with MMapDirectory. This is
+  an opt-in feature and requires explicit Java command line flag! When enabled, Lucene logs
+  a notice using java.util.logging. Please test thoroughly and report bugs/slowness to Lucene's
+  mailing list. When the new API is used, MMapDirectory will mmap Lucene indexes in chunks of
+  16 GiB (instead of 1 GiB) and indexes closed while queries are running can no longer crash
+  the JVM.  (Uwe Schindler)
 
 Improvements
 ---------------------

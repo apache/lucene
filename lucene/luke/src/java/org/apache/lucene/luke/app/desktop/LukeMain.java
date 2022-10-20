@@ -48,7 +48,9 @@ public class LukeMain {
     return frame;
   }
 
-  /** @return Returns {@code true} if GUI startup and initialization was successful. */
+  /**
+   * @return Returns {@code true} if GUI startup and initialization was successful.
+   */
   private static boolean createGUI() {
     // uncaught error handler
     MessageBroker messageBroker = MessageBroker.getInstance();

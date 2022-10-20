@@ -806,6 +806,70 @@ public class TestNRTReplication extends LuceneTestCase {
   }
 
   @Nightly
+  public void testPrimaryCloseWhileCopyingNoWait() throws Exception {
+    Path path1 = createTempDir("A");
+    NodeProcess primary = startNode(-1, 0, path1, -1, true);
+
+    Path path2 = createTempDir("B");
+    NodeProcess replica = startNode(primary.tcpPort, 1, path2, -1, true);
+
+    assertWriteLockHeld(path2);
+
+    sendReplicasToPrimary(primary, replica);
+
+    LineFileDocs docs = new LineFileDocs(random());
+    try (Connection c = new Connection(primary.tcpPort)) {
+      c.out.writeByte(SimplePrimaryNode.CMD_INDEXING);
+      Document doc = docs.nextDoc();
+      primary.addOrUpdateDocument(c, doc, false);
+    }
+
+    // Refresh primary, which also pushes to replica:
+    long primaryVersion1 = primary.flush(0);
+    assertTrue(primaryVersion1 > 0);
+
+    // Wait for replica to sync up:
+    waitForVersionAndHits(replica, primaryVersion1, 1);
+
+    primary.setRemoteCloseTimeoutMs(0);
+    primary.leakCopyState();
+    primary.close();
+    replica.close();
+  }
+
+  @Nightly
+  public void testPrimaryCloseWhileCopyingShortWait() throws Exception {
+    Path path1 = createTempDir("A");
+    NodeProcess primary = startNode(-1, 0, path1, -1, true);
+
+    Path path2 = createTempDir("B");
+    NodeProcess replica = startNode(primary.tcpPort, 1, path2, -1, true);
+
+    assertWriteLockHeld(path2);
+
+    sendReplicasToPrimary(primary, replica);
+
+    LineFileDocs docs = new LineFileDocs(random());
+    try (Connection c = new Connection(primary.tcpPort)) {
+      c.out.writeByte(SimplePrimaryNode.CMD_INDEXING);
+      Document doc = docs.nextDoc();
+      primary.addOrUpdateDocument(c, doc, false);
+    }
+
+    // Refresh primary, which also pushes to replica:
+    long primaryVersion1 = primary.flush(0);
+    assertTrue(primaryVersion1 > 0);
+
+    // Wait for replica to sync up:
+    waitForVersionAndHits(replica, primaryVersion1, 1);
+
+    primary.setRemoteCloseTimeoutMs(1000);
+    primary.leakCopyState();
+    primary.close();
+    replica.close();
+  }
+
+  @Nightly
   public void testFullClusterCrash() throws Exception {
 
     Path path1 = createTempDir("1");

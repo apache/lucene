@@ -128,12 +128,16 @@ public abstract class QueryParserBase extends QueryBuilder
     }
   }
 
-  /** @return Returns the default field. */
+  /**
+   * @return Returns the default field.
+   */
   public String getField() {
     return field;
   }
 
-  /** @see #setAutoGeneratePhraseQueries(boolean) */
+  /**
+   * @see #setAutoGeneratePhraseQueries(boolean)
+   */
   public final boolean getAutoGeneratePhraseQueries() {
     return autoGeneratePhraseQueries;
   }
@@ -209,7 +213,9 @@ public abstract class QueryParserBase extends QueryBuilder
     this.allowLeadingWildcard = allowLeadingWildcard;
   }
 
-  /** @see #setAllowLeadingWildcard(boolean) */
+  /**
+   * @see #setAllowLeadingWildcard(boolean)
+   */
   @Override
   public boolean getAllowLeadingWildcard() {
     return allowLeadingWildcard;
@@ -245,7 +251,9 @@ public abstract class QueryParserBase extends QueryBuilder
     multiTermRewriteMethod = method;
   }
 
-  /** @see #setMultiTermRewriteMethod */
+  /**
+   * @see #setMultiTermRewriteMethod
+   */
   @Override
   public MultiTermQuery.RewriteMethod getMultiTermRewriteMethod() {
     return multiTermRewriteMethod;

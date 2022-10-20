@@ -115,14 +115,6 @@ public class TestOperations extends LuceneTestCase {
       }
     }
   }
-  /** tests against the original brics implementation. */
-  public void testIsFinite() {
-    int num = atLeast(200);
-    for (int i = 0; i < num; i++) {
-      Automaton a = AutomatonTestUtil.randomAutomaton(random());
-      assertEquals(AutomatonTestUtil.isFiniteSlow(a), Operations.isFinite(a));
-    }
-  }
 
   public void testIsFiniteEatsStack() {
     char[] chars = new char[50000];
@@ -133,7 +125,7 @@ public class TestOperations extends LuceneTestCase {
     Automaton a =
         Operations.union(Automata.makeString(bigString1), Automata.makeString(bigString2));
     IllegalArgumentException exc =
-        expectThrows(IllegalArgumentException.class, () -> Operations.isFinite(a));
+        expectThrows(IllegalArgumentException.class, () -> AutomatonTestUtil.isFinite(a));
     assertTrue(exc.getMessage().contains("input automaton is too large"));
   }
 

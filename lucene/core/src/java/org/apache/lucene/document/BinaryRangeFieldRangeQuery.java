@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -87,8 +86,8 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    return super.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    return super.rewrite(indexSearcher);
   }
 
   private BinaryRangeDocValues getValues(LeafReader reader, String field) throws IOException {

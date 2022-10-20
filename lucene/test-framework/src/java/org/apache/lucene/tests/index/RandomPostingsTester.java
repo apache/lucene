@@ -1605,7 +1605,7 @@ public class RandomPostingsTester {
       while (true) {
         Automaton a = AutomatonTestUtil.randomAutomaton(random);
         a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-        CompiledAutomaton ca = new CompiledAutomaton(a, null, true, false);
+        CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
         if (ca.type != CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
           // Keep retrying until we get an A that will really "use" the PF's intersect code:
           continue;

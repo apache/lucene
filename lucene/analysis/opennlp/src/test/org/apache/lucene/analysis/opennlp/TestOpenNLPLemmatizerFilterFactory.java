@@ -17,6 +17,9 @@
 
 package org.apache.lucene.analysis.opennlp;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.analysis.miscellaneous.KeywordRepeatFilterFactory;
 import org.apache.lucene.analysis.miscellaneous.RemoveDuplicatesTokenFilterFactory;
@@ -107,6 +110,10 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
   private static final String[] SENTENCES_both_keep_orig_posTags = {
     "IN", "IN", "JJ", "JJ", "NN", "VBN", "VBN", ".", "NNP", "NNP", "VBN", "NN", ",", "NN", "."
   };
+
+  private static final String NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD = "period";
+
+  private static final String[] NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD_terms = {"period", "period"};
 
   private static final String tokenizerModelFile = "en-test-tokenizer.bin";
   private static final String sentenceModelFile = "en-test-sent.bin";
@@ -289,5 +296,75 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
         null,
         null,
         true);
+  }
+
+  public void testNoBreakWithRepeatKeywordFilter() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
+            .addTokenFilter(KeywordRepeatFilterFactory.class)
+            .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
+            .build();
+    assertAnalyzesTo(
+        analyzer,
+        NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD,
+        NO_BREAK_SINGLE_TOKEN_REPEAT_KEYWORD_terms,
+        null,
+        null,
+        null,
+        null,
+        null,
+        true);
+  }
+
+  // checks for bug described in https://github.com/apache/lucene/issues/11771
+  public void testPreventEarlyExit() throws IOException {
+    InputStream earlyExitInput = null;
+    InputStream earlyExitOutput = null;
+    try {
+      ClasspathResourceLoader loader = new ClasspathResourceLoader(getClass());
+      earlyExitInput = loader.openResource("data/early-exit-bug-input.txt");
+      String earlyExitInputText = new String(earlyExitInput.readAllBytes(), StandardCharsets.UTF_8);
+      earlyExitOutput = loader.openResource("data/early-exit-bug-output.txt");
+      String earlyExitOutputText =
+          new String(earlyExitOutput.readAllBytes(), StandardCharsets.UTF_8);
+      String[] earlyExitOutputTexts = earlyExitOutputText.split("[\\s\\r\\n]+");
+
+      CustomAnalyzer analyzer =
+          CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+              .withTokenizer(
+                  "opennlp",
+                  "tokenizerModel",
+                  tokenizerModelFile,
+                  "sentenceModel",
+                  sentenceModelFile)
+              .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
+              .addTokenFilter(KeywordRepeatFilterFactory.class)
+              .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
+              .build();
+      assertAnalyzesTo(
+          analyzer, earlyExitInputText, earlyExitOutputTexts, null, null, null, null, null, true);
+    } finally {
+      if (earlyExitInput != null) {
+        earlyExitInput.close();
+      }
+      if (earlyExitOutput != null) {
+        earlyExitOutput.close();
+      }
+    }
+  }
+
+  public void testEmptyField() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter("opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin")
+            .addTokenFilter(KeywordRepeatFilterFactory.class)
+            .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
+            .build();
+    assertAnalyzesTo(analyzer, "", new String[0], null, null, null, null, null, true);
   }
 }

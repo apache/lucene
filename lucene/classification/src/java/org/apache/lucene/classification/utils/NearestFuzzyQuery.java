@@ -35,6 +35,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.FuzzyTermsEnum;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermQuery;
@@ -214,7 +215,8 @@ public class NearestFuzzyQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    IndexReader reader = indexSearcher.getIndexReader();
     ScoreTermQueue q = new ScoreTermQueue(MAX_NUM_TERMS);
     // load up the list of possible terms
     for (FieldVals f : fieldVals) {
