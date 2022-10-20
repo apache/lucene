@@ -64,9 +64,6 @@ public class TestManyKnnVectors extends LuceneTestCase {
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setCodec(TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
     iwc.setRAMBufferSizeMB(3_000); // Use a 3GB buffer to create a single large segment
-    if (random().nextBoolean()) {
-      iwc.setIndexSort(new Sort(new SortField("sortkey", SortField.Type.INT)));
-    }
 
     String fieldName = "field";
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
@@ -88,7 +85,6 @@ public class TestManyKnnVectors extends LuceneTestCase {
         float[] vector = vectorReader.next();
         Document doc = new Document();
         doc.add(new KnnVectorField(fieldName, vector, similarityFunction));
-        doc.add(new NumericDocValuesField("sortkey", random().nextInt(100)));
         iw.addDocument(doc);
         if (VERBOSE && i % 10_000 == 0) {
           System.out.println("Indexed " + i + " vectors out of " + numVectors);
