@@ -24,8 +24,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -33,13 +31,11 @@ import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 import org.apache.lucene.tests.util.TestUtil;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
