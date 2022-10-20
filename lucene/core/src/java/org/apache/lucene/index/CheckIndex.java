@@ -2854,7 +2854,7 @@ public final class CheckIndex implements Closeable {
 
     @Override
     public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-      //packed values may be null, but only when there are no points
+      // packed values may be null, but only when there are no points
       if (minPackedValue == null && maxPackedValue == null && size == 0) {
         return Relation.CELL_CROSSES_QUERY;
       }
