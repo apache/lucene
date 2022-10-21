@@ -34,6 +34,9 @@ API Changes
 * GITHUB#11813: Remove Operations.isFinite: the recursive implementation could be problematic
   for large automatons (WildcardQuery, PrefixQuery, RegExpQuery, etc).  (taroplus, Robert Muir)
 
+* GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
+  rewriting. (Patrick Zhai)
+
 New Features
 ---------------------
 
@@ -59,7 +62,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#11857, GITHUB#11859: Hunspell: improved suggestion performance
 
 Bug Fixes
 ---------------------
@@ -100,6 +104,8 @@ API Changes
 
 * GITHUB#11761: TieredMergePolicy now allowed a maximum allowable deletes percentage of down to 5%, and the default
   maximum allowable deletes percentage is changed from 33% to 20%. (Marc D'Mello)
+  
+* GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
 
 New Features
 ---------------------
@@ -153,6 +159,16 @@ Other
 * GITHUB#11811: Upgrade google java format to 1.15.0 (Dawid Weiss)
 
 * GITHUB#11834: Upgrade forbiddenapis to version 3.4.  (Uwe Schindler)
+
+* LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
+
+======================== Lucene 9.4.1 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#11858: Fix kNN vectors format validation on large segments. This
+ addresses a regression in 9.4.0 where validation could fail, preventing
+ further writes or searches on the index. (Julie Tibshirani)
 
 ======================== Lucene 9.4.0 =======================
 

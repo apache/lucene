@@ -202,7 +202,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
-      Query dasq = query.rewrite(reader);
+      Query dasq = query.rewrite(newSearcher(reader));
       IndexSearcher leafSearcher = newSearcher(reader.leaves().get(0).reader());
       expectThrows(
           IllegalStateException.class,
@@ -222,7 +222,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
-        Query dasq = query.rewrite(reader);
+        Query dasq = query.rewrite(searcher);
         Scorer scorer =
             dasq.createWeight(searcher, ScoreMode.COMPLETE, 1).scorer(reader.leaves().get(0));
         // before advancing the iterator
@@ -249,7 +249,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         IndexReader reader = DirectoryReader.open(d)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
-      Query rewritten = query.rewrite(reader);
+      Query rewritten = query.rewrite(searcher);
       Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
       Scorer scorer = weight.scorer(reader.leaves().get(0));
 
@@ -291,7 +291,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         KnnVectorQuery query =
             new KnnVectorQuery("field", VectorUtil.l2normalize(new float[] {2, 3}), 3);
-        Query rewritten = query.rewrite(reader);
+        Query rewritten = query.rewrite(searcher);
         Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
 
@@ -345,7 +345,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         assertEquals(1, reader.leaves().size());
         IndexSearcher searcher = new IndexSearcher(reader);
         KnnVectorQuery query = new KnnVectorQuery("field", new float[] {2, 3}, 3);
-        Query rewritten = query.rewrite(reader);
+        Query rewritten = query.rewrite(searcher);
         Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
 
@@ -400,7 +400,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         assertEquals(1, reader.leaves().size());
         IndexSearcher searcher = new IndexSearcher(reader);
         KnnVectorQuery query = new KnnVectorQuery("field", new float[] {1, 0}, 2);
-        Query rewritten = query.rewrite(reader);
+        Query rewritten = query.rewrite(searcher);
         Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
 

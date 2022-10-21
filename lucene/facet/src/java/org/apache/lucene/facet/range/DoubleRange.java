@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.facet.MultiDoubleValues;
 import org.apache.lucene.facet.MultiDoubleValuesSource;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -154,14 +153,14 @@ public final class DoubleRange extends Range {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
       if (fastMatchQuery != null) {
-        final Query fastMatchRewritten = fastMatchQuery.rewrite(reader);
+        final Query fastMatchRewritten = fastMatchQuery.rewrite(indexSearcher);
         if (fastMatchRewritten != fastMatchQuery) {
           return new ValueSourceQuery(range, fastMatchRewritten, valueSource);
         }
       }
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
 
     @Override
@@ -252,14 +251,14 @@ public final class DoubleRange extends Range {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
       if (fastMatchQuery != null) {
-        final Query fastMatchRewritten = fastMatchQuery.rewrite(reader);
+        final Query fastMatchRewritten = fastMatchQuery.rewrite(indexSearcher);
         if (fastMatchRewritten != fastMatchQuery) {
           return new MultiValueSourceQuery(range, fastMatchRewritten, valueSource);
         }
       }
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
 
     @Override

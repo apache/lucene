@@ -255,7 +255,8 @@ public class TestDrillDownQuery extends FacetTestCase {
   public void testNoDrillDown() throws Exception {
     Query base = new MatchAllDocsQuery();
     DrillDownQuery q = new DrillDownQuery(config, base);
-    Query rewrite = q.rewrite(reader).rewrite(reader);
+    IndexSearcher searcher = newSearcher(reader);
+    Query rewrite = q.rewrite(searcher).rewrite(searcher);
     assertEquals(base, rewrite);
   }
 

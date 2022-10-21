@@ -25,7 +25,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -361,7 +360,7 @@ public class KnnGraphTester {
     TopDocs[] results = new TopDocs[numIters];
     long elapsed, totalCpuTime, totalVisited = 0;
     try (FileChannel input = FileChannel.open(queryPath)) {
-      VectorReader targetReader = VectorReader.create(input, dim, vectorEncoding, numIters);
+      VectorReader targetReader = VectorReader.create(input, dim, vectorEncoding);
       if (quiet == false) {
         System.out.println("running " + numIters + " targets; topK=" + topK + ", fanout=" + fanout);
       }
@@ -469,62 +468,60 @@ public class KnnGraphTester {
   private abstract static class VectorReader {
     final float[] target;
     final ByteBuffer bytes;
+    final FileChannel input;
 
-    static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding, int n)
-        throws IOException {
-      int bufferSize = n * dim * vectorEncoding.byteSize;
+    static VectorReader create(FileChannel input, int dim, VectorEncoding vectorEncoding) {
+      int bufferSize = dim * vectorEncoding.byteSize;
       return switch (vectorEncoding) {
         case BYTE -> new VectorReaderByte(input, dim, bufferSize);
         case FLOAT32 -> new VectorReaderFloat32(input, dim, bufferSize);
       };
     }
 
-    VectorReader(FileChannel input, int dim, int bufferSize) throws IOException {
-      bytes =
-          input.map(FileChannel.MapMode.READ_ONLY, 0, bufferSize).order(ByteOrder.LITTLE_ENDIAN);
+    VectorReader(FileChannel input, int dim, int bufferSize) {
+      this.bytes = ByteBuffer.wrap(new byte[bufferSize]).order(ByteOrder.LITTLE_ENDIAN);
+      this.input = input;
       target = new float[dim];
     }
 
-    void reset() {
+    void reset() throws IOException {
+      input.position(0);
+    }
+
+    protected final void readNext() throws IOException {
+      this.input.read(bytes);
       bytes.position(0);
     }
 
-    abstract float[] next();
+    abstract float[] next() throws IOException;
   }
 
   private static class VectorReaderFloat32 extends VectorReader {
-    private final FloatBuffer floats;
-
-    VectorReaderFloat32(FileChannel input, int dim, int bufferSize) throws IOException {
+    VectorReaderFloat32(FileChannel input, int dim, int bufferSize) {
       super(input, dim, bufferSize);
-      floats = bytes.asFloatBuffer();
     }
 
     @Override
-    void reset() {
-      super.reset();
-      floats.position(0);
-    }
-
-    @Override
-    float[] next() {
-      floats.get(target);
+    float[] next() throws IOException {
+      readNext();
+      bytes.asFloatBuffer().get(target);
       return target;
     }
   }
 
   private static class VectorReaderByte extends VectorReader {
-    private byte[] scratch;
-    private BytesRef bytesRef;
+    private final byte[] scratch;
+    private final BytesRef bytesRef;
 
-    VectorReaderByte(FileChannel input, int dim, int bufferSize) throws IOException {
+    VectorReaderByte(FileChannel input, int dim, int bufferSize) {
       super(input, dim, bufferSize);
       scratch = new byte[dim];
       bytesRef = new BytesRef(scratch);
     }
 
     @Override
-    float[] next() {
+    float[] next() throws IOException {
+      readNext();
       bytes.get(scratch);
       for (int i = 0; i < scratch.length; i++) {
         target[i] = scratch[i];
@@ -532,7 +529,8 @@ public class KnnGraphTester {
       return target;
     }
 
-    BytesRef nextBytes() {
+    BytesRef nextBytes() throws IOException {
+      readNext();
       bytes.get(scratch);
       return bytesRef;
     }
@@ -660,8 +658,8 @@ public class KnnGraphTester {
     }
     try (FileChannel in = FileChannel.open(docPath);
         FileChannel qIn = FileChannel.open(queryPath)) {
-      VectorReader docReader = VectorReader.create(in, dim, encoding, numDocs);
-      VectorReader queryReader = VectorReader.create(qIn, dim, encoding, numIters);
+      VectorReader docReader = VectorReader.create(in, dim, encoding);
+      VectorReader queryReader = VectorReader.create(qIn, dim, encoding);
       for (int i = 0; i < numIters; i++) {
         float[] query = queryReader.next();
         NeighborQueue queue = new NeighborQueue(topK, false);
@@ -711,7 +709,7 @@ public class KnnGraphTester {
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter iw = new IndexWriter(dir, iwc)) {
       try (FileChannel in = FileChannel.open(docsPath)) {
-        VectorReader vectorReader = VectorReader.create(in, dim, vectorEncoding, numDocs);
+        VectorReader vectorReader = VectorReader.create(in, dim, vectorEncoding);
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
           switch (vectorEncoding) {

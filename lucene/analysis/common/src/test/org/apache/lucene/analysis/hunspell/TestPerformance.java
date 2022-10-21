@@ -86,7 +86,7 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void de_suggest() throws Exception {
-    checkSuggestionPerformance("de", 60);
+    checkSuggestionPerformance("de", 100);
   }
 
   @Test
@@ -119,10 +119,11 @@ public class TestPerformance extends LuceneTestCase {
         Executors.newFixedThreadPool(cpus, new NamedThreadFactory("hunspellStemming-"));
 
     try {
-      measure("Stemming " + code, blackHole -> stemWords(words, stemmer, blackHole));
+      measure("Stemming " + code, words.size(), blackHole -> stemWords(words, stemmer, blackHole));
 
       measure(
           "Multi-threaded stemming " + code,
+          words.size(),
           blackHole -> {
             List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < cpus; i++) {
@@ -140,6 +141,7 @@ public class TestPerformance extends LuceneTestCase {
 
       measure(
           "Spellchecking " + code,
+          words.size(),
           blackHole -> {
             for (String word : words) {
               blackHole.accept(speller.spell(word));
@@ -169,11 +171,13 @@ public class TestPerformance extends LuceneTestCase {
             .collect(Collectors.toList());
     System.out.println("Checking " + words.size() + " misspelled words");
 
+    Hunspell fullSpeller = new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
     measure(
         "Suggestions for " + code,
+        words.size(),
         blackHole -> {
           for (String word : words) {
-            blackHole.accept(speller.suggest(word));
+            blackHole.accept(fullSpeller.suggest(word));
           }
         });
     System.out.println();
@@ -184,7 +188,6 @@ public class TestPerformance extends LuceneTestCase {
       return false;
     }
 
-    long start = System.nanoTime();
     try {
       speller.suggest(word);
     } catch (
@@ -192,10 +195,6 @@ public class TestPerformance extends LuceneTestCase {
         SuggestionTimeoutException e) {
       System.out.println("Timeout happened for " + word + ", skipping");
       return false;
-    }
-    long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-    if (elapsed > Hunspell.SUGGEST_TIME_LIMIT * 4 / 5) {
-      System.out.println(elapsed + "ms for " + word + ", too close to time limit, skipping");
     }
     return true;
   }
@@ -242,7 +241,7 @@ public class TestPerformance extends LuceneTestCase {
     return words;
   }
 
-  private void measure(String what, Iteration iteration) {
+  private void measure(String what, int wordCount, Iteration iteration) {
     Consumer<Object> consumer =
         o -> {
           if (o == null) {
@@ -261,12 +260,12 @@ public class TestPerformance extends LuceneTestCase {
       iteration.run(consumer);
       times.add((System.nanoTime() - start) / 1_000_000);
     }
+    double average = times.stream().mapToLong(Long::longValue).average().orElseThrow();
     System.out.println(
         what
-            + ": average "
-            + times.stream().mapToLong(Long::longValue).average().orElseThrow()
-            + ", all times = "
-            + times);
+            + (": average " + average)
+            + (" (" + (average / wordCount) + " per word)")
+            + (", all times = " + times));
   }
 
   private interface Iteration {

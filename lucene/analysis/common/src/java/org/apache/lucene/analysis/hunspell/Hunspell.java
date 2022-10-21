@@ -29,8 +29,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -167,7 +170,7 @@ public class Hunspell {
     return false;
   }
 
-  private Root<CharsRef> findStem(
+  Root<CharsRef> findStem(
       char[] wordChars, int offset, int length, WordCase originalCase, WordContext context) {
     checkCanceled.run();
     boolean checkCase = context != COMPOUND_MIDDLE && context != COMPOUND_END;
@@ -614,10 +617,29 @@ public class Hunspell {
       Runnable checkCanceled) {
     Hunspell suggestionSpeller =
         new Hunspell(dictionary, policy, checkCanceled) {
+          // Cache for expensive "findStem" requests issued when trying to split a compound word.
+          // The suggestion algorithm issues many of them, often with the same text.
+          // The cache can be large, but will be GC-ed after the "suggest" call.
+          final Map<String, Optional<Root<CharsRef>>> compoundCache = new HashMap<>();
+
           @Override
           boolean acceptsStem(int formID) {
             return !dictionary.hasFlag(formID, dictionary.noSuggest)
                 && !dictionary.hasFlag(formID, dictionary.subStandard);
+          }
+
+          @Override
+          Root<CharsRef> findStem(
+              char[] chars, int offset, int length, WordCase originalCase, WordContext context) {
+            if (context == COMPOUND_BEGIN && originalCase == null) {
+              return compoundCache
+                  .computeIfAbsent(
+                      new String(chars, offset, length),
+                      __ ->
+                          Optional.ofNullable(super.findStem(chars, offset, length, null, context)))
+                  .orElse(null);
+            }
+            return super.findStem(chars, offset, length, originalCase, context);
           }
         };
     boolean hasGoodSuggestions =
