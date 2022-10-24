@@ -131,7 +131,7 @@ final class XYPointInGeometryQuery extends Query {
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
         FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
-        if (fieldInfo == null) {
+        if (fieldInfo == null || fieldInfo.getPointDimensionCount() == 0) {
           // No docs in this segment indexed this field at all
           return null;
         }

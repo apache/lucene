@@ -257,9 +257,8 @@ public abstract class LeafReader extends IndexReader {
 
   /**
    * Returns the {@link PointValues} used for numeric or spatial searches for the given field, or
-   * null if the field does not exist or has no points. The return value is aligned with the
-   * corresponding {@link FieldInfo}: if there are points for a certain field, its retrieved point
-   * values must not be null.
+   * null if the field does not exist or has no points. Whenever {@link FieldInfo} reports that
+   * points are available for a certain field, its retrieved point values must not be null.
    */
   public abstract PointValues getPointValues(String field) throws IOException;
 
