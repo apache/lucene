@@ -159,6 +159,10 @@ abstract class SpatialQuery extends Query {
       return null;
     }
     final PointValues values = reader.getPointValues(field);
+    if (values.size() == 0) {
+      // ghost fields return non-null PointValues impl with null minPackedValue and maxPackedValue
+      return null;
+    }
     final Relation rel =
         spatialVisitor
             .getInnerFunction(queryRelation)

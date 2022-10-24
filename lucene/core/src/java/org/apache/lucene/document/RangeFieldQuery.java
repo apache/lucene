@@ -503,6 +503,10 @@ public abstract class RangeFieldQuery extends Query {
         checkFieldInfo(fieldInfo);
         boolean allDocsMatch = false;
         PointValues values = reader.getPointValues(field);
+        if (values.size() == 0) {
+          // ghost fields return non-null PointValues impl with null minPackedValue and maxPackedValue
+          return null;
+        }
         if (values.getDocCount() == reader.maxDoc()
             && queryType.compare(
                     ranges,

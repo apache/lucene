@@ -273,6 +273,10 @@ class NearestNeighbor {
     // Add root cell for each reader into the queue:
     for (int i = 0; i < readers.size(); i++) {
       PointValues reader = readers.get(i);
+      if (reader.size() == 0) {
+        //minPackedValue and maxPackedValue are null in this case
+        continue;
+      }
       byte[] minPackedValue = reader.getMinPackedValue();
       byte[] maxPackedValue = reader.getMaxPackedValue();
       PointTree indexTree = reader.getPointTree();

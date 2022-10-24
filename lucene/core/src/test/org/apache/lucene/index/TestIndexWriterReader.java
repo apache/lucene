@@ -1221,7 +1221,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
             r -> {
               try {
                 PointValues points = r.getPointValues(FIELD_NAME);
-                if (points != null) {
+                if (points != null && points.size() > 0) {
                   byte[] sortValue =
                       ASC_SORT ? points.getMinPackedValue() : points.getMaxPackedValue();
                   return LongPoint.decodeDimension(sortValue, 0);

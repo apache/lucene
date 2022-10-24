@@ -320,7 +320,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         && indexSort.getSort()[0].getField().equals(field)
         && indexSort.getSort()[0].getReverse() == false) {
       PointValues points = context.reader().getPointValues(field);
-      if (points == null) {
+      if (points == null || points.size() == 0) {
         return null;
       }
 

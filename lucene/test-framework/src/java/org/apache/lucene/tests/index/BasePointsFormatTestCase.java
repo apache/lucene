@@ -837,7 +837,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
 
       for (LeafReaderContext ctx : r.leaves()) {
         PointValues dimValues = ctx.reader().getPointValues("field");
-        if (dimValues == null) {
+        if (dimValues == null || dimValues.size() == 0) {
           continue;
         }
         assertSize(dimValues.getPointTree());

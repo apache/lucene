@@ -202,6 +202,10 @@ public class FloatPointNearestNeighbor {
     // Add root cell for each reader into the queue:
     for (int i = 0; i < readers.size(); ++i) {
       PointValues reader = readers.get(i);
+      if (reader.size() == 0) {
+        // ghost fields return non-null PointValues impl with null minPackedValue and maxPackedValue
+        continue;
+      }
       byte[] minPackedValue = reader.getMinPackedValue();
       byte[] maxPackedValue = reader.getMaxPackedValue();
       PointTree indexTree = reader.getPointTree();

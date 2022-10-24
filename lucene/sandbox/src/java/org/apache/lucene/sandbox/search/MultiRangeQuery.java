@@ -290,7 +290,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
         LeafReader reader = context.reader();
 
         PointValues values = reader.getPointValues(field);
-        if (values == null) {
+        if (values == null || values.size() == 0) {
           // No docs in this segment/field indexed any points
           return null;
         }
