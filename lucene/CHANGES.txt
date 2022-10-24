@@ -73,6 +73,9 @@ Bug Fixes
 
 Other
 ---------------------
+
+* LUCENE-10376: Roll up the loop in VInt/VLong in DataInput. (Guo Feng)
+
 * LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
   (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
 
@@ -795,8 +798,6 @@ Bug Fixes
 
 Other
 ---------------------
-
-* LUCENE-10376: Roll up the loop in VInt/VLong in DataInput. (Guo Feng)
 
 * LUCENE-10273: Deprecate SpanishMinimalStemFilter in favor of SpanishPluralStemFilter. (Robert Muir)
 
