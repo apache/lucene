@@ -798,6 +798,8 @@ Bug Fixes
 Other
 ---------------------
 
+* LUCENE-10376: Roll up the loop in VInt/VLong in DataInput. (Guo Feng)
+
 * LUCENE-10273: Deprecate SpanishMinimalStemFilter in favor of SpanishPluralStemFilter. (Robert Muir)
 
 * LUCENE-10284: Upgrade morfologik-stemming to 2.1.8. (Dawid Weiss)
