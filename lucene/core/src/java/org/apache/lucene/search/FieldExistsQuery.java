@@ -233,7 +233,8 @@ public class FieldExistsQuery extends Query {
             if (fieldInfo.getPointDimensionCount() > 0) {
               return reader.getPointValues(field).getDocCount();
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
-              return reader.terms(field).getDocCount();
+              Terms terms = reader.terms(field);
+              return terms == null ? 0 : terms.getDocCount();
             }
           }
 
