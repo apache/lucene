@@ -155,24 +155,6 @@ public class TestIndexInput extends LuceneTestCase {
         0x00,
         'n',
         'e',
-
-        // tests for Exceptions on invalid values
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0x17,
-        (byte) 0x01, // guard value
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0xFF,
-        (byte) 0x01, // guard value
       };
 
   static final int COUNT = RANDOM_MULTIPLIER * 65536;
@@ -234,24 +216,6 @@ public class TestIndexInput extends LuceneTestCase {
 
     assertEquals("\u0000", is.readString());
     assertEquals("Lu\u0000ce\u0000ne", is.readString());
-
-    Exception expected =
-        expectThrows(
-            expectedEx,
-            () -> {
-              is.readVInt();
-            });
-    assertTrue(expected.getMessage().startsWith("Invalid vInt"));
-    assertEquals(1, is.readVInt()); // guard value
-
-    expected =
-        expectThrows(
-            expectedEx,
-            () -> {
-              is.readVLong();
-            });
-    assertTrue(expected.getMessage().startsWith("Invalid vLong"));
-    assertEquals(1L, is.readVLong()); // guard value
   }
 
   private void checkRandomReads(DataInput is) throws IOException {
