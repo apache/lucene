@@ -274,7 +274,7 @@ class NearestNeighbor {
     for (int i = 0; i < readers.size(); i++) {
       PointValues reader = readers.get(i);
       if (reader.size() == 0) {
-        //minPackedValue and maxPackedValue are null in this case
+        // minPackedValue and maxPackedValue are null in this case
         continue;
       }
       byte[] minPackedValue = reader.getMinPackedValue();
