@@ -17,13 +17,13 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.lang.System.Logger.Level;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.concurrent.Future;
-import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
 /**
@@ -326,12 +326,14 @@ public class MMapDirectory extends FSDirectory {
     } catch (
         @SuppressWarnings("unused")
         UnsupportedClassVersionError e) {
-      var log = Logger.getLogger(lookup.lookupClass().getName());
+      final var logger = System.getLogger(lookup.lookupClass().getName());
       if (Runtime.version().feature() == 19) {
-        log.warning(
+        logger.log(
+            Level.WARNING,
             "You are running with Java 19. To make full use of MMapDirectory, please pass '--enable-preview' to the Java command line.");
       } else {
-        log.warning(
+        logger.log(
+            Level.WARNING,
             "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
       }
       return new MappedByteBufferIndexInputProvider();

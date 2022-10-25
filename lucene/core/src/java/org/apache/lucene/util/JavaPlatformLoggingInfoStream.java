@@ -16,24 +16,20 @@
  */
 package org.apache.lucene.util;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
- * InfoStream implementation that logs every message using Java Utils Logging (JUL) with the
- * supplied log level.
+ * InfoStream implementation that logs every message using Java Platform Logging (<a
+ * href="https://openjdk.org/jeps/264">JEP 264</a>) with the supplied log level.
  *
- * @deprecated use {@link JavaPlatformLoggingInfoStream} instead.
+ * @lucene.internal
  */
-// We export class 'java.util.logging.Level', but we won't want a transitive dependency in
-// module descriptor:
-@SuppressWarnings("exports")
-@Deprecated
-public final class JavaLoggingInfoStream extends InfoStream {
+public final class JavaPlatformLoggingInfoStream extends InfoStream {
   private final Map<String, Logger> cache = new ConcurrentHashMap<>();
 
   private final Function<String, String> componentToLoggerName;
@@ -45,7 +41,7 @@ public final class JavaLoggingInfoStream extends InfoStream {
    *
    * @param level Requested log level to be used while logging
    */
-  public JavaLoggingInfoStream(Level level) {
+  public JavaPlatformLoggingInfoStream(Level level) {
     this("org.apache.lucene.", level);
   }
 
@@ -57,7 +53,7 @@ public final class JavaLoggingInfoStream extends InfoStream {
    *     final dot
    * @param level Requested log level to be used while logging
    */
-  public JavaLoggingInfoStream(String namePrefix, Level level) {
+  public JavaPlatformLoggingInfoStream(String namePrefix, Level level) {
     this(Objects.requireNonNull(namePrefix, "namePrefix")::concat, level);
   }
 
@@ -68,7 +64,8 @@ public final class JavaLoggingInfoStream extends InfoStream {
    * @param componentToLoggerName A function to convert a component name to a valid JUL logger name
    * @param level Requested log level to be used while logging
    */
-  public JavaLoggingInfoStream(Function<String, String> componentToLoggerName, Level level) {
+  public JavaPlatformLoggingInfoStream(
+      Function<String, String> componentToLoggerName, Level level) {
     this.componentToLoggerName =
         Objects.requireNonNull(componentToLoggerName, "componentToLoggerName");
     this.level = Objects.requireNonNull(level, "level");
@@ -76,9 +73,7 @@ public final class JavaLoggingInfoStream extends InfoStream {
 
   @Override
   public void message(String component, String message) {
-    // We pass null as class/method name, because it is irrelevant and useless anyways.
-    // This prevents stack trace inspection.
-    getLogger(component).logp(level, null, null, message);
+    getLogger(component).log(level, message);
   }
 
   @Override
@@ -94,6 +89,6 @@ public final class JavaLoggingInfoStream extends InfoStream {
   private Logger getLogger(String component) {
     return cache.computeIfAbsent(
         Objects.requireNonNull(component, "component"),
-        c -> Logger.getLogger(componentToLoggerName.apply(c)));
+        c -> System.getLogger(componentToLoggerName.apply(c)));
   }
 }

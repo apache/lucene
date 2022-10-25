@@ -21,6 +21,7 @@ import static org.locationtech.spatial4j.shape.SpatialRelation.*;
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
+import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -81,7 +82,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
       ((PrefixTreeStrategy) strategy).setPointsOnly(true);
     }
 
-    log.info("Strategy: " + strategy.toString()); // nowarn
+    logger.log(Level.INFO, "Strategy: " + strategy.toString()); // nowarn
   }
 
   private void setupCtx2D(SpatialContext ctx) {

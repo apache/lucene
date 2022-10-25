@@ -20,6 +20,7 @@ import static java.lang.invoke.MethodHandles.lookup;
 import static java.lang.invoke.MethodType.methodType;
 
 import java.io.IOException;
+import java.lang.System.Logger.Level;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Field;
@@ -33,7 +34,6 @@ import java.nio.file.StandardOpenOption;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Objects;
-import java.util.logging.Logger;
 import org.apache.lucene.store.ByteBufferGuard.BufferCleaner;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -55,7 +55,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
       cleaner = null;
       unmapSupported = false;
       unmapNotSupportedReason = hack.toString();
-      Logger.getLogger(getClass().getName()).warning(unmapNotSupportedReason);
+      System.getLogger(getClass().getName()).log(Level.WARNING, unmapNotSupportedReason);
     }
   }
 

@@ -26,9 +26,25 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestJavaLoggingInfoStream extends LuceneTestCase {
+public class TestLoggingInfoStream extends LuceneTestCase {
 
-  public void test() throws Exception {
+  public void testPlatformLogging() throws Exception {
+    assumeTrue(
+        "invalid logging configuration for testing", Logger.getGlobal().isLoggable(Level.WARNING));
+    final var component = "TESTCOMPONENT" + random().nextInt();
+    final var loggerName = "org.apache.lucene." + component;
+    try (var stream = new JavaPlatformLoggingInfoStream(System.Logger.Level.WARNING)) {
+      assertTrue(stream.isEnabled(component));
+      stream.message(component, "Test message to be logged.");
+    }
+    assertTrue(
+        "logger with correct name not found",
+        streamOfEnumeration(LogManager.getLogManager().getLoggerNames())
+            .anyMatch(loggerName::equals));
+  }
+
+  @Deprecated
+  public void testJavaUtilLogging() throws Exception {
     assumeTrue(
         "invalid logging configuration for testing", Logger.getGlobal().isLoggable(Level.WARNING));
     final var component = "TESTCOMPONENT" + random().nextInt();
