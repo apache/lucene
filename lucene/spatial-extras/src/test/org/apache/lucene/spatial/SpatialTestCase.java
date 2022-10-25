@@ -35,7 +35,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.distance.DistanceUtils;
 import org.locationtech.spatial4j.shape.Point;
@@ -45,7 +44,7 @@ import org.locationtech.spatial4j.shape.Rectangle;
 @SuppressSysoutChecks(bugUrl = "These tests use JUL extensively.")
 public abstract class SpatialTestCase extends LuceneTestCase {
 
-  protected Logger logger = System.getLogger(RamUsageEstimator.class.getName());
+  protected Logger logger = System.getLogger(getClass().getName());
 
   private DirectoryReader indexReader;
   protected RandomIndexWriter indexWriter;

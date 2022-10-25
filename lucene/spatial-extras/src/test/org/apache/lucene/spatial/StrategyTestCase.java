@@ -41,7 +41,6 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialArgsParser;
 import org.apache.lucene.spatial.query.SpatialOperation;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Shape;
 
@@ -59,7 +58,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
   public static final String QTEST_Cities_Intersects_BBox = "cities-Intersects-BBox.txt";
   public static final String QTEST_Simple_Queries_BBox = "simple-Queries-BBox.txt";
 
-  protected Logger logger = System.getLogger(RamUsageEstimator.class.getName());
+  protected Logger logger = System.getLogger(getClass().getName());
 
   protected final SpatialArgsParser argsParser = new SpatialArgsParser();
 
