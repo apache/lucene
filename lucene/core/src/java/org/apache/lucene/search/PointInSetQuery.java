@@ -275,13 +275,15 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
       while (nextQueryPoint != null) {
-        int cmpMin = comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, minPackedValue, 0);
+        int cmpMin =
+            comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, minPackedValue, 0);
         if (cmpMin < 0) {
           // query point is before the start of this cell
           nextQueryPoint = iterator.next();
           continue;
         }
-        int cmpMax = comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, maxPackedValue, 0);
+        int cmpMax =
+            comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, maxPackedValue, 0);
         if (cmpMax > 0) {
           // query point is after the end of this cell
           return Relation.CELL_OUTSIDE_QUERY;
