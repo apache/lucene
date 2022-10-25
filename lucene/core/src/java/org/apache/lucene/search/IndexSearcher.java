@@ -497,6 +497,13 @@ public class IndexSearcher {
   }
 
   /**
+   * Get a {@link QueryTimeout} for all searches that run through this {@link IndexSearcher} if set.
+   */
+  public QueryTimeout getTimeout() {
+    return this.queryTimeout;
+  }
+
+  /**
    * Finds the top <code>n</code> hits for <code>query</code>.
    *
    * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
@@ -519,9 +526,14 @@ public class IndexSearcher {
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
   }
 
-  /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
+  /** Return true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
   public boolean timedOut() {
     return partialResult;
+  }
+
+  /** Indicate that at least one search hit the {@link #setTimeout(QueryTimeout) timeout}. */
+  protected void setTimedOut() {
+    partialResult = true;
   }
 
   /**
@@ -750,7 +762,7 @@ public class IndexSearcher {
         } catch (
             @SuppressWarnings("unused")
             TimeLimitingBulkScorer.TimeExceededException e) {
-          partialResult = true;
+          setTimedOut();
         }
       }
     }

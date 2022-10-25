@@ -28,14 +28,14 @@ import org.apache.lucene.util.Bits;
  *
  * @see org.apache.lucene.index.ExitableDirectoryReader
  */
-final class TimeLimitingBulkScorer extends BulkScorer {
+public final class TimeLimitingBulkScorer extends BulkScorer {
   // We score chunks of documents at a time so as to avoid the cost of checking the timeout for
   // every document we score.
   static final int INTERVAL = 100;
 
   /** Thrown when elapsed search time exceeds allowed search time. */
   @SuppressWarnings("serial")
-  static class TimeExceededException extends RuntimeException {
+  public static class TimeExceededException extends RuntimeException {
 
     private TimeExceededException() {
       super("TimeLimit Exceeded");
