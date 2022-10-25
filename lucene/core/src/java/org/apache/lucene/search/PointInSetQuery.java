@@ -214,7 +214,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     private final DocIdSetBuilder result;
     private TermIterator iterator;
     private BytesRef nextQueryPoint;
-    private final BytesRef scratch = new BytesRef();
+    private final ByteArrayComparator comparator;
     private final PrefixCodedTerms sortedPackedPoints;
     private DocIdSetBuilder.BulkAdder adder;
 
@@ -222,7 +222,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
         throws IOException {
       this.result = result;
       this.sortedPackedPoints = sortedPackedPoints;
-      scratch.length = bytesPerDim;
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       this.iterator = this.sortedPackedPoints.iterator();
       nextQueryPoint = iterator.next();
     }
@@ -257,9 +257,8 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
 
     private boolean matches(byte[] packedValue) {
-      scratch.bytes = packedValue;
       while (nextQueryPoint != null) {
-        int cmp = nextQueryPoint.compareTo(scratch);
+        int cmp = comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, packedValue, 0);
         if (cmp == 0) {
           return true;
         } else if (cmp < 0) {
@@ -276,15 +275,13 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
       while (nextQueryPoint != null) {
-        scratch.bytes = minPackedValue;
-        int cmpMin = nextQueryPoint.compareTo(scratch);
+        int cmpMin = comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, minPackedValue, 0);
         if (cmpMin < 0) {
           // query point is before the start of this cell
           nextQueryPoint = iterator.next();
           continue;
         }
-        scratch.bytes = maxPackedValue;
-        int cmpMax = nextQueryPoint.compareTo(scratch);
+        int cmpMax = comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, maxPackedValue, 0);
         if (cmpMax > 0) {
           // query point is after the end of this cell
           return Relation.CELL_OUTSIDE_QUERY;
