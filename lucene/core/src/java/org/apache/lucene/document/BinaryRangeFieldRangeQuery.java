@@ -118,7 +118,11 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
               @Override
               public boolean matches() {
                 return queryType.matches(
-                    queryPackedValue, values.getPackedValue(), numDims, numBytesPerDimension, comparator);
+                    queryPackedValue,
+                    values.getPackedValue(),
+                    numDims,
+                    numBytesPerDimension,
+                    comparator);
               }
 
               @Override
