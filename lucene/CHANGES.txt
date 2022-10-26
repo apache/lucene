@@ -150,6 +150,9 @@ Optimizations
   given field to match a term (rather than all docs in a segment). This is consistent with
   MultiTermQueryConstantScoreWrapper. (Greg Miller)
 
+* GITHUB#11876: Use ByteArrayComparator to speed up PointInSetQuery in single dimension case.
+  (Guo Feng)
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
