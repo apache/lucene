@@ -33,11 +33,14 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 
 abstract class BinaryRangeFieldRangeQuery extends Query {
   private final String field;
   private byte[] queryPackedValue;
   private final int numBytesPerDimension;
+  private final ByteArrayComparator comparator;
   private final int numDims;
   private final RangeFieldQuery.QueryType queryType;
 
@@ -50,6 +53,7 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
     this.field = field;
     this.queryPackedValue = queryPackedValue;
     this.numBytesPerDimension = numBytesPerDimension;
+    this.comparator = ArrayUtil.getUnsignedComparator(numBytesPerDimension);
     this.numDims = numDims;
 
     if (!(queryType == RangeFieldQuery.QueryType.INTERSECTS)) {
@@ -114,7 +118,7 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
               @Override
               public boolean matches() {
                 return queryType.matches(
-                    queryPackedValue, values.getPackedValue(), numDims, numBytesPerDimension);
+                    queryPackedValue, values.getPackedValue(), numDims, numBytesPerDimension, comparator);
               }
 
               @Override
