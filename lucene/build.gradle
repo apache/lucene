@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-apply plugin: 'java'
-
 description = 'Parent project for Apache Lucene Core'
 
 subprojects {
