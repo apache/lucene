@@ -153,6 +153,9 @@ Optimizations
 * GITHUB#11876: Use ByteArrayComparator to speed up PointInSetQuery in single dimension case.
   (Guo Feng)
 
+* GITHUB#11880: Use ByteArrayComparator to speed up BinaryRangeFieldRangeQuery, RangeFieldQuery
+  LatLonPointDistanceFeatureQuery and CheckIndex. (Guo Feng)
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
