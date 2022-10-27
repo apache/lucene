@@ -45,7 +45,7 @@ if (withCoverage) {
 
       // Synthetic task to enable test coverage (and reports).
       task coverage() {
-        dependsOn jacocoTestReport
+        dependsOn test, jacocoTestReport
       }
 
       tasks.withType(Test) { Task testTask ->
