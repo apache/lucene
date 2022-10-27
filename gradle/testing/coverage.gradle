@@ -30,7 +30,7 @@ if (withCoverage) {
 
       // Synthetic task to enable test coverage (and reports).
       task coverage() {
-        dependsOn jacocoTestReport
+        dependsOn jacocoAggregatedReport
       }
 
       tasks.withType(Test) { Task testTask ->
@@ -45,9 +45,11 @@ if (withCoverage) {
         jacocoTestReport.dependsOn testTask
       }
 
-      configure(jacocoTestReport) {
-        doLast {
-          logger.lifecycle("Code coverage report at: ${reports.html.destination}.\n")
+      if (project.subprojects.size() > 0) {
+        configure(jacocoAggregatedReport) {
+          doLast {
+            logger.lifecycle("Aggregated code coverage report at: ${reports.html.destination}.\n")
+          }
         }
       }
     }
