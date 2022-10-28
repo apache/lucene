@@ -51,6 +51,9 @@ import org.apache.lucene.util.NamedThreadFactory;
  * deletes requested by the deletes selector. 3. Reorder the segments to match the order of the
  * selectors and check the validity of the rearranged index.
  *
+ * <p>NB: You can't produce segments that only contain deletes. If you select all documents in a
+ * segment for deletion, the entire segment will be discarded.
+ *
  * <p>Example use case: You are testing search performance after a change to indexing. You can index
  * the same content using the old and new indexers and then rearrange one of them to the shape of
  * the other. Using rearrange will give more accurate measurements, since you will not be
@@ -235,10 +238,11 @@ public class IndexRearranger {
   private static void applyDeletesToOneSegment(
       IndexWriter writer, CodecReader segmentReader, DocumentSelector selector) throws IOException {
     Bits deletedDocs = selector.getFilteredDocs(segmentReader);
-    for (int i = 0; i < segmentReader.maxDoc(); ++i) {
-      if (deletedDocs.get(i)) {
-        if (writer.tryDeleteDocument(segmentReader, i) == -1) {
-          throw new IllegalStateException("tryDeleteDocument failed and there's no plan B");
+    for (int docid = 0; docid < segmentReader.maxDoc(); ++docid) {
+      if (deletedDocs.get(docid)) {
+        if (writer.tryDeleteDocument(segmentReader, docid) == -1) {
+          throw new IllegalStateException(
+              "tryDeleteDocument has failed. This should never happen, since merging is disabled.");
         }
       }
     }
