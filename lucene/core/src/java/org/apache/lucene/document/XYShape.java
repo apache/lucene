@@ -65,6 +65,7 @@ import org.apache.lucene.util.BytesRef;
  *       QueryRelation} with a polygon.
  *   <li>{@link #newGeometryQuery newGeometryQuery()} for matching cartesian shapes that have some
  *       {@link QueryRelation} with one or more {@link XYGeometry}.
+ *   <li>{@link #createXYShapeDocValues(BytesRef)} for creating the {@link XYShapeDocValues}
  * </ul>
  *
  * <b>WARNING</b>: Like {@link LatLonPoint}, vertex values are indexed with some loss of precision
@@ -268,5 +269,15 @@ public class XYShape {
       return new ConstantScoreQuery(builder.build());
     }
     return new XYShapeQuery(field, queryRelation, xyGeometries);
+  }
+
+  /**
+   * Factory method for creating the {@link XYShapeDocValues}
+   *
+   * @param bytesRef {@link BytesRef}
+   * @return {@link XYShapeDocValues}
+   */
+  public static XYShapeDocValues createXYShapeDocValues(BytesRef bytesRef) {
+    return new XYShapeDocValues(bytesRef);
   }
 }
