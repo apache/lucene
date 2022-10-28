@@ -168,6 +168,11 @@ Other
 
 * LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
 
+Build
+---------------------
+
+* GITHUB#11886: Upgrade to gradle 7.5.1 (Dawid Weiss)
+
 ======================== Lucene 9.4.1 =======================
 
 Bug Fixes
