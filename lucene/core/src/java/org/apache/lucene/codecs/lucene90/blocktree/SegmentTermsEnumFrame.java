@@ -673,6 +673,8 @@ final class SegmentTermsEnumFrame {
     assert prefixMatches(target);
 
     suffix = suffixLengthsReader.readVInt();
+    // TODO early terminate when target length unequals suffix + prefix.
+    // But we need to keep the same status with scanToTermLeaf.
     int start = nextEnt;
     int end = entCount - 1;
     // Binary search the entries (terms) in this leaf block:
@@ -722,8 +724,9 @@ final class SegmentTermsEnumFrame {
     // if (DEBUG) System.out.println("      block end");
     SeekStatus seekStatus = end < entCount - 1 ? SeekStatus.NOT_FOUND : SeekStatus.END;
     if (exactOnly || seekStatus == SeekStatus.NOT_FOUND) {
-      // If binary search ended at the less term, we need to advance to the greater term.
-      if (cmp < 0) {
+      // If binary search ended at the less term, and greater term exists.
+      // We need to advance to the greater term.
+      if (cmp < 0 && seekStatus == SeekStatus.NOT_FOUND) {
         startBytePos += suffix;
         suffixesReader.skipBytes(suffix);
         nextEnt++;
