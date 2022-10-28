@@ -107,7 +107,7 @@ API Changes
 
 * GITHUB#11761: TieredMergePolicy now allowed a maximum allowable deletes percentage of down to 5%, and the default
   maximum allowable deletes percentage is changed from 33% to 20%. (Marc D'Mello)
-  
+
 * GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
 
 New Features
@@ -167,6 +167,8 @@ Other
 * GITHUB#11834: Upgrade forbiddenapis to version 3.4.  (Uwe Schindler)
 
 * LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
+
+* GITHUB#11752: Added interface to relate a LatLonShape with another shape represented as Component2D. (Navneet Verma)
 
 Build
 ---------------------
