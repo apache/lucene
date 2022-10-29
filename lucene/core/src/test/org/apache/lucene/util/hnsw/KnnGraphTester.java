@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene94.Lucene94Codec;
@@ -401,8 +402,9 @@ public class KnnGraphTester {
             }
           }
         }
-        totalCpuTime = (bean.getCurrentThreadCpuTime() - cpuTimeStartNs) / 1_000_000;
-        elapsed = (System.nanoTime() - start) / 1_000_000; // ns -> ms
+        totalCpuTime =
+            TimeUnit.NANOSECONDS.toMillis(bean.getCurrentThreadCpuTime() - cpuTimeStartNs);
+        elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start); // ns -> ms
         for (int i = 0; i < numIters; i++) {
           totalVisited += results[i].totalHits.value;
           for (ScoreDoc doc : results[i].scoreDocs) {
@@ -736,9 +738,10 @@ public class KnnGraphTester {
     }
     long elapsed = System.nanoTime() - start;
     if (quiet == false) {
-      System.out.println("Indexed " + numDocs + " documents in " + elapsed / 1_000_000_000 + "s");
+      System.out.println(
+          "Indexed " + numDocs + " documents in " + TimeUnit.NANOSECONDS.toSeconds(elapsed) + "s");
     }
-    return (int) (elapsed / 1_000_000);
+    return (int) TimeUnit.NANOSECONDS.toMillis(elapsed);
   }
 
   private static void usage() {

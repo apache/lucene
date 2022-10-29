@@ -21,6 +21,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -614,7 +615,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     }
 
     if (verbose() && startStallTime != 0) {
-      message("  stalled for " + (System.currentTimeMillis() - startStallTime) + " msec");
+      message("  stalled for " + (System.currentTimeMillis() - startStallTime) + " ms");
     }
 
     return true;
@@ -889,7 +890,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   protected void targetMBPerSecChanged() {}
 
   private static double nsToSec(long ns) {
-    return ns / 1000000000.0;
+    return ns / (double) TimeUnit.SECONDS.toNanos(1);
   }
 
   private static double bytesToMB(long bytes) {

@@ -65,6 +65,9 @@ Optimizations
 
 Other
 ---------------------
+
+* GITHUB#11856: Fix nanos to millis conversion for tests (Marios Trivyzas)
+
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
 
 * GITHUB#11811: Upgrade google java format to 1.15.0 (Dawid Weiss)

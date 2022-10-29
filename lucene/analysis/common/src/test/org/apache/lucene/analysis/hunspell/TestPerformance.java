@@ -259,7 +259,7 @@ public class TestPerformance extends LuceneTestCase {
     for (int i = 0; i < 7; i++) {
       long start = System.nanoTime();
       iteration.run(consumer);
-      times.add((System.nanoTime() - start) / 1_000_000);
+      times.add(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
     }
     System.out.println(
         what

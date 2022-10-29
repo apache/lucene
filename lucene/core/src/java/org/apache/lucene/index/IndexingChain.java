@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -241,7 +242,8 @@ final class IndexingChain implements Accountable {
     long t0 = System.nanoTime();
     writeNorms(state, sortMap);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write norms");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write norms");
     }
     SegmentReadState readState =
         new SegmentReadState(
@@ -254,19 +256,22 @@ final class IndexingChain implements Accountable {
     t0 = System.nanoTime();
     writeDocValues(state, sortMap);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write docValues");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write docValues");
     }
 
     t0 = System.nanoTime();
     writePoints(state, sortMap);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write points");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write points");
     }
 
     t0 = System.nanoTime();
     vectorValuesConsumer.flush(state, sortMap);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write vectors");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write vectors");
     }
 
     // it's possible all docs hit non-aborting exceptions...
@@ -275,7 +280,8 @@ final class IndexingChain implements Accountable {
     storedFieldsConsumer.flush(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
-          "IW", ((System.nanoTime() - t0) / 1000000) + " msec to finish stored fields");
+          "IW",
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to finish stored fields");
     }
 
     t0 = System.nanoTime();
@@ -304,7 +310,8 @@ final class IndexingChain implements Accountable {
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
           "IW",
-          ((System.nanoTime() - t0) / 1000000) + " msec to write postings and finish vectors");
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+              + " ms to write postings and finish vectors");
     }
 
     // Important to save after asking consumer to flush so
@@ -317,7 +324,8 @@ final class IndexingChain implements Accountable {
         .fieldInfosFormat()
         .write(state.directory, state.segmentInfo, "", state.fieldInfos, IOContext.DEFAULT);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write fieldInfos");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write fieldInfos");
     }
 
     return sortMap;
