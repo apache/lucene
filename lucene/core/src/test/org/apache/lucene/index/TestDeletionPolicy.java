@@ -297,7 +297,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
                 + SECONDS
                 + " seconds ("
                 + (lastDeleteTime - modTime)
-                + " msec) but did not get deleted ",
+                + " ms) but did not get deleted ",
             lastDeleteTime - modTime <= leeway);
       } catch (
           @SuppressWarnings("unused")

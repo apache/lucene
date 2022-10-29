@@ -583,7 +583,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           "TEST: DONE start "
               + NUM_INDEX_THREADS
               + " indexing threads ["
-              + (System.nanoTime() - t0) / 1_000_000
+              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
               + " ms]");
     }
 
@@ -594,7 +594,9 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
     if (VERBOSE) {
       System.out.println(
-          "TEST: all searching done [" + (System.nanoTime() - t0) / 1_000_000 + " ms]");
+          "TEST: all searching done ["
+              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+              + " ms]");
     }
 
     for (Thread thread : indexThreads) {
@@ -604,7 +606,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     if (VERBOSE) {
       System.out.println(
           "TEST: done join indexing threads ["
-              + (System.nanoTime() - t0) / 1_000_000
+              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
               + " ms]; addCount="
               + addCount
               + " delCount="
@@ -765,7 +767,8 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     dir.close();
 
     if (VERBOSE) {
-      System.out.println("TEST: done [" + (System.nanoTime() - t0) / 1_000_000 + " ms]");
+      System.out.println(
+          "TEST: done [" + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms]");
     }
   }
 

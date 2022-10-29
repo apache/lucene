@@ -4190,7 +4190,7 @@ public final class CheckIndex implements Closeable {
   }
 
   private static double nsToSec(long ns) {
-    return ns / 1000000000.0;
+    return ns / (double) TimeUnit.SECONDS.toNanos(1);
   }
 
   /**

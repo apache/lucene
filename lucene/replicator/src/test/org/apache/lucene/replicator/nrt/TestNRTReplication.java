@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -1000,7 +1001,7 @@ public class TestNRTReplication extends LuceneTestCase {
         String.format(
             Locale.ROOT,
             "%5.3fs       :     parent [%11s] %s",
-            (now - Node.globalStartNS) / 1000000000.,
+            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
             Thread.currentThread().getName(),
             message));
   }
