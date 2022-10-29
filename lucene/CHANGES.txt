@@ -73,6 +73,9 @@ Bug Fixes
 
 Other
 ---------------------
+
+* LUCENE-10376: Roll up the loop in VInt/VLong in DataInput. (Guo Feng)
+
 * LUCENE-10283: The minimum required Java version was bumped from 11 to 17.
   (Adrien Grand, Uwe Schindler, Dawid Weiss, Robert Muir)
 
@@ -106,6 +109,11 @@ API Changes
   maximum allowable deletes percentage is changed from 33% to 20%. (Marc D'Mello)
 
 * GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
+
+New Features
+---------------------
+* GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
+  write amplification factor. (Marc D'Mello)
 
 Improvements
 ---------------------
@@ -147,6 +155,9 @@ Optimizations
   given field to match a term (rather than all docs in a segment). This is consistent with
   MultiTermQueryConstantScoreWrapper. (Greg Miller)
 
+* GITHUB#11876: Use ByteArrayComparator to speed up PointInSetQuery in single dimension case.
+  (Guo Feng)
+
 Other
 ---------------------
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
@@ -156,6 +167,21 @@ Other
 * GITHUB#11834: Upgrade forbiddenapis to version 3.4.  (Uwe Schindler)
 
 * LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
+
+* GITHUB#11752: Added interface to relate a LatLonShape with another shape represented as Component2D. (Navneet Verma)
+
+Build
+---------------------
+
+* GITHUB#11886: Upgrade to gradle 7.5.1 (Dawid Weiss)
+
+======================== Lucene 9.4.1 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#11858: Fix kNN vectors format validation on large segments. This
+ addresses a regression in 9.4.0 where validation could fail, preventing
+ further writes or searches on the index. (Julie Tibshirani)
 
 ======================== Lucene 9.4.0 =======================
 
