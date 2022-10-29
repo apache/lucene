@@ -200,11 +200,8 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
         }
         long finish = System.nanoTime();
         System.out.println(
-            "ModCount: "
-                + modCounts[j]
-                + " Two fields took "
-                + TimeUnit.NANOSECONDS.toMillis(finish - start)
-                + " ms");
+            ("ModCount: " + modCounts[j])
+                + (" Two fields took " + TimeUnit.NANOSECONDS.toMillis(finish - start) + " ms"));
         int sinkPos = 0;
         // simulate one field with one sink
         start = System.nanoTime();
@@ -224,11 +221,8 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
         }
         finish = System.nanoTime();
         System.out.println(
-            "ModCount: "
-                + modCounts[j]
-                + " Tee fields took "
-                + TimeUnit.NANOSECONDS.toMillis(finish - start)
-                + " ms");
+            ("ModCount: " + modCounts[j])
+                + (" Tee fields took " + TimeUnit.NANOSECONDS.toMillis(finish - start) + " ms"));
         assertTrue(sinkPos + " does not equal: " + tfPos, sinkPos == tfPos);
       }
       System.out.println("- End Tokens: " + tokCount[k] + "-----");
