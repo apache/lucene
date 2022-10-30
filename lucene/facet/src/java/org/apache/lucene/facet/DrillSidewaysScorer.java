@@ -247,8 +247,7 @@ class DrillSidewaysScorer extends BulkScorer {
             assert dim.approximation.docID() == docID;
             if (dim.twoPhase.matches() == false) {
               if (failedDim != null) {
-                int next = Math.min(failedDim.approximation.nextDoc(), dim.approximation.nextDoc());
-                docID = baseApproximation.advance(next);
+                docID = baseApproximation.nextDoc();
                 continue nextDoc;
               } else {
                 failedDim = dim;
@@ -264,8 +263,7 @@ class DrillSidewaysScorer extends BulkScorer {
             }
             assert dim.approximation.docID() == docID;
             if (dim.twoPhase.matches() == false) {
-              int next = Math.min(failedDim.approximation.docID(), dim.approximation.nextDoc());
-              docID = baseApproximation.advance(next);
+              docID = baseApproximation.nextDoc();
               continue nextDoc;
             }
           }
@@ -402,8 +400,7 @@ class DrillSidewaysScorer extends BulkScorer {
             assert dim.approximation.docID() == docID;
             if (dim.twoPhase.matches() == false) {
               if (failedDim != null) {
-                int next = Math.min(failedDim.approximation.nextDoc(), dim.approximation.nextDoc());
-                docID = baseApproximation.advance(next);
+                docID = baseApproximation.nextDoc();
                 continue nextDoc;
               } else {
                 failedDim = dim;
@@ -419,8 +416,7 @@ class DrillSidewaysScorer extends BulkScorer {
             }
             assert dim.approximation.docID() == docID;
             if (dim.twoPhase.matches() == false) {
-              int next = Math.min(failedDim.approximation.docID(), dim.approximation.nextDoc());
-              docID = baseApproximation.advance(next);
+              docID = baseApproximation.nextDoc();
               continue nextDoc;
             }
           }
