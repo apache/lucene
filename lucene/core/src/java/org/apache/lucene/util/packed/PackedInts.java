@@ -739,9 +739,9 @@ public class PackedInts {
   /**
    * Expert: Restore a {@link ReaderIterator} from a stream without reading metadata at the
    * beginning of the stream. This method is useful to restore data from streams which have multiple
-   * blocks of bytes created using {@link PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)}.
-   * Call {@link ResettableReaderIterator#reset()} to reset the internal datastructures to read a new section in the
-   * data stream of `valueCount` size.
+   * blocks of bytes created using {@link PackedInts#getWriterNoHeader(DataOutput, Format, int, int,
+   * int)}. Call {@link ResettableReaderIterator#reset()} to reset the internal datastructures to
+   * read a new section in the data stream of `valueCount` size.
    *
    * @param in the stream to read data from, positioned at the beginning of the packed values. To
    *     read the next set of packed values, call `reset`.
