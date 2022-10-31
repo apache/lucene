@@ -88,6 +88,86 @@ public class TestPackedInts extends LuceneTestCase {
         PackedInts.maxValue(64));
   }
 
+  public void testResettablePackedIntsIterator() throws IOException {
+    int num = atLeast(3);
+    for (int iter = 0; iter < num; iter++) {
+      for (int nbits = 1; nbits <= 64; nbits++) {
+        final long maxValue = PackedInts.maxValue(nbits);
+
+        final int valueCountIterations = TestUtil.nextInt(random(), 2, 50);
+        final int valueCount = TestUtil.nextInt(random(), 1, 600);
+        final int bufferSize =
+            random().nextBoolean()
+                ? TestUtil.nextInt(random(), 0, 48)
+                : TestUtil.nextInt(random(), 0, 4096);
+        final Directory d = newDirectory();
+
+        IndexOutput out = d.createOutput("out.bin", newIOContext(random()));
+        final int mem = random().nextInt(2 * PackedInts.DEFAULT_BUFFER_SIZE);
+        long[][] actualValues = new long[valueCountIterations][];
+        long[] fps = new long[valueCountIterations];
+        for (int vcIndex = 0; vcIndex < valueCountIterations; vcIndex++) {
+          PackedInts.Writer w =
+              PackedInts.getWriterNoHeader(out, PackedInts.Format.PACKED, valueCount, nbits, mem);
+          final long startFp = out.getFilePointer();
+
+          final int actualValueCount =
+              random().nextBoolean() ? valueCount : TestUtil.nextInt(random(), 0, valueCount);
+          final long[] values = new long[valueCount];
+          for (int i = 0; i < actualValueCount; i++) {
+            if (nbits == 64) {
+              values[i] = random().nextLong();
+            } else {
+              values[i] = TestUtil.nextLong(random(), 0, maxValue);
+            }
+            w.add(values[i]);
+          }
+          actualValues[vcIndex] = values;
+          w.finish();
+          final long fp = out.getFilePointer();
+          final long bytes =
+              w.getFormat().byteCount(PackedInts.VERSION_CURRENT, valueCount, w.bitsPerValue);
+          assertEquals(bytes, fp - startFp);
+          fps[vcIndex] = fp;
+        }
+        out.close();
+        IndexInput in = d.openInput("out.bin", newIOContext(random()));
+        PackedInts.ResettableReaderIterator r =
+            PackedInts.getResettableReaderIteratorNoHeader(
+                in,
+                PackedInts.Format.PACKED,
+                PackedInts.VERSION_CURRENT,
+                valueCount,
+                nbits,
+                bufferSize);
+        for (int vcIndex = 0; vcIndex < valueCountIterations; vcIndex++) {
+          long[] values = actualValues[vcIndex];
+          long fp = fps[vcIndex];
+          for (int i = 0; i < valueCount; i++) {
+            assertEquals(
+                "resetIteration="
+                    + vcIndex
+                    + " index="
+                    + i
+                    + " valueCount="
+                    + valueCount
+                    + " nbits="
+                    + nbits
+                    + " for "
+                    + r.getClass().getSimpleName(),
+                values[i],
+                r.next());
+            assertEquals(i, r.ord());
+          }
+          assertEquals("resetIteration=" + vcIndex, fp, in.getFilePointer());
+          r.reset();
+        }
+        in.close();
+        d.close();
+      }
+    }
+  }
+
   public void testPackedInts() throws IOException {
     int num = atLeast(3);
     for (int iter = 0; iter < num; iter++) {

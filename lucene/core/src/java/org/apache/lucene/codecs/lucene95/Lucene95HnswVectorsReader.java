@@ -430,7 +430,12 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     int arcCount;
     int arcUpTo;
     int arc;
-    PackedInts.ReaderIterator connReader;
+    // All other levels besides 0, contains entry.M values
+    final PackedInts.ResettableReaderIterator connReader;
+    // Level 0 connection reader, contains entry.M * 2 values
+    final PackedInts.ResettableReaderIterator conn0Reader;
+    // reference to the current connection reader.
+    private PackedInts.ResettableReaderIterator currentConnReader;
 
     OffHeapHnswGraph(FieldEntry entry, IndexInput dataIn) {
       this.dataIn = dataIn;
@@ -447,6 +452,17 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       this.bytesForConns0 =
           PackedInts.Format.PACKED.byteCount(packedIntsVersion, entry.M * 2, packedBitsRequired)
               + Integer.BYTES;
+      this.connReader =
+          PackedInts.getResettableReaderIteratorNoHeader(
+              dataIn, PackedInts.Format.PACKED, packedIntsVersion, entry.M, packedBitsRequired, 1);
+      this.conn0Reader =
+          PackedInts.getResettableReaderIteratorNoHeader(
+              dataIn,
+              PackedInts.Format.PACKED,
+              packedIntsVersion,
+              entry.M * 2,
+              packedBitsRequired,
+              1);
     }
 
     @Override
@@ -458,12 +474,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       assert targetIndex >= 0;
       long graphDataOffset =
           graphOffsetsByLevel[level] + targetIndex * (level == 0 ? bytesForConns0 : bytesForConns);
+      currentConnReader = level == 0 ? conn0Reader : connReader;
       // unsafe; no bounds checking
       dataIn.seek(graphDataOffset);
       arcCount = dataIn.readInt();
-      connReader =
-          PackedInts.getReaderIteratorNoHeader(
-              dataIn, PackedInts.Format.PACKED, packedIntsVersion, arcCount, packedBitsRequired, 1);
+      currentConnReader.reset();
       arc = -1;
       arcUpTo = 0;
     }
@@ -479,7 +494,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
         return NO_MORE_DOCS;
       }
       ++arcUpTo;
-      arc = (int) connReader.next();
+      arc = (int) currentConnReader.next();
       return arc;
     }
 

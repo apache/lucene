@@ -416,6 +416,60 @@ public class PackedInts {
     int ord();
   }
 
+  /**
+   * Resettable iterator interface, to decode previously saved PackedInts. Useful when multiple
+   * packed int blocks are stored in the same stream
+   */
+  public static interface ResettableReaderIterator {
+    /** Returns next value */
+    long next() throws IOException;
+    /**
+     * Returns at least 1 and at most <code>count</code> next values, the returned ref MUST NOT be
+     * modified
+     */
+    LongsRef next(int count) throws IOException;
+    /** Returns number of bits per value */
+    int getBitsPerValue();
+    /** Returns number of values */
+    int size();
+    /** Returns the current position */
+    int ord();
+    /** Resets the stream contents in order to read valueCount number of values again */
+    void reset();
+  }
+
+  abstract static class ResettableReaderIteratorImpl implements ResettableReaderIterator {
+    protected final DataInput in;
+    protected final int bitsPerValue;
+    protected final int valueCount;
+
+    protected ResettableReaderIteratorImpl(int valueCount, int bitsPerValue, DataInput in) {
+      this.in = in;
+      this.bitsPerValue = bitsPerValue;
+      this.valueCount = valueCount;
+    }
+
+    @Override
+    public long next() throws IOException {
+      LongsRef nextValues = next(1);
+      assert nextValues.length > 0;
+      final long result = nextValues.longs[nextValues.offset];
+      ++nextValues.offset;
+      --nextValues.length;
+      return result;
+    }
+
+    @Override
+    public int getBitsPerValue() {
+      return bitsPerValue;
+    }
+
+    @Override
+    public int size() {
+      return valueCount;
+    }
+  }
+
   abstract static class ReaderIteratorImpl implements ReaderIterator {
 
     protected final DataInput in;
@@ -680,6 +734,31 @@ public class PackedInts {
       DataInput in, Format format, int version, int valueCount, int bitsPerValue, int mem) {
     checkVersion(version);
     return new PackedReaderIterator(format, version, valueCount, bitsPerValue, in, mem);
+  }
+
+  /**
+   * Expert: Restore a {@link ReaderIterator} from a stream without reading metadata at the
+   * beginning of the stream. This method is useful to restore data from streams which have multiple
+   * blocks of bytes created using {@link PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)}.
+   * Call {@link ResettableReaderIterator#reset()} to reset the internal datastructures to read a new section in the
+   * data stream of `valueCount` size.
+   *
+   * @param in the stream to read data from, positioned at the beginning of the packed values. To
+   *     read the next set of packed values, call `reset`.
+   * @param format the format used to serialize
+   * @param version the version used to serialize the data
+   * @param valueCount how many values the stream holds
+   * @param bitsPerValue the number of bits per value
+   * @param mem how much memory the iterator is allowed to use to read-ahead (likely to speed up
+   *     iteration)
+   * @return a ResettableReaderIterator
+   * @see PackedInts#getWriterNoHeader(DataOutput, Format, int, int, int)
+   * @lucene.internal
+   */
+  public static ResettableReaderIterator getResettableReaderIteratorNoHeader(
+      DataInput in, Format format, int version, int valueCount, int bitsPerValue, int mem) {
+    checkVersion(version);
+    return new PackedResettableReaderIterator(format, version, valueCount, bitsPerValue, in, mem);
   }
 
   /**
