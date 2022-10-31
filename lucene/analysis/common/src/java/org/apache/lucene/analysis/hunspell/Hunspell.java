@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
@@ -59,8 +61,11 @@ public class Hunspell {
 
   final Dictionary dictionary;
   final Stemmer stemmer;
+  private final boolean cacheSuggestibleEntries;
   private final TimeoutPolicy policy;
   final Runnable checkCanceled;
+
+  private SuggestibleEntryCache suggestibleCache;
 
   public Hunspell(Dictionary dictionary) {
     this(dictionary, RETURN_PARTIAL_RESULT, () -> {});
@@ -72,10 +77,29 @@ public class Hunspell {
    *     or suggestion generation by throwing an exception
    */
   public Hunspell(Dictionary dictionary, TimeoutPolicy policy, Runnable checkCanceled) {
+    this(dictionary, policy, checkCanceled, new Stemmer(dictionary), false);
+  }
+
+  private Hunspell(
+      Dictionary dictionary,
+      TimeoutPolicy policy,
+      Runnable checkCanceled,
+      Stemmer stemmer,
+      boolean cacheSuggestibleEntries) {
     this.dictionary = dictionary;
     this.policy = policy;
     this.checkCanceled = checkCanceled;
-    stemmer = new Stemmer(dictionary);
+    this.stemmer = stemmer;
+    this.cacheSuggestibleEntries = cacheSuggestibleEntries;
+  }
+
+  /**
+   * Returns a copy of this Hunspell instance with better suggestion performance but using more
+   * memory (to store dictionary entries as fast-to-iterate plain words instead of highly compressed
+   * prefix trees).
+   */
+  public Hunspell withSuggestibleEntryCache() {
+    return new Hunspell(dictionary, policy, checkCanceled, stemmer, true);
   }
 
   /**
@@ -647,8 +671,23 @@ public class Hunspell {
 
     if (!hasGoodSuggestions && dictionary.maxNGramSuggestions > 0) {
       List<String> generated =
-          new GeneratingSuggester(suggestionSpeller)
-              .suggest(dictionary.toLowerCase(word), wordCase, suggestions);
+          new GeneratingSuggester(suggestionSpeller) {
+            @Override
+            void processSuggestibleWords(
+                int minLength, int maxLength, BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
+              if (cacheSuggestibleEntries) {
+                SuggestibleEntryCache cache = suggestibleCache;
+                if (cache == null) {
+                  // a benign race:
+                  // https://shipilev.net/blog/2016/close-encounters-of-jmm-kind/#wishful-benign-is-resilient
+                  suggestibleCache = cache = SuggestibleEntryCache.buildCache(dictionary.words);
+                }
+                cache.processSuggestibleWords(minLength, maxLength, processor);
+              } else {
+                super.processSuggestibleWords(minLength, maxLength, processor);
+              }
+            }
+          }.suggest(dictionary.toLowerCase(word), wordCase, suggestions);
       for (String raw : generated) {
         suggestions.add(new Suggestion(raw, word, wordCase, suggestionSpeller));
       }

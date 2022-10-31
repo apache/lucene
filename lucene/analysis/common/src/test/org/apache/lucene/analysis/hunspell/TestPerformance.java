@@ -86,7 +86,7 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void de_suggest() throws Exception {
-    checkSuggestionPerformance("de", 100);
+    checkSuggestionPerformance("de", 150);
   }
 
   @Test
@@ -163,7 +163,9 @@ public class TestPerformance extends LuceneTestCase {
 
   private void checkSuggestionPerformance(String code, int wordCount) throws Exception {
     Dictionary dictionary = loadDictionary(code);
-    Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, () -> {});
+    Hunspell speller =
+        new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, () -> {})
+            .withSuggestibleEntryCache();
     List<String> words =
         loadWords(code, wordCount, dictionary).stream()
             .distinct()
@@ -171,7 +173,8 @@ public class TestPerformance extends LuceneTestCase {
             .collect(Collectors.toList());
     System.out.println("Checking " + words.size() + " misspelled words");
 
-    Hunspell fullSpeller = new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
+    Hunspell fullSpeller =
+        new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {}).withSuggestibleEntryCache();
     measure(
         "Suggestions for " + code,
         words.size(),
