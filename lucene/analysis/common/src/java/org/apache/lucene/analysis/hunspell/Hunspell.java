@@ -65,7 +65,7 @@ public class Hunspell {
   private final TimeoutPolicy policy;
   final Runnable checkCanceled;
 
-  private SuggestibleEntryCache suggestibleCache;
+  private volatile SuggestibleEntryCache suggestibleCache;
 
   public Hunspell(Dictionary dictionary) {
     this(dictionary, RETURN_PARTIAL_RESULT, () -> {});
@@ -678,8 +678,6 @@ public class Hunspell {
               if (cacheSuggestibleEntries) {
                 SuggestibleEntryCache cache = suggestibleCache;
                 if (cache == null) {
-                  // a benign race:
-                  // https://shipilev.net/blog/2016/close-encounters-of-jmm-kind/#wishful-benign-is-resilient
                   suggestibleCache = cache = SuggestibleEntryCache.buildCache(dictionary.words);
                 }
                 cache.processSuggestibleWords(minLength, maxLength, processor);
