@@ -414,8 +414,6 @@ final class BooleanWeight extends Weight {
       positiveCount = -1;
     }
 
-
-
     if (positiveCount == 0) {
       return 0;
     }
