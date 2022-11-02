@@ -401,8 +401,9 @@ final class BooleanWeight extends Weight {
     final int numDocs = context.reader().numDocs();
     int positiveCount;
     if (query.isPureDisjunction()) {
-      positiveCount = optCount(context, Occur.SHOULD);
-    } else if ((query.getClauses(Occur.FILTER).isEmpty() == false
+      return optCount(context, Occur.SHOULD);
+    }
+    if ((query.getClauses(Occur.FILTER).isEmpty() == false
             || query.getClauses(Occur.MUST).isEmpty() == false)
         && query.getMinimumNumberShouldMatch() == 0) {
       positiveCount = reqCount(context);
@@ -412,6 +413,8 @@ final class BooleanWeight extends Weight {
       // real-world queries that would benefit from Lucene handling this case?
       positiveCount = -1;
     }
+
+
 
     if (positiveCount == 0) {
       return 0;
