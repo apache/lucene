@@ -169,7 +169,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
           case BYTE -> Byte.BYTES;
           case FLOAT32 -> Float.BYTES;
         };
-    int numBytes = fieldEntry.size * dimension * byteSize;
+    long vectorBytes = Math.multiplyExact((long) dimension, byteSize);
+    long numBytes = Math.multiplyExact(vectorBytes, fieldEntry.size);
     if (numBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "Vector data length "
@@ -315,6 +316,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     final int[][] nodesByLevel;
     // for each level the start offsets in vectorIndex file from where to read neighbours
     final long[] graphOffsetsByLevel;
+    // the packed ints version used to store the graph connections
+    final int packedIntsVersion;
 
     // the following four variables used to read docIds encoded by IndexDISI
     // special values of docsWithFieldOffset are -1 and -2
@@ -332,7 +335,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     final int blockShift;
     final DirectMonotonicReader.Meta meta;
     final long addressesLength;
-    final int packedIntsVersion;
 
     FieldEntry(
         IndexInput input,
@@ -431,11 +433,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     int arcUpTo;
     int arc;
     // All other levels besides 0, contains entry.M values
-    final PackedInts.ResettableReaderIterator connReader;
+    private final PackedInts.ReaderIterator connReader;
     // Level 0 connection reader, contains entry.M * 2 values
-    final PackedInts.ResettableReaderIterator conn0Reader;
+    private final PackedInts.ReaderIterator conn0Reader;
     // reference to the current connection reader.
-    private PackedInts.ResettableReaderIterator currentConnReader;
+    private PackedInts.ReaderIterator currentConnReader;
 
     OffHeapHnswGraph(FieldEntry entry, IndexInput dataIn) {
       this.dataIn = dataIn;
@@ -453,10 +455,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
           PackedInts.Format.PACKED.byteCount(packedIntsVersion, entry.M * 2, packedBitsRequired)
               + Integer.BYTES;
       this.connReader =
-          PackedInts.getResettableReaderIteratorNoHeader(
+          PackedInts.getReaderIteratorNoHeader(
               dataIn, PackedInts.Format.PACKED, packedIntsVersion, entry.M, packedBitsRequired, 1);
       this.conn0Reader =
-          PackedInts.getResettableReaderIteratorNoHeader(
+          PackedInts.getReaderIteratorNoHeader(
               dataIn,
               PackedInts.Format.PACKED,
               packedIntsVersion,

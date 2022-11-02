@@ -88,7 +88,7 @@ public class TestPackedInts extends LuceneTestCase {
         PackedInts.maxValue(64));
   }
 
-  public void testResettablePackedIntsIterator() throws IOException {
+  public void testResetPackedIntsIterator() throws IOException {
     int num = atLeast(3);
     for (int iter = 0; iter < num; iter++) {
       for (int nbits = 1; nbits <= 64; nbits++) {
@@ -132,8 +132,8 @@ public class TestPackedInts extends LuceneTestCase {
         }
         out.close();
         IndexInput in = d.openInput("out.bin", newIOContext(random()));
-        PackedInts.ResettableReaderIterator r =
-            PackedInts.getResettableReaderIteratorNoHeader(
+        PackedInts.ReaderIterator r =
+            PackedInts.getReaderIteratorNoHeader(
                 in,
                 PackedInts.Format.PACKED,
                 PackedInts.VERSION_CURRENT,
