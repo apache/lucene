@@ -418,60 +418,6 @@ public class PackedInts {
     void reset();
   }
 
-  /**
-   * Resettable iterator interface, to decode previously saved PackedInts. Useful when multiple
-   * packed int blocks are stored in the same stream
-   */
-  public static interface ResettableReaderIterator {
-    /** Returns next value */
-    long next() throws IOException;
-    /**
-     * Returns at least 1 and at most <code>count</code> next values, the returned ref MUST NOT be
-     * modified
-     */
-    LongsRef next(int count) throws IOException;
-    /** Returns number of bits per value */
-    int getBitsPerValue();
-    /** Returns number of values */
-    int size();
-    /** Returns the current position */
-    int ord();
-    /** Resets the stream contents in order to read valueCount number of values again */
-    void reset();
-  }
-
-  abstract static class ResettableReaderIteratorImpl implements ResettableReaderIterator {
-    protected final DataInput in;
-    protected final int bitsPerValue;
-    protected final int valueCount;
-
-    protected ResettableReaderIteratorImpl(int valueCount, int bitsPerValue, DataInput in) {
-      this.in = in;
-      this.bitsPerValue = bitsPerValue;
-      this.valueCount = valueCount;
-    }
-
-    @Override
-    public long next() throws IOException {
-      LongsRef nextValues = next(1);
-      assert nextValues.length > 0;
-      final long result = nextValues.longs[nextValues.offset];
-      ++nextValues.offset;
-      --nextValues.length;
-      return result;
-    }
-
-    @Override
-    public int getBitsPerValue() {
-      return bitsPerValue;
-    }
-
-    @Override
-    public int size() {
-      return valueCount;
-    }
-  }
-
   abstract static class ReaderIteratorImpl implements ReaderIterator {
 
     protected final DataInput in;
