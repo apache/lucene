@@ -158,7 +158,9 @@ public abstract class Weight implements SegmentCacheable {
    *
    * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
    *     {@link Scorer}.
-   * @return a {@link BulkScorer} which scores documents and passes them to a collector.
+   * @return a {@link BulkScorer} which scores documents and passes them to a collector. Like {@link
+   *     #scorer(LeafReaderContext)}, this method can return null if this query matches no
+   *     documents.
    * @throws IOException if there is a low-level I/O error
    */
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
