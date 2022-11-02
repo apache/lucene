@@ -38,8 +38,11 @@ import org.apache.lucene.util.PriorityQueue;
 
 class DrillSidewaysScorer extends BulkScorer {
 
+  private static final Comparator<DocsAndCost> APPROXIMATION_COMPARATOR =
+      Comparator.comparingLong(e -> e.cost);
+
   private static final Comparator<DocsAndCost> TWO_PHASE_COMPARATOR =
-      (a, b) -> Float.compare(a.twoPhase.matchCost(), b.twoPhase.matchCost());
+      (a, b) -> Float.compare(a.matchCost, b.matchCost);
 
   // private static boolean DEBUG = false;
 
@@ -193,15 +196,52 @@ class DrillSidewaysScorer extends BulkScorer {
   }
 
   /**
-   * Query-first scoring specialization when there are two drill-sideways dimensions. This can be
-   * handled a little more simply than the general case of three-or-more dims.
+   * Used when base query is highly constraining vs the drilldowns, or when the docs must be scored
+   * at once (i.e., like BooleanScorer2, not BooleanScorer).
    */
-  private void doQueryFirstScoringTwoDims(
-      Bits acceptDocs,
-      LeafCollector collector,
-      List<DocsAndCost> sidewaysDims,
-      List<DocsAndCost> sidewaysTwoPhaseDims)
+  private void doQueryFirstScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
       throws IOException {
+    setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
+
+    int numSidewaysDims = dims.length;
+    assert numSidewaysDims > 0;
+
+    if (numSidewaysDims == 1) {
+      doQueryFirstScoringSingleDim(acceptDocs, collector, dims[0]);
+      return;
+    }
+
+    // Sort our sideways dims by approximation cost so we can advance the lower cost ones first:
+    List<DocsAndCost> sidewaysDims = new ArrayList<>(dims.length);
+    sidewaysDims.addAll(List.of(dims));
+    CollectionUtil.timSort(sidewaysDims, APPROXIMATION_COMPARATOR);
+
+    // Maintain (optional) subset of sideways dims that support two-phase iteration, sorted by
+    // matchCost:
+    List<DocsAndCost> sidewaysTwoPhaseDims = null;
+    for (DocsAndCost dim : dims) {
+      if (dim.twoPhase != null) {
+        if (sidewaysTwoPhaseDims == null) {
+          sidewaysTwoPhaseDims = new ArrayList<>();
+        }
+        sidewaysTwoPhaseDims.add(dim);
+      }
+    }
+    if (sidewaysTwoPhaseDims != null) {
+      CollectionUtil.timSort(sidewaysTwoPhaseDims, TWO_PHASE_COMPARATOR);
+    }
+
+    // We keep track of a "runaway" dimension, which is a previously "near missed" dimension that
+    // has advanced beyond the docID the rest of the dimensions are positioned on. This functions
+    // a bit like the "head" queue in WANDScorer's "min should match" implementation:
+    PriorityQueue<DocsAndCost> runawayDim =
+        new PriorityQueue<>(1) {
+          @Override
+          protected boolean lessThan(DocsAndCost a, DocsAndCost b) {
+            return a.approximation.docID() < b.approximation.docID();
+          }
+        };
+
     int docID = baseApproximation.docID();
 
     nextDoc:
@@ -213,18 +253,25 @@ class DrillSidewaysScorer extends BulkScorer {
         continue;
       }
 
+      // If we carried a "runaway" over from the last iteration, see if we've "caught up" yet:
+      DocsAndCost runaway = runawayDim.top();
+      if (runaway != null && runaway.approximation.docID() <= docID) {
+        runawayDim.clear();
+        runaway = null;
+      }
+
       // Check the sideways dim approximations. At most, one dim is allowed to miss for the doc
       // to be a near-miss or full match. If multiple sideways dims miss, we move on:
-      DocsAndCost failedDim = null;
       for (DocsAndCost dim : sidewaysDims) {
         int dimDocID = advanceIfBehind(docID, dim.approximation);
-        if (dimDocID != docID) {
-          if (failedDim != null) {
-            int next = Math.min(failedDim.approximation.docID(), dimDocID);
+        if (dimDocID != docID && dim != runaway) {
+          DocsAndCost evicted = runawayDim.insertWithOverflow(dim);
+          if (evicted != null) {
+            // More than one dim has advanced beyond docID, so we jump ahead to the "closer" of
+            // the two:
+            int next = evicted.approximation.docID();
             docID = baseApproximation.advance(next);
             continue nextDoc;
-          } else {
-            failedDim = dim;
           }
         }
       }
@@ -239,6 +286,7 @@ class DrillSidewaysScorer extends BulkScorer {
       // If we have two-phase iterators for our sideways dims, check them now. At most, one
       // sideways dim can miss for the doc to be a near-miss or full match. If more than one misses
       // we move on:
+      DocsAndCost failedDim = runawayDim.top();
       if (sidewaysTwoPhaseDims != null) {
         if (failedDim == null) {
           // If all sideways dims matched in their approximation phase, then at most one
@@ -283,249 +331,11 @@ class DrillSidewaysScorer extends BulkScorer {
     }
   }
 
-  /**
-   * Used when base query is highly constraining vs the drilldowns, or when the docs must be scored
-   * at once (i.e., like BooleanScorer2, not BooleanScorer).
-   */
-  private void doQueryFirstScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
-      throws IOException {
-    setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
-
-    int numSidewaysDims = dims.length;
-    assert numSidewaysDims > 0;
-
-    if (numSidewaysDims == 1) {
-      doQueryFirstScoringSingleDim(acceptDocs, collector, dims[0]);
-      return;
-    }
-
-    // Maintain (optional) subset of sideways dims that support two-phase iteration, sorted by
-    // matchCost:
-    List<DocsAndCost> sidewaysTwoPhaseDims = null;
-    for (DocsAndCost dim : dims) {
-      if (dim.twoPhase != null) {
-        if (sidewaysTwoPhaseDims == null) {
-          sidewaysTwoPhaseDims = new ArrayList<>();
-        }
-        sidewaysTwoPhaseDims.add(dim);
-      }
-    }
-    if (sidewaysTwoPhaseDims != null) {
-      CollectionUtil.timSort(sidewaysTwoPhaseDims, TWO_PHASE_COMPARATOR);
-    }
-
-    if (numSidewaysDims == 2) {
-      doQueryFirstScoringTwoDims(acceptDocs, collector, List.of(dims), sidewaysTwoPhaseDims);
-      return;
-    }
-
-    // Maintain "lead", "head" and "tail" data structures for our sideways dims, borrowing heavily
-    // from the WAND implementation found in WANDScorer. In this implementation, our "min should
-    // match" is always one less than the number of sideways dims, so our head queue is always
-    // size == 2 and our tail queue is size == numSidewaysDims - 2:
-    int tailSize = numSidewaysDims - 2;
-    assert numSidewaysDims - tailSize == 2;
-    List<DocsAndCost> sidewaysDimsLeads = new ArrayList<>(numSidewaysDims);
-    sidewaysDimsLeads.addAll(List.of(dims));
-    DocsAndCostHeadQueue sidewaysDimsHead = new DocsAndCostHeadQueue(2);
-    DocsAndCostTailQueue sidewaysDimsTail = new DocsAndCostTailQueue(tailSize);
-
-    int docID = baseApproximation.docID();
-
-    nextDoc:
-    while (docID != DocIdSetIterator.NO_MORE_DOCS) {
-      assert docID == baseApproximation.docID();
-
-      if (acceptDocs != null && acceptDocs.get(docID) == false) {
-        docID = baseApproximation.nextDoc();
-        continue;
-      }
-
-      // Check the sideways dims. At most, one dim is allowed to miss for the doc to be a
-      // near-miss or full match. If multiple sideways dims miss, we move on:
-      DocsAndCost failedDim = null;
-      int nextSidewaysCandidateDoc =
-          findNextSidewaysCandidate(docID, sidewaysDimsLeads, sidewaysDimsHead, sidewaysDimsTail);
-
-      if (nextSidewaysCandidateDoc != docID) {
-        docID = baseApproximation.advance(nextSidewaysCandidateDoc);
-        continue;
-      }
-
-      // It's possible our docID is going to match enough sideways dims. Now we have to
-      // verify. First, if "head" is non-empty, it contains a "failed dim":
-      if (sidewaysDimsHead.size() > 0) {
-        assert sidewaysDimsHead.size() == 1;
-        failedDim = sidewaysDimsHead.top();
-      }
-
-      // Advance all the "tail" dims to see if enough sideways dims actually match the doc:
-      while (sidewaysDimsTail.size() > 0) {
-        DocsAndCost dim = sidewaysDimsTail.pop();
-        int dimDocID = advanceIfBehind(docID, dim.approximation);
-        if (dimDocID != docID) {
-          sidewaysDimsHead.add(dim);
-          if (failedDim != null) {
-            // More than one sideways dim failed to match, so we advance base and move on. Note
-            // that both failed dims will be in "head" at this point:
-            int next = sidewaysDimsHead.top().approximation.docID();
-            docID = baseApproximation.advance(next);
-            continue nextDoc;
-          } else {
-            failedDim = dim;
-          }
-        } else {
-          sidewaysDimsLeads.add(dim);
-        }
-      }
-
-      assert ensureValidSidewaysState(
-          docID, failedDim, numSidewaysDims, sidewaysDimsLeads, sidewaysDimsHead, sidewaysDimsTail);
-
-      // At this point, we have an "approximate" near-miss or full match, but we still need
-      // to confirm two-phase iterators. First, check the base two-phase (it's always required):
-      if (baseTwoPhase != null && baseTwoPhase.matches() == false) {
-        docID = baseApproximation.nextDoc();
-        continue;
-      }
-
-      // If we have two-phase iterators for our sideways dims, check them now. At most, one
-      // sideways dim can miss for the doc to be a near-miss or full match. If more than one misses
-      // we move on:
-      if (sidewaysTwoPhaseDims != null) {
-        if (failedDim == null) {
-          // If all sideways dims matched in their approximation phase, then at most one
-          // two-phase check can fail:
-          for (DocsAndCost dim : sidewaysTwoPhaseDims) {
-            assert dim.approximation.docID() == docID;
-            if (dim.twoPhase.matches() == false) {
-              if (failedDim != null) {
-                docID = baseApproximation.nextDoc();
-                continue nextDoc;
-              } else {
-                failedDim = dim;
-              }
-            }
-          }
-        } else {
-          // If a sideways dim failed the approximate check, then no other two-phase checks
-          // can fail (or we move on):
-          for (DocsAndCost dim : sidewaysTwoPhaseDims) {
-            if (failedDim == dim) {
-              continue;
-            }
-            assert dim.approximation.docID() == docID;
-            if (dim.twoPhase.matches() == false) {
-              docID = baseApproximation.nextDoc();
-              continue nextDoc;
-            }
-          }
-        }
-      }
-
-      assert sidewaysDimsTail.size() == 0;
-      collectDocID = docID;
-      if (failedDim == null) {
-        assert sidewaysDimsHead.size() == 0;
-        assert sidewaysDimsLeads.size() == numSidewaysDims;
-        // Hit passed all filters, so it's "real":
-        collectHit(collector, sidewaysDimsLeads);
-      } else {
-        // Hit missed exactly one dim:
-        collectNearMiss(failedDim.sidewaysLeafCollector);
-      }
-
-      docID = baseApproximation.nextDoc();
-    }
-  }
-
   private static int advanceIfBehind(int docID, DocIdSetIterator iterator) throws IOException {
     if (iterator.docID() < docID) {
       return iterator.advance(docID);
     } else {
       return iterator.docID();
-    }
-  }
-
-  /**
-   * Discover the next doc that could possibly match the necessary "sideways" dimensions. We're
-   * finding the next doc that could potentially match at least all sideways dimensions except for
-   * one (i.e., a "near miss" or "full match"). Note that the produced doc may not actually match
-   * enough sideways dimensions, but we know it's at least possible.
-   *
-   * <p>After this method is invoked, "leads" will contain only sideways dims that are positioned on
-   * the returned docID, "head" will contain at most one dim that is advanced beyond docID, and
-   * "tail" may contain additional sideways dims that are on or behind the returned docID. To fully
-   * determine if the returned docID actually matches enough sideways dimensions, all dims in "tail"
-   * need to be advanced and added to "lead" or "head", until the match is confirmed or "head"
-   * contains more than one missed dim.
-   */
-  private static int findNextSidewaysCandidate(
-      int target,
-      List<DocsAndCost> leads,
-      PriorityQueue<DocsAndCost> head,
-      PriorityQueue<DocsAndCost> tail)
-      throws IOException {
-    // Clear out the leads:
-    for (DocsAndCost lead : leads) {
-      DocsAndCost evicted = tail.insertWithOverflow(lead);
-      if (evicted != null) {
-        advanceIfBehind(target, evicted.approximation);
-        head.add(evicted);
-      }
-    }
-    leads.clear();
-
-    // Advance any head iterators that are behind the target:
-    DocsAndCost top = head.top();
-    while (top != null && top.approximation.docID() < target) {
-      DocsAndCost evicted = tail.insertWithOverflow(top);
-      // We should always evict at this point since our tail should be full from the previous step:
-      assert evicted != null;
-      evicted.approximation.advance(target);
-      top = head.updateTop(evicted);
-    }
-
-    // At this point, all head iterators should be on or ahead of our target and all tail
-    // iterators should be on or behind our target. The important invariant at this point is that
-    // the tail cannot produce the next smallest doc candidate on its own, as it doesn't have
-    // enough to meet the min-should-match requirement (it needs at least one head iterator).
-    // This means our next smallest doc can be determined based on the head iterators alone:
-    assert head.size() > 0;
-    top = head.pop();
-    int docID = top.approximation.docID();
-    leads.add(top);
-    while (head.size() > 0 && head.top().approximation.docID() == docID) {
-      leads.add(head.pop());
-    }
-
-    // We now have a valid candidate match, where all leads are positioned on the candidate
-    // docID and everything in the tail is on or behind the docID:
-    return docID;
-  }
-
-  private static boolean ensureValidSidewaysState(
-      int docID,
-      DocsAndCost failedDim,
-      int numSidewaysDims,
-      List<DocsAndCost> leads,
-      PriorityQueue<DocsAndCost> head,
-      PriorityQueue<DocsAndCost> tail) {
-    if (tail.size() > 0) {
-      return false;
-    }
-    for (DocsAndCost dac : leads) {
-      if (dac.approximation.docID() != docID) {
-        return false;
-      }
-    }
-    if (failedDim == null) {
-      return leads.size() == numSidewaysDims && head.size() == 0;
-    } else {
-      if (leads.size() != numSidewaysDims - 1 || head.size() != 1) {
-        return false;
-      }
-      return docID < head.top().approximation.docID();
     }
   }
 
@@ -972,10 +782,10 @@ class DrillSidewaysScorer extends BulkScorer {
   static class DocsAndCost {
     // approximation of matching docs, or the scorer itself
     final DocIdSetIterator approximation;
+    final long cost;
     // two-phase confirmation, or null if the approximation is accurate
     final TwoPhaseIterator twoPhase;
-    // cost of the approximation iterator
-    final long cost;
+    final float matchCost;
     final Collector sidewaysCollector;
     LeafCollector sidewaysLeafCollector;
 
@@ -984,34 +794,14 @@ class DrillSidewaysScorer extends BulkScorer {
       if (twoPhase == null) {
         this.approximation = scorer.iterator();
         this.twoPhase = null;
+        this.matchCost = 0f;
       } else {
         this.approximation = twoPhase.approximation();
         this.twoPhase = twoPhase;
+        this.matchCost = twoPhase.matchCost();
       }
       this.cost = approximation.cost();
       this.sidewaysCollector = sidewaysCollector;
-    }
-  }
-
-  private static class DocsAndCostHeadQueue extends PriorityQueue<DocsAndCost> {
-    DocsAndCostHeadQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    protected boolean lessThan(DocsAndCost a, DocsAndCost b) {
-      return a.approximation.docID() < b.approximation.docID();
-    }
-  }
-
-  private static class DocsAndCostTailQueue extends PriorityQueue<DocsAndCost> {
-    DocsAndCostTailQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    protected boolean lessThan(DocsAndCost a, DocsAndCost b) {
-      return a.cost < b.cost;
     }
   }
 }
