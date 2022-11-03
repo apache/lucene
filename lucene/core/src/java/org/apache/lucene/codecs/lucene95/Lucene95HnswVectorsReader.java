@@ -410,9 +410,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
         } else {
           int numNodesOnPrevLevel = nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              Math.multiplyExact(
-                  Math.addExact(graphOffsetsByLevel[level - 1], levelByteSize),
-                  numNodesOnPrevLevel);
+              Math.addExact(
+                  Math.multiplyExact(numNodesOnPrevLevel, levelByteSize),
+                  graphOffsetsByLevel[level - 1]);
         }
       }
     }
