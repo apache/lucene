@@ -203,10 +203,8 @@ class DrillSidewaysScorer extends BulkScorer {
       throws IOException {
     setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
 
-    int numSidewaysDims = dims.length;
-    assert numSidewaysDims > 0;
-
-    if (numSidewaysDims == 1) {
+    // Specialize the single-dim use-case as we have a more efficient implementation for that:
+    if (dims.length == 1) {
       doQueryFirstScoringSingleDim(acceptDocs, collector, dims[0]);
       return;
     }
@@ -233,7 +231,9 @@ class DrillSidewaysScorer extends BulkScorer {
 
     // We keep track of a "runaway" dimension, which is a previously "near missed" dimension that
     // has advanced beyond the docID the rest of the dimensions are positioned on. This functions
-    // a bit like the "head" queue in WANDScorer's "min should match" implementation:
+    // a bit like the "head" queue in WANDScorer's "min should match" implementation. We use a
+    // single-valued PQ ordered by docID to easily determine the "closest" runaway dim we'll use
+    // for advancing in the case that multiple dim approximations miss.
     PriorityQueue<DocsAndCost> runawayDim =
         new PriorityQueue<>(1) {
           @Override
@@ -289,12 +289,13 @@ class DrillSidewaysScorer extends BulkScorer {
       DocsAndCost failedDim = runawayDim.top();
       if (sidewaysTwoPhaseDims != null) {
         if (failedDim == null) {
-          // If all sideways dims matched in their approximation phase, then at most one
-          // two-phase check can fail:
+          // If all sideways dims matched in their approximation phase, then we can allow one
+          // second-phase check to fail:
           for (DocsAndCost dim : sidewaysTwoPhaseDims) {
             assert dim.approximation.docID() == docID;
             if (dim.twoPhase.matches() == false) {
               if (failedDim != null) {
+                // Two second-phase checks have failed, so we move on:
                 docID = baseApproximation.nextDoc();
                 continue nextDoc;
               } else {
@@ -303,8 +304,7 @@ class DrillSidewaysScorer extends BulkScorer {
             }
           }
         } else {
-          // If a sideways dim failed the approximate check, then no other two-phase checks
-          // can fail (or we move on):
+          // If a sideways dim failed the approximate check, then no second-phase checks can fail:
           for (DocsAndCost dim : sidewaysTwoPhaseDims) {
             if (failedDim == dim) {
               continue;
