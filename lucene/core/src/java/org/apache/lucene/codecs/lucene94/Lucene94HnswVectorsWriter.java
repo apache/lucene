@@ -25,7 +25,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -461,7 +463,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
           HnswGraphBuilder.randSeed);
     }
 
-    int offset = getOrdOffset(fieldInfo.name, initializerIndex, mergeState);
+    Map<Integer, Integer> oldToNewOrdinalMap =
+        getOldToNewOrdinalMap(fieldInfo, initializerIndex, mergeState);
     return HnswGraphBuilder.create(
         offHeapVectors,
         fieldInfo.getVectorEncoding(),
@@ -469,37 +472,45 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         M,
         beamWidth,
         HnswGraphBuilder.randSeed,
-        getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]),
-        i -> i + offset);
+        new HnswGraphBuilder.GraphInitializerConfig(
+            getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]),
+            oldToNewOrdinalMap));
   }
 
-  private int getOrdOffset(String field, int index, MergeState mergeState) throws IOException {
-    final KnnVectorsReader[] readers = mergeState.knnVectorsReaders;
-    int offset = 0;
-    for (int i = 0; i < index; i++) {
-      KnnVectorsReader reader = readers[i];
-      if (reader == null) {
-        continue;
-      }
+  private Map<Integer, Integer> getOldToNewOrdinalMap(
+      FieldInfo fieldInfo, int initializerIndex, MergeState mergeState) throws IOException {
+    VectorValues initializerVectorValues =
+        mergeState.knnVectorsReaders[initializerIndex].getVectorValues(fieldInfo.name);
+    MergeState.DocMap initializerDocMap = mergeState.docMaps[initializerIndex];
 
-      VectorValues vectorValues = reader.getVectorValues(field);
-      if (vectorValues == null) {
-        continue;
-      }
-
-      int docInc = vectorValues.size();
-      Bits liveDocs = mergeState.liveDocs[i];
-      if (liveDocs != null) {
-        for (int j = 0; j < liveDocs.length(); j++) {
-          if (!liveDocs.get(j)) {
-            docInc--;
-          }
-        }
-      }
-
-      offset += docInc;
+    Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
+    int oldOrd = 0;
+    for (int oldId = initializerVectorValues.nextDoc();
+        oldId != NO_MORE_DOCS;
+        oldId = initializerVectorValues.nextDoc()) {
+      int newId = initializerDocMap.get(oldId);
+      newIdToOldOrdinal.put(newId, oldOrd);
+      oldOrd++;
     }
-    return offset;
+
+    VectorValues mergedVectorsValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
+
+    int newOrd = 0;
+    for (int newDocId = mergedVectorsValues.nextDoc();
+        newDocId != NO_MORE_DOCS;
+        newDocId = mergedVectorsValues.nextDoc()) {
+      if (newIdToOldOrdinal.containsKey(newDocId)) {
+        oldToNewOrdinalMap.put(newIdToOldOrdinal.get(newDocId), newOrd);
+      }
+      newOrd++;
+
+      if (oldToNewOrdinalMap.size() >= newIdToOldOrdinal.size()) {
+        break;
+      }
+    }
+
+    return oldToNewOrdinalMap;
   }
 
   private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)

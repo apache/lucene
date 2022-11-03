@@ -23,11 +23,12 @@ import static org.apache.lucene.util.VectorUtil.toBytesRef;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.function.UnaryOperator;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene94.Lucene94Codec;
 import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
@@ -617,7 +618,10 @@ public class TestHnswGraph extends LuceneTestCase {
     HnswGraphBuilder<?> initializerBuilder =
         HnswGraphBuilder.create(
             initializerVectors, vectorEncoding, similarityFunction, 10, 30, random().nextLong());
-    UnaryOperator<Integer> initializerOrdMap = integer -> integer + offset;
+    Map<Integer, Integer> initializerOrdMap = new HashMap<>();
+    for (int i = 0; i < initializerSize; i++) {
+      initializerOrdMap.put(i, offset + i);
+    }
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.copy());
     RandomVectorValues finalVectorValues =
         new RandomVectorValues(
@@ -631,8 +635,7 @@ public class TestHnswGraph extends LuceneTestCase {
             10,
             30,
             random().nextLong(),
-            initializerGraph,
-            initializerOrdMap);
+            new HnswGraphBuilder.GraphInitializerConfig(initializerGraph, initializerOrdMap));
     OnHeapHnswGraph finalGraph = finalBuilder.build(initializerVectors.copy());
 
     // Confirm that the graph is appropriately constrcuted by checking that the nodes in the old
@@ -657,10 +660,10 @@ public class TestHnswGraph extends LuceneTestCase {
     return intArray;
   }
 
-  private int[] mapArrayAndSort(int[] a, UnaryOperator<Integer> mapper) {
-    int[] mappedA = new int[a.length];
-    for (int i = 0; i < a.length; i++) {
-      mappedA[i] = mapper.apply(a[i]);
+  private int[] mapArrayAndSort(int[] arr, Map<Integer, Integer> map) {
+    int[] mappedA = new int[arr.length];
+    for (int i = 0; i < arr.length; i++) {
+      mappedA[i] = map.get(arr[i]);
     }
     Arrays.sort(mappedA);
     return mappedA;

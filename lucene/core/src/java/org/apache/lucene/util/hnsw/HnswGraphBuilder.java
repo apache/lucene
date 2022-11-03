@@ -23,14 +23,13 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SplittableRandom;
-import java.util.function.UnaryOperator;
 import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
@@ -70,7 +69,7 @@ public final class HnswGraphBuilder<T> {
   // colliding
   private final RandomAccessVectorValues vectorsCopy;
 
-  private Bits preloadedNodes;
+  private final Set<Integer> initializedNodes;
 
   public static HnswGraphBuilder<?> create(
       RandomAccessVectorValues vectors,
@@ -81,7 +80,7 @@ public final class HnswGraphBuilder<T> {
       long seed)
       throws IOException {
     return new HnswGraphBuilder<>(
-        vectors, vectorEncoding, similarityFunction, M, beamWidth, seed, -1);
+        vectors, vectorEncoding, similarityFunction, M, beamWidth, seed, null);
   }
 
   public static HnswGraphBuilder<?> create(
@@ -91,28 +90,10 @@ public final class HnswGraphBuilder<T> {
       int M,
       int beamWidth,
       long seed,
-      HnswGraph initializerGraph,
-      UnaryOperator<Integer> initializerOrdMapper)
+      GraphInitializerConfig graphInitializerConfig)
       throws IOException {
-    HnswGraphBuilder<?> hnswGraphBuilder;
-    // If initialization graph contains starting node, get the level of the first added node so that
-    // graph can be
-    // properly initialized.
-    if (initializerOrdMapper.apply(0) == 0) {
-      int levelOfFirstNode = 0;
-      while (initializerGraph.numLevels() > levelOfFirstNode + 1
-          && initializerGraph.getNodesOnLevel(levelOfFirstNode + 1).nextInt() == 0) {
-        levelOfFirstNode++;
-      }
-      hnswGraphBuilder =
-          new HnswGraphBuilder<>(
-              vectors, vectorEncoding, similarityFunction, M, beamWidth, seed, levelOfFirstNode);
-    } else {
-      hnswGraphBuilder =
-          HnswGraphBuilder.create(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
-    }
-    hnswGraphBuilder.initializeFromGraph(initializerGraph, initializerOrdMapper);
-    return hnswGraphBuilder;
+    return new HnswGraphBuilder<>(
+        vectors, vectorEncoding, similarityFunction, M, beamWidth, seed, graphInitializerConfig);
   }
 
   /**
@@ -126,8 +107,8 @@ public final class HnswGraphBuilder<T> {
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
-   * @param levelOfFirstNode the top level of the first node in the graph. Pass -1 to assign random
-   *     value.
+   * @param graphInitializerConfig configuration for initializing this graph from another graph. If
+   *     null, the graph will be built from scratch
    */
   private HnswGraphBuilder(
       RandomAccessVectorValues vectors,
@@ -136,7 +117,7 @@ public final class HnswGraphBuilder<T> {
       int M,
       int beamWidth,
       long seed,
-      int levelOfFirstNode)
+      GraphInitializerConfig graphInitializerConfig)
       throws IOException {
     this.vectors = vectors;
     this.vectorsCopy = vectors.copy();
@@ -153,9 +134,11 @@ public final class HnswGraphBuilder<T> {
     // normalization factor for level generation; currently not configurable
     this.ml = 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    this.hnsw =
-        new OnHeapHnswGraph(
-            M, levelOfFirstNode == -1 ? getRandomGraphLevel(ml, random) : levelOfFirstNode);
+    int initialLevel =
+        graphInitializerConfig == null
+            ? getRandomGraphLevel(ml, random)
+            : getMaxLevelForZeroNode(getRandomGraphLevel(ml, random), graphInitializerConfig);
+    this.hnsw = new OnHeapHnswGraph(M, initialLevel);
     this.graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
@@ -164,26 +147,34 @@ public final class HnswGraphBuilder<T> {
             new FixedBitSet(this.vectors.size()));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
-    preloadedNodes = null;
+    this.initializedNodes = new HashSet<>();
+
+    if (graphInitializerConfig != null) {
+      initializeFromGraph(graphInitializerConfig);
+    }
   }
 
-  private void initializeFromGraph(
-      HnswGraph initializerGraph, UnaryOperator<Integer> initializerOrdMapper) throws IOException {
+  private void initializeFromGraph(GraphInitializerConfig graphInitializerConfig)
+      throws IOException {
     int levelOfNode0 = hnsw.numLevels() - 1;
     BytesRef binaryValue = null;
     float[] vectorValue = null;
-    Set<Integer> preloadedNodesSet = new HashSet<>();
-    int maxOrd = -1;
-    int minOrd = Integer.MAX_VALUE;
+    boolean isNewZeroFromInitializerGraph = false;
+    for (int level = 0; level < graphInitializerConfig.initializerGraph.numLevels(); level++) {
+      HnswGraph.NodesIterator it = graphInitializerConfig.initializerGraph.getNodesOnLevel(level);
 
-    for (int level = 0; level < initializerGraph.numLevels(); level++) {
-      HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
       while (it.hasNext()) {
         int oldOrd = it.nextInt();
-        int newOrd = initializerOrdMapper.apply(oldOrd);
+        int newOrd = graphInitializerConfig.oldToNewOrdinalMap.get(oldOrd);
 
         if (newOrd != 0) {
           this.hnsw.addNode(level, newOrd);
+        } else {
+          isNewZeroFromInitializerGraph = true;
+        }
+
+        if (level == 0) {
+          this.initializedNodes.add(newOrd);
         }
 
         switch (this.vectorEncoding) {
@@ -191,11 +182,11 @@ public final class HnswGraphBuilder<T> {
           case BYTE -> binaryValue = vectors.binaryValue(newOrd);
         }
         NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
-        initializerGraph.seek(level, oldOrd);
-        for (int oldNeighbor = initializerGraph.nextNeighbor();
+        graphInitializerConfig.initializerGraph.seek(level, oldOrd);
+        for (int oldNeighbor = graphInitializerConfig.initializerGraph.nextNeighbor();
             oldNeighbor != NO_MORE_DOCS;
-            oldNeighbor = initializerGraph.nextNeighbor()) {
-          int newNeighbor = initializerOrdMapper.apply(oldNeighbor);
+            oldNeighbor = graphInitializerConfig.initializerGraph.nextNeighbor()) {
+          int newNeighbor = graphInitializerConfig.oldToNewOrdinalMap.get(oldNeighbor);
 
           // TODO: Could we avoid computing scores here and lazily compute them when they are
           // needed?
@@ -208,54 +199,28 @@ public final class HnswGraphBuilder<T> {
               };
           newNeighbors.insertSorted(newNeighbor, score);
         }
-
-        if (level == 0) {
-          preloadedNodesSet.add(newOrd);
-          if (newOrd > maxOrd) {
-            maxOrd = newOrd;
-          }
-          if (newOrd < minOrd) {
-            minOrd = newOrd;
-          }
-        }
       }
     }
 
-    int finalMinOrd = minOrd;
-    int finalMaxOrd = maxOrd;
-    this.preloadedNodes =
-        new Bits() {
-          @Override
-          public boolean get(int index) {
-            return index <= finalMaxOrd
-                && index >= finalMinOrd
-                && preloadedNodesSet.contains(index);
-          }
+    // The zero node is added to the graph implicitly in the constructor. This works because it is
+    // guaranteed to be the
+    // initial entrypoint, so nodes added after will consider it as a neighbor (and vice versa).
+    // However, when
+    // initializing the graph from another graph, the entrypoint will either be in the other graph
+    // and 0 wont ever be
+    // visited or, 0 will be the entrypoint and none of the initialized graph will be visited. To
+    // prevent this, we
+    // backfill 0's neighbors if 0 is not a part of the initializer graph already.
+    if (!isNewZeroFromInitializerGraph) {
+      int levelOfEpInitializer = graphInitializerConfig.initializerGraph.numLevels() - 1;
+      int[] ep =
+          new int[] {
+            graphInitializerConfig.oldToNewOrdinalMap.get(
+                graphInitializerConfig.initializerGraph.entryNode())
+          };
 
-          @Override
-          public int length() {
-            return vectors.size();
-          }
-        };
-
-    // Explicitly add neighbors for node 0 so that the graph gets connected
-    if (initializerOrdMapper.apply(0) == 0) {
-      return;
-    }
-
-    T value = getValue(0, vectors);
-    NeighborQueue candidates;
-    int maxLevelOfInitializerGraph = initializerGraph.numLevels() - 1;
-    int[] eps = new int[] {initializerOrdMapper.apply(initializerGraph.entryNode())};
-    for (int level = maxLevelOfInitializerGraph; level > levelOfNode0; level--) {
-      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectors, hnsw);
-      eps = new int[] {candidates.pop()};
-    }
-
-    for (int level = levelOfNode0; level >= 0; level--) {
-      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectors, hnsw);
-      eps = candidates.nodes();
-      addDiverseNeighbors(level, 0, candidates);
+      T value = getValue(0, vectors);
+      addNeighbors(0, value, levelOfEpInitializer, levelOfNode0, ep);
     }
   }
 
@@ -283,7 +248,7 @@ public final class HnswGraphBuilder<T> {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectorsToAdd.size(); node++) {
-      if (this.preloadedNodes != null && this.preloadedNodes.get(node)) {
+      if (initializedNodes.contains(node)) {
         continue;
       }
 
@@ -305,32 +270,37 @@ public final class HnswGraphBuilder<T> {
 
   /** Inserts a doc with vector value to the graph */
   public void addGraphNode(int node, T value) throws IOException {
-    NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
     int[] eps = new int[] {hnsw.entryNode()};
 
     // if a node introduces new levels to the graph, add this new node on new levels
-    for (int level = nodeLevel; level > curMaxLevel; level--) {
+    for (int level = nodeLevel; level >= 0; level--) {
       hnsw.addNode(level, node);
     }
 
-    // for levels > nodeLevel search with topk = 1
-    for (int level = curMaxLevel; level > nodeLevel; level--) {
-      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectors, hnsw);
-      eps = new int[] {candidates.pop()};
-    }
-    // for levels <= nodeLevel search with topk = beamWidth, and add connections
-    for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
-      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectors, hnsw);
-      eps = candidates.nodes();
-      hnsw.addNode(level, node);
-      addDiverseNeighbors(level, node, candidates);
-    }
+    addNeighbors(node, value, curMaxLevel, nodeLevel, eps);
   }
 
   public void addGraphNode(int node, RandomAccessVectorValues values) throws IOException {
     addGraphNode(node, getValue(node, values));
+  }
+
+  private void addNeighbors(int node, T value, int previousMaxLevel, int nodeLevel, int[] eps)
+      throws IOException {
+    NeighborQueue candidates;
+
+    // for levels > nodeLevel search with topk = 1
+    for (int level = previousMaxLevel; level > nodeLevel; level--) {
+      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectors, hnsw);
+      eps = new int[] {candidates.pop()};
+    }
+    // for levels <= nodeLevel search with topk = beamWidth, and add connections
+    for (int level = Math.min(nodeLevel, previousMaxLevel); level >= 0; level--) {
+      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectors, hnsw);
+      eps = candidates.nodes();
+      addDiverseNeighbors(level, node, candidates);
+    }
   }
 
   @SuppressWarnings("unchecked")
@@ -501,11 +471,61 @@ public final class HnswGraphBuilder<T> {
     return true;
   }
 
+  private int getMaxLevelForZeroNode(
+      int fallbackNumberOfLevels, GraphInitializerConfig initializerConfig) throws IOException {
+    int oldNodeMapToNewZero = -1;
+    for (Map.Entry<Integer, Integer> ordEntry : initializerConfig.oldToNewOrdinalMap.entrySet()) {
+      if (ordEntry.getValue() == 0) {
+        oldNodeMapToNewZero = ordEntry.getKey();
+        break;
+      }
+    }
+
+    if (oldNodeMapToNewZero == -1) {
+      return fallbackNumberOfLevels;
+    }
+
+    int levelOfFirstNode = 0;
+    while (initializerConfig.initializerGraph.numLevels() > levelOfFirstNode + 1) {
+      if (!isNodeInLevel(
+          initializerConfig.initializerGraph.getNodesOnLevel(levelOfFirstNode + 1),
+          oldNodeMapToNewZero)) {
+        break;
+      }
+      levelOfFirstNode++;
+    }
+
+    return levelOfFirstNode;
+  }
+
+  private static boolean isNodeInLevel(HnswGraph.NodesIterator nodesIterator, int ordinal) {
+    while (nodesIterator.hasNext() && nodesIterator.nextInt() < 0) {}
+    return nodesIterator.cur == ordinal;
+  }
+
   private static int getRandomGraphLevel(double ml, SplittableRandom random) {
     double randDouble;
     do {
       randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
     } while (randDouble == 0.0);
     return ((int) (-log(randDouble) * ml));
+  }
+
+  /** Configuration class for GraphInitializer */
+  public static class GraphInitializerConfig {
+    private final Map<Integer, Integer> oldToNewOrdinalMap;
+    private final HnswGraph initializerGraph;
+
+    /**
+     * Contains config information for initializing graph from another graph
+     *
+     * @param initializerGraph graph that will be used to initialize another graph
+     * @param oldToNewOrdinalMap Map from ordinals in initializer graph to new graph
+     */
+    public GraphInitializerConfig(
+        HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) {
+      this.initializerGraph = initializerGraph;
+      this.oldToNewOrdinalMap = oldToNewOrdinalMap;
+    }
   }
 }
