@@ -281,7 +281,7 @@ public abstract class DataInput implements Cloneable {
     return new String(bytes, 0, length, StandardCharsets.UTF_8);
   }
 
-  private final Map<String, String> canonicalStrings = new HashMap<>();
+  private Map<String, String> canonicalStrings;
 
   /**
    * Reads a string. A single canonical {@code String} instance is returned for strings that are
@@ -290,6 +290,9 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeString(String)
    */
   public String readCanonicalString() throws IOException {
+    if (canonicalStrings == null) {
+      canonicalStrings = new HashMap<>();
+    }
     return canonicalStrings.computeIfAbsent(readString(), Function.identity());
   }
 
@@ -305,7 +308,11 @@ public abstract class DataInput implements Cloneable {
   @Override
   public DataInput clone() {
     try {
-      return (DataInput) super.clone();
+      DataInput c = (DataInput) super.clone();
+      if (c.canonicalStrings != null) {
+        c.canonicalStrings = new HashMap<>(canonicalStrings);
+      }
+      return c;
     } catch (CloneNotSupportedException e) {
       throw new Error("This cannot happen: Failing to clone DataInput", e);
     }
