@@ -392,21 +392,27 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       // neighbours
       graphOffsetsByLevel = new long[numLevels];
       final int packedBitsRequired = PackedInts.bitsRequired(size);
+      final int level0ValueCount = Math.multiplyExact(M, 2);
+      final long level0ByteSize =
+          Math.addExact(
+              PackedInts.Format.PACKED.byteCount(
+                  packedIntsVersion, level0ValueCount, packedBitsRequired),
+              Integer.BYTES);
+      final long levelByteSize =
+          Math.addExact(
+              PackedInts.Format.PACKED.byteCount(packedIntsVersion, M, packedBitsRequired),
+              Integer.BYTES);
       for (int level = 0; level < numLevels; level++) {
         if (level == 0) {
           graphOffsetsByLevel[level] = 0;
         } else if (level == 1) {
-          graphOffsetsByLevel[level] =
-              (PackedInts.Format.PACKED.byteCount(packedIntsVersion, M * 2, packedBitsRequired)
-                      + Integer.BYTES)
-                  * size;
+          graphOffsetsByLevel[level] = Math.multiplyExact(level0ByteSize, size);
         } else {
           int numNodesOnPrevLevel = nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              graphOffsetsByLevel[level - 1]
-                  + (PackedInts.Format.PACKED.byteCount(packedIntsVersion, M, packedBitsRequired)
-                          + Integer.BYTES)
-                      * numNodesOnPrevLevel;
+              Math.multiplyExact(
+                  Math.addExact(graphOffsetsByLevel[level - 1], levelByteSize),
+                  numNodesOnPrevLevel);
         }
       }
     }
@@ -448,12 +454,16 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       this.packedBitsRequired = PackedInts.bitsRequired(size);
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
       this.packedIntsVersion = entry.packedIntsVersion;
+      final int level0ValueCount = Math.multiplyExact(entry.M, 2);
       this.bytesForConns =
-          PackedInts.Format.PACKED.byteCount(packedIntsVersion, entry.M, packedBitsRequired)
-              + Integer.BYTES;
+          Math.addExact(
+              PackedInts.Format.PACKED.byteCount(packedIntsVersion, entry.M, packedBitsRequired),
+              Integer.BYTES);
       this.bytesForConns0 =
-          PackedInts.Format.PACKED.byteCount(packedIntsVersion, entry.M * 2, packedBitsRequired)
-              + Integer.BYTES;
+          Math.addExact(
+              PackedInts.Format.PACKED.byteCount(
+                  packedIntsVersion, level0ValueCount, packedBitsRequired),
+              Integer.BYTES);
       this.connReader =
           PackedInts.getReaderIteratorNoHeader(
               dataIn, PackedInts.Format.PACKED, packedIntsVersion, entry.M, packedBitsRequired, 1);
@@ -462,7 +472,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
               dataIn,
               PackedInts.Format.PACKED,
               packedIntsVersion,
-              entry.M * 2,
+              level0ValueCount,
               packedBitsRequired,
               1);
     }
