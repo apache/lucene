@@ -34,7 +34,6 @@ import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.PriorityQueue;
 
 class DrillSidewaysScorer extends BulkScorer {
 
@@ -234,13 +233,7 @@ class DrillSidewaysScorer extends BulkScorer {
     // a bit like the "head" queue in WANDScorer's "min should match" implementation. We use a
     // single-valued PQ ordered by docID to easily determine the "closest" runaway dim we'll use
     // for advancing in the case that multiple dim approximations miss.
-    PriorityQueue<DocsAndCost> runawayDim =
-        new PriorityQueue<>(1) {
-          @Override
-          protected boolean lessThan(DocsAndCost a, DocsAndCost b) {
-            return a.approximation.docID() < b.approximation.docID();
-          }
-        };
+    DocsAndCost runawayDim = null;
 
     int docID = baseApproximation.docID();
 
@@ -254,24 +247,30 @@ class DrillSidewaysScorer extends BulkScorer {
       }
 
       // If we carried a "runaway" over from the last iteration, see if we've "caught up" yet:
-      DocsAndCost runaway = runawayDim.top();
-      if (runaway != null && runaway.approximation.docID() <= docID) {
-        runawayDim.clear();
-        runaway = null;
+      if (runawayDim != null && runawayDim.approximation.docID() <= docID) {
+        runawayDim = null;
       }
 
       // Check the sideways dim approximations. At most, one dim is allowed to miss for the doc
       // to be a near-miss or full match. If multiple sideways dims miss, we move on:
       for (DocsAndCost dim : sidewaysDims) {
         int dimDocID = advanceIfBehind(docID, dim.approximation);
-        if (dimDocID != docID && dim != runaway) {
-          DocsAndCost evicted = runawayDim.insertWithOverflow(dim);
-          if (evicted != null) {
+        if (dimDocID != docID && dim != runawayDim) {
+          if (runawayDim != null) {
             // More than one dim has advanced beyond docID, so we jump ahead to the "closer" of
             // the two:
-            int next = evicted.approximation.docID();
+            DocsAndCost closer;
+            if (dimDocID <= runawayDim.approximation.docID()) {
+              closer = dim;
+            } else {
+              closer = runawayDim;
+              runawayDim = dim;
+            }
+            int next = closer.approximation.docID();
             docID = baseApproximation.advance(next);
             continue nextDoc;
+          } else {
+            runawayDim = dim;
           }
         }
       }
@@ -286,7 +285,7 @@ class DrillSidewaysScorer extends BulkScorer {
       // If we have two-phase iterators for our sideways dims, check them now. At most, one
       // sideways dim can miss for the doc to be a near-miss or full match. If more than one misses
       // we move on:
-      DocsAndCost failedDim = runawayDim.top();
+      DocsAndCost failedDim = runawayDim;
       if (sidewaysTwoPhaseDims != null) {
         if (failedDim == null) {
           // If all sideways dims matched in their approximation phase, then we can allow one
