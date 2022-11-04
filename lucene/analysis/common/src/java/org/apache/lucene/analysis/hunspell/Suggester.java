@@ -36,17 +36,16 @@ import org.apache.lucene.util.CharsRef;
 /**
  * A generator for misspelled word corrections based on Hunspell flags. The suggestions are searched
  * for in two main ways:
+ *
  * <ol>
- *   <li>
- *     Modification: trying to insert/remove/delete/swap parts of the word to get something
- *   acceptable. The performance of this part depends heavily on the contents of TRY, MAP, REP, KEY directives in the .aff file.
- *   </li>
- *   <li>
- *     Enumeration: if the modification hasn't produced "good enough" suggestions, the whole
- *     dictionary is scanned and simple affixes are added onto the entries to check if that produces
- *     anything similar to the given misspelled word. This depends on the dictionary size and the
- *     affix count, and it can take noticeable amount of time. To speed this up, {@link #withSuggestibleEntryCache()} can be used.
- *   </li>
+ *   <li>Modification: trying to insert/remove/delete/swap parts of the word to get something
+ *       acceptable. The performance of this part depends heavily on the contents of TRY, MAP, REP,
+ *       KEY directives in the .aff file.
+ *   <li>Enumeration: if the modification hasn't produced "good enough" suggestions, the whole
+ *       dictionary is scanned and simple affixes are added onto the entries to check if that
+ *       produces anything similar to the given misspelled word. This depends on the dictionary size
+ *       and the affix count, and it can take noticeable amount of time. To speed this up, {@link
+ *       #withSuggestibleEntryCache()} can be used.
  * </ol>
  */
 public class Suggester {
@@ -64,9 +63,8 @@ public class Suggester {
 
   /**
    * Returns a copy of this suggester instance with better "Enumeration" phase performance (see
-   * {@link Suggester} documentation), but using more
-   * memory. With this option, the dictionary entries are stored as fast-to-iterate plain words
-   * instead of highly compressed prefix trees.
+   * {@link Suggester} documentation), but using more memory. With this option, the dictionary
+   * entries are stored as fast-to-iterate plain words instead of highly compressed prefix trees.
    */
   public Suggester withSuggestibleEntryCache() {
     return new Suggester(dictionary, SuggestibleEntryCache.buildCache(dictionary.words));
@@ -74,9 +72,10 @@ public class Suggester {
 
   /**
    * Compute suggestions for the given misspelled word
+   *
    * @param word the misspelled word to calculate suggestions for
    * @param checkCanceled an object that's periodically called, allowing to interrupt or suggestion
-   *                      generation by throwing an exception
+   *     generation by throwing an exception
    */
   public List<String> suggestNoTimeout(String word, Runnable checkCanceled) {
     return suggest(word, new LinkedHashSet<>(), checkCanceled);
@@ -85,19 +84,23 @@ public class Suggester {
   /**
    * @param word the misspelled word to calculate suggestions for
    * @param timeLimitMs the duration limit in milliseconds after which the computation is interruped
-   *                    by an exception
+   *     by an exception
    * @param checkCanceled an object that's periodically called, allowing to interrupt or suggestion
-   *                      generation by throwing an exception
-   * @throws SuggestionTimeoutException if the computation takes too long. Use {@link SuggestionTimeoutException#getPartialResult()} to get the suggestions computed up to that point
+   *     generation by throwing an exception
+   * @throws SuggestionTimeoutException if the computation takes too long. Use {@link
+   *     SuggestionTimeoutException#getPartialResult()} to get the suggestions computed up to that
+   *     point
    */
-  public List<String> suggestWithTimeout(
-      String word, long timeLimitMs, Runnable checkCanceled) throws SuggestionTimeoutException {
+  public List<String> suggestWithTimeout(String word, long timeLimitMs, Runnable checkCanceled)
+      throws SuggestionTimeoutException {
     LinkedHashSet<Suggestion> suggestions = new LinkedHashSet<>();
     Runnable checkTime = checkTimeLimit(word, suggestions, timeLimitMs, checkCanceled);
     return suggest(word, suggestions, checkTime);
   }
 
-  private List<String> suggest(String word, LinkedHashSet<Suggestion> suggestions, Runnable checkCanceled) throws SuggestionTimeoutException {
+  private List<String> suggest(
+      String word, LinkedHashSet<Suggestion> suggestions, Runnable checkCanceled)
+      throws SuggestionTimeoutException {
     checkCanceled.run();
     if (word.length() >= 100) return Collections.emptyList();
 
