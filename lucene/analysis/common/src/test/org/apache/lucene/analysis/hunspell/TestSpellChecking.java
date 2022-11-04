@@ -249,13 +249,14 @@ public class TestSpellChecking extends LuceneTestCase {
     InputStream dictStream = Files.newInputStream(dicFile);
 
     Hunspell speller;
-    Hunspell cachingSpeller;
+    Suggester defaultSuggester;
+    Suggester cachingSuggester;
     try {
       Dictionary dictionary =
           new Dictionary(new ByteBuffersDirectory(), "dictionary", affixStream, dictStream);
       speller = new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
-      cachingSpeller =
-          new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {}).withSuggestibleEntryCache();
+      defaultSuggester = new Suggester(dictionary);
+      cachingSuggester = new Suggester(dictionary).withSuggestibleEntryCache();
     } finally {
       IOUtils.closeWhileHandlingException(affixStream);
       IOUtils.closeWhileHandlingException(dictStream);
@@ -276,8 +277,8 @@ public class TestSpellChecking extends LuceneTestCase {
         assertFalse("Unexpectedly considered correct: " + word, speller.spell(word.trim()));
       }
       if (Files.exists(sug)) {
-        assertEquals(Files.readString(sug).trim(), suggest(speller, wrongWords));
-        assertEquals(Files.readString(sug).trim(), suggest(cachingSpeller, wrongWords));
+        assertEquals(Files.readString(sug).trim(), suggest(defaultSuggester, wrongWords));
+        assertEquals(Files.readString(sug).trim(), suggest(cachingSuggester, wrongWords));
       }
     } else {
       assertFalse(".sug file without .wrong file!", Files.exists(sug));
@@ -289,9 +290,9 @@ public class TestSpellChecking extends LuceneTestCase {
     }
   }
 
-  private static String suggest(Hunspell speller, List<String> wrongWords) {
+  private static String suggest(Suggester suggester, List<String> wrongWords) {
     return wrongWords.stream()
-        .map(s -> String.join(", ", speller.suggest(s)))
+        .map(s -> String.join(", ", suggester.suggestNoTimeout(s, () -> {})))
         .filter(s -> !s.isEmpty())
         .collect(Collectors.joining("\n"));
   }

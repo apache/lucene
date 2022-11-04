@@ -163,36 +163,33 @@ public class TestPerformance extends LuceneTestCase {
 
   private void checkSuggestionPerformance(String code, int wordCount) throws Exception {
     Dictionary dictionary = loadDictionary(code);
-    Hunspell speller =
-        new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, () -> {})
-            .withSuggestibleEntryCache();
+    Suggester suggester = new Suggester(dictionary).withSuggestibleEntryCache();
+    Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, () -> {});
     List<String> words =
         loadWords(code, wordCount, dictionary).stream()
             .distinct()
-            .filter(w -> hasQuickSuggestions(speller, w))
+            .filter(w -> hasQuickSuggestions(speller, suggester, w))
             .collect(Collectors.toList());
     System.out.println("Checking " + words.size() + " misspelled words");
 
-    Hunspell fullSpeller =
-        new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {}).withSuggestibleEntryCache();
     measure(
         "Suggestions for " + code,
         words.size(),
         blackHole -> {
           for (String word : words) {
-            blackHole.accept(fullSpeller.suggest(word));
+            blackHole.accept(suggester.suggestNoTimeout(word, () -> {}));
           }
         });
     System.out.println();
   }
 
-  private boolean hasQuickSuggestions(Hunspell speller, String word) {
+  private boolean hasQuickSuggestions(Hunspell speller, Suggester suggester, String word) {
     if (speller.spell(word)) {
       return false;
     }
 
     try {
-      speller.suggest(word);
+      suggester.suggestWithTimeout(word, Hunspell.SUGGEST_TIME_LIMIT, () -> {});
     } catch (
         @SuppressWarnings("unused")
         SuggestionTimeoutException e) {

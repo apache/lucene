@@ -160,11 +160,14 @@ public class TestAllDictionaries extends LuceneTestCase {
         (Path aff) -> {
           try {
             Dictionary dic = loadDictionary(aff);
-            Hunspell hunspell = new Hunspell(dic).withSuggestibleEntryCache();
-            hunspell.spell("aaaa");
-            hunspell.suggest("aaaaaaaaaaa");
+            new Hunspell(dic).spell("aaaa");
+            Suggester suggester = new Suggester(dic).withSuggestibleEntryCache();
+            try {
+              suggester.suggestWithTimeout("aaaaaaaaaa", Hunspell.SUGGEST_TIME_LIMIT, () -> {});
+            } catch (SuggestionTimeoutException ignore) {
+            }
             totalMemory.addAndGet(RamUsageTester.ramUsed(dic));
-            memoryWithCache.addAndGet(RamUsageTester.ramUsed(hunspell));
+            memoryWithCache.addAndGet(RamUsageTester.ramUsed(suggester));
             totalWords.addAndGet(RamUsageTester.ramUsed(dic.words));
             System.out.println(aff + "\t" + memoryUsageSummary(dic));
           } catch (Throwable e) {

@@ -47,10 +47,12 @@ class GeneratingSuggester {
   private static final int MAX_ROOT_LENGTH_DIFF = 4;
   private final Dictionary dictionary;
   private final Hunspell speller;
+  private final SuggestibleEntryCache entryCache;
 
-  GeneratingSuggester(Hunspell speller) {
+  GeneratingSuggester(Hunspell speller, SuggestibleEntryCache entryCache) {
     this.dictionary = speller.dictionary;
     this.speller = speller;
+    this.entryCache = entryCache;
   }
 
   List<String> suggest(String word, WordCase originalCase, Set<Suggestion> prevSuggestions) {
@@ -117,9 +119,13 @@ class GeneratingSuggester {
     return roots.stream().sorted().collect(Collectors.toList());
   }
 
-  void processSuggestibleWords(
+  private void processSuggestibleWords(
       int minLength, int maxLength, BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
-    dictionary.words.processSuggestibleWords(minLength, maxLength, processor);
+    if (entryCache != null) {
+      entryCache.processSuggestibleWords(minLength, maxLength, processor);
+    } else {
+      dictionary.words.processSuggestibleWords(minLength, maxLength, processor);
+    }
   }
 
   private List<Weighted<String>> expandRoots(
