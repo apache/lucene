@@ -83,8 +83,8 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
   /** Extension of Bloom Filters file */
   static final String BLOOM_EXTENSION = "blm";
 
-  BloomFilterFactory bloomFilterFactory = new DefaultBloomFilterFactory();
-  private PostingsFormat delegatePostingsFormat;
+  private final BloomFilterFactory bloomFilterFactory;
+  private final PostingsFormat delegatePostingsFormat;
 
   /**
    * Creates Bloom filters for a selection of fields created in the index. This is recorded as a set
@@ -120,7 +120,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
   // Used only by core Lucene at read-time via Service Provider instantiation -
   // do not use at Write-time in application code.
   public BloomFilteringPostingsFormat() {
-    super(BLOOM_CODEC_NAME);
+    this(null, new DefaultBloomFilterFactory());
   }
 
   @Override
@@ -365,6 +365,11 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       @Override
       public ImpactsEnum impacts(int flags) throws IOException {
         return delegate().impacts(flags);
+      }
+
+      @Override
+      public String toString() {
+        return getClass().getSimpleName() + "(filter=" + filter.toString() + ")";
       }
     }
 

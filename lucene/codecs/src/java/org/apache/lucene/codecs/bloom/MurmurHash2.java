@@ -90,8 +90,12 @@ public final class MurmurHash2 extends HashFunction {
   }
 
   @Override
-  public final int hash(BytesRef br) {
-    return hash32(br.bytes, br.offset, br.length);
+  public final long hash(BytesRef br) {
+    int hash = hash32(br.bytes, br.offset, br.length);
+    if (hash < 0) {
+      hash = -hash;
+    }
+    return Integer.toUnsignedLong(hash);
   }
 
   @Override
