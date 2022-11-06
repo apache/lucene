@@ -29,6 +29,10 @@ import java.util.Set;
 import java.util.TreeMap;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.Impacts;
+import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -44,6 +48,8 @@ import org.apache.lucene.search.DisiWrapper;
 import org.apache.lucene.search.DisjunctionDISIApproximation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.ImpactsDISI;
+import org.apache.lucene.search.ImpactsMergingUtils;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Matches;
@@ -51,6 +57,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.SynonymImpactsSource;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermScorer;
 import org.apache.lucene.search.TermStatistics;
@@ -319,16 +326,19 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     private final IndexSearcher searcher;
     private final TermStates[] termStates;
     private final Similarity.SimScorer simWeight;
+    private final ScoreMode scoreMode;
 
     CombinedFieldWeight(Query query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
       super(query);
       assert scoreMode.needsScores();
+      this.scoreMode = scoreMode;
       this.searcher = searcher;
       long docFreq = 0;
       long totalTermFreq = 0;
       termStates = new TermStates[fieldTerms.length];
-      for (int i = 0; i < termStates.length; i++) {
+
+      for (int i = 0; i < fieldTerms.length; i++) {
         FieldAndWeight field = fieldAndWeights.get(fieldTerms[i].field());
         TermStates ts = TermStates.build(searcher.getTopReaderContext(), fieldTerms[i], true);
         termStates[i] = ts;
@@ -356,6 +366,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       long docCount = 0;
       long sumTotalTermFreq = 0;
       long sumDocFreq = 0;
+
       for (FieldAndWeight fieldWeight : fieldAndWeights.values()) {
         CollectionStatistics collectionStats = searcher.collectionStatistics(fieldWeight.field);
         if (collectionStats != null) {
@@ -403,14 +414,27 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     public Scorer scorer(LeafReaderContext context) throws IOException {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
+      Map<String, List<ImpactsEnum>> tempFieldImpactsEnums = new HashMap<>(fieldAndWeights.size());
+
+      float maxWeight = Float.MIN_VALUE;
       for (int i = 0; i < fieldTerms.length; i++) {
         TermState state = termStates[i].get(context);
         if (state != null) {
-          TermsEnum termsEnum = context.reader().terms(fieldTerms[i].field()).iterator();
+          String fieldName = fieldTerms[i].field();
+          fields.add(fieldAndWeights.get(fieldName));
+          tempFieldImpactsEnums.putIfAbsent(fieldName, new ArrayList<>());
+
+          TermsEnum termsEnum = context.reader().terms(fieldName).iterator();
           termsEnum.seekExact(fieldTerms[i].bytes(), state);
-          PostingsEnum postingsEnum = termsEnum.postings(null, PostingsEnum.FREQS);
-          iterators.add(postingsEnum);
-          fields.add(fieldAndWeights.get(fieldTerms[i].field()));
+
+          if (scoreMode == ScoreMode.TOP_SCORES) {
+            ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
+            iterators.add(impactsEnum);
+            tempFieldImpactsEnums.get(fieldName).add(impactsEnum);
+          } else {
+            PostingsEnum postingsEnum = termsEnum.postings(null, PostingsEnum.FREQS);
+            iterators.add(postingsEnum);
+          }
         }
       }
 
@@ -422,24 +446,188 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           new MultiNormsLeafSimScorer(simWeight, context.reader(), fieldAndWeights.values(), true);
       LeafSimScorer nonScoringSimScorer =
           new LeafSimScorer(simWeight, context.reader(), "pseudo_field", false);
+
       // we use termscorers + disjunction as an impl detail
       DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
       for (int i = 0; i < iterators.size(); i++) {
-        float weight = fields.get(i).weight;
+        FieldAndWeight fieldAndWeight = fields.get(i);
         queue.add(
             new WeightedDisiWrapper(
-                new TermScorer(this, iterators.get(i), nonScoringSimScorer), weight));
+                new TermScorer(this, iterators.get(i), nonScoringSimScorer),
+                fieldAndWeight.weight));
       }
+
       // Even though it is called approximation, it is accurate since none of
       // the sub iterators are two-phase iterators.
       DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
-      return new CombinedFieldScorer(this, queue, iterator, scoringSimScorer);
+      ImpactsDISI impactsDisi = null;
+
+      if (scoreMode == ScoreMode.TOP_SCORES) {
+
+        Map<String, ImpactsEnum[]> fieldImpactsEnums = new HashMap<>();
+        Map<String, float[]> fieldWeights = new HashMap<>();
+
+        for (Map.Entry<String, List<ImpactsEnum>> e : tempFieldImpactsEnums.entrySet()) {
+          fieldImpactsEnums.put(e.getKey(), e.getValue().toArray(new ImpactsEnum[0]));
+
+          float[] weights = new float[e.getValue().size()];
+          Arrays.fill(weights, fieldAndWeights.get(e.getKey()).weight);
+          fieldWeights.put(e.getKey(), weights);
+        }
+
+        ImpactsSource impactsSource = mergeImpacts(fieldImpactsEnums, fieldWeights);
+        iterator = impactsDisi = new ImpactsDISI(iterator, impactsSource, simWeight);
+      }
+
+      return new CombinedFieldScorer(this, queue, iterator, impactsDisi, scoringSimScorer);
     }
 
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return false;
     }
+  }
+
+  /** Merge impacts for combined field. */
+  static ImpactsSource mergeImpacts(
+      Map<String, ImpactsEnum[]> fieldImpactsEnum, Map<String, float[]> fieldWeights) {
+
+    return new ImpactsSource() {
+      Map<String, SynonymImpactsSource> fieldImpactsSource = null;
+
+      @Override
+      public Impacts getImpacts() throws IOException {
+        if (fieldImpactsSource == null) {
+          fieldImpactsSource = new HashMap<>();
+          for (Map.Entry<String, ImpactsEnum[]> e : fieldImpactsEnum.entrySet()) {
+            SynonymImpactsSource source =
+                new SynonymImpactsSource(e.getValue(), fieldWeights.get(e.getKey()));
+            fieldImpactsSource.put(e.getKey(), source);
+          }
+        }
+
+        return new Impacts() {
+          @Override
+          public int numLevels() {
+            // max of levels across fields' impactEnums
+            int result = 0;
+
+            for (SynonymImpactsSource s : fieldImpactsSource.values()) {
+              try {
+                result = Math.max(result, s.getImpacts().numLevels());
+              } catch (IOException e) {
+                // nocommit to be handled
+                e.printStackTrace();
+              }
+            }
+
+            return result;
+          }
+
+          @Override
+          public int getDocIdUpTo(int level) {
+            // min of docIdUpTo across fields' impactEnums
+            int result = Integer.MAX_VALUE;
+
+            for (SynonymImpactsSource s : fieldImpactsSource.values()) {
+              Impacts impacts;
+              try {
+                impacts = s.getImpacts();
+                if (impacts.numLevels() > level) {
+                  result = Math.min(result, impacts.getDocIdUpTo(level));
+                }
+              } catch (IOException e) {
+                // nocommit to be handled
+                e.printStackTrace();
+              }
+            }
+
+            return result;
+          }
+
+          // this can't loop over each field's SynonymImpactsSource.getImpacts().getImpacts(level)
+          // and then combine impacts,
+          // as docIdUpTo of each SynonymImpactsSource.getImpacts().getImpacts(level) might be
+          // different for the same level
+          @Override
+          public List<Impact> getImpacts(int level) {
+            final int docIdUpTo = getDocIdUpTo(level);
+            final Map<String, List<Impact>> mergedImpactsPerField =
+                getMergedImpactsPerField(docIdUpTo);
+
+            return mergeImpactsAcrossFields(mergedImpactsPerField);
+          }
+
+          private Map<String, List<Impact>> getMergedImpactsPerField(int docIdUpTo) {
+            final Map<String, List<Impact>> result = new HashMap<>(fieldImpactsEnum.size());
+
+            for (Map.Entry<String, ImpactsEnum[]> e : fieldImpactsEnum.entrySet()) {
+              String field = e.getKey();
+              ImpactsEnum[] impactsEnums = e.getValue();
+              List<Impact> mergedImpacts =
+                  ImpactsMergingUtils.mergeImpactsPerField(
+                      impactsEnums,
+                      fieldImpactsSource.get(field).impacts(),
+                      fieldWeights.get(field),
+                      docIdUpTo,
+                      true);
+
+              if (mergedImpacts.size() == 0) {
+                // all impactEnums for this field were positioned beyond docIdUpTo, continue to next
+                // field
+                continue;
+              } else if (mergedImpacts.size() == 1
+                  && mergedImpacts.get(0).freq == Integer.MAX_VALUE
+                  && mergedImpacts.get(0).norm == 1L) {
+                // one field gets impacts that trigger maximum score, pass it up
+                return Collections.singletonMap(field, mergedImpacts);
+              } else {
+                result.put(field, mergedImpacts);
+              }
+            }
+
+            return result;
+          }
+
+          private List<Impact> mergeImpactsAcrossFields(
+              Map<String, List<Impact>> mergedImpactsPerField) {
+            if (mergedImpactsPerField.size() == 1) {
+              return mergedImpactsPerField.values().iterator().next();
+            }
+
+            // upper-bound by creating an impact that should be most competitive: <maxFreqSum,
+            // minNorm>
+            // this is done to avoid the potential costly combinatorial explosion from accurate
+            // computation
+            // on merged impacts across fields
+            long maxFreqSum = 0;
+            long minNorm = Long.MAX_VALUE;
+            for (List<Impact> impacts : mergedImpactsPerField.values()) {
+              // highest freq at the end of each impact list
+              maxFreqSum += impacts.get(impacts.size() - 1).freq;
+              // lowest norm at the start of each impact list
+              minNorm = Math.min(minNorm, impacts.get(0).norm);
+            }
+
+            return Collections.singletonList(
+                new Impact((int) Math.min(maxFreqSum, Integer.MAX_VALUE), minNorm));
+          }
+        };
+      }
+
+      @Override
+      public void advanceShallow(int target) throws IOException {
+        for (ImpactsEnum[] impactsEnums : fieldImpactsEnum.values()) {
+          for (ImpactsEnum impactsEnum : impactsEnums) {
+            if (impactsEnum.docID() < target) {
+              impactsEnum.advanceShallow(target);
+            }
+          }
+        }
+
+        fieldImpactsSource = null;
+      }
+    };
   }
 
   private static class WeightedDisiWrapper extends DisiWrapper {
@@ -459,15 +647,18 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     private final DisiPriorityQueue queue;
     private final DocIdSetIterator iterator;
     private final MultiNormsLeafSimScorer simScorer;
+    private final ImpactsDISI impactsDISI;
 
     CombinedFieldScorer(
         Weight weight,
         DisiPriorityQueue queue,
         DocIdSetIterator iterator,
+        ImpactsDISI impactsDISI,
         MultiNormsLeafSimScorer simScorer) {
       super(weight);
       this.queue = queue;
       this.iterator = iterator;
+      this.impactsDISI = impactsDISI;
       this.simScorer = simScorer;
     }
 
@@ -500,7 +691,29 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     @Override
     public float getMaxScore(int upTo) throws IOException {
-      return Float.POSITIVE_INFINITY;
+      if (impactsDISI != null) {
+        return impactsDISI.getMaxScore(upTo);
+      } else {
+        return Float.POSITIVE_INFINITY;
+      }
+    }
+
+    @Override
+    public int advanceShallow(int target) throws IOException {
+      if (impactsDISI != null) {
+        return impactsDISI.advanceShallow(target);
+      } else {
+        return super.advanceShallow(target);
+      }
+    }
+
+    @Override
+    public void setMinCompetitiveScore(float minScore) throws IOException {
+      if (impactsDISI != null) {
+        impactsDISI.setMinCompetitiveScore(minScore);
+      } else {
+        super.setMinCompetitiveScore(minScore);
+      }
     }
   }
 }
