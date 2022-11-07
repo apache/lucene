@@ -30,8 +30,30 @@ import org.apache.lucene.util.automaton.RegExp;
  */
 interface AffixCondition {
   String ALWAYS_TRUE_KEY = ".*";
-  AffixCondition ALWAYS_TRUE = (word, offset, length) -> true;
-  AffixCondition ALWAYS_FALSE = (word, offset, length) -> false;
+  AffixCondition ALWAYS_TRUE =
+      new AffixCondition() {
+        @Override
+        public boolean acceptsStem(String stem) {
+          return true;
+        }
+
+        @Override
+        public boolean acceptsStem(char[] word, int offset, int length) {
+          return true;
+        }
+      };
+  AffixCondition ALWAYS_FALSE =
+      new AffixCondition() {
+        @Override
+        public boolean acceptsStem(String stem) {
+          return false;
+        }
+
+        @Override
+        public boolean acceptsStem(char[] word, int offset, int length) {
+          return false;
+        }
+      };
 
   default boolean acceptsStem(String stem) {
     return acceptsStem(stem.toCharArray(), 0, stem.length());

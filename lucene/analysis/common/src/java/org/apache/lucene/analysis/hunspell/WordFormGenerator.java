@@ -19,10 +19,12 @@ package org.apache.lucene.analysis.hunspell;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_APPEND;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_FLAG;
 import static org.apache.lucene.analysis.hunspell.Dictionary.FLAG_UNSET;
+import static org.apache.lucene.analysis.hunspell.Dictionary.toSortedCharArray;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -109,14 +111,14 @@ public class WordFormGenerator {
    *     by throwing an exception
    */
   public List<AffixedWord> getAllWordForms(String root, Runnable checkCanceled) {
-    Set<AffixedWord> result = new LinkedHashSet<>();
+    List<AffixedWord> result = new ArrayList<>();
     DictEntries entries = dictionary.lookupEntries(root);
     if (entries != null) {
       for (DictEntry entry : entries) {
         result.addAll(getAllWordForms(root, entry.getFlags(), checkCanceled));
       }
     }
-    return new ArrayList<>(result);
+    return result;
   }
 
   /**
@@ -128,20 +130,40 @@ public class WordFormGenerator {
    *     by throwing an exception
    */
   public List<AffixedWord> getAllWordForms(String stem, String flags, Runnable checkCanceled) {
-    var encodedFlags = toSet(dictionary.flagParsingStrategy.parseUtfFlags(flags));
+    var encodedFlags = dictionary.flagParsingStrategy.parseUtfFlags(flags);
     if (!shouldConsiderAtAll(encodedFlags)) return List.of();
 
-    LinkedHashSet<AffixedWord> result = new LinkedHashSet<>();
+    encodedFlags = sortAndDeduplicate(encodedFlags);
+    List<AffixedWord> result = new ArrayList<>();
     AffixedWord bare = new AffixedWord(stem, DictEntry.create(stem, flags), List.of(), List.of());
     checkCanceled.run();
-    if (!encodedFlags.contains(dictionary.needaffix)) {
+    if (!FlagEnumerator.hasFlagInSortedArray(
+        dictionary.needaffix, encodedFlags, 0, encodedFlags.length)) {
       result.add(bare);
     }
     result.addAll(expand(bare, encodedFlags, checkCanceled));
-    return new ArrayList<>(result);
+    return result;
   }
 
-  private boolean canStemToOriginal(AffixedWord derived) {
+  private static char[] sortAndDeduplicate(char[] flags) {
+    Arrays.sort(flags);
+    for (int i = 1; i < flags.length; i++) {
+      if (flags[i] == flags[i - 1]) {
+        return deduplicate(flags);
+      }
+    }
+    return flags;
+  }
+
+  private static char[] deduplicate(char[] flags) {
+    Set<Character> set = new HashSet<>();
+    for (char flag : flags) {
+      set.add(flag);
+    }
+    return toSortedCharArray(set);
+  }
+
+  protected boolean canStemToOriginal(AffixedWord derived) {
     String word = derived.getWord();
     char[] chars = word.toCharArray();
     if (isForbiddenWord(chars, 0, chars.length)) {
@@ -190,26 +212,20 @@ public class WordFormGenerator {
     return false;
   }
 
-  private static LinkedHashSet<Character> toSet(char[] flags) {
-    LinkedHashSet<Character> set = new LinkedHashSet<>();
-    for (char c : flags) {
-      set.add(c);
-    }
-    return set;
-  }
-
-  private LinkedHashSet<AffixedWord> expand(
-      AffixedWord stem, LinkedHashSet<Character> flags, Runnable checkCanceled) {
-    LinkedHashSet<AffixedWord> result = new LinkedHashSet<>();
-    for (Character flag : flags) {
+  private List<AffixedWord> expand(AffixedWord stem, char[] flags, Runnable checkCanceled) {
+    List<AffixedWord> result = new ArrayList<>();
+    for (char flag : flags) {
       List<AffixEntry> entries = affixes.get(flag);
       if (entries == null) continue;
+
+      AffixKind kind = entries.get(0).kind;
+      if (!isCompatibleWithPreviousAffixes(stem, kind, flag)) continue;
 
       for (AffixEntry affix : entries) {
         checkCanceled.run();
         AffixedWord derived = affix.apply(stem, dictionary);
         if (derived != null) {
-          LinkedHashSet<Character> append = appendFlags(affix);
+          char[] append = appendFlags(affix);
           if (shouldConsiderAtAll(append)) {
             if (canStemToOriginal(derived)) {
               result.add(derived);
@@ -224,25 +240,37 @@ public class WordFormGenerator {
     return result;
   }
 
-  private boolean shouldConsiderAtAll(Set<Character> flags) {
-    return !flags.contains(dictionary.compoundBegin)
-        && !flags.contains(dictionary.compoundMiddle)
-        && !flags.contains(dictionary.compoundEnd)
-        && !flags.contains(dictionary.forbiddenword)
-        && !flags.contains(dictionary.onlyincompound);
+  private boolean shouldConsiderAtAll(char[] flags) {
+    for (char flag : flags) {
+      if (flag == dictionary.compoundBegin
+          || flag == dictionary.compoundMiddle
+          || flag == dictionary.compoundEnd
+          || flag == dictionary.forbiddenword
+          || flag == dictionary.onlyincompound) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
-  private LinkedHashSet<Character> updateFlags(
-      Set<Character> flags, Character toRemove, Set<Character> toAppend) {
-    LinkedHashSet<Character> copy = new LinkedHashSet<>(flags);
-    copy.remove(toRemove);
-    copy.addAll(toAppend);
-    return copy;
+  private char[] updateFlags(char[] flags, char toRemove, char[] toAppend) {
+    char[] result = new char[flags.length + toAppend.length - 1];
+    int index = 0;
+    for (char flag : flags) {
+      if (flag != toRemove && flag != dictionary.needaffix) {
+        result[index++] = flag;
+      }
+    }
+    for (char flag : toAppend) {
+      result[index++] = flag;
+    }
+    return sortAndDeduplicate(result);
   }
 
-  private LinkedHashSet<Character> appendFlags(AffixEntry affix) {
+  private char[] appendFlags(AffixEntry affix) {
     char appendId = dictionary.affixData(affix.id, AFFIX_APPEND);
-    return appendId <= 0 ? new LinkedHashSet<>() : toSet(dictionary.flagLookup.getFlags(appendId));
+    return appendId == 0 ? new char[0] : dictionary.flagLookup.getFlags(appendId);
   }
 
   /**
@@ -272,9 +300,8 @@ public class WordFormGenerator {
 
   private record AffixEntry(
       int id, char flag, AffixKind kind, String affix, String strip, AffixCondition condition) {
-    AffixedWord apply(AffixedWord stem, Dictionary dictionary) {
-      if (!isCompatibleWithPreviousAffixes(stem, dictionary)) return null;
 
+    AffixedWord apply(AffixedWord stem, Dictionary dictionary) {
       String word = stem.getWord();
       boolean isPrefix = kind == AffixKind.PREFIX;
       if (!(isPrefix ? word.startsWith(strip) : word.endsWith(strip))) return null;
@@ -286,24 +313,24 @@ public class WordFormGenerator {
       if (!condition.acceptsStem(stripped)) return null;
 
       String applied = isPrefix ? affix + stripped : stripped + affix;
-      List<Affix> prefixes = new ArrayList<>(stem.getPrefixes());
-      List<Affix> suffixes = new ArrayList<>(stem.getSuffixes());
+      List<Affix> prefixes = isPrefix ? new ArrayList<>(stem.getPrefixes()) : stem.getPrefixes();
+      List<Affix> suffixes = isPrefix ? stem.getSuffixes() : new ArrayList<>(stem.getSuffixes());
       (isPrefix ? prefixes : suffixes).add(0, new Affix(dictionary, id));
       return new AffixedWord(applied, stem.getDictEntry(), prefixes, suffixes);
     }
+  }
 
-    private boolean isCompatibleWithPreviousAffixes(AffixedWord stem, Dictionary dictionary) {
-      boolean isPrefix = kind == AffixKind.PREFIX;
-      List<Affix> sameAffixes = isPrefix ? stem.getPrefixes() : stem.getSuffixes();
-      if (sameAffixes.size() == 2) return false;
-      if (isPrefix && sameAffixes.size() == 1 && !dictionary.complexPrefixes) return false;
-      if (!isPrefix && !stem.getPrefixes().isEmpty()) return false;
-      if (sameAffixes.size() == 1
-          && !dictionary.isFlagAppendedByAffix(sameAffixes.get(0).affixId, flag)) {
-        return false;
-      }
-      return true;
+  private boolean isCompatibleWithPreviousAffixes(AffixedWord stem, AffixKind kind, char flag) {
+    boolean isPrefix = kind == AffixKind.PREFIX;
+    List<Affix> sameAffixes = isPrefix ? stem.getPrefixes() : stem.getSuffixes();
+    int size = sameAffixes.size();
+    if (size == 2) return false;
+    if (isPrefix && size == 1 && !dictionary.complexPrefixes) return false;
+    if (!isPrefix && !stem.getPrefixes().isEmpty()) return false;
+    if (size == 1 && !dictionary.isFlagAppendedByAffix(sameAffixes.get(0).affixId, flag)) {
+      return false;
     }
+    return true;
   }
 
   private class WordCompressor {
