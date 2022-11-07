@@ -607,22 +607,20 @@ public class TestHnswGraph extends LuceneTestCase {
     assertTrue("overlap=" + overlap, overlap > 0.9);
   }
 
-  public void testHnswGraphBuilderInitializedFromGraph() throws IOException {
+  public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {
     int totalSize = atLeast(100);
-    int initializerSize = totalSize % random().nextInt(5, totalSize);
-    int offset = random().nextInt(0, totalSize - initializerSize + 1);
+    int initializerSize = random().nextInt(5, totalSize);
+    int offset = 0;
     int dim = atLeast(10);
+    long seed = random().nextLong();
 
     RandomVectorValues initializerVectors =
         new RandomVectorValues(initializerSize, dim, vectorEncoding, random());
     HnswGraphBuilder<?> initializerBuilder =
         HnswGraphBuilder.create(
-            initializerVectors, vectorEncoding, similarityFunction, 10, 30, random().nextLong());
-    Map<Integer, Integer> initializerOrdMap = new HashMap<>();
-    for (int i = 0; i < initializerSize; i++) {
-      initializerOrdMap.put(i, offset + i);
-    }
+            initializerVectors, vectorEncoding, similarityFunction, 10, 30, seed);
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.copy());
+    Map<Integer, Integer> initializerOrdMap = createOffsetOrdinalMap(initializerSize, offset);
     RandomVectorValues finalVectorValues =
         new RandomVectorValues(
             totalSize, dim, vectorEncoding, random(), initializerVectors.values, offset);
@@ -634,13 +632,93 @@ public class TestHnswGraph extends LuceneTestCase {
             similarityFunction,
             10,
             30,
-            random().nextLong(),
+            seed,
             new HnswGraphBuilder.GraphInitializerConfig(initializerGraph, initializerOrdMap));
-    OnHeapHnswGraph finalGraph = finalBuilder.build(initializerVectors.copy());
 
-    // Confirm that the graph is appropriately constrcuted by checking that the nodes in the old
-    // graph are present in
-    // the levels of the new graph
+    // When offset is 0, the graphs should be identical
+    assertGraphEqual(finalBuilder.getGraph(), initializerGraph);
+
+    HnswGraphBuilder<?> graphFromScratchBuilder =
+        HnswGraphBuilder.create(
+            finalVectorValues.copy(), vectorEncoding, similarityFunction, 10, 30, seed);
+    assertGraphEqual(
+        graphFromScratchBuilder.build(finalVectorValues.copy()),
+        finalBuilder.build(finalVectorValues.copy()));
+  }
+
+  public void testHnswGraphBuilderInitializationFromGraph_withNonZeroOffset() throws IOException {
+    int totalSize = atLeast(100);
+    int initializerSize = random().nextInt(5, totalSize);
+    int offset = random().nextInt(1, totalSize - initializerSize + 1);
+    int dim = atLeast(10);
+    long seed = random().nextLong();
+
+    RandomVectorValues initializerVectors =
+        new RandomVectorValues(initializerSize, dim, vectorEncoding, random());
+    HnswGraphBuilder<?> initializerBuilder =
+        HnswGraphBuilder.create(
+            initializerVectors, vectorEncoding, similarityFunction, 10, 30, seed);
+    OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.copy());
+    Map<Integer, Integer> initializerOrdMap = createOffsetOrdinalMap(initializerSize, offset);
+    RandomVectorValues finalVectorValues =
+        new RandomVectorValues(
+            totalSize, dim, vectorEncoding, random(), initializerVectors.values, offset);
+
+    HnswGraphBuilder<?> finalBuilder =
+        HnswGraphBuilder.create(
+            finalVectorValues,
+            vectorEncoding,
+            similarityFunction,
+            10,
+            30,
+            seed,
+            new HnswGraphBuilder.GraphInitializerConfig(initializerGraph, initializerOrdMap));
+
+    // Confirm that the initializer graph is successfully transferred to the new graph builder
+    for (int i = 0; i < initializerGraph.numLevels(); i++) {
+      Set<Integer> initializerNodesOnLevelSet = new HashSet<>();
+      int[] initializerNodesOnLevelArray =
+          nodesIteratorToIntArray(initializerGraph.getNodesOnLevel(i));
+      for (int k : initializerNodesOnLevelArray) {
+        initializerNodesOnLevelSet.add(initializerOrdMap.get(k));
+      }
+
+      Set<Integer> finalNodesOnLevelSet = new HashSet<>();
+      for (int k : nodesIteratorToIntArray(finalBuilder.hnsw.getNodesOnLevel(i))) {
+        finalNodesOnLevelSet.add(k);
+      }
+
+      assertTrue(finalNodesOnLevelSet.containsAll(initializerNodesOnLevelSet));
+
+      for (int k : initializerNodesOnLevelArray) {
+        NeighborArray initializerNeighborArray = initializerGraph.getNeighbors(i, k);
+        int initializerNeighborsSize = initializerNeighborArray.size();
+
+        NeighborArray finalNeighborArray =
+            finalBuilder.hnsw.getNeighbors(i, initializerOrdMap.get(k));
+        int finalNeighborsSize = finalNeighborArray.size();
+
+        assertTrue(finalNeighborsSize >= initializerNeighborsSize);
+        int initializerIndex = 0;
+        for (int j = 0; j < finalNeighborsSize; j++) {
+          // If the node is 0, skip. Because offset is > 0, the 0 node will not be from the
+          // initializer graph
+          if (finalNeighborArray.node[j] == 0) {
+            continue;
+          }
+          assertEquals(
+              initializerOrdMap.get(initializerNeighborArray.node[initializerIndex]).intValue(),
+              finalNeighborArray.node[j]);
+          assertEquals(
+              initializerNeighborArray.score[initializerIndex], finalNeighborArray.score[j], 0.0);
+          initializerIndex++;
+        }
+      }
+    }
+
+    // Confirm that the graph is appropriately constructed by checking that the nodes in the old
+    // graph are present in the levels of the new graph
+    OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.copy());
     for (int i = 1; i < initializerGraph.numLevels(); i++) {
       int[] finalGraphNodeNeighbors = nodesIteratorToIntArray(finalGraph.getNodesOnLevel(i));
       int[] initializerGraphNodeNeighbors =
@@ -649,6 +727,14 @@ public class TestHnswGraph extends LuceneTestCase {
       int overlap = computeOverlap(finalGraphNodeNeighbors, initializerGraphNodeNeighbors);
       assertEquals(initializerGraphNodeNeighbors.length, overlap);
     }
+  }
+
+  private Map<Integer, Integer> createOffsetOrdinalMap(int size, int offset) {
+    Map<Integer, Integer> offsetOrdinalMap = new HashMap<>();
+    for (int i = 0; i < size; i++) {
+      offsetOrdinalMap.put(i, offset + i);
+    }
+    return offsetOrdinalMap;
   }
 
   private int[] nodesIteratorToIntArray(NodesIterator nodesIterator) {

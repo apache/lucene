@@ -134,11 +134,8 @@ public final class HnswGraphBuilder<T> {
     // normalization factor for level generation; currently not configurable
     this.ml = 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    int initialLevel =
-        graphInitializerConfig == null
-            ? getRandomGraphLevel(ml, random)
-            : getMaxLevelForZeroNode(getRandomGraphLevel(ml, random), graphInitializerConfig);
-    this.hnsw = new OnHeapHnswGraph(M, initialLevel);
+    this.hnsw = new OnHeapHnswGraph(M, getLevelOfFirstNode(graphInitializerConfig));
+    fastForwardRandom(graphInitializerConfig);
     this.graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
@@ -151,6 +148,18 @@ public final class HnswGraphBuilder<T> {
 
     if (graphInitializerConfig != null) {
       initializeFromGraph(graphInitializerConfig);
+    }
+  }
+
+  private void fastForwardRandom(GraphInitializerConfig graphInitializerConfig) {
+    // TODO: Remove in the future or refactor. Used for testing purposes to confirm that graphs
+    // produced are the same
+    if (graphInitializerConfig == null) {
+      return;
+    }
+
+    for (int i = 0; i < graphInitializerConfig.initializerGraph.size(); i++) {
+      getRandomGraphLevel(ml, random);
     }
   }
 
@@ -471,25 +480,29 @@ public final class HnswGraphBuilder<T> {
     return true;
   }
 
-  private int getMaxLevelForZeroNode(
-      int fallbackNumberOfLevels, GraphInitializerConfig initializerConfig) throws IOException {
-    int oldNodeMapToNewZero = -1;
+  private int getLevelOfFirstNode(GraphInitializerConfig initializerConfig) throws IOException {
+
+    if (initializerConfig == null) {
+      return getRandomGraphLevel(ml, random);
+    }
+
+    int newFirstNodeToOldOrd = -1;
     for (Map.Entry<Integer, Integer> ordEntry : initializerConfig.oldToNewOrdinalMap.entrySet()) {
       if (ordEntry.getValue() == 0) {
-        oldNodeMapToNewZero = ordEntry.getKey();
+        newFirstNodeToOldOrd = ordEntry.getKey();
         break;
       }
     }
 
-    if (oldNodeMapToNewZero == -1) {
-      return fallbackNumberOfLevels;
+    if (newFirstNodeToOldOrd == -1) {
+      return getRandomGraphLevel(ml, random);
     }
 
     int levelOfFirstNode = 0;
     while (initializerConfig.initializerGraph.numLevels() > levelOfFirstNode + 1) {
       if (!isNodeInLevel(
           initializerConfig.initializerGraph.getNodesOnLevel(levelOfFirstNode + 1),
-          oldNodeMapToNewZero)) {
+          newFirstNodeToOldOrd)) {
         break;
       }
       levelOfFirstNode++;
@@ -499,8 +512,16 @@ public final class HnswGraphBuilder<T> {
   }
 
   private static boolean isNodeInLevel(HnswGraph.NodesIterator nodesIterator, int ordinal) {
-    while (nodesIterator.hasNext() && nodesIterator.nextInt() < 0) {}
-    return nodesIterator.cur == ordinal;
+    while (nodesIterator.hasNext()) {
+      int next = nodesIterator.nextInt();
+      if (next == ordinal) {
+        return true;
+      }
+      if (next > ordinal) {
+        return false;
+      }
+    }
+    return false;
   }
 
   private static int getRandomGraphLevel(double ml, SplittableRandom random) {

@@ -417,9 +417,15 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
               vectors.dimension(), docsWithField.cardinality(), vectorDataInput, byteSize);
       OnHeapHnswGraph graph = null;
       if (offHeapVectors.size() != 0) {
-        // build graph
         HnswGraphBuilder<?> hnswGraphBuilder =
-            createHnswGraphBuilder(fieldInfo, mergeState, offHeapVectors);
+            HnswGraphBuilder.create(
+                offHeapVectors,
+                fieldInfo.getVectorEncoding(),
+                fieldInfo.getVectorSimilarityFunction(),
+                M,
+                beamWidth,
+                HnswGraphBuilder.randSeed,
+                getGraphInitializerConfig(fieldInfo, mergeState));
         hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
         graph = hnswGraphBuilder.build(offHeapVectors.copy());
         writeGraph(graph);
@@ -447,86 +453,17 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private HnswGraphBuilder<?> createHnswGraphBuilder(
-      FieldInfo fieldInfo, MergeState mergeState, OffHeapVectorValues offHeapVectors)
-      throws IOException {
+  private HnswGraphBuilder.GraphInitializerConfig getGraphInitializerConfig(
+      FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     int initializerIndex =
         selectReaderForGraphInitialization(
             fieldInfo.name, mergeState.liveDocs, mergeState.knnVectorsReaders);
     if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(
-          offHeapVectors,
-          fieldInfo.getVectorEncoding(),
-          fieldInfo.getVectorSimilarityFunction(),
-          M,
-          beamWidth,
-          HnswGraphBuilder.randSeed);
+      return null;
     }
-
-    Map<Integer, Integer> oldToNewOrdinalMap =
-        getOldToNewOrdinalMap(fieldInfo, initializerIndex, mergeState);
-    return HnswGraphBuilder.create(
-        offHeapVectors,
-        fieldInfo.getVectorEncoding(),
-        fieldInfo.getVectorSimilarityFunction(),
-        M,
-        beamWidth,
-        HnswGraphBuilder.randSeed,
-        new HnswGraphBuilder.GraphInitializerConfig(
-            getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]),
-            oldToNewOrdinalMap));
-  }
-
-  private Map<Integer, Integer> getOldToNewOrdinalMap(
-      FieldInfo fieldInfo, int initializerIndex, MergeState mergeState) throws IOException {
-    VectorValues initializerVectorValues =
-        mergeState.knnVectorsReaders[initializerIndex].getVectorValues(fieldInfo.name);
-    MergeState.DocMap initializerDocMap = mergeState.docMaps[initializerIndex];
-
-    Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
-    int oldOrd = 0;
-    for (int oldId = initializerVectorValues.nextDoc();
-        oldId != NO_MORE_DOCS;
-        oldId = initializerVectorValues.nextDoc()) {
-      int newId = initializerDocMap.get(oldId);
-      newIdToOldOrdinal.put(newId, oldOrd);
-      oldOrd++;
-    }
-
-    VectorValues mergedVectorsValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
-    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
-
-    int newOrd = 0;
-    for (int newDocId = mergedVectorsValues.nextDoc();
-        newDocId != NO_MORE_DOCS;
-        newDocId = mergedVectorsValues.nextDoc()) {
-      if (newIdToOldOrdinal.containsKey(newDocId)) {
-        oldToNewOrdinalMap.put(newIdToOldOrdinal.get(newDocId), newOrd);
-      }
-      newOrd++;
-
-      if (oldToNewOrdinalMap.size() >= newIdToOldOrdinal.size()) {
-        break;
-      }
-    }
-
-    return oldToNewOrdinalMap;
-  }
-
-  private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
-      throws IOException {
-    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
-        && perFieldReader.getFieldReader(fieldName)
-            instanceof Lucene94HnswVectorsReader fieldReader) {
-      return fieldReader.getGraph(fieldName);
-    }
-
-    if (knnVectorsReader instanceof Lucene94HnswVectorsReader) {
-      return ((Lucene94HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
-    }
-
-    throw new IllegalArgumentException(
-        "Invalid KnnVectorsReader. Must be of type PerFieldKnnVectorsFormat.FieldsReader or Lucene94HnswVectorsReader");
+    return new HnswGraphBuilder.GraphInitializerConfig(
+        getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]),
+        getOldToNewOrdinalMap(fieldInfo, mergeState, initializerIndex));
   }
 
   private int selectReaderForGraphInitialization(
@@ -561,6 +498,58 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     return initializerIndex;
+  }
+
+  private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
+        && perFieldReader.getFieldReader(fieldName)
+            instanceof Lucene94HnswVectorsReader fieldReader) {
+      return fieldReader.getGraph(fieldName);
+    }
+
+    if (knnVectorsReader instanceof Lucene94HnswVectorsReader) {
+      return ((Lucene94HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
+    }
+
+    throw new IllegalArgumentException(
+        "Invalid KnnVectorsReader. Must be of type PerFieldKnnVectorsFormat.FieldsReader or Lucene94HnswVectorsReader");
+  }
+
+  private Map<Integer, Integer> getOldToNewOrdinalMap(
+      FieldInfo fieldInfo, MergeState mergeState, int initializerIndex) throws IOException {
+    VectorValues initializerVectorValues =
+        mergeState.knnVectorsReaders[initializerIndex].getVectorValues(fieldInfo.name);
+    MergeState.DocMap initializerDocMap = mergeState.docMaps[initializerIndex];
+
+    Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
+    int oldOrd = 0;
+    for (int oldId = initializerVectorValues.nextDoc();
+        oldId != NO_MORE_DOCS;
+        oldId = initializerVectorValues.nextDoc()) {
+      int newId = initializerDocMap.get(oldId);
+      newIdToOldOrdinal.put(newId, oldOrd);
+      oldOrd++;
+    }
+
+    VectorValues mergedVectorsValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
+
+    int newOrd = 0;
+    for (int newDocId = mergedVectorsValues.nextDoc();
+        newDocId != NO_MORE_DOCS;
+        newDocId = mergedVectorsValues.nextDoc()) {
+      if (newIdToOldOrdinal.containsKey(newDocId)) {
+        oldToNewOrdinalMap.put(newIdToOldOrdinal.get(newDocId), newOrd);
+      }
+      newOrd++;
+
+      if (oldToNewOrdinalMap.size() >= newIdToOldOrdinal.size()) {
+        break;
+      }
+    }
+
+    return oldToNewOrdinalMap;
   }
 
   private boolean allMatch(Bits bits) {
