@@ -688,6 +688,13 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       assertEquals(2500, weight.count(context));
     }
 
+    fallbackQuery = LongPoint.newRangeQuery(filedName, 5, 9);
+    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 2, 10, fallbackQuery);
+    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    for (LeafReaderContext context : searcher.getLeafContexts()) {
+      assertEquals(2500, weight.count(context));
+    }
+
     fallbackQuery = LongPoint.newRangeQuery(filedName, 2, 3);
     query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 2, 3, fallbackQuery);
     weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
