@@ -14,19 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.facet.rangeonrange;
 
-/** Faceted indexing and search capabilities */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.facet {
-  requires com.carrotsearch.hppc;
-  requires org.apache.lucene.core;
+/**
+ * Base class for a single labeled range.
+ *
+ * @lucene.experimental
+ */
+public abstract class Range {
 
-  exports org.apache.lucene.facet;
-  exports org.apache.lucene.facet.range;
-  exports org.apache.lucene.facet.sortedset;
-  exports org.apache.lucene.facet.taxonomy;
-  exports org.apache.lucene.facet.taxonomy.directory;
-  exports org.apache.lucene.facet.taxonomy.writercache;
-  exports org.apache.lucene.facet.facetset;
-  exports org.apache.lucene.facet.rangeonrange;
+  /** Label that identifies this range. */
+  public final String label;
+
+  /** Sole constructor. */
+  protected Range(String label) {
+    if (label == null) {
+      throw new NullPointerException("label must not be null");
+    }
+    this.label = label;
+  }
+
+  /**
+   * Gets the number of bytes it takes to represent a single range
+   *
+   * @return the number of bytes to represent a single range
+   */
+  public abstract int getNumBytesPerRange();
+
+  /** Invoke this for a useless range. */
+  protected void failNoMatch() {
+    throw new IllegalArgumentException("range \"" + label + "\" matches nothing");
+  }
 }

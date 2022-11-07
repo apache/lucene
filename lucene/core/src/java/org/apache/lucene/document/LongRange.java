@@ -61,6 +61,17 @@ public class LongRange extends Field {
     setRangeValues(min, max);
   }
 
+  /**
+   * Create a new LongRange type with one dimension
+   *
+   * @param name field name. must not be null.
+   * @param min min value
+   * @param max max value
+   */
+  public LongRange(String name, final long min, final long max) {
+    this(name, new long[] {min}, new long[] {max});
+  }
+
   /** set the field type */
   private static FieldType getType(int dimensions) {
     if (dimensions > 4) {
@@ -131,7 +142,7 @@ public class LongRange extends Field {
    *
    * <p>example for 4 dimensions (8 bytes per dimension value): minD1 ... minD4 | maxD1 ... maxD4
    */
-  static void verifyAndEncode(long[] min, long[] max, byte[] bytes) {
+  public static void verifyAndEncode(long[] min, long[] max, byte[] bytes) {
     for (int d = 0, i = 0, j = min.length * BYTES; d < min.length; ++d, i += BYTES, j += BYTES) {
       if (Double.isNaN(min[d])) {
         throw new IllegalArgumentException(
