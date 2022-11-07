@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -52,6 +53,32 @@ public class TestHunspell extends LuceneTestCase {
     canceled.set(true);
     assertThrows(CancellationException.class, () -> hunspell.spell("apache"));
     assertThrows(CancellationException.class, () -> hunspell.suggest("apac"));
+  }
+
+  public void testCustomCheckCanceledGivesPartialResult() throws Exception {
+    Dictionary dictionary = loadDictionary(false, "simple.aff", "simple.dic");
+
+    List<String> expected = List.of("apach");
+    assertEquals(expected, new Hunspell(dictionary, NO_TIMEOUT, () -> {}).suggest("apac"));
+
+    AtomicInteger counter = new AtomicInteger();
+    String msg = "msg";
+    Runnable checkCanceled =
+        () -> {
+          if (counter.incrementAndGet() > 400) {
+            throw new SuggestionTimeoutException(msg, null);
+          }
+        };
+
+    Hunspell hunspell = new Hunspell(dictionary, RETURN_PARTIAL_RESULT, checkCanceled);
+    assertEquals(expected, hunspell.suggest("apac"));
+
+    counter.set(0);
+    var e = assertThrows(
+        SuggestionTimeoutException.class,
+        () -> new Suggester(dictionary).suggestNoTimeout("apac", checkCanceled));
+    assertEquals(expected, e.getPartialResult());
+    assertEquals("msg", e.getMessage());
   }
 
   public void testSuggestionTimeLimit() throws IOException, ParseException {

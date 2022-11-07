@@ -78,7 +78,22 @@ public class Suggester {
    *     generation by throwing an exception
    */
   public List<String> suggestNoTimeout(String word, Runnable checkCanceled) {
-    return suggest(word, new LinkedHashSet<>(), checkCanceled);
+    LinkedHashSet<Suggestion> suggestions = new LinkedHashSet<>();
+    return suggest(word, suggestions, handleCustomTimeoutException(checkCanceled, suggestions));
+  }
+
+  private Runnable handleCustomTimeoutException(Runnable checkCanceled, LinkedHashSet<Suggestion> suggestions) {
+    return () -> {
+      try {
+        checkCanceled.run();
+      } catch (SuggestionTimeoutException e) {
+        if (e.getPartialResult() != null) {
+          throw e;
+        }
+
+        throw new SuggestionTimeoutException(e.getMessage(), postprocess(suggestions));
+      }
+    };
   }
 
   /**
@@ -95,7 +110,7 @@ public class Suggester {
       throws SuggestionTimeoutException {
     LinkedHashSet<Suggestion> suggestions = new LinkedHashSet<>();
     Runnable checkTime = checkTimeLimit(word, suggestions, timeLimitMs, checkCanceled);
-    return suggest(word, suggestions, checkTime);
+    return suggest(word, suggestions, handleCustomTimeoutException(checkTime, suggestions));
   }
 
   private List<String> suggest(
