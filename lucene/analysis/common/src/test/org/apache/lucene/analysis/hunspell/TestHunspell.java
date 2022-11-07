@@ -74,9 +74,10 @@ public class TestHunspell extends LuceneTestCase {
     assertEquals(expected, hunspell.suggest("apac"));
 
     counter.set(0);
-    var e = assertThrows(
-        SuggestionTimeoutException.class,
-        () -> new Suggester(dictionary).suggestNoTimeout("apac", checkCanceled));
+    var e =
+        assertThrows(
+            SuggestionTimeoutException.class,
+            () -> new Suggester(dictionary).suggestNoTimeout("apac", checkCanceled));
     assertEquals(expected, e.getPartialResult());
     assertEquals("msg", e.getMessage());
   }

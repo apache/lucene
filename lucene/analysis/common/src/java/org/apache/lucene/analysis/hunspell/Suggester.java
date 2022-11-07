@@ -82,7 +82,8 @@ public class Suggester {
     return suggest(word, suggestions, handleCustomTimeoutException(checkCanceled, suggestions));
   }
 
-  private Runnable handleCustomTimeoutException(Runnable checkCanceled, LinkedHashSet<Suggestion> suggestions) {
+  private Runnable handleCustomTimeoutException(
+      Runnable checkCanceled, LinkedHashSet<Suggestion> suggestions) {
     return () -> {
       try {
         checkCanceled.run();
