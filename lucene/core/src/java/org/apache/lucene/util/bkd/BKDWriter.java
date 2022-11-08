@@ -515,7 +515,7 @@ public class BKDWriter implements Closeable {
 
     checkMaxLeafNodeCount(numLeaves);
 
-    final byte[] splitPackedValues = new byte[numSplits * config.bytesPerDim];
+    final byte[] splitPackedValues = new byte[Math.multiplyExact(numSplits, config.bytesPerDim)];
     final byte[] splitDimensionValues = new byte[numSplits];
     final long[] leafBlockFPs = new long[numLeaves];
 
@@ -946,7 +946,7 @@ public class BKDWriter implements Closeable {
 
     // Indexed by nodeID, but first (root) nodeID is 1.  We do 1+ because the lead byte at each
     // recursion says which dim we split on.
-    byte[] splitPackedValues = new byte[Math.toIntExact(numSplits * config.bytesPerDim)];
+    byte[] splitPackedValues = new byte[Math.multiplyExact(numSplits, config.bytesPerDim)];
     byte[] splitDimensionValues = new byte[numSplits];
 
     // +1 because leaf count is power of 2 (e.g. 8), and innerNodeCount is power of 2 minus 1 (e.g.

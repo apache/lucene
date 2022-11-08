@@ -42,6 +42,8 @@ Bug Fixes
 * GITHUB#11768: Taxonomy and SSDV faceting now correctly breaks ties by preferring smaller ordinal
   values. (Greg Miller)
 
+* GITHUB#11907: Fix latent casting bugs in BKDWriter. (Ben Trent)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
@@ -167,7 +169,7 @@ Bug Fixes
 Build
 ---------------------
 
-* GITHUB#11720: Upgrade randomizedtesting to 2.8.1 (potential fix for odd wall clock - related 
+* GITHUB#11720: Upgrade randomizedtesting to 2.8.1 (potential fix for odd wall clock - related
   timeout failures). (Dawid Weiss)
 
 * LUCENE-10669: The build should be more helpful when generated resources are touched (Dawid Weiss)
