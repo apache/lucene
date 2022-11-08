@@ -162,7 +162,7 @@ public class TestKnnGraph extends LuceneTestCase {
         IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null).setCodec(codec))) {
       int numDoc = atLeast(100);
       int dimension = atLeast(10);
-      float[][] values = randomVectors(numDoc, dimension);
+      float[][] values = randomVectorsWithSkips(numDoc, dimension);
       for (int i = 0; i < numDoc; i++) {
         if (random().nextBoolean()) {
           values[i] = randomVector(dimension);
@@ -187,8 +187,8 @@ public class TestKnnGraph extends LuceneTestCase {
     long seed = random().nextLong();
     int numDoc = atLeast(100);
     int dimension = atLeast(10);
+    int mergePoint = Math.max(numDoc / 2 + 1, random().nextInt(numDoc));
     float[][] values = randomVectors(numDoc, dimension);
-    int mergePoint = random().nextInt(numDoc);
     int[][][] mergedGraph = getIndexedGraph(values, mergePoint, seed);
     int[][][] singleSegmentGraph = getIndexedGraph(values, -1, seed);
     assertGraphEquals(singleSegmentGraph, mergedGraph);
@@ -203,7 +203,7 @@ public class TestKnnGraph extends LuceneTestCase {
     FieldType[] fieldTypes = new FieldType[numVectorFields];
     for (int field = 0; field < numVectorFields; field++) {
       dims[field] = atLeast(3);
-      values[field] = randomVectors(numDoc, dims[field]);
+      values[field] = randomVectorsWithSkips(numDoc, dims[field]);
       fieldTypes[field] = KnnVectorField.createFieldType(dims[field], similarityFunction);
     }
 
@@ -273,12 +273,20 @@ public class TestKnnGraph extends LuceneTestCase {
     return graph;
   }
 
-  private float[][] randomVectors(int numDoc, int dimension) {
+  private float[][] randomVectorsWithSkips(int numDoc, int dimension) {
     float[][] values = new float[numDoc][];
     for (int i = 0; i < numDoc; i++) {
       if (random().nextBoolean()) {
         values[i] = randomVector(dimension);
       }
+    }
+    return values;
+  }
+
+  private float[][] randomVectors(int numDoc, int dimension) {
+    float[][] values = new float[numDoc][];
+    for (int i = 0; i < numDoc; i++) {
+      values[i] = randomVector(dimension);
     }
     return values;
   }

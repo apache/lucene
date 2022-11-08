@@ -202,9 +202,9 @@ public final class HnswGraphBuilder<T> {
           float score =
               switch (this.vectorEncoding) {
                 case FLOAT32 -> this.similarityFunction.compare(
-                    vectorValue, vectors.vectorValue(newNeighbor));
+                    vectorValue, vectorsCopy.vectorValue(newNeighbor));
                 case BYTE -> this.similarityFunction.compare(
-                    binaryValue, vectors.binaryValue(newNeighbor));
+                    binaryValue, vectorsCopy.binaryValue(newNeighbor));
               };
           newNeighbors.insertSorted(newNeighbor, score);
         }
