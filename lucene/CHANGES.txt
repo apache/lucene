@@ -160,6 +160,9 @@ Optimizations
 * GITHUB#11876: Use ByteArrayComparator to speed up PointInSetQuery in single dimension case.
   (Guo Feng)
 
+* GITHUB#11881: Further optimize drill-sideways scoring by specializing the single dimension case
+  and borrowing some concepts from "min should match" scoring. (Greg Miller)
+
 * GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
 
 Other
