@@ -32,15 +32,15 @@ import org.apache.lucene.tests.util.TestUtil;
 @Monster("takes ~??? hours and needs extra heap, disk space, file handles")
 public class TestManyKnnDocs extends LuceneTestCase {
   // ./gradlew -p lucene/core test --tests TestManyKnnDocs -Dtests.verbose=true -Dtests.monster=true
-  // -Ptests.heapsize=16g
+  //  -Ptests.heapsize=16g -Ptests.jvmargs=-XX:ActiveProcessorCount=1
   public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setCodec(
         TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
     iwc.setRAMBufferSizeMB(64); // Use a 64MB buffer to create larger initial segments
     TieredMergePolicy mp = new TieredMergePolicy();
-    mp.setMaxMergeAtOnce(128); // avoid intermediate merges (waste of time with HNSW?)
-    mp.setSegmentsPerTier(128); // only merge once at the end when we ask
+    mp.setMaxMergeAtOnce(256); // avoid intermediate merges (waste of time with HNSW?)
+    mp.setSegmentsPerTier(256); // only merge once at the end when we ask
     iwc.setMergePolicy(mp);
     iwc.setInfoStream(System.out);
 
@@ -50,8 +50,8 @@ public class TestManyKnnDocs extends LuceneTestCase {
     try (Directory dir = FSDirectory.open(createTempDir("ManyKnnVectorDocs"));
         IndexWriter iw = new IndexWriter(dir, iwc)) {
 
-      // This data is enough to trigger the overflow bug in issue #11905
-      int numVectors = 16268815;
+      // This data is enough to trigger the overflow bug in issue #11905... maybe?
+      int numVectors = 20000000;
 
       float[] vector = new float[1];
       Document doc = new Document();
@@ -60,7 +60,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
       for (int i = 0; i < numVectors; i++) {
         // kinda strange that there's no defensive copy and this works without even setVectorValue
         // but whatever
-        vector[0] = (float) (i % 256);
+        vector[0] = (float) i;
         iw.addDocument(doc);
         if (VERBOSE && i % 10_000 == 0) {
           System.out.println("Indexed " + i + " vectors out of " + numVectors);
