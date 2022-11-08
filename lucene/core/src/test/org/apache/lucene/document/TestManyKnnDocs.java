@@ -1,0 +1,82 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.document;
+
+import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Monster;
+import org.apache.lucene.tests.util.TestUtil;
+
+import java.io.IOException;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+
+/**
+ * Tests many KNN docs to look for overflows.
+ */
+@TimeoutSuite(millis = 10_800_000) // 3 hour timeout
+@Monster("takes ~??? hours and both extra heap and disk space")
+public class TestManyKnnDocs extends LuceneTestCase {
+  // ./gradlew -p lucene/core test --tests TestManyKnnDocs -Dtests.verbose=true -Dtests.monster=true -Ptests.heapsize=4g
+  public void testLargeSegment() throws Exception {
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setCodec(TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
+    iwc.setRAMBufferSizeMB(64); // Use a 64MB buffer to create larger initial segments
+    iwc.setMergePolicy(NoMergePolicy.INSTANCE); // only merge at the end
+
+    String fieldName = "field";
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+
+    try (Directory dir = FSDirectory.open(createTempDir("ManyKnnVectorDocs"));
+         IndexWriter iw = new IndexWriter(dir, iwc)) {
+
+      // This data is enough to trigger the overflow bug in issue #11905
+      int numVectors = 16268814;
+
+      float [] vector = new float[1];
+      Document doc = new Document();
+      doc.add(new KnnVectorField(fieldName, vector, similarityFunction));
+
+      for (int i = 0; i < numVectors; i++) {
+        // kinda strange that there's no defensive copy and this works without even setVectorValue but whatever
+        vector[0] = (float) (i % 256);
+        iw.addDocument(doc);
+        if (VERBOSE && i % 10_000 == 0) {
+          System.out.println("Indexed " + i + " vectors out of " + numVectors);
+        }
+      }
+
+      // merge to single segment and then verify
+      iwc.setMergePolicy(new TieredMergePolicy());
+      iw.forceMerge(1);
+      iw.commit();
+      TestUtil.checkIndex(dir);
+    }
+  }
+}
