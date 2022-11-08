@@ -297,36 +297,26 @@ public class TestDrillSideways extends FacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
+    // Run all the basic test cases with a standard DrillSideways implementation:
     DrillSideways ds = getNewDrillSideways(searcher, config, taxoReader);
+    runDrillSidewaysTestCases(config, ds);
 
+    // Run all the basic test cases but make sure DS is set to score all sub-docs at once, so
+    // we exercise the doc-at-a-time scoring methodology:
+    ds = getNewDrillSidewaysScoreSubdocsAtOnce(searcher, config, taxoReader);
+    runDrillSidewaysTestCases(config, ds);
+
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  private void runDrillSidewaysTestCases(FacetsConfig config, DrillSideways ds) throws Exception {
     //  case: drill-down on a single field; in this
     // case the drill-sideways + drill-down counts ==
     // drill-down of just the query:
     DrillDownQuery ddq = new DrillDownQuery(config);
     ddq.add("Author", "Lisa");
     DrillSidewaysResult r = ds.search(null, ddq, 10);
-    assertEquals(2, r.hits.totalHits.value);
-    // Publish Date is only drill-down, and Lisa published
-    // one in 2012 and one in 2010:
-    assertEquals(
-        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
-        r.facets.getTopChildren(10, "Publish Date").toString());
-
-    // Author is drill-sideways + drill-down: Lisa
-    // (drill-down) published twice, and Frank/Susan/Bob
-    // published once:
-    assertEquals(
-        "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
-        r.facets.getTopChildren(10, "Author").toString());
-
-    // Same simple case, but no baseQuery (pure browse):
-    // drill-down on a single field; in this case the
-    // drill-sideways + drill-down counts == drill-down of
-    // just the query:
-    ddq = new DrillDownQuery(config);
-    ddq.add("Author", "Lisa");
-    r = ds.search(null, ddq, 10);
-
     assertEquals(2, r.hits.totalHits.value);
     // Publish Date is only drill-down, and Lisa published
     // one in 2012 and one in 2010:
@@ -484,9 +474,6 @@ public class TestDrillSideways extends FacetTestCase {
         () -> {
           finalR.facets.getTopChildren(0, "Author");
         });
-
-    writer.close();
-    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
 
   public void testBasicWithCollectorManager() throws Exception {
