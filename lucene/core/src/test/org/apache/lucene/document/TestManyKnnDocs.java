@@ -51,6 +51,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
     mp.setMaxMergeAtOnce(128); // avoid intermediate merges (waste of time with HNSW?)
     mp.setSegmentsPerTier(128); // only merge once at the end when we ask
     iwc.setMergePolicy(mp);
+    iwc.setInfoStream(System.out);
 
     String fieldName = "field";
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
