@@ -51,7 +51,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
         IndexWriter iw = new IndexWriter(dir, iwc)) {
 
       // This data is enough to trigger the overflow bug in issue #11905
-      int numVectors = 16268814;
+      int numVectors = 16268815;
 
       float[] vector = new float[1];
       Document doc = new Document();
