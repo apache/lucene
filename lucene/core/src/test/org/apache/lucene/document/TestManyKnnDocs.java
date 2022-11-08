@@ -17,35 +17,26 @@
 package org.apache.lucene.document;
 
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 import org.apache.lucene.tests.util.TestUtil;
 
-import java.io.IOException;
-
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
-
-/**
- * Tests many KNN docs to look for overflows.
- */
+/** Tests many KNN docs to look for overflows. */
 @TimeoutSuite(millis = 10_800_000) // 3 hour timeout
 @Monster("takes ~??? hours and needs extra heap, disk space, file handles")
 public class TestManyKnnDocs extends LuceneTestCase {
-  // ./gradlew -p lucene/core test --tests TestManyKnnDocs -Dtests.verbose=true -Dtests.monster=true -Ptests.heapsize=4g
+  // ./gradlew -p lucene/core test --tests TestManyKnnDocs -Dtests.verbose=true -Dtests.monster=true
+  // -Ptests.heapsize=4g
   public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
-    iwc.setCodec(TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
+    iwc.setCodec(
+        TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
     iwc.setRAMBufferSizeMB(64); // Use a 64MB buffer to create larger initial segments
     TieredMergePolicy mp = new TieredMergePolicy();
     mp.setMaxMergeAtOnce(128); // avoid intermediate merges (waste of time with HNSW?)
@@ -57,17 +48,18 @@ public class TestManyKnnDocs extends LuceneTestCase {
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
 
     try (Directory dir = FSDirectory.open(createTempDir("ManyKnnVectorDocs"));
-         IndexWriter iw = new IndexWriter(dir, iwc)) {
+        IndexWriter iw = new IndexWriter(dir, iwc)) {
 
       // This data is enough to trigger the overflow bug in issue #11905
       int numVectors = 16268814;
 
-      float [] vector = new float[1];
+      float[] vector = new float[1];
       Document doc = new Document();
       doc.add(new KnnVectorField(fieldName, vector, similarityFunction));
 
       for (int i = 0; i < numVectors; i++) {
-        // kinda strange that there's no defensive copy and this works without even setVectorValue but whatever
+        // kinda strange that there's no defensive copy and this works without even setVectorValue
+        // but whatever
         vector[0] = (float) (i % 256);
         iw.addDocument(doc);
         if (VERBOSE && i % 10_000 == 0) {
