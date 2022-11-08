@@ -28,7 +28,7 @@ import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests many KNN docs to look for overflows. */
-@TimeoutSuite(millis = 10_800_000) // 3 hour timeout
+@TimeoutSuite(millis = 86_400_000) // 24 hour timeout
 @Monster("takes ~??? hours and needs extra heap, disk space, file handles")
 public class TestManyKnnDocs extends LuceneTestCase {
   // ./gradlew -p lucene/core test --tests TestManyKnnDocs -Dtests.verbose=true -Dtests.monster=true
