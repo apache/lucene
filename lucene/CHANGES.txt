@@ -137,6 +137,8 @@ Bug Fixes
 
 * GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
 
+* GITHUB#11907: Fix latent casting bugs in BKDWriter. (Ben Trent)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
