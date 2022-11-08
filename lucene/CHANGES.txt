@@ -110,6 +110,11 @@ API Changes
 
 * GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
 
+New Features
+---------------------
+* GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
+  write amplification factor. (Marc D'Mello)
+
 Improvements
 ---------------------
 * GITHUB#11778: Detailed part-of-speech information for particle(조사) and ending(어미) on Nori
@@ -131,6 +136,8 @@ Bug Fixes
   values. (Greg Miller)
 
 * GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
+
+* GITHUB#11907: Fix latent casting bugs in BKDWriter. (Ben Trent)
 
 Optimizations
 ---------------------
@@ -156,8 +163,13 @@ Optimizations
 * GITHUB#11881: Further optimize drill-sideways scoring by specializing the single dimension case
   and borrowing some concepts from "min should match" scoring. (Greg Miller)
 
+* GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
+
 Other
 ---------------------
+
+* GITHUB#11856: Fix nanos to millis conversion for tests (Marios Trivyzas)
+
 * LUCENE-10423: Remove usages of System.currentTimeMillis() from tests. (Marios Trivyzas)
 
 * GITHUB#11811: Upgrade google java format to 1.15.0 (Dawid Weiss)
@@ -165,6 +177,13 @@ Other
 * GITHUB#11834: Upgrade forbiddenapis to version 3.4.  (Uwe Schindler)
 
 * LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
+
+* GITHUB#11752: Added interface to relate a LatLonShape with another shape represented as Component2D. (Navneet Verma)
+
+Build
+---------------------
+
+* GITHUB#11886: Upgrade to gradle 7.5.1 (Dawid Weiss)
 
 ======================== Lucene 9.4.1 =======================
 

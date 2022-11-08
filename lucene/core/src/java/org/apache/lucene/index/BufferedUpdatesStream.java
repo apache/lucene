@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.store.IOContext;
@@ -267,7 +268,7 @@ final class BufferedUpdatesStream implements Accountable {
               packetCount,
               totalDelCount,
               bytesUsed.get(),
-              (System.nanoTime() - startNS) / 1000000.));
+              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1)));
     }
   }
 

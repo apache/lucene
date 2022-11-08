@@ -704,8 +704,8 @@ final class SimpleTextBKDWriter implements Closeable {
 
       // If no exception, we should have cleaned everything up:
       assert tempDir.getCreatedFiles().isEmpty();
-      // long t2 = System.nanoTime();
-      // System.out.println("write time: " + ((t2-t1)/1000000.0) + " msec");
+      // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
+      // TimeUnit.MILLISECONDS.toNanos(1)) + " ms");
 
       success = true;
     } finally {

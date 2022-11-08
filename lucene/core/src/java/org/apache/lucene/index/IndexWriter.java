@@ -696,8 +696,7 @@ public class IndexWriter
         maybeMerge(config.getMergePolicy(), MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);
       }
       if (infoStream.isEnabled("IW")) {
-        infoStream.message(
-            "IW", "getReader took " + (System.currentTimeMillis() - tStart) + " msec");
+        infoStream.message("IW", "getReader took " + (System.currentTimeMillis() - tStart) + " ms");
       }
       success2 = true;
     } catch (VirtualMachineError tragedy) {
@@ -867,7 +866,7 @@ public class IndexWriter
                       count,
                       readerPool.ramBytesUsed() / 1024. / 1024.,
                       ramBufferSizeMB,
-                      ((System.nanoTime() - startNS) / 1000000000.)));
+                      ((System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1))));
             }
           }
         }
@@ -4130,7 +4129,7 @@ public class IndexWriter
           String.format(
               Locale.ROOT,
               "commit: took %.1f msec",
-              (System.nanoTime() - startCommitTime) / 1000000.0));
+              (System.nanoTime() - startCommitTime) / (double) TimeUnit.MILLISECONDS.toNanos(1)));
       infoStream.message("IW", "commit: done");
     }
   }
@@ -4718,7 +4717,7 @@ public class IndexWriter
             "IW",
             "merge time "
                 + (System.currentTimeMillis() - t0)
-                + " msec for "
+                + " ms for "
                 + merge.info.info.maxDoc()
                 + " docs");
       }
@@ -5154,7 +5153,7 @@ public class IndexWriter
                           String.format(
                               Locale.ROOT,
                               "%.1f sec %s",
-                              e.getValue() / 1000000000.,
+                              e.getValue() / (double) TimeUnit.SECONDS.toNanos(1),
                               e.getKey().name().toLowerCase(Locale.ROOT)))
                   .collect(Collectors.joining(", "));
           if (!pauseInfo.isEmpty()) {
@@ -5162,7 +5161,7 @@ public class IndexWriter
           }
 
           long t1 = System.nanoTime();
-          double sec = (t1 - merge.mergeStartNS) / 1000000000.;
+          double sec = (t1 - merge.mergeStartNS) / (double) TimeUnit.SECONDS.toNanos(1);
           double segmentMB = (merge.info.sizeInBytes() / 1024. / 1024.);
           infoStream.message(
               "IW",
@@ -6154,7 +6153,7 @@ public class IndexWriter
                   this,
                   segStates.length,
                   delCount,
-                  (System.nanoTime() - iterStartNS) / 1000000000.));
+                  (System.nanoTime() - iterStartNS) / (double) TimeUnit.SECONDS.toNanos(1)));
         }
         if (updates.privateSegment != null) {
           // No need to retry for a segment-private packet: the merge that folds in our private
@@ -6211,7 +6210,7 @@ public class IndexWriter
                 this,
                 totalSegmentCount,
                 totalDelCount,
-                (System.nanoTime() - startNS) / 1000000000.);
+                (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1));
         if (iter > 0) {
           message += "; " + (iter + 1) + " iters due to concurrent merges";
         }
