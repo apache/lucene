@@ -22,7 +22,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -41,14 +40,17 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
  * Tests many KNN docs to look for overflows.
  */
 @TimeoutSuite(millis = 10_800_000) // 3 hour timeout
-@Monster("takes ~??? hours and both extra heap and disk space")
+@Monster("takes ~??? hours and needs extra heap, disk space, file handles")
 public class TestManyKnnDocs extends LuceneTestCase {
   // ./gradlew -p lucene/core test --tests TestManyKnnDocs -Dtests.verbose=true -Dtests.monster=true -Ptests.heapsize=4g
   public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setCodec(TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
     iwc.setRAMBufferSizeMB(64); // Use a 64MB buffer to create larger initial segments
-    iwc.setMergePolicy(NoMergePolicy.INSTANCE); // only merge at the end
+    TieredMergePolicy mp = new TieredMergePolicy();
+    mp.setMaxMergeAtOnce(128); // avoid intermediate merges (waste of time with HNSW?)
+    mp.setSegmentsPerTier(128); // only merge once at the end when we ask
+    iwc.setMergePolicy(mp);
 
     String fieldName = "field";
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
@@ -73,7 +75,6 @@ public class TestManyKnnDocs extends LuceneTestCase {
       }
 
       // merge to single segment and then verify
-      iwc.setMergePolicy(new TieredMergePolicy());
       iw.forceMerge(1);
       iw.commit();
       TestUtil.checkIndex(dir);
