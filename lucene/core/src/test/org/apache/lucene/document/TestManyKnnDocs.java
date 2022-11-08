@@ -32,7 +32,7 @@ import org.apache.lucene.tests.util.TestUtil;
 @Monster("takes ~??? hours and needs extra heap, disk space, file handles")
 public class TestManyKnnDocs extends LuceneTestCase {
   // ./gradlew -p lucene/core test --tests TestManyKnnDocs -Dtests.verbose=true -Dtests.monster=true
-  // -Ptests.heapsize=4g
+  // -Ptests.heapsize=16g
   public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setCodec(
