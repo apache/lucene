@@ -249,10 +249,14 @@ public class TestSpellChecking extends LuceneTestCase {
     InputStream dictStream = Files.newInputStream(dicFile);
 
     Hunspell speller;
+    Suggester defaultSuggester;
+    Suggester cachingSuggester;
     try {
       Dictionary dictionary =
           new Dictionary(new ByteBuffersDirectory(), "dictionary", affixStream, dictStream);
       speller = new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
+      defaultSuggester = new Suggester(dictionary);
+      cachingSuggester = new Suggester(dictionary).withSuggestibleEntryCache();
     } finally {
       IOUtils.closeWhileHandlingException(affixStream);
       IOUtils.closeWhileHandlingException(dictStream);
@@ -273,12 +277,8 @@ public class TestSpellChecking extends LuceneTestCase {
         assertFalse("Unexpectedly considered correct: " + word, speller.spell(word.trim()));
       }
       if (Files.exists(sug)) {
-        String suggestions =
-            wrongWords.stream()
-                .map(s -> String.join(", ", speller.suggest(s)))
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.joining("\n"));
-        assertEquals(Files.readString(sug).trim(), suggestions);
+        assertEquals(Files.readString(sug).trim(), suggest(defaultSuggester, wrongWords));
+        assertEquals(Files.readString(sug).trim(), suggest(cachingSuggester, wrongWords));
       }
     } else {
       assertFalse(".sug file without .wrong file!", Files.exists(sug));
@@ -288,6 +288,13 @@ public class TestSpellChecking extends LuceneTestCase {
     if (everythingGenerated != null && !speller.dictionary.mayNeedInputCleaning()) {
       checkGoodSugWordsAreGenerated(speller, good, sug, everythingGenerated);
     }
+  }
+
+  private static String suggest(Suggester suggester, List<String> wrongWords) {
+    return wrongWords.stream()
+        .map(s -> String.join(", ", suggester.suggestNoTimeout(s, () -> {})))
+        .filter(s -> !s.isEmpty())
+        .collect(Collectors.joining("\n"));
   }
 
   private static Set<String> expandWholeDictionary(Path dic, Hunspell speller) throws IOException {
