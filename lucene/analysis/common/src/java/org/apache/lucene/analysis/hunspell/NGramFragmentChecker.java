@@ -23,7 +23,8 @@ import java.util.function.Consumer;
 
 /**
  * A {@link FragmentChecker} based on all character n-grams possible in a certain language, keeping
- * them in a relatively memory-efficient, but probabilistic data structure.
+ * them in a relatively memory-efficient, but probabilistic data structure. The n-gram length should
+ * be 2, 3 or 4.
  *
  * @see #fromAllSimpleWords for enumerating the whole dictionary automatically
  * @see #fromWords for creating an instance from a precomputed set of all word forms or n-grams
@@ -33,7 +34,7 @@ public class NGramFragmentChecker implements FragmentChecker {
   private final BitSet hashes;
 
   private NGramFragmentChecker(int n, BitSet hashes) {
-    if (n < 2) throw new IllegalArgumentException("N should be more >=2: " + n);
+    if (n < 2 || n > 4) throw new IllegalArgumentException("N should be between 2 and 4: " + n);
 
     this.n = n;
     this.hashes = hashes;
@@ -85,7 +86,7 @@ public class NGramFragmentChecker implements FragmentChecker {
    */
   public static NGramFragmentChecker fromAllSimpleWords(
       int n, Dictionary dictionary, Runnable checkCanceled) {
-    BitSet hashes = new BitSet(1 << (7 + n * 3));
+    BitSet hashes = new BitSet(1 << (7 + n * 3)); // some empirical numbers
     processNGrams(n, dictionary, checkCanceled, collectHashes(hashes));
     return new NGramFragmentChecker(n, hashes);
   }
