@@ -27,9 +27,17 @@ public interface FragmentChecker {
   FragmentChecker EVERYTHING_POSSIBLE = (word, start, end) -> false;
 
   /**
-   * Check if some substring of the word that intersects with the given offsets is impossible in the
-   * current language. The implementation must be monotonic: if some range is considered impossible,
-   * larger ranges encompassing it should also produce {@code true}.
+   * Check if the given word range intersects any fragment which is impossible in the current
+   * language. For example, if the word is "aaax", and there are no "aaa" combinations in words
+   * accepted by the spellchecker (but "aax" is valid), then {@code true} can be returned for all
+   * ranges in {@code 0..3}, but not for {@code 3..4}.
+   *
+   * <p>The implementation must be monotonic: if some range is considered impossible, larger ranges
+   * encompassing it should also produce {@code true}.
+   *
+   * @param word the whole word being checked for impossible substrings
+   * @param start the start of the range in question, inclusive
+   * @param end the end of the range in question, inclusive, not smaller than {@code start}
    */
   boolean hasImpossibleFragmentAround(CharSequence word, int start, int end);
 }
