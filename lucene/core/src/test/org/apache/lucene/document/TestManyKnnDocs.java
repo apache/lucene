@@ -28,17 +28,17 @@ import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 import org.apache.lucene.tests.util.TestUtil;
 
 @TimeoutSuite(millis = 86_400_000) // 24 hour timeout
-@Monster("takes ~4 hours and needs extra heap, disk space, file handles")
+@Monster("takes ~2 hours and needs extra heap, disk space, file handles")
 public class TestManyKnnDocs extends LuceneTestCase {
   // gradlew -p lucene/core test --tests TestManyKnnDocs -Ptests.heapsize=16g -Dtests.monster=true
 
-  public void testGraphOffsetOverflowProtection() throws Exception {
+  public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
-    iwc.setCodec(TestUtil.getDefaultCodec());
-    iwc.setRAMBufferSizeMB(256);
+    iwc.setCodec(TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
+    iwc.setRAMBufferSizeMB(64); // Use a 64MB buffer to create larger initial segments
     TieredMergePolicy mp = new TieredMergePolicy();
-    mp.setMaxMergeAtOnce(512);
-    mp.setSegmentsPerTier(512);
+    mp.setMaxMergeAtOnce(256); // avoid intermediate merges (waste of time with HNSW?)
+    mp.setSegmentsPerTier(256); // only merge once at the end when we ask
     iwc.setMergePolicy(mp);
     String fieldName = "field";
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
@@ -47,12 +47,11 @@ public class TestManyKnnDocs extends LuceneTestCase {
         IndexWriter iw = new IndexWriter(dir, iwc)) {
 
       int numVectors = 16268816;
-      float[] vector = new float[2];
+      float[] vector = new float[1];
       Document doc = new Document();
       doc.add(new KnnVectorField(fieldName, vector, similarityFunction));
       for (int i = 0; i < numVectors; i++) {
         vector[0] = (i % 256);
-        vector[1] = (i + 1 % 256);
         iw.addDocument(doc);
       }
 
@@ -60,7 +59,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
       iw.forceMerge(1);
       iw.commit();
       IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(dir));
-      TopDocs docs = searcher.search(new KnnVectorQuery("field", new float[] {120, 123}, 10), 5);
+      TopDocs docs = searcher.search(new KnnVectorQuery("field", new float[] {120}, 10), 5);
       assertEquals(5, docs.scoreDocs.length);
     }
   }
