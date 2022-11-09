@@ -173,6 +173,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
 
         @Override
         public void collect(int doc) throws IOException {
+          super.collect(doc);
           int freq = 0;
           for (Scorer scorer : tqsSet) {
             if (doc == scorer.docID()) {
@@ -180,7 +181,6 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
             }
           }
           docCounts.put(doc + docBase, freq);
-          super.collect(doc);
         }
       };
     }

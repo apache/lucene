@@ -318,7 +318,9 @@ public final class SynonymQuery extends Query {
       }
       // Even though it is called approximation, it is accurate since none of
       // the sub iterators are two-phase iterators.
-      DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
+      DisjunctionDISIApproximation disjunctionDISIApproximation =
+          new DisjunctionDISIApproximation(queue);
+      DocIdSetIterator iterator = disjunctionDISIApproximation;
 
       float[] boosts = new float[impacts.size()];
       for (int i = 0; i < boosts.length; i++) {
@@ -331,7 +333,8 @@ public final class SynonymQuery extends Query {
         iterator = impactsDisi;
       }
 
-      return new SynonymScorer(this, queue, iterator, impactsDisi, simScorer);
+      return new SynonymScorer(
+          this, queue, disjunctionDISIApproximation, iterator, impactsDisi, simScorer);
     }
 
     @Override
@@ -511,6 +514,7 @@ public final class SynonymQuery extends Query {
   private static class SynonymScorer extends Scorer {
 
     private final DisiPriorityQueue queue;
+    private final DisjunctionDISIApproximation disjunctionDISIApproximation;
     private final DocIdSetIterator iterator;
     private final ImpactsDISI impactsDisi;
     private final LeafSimScorer simScorer;
@@ -518,11 +522,13 @@ public final class SynonymQuery extends Query {
     SynonymScorer(
         Weight weight,
         DisiPriorityQueue queue,
+        DisjunctionDISIApproximation disjunctionDISIApproximation,
         DocIdSetIterator iterator,
         ImpactsDISI impactsDisi,
         LeafSimScorer simScorer) {
       super(weight);
       this.queue = queue;
+      this.disjunctionDISIApproximation = disjunctionDISIApproximation;
       this.iterator = iterator;
       this.impactsDisi = impactsDisi;
       this.simScorer = simScorer;
@@ -534,6 +540,7 @@ public final class SynonymQuery extends Query {
     }
 
     float freq() throws IOException {
+      disjunctionDISIApproximation.advanceAll();
       DisiWrapperFreq w = (DisiWrapperFreq) queue.topList();
       float freq = w.freq();
       for (w = (DisiWrapperFreq) w.next; w != null; w = (DisiWrapperFreq) w.next) {

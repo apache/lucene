@@ -28,6 +28,7 @@ abstract class DisjunctionScorer extends Scorer {
   private final boolean needsScores;
 
   private final DisiPriorityQueue subScorers;
+  private final DisjunctionDISIApproximation disjunctionDISIApproximation;
   private final DocIdSetIterator approximation;
   private final BlockMaxDISI blockMaxApprox;
   private final TwoPhase twoPhase;
@@ -43,16 +44,16 @@ abstract class DisjunctionScorer extends Scorer {
       final DisiWrapper w = new DisiWrapper(scorer);
       this.subScorers.add(w);
     }
+    this.disjunctionDISIApproximation = new DisjunctionDISIApproximation(this.subScorers);
     this.needsScores = scoreMode != ScoreMode.COMPLETE_NO_SCORES;
     if (scoreMode == ScoreMode.TOP_SCORES) {
       for (Scorer scorer : subScorers) {
         scorer.advanceShallow(0);
       }
-      this.blockMaxApprox =
-          new BlockMaxDISI(new DisjunctionDISIApproximation(this.subScorers), this);
+      this.blockMaxApprox = new BlockMaxDISI(disjunctionDISIApproximation, this);
       this.approximation = blockMaxApprox;
     } else {
-      this.approximation = new DisjunctionDISIApproximation(this.subScorers);
+      this.approximation = disjunctionDISIApproximation;
       this.blockMaxApprox = null;
     }
 
@@ -129,6 +130,10 @@ abstract class DisjunctionScorer extends Scorer {
       verifiedMatches = null;
       unverifiedMatches.clear();
 
+      // TODO: It would be nice to advance one-by-one, trying to confirm a match as we go instead
+      // of just advancing all here:
+      disjunctionDISIApproximation.advanceAll();
+
       for (DisiWrapper w = subScorers.topList(); w != null; ) {
         DisiWrapper next = w.next;
 
@@ -173,7 +178,7 @@ abstract class DisjunctionScorer extends Scorer {
 
   @Override
   public final int docID() {
-    return subScorers.top().doc;
+    return approximation.docID();
   }
 
   BlockMaxDISI getBlockMaxApprox() {
@@ -182,6 +187,7 @@ abstract class DisjunctionScorer extends Scorer {
 
   DisiWrapper getSubMatches() throws IOException {
     if (twoPhase == null) {
+      disjunctionDISIApproximation.advanceAll();
       return subScorers.topList();
     } else {
       return twoPhase.getSubMatches();
