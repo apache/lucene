@@ -18,7 +18,7 @@ package org.apache.lucene.analysis.hunspell;
 
 /**
  * An oracle for quickly checking that a specific part of a word can never be a valid word. This
- * allows speeding up the "Modification" part of {@link Suggester} but avoiding expensive checks on
+ * allows speeding up the "Modification" part of {@link Suggester} by avoiding expensive checks on
  * impossible words. Implementations may use character case, n-grams or whatever they like.
  *
  * @see NGramFragmentChecker
