@@ -2589,7 +2589,6 @@ public final class CheckIndex implements Closeable {
             status.totalKnnVectorFields++;
 
             int docCount = 0;
-            final Bits bits = reader.getLiveDocs();
             int everyNdoc = Math.max(values.size() / 64, 1);
             while (values.nextDoc() != NO_MORE_DOCS) {
               float[] vectorValue = values.vectorValue();
@@ -2598,21 +2597,10 @@ public final class CheckIndex implements Closeable {
                 TopDocs docs =
                     reader
                         .getVectorReader()
-                        .search(fieldInfo.name, vectorValue, 10, bits, Integer.MAX_VALUE);
+                        .search(fieldInfo.name, vectorValue, 10, null, Integer.MAX_VALUE);
                 if (docs.scoreDocs.length == 0) {
                   throw new CheckIndexException(
                       "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
-                }
-                if (bits != null) {
-                  for (ScoreDoc doc : docs.scoreDocs) {
-                    if (bits.get(doc.doc) == false) {
-                      throw new CheckIndexException(
-                          "Searching Field \""
-                              + fieldInfo.name
-                              + "\" matched deleted doc="
-                              + doc.doc);
-                    }
-                  }
                 }
               }
               int valueLength = vectorValue.length;
