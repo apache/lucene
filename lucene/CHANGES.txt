@@ -92,6 +92,10 @@ Build
 
 ======================== Lucene 9.4.2 =======================
 
+Improvements
+---------------------
+* GITHUB#11916: improve checkindex to be more thorough for vectors. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#11905: Fix integer overflow when seeking the vector index for connections in a single segment.
