@@ -1320,6 +1320,30 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testSeekNegative() throws IOException {
+    try (Directory dir = getDirectory(createTempDir())) {
+      try (IndexOutput out = dir.createOutput("a", IOContext.DEFAULT)) {
+        for (int i = 0; i < 2048; ++i) {
+          out.writeByte((byte) 0);
+        }
+      }
+      try (IndexInput in = dir.openInput("a", IOContext.DEFAULT)) {
+        in.seek(1234);
+        assertEquals(1234, in.getFilePointer());
+        var e =
+            expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  in.seek(-1234);
+                });
+        assertTrue(
+            "does not mention negative position", e.getMessage().contains("negative position"));
+      }
+    } catch (AssertionError e) {
+      // thats also fine in MMapDirectory (but still not nice)
+    }
+  }
+
   // Make sure the FSDirectory impl properly "emulates" deletions on filesystems (Windows) with
   // buggy deleteFile:
   public void testPendingDeletions() throws IOException {
