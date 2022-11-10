@@ -2590,12 +2590,11 @@ public final class CheckIndex implements Closeable {
 
             int docCount = 0;
             final Bits bits = reader.getLiveDocs();
-            int numSearces = 0;
-            final int maxNumSearches = 64;
+            int everyNdoc = Math.max(values.size() / 64, 1);
             while (values.nextDoc() != NO_MORE_DOCS) {
               float[] vectorValue = values.vectorValue();
               // search the first maxNumSearches vectors to exercise the graph
-              if (numSearces++ < maxNumSearches) {
+              if (values.docID() % everyNdoc == 0) {
                 TopDocs docs =
                     reader
                         .getVectorReader()
