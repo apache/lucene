@@ -671,10 +671,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     @Override
     public long ramBytesUsed() {
       if (vectors.size() == 0) return 0;
+      long vectorSize = vectors.size();
       return docsWithField.ramBytesUsed()
-          + vectors.size()
+          + vectorSize
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-          + vectors.size() * fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize
+          + vectorSize * fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize
           + hnswGraphBuilder.getGraph().ramBytesUsed();
     }
   }
