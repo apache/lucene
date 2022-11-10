@@ -185,6 +185,14 @@ Build
 
 * GITHUB#11886: Upgrade to gradle 7.5.1 (Dawid Weiss)
 
+======================== Lucene 9.4.2 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#11905: Fix integer overflow when seeking the vector index for connections in a single segment.
+ This addresses a bug that was introduced in 9.2.0 where having many vectors is not handled well
+ in the vector connections reader.
+
 ======================== Lucene 9.4.1 =======================
 
 Bug Fixes
