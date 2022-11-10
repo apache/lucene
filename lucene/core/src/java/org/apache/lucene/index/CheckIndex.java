@@ -2597,7 +2597,7 @@ public final class CheckIndex implements Closeable {
               // search the first maxNumSearches vectors to exercise the graph
               if (numSearces++ < maxNumSearches) {
                 TopDocs docs =
-                    reader.getVectorReader().search(fieldInfo.name, vectorValue, 10, bits, 100);
+                    reader.getVectorReader().search(fieldInfo.name, vectorValue, 10, bits, Integer.MAX_VALUE);
                 if (docs.scoreDocs.length == 0) {
                   throw new CheckIndexException(
                       "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
