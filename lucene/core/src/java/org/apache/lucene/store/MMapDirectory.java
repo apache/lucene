@@ -235,7 +235,7 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(path, context, chunkSizePower, preload, useUnmapHack);
+    return PROVIDER.openInput(path, context, chunkSizePower, preload || context.load, useUnmapHack);
   }
 
   // visible for tests:

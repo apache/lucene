@@ -41,16 +41,25 @@ public class IOContext {
 
   public final FlushInfo flushInfo;
 
+  /** This flag indicates that the file will be opened, then fully read sequentially then closed. */
   public final boolean readOnce;
+
+  /**
+   * This flag indicates that the file is expected to be heavily accessed in a random-access fashion
+   * and should have its content in memory.
+   */
+  public final boolean load;
 
   public static final IOContext DEFAULT = new IOContext(Context.DEFAULT);
 
-  public static final IOContext READONCE = new IOContext(true);
+  public static final IOContext READONCE = new IOContext(true, false);
 
-  public static final IOContext READ = new IOContext(false);
+  public static final IOContext READ = new IOContext(false, false);
+
+  public static final IOContext LOAD = new IOContext(false, true);
 
   public IOContext() {
-    this(false);
+    this(false, false);
   }
 
   public IOContext(FlushInfo flushInfo) {
@@ -58,6 +67,7 @@ public class IOContext {
     this.context = Context.FLUSH;
     this.mergeInfo = null;
     this.readOnce = false;
+    this.load = false;
     this.flushInfo = flushInfo;
   }
 
@@ -65,10 +75,11 @@ public class IOContext {
     this(context, null);
   }
 
-  private IOContext(boolean readOnce) {
+  private IOContext(boolean readOnce, boolean load) {
     this.context = Context.READ;
     this.mergeInfo = null;
     this.readOnce = readOnce;
+    this.load = load;
     this.flushInfo = null;
   }
 
@@ -82,6 +93,7 @@ public class IOContext {
     assert context != Context.FLUSH : "Use IOContext(FlushInfo) to create a FLUSH IOContext";
     this.context = context;
     this.readOnce = false;
+    this.load = false;
     this.mergeInfo = mergeInfo;
     this.flushInfo = null;
   }
@@ -99,6 +111,7 @@ public class IOContext {
     this.mergeInfo = ctxt.mergeInfo;
     this.flushInfo = ctxt.flushInfo;
     this.readOnce = readOnce;
+    this.load = false;
   }
 
   @Override
