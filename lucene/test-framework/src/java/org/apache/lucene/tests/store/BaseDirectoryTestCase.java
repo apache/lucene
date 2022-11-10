@@ -1320,23 +1320,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testSeekNegative() throws IOException {
-    try (Directory dir = getDirectory(createTempDir())) {
-      try (IndexOutput out = dir.createOutput("a", IOContext.DEFAULT)) {
-        for (int i = 0; i < 2048; ++i) {
-          out.writeByte((byte) 0);
-        }
-      }
-      try (IndexInput in = dir.openInput("a", IOContext.DEFAULT)) {
-        in.seek(1234);
-        assertEquals(1234, in.getFilePointer());
-        // FIXME: AssertionError is thrown by MMapIndexInput slices:
-        expectThrowsAnyOf(
-            List.of(IllegalArgumentException.class, AssertionError.class), () -> in.seek(-1234));
-      }
-    }
-  }
-
   // Make sure the FSDirectory impl properly "emulates" deletions on filesystems (Windows) with
   // buggy deleteFile:
   public void testPendingDeletions() throws IOException {
