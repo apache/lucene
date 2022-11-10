@@ -553,7 +553,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
     @Override
     public void seek(long pos) throws IOException {
-      assert pos >= 0L;
+      assert pos >= 0L : "negative position";
       super.seek(pos + offset);
     }
 

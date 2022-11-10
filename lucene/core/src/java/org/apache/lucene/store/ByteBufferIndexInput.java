@@ -631,7 +631,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
     @Override
     public void seek(long pos) throws IOException {
-      assert pos >= 0L;
+      assert pos >= 0L : "negative position";
       super.seek(pos + offset);
     }
 

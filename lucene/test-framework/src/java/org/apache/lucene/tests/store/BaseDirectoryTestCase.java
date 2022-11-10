@@ -1331,16 +1331,14 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         in.seek(1234);
         assertEquals(1234, in.getFilePointer());
         var e =
-            expectThrows(
-                IllegalArgumentException.class,
+            expectThrowsAnyOf(
+                List.of(IllegalArgumentException.class, AssertionError.class),
                 () -> {
                   in.seek(-1234);
                 });
         assertTrue(
             "does not mention negative position", e.getMessage().contains("negative position"));
       }
-    } catch (AssertionError e) {
-      // thats also fine in MMapDirectory (but still not nice)
     }
   }
 
