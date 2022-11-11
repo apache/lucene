@@ -68,7 +68,7 @@ allprojects { prj ->
 
         options.errorprone.disableWarningsInGeneratedCode = true
         options.errorprone.errorproneArgs = [
-            '-XepAllErrorsAsWarnings',
+            '-XepAllErrorsAsWarnings', // warnings still fail build by default, but allows usage of -Pjavac.failOnWarnings=false
             '-Xep:InlineMeSuggester:OFF', // We don't use this annotation
 
             // test
