@@ -193,6 +193,13 @@ Bug Fixes
  This addresses a bug that was introduced in 9.2.0 where having many vectors is not handled well
  in the vector connections reader.
 
+Improvements
+---------------------
+* GITHUB#11912, GITHUB#11918: Port generic exception handling from MemorySegmentIndexInput
+  to ByteBufferIndexInput. This also adds the invalid position while seeking or reading
+  to the exception message. Allows better debugging and analysis of bugs like GITHUB#11905.
+  (Uwe Schindler, Robert Muir)
+
 ======================== Lucene 9.4.1 =======================
 
 Bug Fixes
