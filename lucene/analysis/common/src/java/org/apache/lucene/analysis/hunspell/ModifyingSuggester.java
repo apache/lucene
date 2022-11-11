@@ -30,16 +30,22 @@ class ModifyingSuggester {
   private final LinkedHashSet<Suggestion> result;
   private final String misspelled;
   private final WordCase wordCase;
+  private final FragmentChecker fragmentChecker;
   private final char[] tryChars;
   private final Hunspell speller;
 
   ModifyingSuggester(
-      Hunspell speller, LinkedHashSet<Suggestion> result, String misspelled, WordCase wordCase) {
+      Hunspell speller,
+      LinkedHashSet<Suggestion> result,
+      String misspelled,
+      WordCase wordCase,
+      FragmentChecker checker) {
     this.speller = speller;
     tryChars = speller.dictionary.tryChars.toCharArray();
     this.result = result;
     this.misspelled = misspelled;
     this.wordCase = wordCase;
+    fragmentChecker = checker;
   }
 
   /**
@@ -173,19 +179,28 @@ class ModifyingSuggester {
       return;
     }
 
+    int length = accumulated.length();
+
     for (List<String> entries : speller.dictionary.mapTable) {
       for (String entry : entries) {
         if (word.regionMatches(offset, entry, 0, entry.length())) {
           for (String replacement : entries) {
             if (!entry.equals(replacement)) {
-              enumerateMapReplacements(word, accumulated + replacement, offset + entry.length());
+              String next = accumulated + replacement;
+              int end = length + replacement.length();
+              if (!fragmentChecker.hasImpossibleFragmentAround(next, length, end)) {
+                enumerateMapReplacements(word, next, offset + entry.length());
+              }
             }
           }
         }
       }
     }
 
-    enumerateMapReplacements(word, accumulated + word.charAt(offset), offset + 1);
+    String next = accumulated + word.charAt(offset);
+    if (!fragmentChecker.hasImpossibleFragmentAround(next, length, length + 1)) {
+      enumerateMapReplacements(word, next, offset + 1);
+    }
   }
 
   private boolean checkSimpleWord(String part) {
@@ -235,11 +250,18 @@ class ModifyingSuggester {
         if (group.indexOf(c) >= 0) {
           for (int j = 0; j < group.length(); j++) {
             if (group.charAt(j) != c) {
-              trySuggestion(word.substring(0, i) + group.charAt(j) + word.substring(i + 1));
+              tryModifiedSuggestions(
+                  i, word.substring(0, i) + group.charAt(j) + word.substring(i + 1));
             }
           }
         }
       }
+    }
+  }
+
+  private void tryModifiedSuggestions(int modOffset, String candidate) {
+    if (!fragmentChecker.hasImpossibleFragmentAround(candidate, modOffset, modOffset + 1)) {
+      trySuggestion(candidate);
     }
   }
 
@@ -268,7 +290,7 @@ class ModifyingSuggester {
       String prefix = word.substring(0, i);
       String suffix = word.substring(i);
       for (char toInsert : tryChars) {
-        trySuggestion(prefix + toInsert + suffix);
+        tryModifiedSuggestions(prefix.length(), prefix + toInsert + suffix);
       }
     }
   }
@@ -292,7 +314,7 @@ class ModifyingSuggester {
       String suffix = word.substring(i + 1);
       for (char toInsert : tryChars) {
         if (toInsert != word.charAt(i)) {
-          trySuggestion(prefix + toInsert + suffix);
+          tryModifiedSuggestions(prefix.length(), prefix + toInsert + suffix);
         }
       }
     }
