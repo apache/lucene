@@ -159,6 +159,14 @@ class WordStorage {
    */
   void processSuggestibleWords(
       int minLength, int maxLength, BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
+    processAllWords(minLength, maxLength, true, processor);
+  }
+
+  void processAllWords(
+      int minLength,
+      int maxLength,
+      boolean suggestibleOnly,
+      BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
     assert minLength <= maxLength;
     maxLength = Math.min(maxEntryLength, maxLength);
 
@@ -178,7 +186,8 @@ class WordStorage {
 
         boolean last = !hasCollision(mask);
         boolean mightMatch =
-            hasSuggestibleEntries(mask) && hasLengthInRange(mask, minLength, maxLength);
+            (!suggestibleOnly || hasSuggestibleEntries(mask))
+                && hasLengthInRange(mask, minLength, maxLength);
 
         if (!last) {
           mask = in.readByte();
