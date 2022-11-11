@@ -398,6 +398,12 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
         assertFalse(termsEnum.seekExact(target));
       }
     }
+    // 10004a matched block's entries: [100001, 100003, ..., 100049].
+    // if target greater than the last entry of the matched block,
+    // termsEnum.term should be the last entry.
+    assertFalse(termsEnum.seekExact(new BytesRef("10004a")));
+    assertEquals(termsEnum.term(), new BytesRef("100049"));
+
     // test seekCeil
     for (int i = 100000; i < 100400; i++) {
       BytesRef target = new BytesRef(i + "");
