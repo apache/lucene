@@ -68,6 +68,7 @@ allprojects { prj ->
 
         options.errorprone.disableWarningsInGeneratedCode = true
         options.errorprone.errorproneArgs = [
+            '-XepAllErrorsAsWarnings',
             '-Xep:InlineMeSuggester:OFF', // We don't use this annotation
 
             // test
@@ -142,7 +143,6 @@ allprojects { prj ->
             '-Xep:ModifiedButNotUsed:OFF',
             '-Xep:MutablePublicArray:OFF',
             '-Xep:NarrowingCompoundAssignment:OFF',
-            '-Xep:NarrowCalculation:OFF',
             '-Xep:NonAtomicVolatileUpdate:OFF',
             '-Xep:NonCanonicalType:OFF',
             '-Xep:ObjectToString:OFF',

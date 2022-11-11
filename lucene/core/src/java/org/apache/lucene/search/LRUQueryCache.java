@@ -435,7 +435,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
       long recomputedRamBytesUsed =
           HASHTABLE_RAM_BYTES_PER_ENTRY * cache.size()
               + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY * uniqueQueries.size();
-      recomputedRamBytesUsed += mostRecentlyUsedQueries.size() * QUERY_DEFAULT_RAM_BYTES_USED;
+      recomputedRamBytesUsed +=
+          mostRecentlyUsedQueries.size() * (long) QUERY_DEFAULT_RAM_BYTES_USED;
       for (LeafCache leafCache : cache.values()) {
         recomputedRamBytesUsed += HASHTABLE_RAM_BYTES_PER_ENTRY * leafCache.cache.size();
         for (CacheAndCount cached : leafCache.cache.values()) {
