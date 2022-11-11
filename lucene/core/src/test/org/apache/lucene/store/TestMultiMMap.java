@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.junit.BeforeClass;
@@ -38,6 +39,26 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
   @BeforeClass
   public static void beforeClass() throws Exception {
     assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
+  }
+
+  public void testSeekNegative() throws IOException {
+    try (Directory dir = getDirectory(createTempDir())) {
+      try (IndexOutput out = dir.createOutput("a", IOContext.DEFAULT)) {
+        for (int i = 0; i < 2048; ++i) {
+          out.writeByte((byte) 0);
+        }
+      }
+      try (IndexInput in = dir.openInput("a", IOContext.DEFAULT)) {
+        in.seek(1234);
+        assertEquals(1234, in.getFilePointer());
+        var e =
+            expectThrowsAnyOf(
+                List.of(IllegalArgumentException.class, AssertionError.class),
+                () -> in.seek(-1234));
+        assertTrue(
+            "does not mention negative position", e.getMessage().contains("negative position"));
+      }
+    }
   }
 
   // TODO: can we improve ByteBuffersDirectory (without overhead) and move these clone safety tests
