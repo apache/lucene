@@ -17,13 +17,13 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.lang.System.Logger.Level;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySession;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
@@ -31,7 +31,8 @@ import org.apache.lucene.util.Unwrappable;
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
 
   public MemorySegmentIndexInputProvider() {
-    Logger.getLogger(getClass().getName()).info("Using MemorySegmentIndexInput with Java 19");
+    System.getLogger(getClass().getName())
+        .log(Level.INFO, "Using MemorySegmentIndexInput with Java 19");
   }
 
   @Override

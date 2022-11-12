@@ -19,9 +19,9 @@ package org.apache.lucene.spatial;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.*;
 
 import java.io.IOException;
+import java.lang.System.Logger;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -44,7 +44,7 @@ import org.locationtech.spatial4j.shape.Rectangle;
 @SuppressSysoutChecks(bugUrl = "These tests use JUL extensively.")
 public abstract class SpatialTestCase extends LuceneTestCase {
 
-  protected Logger log = Logger.getLogger(getClass().getName());
+  protected Logger logger = System.getLogger(getClass().getName());
 
   private DirectoryReader indexReader;
   protected RandomIndexWriter indexWriter;

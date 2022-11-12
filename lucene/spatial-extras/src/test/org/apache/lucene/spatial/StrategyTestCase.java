@@ -19,6 +19,8 @@ package org.apache.lucene.spatial;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,7 +28,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.logging.Logger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
@@ -57,7 +58,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
   public static final String QTEST_Cities_Intersects_BBox = "cities-Intersects-BBox.txt";
   public static final String QTEST_Simple_Queries_BBox = "simple-Queries-BBox.txt";
 
-  protected Logger log = Logger.getLogger(getClass().getName());
+  protected Logger logger = System.getLogger(getClass().getName());
 
   protected final SpatialArgsParser argsParser = new SpatialArgsParser();
 
@@ -66,7 +67,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
 
   protected void executeQueries(SpatialMatchConcern concern, String... testQueryFile)
       throws IOException {
-    log.info("testing queried for strategy " + strategy); // nowarn
+    logger.log(Level.INFO, "testing queried for strategy " + strategy); // nowarn
     for (String path : testQueryFile) {
       Iterator<SpatialTestQuery> testQueryIterator = getTestQueries(path, ctx);
       runTestQueries(testQueryIterator, concern);

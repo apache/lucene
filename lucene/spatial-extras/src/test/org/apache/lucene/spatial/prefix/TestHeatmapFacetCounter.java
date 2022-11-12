@@ -21,6 +21,7 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
+import java.lang.System.Logger.Level;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.search.Query;
@@ -66,7 +67,8 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
 
   @After
   public void after() {
-    log.info(
+    logger.log(
+        Level.INFO,
         "Validated " + cellsValidated + " cells, " + cellValidatedNonZero + " non-zero"); // nowarn
   }
 

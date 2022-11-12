@@ -14,6 +14,9 @@
 #  limitations under the License.
 
 @defaultMessage Lucene should never log below Level.WARNING
+java.lang.System$Logger$Level#TRACE
+java.lang.System$Logger$Level#DEBUG
+java.lang.System$Logger$Level#INFO
 java.util.logging.Level#CONFIG
 java.util.logging.Level#FINE
 java.util.logging.Level#FINER

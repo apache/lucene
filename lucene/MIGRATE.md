@@ -72,22 +72,22 @@ parse differently than before. If you need the exact previous behavior, clone th
 `StandardSyntaxParser` from the previous version of Lucene and create a custom query parser
 with that parser.
 
-### Lucene Core now depends on java.logging (JUL) module (LUCENE-10342)
+### Lucene Core now uses Java Platform Logging (and JUL) module (GITHUB#11873)
 
-Lucene Core now logs certain warnings and errors using Java Util Logging (JUL).
-It is therefore recommended to install wrapper libraries with JUL logging handlers to
-feed the log events into your app's own logging system.
+Lucene Core now logs certain warnings and errors using Java Platform Logging (JEP 264).
+It is therefore recommended to install wrapper libraries with a
+`java.lang.System.LoggerFinder` service provider to feed the log events into your app's
+own logging system. By default Java will log through `java.jutil.logging` (if available).
 
 Under normal circumstances Lucene won't log anything, but in the case of a problem
-users should find the logged information in the usual log files.
+users should find the logged information in the usual log files or `System.err`.
 
-Lucene also provides a `JavaLoggingInfoStream` implementation that logs `IndexWriter`
-events using JUL.
+Lucene also provides a `JavaPlatformLoggingInfoStream` implementation that logs `IndexWriter`
+events using Java Platform Logging.
 
 To feed Lucene's log events into the well-known Log4J system, we refer to
-the [Log4j JDK Logging Adapter](https://logging.apache.org/log4j/2.x/log4j-jul/index.html)
-in combination with the corresponding system property:
-`java.util.logging.manager=org.apache.logging.log4j.jul.LogManager`.
+the [Log4j JDK Platform Logging Adapter](https://logging.apache.org/log4j/2.x/log4j-jpl/index.html)
+(`log4j-jpl.jar`) that needs to be added to classpath.
 
 ### Kuromoji and Nori analysis component constructors for custom dictionaries
 

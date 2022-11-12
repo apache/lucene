@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -30,7 +32,6 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.logging.Logger;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Query;
@@ -153,17 +154,19 @@ public final class RamUsageEstimator {
         }
       } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
         isHotspot = false;
-        final Logger log = Logger.getLogger(RamUsageEstimator.class.getName());
+        final Logger logger = System.getLogger(RamUsageEstimator.class.getName());
         final Module module = RamUsageEstimator.class.getModule();
         final ModuleLayer layer = module.getLayer();
         // classpath / unnamed module has no layer, so we need to check:
         if (layer != null
             && layer.findModule("jdk.management").map(module::canRead).orElse(false) == false) {
-          log.warning(
+          logger.log(
+              Level.WARNING,
               "Lucene cannot correctly calculate object sizes on 64bit JVMs, unless the 'jdk.management' Java module "
                   + "is readable [please add 'jdk.management' to modular application either by command line or its module descriptor]");
         } else {
-          log.warning(
+          logger.log(
+              Level.WARNING,
               "Lucene cannot correctly calculate object sizes on 64bit JVMs that are not based on Hotspot or a compatible implementation.");
         }
       }
