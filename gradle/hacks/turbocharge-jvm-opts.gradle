@@ -38,4 +38,19 @@ allprojects {
 
         jvmArgs += vmOpts
     }
+
+    // Tweak javac to not be too resource-hungry. Note that
+    // java compile can run in-process with gradle; if this is the case then
+    // no jvmArgs are passed. We can force javac to run as a forked process but
+    // I don't know if it makes sense in all circumstances.
+    tasks.withType(JavaCompile) { JavaCompile task ->
+        // The 'non-forked' version of 'gradlew clean classes' runs in 15s for me,
+        // while forcing fork = true below completes in 22s.
+        //
+        // task.options.fork = true
+        task.options.forkOptions.jvmArgs += vmOpts
+        task.options.forkOptions.jvmArgs += [
+            "-XX:ActiveProcessorCount=1"
+        ]
+    }
 }
