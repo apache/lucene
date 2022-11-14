@@ -383,13 +383,17 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       // calculate for each level the start offsets in vectorIndex file from where to read
       // neighbours
       graphOffsetsByLevel = new long[numLevels];
+      final long connectionsAndSizeBytes =
+          Math.multiplyExact(Math.addExact(1L, maxConn), Integer.BYTES);
       for (int level = 0; level < numLevels; level++) {
         if (level == 0) {
           graphOffsetsByLevel[level] = 0;
         } else {
           int numNodesOnPrevLevel = level == 1 ? size : nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              graphOffsetsByLevel[level - 1] + (1 + maxConn) * Integer.BYTES * numNodesOnPrevLevel;
+              Math.addExact(
+                  graphOffsetsByLevel[level - 1],
+                  Math.multiplyExact(connectionsAndSizeBytes, numNodesOnPrevLevel));
         }
       }
     }
@@ -542,7 +546,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = ((long) entry.maxConn + 1) * Integer.BYTES;
+      this.bytesForConns = Math.multiplyExact(Math.addExact(entry.maxConn, 1L), Integer.BYTES);
     }
 
     @Override
