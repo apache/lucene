@@ -16,14 +16,18 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
+import static org.apache.lucene.analysis.hunspell.Dictionary.FLAG_UNSET;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -249,14 +253,22 @@ public class TestSpellChecking extends LuceneTestCase {
     InputStream dictStream = Files.newInputStream(dicFile);
 
     Hunspell speller;
-    Suggester defaultSuggester;
-    Suggester cachingSuggester;
+    Map<String, Suggester> suggesters = new LinkedHashMap<>();
     try {
       Dictionary dictionary =
           new Dictionary(new ByteBuffersDirectory(), "dictionary", affixStream, dictStream);
       speller = new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
-      defaultSuggester = new Suggester(dictionary);
-      cachingSuggester = new Suggester(dictionary).withSuggestibleEntryCache();
+      Suggester suggester = new Suggester(dictionary);
+      suggesters.put("default", suggester);
+      suggesters.put("caching", suggester.withSuggestibleEntryCache());
+      if (dictionary.compoundRules == null
+          && dictionary.compoundBegin == FLAG_UNSET
+          && dictionary.compoundFlag == FLAG_UNSET) {
+        for (int n = 2; n <= 4; n++) {
+          var checker = NGramFragmentChecker.fromAllSimpleWords(n, dictionary, () -> {});
+          suggesters.put("ngram" + n, suggester.withFragmentChecker(checker));
+        }
+      }
     } finally {
       IOUtils.closeWhileHandlingException(affixStream);
       IOUtils.closeWhileHandlingException(dictStream);
@@ -277,8 +289,10 @@ public class TestSpellChecking extends LuceneTestCase {
         assertFalse("Unexpectedly considered correct: " + word, speller.spell(word.trim()));
       }
       if (Files.exists(sug)) {
-        assertEquals(Files.readString(sug).trim(), suggest(defaultSuggester, wrongWords));
-        assertEquals(Files.readString(sug).trim(), suggest(cachingSuggester, wrongWords));
+        String sugLines = Files.readString(sug).trim();
+        for (Map.Entry<String, Suggester> e : suggesters.entrySet()) {
+          assertEquals("Suggester=" + e.getKey(), sugLines, suggest(e.getValue(), wrongWords));
+        }
       }
     } else {
       assertFalse(".sug file without .wrong file!", Files.exists(sug));

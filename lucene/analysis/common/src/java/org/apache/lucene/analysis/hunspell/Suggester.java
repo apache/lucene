@@ -40,7 +40,8 @@ import org.apache.lucene.util.CharsRef;
  * <ol>
  *   <li>Modification: trying to insert/remove/delete/swap parts of the word to get something
  *       acceptable. The performance of this part depends heavily on the contents of TRY, MAP, REP,
- *       KEY directives in the .aff file.
+ *       KEY directives in the .aff file. To speed up this part, consider using {@link
+ *       #withFragmentChecker}.
  *   <li>Enumeration: if the modification hasn't produced "good enough" suggestions, the whole
  *       dictionary is scanned and simple affixes are added onto the entries to check if that
  *       produces anything similar to the given misspelled word. This depends on the dictionary size
@@ -51,14 +52,17 @@ import org.apache.lucene.util.CharsRef;
 public class Suggester {
   private final Dictionary dictionary;
   private final SuggestibleEntryCache suggestibleCache;
+  private final FragmentChecker fragmentChecker;
 
   public Suggester(Dictionary dictionary) {
-    this(dictionary, null);
+    this(dictionary, null, FragmentChecker.EVERYTHING_POSSIBLE);
   }
 
-  private Suggester(Dictionary dictionary, SuggestibleEntryCache suggestibleCache) {
+  private Suggester(
+      Dictionary dictionary, SuggestibleEntryCache suggestibleCache, FragmentChecker checker) {
     this.dictionary = dictionary;
     this.suggestibleCache = suggestibleCache;
+    this.fragmentChecker = checker;
   }
 
   /**
@@ -67,7 +71,16 @@ public class Suggester {
    * entries are stored as fast-to-iterate plain words instead of highly compressed prefix trees.
    */
   public Suggester withSuggestibleEntryCache() {
-    return new Suggester(dictionary, SuggestibleEntryCache.buildCache(dictionary.words));
+    return new Suggester(
+        dictionary, SuggestibleEntryCache.buildCache(dictionary.words), fragmentChecker);
+  }
+
+  /**
+   * Returns a copy of this suggester instance with {@link FragmentChecker} hint that can improve
+   * the performance of the "Modification" phase performance.
+   */
+  public Suggester withFragmentChecker(FragmentChecker checker) {
+    return new Suggester(dictionary, suggestibleCache, checker);
   }
 
   /**
@@ -161,7 +174,8 @@ public class Suggester {
     }
 
     boolean hasGoodSuggestions =
-        new ModifyingSuggester(suggestionSpeller, suggestions, word, wordCase).suggest();
+        new ModifyingSuggester(suggestionSpeller, suggestions, word, wordCase, fragmentChecker)
+            .suggest();
 
     if (!hasGoodSuggestions && dictionary.maxNGramSuggestions > 0) {
       List<String> generated =
