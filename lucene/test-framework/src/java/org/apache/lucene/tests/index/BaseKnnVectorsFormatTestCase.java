@@ -1087,7 +1087,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           // assert that searchNearestVectors returns the expected number of documents,
           // in descending score order
           int size = ctx.reader().getVectorValues(fieldName).size();
-          int k = random().nextInt(size / 2 + 1) + 1;
+          int k = random().nextInt(size / 10 + 1) + 1;
           if (k > numLiveDocsWithVectors) {
             k = numLiveDocsWithVectors;
           }

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
@@ -261,7 +262,7 @@ public class TestPatternReplaceCharFilter extends BaseTokenStreamTestCase {
       if (matcher.find()) {
         System.out.println(matcher.group());
       }
-      System.out.println(i + " > " + (System.nanoTime() - t) / 1_000_000_000.0);
+      System.out.println(i + " > " + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - t));
     }
   }
 

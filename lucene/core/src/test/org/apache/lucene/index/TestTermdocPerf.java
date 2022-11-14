@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -118,7 +119,10 @@ public class TestTermdocPerf extends LuceneTestCase {
     long end = System.nanoTime();
     if (VERBOSE)
       System.out.println(
-          "milliseconds for creation of " + ndocs + " docs = " + (end - start) / 1_000_000);
+          "milliseconds for creation of "
+              + ndocs
+              + " docs = "
+              + TimeUnit.NANOSECONDS.toMillis(end - start));
 
     IndexReader reader = DirectoryReader.open(dir);
 
@@ -140,7 +144,10 @@ public class TestTermdocPerf extends LuceneTestCase {
     end = System.nanoTime();
     if (VERBOSE)
       System.out.println(
-          "milliseconds for " + iter + " TermDocs iteration: " + (end - start) / 1_000_000);
+          "milliseconds for "
+              + iter
+              + " TermDocs iteration: "
+              + TimeUnit.NANOSECONDS.toMillis(end - start));
 
     return ret;
   }

@@ -16,8 +16,11 @@
  */
 package org.apache.lucene.store;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.junit.BeforeClass;
@@ -38,6 +41,43 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
   @BeforeClass
   public static void beforeClass() throws Exception {
     assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
+  }
+
+  public void testSeekingExceptions() throws IOException {
+    final int sliceSize = 128;
+    try (Directory dir = getDirectory(createTempDir(), sliceSize)) {
+      final int size = 128 + 63;
+      try (IndexOutput out = dir.createOutput("a", IOContext.DEFAULT)) {
+        for (int i = 0; i < size; ++i) {
+          out.writeByte((byte) 0);
+        }
+      }
+      try (IndexInput in = dir.openInput("a", IOContext.DEFAULT)) {
+        final long negativePos = -1234;
+        var e =
+            expectThrowsAnyOf(
+                List.of(IllegalArgumentException.class, AssertionError.class),
+                () -> in.seek(negativePos));
+        assertTrue(
+            "does not mention negative position", e.getMessage().contains("negative position"));
+
+        final long posAfterEOF = size + 123;
+        var eof = expectThrows(EOFException.class, () -> in.seek(posAfterEOF));
+        assertTrue(
+            "wrong position in error message: " + eof,
+            eof.getMessage().contains(String.format(Locale.ROOT, "(pos=%d)", posAfterEOF)));
+
+        // this test verifies that the invalid position is transformed back to original one for
+        // exception by slicing:
+        IndexInput slice = in.slice("slice", 33, sliceSize + 15);
+        // ensure that the slice uses multi-mmap:
+        assertCorrectImpl(false, slice);
+        eof = expectThrows(EOFException.class, () -> slice.seek(posAfterEOF));
+        assertTrue(
+            "wrong position in error message: " + eof,
+            eof.getMessage().contains(String.format(Locale.ROOT, "(pos=%d)", posAfterEOF)));
+      }
+    }
   }
 
   // TODO: can we improve ByteBuffersDirectory (without overhead) and move these clone safety tests

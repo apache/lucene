@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -54,7 +55,8 @@ class WordStorage {
   private static final int COLLISION_MASK = 0x40;
   private static final int SUGGESTIBLE_MASK = 0x20;
   private static final int MAX_STORED_LENGTH = SUGGESTIBLE_MASK - 1;
-
+  private final int maxEntryLength;
+  private final boolean hasCustomMorphData;
   /**
    * A map from word's hash (modulo array's length) into an int containing:
    *
@@ -89,7 +91,10 @@ class WordStorage {
    */
   private final byte[] wordData;
 
-  private WordStorage(int[] hashTable, byte[] wordData) {
+  private WordStorage(
+      int maxEntryLength, boolean hasCustomMorphData, int[] hashTable, byte[] wordData) {
+    this.maxEntryLength = maxEntryLength;
+    this.hasCustomMorphData = hasCustomMorphData;
     this.hashTable = hashTable;
     this.wordData = wordData;
   }
@@ -153,11 +158,21 @@ class WordStorage {
    * can be modified in any way, but may not be saved for later by the processor
    */
   void processSuggestibleWords(
-      int minLength, int maxLength, BiConsumer<CharsRef, IntsRef> processor) {
+      int minLength, int maxLength, BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
+    processAllWords(minLength, maxLength, true, processor);
+  }
+
+  void processAllWords(
+      int minLength,
+      int maxLength,
+      boolean suggestibleOnly,
+      BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
     assert minLength <= maxLength;
+    maxLength = Math.min(maxEntryLength, maxLength);
+
     CharsRef chars = new CharsRef(maxLength);
-    IntsRef forms = new IntsRef();
     ByteArrayDataInput in = new ByteArrayDataInput(wordData);
+    var formSupplier = new LazyFormReader(in);
     for (int entryCode : hashTable) {
       int pos = entryCode & OFFSET_MASK;
       int mask = entryCode >>> OFFSET_BITS;
@@ -171,7 +186,8 @@ class WordStorage {
 
         boolean last = !hasCollision(mask);
         boolean mightMatch =
-            hasSuggestibleEntries(mask) && hasLengthInRange(mask, minLength, maxLength);
+            (!suggestibleOnly || hasSuggestibleEntries(mask))
+                && hasLengthInRange(mask, minLength, maxLength);
 
         if (!last) {
           mask = in.readByte();
@@ -179,11 +195,7 @@ class WordStorage {
         }
 
         if (mightMatch) {
-          int dataLength = in.readVInt();
-          if (forms.ints.length < dataLength) {
-            forms.ints = new int[dataLength];
-          }
-          readForms(forms, in, dataLength);
+          formSupplier.dataPos = in.getPosition();
           while (prevPos != 0 && wordStart > 0) {
             in.setPosition(prevPos);
             chars.chars[--wordStart] = (char) in.readVInt();
@@ -193,7 +205,7 @@ class WordStorage {
           if (prevPos == 0) {
             chars.offset = wordStart;
             chars.length = maxLength - wordStart;
-            processor.accept(chars, forms);
+            processor.accept(chars, formSupplier);
           }
         }
 
@@ -257,6 +269,7 @@ class WordStorage {
     private final ByteArrayDataOutput dataWriter;
     private int commonPrefixLength, commonPrefixPos;
     private int actualWords;
+    private int maxEntryLength;
 
     /**
      * @param wordCount an approximate number of the words in the resulting dictionary, used to
@@ -297,6 +310,8 @@ class WordStorage {
      * {@link String#compareTo} rules.
      */
     void add(String entry, char[] flags, int morphDataID) throws IOException {
+      maxEntryLength = Math.max(maxEntryLength, entry.length());
+
       if (!entry.equals(currentEntry)) {
         if (currentEntry != null) {
           if (entry.compareTo(currentEntry) < 0) {
@@ -411,8 +426,36 @@ class WordStorage {
     WordStorage build() throws IOException {
       assert !group.isEmpty() : "build() should be only called once";
       flushGroup();
-      return new WordStorage(
-          hashTable, ArrayUtil.copyOfSubArray(wordData, 0, dataWriter.getPosition()));
+      byte[] trimmedData = ArrayUtil.copyOfSubArray(wordData, 0, dataWriter.getPosition());
+      return new WordStorage(maxEntryLength, hasCustomMorphData, hashTable, trimmedData);
+    }
+  }
+
+  private class LazyFormReader implements Supplier<IntsRef> {
+    int dataPos;
+    private final ByteArrayDataInput in;
+    private final IntsRef forms;
+
+    LazyFormReader(ByteArrayDataInput in) {
+      this.in = in;
+      forms = new IntsRef();
+    }
+
+    @Override
+    public IntsRef get() {
+      in.setPosition(dataPos);
+      int entryCount = in.readVInt() / (hasCustomMorphData ? 2 : 1);
+      if (forms.ints.length < entryCount) {
+        forms.ints = new int[entryCount];
+      }
+      for (int i = 0; i < entryCount; i++) {
+        forms.ints[i] = in.readVInt();
+        if (hasCustomMorphData) {
+          in.readVInt();
+        }
+      }
+      forms.length = entryCount;
+      return forms;
     }
   }
 }

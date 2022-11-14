@@ -298,18 +298,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
     for (int dim = 0; dim < points.getNumDimensions(); dim++) {
       int offset = dim * points.getBytesPerDimension();
-      if (comparator.compare(points.getMinPackedValue(), offset, queryUpperPoint, offset) > 0) {
-        return false;
-      }
-      if (comparator.compare(points.getMaxPackedValue(), offset, queryLowerPoint, offset) < 0) {
-        return false;
-      }
-      if (comparator.compare(points.getMinPackedValue(), offset, queryLowerPoint, offset) < 0
-          || comparator.compare(points.getMaxPackedValue(), offset, queryUpperPoint, offset) > 0) {
-        return false;
+      if (comparator.compare(points.getMinPackedValue(), offset, queryLowerPoint, offset) >= 0
+          && comparator.compare(points.getMaxPackedValue(), offset, queryUpperPoint, offset) <= 0) {
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   private BoundedDocIdSetIterator getDocIdSetIteratorOrNullFromBkd(
