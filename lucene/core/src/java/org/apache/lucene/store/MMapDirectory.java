@@ -39,8 +39,7 @@ import org.apache.lucene.util.Constants;
  * fragmented address space. If you get an OutOfMemoryException, it is recommended to reduce the
  * chunk size, until it works.
  *
- * <p>This class supports preloading files into physical memory upon opening, which is especially
- * relevant to files that use the {@link IOContext#LOAD} I/O context. This can help improve
+ * <p>This class supports preloading files into physical memory upon opening. This can help improve
  * performance of searches on a cold page cache. See {@link #setPreload(BiPredicate)} for more
  * details.
  *
