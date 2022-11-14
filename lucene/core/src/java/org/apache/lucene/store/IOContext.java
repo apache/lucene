@@ -45,8 +45,10 @@ public class IOContext {
   public final boolean readOnce;
 
   /**
-   * This flag indicates that the file is expected to be heavily accessed in a random-access
-   * fashion.
+   * This flag is used for files that are a small fraction of the total index size and are expected
+   * to be heavily accessed in random-access fashion. Some {@link Directory} implementations may
+   * choose to load such files into physical memory (e.g. Java heap) as a way to provide stronger
+   * guarantees on query latency.
    */
   public final boolean load;
 
