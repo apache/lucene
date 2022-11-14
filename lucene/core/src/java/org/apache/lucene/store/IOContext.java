@@ -45,8 +45,8 @@ public class IOContext {
   public final boolean readOnce;
 
   /**
-   * This flag indicates that the file is expected to be heavily accessed in a random-access fashion
-   * and should have its content in memory.
+   * This flag indicates that the file is expected to be heavily accessed in a random-access
+   * fashion.
    */
   public final boolean load;
 

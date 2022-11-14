@@ -93,15 +93,8 @@ public class MMapDirectory extends FSDirectory {
    */
   public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
 
-  /**
-   * Argument for {@link #setPreload(BiPredicate)} that configures all files that use the {@link
-   * IOContext#LOAD} to be preloaded upon opening them. This is the default.
-   */
-  public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (filename, context) -> context.load;
-
   private boolean useUnmapHack = UNMAP_SUPPORTED;
-  private BiPredicate<String, IOContext> preload = BASED_ON_LOAD_IO_CONTEXT;
+  private BiPredicate<String, IOContext> preload = NO_FILES;
 
   /**
    * Default max chunk size:
@@ -231,14 +224,12 @@ public class MMapDirectory extends FSDirectory {
 
   /**
    * Configure which files to preload in physical memory upon opening. The default implementation
-   * preloads files that use the {@link IOContext#LOAD} I/O context. The behavior is best effort and
-   * operating system-dependent.
+   * does not preload anything. The behavior is best effort and operating system-dependent.
    *
    * @param preload a {@link BiPredicate} whose first argument is the file name, and second argument
    *     is the {@link IOContext} used to open the file
    * @see #ALL_FILES
    * @see #NO_FILES
-   * @see #BASED_ON_LOAD_IO_CONTEXT
    */
   public void setPreload(BiPredicate<String, IOContext> preload) {
     this.preload = preload;
