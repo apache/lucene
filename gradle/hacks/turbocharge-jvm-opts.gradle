@@ -47,7 +47,7 @@ allprojects {
         // The 'non-forked' version of 'gradlew clean classes' runs in 15s for me,
         // while forcing fork = true below completes in 22s.
         //
-        // task.options.fork = true
+        task.options.fork = true
         task.options.forkOptions.jvmArgs += vmOpts
         task.options.forkOptions.jvmArgs += [
             "-XX:+PrintFlagsFinal",
