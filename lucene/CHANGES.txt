@@ -158,6 +158,8 @@ Optimizations
 * GITHUB#11876: Use ByteArrayComparator to speed up PointInSetQuery in single dimension case.
   (Guo Feng)
 
+* GITHUB#11903: Faster sort on high-cardinality string fields. (Adrien Grand)
+
 Other
 ---------------------
 
