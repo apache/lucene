@@ -50,6 +50,7 @@ allprojects {
         // task.options.fork = true
         task.options.forkOptions.jvmArgs += vmOpts
         task.options.forkOptions.jvmArgs += [
+            "-XX:+PrintFlagsFinal",
             "-XX:ActiveProcessorCount=1"
         ]
     }
