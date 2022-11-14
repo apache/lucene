@@ -32,7 +32,7 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
   @Override
   protected Directory getDirectory(Path path) throws IOException {
     MMapDirectory m = new MMapDirectory(path);
-    m.setPreload((file, context) -> random().nextBoolean());
+    m.setPreload(random().nextBoolean());
     return m;
   }
 
