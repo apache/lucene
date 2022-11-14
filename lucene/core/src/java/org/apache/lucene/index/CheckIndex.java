@@ -55,11 +55,7 @@ import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.FieldExistsQuery;
-import org.apache.lucene.search.LeafFieldComparator;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -2593,8 +2589,21 @@ public final class CheckIndex implements Closeable {
             status.totalKnnVectorFields++;
 
             int docCount = 0;
+            int everyNdoc = Math.max(values.size() / 64, 1);
             while (values.nextDoc() != NO_MORE_DOCS) {
-              int valueLength = values.vectorValue().length;
+              float[] vectorValue = values.vectorValue();
+              // search the first maxNumSearches vectors to exercise the graph
+              if (values.docID() % everyNdoc == 0) {
+                TopDocs docs =
+                    reader
+                        .getVectorReader()
+                        .search(fieldInfo.name, vectorValue, 10, null, Integer.MAX_VALUE);
+                if (docs.scoreDocs.length == 0) {
+                  throw new CheckIndexException(
+                      "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+                }
+              }
+              int valueLength = vectorValue.length;
               if (valueLength != dimension) {
                 throw new CheckIndexException(
                     "Field \""
