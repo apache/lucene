@@ -102,6 +102,12 @@ Lucene 9.2 or stay with 9.0.
 
 See LUCENE-10558 for more details and workarounds.
 
+### DisjunctionDISIApproximation behavior change
+
+`DisjunctionDISIApproximation` no longer guarantees that all sub-iterators are positioned on the
+current doc after calls to `#nextDoc` and `#advance`. Users that rely on this implementation
+can call the newly-added `#advanceAll` method to ensure sub-iterators a positioned as necessary.
+
 ## Migration from Lucene 8.x to Lucene 9.0
 
 ### Rename of binary artifacts from '**-analyzers-**' to '**-analysis-**' (LUCENE-9562)
