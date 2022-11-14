@@ -39,6 +39,11 @@ import org.apache.lucene.util.Constants;
  * fragmented address space. If you get an OutOfMemoryException, it is recommended to reduce the
  * chunk size, until it works.
  *
+ * <p>This class supports preloading files into physical memory upon opening, which is especially
+ * relevant to files that use the {@link IOContext#LOAD} I/O context. This can help improve
+ * performance of searches on a cold page cache. See {@link #setPreload(BiPredicate)} for more
+ * details.
+ *
  * <p>Due to <a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038">this bug</a> in
  * Sun's JRE, MMapDirectory's {@link IndexInput#close} is unable to close the underlying OS file
  * handle. Only when GC finally collects the underlying objects, which could be quite some time
@@ -75,8 +80,30 @@ import org.apache.lucene.util.Constants;
  *     about MMapDirectory</a>
  */
 public class MMapDirectory extends FSDirectory {
+
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures all files to be preloaded upon
+   * opening them.
+   */
+  public static final BiPredicate<String, IOContext> PRELOAD_ALL_FILES =
+      (filename, context) -> true;
+
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures no files to be preloaded upon
+   * opening them.
+   */
+  public static final BiPredicate<String, IOContext> PRELOAD_NO_FILES =
+      (filename, context) -> false;
+
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures all files that use the {@link
+   * IOContext#LOAD} to be preloaded upon opening them. This is the default.
+   */
+  public static final BiPredicate<String, IOContext> PRELOAD_BASED_ON_IO_CONTEXT =
+      (filename, context) -> context.load;
+
   private boolean useUnmapHack = UNMAP_SUPPORTED;
-  private BiPredicate<String, IOContext> preload = (filename, context) -> context.load;
+  private BiPredicate<String, IOContext> preload = PRELOAD_BASED_ON_IO_CONTEXT;
 
   /**
    * Default max chunk size:
@@ -208,6 +235,12 @@ public class MMapDirectory extends FSDirectory {
    * Configure which files to preload in physical memory upon opening. The default implementation
    * preloads files that use the {@link IOContext#LOAD} I/O context. The behavior is best effort and
    * operating system-dependent.
+   *
+   * @param preload a {@link BiPredicate} whose first argument is the file name, and second argument
+   *     is the {@link IOContext} used to open the file
+   * @see #PRELOAD_ALL_FILES
+   * @see #PRELOAD_NO_FILES
+   * @see #PRELOAD_BASED_ON_IO_CONTEXT
    */
   public void setPreload(BiPredicate<String, IOContext> preload) {
     this.preload = preload;
@@ -221,7 +254,19 @@ public class MMapDirectory extends FSDirectory {
    */
   @Deprecated
   public void setPreload(boolean preload) {
-    this.preload = (filename, context) -> preload;
+    this.preload = preload ? PRELOAD_ALL_FILES : PRELOAD_NO_FILES;
+  }
+
+  /**
+   * Return whether files are loaded into physical memory upon opening.
+   *
+   * @deprecated This information is no longer reliable now that preloading is more granularly
+   *     configured via a predicate.
+   * @see #setPreload(BiPredicate)
+   */
+  @Deprecated
+  public boolean getPreload() {
+    return preload == PRELOAD_ALL_FILES;
   }
 
   /**
