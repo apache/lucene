@@ -23,6 +23,7 @@ import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.concurrent.Future;
+import java.util.function.BiPredicate;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
@@ -75,7 +76,7 @@ import org.apache.lucene.util.Constants;
  */
 public class MMapDirectory extends FSDirectory {
   private boolean useUnmapHack = UNMAP_SUPPORTED;
-  private boolean preload;
+  private BiPredicate<String, IOContext> preload = (filename, context) -> context.load;
 
   /**
    * Default max chunk size:
@@ -204,20 +205,23 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
-   * Set to {@code true} to ask mapped pages to be loaded into physical memory on init. The behavior
-   * is best-effort and operating system dependent.
+   * Configure which files to preload in physical memory upon opening. The default implementation
+   * preloads files that use the {@link IOContext#LOAD} I/O context. The behavior is best effort and
+   * operating system-dependent.
    */
-  public void setPreload(boolean preload) {
+  public void setPreload(BiPredicate<String, IOContext> preload) {
     this.preload = preload;
   }
 
   /**
-   * Returns {@code true} if mapped pages should be loaded.
+   * Configure whether to preload files on this {@link MMapDirectory} into physical memory upon
+   * opening. The behavior is best effort and operating system-dependent.
    *
-   * @see #setPreload
+   * @deprecated Use {@link #setPreload(BiPredicate)} instead which provides more granular control.
    */
-  public boolean getPreload() {
-    return preload;
+  @Deprecated
+  public void setPreload(boolean preload) {
+    this.preload = (filename, context) -> preload;
   }
 
   /**
@@ -235,7 +239,8 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(path, context, chunkSizePower, preload || context.load, useUnmapHack);
+    return PROVIDER.openInput(
+        path, context, chunkSizePower, preload.test(name, context), useUnmapHack);
   }
 
   // visible for tests:
