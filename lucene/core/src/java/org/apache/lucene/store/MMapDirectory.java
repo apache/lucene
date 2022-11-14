@@ -40,8 +40,8 @@ import org.apache.lucene.util.Constants;
  * chunk size, until it works.
  *
  * <p>This class supports preloading files into physical memory upon opening. This can help improve
- * performance of searches on a cold page cache. See {@link #setPreload(BiPredicate)} for more
- * details.
+ * performance of searches on a cold page cache at the expense of slowing down opening an index. See
+ * {@link #setPreload(BiPredicate)} for more details.
  *
  * <p>Due to <a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038">this bug</a> in
  * Sun's JRE, MMapDirectory's {@link IndexInput#close} is unable to close the underlying OS file
