@@ -1244,7 +1244,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
           while (low <= high) {
             mid = (low + high) >>> 1;
             fstReader.setPosition(arc.posArcsStart());
-            fstReader.skipBytes(arc.bytesPerArc() * mid);
+            fstReader.skipBytes(arc.bytesPerArc() * (long) mid);
             final byte flags = fstReader.readByte();
             fr.index.readLabel(fstReader);
             final Output minArcOutput;

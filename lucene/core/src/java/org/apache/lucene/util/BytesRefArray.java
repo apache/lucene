@@ -41,7 +41,7 @@ public final class BytesRefArray implements SortableBytesRefArray {
   public BytesRefArray(Counter bytesUsed) {
     this.pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();
-    bytesUsed.addAndGet(RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * Integer.BYTES);
+    bytesUsed.addAndGet(RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * (long) Integer.BYTES);
     this.bytesUsed = bytesUsed;
   }
 
@@ -66,7 +66,7 @@ public final class BytesRefArray implements SortableBytesRefArray {
     if (lastElement >= offsets.length) {
       int oldLen = offsets.length;
       offsets = ArrayUtil.grow(offsets, offsets.length + 1);
-      bytesUsed.addAndGet((offsets.length - oldLen) * Integer.BYTES);
+      bytesUsed.addAndGet((offsets.length - oldLen) * (long) Integer.BYTES);
     }
     pool.append(bytes);
     offsets[lastElement++] = currentOffset;

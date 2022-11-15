@@ -668,7 +668,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
     // Indexed by nodeID, but first (root) nodeID is 1.  We do 1+ because the lead byte at each
     // recursion says which dim we split on.
-    byte[] splitPackedValues = new byte[Math.toIntExact(numLeaves * (1 + config.bytesPerDim))];
+    byte[] splitPackedValues = new byte[Math.multiplyExact(numLeaves, 1 + config.bytesPerDim)];
 
     // +1 because leaf count is power of 2 (e.g. 8), and innerNodeCount is power of 2 minus 1 (e.g.
     // 7)

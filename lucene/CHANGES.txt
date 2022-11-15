@@ -110,6 +110,9 @@ New Features
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
   write amplification factor. (Marc D'Mello)
 
+* GITHUB#11929: MMapDirectory gives more granular control on which files to
+  preload. (Adrien Grand, Uwe Schindler)
+
 Improvements
 ---------------------
 * GITHUB#11778: Detailed part-of-speech information for particle(조사) and ending(어미) on Nori
@@ -159,6 +162,8 @@ Optimizations
   and borrowing some concepts from "min should match" scoring. (Greg Miller)
 
 * GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
+
+* GITHUB#11895: count() in BooleanQuery could be early quit. (Lu Xugang)
 
 Other
 ---------------------

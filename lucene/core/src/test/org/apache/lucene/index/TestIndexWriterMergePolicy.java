@@ -468,11 +468,11 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     lmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
 
-    lmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024 / 1024.);
+    lmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024. / 1024.);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
 
     expectThrows(
         IllegalArgumentException.class,
