@@ -92,6 +92,13 @@ public class MMapDirectory extends FSDirectory {
    */
   public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
 
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
+   * opening them if they use the {@link IOContext#LOAD} I/O context.
+   */
+  public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
+      (filename, context) -> context.load;
+
   private boolean useUnmapHack = UNMAP_SUPPORTED;
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
