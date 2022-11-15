@@ -25,6 +25,9 @@ New Features
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
   write amplification factor. (Marc D'Mello)
 
+* GITHUB#11929: MMapDirectory gives more granular control on which files to
+  preload. (Adrien Grand, Uwe Schindler)
+
 Improvements
 ---------------------
 * GITHUB#11785: Improve Tessellator performance by delaying calls to the method

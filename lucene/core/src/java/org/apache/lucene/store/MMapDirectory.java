@@ -23,6 +23,7 @@ import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.concurrent.Future;
+import java.util.function.BiPredicate;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
@@ -37,6 +38,10 @@ import org.apache.lucene.util.Constants;
  * #MMapDirectory(Path, LockFactory, long)} if you have problems with mmap failing because of
  * fragmented address space. If you get an OutOfMemoryException, it is recommended to reduce the
  * chunk size, until it works.
+ *
+ * <p>This class supports preloading files into physical memory upon opening. This can help improve
+ * performance of searches on a cold page cache at the expense of slowing down opening an index. See
+ * {@link #setPreload(BiPredicate)} for more details.
  *
  * <p>Due to <a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038">this bug</a> in
  * Sun's JRE, MMapDirectory's {@link IndexInput#close} is unable to close the underlying OS file
@@ -74,8 +79,21 @@ import org.apache.lucene.util.Constants;
  *     about MMapDirectory</a>
  */
 public class MMapDirectory extends FSDirectory {
+
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures all files to be preloaded upon
+   * opening them.
+   */
+  public static final BiPredicate<String, IOContext> ALL_FILES = (filename, context) -> true;
+
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures no files to be preloaded upon
+   * opening them.
+   */
+  public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
+
   private boolean useUnmapHack = UNMAP_SUPPORTED;
-  private boolean preload;
+  private BiPredicate<String, IOContext> preload = NO_FILES;
 
   /**
    * Default max chunk size:
@@ -226,20 +244,39 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
-   * Set to {@code true} to ask mapped pages to be loaded into physical memory on init. The behavior
-   * is best-effort and operating system dependent.
+   * Configure which files to preload in physical memory upon opening. The default implementation
+   * does not preload anything. The behavior is best effort and operating system-dependent.
+   *
+   * @param preload a {@link BiPredicate} whose first argument is the file name, and second argument
+   *     is the {@link IOContext} used to open the file
+   * @see #ALL_FILES
+   * @see #NO_FILES
    */
-  public void setPreload(boolean preload) {
+  public void setPreload(BiPredicate<String, IOContext> preload) {
     this.preload = preload;
   }
 
   /**
-   * Returns {@code true} if mapped pages should be loaded.
+   * Configure whether to preload files on this {@link MMapDirectory} into physical memory upon
+   * opening. The behavior is best effort and operating system-dependent.
    *
-   * @see #setPreload
+   * @deprecated Use {@link #setPreload(BiPredicate)} instead which provides more granular control.
    */
+  @Deprecated
+  public void setPreload(boolean preload) {
+    this.preload = preload ? ALL_FILES : NO_FILES;
+  }
+
+  /**
+   * Return whether files are loaded into physical memory upon opening.
+   *
+   * @deprecated This information is no longer reliable now that preloading is more granularly
+   *     configured via a predicate.
+   * @see #setPreload(BiPredicate)
+   */
+  @Deprecated
   public boolean getPreload() {
-    return preload;
+    return preload == ALL_FILES;
   }
 
   /**
@@ -257,7 +294,8 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(path, context, chunkSizePower, preload, useUnmapHack);
+    return PROVIDER.openInput(
+        path, context, chunkSizePower, preload.test(name, context), useUnmapHack);
   }
 
   // visible for tests:
