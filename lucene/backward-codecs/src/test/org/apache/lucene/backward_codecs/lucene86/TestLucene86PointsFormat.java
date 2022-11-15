@@ -99,6 +99,7 @@ public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
     super.testMergeStability();
   }
 
+  @SuppressWarnings("NarrowCalculation")
   public void testEstimatePointCount() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
@@ -224,6 +225,7 @@ public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
 
   // The tree is always balanced in the N dims case, and leaves are
   // not all full so things are a bit different
+  @SuppressWarnings("NarrowCalculation")
   public void testEstimatePointCount2Dims() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());

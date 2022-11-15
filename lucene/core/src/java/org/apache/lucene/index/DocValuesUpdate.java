@@ -69,9 +69,9 @@ abstract class DocValuesUpdate {
 
   final long sizeInBytes() {
     long sizeInBytes = RAW_SIZE_IN_BYTES;
-    sizeInBytes += term.field.length() * Character.BYTES;
+    sizeInBytes += term.field.length() * (long) Character.BYTES;
     sizeInBytes += term.bytes.bytes.length;
-    sizeInBytes += field.length() * Character.BYTES;
+    sizeInBytes += field.length() * (long) Character.BYTES;
     sizeInBytes += valueSizeInBytes();
     sizeInBytes += 1; // hasValue
     return sizeInBytes;

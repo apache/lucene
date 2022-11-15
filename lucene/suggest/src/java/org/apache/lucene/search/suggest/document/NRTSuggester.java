@@ -304,7 +304,7 @@ public final class NRTSuggester implements Accountable {
    */
   private int getMaxTopNSearcherQueueSize(
       int topN, int numDocs, double liveDocsRatio, boolean filterEnabled) {
-    long maxQueueSize = topN * maxAnalyzedPathsPerOutput;
+    long maxQueueSize = topN * (long) maxAnalyzedPathsPerOutput;
     // liveDocRatio can be at most 1.0 (if no docs were deleted)
     assert liveDocsRatio <= 1.0d;
     maxQueueSize = (long) (maxQueueSize / liveDocsRatio);
