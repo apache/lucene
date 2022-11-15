@@ -68,7 +68,7 @@ systemProp.file.encoding=UTF-8
 # The heap seems huge but gradle runs out of memory on lower values (don't know why).
 #
 # We also open up internal compiler modules for spotless/ google java format.
-org.gradle.jvmargs=-Xmx3g \\
+org.gradle.jvmargs=-Xmx3g -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1 \\
  --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \\
  --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \\
  --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \\
