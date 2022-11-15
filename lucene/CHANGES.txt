@@ -163,6 +163,8 @@ Optimizations
 
 * GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
 
+* GITHUB#11895: count() in BooleanQuery could be early quit. (Lu Xugang)
+
 Other
 ---------------------
 
