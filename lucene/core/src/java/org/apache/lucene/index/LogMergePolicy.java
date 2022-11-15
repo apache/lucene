@@ -509,7 +509,7 @@ public abstract class LogMergePolicy extends MergePolicy {
                 + " level="
                 + infoLevel.level
                 + " size="
-                + String.format(Locale.ROOT, "%.3f MB", segBytes / 1024 / 1024.)
+                + String.format(Locale.ROOT, "%.3f MB", segBytes / 1024. / 1024.)
                 + extra,
             mergeContext);
       }
