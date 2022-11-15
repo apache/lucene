@@ -754,11 +754,11 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     tmp.setMaxMergedSegmentMB(Double.POSITIVE_INFINITY);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., tmp.getMaxMergedSegmentMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxMergedSegmentMB(), EPSILON * Long.MAX_VALUE);
 
-    tmp.setMaxMergedSegmentMB(Long.MAX_VALUE / 1024 / 1024.);
+    tmp.setMaxMergedSegmentMB(Long.MAX_VALUE / 1024. / 1024.);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., tmp.getMaxMergedSegmentMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxMergedSegmentMB(), EPSILON * Long.MAX_VALUE);
 
     expectThrows(
         IllegalArgumentException.class,
@@ -770,10 +770,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     assertEquals(2.0, tmp.getFloorSegmentMB(), EPSILON);
 
     tmp.setFloorSegmentMB(Double.POSITIVE_INFINITY);
-    assertEquals(Long.MAX_VALUE / 1024 / 1024., tmp.getFloorSegmentMB(), EPSILON * Long.MAX_VALUE);
+    assertEquals(Long.MAX_VALUE / 1024. / 1024., tmp.getFloorSegmentMB(), EPSILON * Long.MAX_VALUE);
 
-    tmp.setFloorSegmentMB(Long.MAX_VALUE / 1024 / 1024.);
-    assertEquals(Long.MAX_VALUE / 1024 / 1024., tmp.getFloorSegmentMB(), EPSILON * Long.MAX_VALUE);
+    tmp.setFloorSegmentMB(Long.MAX_VALUE / 1024. / 1024.);
+    assertEquals(Long.MAX_VALUE / 1024. / 1024., tmp.getFloorSegmentMB(), EPSILON * Long.MAX_VALUE);
 
     expectThrows(
         IllegalArgumentException.class,
@@ -786,11 +786,11 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     tmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
 
-    tmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024 / 1024.);
+    tmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024. / 1024.);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
 
     expectThrows(
         IllegalArgumentException.class,

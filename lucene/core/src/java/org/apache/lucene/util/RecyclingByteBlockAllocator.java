@@ -95,7 +95,7 @@ public final class RecyclingByteBlockAllocator extends ByteBlockPool.Allocator {
     for (int i = stop; i < end; i++) {
       blocks[i] = null;
     }
-    bytesUsed.addAndGet(-(end - stop) * blockSize);
+    bytesUsed.addAndGet(-(end - stop) * (long) blockSize);
     assert bytesUsed.get() >= 0;
   }
 
@@ -134,7 +134,7 @@ public final class RecyclingByteBlockAllocator extends ByteBlockPool.Allocator {
     while (freeBlocks > stop) {
       freeByteBlocks[--freeBlocks] = null;
     }
-    bytesUsed.addAndGet(-count * blockSize);
+    bytesUsed.addAndGet(-count * (long) blockSize);
     assert bytesUsed.get() >= 0;
     return count;
   }

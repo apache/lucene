@@ -177,7 +177,7 @@ public abstract class BaseRangeFieldQueryTestCase extends LuceneTestCase {
         } else {
           for (int m = 0, even = dimensions % 2; m < dimensions * 2; ++m) {
             if (x == m) {
-              int d = (int) Math.floor(m / 2);
+              int d = (int) Math.floor(m / 2f);
               // current could be multivalue but old may not be, so use first box
               if (even == 0) { // even is min
                 ranges[id][0].setMin(d, ranges[oldID][0].getMin(d));

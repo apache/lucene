@@ -862,7 +862,7 @@ public final class FST<T> implements Accountable {
 
     // Expand the arcs in place, backwards.
     long srcPos = fstCompiler.bytes.getPosition();
-    long destPos = startAddress + headerLen + nodeIn.numArcs * maxBytesPerArc;
+    long destPos = startAddress + headerLen + nodeIn.numArcs * (long) maxBytesPerArc;
     assert destPos >= srcPos;
     if (destPos > srcPos) {
       fstCompiler.bytes.skipBytes((int) (destPos - srcPos));
@@ -1227,7 +1227,7 @@ public final class FST<T> implements Accountable {
         // Arcs have fixed length.
         if (arc.nodeFlags() == ARCS_FOR_BINARY_SEARCH) {
           // Point to next arc, -1 to skip arc flags.
-          in.setPosition(arc.posArcsStart() - (1 + arc.arcIdx()) * arc.bytesPerArc() - 1);
+          in.setPosition(arc.posArcsStart() - (1 + arc.arcIdx()) * (long) arc.bytesPerArc() - 1);
         } else {
           assert arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING;
           // Direct addressing node. The label is not stored but rather inferred
@@ -1252,7 +1252,7 @@ public final class FST<T> implements Accountable {
     assert arc.bytesPerArc() > 0;
     assert arc.nodeFlags() == ARCS_FOR_BINARY_SEARCH;
     assert idx >= 0 && idx < arc.numArcs();
-    in.setPosition(arc.posArcsStart() - idx * arc.bytesPerArc());
+    in.setPosition(arc.posArcsStart() - idx * (long) arc.bytesPerArc());
     arc.arcIdx = idx;
     arc.flags = in.readByte();
     return readArc(arc, in);
@@ -1279,7 +1279,7 @@ public final class FST<T> implements Accountable {
    */
   private Arc<T> readArcByDirectAddressing(
       Arc<T> arc, final BytesReader in, int rangeIndex, int presenceIndex) throws IOException {
-    in.setPosition(arc.posArcsStart() - presenceIndex * arc.bytesPerArc());
+    in.setPosition(arc.posArcsStart() - presenceIndex * (long) arc.bytesPerArc());
     arc.arcIdx = rangeIndex;
     arc.presenceIndex = presenceIndex;
     arc.flags = in.readByte();
@@ -1308,7 +1308,7 @@ public final class FST<T> implements Accountable {
         assert arc.bytesPerArc() > 0;
         arc.arcIdx++;
         assert arc.arcIdx() >= 0 && arc.arcIdx() < arc.numArcs();
-        in.setPosition(arc.posArcsStart() - arc.arcIdx() * arc.bytesPerArc());
+        in.setPosition(arc.posArcsStart() - arc.arcIdx() * (long) arc.bytesPerArc());
         arc.flags = in.readByte();
         break;
 
@@ -1371,7 +1371,7 @@ public final class FST<T> implements Accountable {
               arc.nodeFlags == ARCS_FOR_DIRECT_ADDRESSING
                   ? BitTable.countBits(arc, in)
                   : arc.numArcs();
-          in.setPosition(arc.posArcsStart() - arc.bytesPerArc() * numArcs);
+          in.setPosition(arc.posArcsStart() - arc.bytesPerArc() * (long) numArcs);
         }
       }
       arc.target = in.getPosition();

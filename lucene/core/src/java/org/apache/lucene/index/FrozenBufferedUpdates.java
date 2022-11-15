@@ -111,7 +111,7 @@ final class FrozenBufferedUpdates {
 
     bytesUsed =
         (int)
-            ((deleteTerms.ramBytesUsed() + deleteQueries.length * BYTES_PER_DEL_QUERY)
+            ((deleteTerms.ramBytesUsed() + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
                 + updates.fieldUpdatesBytesUsed.get());
 
     numTermDeletes = updates.numTermDeletes.get();

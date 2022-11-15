@@ -84,7 +84,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     this.perThreadPool = documentsWriter.perThreadPool;
     this.flushPolicy = config.getFlushPolicy();
     this.config = config;
-    this.hardMaxBytesPerDWPT = config.getRAMPerThreadHardLimitMB() * 1024 * 1024;
+    this.hardMaxBytesPerDWPT = config.getRAMPerThreadHardLimitMB() * 1024L * 1024L;
     this.documentsWriter = documentsWriter;
   }
 

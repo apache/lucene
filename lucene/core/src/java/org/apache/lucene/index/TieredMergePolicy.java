@@ -337,7 +337,7 @@ public class TieredMergePolicy extends MergePolicy {
             "  seg="
                 + segString(mergeContext, Collections.singleton(segSizeDocs.segInfo))
                 + " size="
-                + String.format(Locale.ROOT, "%.3f", segBytes / 1024 / 1024.)
+                + String.format(Locale.ROOT, "%.3f", segBytes / 1024. / 1024.)
                 + " MB"
                 + extra,
             mergeContext);
@@ -957,8 +957,8 @@ public class TieredMergePolicy extends MergePolicy {
   public String toString() {
     StringBuilder sb = new StringBuilder("[" + getClass().getSimpleName() + ": ");
     sb.append("maxMergeAtOnce=").append(maxMergeAtOnce).append(", ");
-    sb.append("maxMergedSegmentMB=").append(maxMergedSegmentBytes / 1024 / 1024.).append(", ");
-    sb.append("floorSegmentMB=").append(floorSegmentBytes / 1024 / 1024.).append(", ");
+    sb.append("maxMergedSegmentMB=").append(maxMergedSegmentBytes / 1024. / 1024.).append(", ");
+    sb.append("floorSegmentMB=").append(floorSegmentBytes / 1024. / 1024.).append(", ");
     sb.append("forceMergeDeletesPctAllowed=").append(forceMergeDeletesPctAllowed).append(", ");
     sb.append("segmentsPerTier=").append(segsPerTier).append(", ");
     sb.append("maxCFSSegmentSizeMB=").append(getMaxCFSSegmentSizeMB()).append(", ");

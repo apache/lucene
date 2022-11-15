@@ -69,7 +69,7 @@ public final class RecyclingIntBlockAllocator extends Allocator {
   @Override
   public int[] getIntBlock() {
     if (freeBlocks == 0) {
-      bytesUsed.addAndGet(blockSize * Integer.BYTES);
+      bytesUsed.addAndGet(blockSize * (long) Integer.BYTES);
       return new int[blockSize];
     }
     final int[] b = freeByteBlocks[--freeBlocks];
@@ -95,7 +95,7 @@ public final class RecyclingIntBlockAllocator extends Allocator {
     for (int i = stop; i < end; i++) {
       blocks[i] = null;
     }
-    bytesUsed.addAndGet(-(end - stop) * (blockSize * Integer.BYTES));
+    bytesUsed.addAndGet(-(end - stop) * ((long) blockSize * Integer.BYTES));
     assert bytesUsed.get() >= 0;
   }
 
@@ -134,7 +134,7 @@ public final class RecyclingIntBlockAllocator extends Allocator {
     while (freeBlocks > stop) {
       freeByteBlocks[--freeBlocks] = null;
     }
-    bytesUsed.addAndGet(-count * blockSize * Integer.BYTES);
+    bytesUsed.addAndGet(-count * (long) blockSize * Integer.BYTES);
     assert bytesUsed.get() >= 0;
     return count;
   }

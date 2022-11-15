@@ -65,7 +65,7 @@ public class RangeFacetsExample implements Closeable {
     // "now", 2000 sec before "now", ...:
     for (int i = 0; i < 100; i++) {
       Document doc = new Document();
-      long then = nowSec - i * 1000;
+      long then = nowSec - i * 1000L;
       // Add as doc values field, so we can compute range facets:
       doc.add(new NumericDocValuesField("timestamp", then));
       // Add as numeric field so we can drill-down:

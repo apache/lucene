@@ -5297,7 +5297,7 @@ public class IndexWriter
                 Locale.ROOT,
                 "merged segment size=%.3f MB vs estimate=%.3f MB",
                 merge.info.sizeInBytes() / 1024. / 1024.,
-                merge.estimatedMergeBytes / 1024 / 1024.));
+                merge.estimatedMergeBytes / 1024. / 1024.));
       }
 
       final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
