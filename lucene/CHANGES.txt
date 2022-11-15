@@ -105,6 +105,12 @@ API Changes
 
 * GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
 
+* GITHUB#11930: Added IOContext#LOAD for files that are a small fraction of the
+  total index size and heavily accessed with a random access pattern. Some
+  Directory implementations may choose to load files that use this IOContext in
+  memory to provide stronger guarantees on query latency.
+  (Adrien Grand, Uwe Schindler)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
