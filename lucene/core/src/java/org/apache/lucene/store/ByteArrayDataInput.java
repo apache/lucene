@@ -18,7 +18,6 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.util.Objects;
-
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
