@@ -32,12 +32,12 @@ public class ConfigurableMCodec extends FilterCodec {
     private final KnnVectorsFormat knnVectorsFormat;
 
     public ConfigurableMCodec() {
-        super("GinormousMCodec", new Lucene94Codec());
+        super("ConfigurableMCodec", new Lucene94Codec());
         knnVectorsFormat = new Lucene94HnswVectorsFormat(128, 100);
     }
 
     public ConfigurableMCodec(int maxConn) {
-        super("GinormousMCodec", new Lucene94Codec());
+        super("ConfigurableMCodec", new Lucene94Codec());
         knnVectorsFormat = new Lucene94HnswVectorsFormat(maxConn, 100);
     }
 

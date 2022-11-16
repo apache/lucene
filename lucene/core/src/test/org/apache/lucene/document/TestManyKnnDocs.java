@@ -28,7 +28,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 
 @TimeoutSuite(millis = 86_400_000) // 24 hour timeout
-@Monster("takes ~2 hours and needs extra heap, disk space, file handles")
+@Monster("takes ~10 minutes and needs extra heap, disk space, file handles")
 public class TestManyKnnDocs extends LuceneTestCase {
   // gradlew -p lucene/core test --tests TestManyKnnDocs -Ptests.heapsize=16g -Dtests.monster=true
 
@@ -46,7 +46,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
     try (Directory dir = FSDirectory.open(createTempDir("ManyKnnVectorDocs"));
         IndexWriter iw = new IndexWriter(dir, iwc)) {
 
-      int numVectors = 16268816;
+      int numVectors = 2088992;
       float[] vector = new float[1];
       Document doc = new Document();
       doc.add(new KnnVectorField(fieldName, vector, similarityFunction));
