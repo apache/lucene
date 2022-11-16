@@ -26,6 +26,7 @@ import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -335,6 +336,112 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         // since topK was 3
         assertEquals(NO_MORE_DOCS, it.advance(4));
         expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
+      }
+    }
+  }
+
+  public void testScoreThreshold() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 1; j <= 5; j++) {
+          Document doc = new Document();
+          doc.add(new KnnVectorField("field", new float[] {j, j * j}, COSINE));
+          w.addDocument(doc);
+        }
+        Document doc = new Document();
+        doc.add(new KnnVectorField("field", new float[] {4, 4 * 4}, COSINE));
+        w.addDocument(doc);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        int k = 6;
+        float[] target = new float[] {2, 3};
+
+        // doc=0 score=0.99029034
+        // doc=1 score=0.99613893
+        // doc=2 score=0.98238194
+        // doc=3 score=0.970871
+        // doc=4 score=0.96233904
+        // doc=5 score=0.970871
+
+        KnnVectorQuery query = new KnnVectorQuery("field", target, k, 0);
+        TopDocs result = searcher.search(query, k);
+        assertEquals(6, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 1);
+        result = searcher.search(query, k);
+        assertEquals(0, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.97f);
+        result = searcher.search(query, k);
+        assertEquals(5, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.970871f);
+        result = searcher.search(query, k);
+        assertEquals(5, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.98f);
+        result = searcher.search(query, k);
+        assertEquals(3, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.99f);
+        result = searcher.search(query, k);
+        assertEquals(2, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.995f);
+        result = searcher.search(query, k);
+        assertEquals(1, result.totalHits.value);
+      }
+    }
+  }
+
+  public void testScoreThresholdExactSearch() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 1; j <= 5; j++) {
+          Document doc = new Document();
+          doc.add(new StringField("f", "foo", Field.Store.NO));
+          doc.add(new KnnVectorField("field", new float[] {j, j * j}, COSINE));
+          w.addDocument(doc);
+        }
+      }
+
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        int k = 5;
+        float[] target = new float[] {2, 3};
+
+        // doc=0 score=0.99029034
+        // doc=1 score=0.99613893
+        // doc=2 score=0.98238194
+        // doc=3 score=0.970871
+        // doc=4 score=0.96233904
+
+        Query filterQuery = new TermQuery(new Term("f", "foo"));
+        KnnVectorQuery query = new KnnVectorQuery("field", target, k, 0, filterQuery);
+        TopDocs result = searcher.search(query, k);
+        assertEquals(5, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 1, filterQuery);
+        result = searcher.search(query, k);
+        assertEquals(0, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.97f, filterQuery);
+        result = searcher.search(query, k);
+        assertEquals(4, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.98f, filterQuery);
+        result = searcher.search(query, k);
+        assertEquals(3, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.99f, filterQuery);
+        result = searcher.search(query, k);
+        assertEquals(2, result.totalHits.value);
+
+        query = new KnnVectorQuery("field", target, k, 0.995f, filterQuery);
+        result = searcher.search(query, k);
+        assertEquals(1, result.totalHits.value);
       }
     }
   }

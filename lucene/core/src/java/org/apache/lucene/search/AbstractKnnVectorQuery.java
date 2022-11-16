@@ -48,14 +48,16 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   protected final String field;
   protected final int k;
+  protected final float similarityThreshold;
   private final Query filter;
 
-  public AbstractKnnVectorQuery(String field, int k, Query filter) {
+  public AbstractKnnVectorQuery(String field, int k, float similarityThreshold, Query filter) {
     this.field = field;
     this.k = k;
     if (k < 1) {
       throw new IllegalArgumentException("k must be at least 1, got: " + k);
     }
+    this.similarityThreshold = similarityThreshold;
     this.filter = filter;
   }
 
@@ -97,7 +99,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     int maxDoc = ctx.reader().maxDoc();
 
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
+      return approximateSearchFilteredBySimilarityThreshold(ctx, liveDocs, Integer.MAX_VALUE);
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
@@ -115,7 +117,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
+    TopDocs results = approximateSearchFilteredBySimilarityThreshold(ctx, acceptDocs, cost);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
@@ -142,8 +144,40 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
   }
 
+  private TopDocs filterBySimilarityThreshold(TopDocs results) {
+    if (results == null) {
+      return null;
+    }
+    ScoreDoc[] scoreDocs = results.scoreDocs;
+    if (scoreDocs.length == 0 || scoreDocs[scoreDocs.length - 1].score >= similarityThreshold) {
+      return results;
+    }
+    int index =
+        Arrays.binarySearch(
+            scoreDocs, new ScoreDoc(-1, similarityThreshold), Comparator.comparing(d -> -d.score));
+    int separationPoint = index >= 0 ? index : -index - 1;
+    if (separationPoint == scoreDocs.length) {
+      return results;
+    }
+    while (scoreDocs[separationPoint].score == similarityThreshold) {
+      separationPoint++;
+    }
+    if (separationPoint == 0) {
+      return NO_RESULTS;
+    }
+    ScoreDoc[] newScoreDocs = new ScoreDoc[separationPoint];
+    System.arraycopy(scoreDocs, 0, newScoreDocs, 0, separationPoint);
+    return new TopDocs(results.totalHits, newScoreDocs);
+  }
+
   protected abstract TopDocs approximateSearch(
       LeafReaderContext context, Bits acceptDocs, int visitedLimit) throws IOException;
+
+  private TopDocs approximateSearchFilteredBySimilarityThreshold(
+      LeafReaderContext context, Bits acceptDocs, int visitedLimit) throws IOException {
+    TopDocs results = approximateSearch(context, acceptDocs, visitedLimit);
+    return results != null ? filterBySimilarityThreshold(results) : NO_RESULTS;
+  }
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
@@ -166,7 +200,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       assert advanced;
 
       float score = vectorScorer.score();
-      if (score > topDoc.score) {
+      if (score > topDoc.score && score >= similarityThreshold) {
         topDoc.score = score;
         topDoc.doc = doc;
         topDoc = queue.updateTop();
@@ -197,7 +231,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader, docs);
-    return new DocAndScoreQuery(k, docs, scores, segmentStarts, reader.getContext().id());
+    return new DocAndScoreQuery(
+        k, similarityThreshold, docs, scores, segmentStarts, reader.getContext().id());
   }
 
   private int[] findSegmentStarts(IndexReader reader, int[] docs) {
@@ -230,18 +265,22 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     AbstractKnnVectorQuery that = (AbstractKnnVectorQuery) o;
-    return k == that.k && Objects.equals(field, that.field) && Objects.equals(filter, that.filter);
+    return k == that.k
+        && similarityThreshold == that.similarityThreshold
+        && Objects.equals(field, that.field)
+        && Objects.equals(filter, that.filter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, k, filter);
+    return Objects.hash(field, k, similarityThreshold, filter);
   }
 
   /** Caches the results of a KnnVector search: a list of docs and their scores */
   static class DocAndScoreQuery extends Query {
 
     private final int k;
+    private final float similarityThreshold;
     private final int[] docs;
     private final float[] scores;
     private final int[] segmentStarts;
@@ -261,8 +300,14 @@ abstract class AbstractKnnVectorQuery extends Query {
      *     query
      */
     DocAndScoreQuery(
-        int k, int[] docs, float[] scores, int[] segmentStarts, Object contextIdentity) {
+        int k,
+        float similarityThreshold,
+        int[] docs,
+        float[] scores,
+        int[] segmentStarts,
+        Object contextIdentity) {
       this.k = k;
+      this.similarityThreshold = similarityThreshold;
       this.docs = docs;
       this.scores = scores;
       this.segmentStarts = segmentStarts;
@@ -280,9 +325,20 @@ abstract class AbstractKnnVectorQuery extends Query {
         public Explanation explain(LeafReaderContext context, int doc) {
           int found = Arrays.binarySearch(docs, doc + context.docBase);
           if (found < 0) {
-            return Explanation.noMatch("not in top " + k);
+            if (similarityThreshold == Float.NEGATIVE_INFINITY) {
+              return Explanation.noMatch("not in top " + k);
+            } else {
+              return Explanation.noMatch(
+                  "not in top " + k + " with similarity threshold " + similarityThreshold);
+            }
           }
-          return Explanation.match(scores[found] * boost, "within top " + k);
+          if (similarityThreshold == Float.NEGATIVE_INFINITY) {
+            return Explanation.match(scores[found] * boost, "within top " + k);
+          } else {
+            return Explanation.match(
+                scores[found] * boost,
+                "within top " + k + " with similarity threshold " + similarityThreshold);
+          }
         }
 
         @Override
@@ -383,7 +439,11 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     @Override
     public String toString(String field) {
-      return "DocAndScore[" + k + "]";
+      if (similarityThreshold == Float.NEGATIVE_INFINITY) {
+        return "DocAndScore[" + k + "]";
+      } else {
+        return "DocAndScore[" + k + ", " + similarityThreshold + "]";
+      }
     }
 
     @Override
