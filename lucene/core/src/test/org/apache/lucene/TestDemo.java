@@ -73,6 +73,9 @@ public class TestDemo extends LuceneTestCase {
           assertEquals(text, hitDoc.get("fieldname"));
         }
 
+        long x = Integer.MAX_VALUE * Integer.MAX_VALUE;
+        assertEquals(1L, x);
+
         // Test simple phrase query.
         PhraseQuery phraseQuery = new PhraseQuery("fieldname", "to", "be");
         assertEquals(1, searcher.count(phraseQuery));
