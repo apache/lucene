@@ -186,12 +186,6 @@ public class MockIndexInputWrapper extends IndexInput {
   }
 
   @Override
-  public String readCanonicalString() throws IOException {
-    ensureOpen();
-    return delegate.readCanonicalString();
-  }
-
-  @Override
   public int readVInt() throws IOException {
     ensureOpen();
     return delegate.readVInt();

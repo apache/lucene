@@ -146,12 +146,6 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  public String readCanonicalString() throws IOException {
-    ensureOpen();
-    return in.readCanonicalString();
-  }
-
-  @Override
   public Map<String, String> readMapOfStrings() throws IOException {
     ensureOpen();
     return in.readMapOfStrings();

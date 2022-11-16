@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.function.Function;
 import org.apache.lucene.util.BitUtil;
 
 /**
@@ -281,21 +280,6 @@ public abstract class DataInput implements Cloneable {
     return new String(bytes, 0, length, StandardCharsets.UTF_8);
   }
 
-  private Map<String, String> canonicalStrings;
-
-  /**
-   * Reads a string. A single canonical {@code String} instance is returned for strings that are
-   * repeated within this instance of DataInput.
-   *
-   * @see DataOutput#writeString(String)
-   */
-  public String readCanonicalString() throws IOException {
-    if (canonicalStrings == null) {
-      canonicalStrings = new HashMap<>();
-    }
-    return canonicalStrings.computeIfAbsent(readString(), Function.identity());
-  }
-
   /**
    * Returns a clone of this stream.
    *
@@ -308,11 +292,7 @@ public abstract class DataInput implements Cloneable {
   @Override
   public DataInput clone() {
     try {
-      DataInput c = (DataInput) super.clone();
-      if (c.canonicalStrings != null) {
-        c.canonicalStrings = new HashMap<>(canonicalStrings);
-      }
-      return c;
+      return (DataInput) super.clone();
     } catch (CloneNotSupportedException e) {
       throw new Error("This cannot happen: Failing to clone DataInput", e);
     }
@@ -329,11 +309,11 @@ public abstract class DataInput implements Cloneable {
     if (count == 0) {
       return Collections.emptyMap();
     } else if (count == 1) {
-      return Collections.singletonMap(readCanonicalString(), readString());
+      return Collections.singletonMap(readString(), readString());
     } else {
       Map<String, String> map = count > 10 ? new HashMap<>() : new TreeMap<>();
       for (int i = 0; i < count; i++) {
-        final String key = readCanonicalString();
+        final String key = readString();
         final String val = readString();
         map.put(key, val);
       }

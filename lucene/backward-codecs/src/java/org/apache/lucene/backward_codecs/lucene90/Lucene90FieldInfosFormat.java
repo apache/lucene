@@ -140,8 +140,10 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         // previous field's attribute map, we share when possible:
         Map<String, String> lastAttributes = Collections.emptyMap();
 
+        CanonicalStringCache cache = new CanonicalStringCache();
+
         for (int i = 0; i < size; i++) {
-          String name = input.readCanonicalString();
+          String name = cache.readString(input);
           final int fieldNumber = input.readVInt();
           if (fieldNumber < 0) {
             throw new CorruptIndexException(
