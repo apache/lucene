@@ -23,3 +23,5 @@ dependencies {
   moduleTestImplementation project(':lucene:codecs')
   moduleTestImplementation project(':lucene:test-framework')
 }
+sourceCompatibility = JavaVersion.VERSION_19
+targetCompatibility = JavaVersion.VERSION_19
