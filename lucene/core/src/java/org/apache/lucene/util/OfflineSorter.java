@@ -141,7 +141,7 @@ public class OfflineSorter {
     /** number of partition merges */
     public int mergeRounds;
     /** number of lines of data read */
-    public int lineCount;
+    public long lineCount;
     /** time spent merging sorted partitions (in milliseconds) */
     public final AtomicLong mergeTimeMS = new AtomicLong();
     /** time spent sorting data (in milliseconds) */

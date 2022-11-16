@@ -149,7 +149,7 @@ public final class UTF8TaxonomyWriterCache implements TaxonomyWriterCache, Accou
 
   @Override
   public synchronized long ramBytesUsed() {
-    return bytesUsed.get() + pageCount * PAGE_SIZE * Integer.BYTES;
+    return bytesUsed.get() + pageCount * (long) PAGE_SIZE * Integer.BYTES;
   }
 
   @Override

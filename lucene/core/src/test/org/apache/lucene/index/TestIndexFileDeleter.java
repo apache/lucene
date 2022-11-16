@@ -16,9 +16,17 @@
  */
 package org.apache.lucene.index;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
@@ -34,6 +42,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
 /*
@@ -430,13 +439,19 @@ public class TestIndexFileDeleter extends LuceneTestCase {
 
     final AtomicBoolean doFailExc = new AtomicBoolean();
 
+    final ByteArrayOutputStream bytesLog = new ByteArrayOutputStream();
+    final PrintStream log = new PrintStream(bytesLog, true, IOUtils.UTF_8);
+
     dir.failOn(
         new MockDirectoryWrapper.Failure() {
           @Override
           public void eval(MockDirectoryWrapper dir) throws IOException {
             if (doFailExc.get() && random().nextInt(4) == 1) {
               if (callStackContains(IndexFileDeleter.class, "decRef")) {
-                throw new RuntimeException("fake fail");
+                RuntimeException re = new RuntimeException("fake fail");
+                log.println("Now throw fake exception:");
+                re.printStackTrace(log);
+                throw re;
               }
             }
           }
@@ -453,11 +468,15 @@ public class TestIndexFileDeleter extends LuceneTestCase {
               // suppress only FakeIOException:
               if (exc instanceof RuntimeException && exc.getMessage().equals("fake fail")) {
                 // ok to ignore
+                log.println("Ignoring \"ok\" exception:");
+                exc.printStackTrace(log);
               } else if ((exc instanceof AlreadyClosedException
                       || exc instanceof IllegalStateException)
                   && exc.getCause() != null
                   && "fake fail".equals(exc.getCause().getMessage())) {
                 // also ok to ignore
+                log.println("Ignoring \"ok\" exception:");
+                exc.printStackTrace(log);
               } else {
                 super.handleMergeException(exc);
               }
@@ -489,10 +508,14 @@ public class TestIndexFileDeleter extends LuceneTestCase {
           w.addDocument(doc);
         }
       } catch (Throwable t) {
-        if (t.toString().contains("fake fail")
-            || (t.getCause() != null && t.getCause().toString().contains("fake fail"))) {
+        if ((t.toString().contains("fake fail")
+            || (t.getCause() != null && t.getCause().toString().contains("fake fail")))) {
           // ok
+          log.println("Ignoring \"ok\" exception:");
+          t.printStackTrace(log);
         } else {
+          System.out.println("test failed!  full log:");
+          System.out.print(bytesLog.toString("UTF-8"));
           throw t;
         }
       }

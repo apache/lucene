@@ -42,8 +42,6 @@ New Features
 
 * LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
 
-* LUCENE-10151 Enable timeout support in IndexSearcher. (Deepika Sharma)
-
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
   analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
 
@@ -53,9 +51,6 @@ Improvements
 * LUCENE-10416: Update Korean Dictionary to mecab-ko-dic-2.1.1-20180720 for Nori.
   (Uihyun Kim)
 
-* LUCENE-10216: Use MergePolicy to define and MergeScheduler to trigger the reader merges
-  required by addIndexes(CodecReader[]) API. (Vigya Sharma, Michael McCandless)
-
 * LUCENE-10614: Properly support getTopChildren in RangeFacetCounts. (Yuting Gan)
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
@@ -63,7 +58,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#11857, GITHUB#11859: Hunspell: improved suggestion performance
+* GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance
 
 Bug Fixes
 ---------------------
@@ -110,10 +105,19 @@ API Changes
 
 * GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
 
+* GITHUB#11930: Added IOContext#LOAD for files that are a small fraction of the
+  total index size and heavily accessed with a random access pattern. Some
+  Directory implementations may choose to load files that use this IOContext in
+  memory to provide stronger guarantees on query latency.
+  (Adrien Grand, Uwe Schindler)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
   write amplification factor. (Marc D'Mello)
+
+* GITHUB#11929: MMapDirectory gives more granular control on which files to
+  preload. (Adrien Grand, Uwe Schindler)
 
 Improvements
 ---------------------
@@ -165,6 +169,8 @@ Optimizations
 
 * GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
 
+* GITHUB#11895: count() in BooleanQuery could be early quit. (Lu Xugang)
+
 Other
 ---------------------
 
@@ -184,6 +190,26 @@ Build
 ---------------------
 
 * GITHUB#11886: Upgrade to gradle 7.5.1 (Dawid Weiss)
+
+======================== Lucene 9.4.2 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#11905: Fix integer overflow when seeking the vector index for connections in a single segment.
+ This addresses a bug that was introduced in 9.2.0 where having many vectors is not handled well
+ in the vector connections reader.
+
+* GITHUB#11939: Fix incorrect cost calculation in DocIdSetBuilder after upgradeToBitSet when doc list is growing.
+  This addresses a bug where the cost of TermRangeQuery/TermInSetQuery and some other queries will be highly underestimated.
+
+Improvements
+---------------------
+* GITHUB#11912, GITHUB#11918: Port generic exception handling from MemorySegmentIndexInput
+  to ByteBufferIndexInput. This also adds the invalid position while seeking or reading
+  to the exception message. Allows better debugging and analysis of bugs like GITHUB#11905.
+  (Uwe Schindler, Robert Muir)
+
+* GITHUB#11916: improve checkindex to be more thorough for vectors. (Ben Trent)
 
 ======================== Lucene 9.4.1 =======================
 
@@ -206,7 +232,7 @@ New Features
 * LUCENE-10629: Support match set filtering with a query in MatchingFacetSetCounts. (Stefan Vodita, Shai Erera)
 
 * LUCENE-10633: SortField#setOptimizeSortWithIndexedData and
-  SortField#getOptimizeSortWithIndexedData were introduce to provide
+  SortField#getOptimizeSortWithIndexedData were introduced to provide
   an option to disable sort optimization for various sort fields. (Mayya Sharipova)
 
 * GITHUB#912: Support for Java 19 foreign memory support was added. Applications started
@@ -224,6 +250,9 @@ Improvements
 
 * LUCENE-10207: TermInSetQuery can now provide a ScoreSupplier with cost estimation, making it
   usable in IndexOrDocValuesQuery. (Greg Miller)
+
+* LUCENE-10216: Use MergePolicy to define and MergeScheduler to trigger the reader merges
+  required by addIndexes(CodecReader[]) API. (Vigya Sharma, Michael McCandless)
 
 * GITHUB#11715: Add Integer awareness to RamUsageEstimator.sizeOf (Mike Drob)
 
@@ -291,6 +320,8 @@ New Features
 * LUCENE-10274: Added facetsets module for high dimensional (hyper-rectangle) faceting
 (Shai Erera, Marc D'Mello, Greg Miller)
 
+* LUCENE-10151 Enable timeout support in IndexSearcher. (Deepika Sharma)
+
 Improvements
 ---------------------
 
@@ -351,13 +382,13 @@ Bug Fixes
 
 * LUCENE-10582: Fix merging of overridden CollectionStatistics in CombinedFieldQuery (Yannick Welsch)
 
-* LUCENE-10598: SortedSetDocValues#docValueCount() should be always greater than zero. (Lu Xugang)
-
 * LUCENE-10563: Fix failure to tessellate complex polygon (Craig Taverner)
 
 * LUCENE-10605: Fix error in 32bit jvm object alignment gap calculation (Sun Wuqiang)
 
 * GITHUB#956: Make sure KnnVectorQuery applies search boost. (Julie Tibshirani)
+
+* LUCENE-10598: SortedSetDocValues#docValueCount() should be always greater than zero. (Lu Xugang)
 
 * LUCENE-10600: SortedSetDocValues#docValueCount should be an int, not long (Lu Xugang)
 

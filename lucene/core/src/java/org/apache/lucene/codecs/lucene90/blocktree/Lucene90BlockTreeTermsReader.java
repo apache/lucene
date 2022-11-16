@@ -33,6 +33,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -134,7 +135,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
 
       String indexName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
-      indexIn = state.directory.openInput(indexName, state.context);
+      indexIn = state.directory.openInput(indexName, IOContext.LOAD);
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
@@ -149,7 +150,8 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       Map<String, FieldReader> fieldMap = null;
       Throwable priorE = null;
       long indexLength = -1, termsLength = -1;
-      try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName, state.context)) {
+      try (ChecksumIndexInput metaIn =
+          state.directory.openChecksumInput(metaName, IOContext.READONCE)) {
         try {
           CodecUtil.checkIndexHeader(
               metaIn,

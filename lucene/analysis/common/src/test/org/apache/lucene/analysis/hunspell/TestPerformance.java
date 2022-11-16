@@ -66,7 +66,7 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void en_suggest() throws Exception {
-    checkSuggestionPerformance("en", 3_000);
+    checkSuggestionPerformance("en", 3_500);
   }
 
   @Test
@@ -86,7 +86,7 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void de_suggest() throws Exception {
-    checkSuggestionPerformance("de", 100);
+    checkSuggestionPerformance("de", 250);
   }
 
   @Test
@@ -96,13 +96,15 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void fr_suggest() throws Exception {
-    checkSuggestionPerformance("fr", 120);
+    checkSuggestionPerformance("fr", 1_000);
   }
 
   private Dictionary loadDictionary(String code) throws IOException, ParseException {
+    long start = System.nanoTime();
     Path aff = findAffFile(code);
     Dictionary dictionary = TestAllDictionaries.loadDictionary(aff);
-    System.out.println("Loaded " + aff);
+    System.out.println(
+        "Loaded " + aff + " in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + "ms");
     return dictionary;
   }
 
@@ -163,39 +165,66 @@ public class TestPerformance extends LuceneTestCase {
 
   private void checkSuggestionPerformance(String code, int wordCount) throws Exception {
     Dictionary dictionary = loadDictionary(code);
-    Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, () -> {});
+    Runnable checkCanceled = () -> {};
+    Suggester base = new Suggester(dictionary);
+    Suggester optimized =
+        base.withSuggestibleEntryCache().withFragmentChecker(fragmentChecker(dictionary, code));
+    Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, checkCanceled);
     List<String> words =
         loadWords(code, wordCount, dictionary).stream()
             .distinct()
-            .filter(w -> hasQuickSuggestions(speller, w))
+            .filter(w -> hasQuickSuggestions(speller, base, optimized, w))
             .collect(Collectors.toList());
     System.out.println("Checking " + words.size() + " misspelled words");
 
-    Hunspell fullSpeller = new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
     measure(
         "Suggestions for " + code,
         words.size(),
         blackHole -> {
           for (String word : words) {
-            blackHole.accept(fullSpeller.suggest(word));
+            blackHole.accept(optimized.suggestNoTimeout(word, checkCanceled));
           }
         });
     System.out.println();
   }
 
-  private boolean hasQuickSuggestions(Hunspell speller, String word) {
+  private static FragmentChecker fragmentChecker(Dictionary dictionary, String langCode) {
+    long started = System.nanoTime();
+    var trigram = NGramFragmentChecker.fromAllSimpleWords(3, dictionary, () -> {});
+    long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+    System.out.println("Populated " + trigram.hashCount() + " trigram hashes in " + elapsed + "ms");
+    if ("de".equals(langCode)) {
+      return (word, start, end) ->
+          word.charAt(0) != '-'
+              && word.charAt(word.length() - 1) != '-'
+              && trigram.hasImpossibleFragmentAround(word, start, end);
+    }
+    return trigram;
+  }
+
+  private boolean hasQuickSuggestions(
+      Hunspell speller, Suggester base, Suggester optimized, String word) {
     if (speller.spell(word)) {
       return false;
     }
 
+    List<String> fromOptimized;
     try {
-      speller.suggest(word);
+      fromOptimized = optimized.suggestWithTimeout(word, Hunspell.SUGGEST_TIME_LIMIT, () -> {});
     } catch (
         @SuppressWarnings("unused")
         SuggestionTimeoutException e) {
       System.out.println("Timeout happened for " + word + ", skipping");
       return false;
     }
+
+    List<String> fromBase = base.suggestNoTimeout(word, () -> {});
+    if (!fromBase.equals(fromOptimized)) {
+      fail(
+          "Optimization breaks suggestions: "
+              + ("for '" + word + "', base=" + fromBase + ", optimized=" + fromOptimized));
+    }
+
     return true;
   }
 

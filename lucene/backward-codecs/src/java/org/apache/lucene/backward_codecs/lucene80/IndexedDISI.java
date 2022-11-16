@@ -469,8 +469,9 @@ final class IndexedDISI extends DocIdSetIterator {
       // NO_MORE_DOCS
       final int inRangeBlockIndex =
           blockIndex < jumpTableEntryCount ? blockIndex : jumpTableEntryCount - 1;
-      final int index = jumpTable.readInt(inRangeBlockIndex * Integer.BYTES * 2);
-      final int offset = jumpTable.readInt(inRangeBlockIndex * Integer.BYTES * 2 + Integer.BYTES);
+      final int index = jumpTable.readInt(inRangeBlockIndex * (long) Integer.BYTES * 2);
+      final int offset =
+          jumpTable.readInt(inRangeBlockIndex * (long) Integer.BYTES * 2 + Integer.BYTES);
       this.nextBlockIndex = index - 1; // -1 to compensate for the always-added 1 in readBlockHeader
       slice.seek(offset);
       readBlockHeader();
@@ -697,7 +698,7 @@ final class IndexedDISI extends DocIdSetIterator {
 
     // Position the counting logic just after the rank point
     final int rankAlignedWordIndex = rankIndex << disi.denseRankPower >> 6;
-    disi.slice.seek(disi.denseBitmapOffset + rankAlignedWordIndex * Long.BYTES);
+    disi.slice.seek(disi.denseBitmapOffset + rankAlignedWordIndex * (long) Long.BYTES);
     long rankWord = disi.slice.readLong();
     int denseNOO = rank + Long.bitCount(rankWord);
 
