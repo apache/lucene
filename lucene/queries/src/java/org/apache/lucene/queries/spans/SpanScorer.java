@@ -103,7 +103,7 @@ public class SpanScorer extends Scorer {
         freq = 1;
         return;
       }
-      freq += (1.0 / (1.0 + spans.width()));
+      freq += (1f / (1f + spans.width()));
       spans.doCurrentSpans();
       prevStartPos = startPos;
       prevEndPos = endPos;

@@ -92,7 +92,7 @@ public class DatasetSplitter {
     IndexWriter trainingWriter = new IndexWriter(trainingIndex, new IndexWriterConfig(analyzer));
 
     // get the exact no. of existing classes
-    int noOfClasses = 0;
+    long noOfClasses = 0;
     for (LeafReaderContext leave : originalIndex.leaves()) {
       long valueCount = 0;
       SortedDocValues classValues = leave.reader().getSortedDocValues(classFieldName);
@@ -121,7 +121,7 @@ public class DatasetSplitter {
       gs.setAllGroups(true);
       gs.setGroupDocsLimit(originalIndex.maxDoc());
       TopGroups<Object> topGroups =
-          gs.search(indexSearcher, new MatchAllDocsQuery(), 0, noOfClasses);
+          gs.search(indexSearcher, new MatchAllDocsQuery(), 0, Math.toIntExact(noOfClasses));
 
       // set the type to be indexed, stored, with term vectors
       FieldType ft = new FieldType(TextField.TYPE_STORED);

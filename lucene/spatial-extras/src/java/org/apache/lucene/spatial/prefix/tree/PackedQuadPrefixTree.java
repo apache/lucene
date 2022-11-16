@@ -281,7 +281,7 @@ public class PackedQuadPrefixTree extends QuadPrefixTree {
     public BytesRef getTokenBytesWithLeaf(BytesRef result) {
       result = getTokenBytesNoLeaf(result);
       if (isLeaf()) {
-        result.bytes[8 - 1] |= 0x1L; // set leaf
+        result.bytes[8 - 1] |= 0x1; // set leaf
       }
       return result;
     }

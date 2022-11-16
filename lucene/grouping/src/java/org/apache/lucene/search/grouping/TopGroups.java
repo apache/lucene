@@ -165,7 +165,7 @@ public class TopGroups<T> {
       // System.out.println("  merge groupValue=" + groupValue + " sortValues=" +
       // Arrays.toString(shardGroups[0].groups[groupIDX].groupSortValues));
       float maxScore = Float.NaN;
-      int totalHits = 0;
+      long totalHits = 0;
       double scoreSum = 0.0;
       for (int shardIDX = 0; shardIDX < shardGroups.length; shardIDX++) {
         // System.out.println("    shard=" + shardIDX);

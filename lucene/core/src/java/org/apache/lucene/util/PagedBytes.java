@@ -184,8 +184,10 @@ public final class PagedBytes implements Accountable {
         upto = blockSize;
         byteCount -= left;
       } else {
-        in.readBytes(currentBlock, upto, (int) byteCount, false);
-        upto += byteCount;
+        // this cast is safe since byteCount is <= left at this point
+        final int remainingByteCount = (int) byteCount;
+        in.readBytes(currentBlock, upto, remainingByteCount, false);
+        upto += remainingByteCount;
         break;
       }
     }

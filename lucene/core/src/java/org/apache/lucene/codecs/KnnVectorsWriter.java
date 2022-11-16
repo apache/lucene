@@ -108,7 +108,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   protected static class MergedVectorValues extends VectorValues {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
-    private final int cost;
+    private final long cost;
     private final int size;
 
     private int docId;
@@ -136,7 +136,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         throws IOException {
       this.subs = subs;
       docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
-      int totalCost = 0, totalSize = 0;
+      long totalCost = 0;
+      int totalSize = 0;
       for (VectorValuesSub sub : subs) {
         totalCost += sub.values.cost();
         totalSize += sub.values.size();

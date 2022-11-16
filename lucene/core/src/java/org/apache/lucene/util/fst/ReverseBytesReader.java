@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util.fst;
 
+import java.io.IOException;
+import java.util.Objects;
+
 /** Reads in reverse from a single byte[]. */
 final class ReverseBytesReader extends FST.BytesReader {
   private final byte[] bytes;
@@ -38,7 +41,8 @@ final class ReverseBytesReader extends FST.BytesReader {
   }
 
   @Override
-  public void skipBytes(long count) {
+  public void skipBytes(long count) throws IOException {
+    Objects.checkFromIndexSize(pos - count, count, bytes.length);
     pos -= count;
   }
 

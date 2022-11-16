@@ -69,7 +69,7 @@ class IntervalScorer extends Scorer {
       freq = 0;
       do {
         int length = (intervals.end() - intervals.start() + 1);
-        freq += 1.0 / Math.max(length - minExtent + 1, 1);
+        freq += 1f / Math.max(length - minExtent + 1, 1);
       } while (intervals.nextInterval() != IntervalIterator.NO_MORE_INTERVALS);
     }
   }

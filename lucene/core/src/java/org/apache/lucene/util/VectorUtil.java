@@ -225,7 +225,7 @@ public final class VectorUtil {
         return v;
       }
     }
-    double length = Math.sqrt(squareSum);
+    float length = (float) Math.sqrt(squareSum);
     for (int i = 0; i < dim; i++) {
       v[i] /= length;
     }

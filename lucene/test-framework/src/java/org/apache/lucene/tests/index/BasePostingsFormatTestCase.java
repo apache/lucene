@@ -602,7 +602,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
 
     LineFileDocs docs = new LineFileDocs(random());
     int bytesToIndex = atLeast(100) * 1024;
-    int bytesIndexed = 0;
+    long bytesIndexed = 0;
     while (bytesIndexed < bytesToIndex) {
       Document doc = docs.nextDoc();
       Document justBodyDoc = new Document();

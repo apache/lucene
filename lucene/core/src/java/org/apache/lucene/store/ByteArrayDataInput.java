@@ -17,6 +17,8 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.util.Objects;
+
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
@@ -77,7 +79,8 @@ public final class ByteArrayDataInput extends DataInput {
   }
 
   @Override
-  public void skipBytes(long count) {
+  public void skipBytes(long count) throws IOException {
+    Objects.checkFromIndexSize(pos, count, limit);
     pos += count;
   }
 
