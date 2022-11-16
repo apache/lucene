@@ -163,12 +163,11 @@ public final class DocIdSetBuilder {
    */
   public void add(DocIdSetIterator iter) throws IOException {
     int cost = (int) Math.min(Integer.MAX_VALUE, iter.cost());
+    BulkAdder adder = grow(cost);
     if (bitSet != null) {
-      grow(cost);
       bitSet.or(iter);
       return;
     }
-    BulkAdder adder = grow(cost);
     for (int i = 0; i < cost; ++i) {
       int doc = iter.nextDoc();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
