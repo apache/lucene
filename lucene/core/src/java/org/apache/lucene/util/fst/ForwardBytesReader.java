@@ -43,7 +43,8 @@ final class ForwardBytesReader extends FST.BytesReader {
 
   @Override
   public void skipBytes(long count) {
-    Objects.checkFromIndexSize(pos, count, bytes.length);
+    // NOTE: Callers sometimes call this method on negative counts!
+    Objects.checkIndex(pos + count, bytes.length);
     pos += count;
   }
 
