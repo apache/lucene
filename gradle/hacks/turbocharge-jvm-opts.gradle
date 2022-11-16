@@ -44,6 +44,15 @@ allprojects {
     // This applies to any JVM when javac runs forked (e.g. error-prone)
     // Avoiding the fork entirely is best.
     tasks.withType(JavaCompile) { JavaCompile task ->
-        task.options.forkOptions.jvmArgs += vmOpts
+        if (task.path == ":lucene:core:compileMain19Java") {
+          // uses "uschindler" toolchain method, which erases "dweiss" method, but later at configure time
+          task.options.forkOptions.jvmArgs += vmOpts
+        } else if (task.options.forkOptions.javaHome != null) {
+          // uses "dweiss" toolchain method
+          task.options.forkOptions.jvmArgs += vmOpts.collect {"-J" + it}
+        } else {
+          // native or error-prone
+          task.options.forkOptions.jvmArgs += vmOpts
+        }
     }
 }
