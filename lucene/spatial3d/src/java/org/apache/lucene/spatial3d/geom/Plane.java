@@ -1500,9 +1500,14 @@ public class Plane extends Vector {
       } else {
         // Since a==b==0, any plane including the Z axis suffices.
         // System.err.println("      Perpendicular to z");
-        final GeoPoint[] points =
+        GeoPoint[] points =
             findIntersections(planetModel, normalYPlane, NO_BOUNDS, NO_BOUNDS);
-        if (points.length > 0) {
+        if (points.length == 0) {
+          points = findIntersections(planetModel, normalXPlane, NO_BOUNDS, NO_BOUNDS);
+        }
+        if (points.length == 0) {
+          boundsInfo.addZValue(new GeoPoint(0.0, 0.0, -this.z));
+        } else {
           boundsInfo.addZValue(points[0]);
         }
       }
@@ -2042,9 +2047,16 @@ public class Plane extends Vector {
         }
       } else {
         // Horizontal circle.  Since a==b, any vertical plane suffices.
-        final GeoPoint[] points =
+        GeoPoint[] points =
             findIntersections(planetModel, normalXPlane, NO_BOUNDS, NO_BOUNDS);
-        boundsInfo.addZValue(points[0]);
+        if (points.length == 0) {
+          points = findIntersections(planetModel, normalYPlane, NO_BOUNDS, NO_BOUNDS);
+        }
+        if (points.length == 0) {
+          boundsInfo.addZValue(new GeoPoint(0.0, 0.0, -this.z));
+        } else {
+          boundsInfo.addZValue(points[0]);
+        }
       }
       // System.err.println("Done latitude bounds");
     }
