@@ -250,12 +250,8 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
       positionToTerms = CollectionUtil.newHashMap(len);
       startOffsetToTerms = CollectionUtil.newHashMap(len);
       for (int i = 0; i < len; ++i) {
-        positionToTerms
-                .computeIfAbsent(positions[i], k -> new HashSet<>(1))
-                .add(i);
-        startOffsetToTerms
-                .computeIfAbsent(startOffsets[i], k -> new HashSet<>(1))
-                .add(i);
+        positionToTerms.computeIfAbsent(positions[i], k -> new HashSet<>(1)).add(i);
+        startOffsetToTerms.computeIfAbsent(startOffsets[i], k -> new HashSet<>(1)).add(i);
       }
 
       freqs = new HashMap<>();

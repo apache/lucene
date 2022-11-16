@@ -16,17 +16,15 @@
  */
 package org.apache.lucene.queryparser.flexible.messages;
 
-import org.apache.lucene.util.CollectionUtil;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.text.MessageFormat;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * MessageBundles classes extend this class, to implement a bundle.
@@ -105,8 +103,8 @@ public class NLS {
           Object obj = resourceBundle.getObject(messageKey);
           if (obj != null) return obj;
         } catch (
-                @SuppressWarnings("unused")
-                MissingResourceException e) {
+            @SuppressWarnings("unused")
+            MissingResourceException e) {
           // just continue it might be on the next resource bundle
         }
       }

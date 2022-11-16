@@ -17,7 +17,6 @@
 package org.apache.lucene.search.suggest.analyzing;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;

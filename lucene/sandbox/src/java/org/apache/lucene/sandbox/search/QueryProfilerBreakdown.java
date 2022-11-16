@@ -17,11 +17,9 @@
 
 package org.apache.lucene.sandbox.search;
 
-import org.apache.lucene.util.CollectionUtil;
-
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * A record of timings for the various operations that may happen during query execution. A node's

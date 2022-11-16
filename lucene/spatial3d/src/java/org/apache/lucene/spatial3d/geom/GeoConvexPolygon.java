@@ -16,16 +16,14 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
-import org.apache.lucene.util.CollectionUtil;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * GeoConvexPolygon objects are generic building blocks of more complex structures. The only

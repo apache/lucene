@@ -22,7 +22,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -102,10 +101,10 @@ public class TestCollectorManager extends LuceneTestCase {
   }
 
   /**
-   * Generate test doc ids. This will de-dupe and create a sorted collection to be more realistic with
-   * real-world use-cases. Note that it's possible this will generate fewer than 'count' entries
-   * because of de-duping, but that should be quite rare and probably isn't worth worrying about for
-   * these testing purposes.
+   * Generate test doc ids. This will de-dupe and create a sorted collection to be more realistic
+   * with real-world use-cases. Note that it's possible this will generate fewer than 'count'
+   * entries because of de-duping, but that should be quite rare and probably isn't worth worrying
+   * about for these testing purposes.
    */
   private static SortedSet<Integer> generateDocIds(int count, Random random) {
     SortedSet<Integer> generated = new TreeSet<>();

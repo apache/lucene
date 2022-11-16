@@ -332,7 +332,8 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
         createMergingFieldTermsMap(fieldMetadataList, mergeState.fieldsProducers.length);
     TermIteratorQueue<SegmentTerms> segmentTermsQueue = createSegmentTermsQueue(segmentTermsList);
     List<TermIterator<SegmentTerms>> groupedSegmentTerms = new ArrayList<>(segmentTermsList.size());
-    Map<String, List<SegmentPostings>> fieldPostingsMap = CollectionUtil.newHashMap(mergeState.fieldInfos.length);
+    Map<String, List<SegmentPostings>> fieldPostingsMap =
+        CollectionUtil.newHashMap(mergeState.fieldInfos.length);
     List<MergingFieldTerms> groupedFieldTerms = new ArrayList<>(mergeState.fieldInfos.length);
     List<FieldMetadataTermState> termStates = new ArrayList<>(mergeState.fieldInfos.length);
 
@@ -351,7 +352,8 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
 
   private Map<String, MergingFieldTerms> createMergingFieldTermsMap(
       List<FieldMetadata> fieldMetadataList, int numSegments) {
-    Map<String, MergingFieldTerms> fieldTermsMap = CollectionUtil.newHashMap(fieldMetadataList.size());
+    Map<String, MergingFieldTerms> fieldTermsMap =
+        CollectionUtil.newHashMap(fieldMetadataList.size());
     for (FieldMetadata fieldMetadata : fieldMetadataList) {
       FieldInfo fieldInfo = fieldMetadata.getFieldInfo();
       fieldTermsMap.put(
@@ -382,8 +384,9 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       SegmentTerms segmentTerms = (SegmentTerms) segmentTermIterator;
       for (Map.Entry<String, BlockTermState> fieldTermState :
           segmentTerms.fieldTermStatesMap.entrySet()) {
-        List<SegmentPostings> segmentPostingsList = fieldPostingsMap.computeIfAbsent(fieldTermState.getKey(),
-                k -> new ArrayList<>(groupedSegmentTerms.size()));
+        List<SegmentPostings> segmentPostingsList =
+            fieldPostingsMap.computeIfAbsent(
+                fieldTermState.getKey(), k -> new ArrayList<>(groupedSegmentTerms.size()));
         segmentPostingsList.add(
             new SegmentPostings(
                 segmentTerms.segmentIndex,

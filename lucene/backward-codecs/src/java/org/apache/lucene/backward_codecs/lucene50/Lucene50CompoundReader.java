@@ -19,7 +19,6 @@ package org.apache.lucene.backward_codecs.lucene50;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;

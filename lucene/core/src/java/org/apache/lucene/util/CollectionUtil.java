@@ -19,9 +19,9 @@ package org.apache.lucene.util;
 import java.util.*;
 
 /**
- * Methods for manipulating (sorting) and creating collections. Sort methods work directly on the supplied lists
- * and don't copy to/from arrays before/after. For medium size collections as used in the Lucene
- * indexer that is much more efficient.
+ * Methods for manipulating (sorting) and creating collections. Sort methods work directly on the
+ * supplied lists and don't copy to/from arrays before/after. For medium size collections as used in
+ * the Lucene indexer that is much more efficient.
  *
  * @lucene.internal
  */
@@ -30,19 +30,19 @@ public final class CollectionUtil {
   private CollectionUtil() {} // no instance
 
   /**
-   * Returns a new {@link HashMap} sized to contain {@code size} items
-   * without resizing the internal array.
+   * Returns a new {@link HashMap} sized to contain {@code size} items without resizing the internal
+   * array.
    */
   public static <K, V> HashMap<K, V> newHashMap(int size) {
-    return new HashMap<>((int)(size / 0.75f) + 1);
+    return new HashMap<>((int) (size / 0.75f) + 1);
   }
 
   /**
-   * Returns a new {@link HashSet} sized to contain {@code size} items
-   * without resizing the internal array.
+   * Returns a new {@link HashSet} sized to contain {@code size} items without resizing the internal
+   * array.
    */
   public static <E> HashSet<E> newHashSet(int size) {
-    return new HashSet<>((int)(size / 0.75f) + 1);
+    return new HashSet<>((int) (size / 0.75f) + 1);
   }
 
   private static final class ListIntroSorter<T> extends IntroSorter {

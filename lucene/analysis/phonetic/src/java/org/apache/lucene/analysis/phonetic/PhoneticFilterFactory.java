@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.phonetic;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.codec.Encoder;
@@ -83,7 +82,8 @@ public class PhoneticFilterFactory extends TokenFilterFactory implements Resourc
 
   private static final String PACKAGE_CONTAINING_ENCODERS = "org.apache.commons.codec.language.";
 
-  private static final Map<String, Class<? extends Encoder>> registry = Map.of(
+  private static final Map<String, Class<? extends Encoder>> registry =
+      Map.of(
           "DoubleMetaphone".toUpperCase(Locale.ROOT), DoubleMetaphone.class,
           "Metaphone".toUpperCase(Locale.ROOT), Metaphone.class,
           "Soundex".toUpperCase(Locale.ROOT), Soundex.class,

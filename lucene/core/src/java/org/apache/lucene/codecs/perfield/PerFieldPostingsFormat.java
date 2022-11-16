@@ -266,7 +266,8 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
         fieldInfo.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(groupBuilder.suffix));
       }
 
-      Map<PostingsFormat, FieldsGroup> formatToGroups = CollectionUtil.newHashMap(formatToGroupBuilders.size());
+      Map<PostingsFormat, FieldsGroup> formatToGroups =
+          CollectionUtil.newHashMap(formatToGroupBuilders.size());
       formatToGroupBuilders.forEach(
           (postingsFormat, builder) -> formatToGroups.put(postingsFormat, builder.build()));
       return formatToGroups;
