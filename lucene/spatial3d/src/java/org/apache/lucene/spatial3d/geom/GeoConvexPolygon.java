@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.spatial3d.geom;
 
+import org.apache.lucene.util.CollectionUtil;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -239,9 +241,9 @@ class GeoConvexPolygon extends GeoBasePolygon {
     }
 
     // For each edge, create a bounds object.
-    eitherBounds = new HashMap<>(edges.length);
-    prevBrotherMap = new HashMap<>(edges.length);
-    nextBrotherMap = new HashMap<>(edges.length);
+    eitherBounds = CollectionUtil.newHashMap(edges.length);
+    prevBrotherMap = CollectionUtil.newHashMap(edges.length);
+    nextBrotherMap = CollectionUtil.newHashMap(edges.length);
     for (int edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
       final SidedPlane edge = edges[edgeIndex];
       int bound1Index = legalIndex(edgeIndex + 1);

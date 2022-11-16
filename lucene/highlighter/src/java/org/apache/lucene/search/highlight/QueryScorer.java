@@ -29,6 +29,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.memory.MemoryIndex;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * {@link Scorer} implementation which scores text fragments by the number of unique query terms
@@ -99,16 +100,16 @@ public class QueryScorer implements Scorer {
    * @param weightedTerms an array of pre-created {@link WeightedSpanTerm}s
    */
   public QueryScorer(WeightedSpanTerm[] weightedTerms) {
-    this.fieldWeightedSpanTerms = new HashMap<>(weightedTerms.length);
+    this.fieldWeightedSpanTerms = CollectionUtil.newHashMap(weightedTerms.length);
 
-    for (int i = 0; i < weightedTerms.length; i++) {
-      WeightedSpanTerm existingTerm = fieldWeightedSpanTerms.get(weightedTerms[i].term);
+    for (WeightedSpanTerm weightedTerm : weightedTerms) {
+      WeightedSpanTerm existingTerm = fieldWeightedSpanTerms.get(weightedTerm.term);
 
-      if ((existingTerm == null) || (existingTerm.weight < weightedTerms[i].weight)) {
+      if ((existingTerm == null) || (existingTerm.weight < weightedTerm.weight)) {
         // if a term is defined more than once, always use the highest
         // scoring weight
-        fieldWeightedSpanTerms.put(weightedTerms[i].term, weightedTerms[i]);
-        maxTermWeight = Math.max(maxTermWeight, weightedTerms[i].getWeight());
+        fieldWeightedSpanTerms.put(weightedTerm.term, weightedTerm);
+        maxTermWeight = Math.max(maxTermWeight, weightedTerm.getWeight());
       }
     }
     skipInitExtractor = true;
@@ -156,9 +157,8 @@ public class QueryScorer implements Scorer {
     float score = weightedSpanTerm.getWeight();
 
     // found a query term - is it unique in this doc?
-    if (!foundTerms.contains(termText)) {
+    if (foundTerms.add(termText)) {
       totalScore += score;
-      foundTerms.add(termText);
     }
 
     return score;

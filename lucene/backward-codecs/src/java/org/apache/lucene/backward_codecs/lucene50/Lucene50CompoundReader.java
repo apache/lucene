@@ -32,6 +32,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -132,7 +133,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
 
   private Map<String, FileEntry> readMapping(IndexInput entriesStream) throws IOException {
     final int numEntries = entriesStream.readVInt();
-    Map<String, FileEntry> mapping = new HashMap<>(numEntries);
+    Map<String, FileEntry> mapping = CollectionUtil.newHashMap(numEntries);
     for (int i = 0; i < numEntries; i++) {
       final FileEntry fileEntry = new FileEntry();
       final String id = entriesStream.readString();

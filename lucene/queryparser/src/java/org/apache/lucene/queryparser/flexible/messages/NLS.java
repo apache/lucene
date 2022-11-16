@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.queryparser.flexible.messages;
 
+import org.apache.lucene.util.CollectionUtil;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.text.MessageFormat;
@@ -41,7 +43,7 @@ import java.util.ResourceBundle;
  */
 public class NLS {
 
-  private static Map<String, Class<? extends NLS>> bundles = new HashMap<>(0);
+  private static final Map<String, Class<? extends NLS>> bundles = new HashMap<>(0);
 
   protected NLS() {
     // Do not instantiate
@@ -83,7 +85,7 @@ public class NLS {
   protected static void initializeMessages(String bundleName, Class<? extends NLS> clazz) {
     try {
       load(clazz);
-      if (!bundles.containsKey(bundleName)) bundles.put(bundleName, clazz);
+      bundles.putIfAbsent(bundleName, clazz);
     } catch (
         @SuppressWarnings("unused")
         Throwable e) {
@@ -96,16 +98,15 @@ public class NLS {
 
     // slow resource checking
     // need to loop thru all registered resource bundles
-    for (Iterator<String> it = bundles.keySet().iterator(); it.hasNext(); ) {
-      Class<? extends NLS> clazz = bundles.get(it.next());
+    for (Class<? extends NLS> clazz : bundles.values()) {
       ResourceBundle resourceBundle = ResourceBundle.getBundle(clazz.getName(), locale);
       if (resourceBundle != null) {
         try {
           Object obj = resourceBundle.getObject(messageKey);
           if (obj != null) return obj;
         } catch (
-            @SuppressWarnings("unused")
-            MissingResourceException e) {
+                @SuppressWarnings("unused")
+                MissingResourceException e) {
           // just continue it might be on the next resource bundle
         }
       }
@@ -119,10 +120,10 @@ public class NLS {
 
     // build a map of field names to Field objects
     final int len = fieldArray.length;
-    Map<String, Field> fields = new HashMap<>(len * 2);
-    for (int i = 0; i < len; i++) {
-      fields.put(fieldArray[i].getName(), fieldArray[i]);
-      loadfieldValue(fieldArray[i], clazz);
+    Map<String, Field> fields = CollectionUtil.newHashMap(len);
+    for (Field field : fieldArray) {
+      fields.put(field.getName(), field);
+      loadfieldValue(field, clazz);
     }
   }
 

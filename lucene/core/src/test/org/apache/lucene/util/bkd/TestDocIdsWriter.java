@@ -28,6 +28,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.CollectionUtil;
 
 public class TestDocIdsWriter extends LuceneTestCase {
 
@@ -80,7 +81,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
         int size = 1 + random().nextInt(5000);
-        Set<Integer> set = new HashSet<>(size);
+        Set<Integer> set = CollectionUtil.newHashSet(size);
         int small = random().nextInt(1000);
         while (set.size() < size) {
           set.add(small + random().nextInt(size * 16));

@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.ResourceLoader;
 import org.apache.lucene.util.Version;
 
@@ -108,7 +109,7 @@ public class TestSuggestStopFilterFactory extends BaseTokenStreamTestCase {
     if (params.length % 2 != 0) {
       throw new IllegalArgumentException("invalid keysAndValues map");
     }
-    Map<String, String> args = new HashMap<>(params.length / 2);
+    Map<String, String> args = CollectionUtil.newHashMap(params.length / 2);
     for (int i = 0; i < params.length; i += 2) {
       String previous = args.put(params[i], params[i + 1]);
       assertNull("duplicate values for key: " + params[i], previous);

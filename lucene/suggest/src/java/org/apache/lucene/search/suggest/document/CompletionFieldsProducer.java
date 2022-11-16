@@ -41,6 +41,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -104,7 +105,7 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
 
       // read suggest field numbers and their offsets in the terms file from index
       int numFields = index.readVInt();
-      readers = new HashMap<>(numFields);
+      readers = CollectionUtil.newHashMap(numFields);
       for (int i = 0; i < numFields; i++) {
         int fieldNumber = index.readVInt();
         long offset = index.readVLong();

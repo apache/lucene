@@ -17,14 +17,13 @@
 package org.apache.lucene.search.suggest.document;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
+
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * {@link SuggestField} which additionally takes in a set of contexts. Example usage of adding a
@@ -63,10 +62,8 @@ public class ContextSuggestField extends SuggestField {
   public ContextSuggestField(String name, String value, int weight, CharSequence... contexts) {
     super(name, value, weight);
     validate(value);
-    this.contexts = new HashSet<>((contexts != null) ? contexts.length : 0);
-    if (contexts != null) {
-      Collections.addAll(this.contexts, contexts);
-    }
+    Collection<CharSequence> contextColl = contexts != null ? Arrays.asList(contexts) : Collections.emptyList();
+    this.contexts = new HashSet<>(contextColl);
   }
 
   /** Expert: Sub-classes can inject contexts at index-time */
