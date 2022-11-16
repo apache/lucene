@@ -43,7 +43,7 @@ jobs:
       run: ./gradlew localSettings --max-workers 2
 
     - name: Run gradle check (without tests)
-      run: ./gradlew check -x test -Ptask.times=true --max-workers 2
+      run: ./gradlew check -x test -Pvalidation.errorprone=true -Ptask.times=true --max-workers 2
 
   # This runs all tests without any other validation checks.
   tests:
