@@ -78,7 +78,7 @@ public final class ByteArrayDataInput extends DataInput {
   }
 
   @Override
-  public void skipBytes(long count) throws IOException {
+  public void skipBytes(long count) {
     Objects.checkFromIndexSize(pos, count, limit);
     pos += count;
   }

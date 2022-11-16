@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util.fst;
 
-import java.io.IOException;
 import java.util.Objects;
 
 // TODO: can we use just ByteArrayDataInput...?  need to
@@ -43,7 +42,7 @@ final class ForwardBytesReader extends FST.BytesReader {
   }
 
   @Override
-  public void skipBytes(long count) throws IOException {
+  public void skipBytes(long count) {
     Objects.checkFromIndexSize(pos, count, bytes.length);
     pos += count;
   }
