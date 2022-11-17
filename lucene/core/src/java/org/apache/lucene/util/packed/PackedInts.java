@@ -414,8 +414,6 @@ public class PackedInts {
     int size();
     /** Returns the current position */
     int ord();
-    /** Resets the stream contents in order to read valueCount number of values again */
-    void reset();
   }
 
   abstract static class ReaderIteratorImpl implements ReaderIterator {

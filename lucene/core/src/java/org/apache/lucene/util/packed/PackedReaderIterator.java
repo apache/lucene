@@ -86,11 +86,4 @@ final class PackedReaderIterator extends PackedInts.ReaderIteratorImpl {
   public int ord() {
     return position;
   }
-
-  @Override
-  public void reset() {
-    position = -1;
-    nextValues.offset = nextValues.longs.length;
-    nextValues.length = 0;
-  }
 }
