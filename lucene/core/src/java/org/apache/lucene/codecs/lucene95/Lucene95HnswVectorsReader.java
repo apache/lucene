@@ -378,8 +378,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
           int numNodesOnLevel = input.readVInt();
           numberOfOffsets += numNodesOnLevel;
           nodesByLevel[level] = new int[numNodesOnLevel];
-          for (int i = 0; i < numNodesOnLevel; i++) {
-            nodesByLevel[level][i] = input.readInt();
+          nodesByLevel[level][0] = input.readVInt();
+          for (int i = 1; i < numNodesOnLevel; i++) {
+            nodesByLevel[level][i] = nodesByLevel[level][i - 1] + input.readVInt();
           }
         } else {
           numberOfOffsets += size;

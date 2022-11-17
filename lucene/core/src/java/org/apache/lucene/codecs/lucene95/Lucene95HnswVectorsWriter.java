@@ -570,9 +570,17 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
         if (level > 0) {
           meta.writeVInt(nodesOnLevel.size()); // number of nodes on a level
+          int[] nol = new int[nodesOnLevel.size()];
+          int nodeIndex = 0;
           while (nodesOnLevel.hasNext()) {
-            int node = nodesOnLevel.nextInt();
-            meta.writeInt(node); // list of nodes on a level
+            nol[nodeIndex++] = nodesOnLevel.nextInt();
+          }
+          for (int i = nodesOnLevel.size() - 1; i > 0; --i) {
+            nol[i] -= nol[i - 1];
+          }
+          for (int n : nol) {
+            assert n >= 0 : "delta encoding for nodes failed; expected nodes to be sorted";
+            meta.writeVInt(n);
           }
         } else {
           assert nodesOnLevel.size() == count : "Level 0 expects to have all nodes";
