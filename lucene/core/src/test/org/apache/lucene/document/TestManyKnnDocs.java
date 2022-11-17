@@ -23,19 +23,20 @@ import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.codecs.vector.ConfigurableMCodec;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Monster;
-import org.apache.lucene.tests.util.TestUtil;
 
 @TimeoutSuite(millis = 86_400_000) // 24 hour timeout
-@Monster("takes ~2 hours and needs extra heap, disk space, file handles")
+@Monster("takes ~10 minutes and needs extra heap, disk space, file handles")
 public class TestManyKnnDocs extends LuceneTestCase {
   // gradlew -p lucene/core test --tests TestManyKnnDocs -Ptests.heapsize=16g -Dtests.monster=true
 
   public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setCodec(
-        TestUtil.getDefaultCodec()); // Make sure to use the default codec instead of a random one
+        new ConfigurableMCodec(
+            128)); // Make sure to use the ConfigurableMCodec instead of a random one
     iwc.setRAMBufferSizeMB(64); // Use a 64MB buffer to create larger initial segments
     TieredMergePolicy mp = new TieredMergePolicy();
     mp.setMaxMergeAtOnce(256); // avoid intermediate merges (waste of time with HNSW?)
@@ -47,7 +48,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
     try (Directory dir = FSDirectory.open(createTempDir("ManyKnnVectorDocs"));
         IndexWriter iw = new IndexWriter(dir, iwc)) {
 
-      int numVectors = 16268816;
+      int numVectors = 2088992;
       float[] vector = new float[1];
       Document doc = new Document();
       doc.add(new KnnVectorField(fieldName, vector, similarityFunction));
