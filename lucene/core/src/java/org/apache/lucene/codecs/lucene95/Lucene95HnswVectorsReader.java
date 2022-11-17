@@ -32,6 +32,7 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -39,7 +40,6 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -291,9 +291,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
-    IndexInput bytesSlice =
-        vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
-    return new OffHeapHnswGraph(entry, bytesSlice);
+    return new OffHeapHnswGraph(entry, vectorIndex);
   }
 
   @Override
@@ -315,9 +313,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     final int size;
     final int[][] nodesByLevel;
     // for each level the start offsets in vectorIndex file from where to read neighbours
-    final long[] graphOffsetsByLevel;
-    // the packed ints version used to store the graph connections
-    final int packedIntsVersion;
+    final DirectMonotonicReader.Meta offsetsMeta;
+    final long offsetsOffset;
+    final int offsetsBlockShift;
+    final long offsetsLength;
 
     // the following four variables used to read docIds encoded by IndexDISI
     // special values of docsWithFieldOffset are -1 and -2
@@ -347,7 +346,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       vectorDataLength = input.readVLong();
       vectorIndexOffset = input.readVLong();
       vectorIndexLength = input.readVLong();
-      dimension = input.readInt();
+      dimension = input.readVInt();
       size = input.readInt();
 
       docsWithFieldOffset = input.readLong();
@@ -370,50 +369,32 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       }
 
       // read nodes by level
-      M = input.readInt();
-      packedIntsVersion = input.readVInt();
-      numLevels = input.readInt();
+      M = input.readVInt();
+      numLevels = input.readVInt();
       nodesByLevel = new int[numLevels][];
+      long numberOfOffsets = 0;
       for (int level = 0; level < numLevels; level++) {
-        int numNodesOnLevel = input.readInt();
-        if (level == 0) {
-          // we don't store nodes for level 0th, as this level contains all nodes
-          assert numNodesOnLevel == size;
-          nodesByLevel[0] = null;
-        } else {
+        if (level > 0) {
+          int numNodesOnLevel = input.readVInt();
+          numberOfOffsets += numNodesOnLevel;
           nodesByLevel[level] = new int[numNodesOnLevel];
           for (int i = 0; i < numNodesOnLevel; i++) {
             nodesByLevel[level][i] = input.readInt();
           }
+        } else {
+          numberOfOffsets += size;
         }
       }
-
-      // calculate for each level the start offsets in vectorIndex file from where to read
-      // neighbours
-      graphOffsetsByLevel = new long[numLevels];
-      final int packedBitsRequired = PackedInts.bitsRequired(size);
-      final int level0ValueCount = Math.multiplyExact(M, 2);
-      final long level0ByteSize =
-          Math.addExact(
-              PackedInts.Format.PACKED.byteCount(
-                  packedIntsVersion, level0ValueCount, packedBitsRequired),
-              Integer.BYTES);
-      final long levelByteSize =
-          Math.addExact(
-              PackedInts.Format.PACKED.byteCount(packedIntsVersion, M, packedBitsRequired),
-              Integer.BYTES);
-      for (int level = 0; level < numLevels; level++) {
-        if (level == 0) {
-          graphOffsetsByLevel[level] = 0;
-        } else if (level == 1) {
-          graphOffsetsByLevel[level] = Math.multiplyExact(level0ByteSize, size);
-        } else {
-          int numNodesOnPrevLevel = nodesByLevel[level - 1].length;
-          graphOffsetsByLevel[level] =
-              Math.addExact(
-                  Math.multiplyExact(numNodesOnPrevLevel, levelByteSize),
-                  graphOffsetsByLevel[level - 1]);
-        }
+      if (numberOfOffsets > 0) {
+        offsetsOffset = input.readLong();
+        offsetsBlockShift = input.readVInt();
+        offsetsMeta = DirectMonotonicReader.loadMeta(input, numberOfOffsets, offsetsBlockShift);
+        offsetsLength = input.readLong();
+      } else {
+        offsetsOffset = 0;
+        offsetsBlockShift = 0;
+        offsetsMeta = null;
+        offsetsLength = 0;
       }
     }
 
@@ -427,54 +408,36 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;
-    final long[] graphOffsetsByLevel;
     final int numLevels;
     final int entryNode;
     final int size;
-    final long bytesForConns;
-    final long bytesForConns0;
-    final int packedBitsRequired;
-    final int packedIntsVersion;
     int arcCount;
     int arcUpTo;
     int arc;
-    // All other levels besides 0, contains entry.M values
-    private final PackedInts.ReaderIterator connReader;
-    // Level 0 connection reader, contains entry.M * 2 values
-    private final PackedInts.ReaderIterator conn0Reader;
-    // reference to the current connection reader.
-    private PackedInts.ReaderIterator currentConnReader;
+    private final DirectMonotonicReader graphLevelNodeOffsets;
+    private final long[] graphLevelNodeIndexOffsets;
+    // Allocated to be M*2 to track the current neighbors being explored
+    private final int[] currentNeighborsBuffer;
 
-    OffHeapHnswGraph(FieldEntry entry, IndexInput dataIn) {
-      this.dataIn = dataIn;
+    OffHeapHnswGraph(FieldEntry entry, IndexInput vectorIndex) throws IOException {
+      this.dataIn =
+          vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
       this.nodesByLevel = entry.nodesByLevel;
       this.numLevels = entry.numLevels;
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
-      this.packedBitsRequired = PackedInts.bitsRequired(size);
-      this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.packedIntsVersion = entry.packedIntsVersion;
-      final int level0ValueCount = Math.multiplyExact(entry.M, 2);
-      this.bytesForConns =
-          Math.addExact(
-              PackedInts.Format.PACKED.byteCount(packedIntsVersion, entry.M, packedBitsRequired),
-              Integer.BYTES);
-      this.bytesForConns0 =
-          Math.addExact(
-              PackedInts.Format.PACKED.byteCount(
-                  packedIntsVersion, level0ValueCount, packedBitsRequired),
-              Integer.BYTES);
-      this.connReader =
-          PackedInts.getReaderIteratorNoHeader(
-              dataIn, PackedInts.Format.PACKED, packedIntsVersion, entry.M, packedBitsRequired, 1);
-      this.conn0Reader =
-          PackedInts.getReaderIteratorNoHeader(
-              dataIn,
-              PackedInts.Format.PACKED,
-              packedIntsVersion,
-              level0ValueCount,
-              packedBitsRequired,
-              1);
+      final RandomAccessInput addressesData =
+          vectorIndex.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
+      this.graphLevelNodeOffsets =
+          DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
+      this.currentNeighborsBuffer = new int[entry.M * 2];
+      graphLevelNodeIndexOffsets = new long[numLevels];
+      graphLevelNodeIndexOffsets[0] = 0;
+      for (int i = 1; i < numLevels; i++) {
+        // nodesByLevel is `null` for the zeroth level as we know its the size
+        int nodeCount = nodesByLevel[i - 1] == null ? size : nodesByLevel[i - 1].length;
+        graphLevelNodeIndexOffsets[i] = graphLevelNodeIndexOffsets[i - 1] + nodeCount;
+      }
     }
 
     @Override
@@ -484,13 +447,15 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
               ? targetOrd
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
       assert targetIndex >= 0;
-      long graphDataOffset =
-          graphOffsetsByLevel[level] + targetIndex * (level == 0 ? bytesForConns0 : bytesForConns);
-      currentConnReader = level == 0 ? conn0Reader : connReader;
       // unsafe; no bounds checking
-      dataIn.seek(graphDataOffset);
-      arcCount = dataIn.readInt();
-      currentConnReader.reset();
+      dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
+      arcCount = dataIn.readVInt();
+      if (arcCount > 0) {
+        currentNeighborsBuffer[0] = dataIn.readVInt();
+        for (int i = 1; i < arcCount; i++) {
+          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+        }
+      }
       arc = -1;
       arcUpTo = 0;
     }
@@ -505,8 +470,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       if (arcUpTo >= arcCount) {
         return NO_MORE_DOCS;
       }
+      arc = currentNeighborsBuffer[arcUpTo];
       ++arcUpTo;
-      arc = (int) currentConnReader.next();
       return arc;
     }
 
