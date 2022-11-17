@@ -17,4 +17,3 @@
 
 /** Codecs for testing different vector formats. */
 package org.apache.lucene.tests.codecs.vector;
-
