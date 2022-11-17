@@ -22,26 +22,26 @@ import org.apache.lucene.codecs.lucene94.Lucene94Codec;
 import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
 
 /**
- * This codec allows customization of the number of connections
- * made for an hnsw index. Increasing the number of connections
- * can decrease the time of certain tests while still achieving
- * the same test coverage.
+ * This codec allows customization of the number of connections made for an hnsw index. Increasing
+ * the number of connections can decrease the time of certain tests while still achieving the same
+ * test coverage.
  */
 public class ConfigurableMCodec extends FilterCodec {
 
-    private final KnnVectorsFormat knnVectorsFormat;
+  private final KnnVectorsFormat knnVectorsFormat;
 
-    public ConfigurableMCodec() {
-        super("ConfigurableMCodec", new Lucene94Codec());
-        knnVectorsFormat = new Lucene94HnswVectorsFormat(128, 100);
-    }
+  public ConfigurableMCodec() {
+    super("ConfigurableMCodec", new Lucene94Codec());
+    knnVectorsFormat = new Lucene94HnswVectorsFormat(128, 100);
+  }
 
-    public ConfigurableMCodec(int maxConn) {
-        super("ConfigurableMCodec", new Lucene94Codec());
-        knnVectorsFormat = new Lucene94HnswVectorsFormat(maxConn, 100);
-    }
+  public ConfigurableMCodec(int maxConn) {
+    super("ConfigurableMCodec", new Lucene94Codec());
+    knnVectorsFormat = new Lucene94HnswVectorsFormat(maxConn, 100);
+  }
 
-    @Override public KnnVectorsFormat knnVectorsFormat() {
-        return knnVectorsFormat;
-    }
+  @Override
+  public KnnVectorsFormat knnVectorsFormat() {
+    return knnVectorsFormat;
+  }
 }

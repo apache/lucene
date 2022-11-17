@@ -34,7 +34,9 @@ public class TestManyKnnDocs extends LuceneTestCase {
 
   public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
-    iwc.setCodec(new ConfigurableMCodec(128)); // Make sure to use the ConfigurableMCodec instead of a random one
+    iwc.setCodec(
+        new ConfigurableMCodec(
+            128)); // Make sure to use the ConfigurableMCodec instead of a random one
     iwc.setRAMBufferSizeMB(64); // Use a 64MB buffer to create larger initial segments
     TieredMergePolicy mp = new TieredMergePolicy();
     mp.setMaxMergeAtOnce(256); // avoid intermediate merges (waste of time with HNSW?)
