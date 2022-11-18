@@ -566,15 +566,13 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeVInt(0);
     } else {
       meta.writeVInt(graph.numLevels());
+      long valueCount = 0;
       for (int level = 0; level < graph.numLevels(); level++) {
         NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
+        valueCount += nodesOnLevel.size();
         if (level > 0) {
-          meta.writeVInt(nodesOnLevel.size()); // number of nodes on a level
-          int[] nol = new int[nodesOnLevel.size()];
-          int nodeIndex = 0;
-          while (nodesOnLevel.hasNext()) {
-            nol[nodeIndex++] = nodesOnLevel.nextInt();
-          }
+          int[] nol = nodesOnLevel.copy();
+          meta.writeVInt(nol.length); // number of nodes on a level
           for (int i = nodesOnLevel.size() - 1; i > 0; --i) {
             nol[i] -= nol[i - 1];
           }
@@ -585,10 +583,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         } else {
           assert nodesOnLevel.size() == count : "Level 0 expects to have all nodes";
         }
-      }
-      long valueCount = 0;
-      for (int[] levelOffsets : graphLevelNodeOffsets) {
-        valueCount += levelOffsets.length;
       }
       long start = vectorIndex.getFilePointer();
       meta.writeLong(start);
