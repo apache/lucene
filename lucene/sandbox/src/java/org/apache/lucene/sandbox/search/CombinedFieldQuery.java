@@ -432,7 +432,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       }
       // Even though it is called approximation, it is accurate since none of
       // the sub iterators are two-phase iterators.
-      DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
+      DisjunctionDISIApproximation iterator = new DisjunctionDISIApproximation(queue);
       return new CombinedFieldScorer(this, queue, iterator, scoringSimScorer);
     }
 
@@ -457,13 +457,13 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
   private static class CombinedFieldScorer extends Scorer {
     private final DisiPriorityQueue queue;
-    private final DocIdSetIterator iterator;
+    private final DisjunctionDISIApproximation iterator;
     private final MultiNormsLeafSimScorer simScorer;
 
     CombinedFieldScorer(
         Weight weight,
         DisiPriorityQueue queue,
-        DocIdSetIterator iterator,
+        DisjunctionDISIApproximation iterator,
         MultiNormsLeafSimScorer simScorer) {
       super(weight);
       this.queue = queue;
@@ -477,6 +477,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     }
 
     float freq() throws IOException {
+      iterator.advanceAll();
       DisiWrapper w = queue.topList();
       float freq = ((WeightedDisiWrapper) w).freq();
       for (w = w.next; w != null; w = w.next) {

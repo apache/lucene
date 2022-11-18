@@ -22,12 +22,17 @@ import java.io.IOException;
  * A {@link DocIdSetIterator} which is a disjunction of the approximations of the provided
  * iterators.
  *
+ * <p>Note that {@link #nextDoc()} and {@link #advance(int)} provide no guarantees that all {@code
+ * subIterators} are positioned on the current {@link #docID()}. If all sub-iterators need to be
+ * positioned, callers should use {@link #advanceAll()}.
+ *
  * @lucene.internal
  */
 public class DisjunctionDISIApproximation extends DocIdSetIterator {
-
   final DisiPriorityQueue subIterators;
   final long cost;
+
+  private int docID;
 
   public DisjunctionDISIApproximation(DisiPriorityQueue subIterators) {
     this.subIterators = subIterators;
@@ -36,6 +41,7 @@ public class DisjunctionDISIApproximation extends DocIdSetIterator {
       cost += w.cost;
     }
     this.cost = cost;
+    this.docID = subIterators.top().approximation.docID();
   }
 
   @Override
@@ -45,29 +51,54 @@ public class DisjunctionDISIApproximation extends DocIdSetIterator {
 
   @Override
   public int docID() {
-    return subIterators.top().doc;
+    return docID;
+  }
+
+  private int doNext(int target) throws IOException {
+    if (target == DocIdSetIterator.NO_MORE_DOCS) {
+      docID = DocIdSetIterator.NO_MORE_DOCS;
+      return docID;
+    }
+
+    DisiWrapper top = subIterators.top();
+    do {
+      top.doc = top.approximation.advance(target);
+      if (top.doc == target) {
+        subIterators.updateTop();
+        docID = target;
+        return docID;
+      }
+      top = subIterators.updateTop();
+    } while (top.doc < target);
+    docID = top.doc;
+
+    return docID;
   }
 
   @Override
   public int nextDoc() throws IOException {
-    DisiWrapper top = subIterators.top();
-    final int doc = top.doc;
-    do {
-      top.doc = top.approximation.nextDoc();
-      top = subIterators.updateTop();
-    } while (top.doc == doc);
-
-    return top.doc;
+    if (docID == DocIdSetIterator.NO_MORE_DOCS) {
+      return docID;
+    }
+    return doNext(docID + 1);
   }
 
   @Override
   public int advance(int target) throws IOException {
-    DisiWrapper top = subIterators.top();
-    do {
-      top.doc = top.approximation.advance(target);
-      top = subIterators.updateTop();
-    } while (top.doc < target);
+    return doNext(target);
+  }
 
-    return top.doc;
+  /**
+   * Advance all {@code subIterators} such that all the ones containing the current {@link #docID()}
+   * are positioned on it. This must be called after each call to {@link #nextDoc()} or {@link
+   * #advance(int)} if the caller needs the sub-iterators positioned.
+   */
+  public void advanceAll() throws IOException {
+    DisiWrapper top = subIterators.top();
+    while (top.doc < docID) {
+      top.doc = top.approximation.advance(docID);
+      top = subIterators.updateTop();
+    }
+    assert top.doc == docID;
   }
 }
