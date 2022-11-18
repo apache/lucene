@@ -72,6 +72,13 @@ public class StageArtifacts {
       return value == null ? null : value.toCharArray();
     }
 
+    static void requiresArgument(String[] args, int at) {
+      if (at + 1 >= args.length) {
+        throw new RuntimeException("Option '" + args[at]
+            + "' requires an argument, pass --help for help.");
+      }
+    }
+
     static Params parse(String[] args) {
       try {
         var params = new Params();
@@ -79,23 +86,27 @@ public class StageArtifacts {
           switch (args[i]) {
             case "-n":
             case "--nexus":
+              requiresArgument(args, i);
               params.nexusUri = URI.create(args[++i]);
               break;
             case "-u":
             case "--user":
+              requiresArgument(args, i);
               params.userName = args[++i];
               break;
             case "-p":
             case "--password":
+              requiresArgument(args, i);
               params.userPass = args[++i].toCharArray();
               break;
             case "--description":
+              requiresArgument(args, i);
               params.description = args[++i];
               break;
 
             case "-h":
             case "--help":
-              System.out.println("java " + StageArtifacts.class.getName() + " [options] path");
+              System.out.println("java " + StageArtifacts.class.getName() + " [options] path-to-maven-artifacts");
               System.out.println("  -u, --user  User name for authentication.");
               System.out.println("              better: ASF_USERNAME env. var.");
               System.out.println("  -p, --password  Password for authentication.");
