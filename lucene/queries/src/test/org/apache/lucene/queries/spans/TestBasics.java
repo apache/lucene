@@ -16,11 +16,17 @@
  */
 package org.apache.lucene.queries.spans;
 
-import static org.apache.lucene.queries.spans.SpanTestUtil.*;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanFirstQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanNearOrderedQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanNearUnorderedQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanNotQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanOrQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanPositionRangeQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanTermQuery;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;

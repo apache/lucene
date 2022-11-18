@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.VectorUtil.*;
+import static org.apache.lucene.util.VectorUtil.cosine;
+import static org.apache.lucene.util.VectorUtil.dotProduct;
+import static org.apache.lucene.util.VectorUtil.dotProductScore;
+import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 import org.apache.lucene.util.BytesRef;
 
