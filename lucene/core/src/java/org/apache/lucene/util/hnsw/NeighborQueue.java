@@ -99,7 +99,7 @@ public class NeighborQueue {
         float updatedScore = strategy.updateScore(originalScore, nodeScore);
         heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
       }
-      nodeIdToHeapIndex.put(nodeId, heapIndex);
+      this.updateHeapIndexesCache(false, heapIndex, nodeId);
     }
   }
 
@@ -126,16 +126,16 @@ public class NeighborQueue {
    * @param nodeScore the score of the neighbor, relative to some other node
    */
   public boolean insertWithOverflow(int nodeId, float nodeScore, HnswGraphSearcher.Multivalued strategy) {
+    boolean full = size() == heap.maxSize();
     if (strategy.equals(HnswGraphSearcher.Multivalued.NONE)) {
       return insertWithOverflow(nodeId, nodeScore);
     } else {
+      int minNodeId = this.topNode();
       boolean nodeAdded = false;
       Integer heapIndex = nodeIdToHeapIndex.get(nodeId);
       if (heapIndex == null) {
-        int minNodeId = this.topNode();
         heapIndex = heap.insertWithOverflow(encode(nodeId, nodeScore));
         if (heapIndex != -1) {
-          this.nodeIdToHeapIndex.remove(minNodeId);
           nodeAdded = true;
         }
       } else {
@@ -143,12 +143,30 @@ public class NeighborQueue {
         float updatedScore = strategy.updateScore(originalScore, nodeScore);
         heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
       }
-      nodeIdToHeapIndex.put(nodeId, heapIndex);
-
+      this.updateHeapIndexesCache(full, heapIndex, nodeId);
+      if (nodeAdded && size() == heap.maxSize()) {
+        nodeIdToHeapIndex.remove(minNodeId);
+      }
+      
       return nodeAdded;
     }
   }
-  
+
+  private void updateHeapIndexesCache(boolean full, Integer heapIndex, int newNodeId) {
+    if (full) {
+      for (int i = heapIndex -1; i > 0; i--) {
+        int nodeIdToShift = decodeNodeId(heap.get(i));
+        nodeIdToHeapIndex.put(nodeIdToShift, i);//non e' necessario se l'heapindex e' lo stesso
+      }
+    } else {
+      for (int i = heapIndex + 1; i <= heap.size(); i++) {
+        int nodeIdToShift = decodeNodeId(heap.get(i));
+        nodeIdToHeapIndex.put(nodeIdToShift, i);//non e' necessario se l'heapindex e' lo stesso
+      }
+    }
+    nodeIdToHeapIndex.put(newNodeId, heapIndex);//non e' necessario se l'heapindex e' lo stesso
+  }
+
   /**
    * Encodes the node ID and its similarity score as long, preserving the Lucene tie-breaking rule
    * that when two scores are equals, the smaller node ID must win.

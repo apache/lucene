@@ -166,6 +166,11 @@ public final class LongHeap {
     return size;
   }
 
+  /** Returns the number of elements currently stored in the PriorityQueue. */
+  public final int maxSize() {
+    return maxSize;
+  }
+
   /** Removes all entries from the PriorityQueue. */
   public final void clear() {
     size = 0;

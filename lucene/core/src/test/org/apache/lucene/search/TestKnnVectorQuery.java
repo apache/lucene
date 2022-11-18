@@ -107,7 +107,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
    * Tests that a KnnVectorQuery whose topK &gt;= numDocs returns all the documents in score order
    */
   public void testMultiVale() throws IOException {
-    float[][] doc1Vectors = new float[][]{new float[] {1, 3,1}, new float[] {1, 3,1}};
+    float[][] doc1Vectors = new float[][]{new float[] {1, 2.5f,1}, new float[] {1, 2.5f, 1}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 500,1}, new float[] {1, 1,4}};
     float[][] doc3Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 300,1}};
     
@@ -119,12 +119,12 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       assertMatches(searcher, kvq, 3);
       ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
       assertIdMatches(reader, "id0", scoreDocs[0]);
-      assertIdMatches(reader, "id1", scoreDocs[1]);
-      assertIdMatches(reader, "id2", scoreDocs[2]);
-
+      assertIdMatches(reader, "id2", scoreDocs[1]);
+      assertIdMatches(reader, "id1", scoreDocs[2]);
+      
       KnnVectorQuery kvq2 = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, null, HnswGraphSearcher.Multivalued.MAX);
       assertMatches(searcher, kvq2, 3);
-      ScoreDoc[] scoreDocs2 = searcher.search(kvq, 3).scoreDocs;
+      ScoreDoc[] scoreDocs2 = searcher.search(kvq2, 3).scoreDocs;
       assertIdMatches(reader, "id2", scoreDocs2[0]);
       assertIdMatches(reader, "id0", scoreDocs2[1]);
       assertIdMatches(reader, "id1", scoreDocs2[2]);

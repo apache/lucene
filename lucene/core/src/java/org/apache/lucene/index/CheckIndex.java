@@ -2573,7 +2573,6 @@ public final class CheckIndex implements Closeable {
     FieldInfos fieldInfos = reader.getFieldInfos();
     Status.VectorValuesStatus status = new Status.VectorValuesStatus();
     try {
-
       if (fieldInfos.hasVectorValues()) {
         for (FieldInfo fieldInfo : fieldInfos) {
           if (fieldInfo.hasVectorValues()) {
@@ -2606,7 +2605,7 @@ public final class CheckIndex implements Closeable {
               }
               ++docCount;
             }
-            if (docCount != values.size()) {
+            if (docCount != values.size() && !fieldInfo.isVectorMultiValued()) {
               throw new CheckIndexException(
                   "Field \""
                       + fieldInfo.name
