@@ -19,11 +19,18 @@ package org.apache.lucene.util.automaton;
 import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.UnicodeUtil;
 
 public class TestOperations extends LuceneTestCase {
   /** Test string union. */
