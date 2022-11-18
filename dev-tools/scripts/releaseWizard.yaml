@@ -649,9 +649,11 @@ groups:
     vars:
       logfile: '{{ [rc_folder, ''logs'', ''buildAndPushRelease.log''] | path_join }}'
       git_rev: '{{ current_git_rev }}' # Note, git_rev will be recorded in todo state AFTER completion of commands
+      git_rev_short: '{{ git_rev | truncate(7,true,"") }}'  # Note, git_rev_short will be recorded in todo state AFTER completion of commands
       local_keys: '{% if keys_downloaded %} --local-keys "{{ [config_path, ''KEYS''] | path_join }}"{% endif %}'
     persist_vars:
     - git_rev
+    - git_rev_short
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
       commands_text: |-
@@ -923,6 +925,7 @@ groups:
     id: stage_maven
     title: Stage the maven artifacts for publishing
     vars:
+      git_sha: '{{ build_rc.git_rev_short | default("<git_sha>", True) }}'
       dist_folder: lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
@@ -930,30 +933,28 @@ groups:
       commands_text: In the source checkout do the following (note that this step will prompt you for your Apache LDAP credentials)
       commands:
         - !Command
-          cmd: ant clean stage-maven-artifacts  -Dmaven.dist.dir={{ [dist_file_path, dist_folder, 'lucene', 'maven'] | path_join }}  -Dm2.repository.id=apache.releases.https  -Dm2.repository.url={{ m2_repository_url }}
+          cmd: java dev-tools/scripts/StageArtifacts.java --user {{ gpg.apache_id }} --description "{{ 'Apache Lucene ', release_version, ' (commit ', git_sha, ')' }}" "{{ [dist_file_path, dist_folder, 'solr', 'maven'] | path_join }}"
+          tee: true
           logfile: publish_lucene_maven.log
     post_description: The artifacts are not published yet, please proceed with the next step to actually publish!
   - !Todo
     id: publish_maven
     depends: stage_maven
     title: Publish the staged maven artifacts
+    vars:
+      git_sha: '{{ build_rc.git_rev_short | default("<git_sha>", True) }}'
     description: |
       Once you have transferred all maven artifacts to repository.apache.org,
       you will need to do some manual steps to actually release them to Maven Central:
 
-      * Close the staging repository
+      * Release the staging repository
       . Log in to https://repository.apache.org/ with your ASF credentials
       . Select "Staging Repositories" under "Build Promotion" from the navigation bar on the left
-      . Select the staging repository containing the Lucene artifacts
-      . Click on the "Close" button above the repository list, then enter a description when prompted, e.g. "Lucene {{ release_version }} RC{{ rc_number }}"
-      * The system will now spend some time validating the artifacts. Grab a coke and come back.
-      * Release the Lucene artifacts
-      . Wait and keep clicking refresh until the "Release" button becomes available
+      . Select the staging repository named, "Apache Lucene {{ release_version }} (commit {{ git_sha }})"
       . Click on the "Release" button above the repository list, then enter a description when prompted, e.g. "Lucene {{ release_version }}".
 
       Maven central should show the release after a short while
     links:
-    - https://wiki.apache.org/lucene-java/PublishMavenArtifacts
     - https://repository.apache.org/index.html
   - !Todo
     id: check_distribution_directory
@@ -1029,7 +1030,7 @@ groups:
       Fortunately the only thing you need to change is a few variables in `pelicanconf.py`.
       If you release a current latest release, change the `LUCENE_LATEST_RELEASE` and `LUCENE_LATEST_RELEASE_DATE`
       variables.
-      If you relese a bugfix release for previos version, then change the `LUCENE_PREVIOUS_MAJOR_RELEASE` variable.
+      If you relese a bugfix release for previous version, then change the `LUCENE_PREVIOUS_MAJOR_RELEASE` variable.
     commands: !Commands
       root_folder: '{{ git_website_folder }}'
       commands_text: Edit pelicanconf.py to update version numbers
