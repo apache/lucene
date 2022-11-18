@@ -55,11 +55,6 @@ public class DisjunctionDISIApproximation extends DocIdSetIterator {
   }
 
   private int doNext(int target) throws IOException {
-    if (target == DocIdSetIterator.NO_MORE_DOCS) {
-      docID = DocIdSetIterator.NO_MORE_DOCS;
-      return docID;
-    }
-
     DisiWrapper top = subIterators.top();
     do {
       top.doc = top.approximation.advance(target);
@@ -77,9 +72,6 @@ public class DisjunctionDISIApproximation extends DocIdSetIterator {
 
   @Override
   public int nextDoc() throws IOException {
-    if (docID == DocIdSetIterator.NO_MORE_DOCS) {
-      return docID;
-    }
     return doNext(docID + 1);
   }
 

@@ -65,9 +65,6 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859: Hunspell: improved suggestion performance
 
-* GITHUB#11922: Allow DisjunctionDISIApproximation to short-circuit when advancing once a doc
-  is found. (Greg Miller)
-
 Bug Fixes
 ---------------------
 
@@ -167,6 +164,9 @@ Optimizations
   and borrowing some concepts from "min should match" scoring. (Greg Miller)
 
 * GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
+
+* GITHUB#11922: Allow DisjunctionDISIApproximation to short-circuit when advancing once a doc
+  is found. (Greg Miller)
 
 Other
 ---------------------
