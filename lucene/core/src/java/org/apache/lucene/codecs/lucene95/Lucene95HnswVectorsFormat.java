@@ -29,7 +29,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.4 vector format, which encodes numeric vector values and an optional associated graph
+ * Lucene 9.5 vector format, which encodes numeric vector values and an optional associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
  * consists of three files:
  *
@@ -57,13 +57,13 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *       <ul>
  *         <li>For each node:
  *             <ul>
- *               <li><b>[int32]</b> the number of neighbor nodes
- *               <li><b>array[int32]</b> the neighbor ordinals
- *               <li><b>array[int32]</b> padding if the number of the node's neighbors is less than
- *                   the maximum number of connections allowed on this level. Padding is equal to
- *                   ((maxConnOnLevel – the number of neighbours) * 4) bytes.
+ *               <li><b>[vint]</b> the number of neighbor nodes
+ *               <li><b>array[vint]</b> the delta encoded neighbor ordinals
  *             </ul>
  *       </ul>
+ *   <li>After all levels are encoded memory offsets for each node's neighbor nodes encoded by
+ *       {@link org.apache.lucene.util.packed.DirectMonotonicWriter} are appened to the end of the
+ *       file.
  * </ul>
  *
  * <h2>.vem (vector metadata) file</h2>
@@ -98,14 +98,14 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  */
 public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
 
-  static final String META_CODEC_NAME = "lucene95HnswVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "lucene95HnswVectorsFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "lucene95HnswVectorsFormatIndex";
+  static final String META_CODEC_NAME = "Lucene95HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene95HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "Lucene95HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
 
-  public static final int VERSION_START = 2;
+  public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
 
   /**

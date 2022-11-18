@@ -405,7 +405,9 @@
  *   <li>In version 9.1, vector-valued fields were modified to add a graph hierarchy.
  *   <li>In version 9.2, docs of vector-valued fields were moved from .vem to .vec and encoded by
  *       IndexDISI. ordToDoc mappings was added to .vem.
- *   <li>In version 9.5, HNSW graph connections were changed to be stored with PackedInts.
+ *   <li>In version 9.5, HNSW graph connections were changed to be delta-encoded with vints.
+ *       Additionally, metadata file size improvements were made by delta-encoding nodes by graph
+ *       layer and not writing the node ids for the zeroth layer.
  * </ul>
  *
  * <a id="Limitations"></a>

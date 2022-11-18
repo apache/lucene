@@ -31,8 +31,10 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -47,6 +49,9 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  * @lucene.experimental
  */
 public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
+
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(Lucene95HnswVectorsFormat.class);
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
@@ -83,7 +88,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene95HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
-    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
+    try (ChecksumIndexInput meta =
+        state.directory.openChecksumInput(metaFileName, IOContext.READONCE)) {
       Throwable priorE = null;
       try {
         versionMeta =
@@ -212,11 +218,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
 
   @Override
   public long ramBytesUsed() {
-    long totalBytes = RamUsageEstimator.shallowSizeOfInstance(Lucene95HnswVectorsFormat.class);
-    totalBytes +=
-        RamUsageEstimator.sizeOfMap(
+    return Lucene95HnswVectorsReader.SHALLOW_SIZE
+        + RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
-    return totalBytes;
   }
 
   @Override
@@ -299,8 +303,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     IOUtils.close(vectorData, vectorIndex);
   }
 
-  static class FieldEntry {
-
+  static class FieldEntry implements Accountable {
+    private static final long SHALLOW_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
     final VectorSimilarityFunction similarityFunction;
     final VectorEncoding vectorEncoding;
     final long vectorDataOffset;
@@ -402,6 +407,14 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     int size() {
       return size;
     }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE
+          + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
+          + RamUsageEstimator.sizeOf(meta)
+          + RamUsageEstimator.sizeOf(offsetsMeta);
+    }
   }
 
   /** Read the nearest-neighbors graph from the index input */
@@ -435,7 +448,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       graphLevelNodeIndexOffsets = new long[numLevels];
       graphLevelNodeIndexOffsets[0] = 0;
       for (int i = 1; i < numLevels; i++) {
-        // nodesByLevel is `null` for the zeroth level as we know its the size
+        // nodesByLevel is `null` for the zeroth level as we know its size
         int nodeCount = nodesByLevel[i - 1] == null ? size : nodesByLevel[i - 1].length;
         graphLevelNodeIndexOffsets[i] = graphLevelNodeIndexOffsets[i - 1] + nodeCount;
       }
