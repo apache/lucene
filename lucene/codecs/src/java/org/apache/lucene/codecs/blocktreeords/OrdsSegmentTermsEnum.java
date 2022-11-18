@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.codecs.blocktreeords;
 
-// import java.io.*;
-// import java.nio.charset.StandardCharsets;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import org.apache.lucene.codecs.BlockTermState;

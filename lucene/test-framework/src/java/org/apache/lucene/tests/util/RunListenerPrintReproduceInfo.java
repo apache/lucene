@@ -16,7 +16,23 @@
  */
 package org.apache.lucene.tests.util;
 
-import static org.apache.lucene.tests.util.LuceneTestCase.*;
+import static org.apache.lucene.tests.util.LuceneTestCase.DEFAULT_LINE_DOCS_FILE;
+import static org.apache.lucene.tests.util.LuceneTestCase.JENKINS_LARGE_LINE_DOCS_FILE;
+import static org.apache.lucene.tests.util.LuceneTestCase.RANDOM_MULTIPLIER;
+import static org.apache.lucene.tests.util.LuceneTestCase.SYSPROP_AWAITSFIX;
+import static org.apache.lucene.tests.util.LuceneTestCase.SYSPROP_MONSTER;
+import static org.apache.lucene.tests.util.LuceneTestCase.SYSPROP_NIGHTLY;
+import static org.apache.lucene.tests.util.LuceneTestCase.SYSPROP_WEEKLY;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_AWAITSFIX;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_CODEC;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_DIRECTORY;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_DOCVALUESFORMAT;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_LINE_DOCS_FILE;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_MONSTER;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_NIGHTLY;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_POSTINGSFORMAT;
+import static org.apache.lucene.tests.util.LuceneTestCase.TEST_WEEKLY;
+import static org.apache.lucene.tests.util.LuceneTestCase.classEnvRule;
 
 import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
@@ -178,7 +194,6 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
     if (TEST_WEEKLY) addVmOpt(b, SYSPROP_WEEKLY, TEST_WEEKLY);
     if (TEST_MONSTER) addVmOpt(b, SYSPROP_MONSTER, TEST_MONSTER);
     if (TEST_AWAITSFIX) addVmOpt(b, SYSPROP_AWAITSFIX, TEST_AWAITSFIX);
-    if (TEST_BADAPPLES) addVmOpt(b, SYSPROP_BADAPPLES, TEST_BADAPPLES);
 
     // Codec, postings, directories.
     if (!TEST_CODEC.equals("random")) addVmOpt(b, "tests.codec", TEST_CODEC);
