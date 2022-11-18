@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -91,7 +92,11 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
   }
 
   private BinaryRangeDocValues getValues(LeafReader reader, String field) throws IOException {
-    BinaryDocValues binaryDocValues = reader.getBinaryDocValues(field);
+    FieldInfo info = reader.getFieldInfos().fieldInfo(field);
+    if (info == null) {
+      return null;
+    }
+    BinaryDocValues binaryDocValues = DocValues.getBinary(reader, field);
 
     return new BinaryRangeDocValues(binaryDocValues, numDims, numBytesPerDimension);
   }
