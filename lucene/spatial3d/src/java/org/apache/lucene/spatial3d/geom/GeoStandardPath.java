@@ -189,20 +189,21 @@ class GeoStandardPath extends GeoBasePath {
             onlyEndpoint.circlePlane.getSampleIntersectionPoint(planetModel, normalPlane)
           };
     } else {
-      // Create segment endpoints.  Use an appropriate constructor for the start and end of the path.
+      // Create segment endpoints.  Use an appropriate constructor for the start and end of the
+      // path.
       for (int i = 0; i < segments.size(); i++) {
         final PathSegment currentSegment = segments.get(i);
 
         if (i == 0) {
           // Starting endpoint
           final SegmentEndpoint startEndpoint =
-            new CutoffSingleCircleSegmentEndpoint(
-                                                  planetModel,
-                                                  null,
-                                                  currentSegment.start,
-                                                  currentSegment.startCutoffPlane,
-                                                  currentSegment.ULHC,
-                                                  currentSegment.LLHC);
+              new CutoffSingleCircleSegmentEndpoint(
+                  planetModel,
+                  null,
+                  currentSegment.start,
+                  currentSegment.startCutoffPlane,
+                  currentSegment.ULHC,
+                  currentSegment.LLHC);
           endPoints.add(startEndpoint);
           this.edgePoints = new GeoPoint[] {currentSegment.ULHC};
           continue;
@@ -214,43 +215,44 @@ class GeoStandardPath extends GeoBasePath {
             && prevSegment.endCutoffPlane.isWithin(currentSegment.LLHC)
             && currentSegment.startCutoffPlane.isWithin(prevSegment.URHC)
             && currentSegment.startCutoffPlane.isWithin(prevSegment.LRHC)) {
-          // The planes are identical.  We wouldn't need a circle at all except for the possibility of
+          // The planes are identical.  We wouldn't need a circle at all except for the possibility
+          // of
           // backing up, which is hard to detect here.
           final SegmentEndpoint midEndpoint =
-            new CutoffSingleCircleSegmentEndpoint(
-                                                  planetModel,
-                                                  prevSegment,
-                                                  currentSegment.start,
-                                                  prevSegment.endCutoffPlane,
-                                                  currentSegment.startCutoffPlane,
-                                                  currentSegment.ULHC,
-                                                  currentSegment.LLHC);
+              new CutoffSingleCircleSegmentEndpoint(
+                  planetModel,
+                  prevSegment,
+                  currentSegment.start,
+                  prevSegment.endCutoffPlane,
+                  currentSegment.startCutoffPlane,
+                  currentSegment.ULHC,
+                  currentSegment.LLHC);
           // don't need a circle at all.  Special constructor...
           endPoints.add(midEndpoint);
         } else {
           endPoints.add(
-                        new CutoffDualCircleSegmentEndpoint(
-                                                            planetModel,
-                                                            prevSegment,
-                                                            currentSegment.start,
-                                                            prevSegment.endCutoffPlane,
-                                                            currentSegment.startCutoffPlane,
-                                                            prevSegment.URHC,
-                                                            prevSegment.LRHC,
-                                                            currentSegment.ULHC,
-                                                            currentSegment.LLHC));
+              new CutoffDualCircleSegmentEndpoint(
+                  planetModel,
+                  prevSegment,
+                  currentSegment.start,
+                  prevSegment.endCutoffPlane,
+                  currentSegment.startCutoffPlane,
+                  prevSegment.URHC,
+                  prevSegment.LRHC,
+                  currentSegment.ULHC,
+                  currentSegment.LLHC));
         }
       }
       // Do final endpoint
       final PathSegment lastSegment = segments.get(segments.size() - 1);
       endPoints.add(
-                    new CutoffSingleCircleSegmentEndpoint(
-                                                          planetModel,
-                                                          lastSegment,
-                                                          lastSegment.end,
-                                                          lastSegment.endCutoffPlane,
-                                                          lastSegment.URHC,
-                                                          lastSegment.LRHC));
+          new CutoffSingleCircleSegmentEndpoint(
+              planetModel,
+              lastSegment,
+              lastSegment.end,
+              lastSegment.endCutoffPlane,
+              lastSegment.URHC,
+              lastSegment.LRHC));
     }
 
     final TreeBuilder treeBuilder = new TreeBuilder(segments.size() + endPoints.size());
@@ -264,7 +266,7 @@ class GeoStandardPath extends GeoBasePath {
 
     rootComponent = treeBuilder.getRoot();
 
-    //System.out.println("Root component: "+rootComponent);
+    // System.out.println("Root component: "+rootComponent);
   }
 
   /**
@@ -334,7 +336,7 @@ class GeoStandardPath extends GeoBasePath {
   protected double distance(
       final DistanceStyle distanceStyle, final double x, final double y, final double z) {
     // MHL - need another method in the abstraction!
-    
+
     // Algorithm:
     // (1) If the point is within any of the segments along the path, return that value.
     // (2) If the point is within any of the segment end circles along the path, return that value.
@@ -384,7 +386,8 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return Double.POSITIVE_INFINITY;
     }
-    return distanceStyle.fromAggregationForm(rootComponent.pathDeltaDistance(distanceStyle, x, y, z));
+    return distanceStyle.fromAggregationForm(
+        rootComponent.pathDeltaDistance(distanceStyle, x, y, z));
   }
 
   @Override
@@ -627,7 +630,8 @@ class GeoStandardPath extends GeoBasePath {
       bounds = new XYZBounds();
       child1.getBounds(bounds);
       child2.getBounds(bounds);
-      //System.out.println("Constructed PathNode with child1="+child1+" and child2="+child2+" with computed bounds "+bounds);
+      // System.out.println("Constructed PathNode with child1="+child1+" and child2="+child2+" with
+      // computed bounds "+bounds);
     }
 
     @Override
@@ -640,7 +644,7 @@ class GeoStandardPath extends GeoBasePath {
       // We computed the bounds for the node already, so use that as an "early-out".
       // If we don't leave early, we need to check both children.
       // This code breaks things; not sure why yet. TBD
-      
+
       if (x < bounds.getMinimumX() || x > bounds.getMaximumX()) {
         return false;
       }
@@ -743,7 +747,7 @@ class GeoStandardPath extends GeoBasePath {
 
     @Override
     public String toString() {
-      return "PathNode ("+child1+") ("+child2+")";
+      return "PathNode (" + child1 + ") (" + child2 + ")";
     }
   }
 
@@ -872,7 +876,7 @@ class GeoStandardPath extends GeoBasePath {
 
     @Override
     public String toString() {
-      return "SegmentEndpoint ("+point+")";
+      return "SegmentEndpoint (" + point + ")";
     }
   }
 
@@ -1718,7 +1722,7 @@ class GeoStandardPath extends GeoBasePath {
 
     @Override
     public String toString() {
-      return "PathSegment ("+ULHC+", "+URHC+", "+LRHC+", "+LLHC+")";
+      return "PathSegment (" + ULHC + ", " + URHC + ", " + LRHC + ", " + LLHC + ")";
     }
   }
 
