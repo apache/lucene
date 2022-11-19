@@ -62,7 +62,7 @@ final class TimeLimitingBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     while (min < max) {
       final int newMax = (int) Math.min((long) min + INTERVAL, max);
-      if (queryTimeout.shouldExit() == true) {
+      if (queryTimeout.shouldExit()) {
         throw new TimeLimitingBulkScorer.TimeExceededException();
       }
       min = in.score(collector, acceptDocs, min, newMax); // in is the wrapped bulk scorer

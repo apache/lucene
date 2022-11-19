@@ -81,7 +81,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (pointValues == null) {
         return null;
       }
-      return (queryTimeout.isTimeoutEnabled())
+      return (queryTimeout != null)
           ? new ExitablePointValues(pointValues, queryTimeout)
           : pointValues;
     }
@@ -92,7 +92,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (terms == null) {
         return null;
       }
-      return (queryTimeout.isTimeoutEnabled()) ? new ExitableTerms(terms, queryTimeout) : terms;
+      return (queryTimeout != null) ? new ExitableTerms(terms, queryTimeout) : terms;
     }
 
     // this impl does not change deletes or data so we can delegate the
@@ -113,7 +113,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (numericDocValues == null) {
         return null;
       }
-      return (queryTimeout.isTimeoutEnabled())
+      return (queryTimeout != null)
           ? new FilterNumericDocValues(numericDocValues) {
             private int docToCheck = 0;
 
@@ -156,7 +156,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (binaryDocValues == null) {
         return null;
       }
-      return (queryTimeout.isTimeoutEnabled())
+      return (queryTimeout != null)
           ? new FilterBinaryDocValues(binaryDocValues) {
             private int docToCheck = 0;
 
@@ -199,7 +199,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (sortedDocValues == null) {
         return null;
       }
-      return (queryTimeout.isTimeoutEnabled())
+      return (queryTimeout != null)
           ? new FilterSortedDocValues(sortedDocValues) {
 
             private int docToCheck = 0;
@@ -243,7 +243,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (sortedNumericDocValues == null) {
         return null;
       }
-      return (queryTimeout.isTimeoutEnabled())
+      return (queryTimeout != null)
           ? new FilterSortedNumericDocValues(sortedNumericDocValues) {
 
             private int docToCheck = 0;
@@ -287,7 +287,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (sortedSetDocValues == null) {
         return null;
       }
-      return (queryTimeout.isTimeoutEnabled())
+      return (queryTimeout != null)
           ? new FilterSortedSetDocValues(sortedSetDocValues) {
 
             private int docToCheck = 0;
@@ -331,9 +331,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       if (vectorValues == null) {
         return null;
       }
-      return (queryTimeout.isTimeoutEnabled())
-          ? new ExitableVectorValues(vectorValues)
-          : vectorValues;
+      return (queryTimeout != null) ? new ExitableVectorValues(vectorValues) : vectorValues;
     }
 
     @Override
@@ -369,7 +367,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     private void checkAndThrowForSearchVectors() {
-      if (queryTimeout.shouldExit()) {
+      if (queryTimeout != null && queryTimeout.shouldExit()) {
         throw new ExitingReaderException(
             "The request took too long to search nearest vectors. Timeout: "
                 + queryTimeout.toString()
@@ -388,7 +386,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
      * @param in underneath docValues
      */
     private void checkAndThrow(DocIdSetIterator in) {
-      if (queryTimeout.shouldExit()) {
+      if (queryTimeout != null && queryTimeout.shouldExit()) {
         throw new ExitingReaderException(
             "The request took too long to iterate over doc values. Timeout: "
                 + queryTimeout.toString()
@@ -443,7 +441,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
        * if {@link Thread#interrupted()} returns true.
        */
       private void checkAndThrow() {
-        if (queryTimeout.shouldExit()) {
+        if (queryTimeout != null && queryTimeout.shouldExit()) {
           throw new ExitingReaderException(
               "The request took too long to iterate over vector values. Timeout: "
                   + queryTimeout.toString()
@@ -474,7 +472,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
      * if {@link Thread#interrupted()} returns true.
      */
     private void checkAndThrow() {
-      if (queryTimeout.shouldExit()) {
+      if (queryTimeout != null && queryTimeout.shouldExit()) {
         throw new ExitingReaderException(
             "The request took too long to iterate over point values. Timeout: "
                 + queryTimeout.toString()
@@ -564,7 +562,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     private void checkAndThrow() {
-      if (queryTimeout.shouldExit()) {
+      if (queryTimeout != null && queryTimeout.shouldExit()) {
         throw new ExitingReaderException(
             "The request took too long to intersect point values. Timeout: "
                 + queryTimeout.toString()
@@ -659,7 +657,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     private void checkAndThrow() {
-      if (queryTimeout.shouldExit()) {
+      if (queryTimeout != null && queryTimeout.shouldExit()) {
         throw new ExitingReaderException(
             "The request took too long to intersect point values. Timeout: "
                 + queryTimeout.toString()
@@ -741,7 +739,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
      */
     private void checkTimeoutWithSampling() {
       if ((calls++ & NUM_CALLS_PER_TIMEOUT_CHECK) == 0) {
-        if (queryTimeout.shouldExit()) {
+        if (queryTimeout != null && queryTimeout.shouldExit()) {
           throw new ExitingReaderException(
               "The request took too long to iterate over terms. Timeout: "
                   + queryTimeout.toString()

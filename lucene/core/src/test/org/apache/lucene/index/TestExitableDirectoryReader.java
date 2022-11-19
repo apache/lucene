@@ -302,33 +302,11 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
   }
 
   private static QueryTimeout disabledQueryTimeout() {
-    return new QueryTimeout() {
-
-      @Override
-      public boolean shouldExit() {
-        return false;
-      }
-
-      @Override
-      public boolean isTimeoutEnabled() {
-        return false;
-      }
-    };
+    return null;
   }
 
   private static QueryTimeout infiniteQueryTimeout() {
-    return new QueryTimeout() {
-
-      @Override
-      public boolean shouldExit() {
-        return false;
-      }
-
-      @Override
-      public boolean isTimeoutEnabled() {
-        return true;
-      }
-    };
+    return () -> false;
   }
 
   private static class CountingQueryTimeout implements QueryTimeout {
@@ -340,29 +318,13 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       return false;
     }
 
-    @Override
-    public boolean isTimeoutEnabled() {
-      return true;
-    }
-
     public int getShouldExitCallCount() {
       return counter;
     }
   }
 
   private static QueryTimeout immediateQueryTimeout() {
-    return new QueryTimeout() {
-
-      @Override
-      public boolean shouldExit() {
-        return true;
-      }
-
-      @Override
-      public boolean isTimeoutEnabled() {
-        return true;
-      }
-    };
+    return () -> true;
   }
 
   @FunctionalInterface
@@ -492,7 +454,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     LeafReaderContext context = reader.leaves().get(0);
     LeafReader leaf = context.reader();
 
-    if (queryTimeout.shouldExit()) {
+    if (queryTimeout != null && queryTimeout.shouldExit()) {
       expectThrows(
           ExitingReaderException.class,
           () -> {
