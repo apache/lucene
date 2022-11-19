@@ -852,8 +852,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeEmojiTests() throws Exception {
-    EmojiTokenizationTestUnicode_12_1 emojiTest = new EmojiTokenizationTestUnicode_12_1();
-    emojiTest.test(a);
+    EmojiTokenizationTestUnicode_12_1.test(a);
   }
 
   /** blast some random strings through the analyzer */
