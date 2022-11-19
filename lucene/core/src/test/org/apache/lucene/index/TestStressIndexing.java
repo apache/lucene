@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -28,7 +29,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestStressIndexing extends LuceneTestCase {
   private abstract static class TimedThread extends Thread {
     volatile boolean failed;
-    private static int RUN_ITERATIONS = atLeast(100);
+    private static int RUN_ITERATIONS = TEST_NIGHTLY ? atLeast(100) : atLeast(20);
     private TimedThread[] allThreads;
 
     public abstract void doWork() throws Throwable;
@@ -156,7 +157,12 @@ public class TestStressIndexing extends LuceneTestCase {
 
   /* */
   public void testStressIndexAndSearching() throws Exception {
-    Directory directory = newMaybeVirusCheckingDirectory();
+    final Directory directory;
+    if (TEST_NIGHTLY) {
+      directory = newMaybeVirusCheckingDirectory();
+    } else {
+      directory = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
+    }
     if (directory instanceof MockDirectoryWrapper) {
       ((MockDirectoryWrapper) directory).setAssertNoUnrefencedFilesOnClose(true);
     }
