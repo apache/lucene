@@ -156,6 +156,7 @@ apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
 apply from: file('gradle/generation/forUtil.gradle')
 apply from: file('gradle/generation/antlr.gradle')
+apply from: file('gradle/generation/unicode-test-classes.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
 
