@@ -48,6 +48,8 @@ class GeoStandardPath extends GeoBasePath {
   protected List<SegmentEndpoint> endPoints;
   /** A list of PathSegments */
   protected List<PathSegment> segments;
+  /** The b-tree of PathComponents */
+  protected PathComponent rootComponent;
 
   /** A point on the edge */
   protected GeoPoint[] edgePoints;
@@ -114,13 +116,36 @@ class GeoStandardPath extends GeoBasePath {
     // the entire ellipsoid.
     final double cutoffOffset = this.sinAngle * planetModel.getMinimumMagnitude();
 
+    // The major output we want to produce here is a balanced binary tree of PathComponents.
+    // This code first produces a list of path segments and segment endpoints, and then we do
+    // the following:
+    // (0) Initialize a "stack", which contains ordered path components
+    // (1) Walk through the path components in order
+    // (2) Add the next path component to the stack
+    // (3) If there are two path components of the same depth, remove them and add a PathNode
+    //     with them as children
+    // (4) At the end, if there are more than one thing on the stack, build a final PathNode
+    //     with those two
+    // (5) Use the top element as the root.
+    // I've structured this as its own class that just receives path components in order,
+    // and returns the final one at the end.
+
     // First, build all segments.  We'll then go back and build corresponding segment endpoints.
     GeoPoint lastPoint = null;
+    PathComponent lastComponent = null;
     for (final GeoPoint end : points) {
       if (lastPoint != null) {
         final Plane normalizedConnectingPlane = new Plane(lastPoint, end);
-        segments.add(
-            new PathSegment(planetModel, lastPoint, end, normalizedConnectingPlane, cutoffOffset));
+        final PathSegment newComponent =
+            new PathSegment(
+                planetModel,
+                lastComponent,
+                lastPoint,
+                end,
+                normalizedConnectingPlane,
+                cutoffOffset);
+        segments.add(newComponent);
+        lastComponent = newComponent;
       }
       lastPoint = end;
     }
@@ -157,7 +182,7 @@ class GeoStandardPath extends GeoBasePath {
       final Plane normalPlane = Plane.constructNormalizedZPlane(upperPoint, lowerPoint, point);
 
       final CircleSegmentEndpoint onlyEndpoint =
-          new CircleSegmentEndpoint(planetModel, point, normalPlane, upperPoint, lowerPoint);
+          new CircleSegmentEndpoint(planetModel, null, point, normalPlane, upperPoint, lowerPoint);
       endPoints.add(onlyEndpoint);
       this.edgePoints =
           new GeoPoint[] {
@@ -175,6 +200,7 @@ class GeoStandardPath extends GeoBasePath {
         final SegmentEndpoint startEndpoint =
             new CutoffSingleCircleSegmentEndpoint(
                 planetModel,
+                null,
                 currentSegment.start,
                 currentSegment.startCutoffPlane,
                 currentSegment.ULHC,
@@ -195,6 +221,7 @@ class GeoStandardPath extends GeoBasePath {
         final SegmentEndpoint midEndpoint =
             new CutoffSingleCircleSegmentEndpoint(
                 planetModel,
+                prevSegment,
                 currentSegment.start,
                 prevSegment.endCutoffPlane,
                 currentSegment.startCutoffPlane,
@@ -206,6 +233,7 @@ class GeoStandardPath extends GeoBasePath {
         endPoints.add(
             new CutoffDualCircleSegmentEndpoint(
                 planetModel,
+                prevSegment,
                 currentSegment.start,
                 prevSegment.endCutoffPlane,
                 currentSegment.startCutoffPlane,
@@ -220,10 +248,22 @@ class GeoStandardPath extends GeoBasePath {
     endPoints.add(
         new CutoffSingleCircleSegmentEndpoint(
             planetModel,
+            lastSegment,
             lastSegment.end,
             lastSegment.endCutoffPlane,
             lastSegment.URHC,
             lastSegment.LRHC));
+
+    final TreeBuilder treeBuilder = new TreeBuilder(segments.size() + endPoints.size());
+    // Segments will have one less than the number of endpoints.
+    // So, we add the first endpoint, and then do it pairwise.
+    treeBuilder.addComponent(segments.get(0));
+    for (int i = 0; i < segments.size(); i++) {
+      treeBuilder.addComponent(segments.get(i));
+      treeBuilder.addComponent(endPoints.get(i + 1));
+    }
+
+    rootComponent = treeBuilder.getRoot();
   }
 
   /**
@@ -545,6 +585,22 @@ class GeoStandardPath extends GeoBasePath {
     boolean isWithin(final double x, final double y, final double z);
 
     /**
+     * Retrieve the starting distance along the path for this path element.
+     *
+     * @param distanceStyle is the distance style
+     * @return the starting path distance in aggregation form
+     */
+    double getStartingDistance(final DistanceStyle distanceStyle);
+
+    /**
+     * Compute the total distance this path component adds to the path.
+     *
+     * @param distanceStyle is the distance style.
+     * @return the full path distance.
+     */
+    double fullPathDistance(final DistanceStyle distanceStyle);
+
+    /**
      * Compute path distance.
      *
      * @param distanceStyle is the distance style.
@@ -632,6 +688,129 @@ class GeoStandardPath extends GeoBasePath {
     void getBounds(final Bounds bounds);
   }
 
+  private static class PathNode implements PathComponent {
+    protected final PathComponent child1;
+    protected final PathComponent child2;
+
+    protected final XYZBounds bounds;
+
+    public PathNode(final PathComponent child1, final PathComponent child2) {
+      this.child1 = child1;
+      this.child2 = child2;
+      bounds = new XYZBounds();
+      child1.getBounds(bounds);
+      child2.getBounds(bounds);
+    }
+
+    @Override
+    public boolean isWithin(final Vector point) {
+      return isWithin(point.x, point.y, point.z);
+    }
+
+    @Override
+    public boolean isWithin(final double x, final double y, final double z) {
+      // We computed the bounds for the node already, so use that as an "early-out".
+      // If we don't leave early, we need to check both children.
+      if (x < bounds.getMinimumX() || x > bounds.getMaximumX()) {
+        return false;
+      }
+      if (y < bounds.getMinimumY() || y > bounds.getMaximumY()) {
+        return false;
+      }
+      if (z < bounds.getMinimumZ() || z > bounds.getMaximumZ()) {
+        return false;
+      }
+      return child1.isWithin(x, y, z) || child2.isWithin(x, y, z);
+    }
+
+    @Override
+    public double getStartingDistance(final DistanceStyle distanceStyle) {
+      return child1.getStartingDistance(distanceStyle);
+    }
+
+    @Override
+    public double fullPathDistance(final DistanceStyle distanceStyle) {
+      return distanceStyle.aggregateDistances(
+          child1.fullPathDistance(distanceStyle), child2.fullPathDistance(distanceStyle));
+    }
+
+    @Override
+    public double pathDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      if (!isWithin(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
+      }
+      return Math.min(
+          child1.pathDistance(distanceStyle, x, y, z),
+          distanceStyle.aggregateDistances(
+              child1.fullPathDistance(distanceStyle), child2.pathDistance(distanceStyle, x, y, z)));
+    }
+
+    @Override
+    public double pathDeltaDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      if (!isWithin(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
+      }
+      return Math.min(
+          child1.pathDeltaDistance(distanceStyle, x, y, z),
+          child2.pathDeltaDistance(distanceStyle, x, y, z));
+    }
+
+    @Override
+    public double nearestPathDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      if (!isWithin(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
+      }
+      return Math.min(
+          child1.nearestPathDistance(distanceStyle, x, y, z),
+          child2.nearestPathDistance(distanceStyle, x, y, z));
+    }
+
+    @Override
+    public double pathCenterDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      if (!isWithin(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
+      }
+      return Math.min(
+          child1.pathCenterDistance(distanceStyle, x, y, z),
+          child2.pathCenterDistance(distanceStyle, x, y, z));
+    }
+
+    @Override
+    public double outsideDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      // No early-out for this one; all sections must be considered
+      return Math.min(
+          child1.outsideDistance(distanceStyle, x, y, z),
+          child2.outsideDistance(distanceStyle, x, y, z));
+    }
+
+    @Override
+    public boolean intersects(
+        final Plane p, final GeoPoint[] notablePoints, final Membership[] bounds) {
+      return child1.intersects(p, notablePoints, bounds)
+          || child2.intersects(p, notablePoints, bounds);
+    }
+
+    @Override
+    public boolean intersects(final GeoShape geoShape) {
+      return child1.intersects(geoShape) || child2.intersects(geoShape);
+    }
+
+    @Override
+    public void getBounds(final Bounds bounds) {
+      if (bounds instanceof XYZBounds) {
+        this.bounds.addBounds((XYZBounds) bounds);
+      } else {
+        child1.getBounds(bounds);
+        child2.getBounds(bounds);
+      }
+    }
+  }
+
   /**
    * Internal interface describing segment endpoint implementations. There are several different
    * such implementations, each corresponding to a different geometric conformation. Note well: This
@@ -651,13 +830,17 @@ class GeoStandardPath extends GeoBasePath {
   private static class BaseSegmentEndpoint implements SegmentEndpoint {
     /** The planet model */
     protected final PlanetModel planetModel;
+    /** The previous path element */
+    protected final PathComponent previous;
     /** The center point of the endpoint */
     protected final GeoPoint point;
     /** Null membership */
     protected static final Membership[] NO_MEMBERSHIP = new Membership[0];
 
-    public BaseSegmentEndpoint(final PlanetModel planetModel, final GeoPoint point) {
+    public BaseSegmentEndpoint(
+        final PlanetModel planetModel, final PathComponent previous, final GeoPoint point) {
       this.planetModel = planetModel;
+      this.previous = previous;
       this.point = point;
     }
 
@@ -669,6 +852,19 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public boolean isWithin(final double x, final double y, final double z) {
       return false;
+    }
+
+    @Override
+    public double getStartingDistance(DistanceStyle distanceStyle) {
+      if (previous == null) {
+        return 0.0;
+      }
+      return previous.getStartingDistance(distanceStyle);
+    }
+
+    @Override
+    public double fullPathDistance(final DistanceStyle distanceStyle) {
+      return 0.0;
     }
 
     @Override
@@ -762,11 +958,12 @@ class GeoStandardPath extends GeoBasePath {
      */
     public CircleSegmentEndpoint(
         final PlanetModel planetModel,
+        final PathComponent previous,
         final GeoPoint point,
         final Plane normalPlane,
         final GeoPoint upperPoint,
         final GeoPoint lowerPoint) {
-      super(planetModel, point);
+      super(planetModel, previous, point);
       // Construct a sided plane that goes through the two points and whose normal is in the
       // normalPlane.
       this.circlePlane =
@@ -781,8 +978,11 @@ class GeoStandardPath extends GeoBasePath {
      * @param circlePlane is the circle plane.
      */
     protected CircleSegmentEndpoint(
-        final PlanetModel planetModel, final GeoPoint point, final SidedPlane circlePlane) {
-      super(planetModel, point);
+        final PlanetModel planetModel,
+        final PathComponent previous,
+        final GeoPoint point,
+        final SidedPlane circlePlane) {
+      super(planetModel, previous, point);
       this.circlePlane = circlePlane;
     }
 
@@ -836,11 +1036,12 @@ class GeoStandardPath extends GeoBasePath {
      */
     public CutoffSingleCircleSegmentEndpoint(
         final PlanetModel planetModel,
+        final PathComponent previous,
         final GeoPoint point,
         final SidedPlane cutoffPlane,
         final GeoPoint topEdgePoint,
         final GeoPoint bottomEdgePoint) {
-      super(planetModel, point, cutoffPlane, topEdgePoint, bottomEdgePoint);
+      super(planetModel, previous, point, cutoffPlane, topEdgePoint, bottomEdgePoint);
       this.cutoffPlanes = new Membership[] {new SidedPlane(cutoffPlane)};
       this.notablePoints = new GeoPoint[] {topEdgePoint, bottomEdgePoint};
     }
@@ -859,12 +1060,13 @@ class GeoStandardPath extends GeoBasePath {
      */
     public CutoffSingleCircleSegmentEndpoint(
         final PlanetModel planetModel,
+        final PathComponent previous,
         final GeoPoint point,
         final SidedPlane cutoffPlane1,
         final SidedPlane cutoffPlane2,
         final GeoPoint topEdgePoint,
         final GeoPoint bottomEdgePoint) {
-      super(planetModel, point, cutoffPlane1, topEdgePoint, bottomEdgePoint);
+      super(planetModel, previous, point, cutoffPlane1, topEdgePoint, bottomEdgePoint);
       this.cutoffPlanes =
           new Membership[] {new SidedPlane(cutoffPlane1), new SidedPlane(cutoffPlane2)};
       this.notablePoints = new GeoPoint[] {topEdgePoint, bottomEdgePoint};
@@ -955,6 +1157,7 @@ class GeoStandardPath extends GeoBasePath {
 
     public CutoffDualCircleSegmentEndpoint(
         final PlanetModel planetModel,
+        final PathComponent previous,
         final GeoPoint point,
         final SidedPlane prevCutoffPlane,
         final SidedPlane nextCutoffPlane,
@@ -963,7 +1166,7 @@ class GeoStandardPath extends GeoBasePath {
         final GeoPoint currentULHC,
         final GeoPoint currentLLHC) {
       // Initialize superclass
-      super(planetModel, point);
+      super(planetModel, previous, point);
       // First plane consists of prev endpoints plus one of the current endpoints (the one past the
       // end of the prev segment)
       if (!prevCutoffPlane.isWithin(currentULHC)) {
@@ -1069,12 +1272,14 @@ class GeoStandardPath extends GeoBasePath {
   private static class PathSegment implements PathComponent {
     /** Planet model */
     public final PlanetModel planetModel;
+    /** Previous path component */
+    public final PathComponent previous;
     /** Starting point of the segment */
     public final GeoPoint start;
     /** End point of the segment */
     public final GeoPoint end;
     /** Place to keep any complete segment distances we've calculated so far */
-    public final Map<DistanceStyle, Double> fullDistanceCache = new ConcurrentHashMap<>();
+    public final Map<DistanceStyle, Double> startDistanceCache = new ConcurrentHashMap<>(1);
     /** Normalized plane connecting the two points and going through world center */
     public final Plane normalizedConnectingPlane;
     /** Cutoff plane parallel to connecting plane representing one side of the path segment */
@@ -1109,11 +1314,13 @@ class GeoStandardPath extends GeoBasePath {
      */
     public PathSegment(
         final PlanetModel planetModel,
+        final PathComponent previous,
         final GeoPoint start,
         final GeoPoint end,
         final Plane normalizedConnectingPlane,
         final double planeBoundingOffset) {
       this.planetModel = planetModel;
+      this.previous = previous;
       this.start = start;
       this.end = end;
       this.normalizedConnectingPlane = normalizedConnectingPlane;
@@ -1173,21 +1380,10 @@ class GeoStandardPath extends GeoBasePath {
       lowerConnectingPlanePoints = new GeoPoint[] {LLHC, LRHC};
     }
 
-    /**
-     * Compute the full distance along this path segment.
-     *
-     * @param distanceStyle is the distance style.
-     * @return the distance metric, in aggregation form.
-     */
+    @Override
     public double fullPathDistance(final DistanceStyle distanceStyle) {
-      Double dist = fullDistanceCache.get(distanceStyle);
-      if (dist == null) {
-        dist =
-            distanceStyle.toAggregationForm(
-                distanceStyle.computeDistance(start, end.x, end.y, end.z));
-        fullDistanceCache.put(distanceStyle, dist);
-      }
-      return dist.doubleValue();
+      return distanceStyle.toAggregationForm(
+          distanceStyle.computeDistance(start, end.x, end.y, end.z));
     }
 
     @Override
@@ -1204,8 +1400,29 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
+    public double getStartingDistance(final DistanceStyle distanceStyle) {
+      Double dist = startDistanceCache.get(distanceStyle);
+      if (dist == null) {
+        dist = computeStartingDistance(distanceStyle);
+        startDistanceCache.put(distanceStyle, dist);
+      }
+      return dist.doubleValue();
+    }
+
+    private double computeStartingDistance(final DistanceStyle distanceStyle) {
+      if (previous == null) {
+        return 0.0;
+      }
+      return distanceStyle.aggregateDistances(
+          previous.getStartingDistance(distanceStyle), previous.fullPathDistance(distanceStyle));
+    }
+
+    @Override
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      // Computes the distance to the path center from the specified point, or returns
+      // POSITIVE_INFINITY if the point is outside the path.
+
       // First, if this point is outside the endplanes of the segment, return POSITIVE_INFINITY.
       if (!startCutoffPlane.isWithin(x, y, z) || !endCutoffPlane.isWithin(x, y, z)) {
         return Double.POSITIVE_INFINITY;
@@ -1252,6 +1469,9 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestPathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      // Computes the distance along the path to a point on the path where a perpendicular plane
+      // goes through the specified point.
+
       // First, if this point is outside the endplanes of the segment, return POSITIVE_INFINITY.
       if (!startCutoffPlane.isWithin(x, y, z) || !endCutoffPlane.isWithin(x, y, z)) {
         return Double.POSITIVE_INFINITY;
@@ -1299,6 +1519,9 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double pathDeltaDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      // Returns 2x the pathCenterDistance.  Represents the cost of an "excursion" to and
+      // from the path.
+
       if (!isWithin(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
@@ -1351,6 +1574,10 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double pathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+
+      // Computes the distance along the path to a perpendicular point to the desired point,
+      // and adds the distance from the path to the desired point.
+
       if (!isWithin(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
@@ -1404,6 +1631,9 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double outsideDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+
+      // Computes the minimum distance from the point to any of the segment's bounding planes.
+      // Only computes distances outside of the shape; inside, a value of 0.0 is returned.
       final double upperDistance =
           distanceStyle.computeDistance(
               planetModel,
@@ -1550,6 +1780,47 @@ class GeoStandardPath extends GeoBasePath {
               upperConnectingPlane,
               startCutoffPlane,
               lowerConnectingPlane);
+    }
+  }
+
+  private static class TreeBuilder {
+    private final List<PathComponent> componentStack;
+    private final List<Integer> depthStack;
+
+    public TreeBuilder(final int max) {
+      componentStack = new ArrayList<>(max);
+      depthStack = new ArrayList<>(max);
+    }
+
+    public void addComponent(final PathComponent component) {
+      componentStack.add(component);
+      depthStack.add(0);
+      while (depthStack.size() >= 2) {
+        if (depthStack.get(depthStack.size() - 1) == depthStack.get(depthStack.size() - 2)) {
+          mergeTop();
+        } else {
+          break;
+        }
+      }
+    }
+
+    public PathComponent getRoot() {
+      if (componentStack.size() == 0) {
+        return null;
+      }
+      while (componentStack.size() > 1) {
+        mergeTop();
+      }
+      return componentStack.get(0);
+    }
+
+    private void mergeTop() {
+      depthStack.remove(depthStack.size() - 1);
+      PathComponent firstComponent = componentStack.remove(componentStack.size() - 1);
+      int newDepth = depthStack.remove(depthStack.size() - 1);
+      PathComponent secondComponent = componentStack.remove(componentStack.size() - 1);
+      depthStack.add(newDepth);
+      componentStack.add(new PathNode(firstComponent, secondComponent));
     }
   }
 }
