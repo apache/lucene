@@ -17,18 +17,40 @@
 package org.apache.lucene.spatial3d.geom;
 
 /**
- * Base extended shape object.
+ * Base object that supports bounds operations.
  *
  * @lucene.internal
  */
-public abstract class GeoBaseShape extends GeoBaseBounds implements GeoShape {
+public abstract class GeoBaseBounds extends BasePlanetObject implements GeoBounds {
 
   /**
    * Constructor.
    *
    * @param planetModel is the planet model to use.
    */
-  public GeoBaseShape(final PlanetModel planetModel) {
+  public GeoBaseBounds(final PlanetModel planetModel) {
     super(planetModel);
+  }
+
+  @Override
+  public void getBounds(Bounds bounds) {
+    if (isWithin(planetModel.NORTH_POLE)) {
+      bounds.noTopLatitudeBound().noLongitudeBound().addPoint(planetModel.NORTH_POLE);
+    }
+    if (isWithin(planetModel.SOUTH_POLE)) {
+      bounds.noBottomLatitudeBound().noLongitudeBound().addPoint(planetModel.SOUTH_POLE);
+    }
+    if (isWithin(planetModel.MIN_X_POLE)) {
+      bounds.addPoint(planetModel.MIN_X_POLE);
+    }
+    if (isWithin(planetModel.MAX_X_POLE)) {
+      bounds.addPoint(planetModel.MAX_X_POLE);
+    }
+    if (isWithin(planetModel.MIN_Y_POLE)) {
+      bounds.addPoint(planetModel.MIN_Y_POLE);
+    }
+    if (isWithin(planetModel.MAX_Y_POLE)) {
+      bounds.addPoint(planetModel.MAX_Y_POLE);
+    }
   }
 }
