@@ -18,7 +18,6 @@
 // Regenerates test classes from unicode data.
 
 configure(project(":lucene:test-framework")) {
-
   task generateEmojiTokenizationTestInternal() {
     def unicodeVersion = "12.1"
 
@@ -44,6 +43,34 @@ configure(project(":lucene:test-framework")) {
       }
     }
   }
-
   regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiTokenizationTestInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+
+  task generateJavaUnicodeWordBreakTestInternal() {
+    def unicodeVersion = "12.1"
+
+    def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
+    def genScript = file("${genDir}/generateJavaUnicodeWordBreakTest.pl")
+    def genOutput = file("${genDir}/WordBreakTestUnicode_${unicodeVersion.replace('.', '_')}.java")
+
+    description "Regenerate ${genOutput}"
+    group "generation"
+
+    inputs.file genScript
+    inputs.property "unicodeVersion", unicodeVersion
+    outputs.file genOutput
+
+    doLast {
+      quietExec {
+        workingDir genDir
+        executable project.externalTool("perl")
+        args = [
+            genScript,
+            "-v", unicodeVersion
+        ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateJavaUnicodeWordBreakTestInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+
 }

@@ -678,8 +678,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeWordBreaks() throws Exception {
-    WordBreakTestUnicode_12_1_0 wordBreakTest = new WordBreakTestUnicode_12_1_0();
-    wordBreakTest.test(a);
+    WordBreakTestUnicode_12_1_0.test(a);
   }
 
   public void testSupplementary() throws Exception {
