@@ -17,11 +17,8 @@
 package org.apache.lucene.spatial3d.geom;
 
 /**
- * Generic shape that supports bounds. This describes methods that help
- * shapes compute their bounds.
+ * Generic shape that supports bounds. This describes methods that help shapes compute their bounds.
  *
  * @lucene.experimental
  */
-public interface GeoBounds extends Bounded, Membership, PlanetObject {
-
-}
+public interface GeoBounds extends Bounded, Membership, PlanetObject {}
