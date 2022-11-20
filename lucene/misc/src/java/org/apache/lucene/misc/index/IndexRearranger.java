@@ -83,10 +83,10 @@ public class IndexRearranger {
    * @param input input dir
    * @param output output dir
    * @param config index writer config
-   * @param segmentSelectors specify what document is desired in the rearranged index segments, each
-   *     selector correspond to one segment
+   * @param segmentSelectors specify which documents are desired in the rearranged index segments;
+   *     each selector corresponds to one segment
    * @param deletedDocsSelector specify which documents are to be marked for deletion in the
-   *     rearranged index
+   *     rearranged index; this selector should be thread-safe
    */
   public IndexRearranger(
       Directory input,
@@ -111,6 +111,11 @@ public class IndexRearranger {
   }
 
   public void execute() throws Exception {
+    ExecutorService executor =
+        Executors.newFixedThreadPool(
+            Math.min(Runtime.getRuntime().availableProcessors(), segmentSelectors.size()),
+            new NamedThreadFactory("rearranger"));
+
     IndexWriterConfig createSegmentsConfig = new IndexWriterConfig(config.getAnalyzer());
     IndexWriterConfig applyDeletesConfig = new IndexWriterConfig(config.getAnalyzer());
 
@@ -120,14 +125,15 @@ public class IndexRearranger {
 
     try (IndexWriter writer = new IndexWriter(output, createSegmentsConfig);
         IndexReader reader = DirectoryReader.open(input)) {
-      createRearrangedIndex(writer, reader, segmentSelectors);
+      createRearrangedIndex(writer, reader, segmentSelectors, executor);
     }
     finalizeRearrange(output, segmentSelectors);
 
     try (IndexWriter writer = new IndexWriter(output, applyDeletesConfig);
         IndexReader reader = DirectoryReader.open(writer)) {
-      applyDeletes(writer, reader, deletedDocsSelector);
+      applyDeletes(writer, reader, deletedDocsSelector, executor);
     }
+    executor.shutdown();
   }
 
   /**
@@ -172,19 +178,17 @@ public class IndexRearranger {
    * original index are live.
    */
   private static void createRearrangedIndex(
-      IndexWriter writer, IndexReader reader, List<DocumentSelector> selectors)
+      IndexWriter writer,
+      IndexReader reader,
+      List<DocumentSelector> selectors,
+      ExecutorService executor)
       throws ExecutionException, InterruptedException {
 
-    ExecutorService executor =
-        Executors.newFixedThreadPool(
-            Math.min(Runtime.getRuntime().availableProcessors(), selectors.size()),
-            new NamedThreadFactory("rearranger"));
     ArrayList<Future<Void>> futures = new ArrayList<>();
-
-    for (DocumentSelector record : selectors) {
+    for (DocumentSelector selector : selectors) {
       Callable<Void> addSegment =
           () -> {
-            addOneSegment(writer, reader, record);
+            addOneSegment(writer, reader, selector);
             return null;
           };
       futures.add(executor.submit(addSegment));
@@ -193,7 +197,6 @@ public class IndexRearranger {
     for (Future<Void> future : futures) {
       future.get();
     }
-    executor.shutdown();
   }
 
   private static void addOneSegment(
@@ -207,19 +210,14 @@ public class IndexRearranger {
   }
 
   private static void applyDeletes(
-      IndexWriter writer, IndexReader reader, DocumentSelector selector)
+      IndexWriter writer, IndexReader reader, DocumentSelector selector, ExecutorService executor)
       throws ExecutionException, InterruptedException {
     if (selector == null) {
       // There are no deletes to be applied
       return;
     }
 
-    ExecutorService executor =
-        Executors.newFixedThreadPool(
-            Math.min(Runtime.getRuntime().availableProcessors(), reader.leaves().size()),
-            new NamedThreadFactory("rearranger"));
     ArrayList<Future<Void>> futures = new ArrayList<>();
-
     for (LeafReaderContext context : reader.leaves()) {
       Callable<Void> applyDeletesToSegment =
           () -> {
@@ -232,7 +230,6 @@ public class IndexRearranger {
     for (Future<Void> future : futures) {
       future.get();
     }
-    executor.shutdown();
   }
 
   private static void applyDeletesToOneSegment(

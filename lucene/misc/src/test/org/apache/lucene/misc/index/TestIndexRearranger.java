@@ -20,9 +20,10 @@ package org.apache.lucene.misc.index;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -44,17 +45,11 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * This test creates the following index:
  *
- * <p>segment 0: (ord = 0, live = true)
+ * <p>segment 0: (ord = 0, live = true), (ord = 1, live = false)
  *
- * <p>segment 1: (ord = 1, live = true)
+ * <p>segment 1: (ord = 2, live = true), (ord = 3, live = false)
  *
- * <p>segment 2: (ord = 2, live = true)
- *
- * <p>segment 3: (ord = 3, live = false)
- *
- * <p>segment 4: (ord = 4, live = false)
- *
- * <p>segment 5: (ord = 5, live = false)
+ * <p>segment 4: (ord = 4, live = true), (ord = 5, live = false)
  *
  * <p>It also creates 3 selectors:
  *
@@ -108,7 +103,9 @@ public class TestIndexRearranger extends LuceneTestCase {
     assertEquals(1, segment1.numDocs());
     assertEquals(2, segment1.maxDoc());
     Bits liveDocs = segment1.getLiveDocs();
+    assertNotNull(liveDocs);
     NumericDocValues numericDocValues = segment1.getNumericDocValues("ord");
+    assertNotNull(numericDocValues);
     assertTrue(numericDocValues.advanceExact(0));
     assertTrue(liveDocs.get(0));
     assertEquals(0, numericDocValues.longValue());
@@ -120,7 +117,9 @@ public class TestIndexRearranger extends LuceneTestCase {
     assertEquals(1, segment2.numDocs());
     assertEquals(2, segment2.maxDoc());
     liveDocs = segment1.getLiveDocs();
+    assertNotNull(liveDocs);
     numericDocValues = segment2.getNumericDocValues("ord");
+    assertNotNull(numericDocValues);
     assertTrue(liveDocs.get(0));
     assertTrue(numericDocValues.advanceExact(0));
     assertEquals(3, numericDocValues.longValue());
@@ -184,6 +183,7 @@ public class TestIndexRearranger extends LuceneTestCase {
     Bits liveDocs = segment1.getLiveDocs();
     assertNull(liveDocs);
     NumericDocValues numericDocValues = segment1.getNumericDocValues("ord");
+    assertNotNull(numericDocValues);
     assertTrue(numericDocValues.advanceExact(0));
     assertEquals(0, numericDocValues.longValue());
     assertTrue(numericDocValues.advanceExact(1));
@@ -195,6 +195,7 @@ public class TestIndexRearranger extends LuceneTestCase {
     liveDocs = segment1.getLiveDocs();
     assertNull(liveDocs);
     numericDocValues = segment2.getNumericDocValues("ord");
+    assertNotNull(numericDocValues);
     assertTrue(numericDocValues.advanceExact(0));
     assertEquals(3, numericDocValues.longValue());
     assertTrue(numericDocValues.advanceExact(1));
@@ -217,17 +218,43 @@ public class TestIndexRearranger extends LuceneTestCase {
     for (int i = 0; i < 6; i++) {
       Document doc = new Document();
       doc.add(new NumericDocValuesField("ord", i));
-      if (i > 2) {
-        doc.add(new BinaryDocValuesField("delete", new BytesRef("yes")));
+      if (i % 2 == 1) {
+        doc.add(new StringField("delete", new BytesRef("yes"), Field.Store.YES));
       }
       w.addDocument(doc);
-      w.deleteDocuments(new Term("delete", "yes"));
-      w.commit();
+      if (i % 2 == 1) {
+        w.deleteDocuments(new Term("delete", "yes"));
+        w.commit();
+      }
     }
-    IndexReader reader = DirectoryReader.open(w);
-    assertEquals(6, reader.leaves().size());
-    reader.close();
+
+    assertCreatedIndex(dir);
     w.close();
+  }
+
+  private static void assertCreatedIndex(Directory dir) throws IOException {
+    IndexReader reader = DirectoryReader.open(dir);
+    assertEquals(3, reader.leaves().size());
+
+    for (int i = 0; i < 3; i++) {
+      LeafReader segmentReader = reader.leaves().get(i).reader();
+      assertEquals(1, segmentReader.numDocs());
+      assertEquals(2, segmentReader.maxDoc());
+
+      Bits liveDocs = segmentReader.getLiveDocs();
+      assertNotNull(liveDocs);
+      assertTrue(liveDocs.get(0));
+      assertFalse(liveDocs.get(1));
+
+      NumericDocValues ord = segmentReader.getNumericDocValues("ord");
+      assertNotNull(ord);
+      assertTrue(ord.advanceExact(0));
+      assertEquals(2 * i, ord.longValue());
+      assertTrue(ord.advanceExact(1));
+      assertEquals(2 * i + 1, ord.longValue());
+    }
+
+    reader.close();
   }
 
   private static class LiveToLiveSelector implements IndexRearranger.DocumentSelector {
@@ -236,10 +263,10 @@ public class TestIndexRearranger extends LuceneTestCase {
       FixedBitSet filteredSet = new FixedBitSet(reader.maxDoc());
       NumericDocValues numericDocValues = reader.getNumericDocValues("ord");
       assert numericDocValues != null;
-      for (int i = 0; i < reader.maxDoc(); i++) {
-        if (numericDocValues.advanceExact(i)
+      for (int docid = 0; docid < reader.maxDoc(); docid++) {
+        if (numericDocValues.advanceExact(docid)
             && Arrays.asList(0, 2).contains((int) numericDocValues.longValue())) {
-          filteredSet.set(i);
+          filteredSet.set(docid);
         }
       }
       return filteredSet;
@@ -252,10 +279,10 @@ public class TestIndexRearranger extends LuceneTestCase {
       FixedBitSet filteredSet = new FixedBitSet(reader.maxDoc());
       NumericDocValues numericDocValues = reader.getNumericDocValues("ord");
       assert numericDocValues != null;
-      for (int i = 0; i < reader.maxDoc(); i++) {
-        if (numericDocValues.advanceExact(i)
+      for (int docid = 0; docid < reader.maxDoc(); docid++) {
+        if (numericDocValues.advanceExact(docid)
             && Arrays.asList(3, 5).contains((int) numericDocValues.longValue())) {
-          filteredSet.set(i);
+          filteredSet.set(docid);
         }
       }
       return filteredSet;
@@ -268,10 +295,10 @@ public class TestIndexRearranger extends LuceneTestCase {
       FixedBitSet filteredSet = new FixedBitSet(reader.maxDoc());
       NumericDocValues numericDocValues = reader.getNumericDocValues("ord");
       assert numericDocValues != null;
-      for (int i = 0; i < reader.maxDoc(); i++) {
-        if (numericDocValues.advanceExact(i)
+      for (int docid = 0; docid < reader.maxDoc(); docid++) {
+        if (numericDocValues.advanceExact(docid)
             && Arrays.asList(1, 2, 4, 5).contains((int) numericDocValues.longValue())) {
-          filteredSet.set(i);
+          filteredSet.set(docid);
         }
       }
       return filteredSet;

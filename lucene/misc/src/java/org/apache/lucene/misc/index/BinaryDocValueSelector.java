@@ -31,6 +31,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -40,9 +41,9 @@ import org.apache.lucene.util.FixedBitSet;
 public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector, Serializable {
 
   private final String field;
-  private final Set<String> keySet;
+  private final Set<BytesRef> keySet;
 
-  public BinaryDocValueSelector(String field, Set<String> keySet) {
+  public BinaryDocValueSelector(String field, Set<BytesRef> keySet) {
     this.field = field;
     this.keySet = keySet;
   }
@@ -51,10 +52,9 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
   public BitSet getFilteredDocs(CodecReader reader) throws IOException {
     BinaryDocValues binaryDocValues = reader.getBinaryDocValues(field);
     FixedBitSet bits = new FixedBitSet(reader.maxDoc());
-    for (int i = 0; i < reader.maxDoc(); i++) {
-      if (binaryDocValues.advanceExact(i)
-          && keySet.contains(binaryDocValues.binaryValue().utf8ToString())) {
-        bits.set(i);
+    for (int docid = 0; docid < reader.maxDoc(); docid++) {
+      if (binaryDocValues.advanceExact(docid) && keySet.contains(binaryDocValues.binaryValue())) {
+        bits.set(docid);
       }
     }
     return bits;
@@ -70,22 +70,25 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
   public static IndexRearranger.DocumentSelector createDeleteSelectorFromIndex(
       String field, Directory directory) throws IOException {
 
-    Set<String> keySet = new HashSet<>();
+    Set<BytesRef> keySet = new HashSet<>();
 
     try (IndexReader reader = DirectoryReader.open(directory)) {
       for (LeafReaderContext context : reader.leaves()) {
         Bits liveDocs = context.reader().getLiveDocs();
-        BinaryDocValues binaryDocValues = context.reader().getBinaryDocValues(field);
+        if (liveDocs == null) {
+          continue;
+        }
 
-        for (int i = 0; i < context.reader().maxDoc(); i++) {
-          if (liveDocs == null || liveDocs.get(i) == true) {
+        BinaryDocValues binaryDocValues = context.reader().getBinaryDocValues(field);
+        for (int docid = 0; docid < context.reader().maxDoc(); docid++) {
+          if (liveDocs.get(docid) == true) {
             continue;
           }
 
-          if (binaryDocValues.advanceExact(i)) {
-            keySet.add(binaryDocValues.binaryValue().utf8ToString());
+          if (binaryDocValues.advanceExact(docid)) {
+            keySet.add(new BytesRef(binaryDocValues.binaryValue().bytes.clone()));
           } else {
-            throw new AssertionError("Document don't have selected key");
+            throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }
         }
       }
@@ -108,14 +111,14 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
 
     try (IndexReader reader = DirectoryReader.open(directory)) {
       for (LeafReaderContext context : reader.leaves()) {
-        Set<String> keySet = new HashSet<>();
+        Set<BytesRef> keySet = new HashSet<>();
         BinaryDocValues binaryDocValues = context.reader().getBinaryDocValues(field);
 
-        for (int i = 0; i < context.reader().maxDoc(); i++) {
-          if (binaryDocValues.advanceExact(i)) {
-            keySet.add(binaryDocValues.binaryValue().utf8ToString());
+        for (int docid = 0; docid < context.reader().maxDoc(); docid++) {
+          if (binaryDocValues.advanceExact(docid)) {
+            keySet.add(new BytesRef(binaryDocValues.binaryValue().bytes.clone()));
           } else {
-            throw new AssertionError("Document don't have selected key");
+            throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }
         }
         selectors.add(new BinaryDocValueSelector(field, keySet));

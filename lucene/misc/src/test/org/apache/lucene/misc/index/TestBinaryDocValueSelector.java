@@ -20,7 +20,9 @@ package org.apache.lucene.misc.index;
 import java.io.IOException;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -33,6 +35,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -74,11 +77,15 @@ public class TestBinaryDocValueSelector extends LuceneTestCase {
     for (int i = 0; i < segNum; i++) {
       LeafReader leafReader = reader.leaves().get(i).reader();
       NumericDocValues numericDocValues = leafReader.getNumericDocValues("ord");
+      Bits liveDocs = leafReader.getLiveDocs();
+      assertNotNull(liveDocs);
 
-      for (int doc = 0; doc < leafReader.numDocs(); doc++) {
+      for (int doc = 0; doc < leafReader.maxDoc(); doc++) {
         assertTrue(numericDocValues.advanceExact(doc));
         assertEquals(numericDocValues.longValue(), lastOrd + 1);
         lastOrd = numericDocValues.longValue();
+
+        assertEquals(liveDocs.get(doc), lastOrd % 2 != 0);
       }
     }
     assertEquals(docNum, lastOrd + 1);
@@ -100,7 +107,7 @@ public class TestBinaryDocValueSelector extends LuceneTestCase {
       doc.add(new NumericDocValuesField("ord", i));
       doc.add(new BinaryDocValuesField("textOrd", new BytesRef(Integer.toString(i))));
       if (i % 2 == 0) {
-        doc.add(new BinaryDocValuesField("delete", new BytesRef("yes")));
+        doc.add(new StringField("delete", "yes", Field.Store.YES));
       }
       w.addDocument(doc);
       if (i % docPerSeg == docPerSeg - 1) {
