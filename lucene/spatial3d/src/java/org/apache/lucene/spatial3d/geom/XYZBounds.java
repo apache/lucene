@@ -368,6 +368,39 @@ public class XYZBounds implements Bounds {
     return this;
   }
 
+  /**
+   * Courtesy method to see if a point is within the bounds.
+   *
+   * @param v is the point/vector we want to check
+   * @return true if the bounds contains the vector
+   */
+  public boolean isWithin(final Vector v) {
+    return isWithin(v.x, v.y, v.z);
+  }
+
+  /**
+   * Courtesy method to see if a point is within the bounds.
+   *
+   * @param x is the x coordinate
+   * @param y is the y coordinate
+   * @param z is the z coordinate
+   * @return true if the bounds contains the vector
+   */
+  public boolean isWithin(final double x, final double y, final double z) {
+    return (minX != null
+        && x >= minX
+        && maxX != null
+        && x <= maxX
+        && minY != null
+        && y >= minY
+        && maxY != null
+        && y <= maxY
+        && minZ != null
+        && z >= minZ
+        && maxZ != null
+        && z <= maxZ);
+  }
+
   @Override
   public String toString() {
     return "XYZBounds: [xmin="
