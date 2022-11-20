@@ -130,4 +130,19 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
     ts.setReader(new StringReader(SENTENCES));
     assertTokenStreamContents(ts, SENTENCES_punc);
   }
+
+  /** blast some random strings through the analyzer */
+  public void testRandomStrings() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp",
+                "sentenceModel",
+                "en-test-sent.bin",
+                "tokenizerModel",
+                "en-test-tokenizer.bin")
+            .build();
+    checkRandomData(random(), analyzer, 200 * RANDOM_MULTIPLIER);
+    analyzer.close();
+  }
 }

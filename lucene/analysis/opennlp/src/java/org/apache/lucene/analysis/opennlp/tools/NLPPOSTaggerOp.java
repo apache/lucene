@@ -33,7 +33,7 @@ public class NLPPOSTaggerOp {
     tagger = new POSTaggerME(model);
   }
 
-  public synchronized String[] getPOSTags(String[] words) {
+  public String[] getPOSTags(String[] words) {
     return tagger.tag(words);
   }
 }
