@@ -17,18 +17,8 @@
 package org.apache.lucene.spatial3d.geom;
 
 /**
- * Base extended shape object.
+ * Generic shape that supports bounds. This describes methods that help shapes compute their bounds.
  *
- * @lucene.internal
+ * @lucene.experimental
  */
-public abstract class GeoBaseShape extends GeoBaseBounds implements GeoShape {
-
-  /**
-   * Constructor.
-   *
-   * @param planetModel is the planet model to use.
-   */
-  public GeoBaseShape(final PlanetModel planetModel) {
-    super(planetModel);
-  }
-}
+public interface GeoBounds extends Bounded, Membership, PlanetObject {}

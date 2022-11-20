@@ -178,6 +178,32 @@ public class XYZBounds implements Bounds {
 
   // Modification methods
 
+  /**
+   * Add a fully-formed XYZBounds to the current one.
+   *
+   * @param bounds is the bounds object to modify
+   */
+  public void addBounds(final XYZBounds bounds) {
+    if (bounds.maxX == null || maxX > bounds.maxX) {
+      bounds.maxX = maxX;
+    }
+    if (bounds.minX == null || minX < bounds.minX) {
+      bounds.minX = minX;
+    }
+    if (bounds.maxY == null || maxY > bounds.maxY) {
+      bounds.maxY = maxY;
+    }
+    if (bounds.minY == null || minY < bounds.minY) {
+      bounds.minY = minY;
+    }
+    if (bounds.maxZ == null || maxZ > bounds.maxZ) {
+      bounds.maxZ = maxZ;
+    }
+    if (bounds.minZ == null || minZ < bounds.minZ) {
+      bounds.minZ = minZ;
+    }
+  }
+
   @Override
   public Bounds addPlane(
       final PlanetModel planetModel, final Plane plane, final Membership... bounds) {
