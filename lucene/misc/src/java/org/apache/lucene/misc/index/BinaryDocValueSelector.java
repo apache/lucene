@@ -86,7 +86,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
           }
 
           if (binaryDocValues.advanceExact(docid)) {
-            keySet.add(new BytesRef(binaryDocValues.binaryValue().bytes.clone()));
+            keySet.add(BytesRef.deepCopyOf(binaryDocValues.binaryValue()));
           } else {
             throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }
@@ -116,7 +116,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
 
         for (int docid = 0; docid < context.reader().maxDoc(); docid++) {
           if (binaryDocValues.advanceExact(docid)) {
-            keySet.add(new BytesRef(binaryDocValues.binaryValue().bytes.clone()));
+            keySet.add(BytesRef.deepCopyOf(binaryDocValues.binaryValue()));
           } else {
             throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }
