@@ -209,6 +209,9 @@ save () {
 }
 APP_ARGS=$(save "$@")
 
+# Prevent jgit from forking/searching git.exe
+export GIT_CONFIG_NOSYSTEM=1
+
 # Collect all arguments for the java command, following the shell quoting and substitution rules
 eval set -- $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain $GRADLE_DAEMON_CTRL "$APP_ARGS"
 
