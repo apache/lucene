@@ -40,6 +40,7 @@ public class TestGeoPath extends LuceneTestCase {
     gp = new GeoPoint(PlanetModel.SPHERE, -0.15, 0.05);
     assertEquals(Double.POSITIVE_INFINITY, p.computeDistance(DistanceStyle.ARC, gp), 0.000001);
     gp = new GeoPoint(PlanetModel.SPHERE, 0.0, 0.25);
+    System.out.println("Calling problematic computeDistance...");
     assertEquals(0.20 + 0.05, p.computeDistance(DistanceStyle.ARC, gp), 0.000001);
     gp = new GeoPoint(PlanetModel.SPHERE, 0.0, -0.05);
     assertEquals(0.0 + 0.05, p.computeDistance(DistanceStyle.ARC, gp), 0.000001);

@@ -176,6 +176,7 @@ class GeoStandardPath extends GeoBasePath {
       final GeoPoint point = points.get(0);
 
       // Construct normal plane
+      // TBD - what does this actually do?  Why Z??
       final Plane normalPlane = Plane.constructNormalizedZPlane(upperPoint, lowerPoint, point);
 
       final CircleSegmentEndpoint onlyEndpoint =
@@ -223,6 +224,7 @@ class GeoStandardPath extends GeoBasePath {
                 prevSegment.LRHC,
                 currentSegment.ULHC,
                 currentSegment.LLHC));
+        // }
       }
       // Do final endpoint. Cutoff plane is the end cutoff plane from the last path segment.
       // The final endpoint is the last segment's endpoint.
@@ -1130,6 +1132,20 @@ class GeoStandardPath extends GeoBasePath {
         }
       }
       return super.pathCenterDistance(distanceStyle, x, y, z);
+    }
+
+    @Override
+    public void getBounds(final Bounds bounds) {
+      super.getBounds(bounds);
+      bounds.addPlane(planetModel, circlePlane, cutoffPlane);
+      bounds.addPlane(planetModel, cutoffPlane, circlePlane);
+      bounds.addIntersection(planetModel, circlePlane, cutoffPlane);
+      bounds.addIntersection(planetModel, cutoffPlane, circlePlane);
+    }
+
+    @Override
+    public String toString() {
+      return "CutoffSingleCircleSegmentEndpoint: " + super.toString();
     }
 
     @Override
