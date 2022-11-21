@@ -58,7 +58,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance
+* GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
 Bug Fixes
 ---------------------
@@ -87,6 +87,8 @@ Other
 * LUCENE-10493: Factor out Viterbi algorithm in Kuromoji and Nori to analysis-common. (Tomoko Uchida)
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
+
+* GITHUB#11960: Hunspell: supported empty dictionaries (Peter Gromov)
 
 ======================== Lucene 9.5.0 =======================
 
