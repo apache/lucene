@@ -22,7 +22,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
 
@@ -95,13 +94,13 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
             @Override
             public VectorValues getVectorValues(String field) {
-              return VectorValues.EMPTY;
+              throw new UnsupportedOperationException();
             }
 
             @Override
             public TopDocs search(
                 String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-              return TopDocsCollector.EMPTY_TOPDOCS;
+              throw new UnsupportedOperationException();
             }
 
             @Override
