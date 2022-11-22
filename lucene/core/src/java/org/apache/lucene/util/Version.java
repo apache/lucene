@@ -236,6 +236,7 @@ public final class Version {
 
   /**
    * Match settings and bugs in Lucene's 9.4.3 release.
+   *
    * <p>Use this to get the latest &amp; greatest settings, bug fixes, etc, for Lucene.
    */
   public static final Version LUCENE_9_4_3 = new Version(9, 4, 3);
