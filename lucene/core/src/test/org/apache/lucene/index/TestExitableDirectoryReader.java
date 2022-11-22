@@ -164,21 +164,6 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     searcher = new IndexSearcher(reader);
     searcher.search(query, 10);
     reader.close();
-
-    // Set a negative time allowed and expect the query to complete (should disable timeouts)
-    // Not checking the validity of the result, all we are bothered about in this test is the timing
-    // out.
-    directoryReader = DirectoryReader.open(directory);
-    exitableDirectoryReader = directoryReader;
-    if (disabledQueryTimeout() != null) {
-      exitableDirectoryReader =
-          new ExitableDirectoryReader(directoryReader, disabledQueryTimeout());
-    }
-    reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
-    searcher = new IndexSearcher(reader);
-    searcher.search(query, 10);
-    reader.close();
-
     directory.close();
   }
 
@@ -291,26 +276,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     searcher = new IndexSearcher(reader);
     searcher.search(query, 10);
     reader.close();
-
-    // Set a negative time allowed and expect the query to complete (should disable timeouts)
-    // Not checking the validity of the result, all we are bothered about in this test is the timing
-    // out.
-    directoryReader = DirectoryReader.open(directory);
-    exitableDirectoryReader = directoryReader;
-    if (disabledQueryTimeout() != null) {
-      exitableDirectoryReader =
-          new ExitableDirectoryReader(directoryReader, disabledQueryTimeout());
-    }
-    reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
-    searcher = new IndexSearcher(reader);
-    searcher.search(query, 10);
-    reader.close();
-
     directory.close();
-  }
-
-  private static QueryTimeout disabledQueryTimeout() {
-    return null;
   }
 
   private static QueryTimeout infiniteQueryTimeout() {
@@ -389,12 +355,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       }
 
       directoryReader = DirectoryReader.open(directory);
-      exitableDirectoryReader = directoryReader;
-      QueryTimeout queryTimeout =
-          random().nextBoolean() ? infiniteQueryTimeout() : disabledQueryTimeout();
-      if (queryTimeout != null) {
-        exitableDirectoryReader = new ExitableDirectoryReader(directoryReader, queryTimeout);
-      }
+      exitableDirectoryReader =
+          new ExitableDirectoryReader(directoryReader, infiniteQueryTimeout());
       {
         IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
         final LeafReader leaf = reader.leaves().get(0).reader();
@@ -447,26 +409,20 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
 
     QueryTimeout queryTimeout;
     if (random().nextBoolean()) {
-      if (random().nextBoolean()) {
-        queryTimeout = immediateQueryTimeout();
-      } else {
-        queryTimeout = infiniteQueryTimeout();
-      }
+      queryTimeout = immediateQueryTimeout();
     } else {
-      queryTimeout = disabledQueryTimeout();
+      queryTimeout = infiniteQueryTimeout();
     }
 
     DirectoryReader directoryReader = DirectoryReader.open(directory);
     DirectoryReader exitableDirectoryReader = directoryReader;
-    if (queryTimeout != null) {
-      exitableDirectoryReader = new ExitableDirectoryReader(directoryReader, queryTimeout);
-    }
+    exitableDirectoryReader = new ExitableDirectoryReader(directoryReader, queryTimeout);
     IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
 
     LeafReaderContext context = reader.leaves().get(0);
     LeafReader leaf = context.reader();
 
-    if (queryTimeout != null && queryTimeout.shouldExit()) {
+    if (queryTimeout.shouldExit()) {
       expectThrows(
           ExitingReaderException.class,
           () -> {

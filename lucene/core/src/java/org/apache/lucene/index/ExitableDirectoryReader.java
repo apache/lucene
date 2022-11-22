@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -53,7 +54,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     /** Constructor * */
     public ExitableSubReaderWrapper(QueryTimeout queryTimeout) {
-      this.queryTimeout = queryTimeout;
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
     }
 
     @Override
@@ -72,7 +73,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     /** Constructor * */
     public ExitableFilterAtomicReader(LeafReader in, QueryTimeout queryTimeout) {
       super(in);
-      this.queryTimeout = queryTimeout;
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
     }
 
     @Override
@@ -451,7 +452,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     private ExitablePointValues(PointValues in, QueryTimeout queryTimeout) {
       this.in = in;
-      this.queryTimeout = queryTimeout;
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
       checkAndThrow();
     }
 
@@ -535,7 +536,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
         PointValues pointValues, PointValues.PointTree in, QueryTimeout queryTimeout) {
       this.pointValues = pointValues;
       this.in = in;
-      this.queryTimeout = queryTimeout;
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
       this.exitableIntersectVisitor = new ExitableIntersectVisitor(queryTimeout);
     }
 
@@ -627,7 +628,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     private int calls;
 
     private ExitableIntersectVisitor(QueryTimeout queryTimeout) {
-      this.queryTimeout = queryTimeout;
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
     }
 
     private void setIntersectVisitor(PointValues.IntersectVisitor in) {
@@ -690,7 +691,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     /** Constructor * */
     public ExitableTerms(Terms terms, QueryTimeout queryTimeout) {
       super(terms);
-      this.queryTimeout = queryTimeout;
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
     }
 
     @Override
@@ -717,7 +718,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     /** Constructor * */
     public ExitableTermsEnum(TermsEnum termsEnum, QueryTimeout queryTimeout) {
       super(termsEnum);
-      this.queryTimeout = queryTimeout;
+      this.queryTimeout = Objects.requireNonNull(queryTimeout);
       checkTimeoutWithSampling();
     }
 
@@ -756,11 +757,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
    */
   public ExitableDirectoryReader(DirectoryReader in, QueryTimeout queryTimeout) throws IOException {
     super(in, new ExitableSubReaderWrapper(queryTimeout));
-    this.queryTimeout = queryTimeout;
+    this.queryTimeout = Objects.requireNonNull(queryTimeout);
   }
 
   @Override
   protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
+    Objects.requireNonNull(queryTimeout, "Query timeout must not be null");
     return new ExitableDirectoryReader(in, queryTimeout);
   }
 
@@ -770,10 +772,8 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
    */
   public static DirectoryReader wrap(DirectoryReader in, QueryTimeout queryTimeout)
       throws IOException {
-    if (queryTimeout != null) {
-      return new ExitableDirectoryReader(in, queryTimeout);
-    }
-    return in;
+    Objects.requireNonNull(queryTimeout, "Query timeout must not be null");
+    return new ExitableDirectoryReader(in, queryTimeout);
   }
 
   @Override

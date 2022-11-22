@@ -18,6 +18,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.util.Bits;
 
@@ -55,7 +56,7 @@ final class TimeLimitingBulkScorer extends BulkScorer {
    */
   public TimeLimitingBulkScorer(BulkScorer bulkScorer, QueryTimeout queryTimeout) {
     this.in = bulkScorer;
-    this.queryTimeout = queryTimeout;
+    this.queryTimeout = Objects.requireNonNull(queryTimeout);
   }
 
   @Override
