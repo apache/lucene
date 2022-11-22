@@ -611,7 +611,11 @@ class GeoDegeneratePath extends GeoBasePath {
 
       // Cutoff planes use opposite endpoints as correct side examples
       startCutoffPlane = new SidedPlane(end, normalizedConnectingPlane, start);
+      assert startCutoffPlane.isWithin(end);
+      assert startCutoffPlane.isWithin(start);
       endCutoffPlane = new SidedPlane(start, normalizedConnectingPlane, end);
+      assert endCutoffPlane.isWithin(start);
+      assert endCutoffPlane.isWithin(end);
       connectingPlanePoints = new GeoPoint[] {start, end};
     }
 

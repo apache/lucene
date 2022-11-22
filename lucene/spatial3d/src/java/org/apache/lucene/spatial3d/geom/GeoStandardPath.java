@@ -192,7 +192,8 @@ class GeoStandardPath extends GeoBasePath {
         final PathSegment currentSegment = segments.get(i);
 
         if (i == 0) {
-          // Starting endpoint
+          // Starting endpoint. The cutoff plane we use is the start cutoff plane from the first
+          // segment, and the point involved is the start point.
           final SegmentEndpoint startEndpoint =
               new CutoffSingleCircleSegmentEndpoint(
                   planetModel,
@@ -223,7 +224,8 @@ class GeoStandardPath extends GeoBasePath {
                 currentSegment.ULHC,
                 currentSegment.LLHC));
       }
-      // Do final endpoint
+      // Do final endpoint. Cutoff plane is the end cutoff plane from the last path segment.
+      // The final endpoint is the last segment's endpoint.
       final PathSegment lastSegment = segments.get(segments.size() - 1);
       endPoints.add(
           new CutoffSingleCircleSegmentEndpoint(
@@ -351,11 +353,7 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return false;
     }
-    final boolean rval = rootComponent.intersects(plane, notablePoints, bounds);
-    if (rval) {
-      System.out.println("Plane " + plane + " within its bounds intersects " + rootComponent);
-    }
-    return rval;
+    return rootComponent.intersects(plane, notablePoints, bounds);
   }
 
   @Override
@@ -363,11 +361,7 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return false;
     }
-    final boolean rval = rootComponent.intersects(geoShape);
-    if (rval) {
-      System.out.println("Shape " + geoShape + " intersects " + rootComponent);
-    }
-    return rval;
+    return rootComponent.intersects(geoShape);
   }
 
   @Override
@@ -727,17 +721,8 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public boolean intersects(
         final Plane p, final GeoPoint[] notablePoints, final Membership[] bounds) {
-      final boolean rval =
-          child1.intersects(p, notablePoints, bounds)
-              || child2.intersects(p, notablePoints, bounds);
-      if (rval) {
-        if (child1.intersects(p, notablePoints, bounds)) {
-          System.out.println("Plane " + p + " intersected " + child1);
-        } else if (child2.intersects(p, notablePoints, bounds)) {
-          System.out.println("Plane " + p + " intersected " + child2);
-        }
-      }
-      return rval;
+      return child1.intersects(p, notablePoints, bounds)
+          || child2.intersects(p, notablePoints, bounds);
     }
 
     @Override
@@ -943,13 +928,9 @@ class GeoStandardPath extends GeoBasePath {
         final GeoPoint lowerPoint) {
       super(planetModel, previous, point);
       circlePlane = SidedPlane.constructSidedPlaneFromTwoPoints(point, upperPoint, lowerPoint);
+      assert circlePlane.isWithin(point);
     }
 
-    // Note: we need a method of constructing a plane as follows:
-    // (1) We start with two points (edge points of the adjoining segment)
-    // (2) We construct a plane with those two points through the center of the earth
-    // (3) We construct a plane perpendicular to the first plane that goes through the two points.
-    // TBD
     /**
      * Constructor for case (1). Generate a simple circle cutoff plane.
      *
@@ -971,6 +952,7 @@ class GeoStandardPath extends GeoBasePath {
       this.circlePlane =
           SidedPlane.constructNormalizedPerpendicularSidedPlane(
               point, normalPlane, upperPoint, lowerPoint);
+      assert circlePlane.isWithin(point);
     }
 
     /**
@@ -1051,8 +1033,9 @@ class GeoStandardPath extends GeoBasePath {
         final GeoPoint topEdgePoint,
         final GeoPoint bottomEdgePoint) {
       super(planetModel, previous, point, topEdgePoint, bottomEdgePoint);
+      // Flip sign of cutoff plane
       this.cutoffPlane = new SidedPlane(cutoffPlane);
-      this.cutoffPlanes = new Membership[] {cutoffPlane};
+      this.cutoffPlanes = new Membership[] {this.cutoffPlane};
       this.notablePoints = new GeoPoint[] {topEdgePoint, bottomEdgePoint};
     }
 
@@ -1357,9 +1340,17 @@ class GeoStandardPath extends GeoBasePath {
       // Either start or end should be on the correct side
       upperConnectingPlane = new SidedPlane(start, normalizedConnectingPlane, -planeBoundingOffset);
       lowerConnectingPlane = new SidedPlane(start, normalizedConnectingPlane, planeBoundingOffset);
+      assert upperConnectingPlane.isWithin(start);
+      assert upperConnectingPlane.isWithin(end);
+      assert lowerConnectingPlane.isWithin(start);
+      assert lowerConnectingPlane.isWithin(end);
       // Cutoff planes use opposite endpoints as correct side examples
       startCutoffPlane = new SidedPlane(end, normalizedConnectingPlane, start);
+      assert startCutoffPlane.isWithin(end);
+      assert startCutoffPlane.isWithin(start);
       endCutoffPlane = new SidedPlane(start, normalizedConnectingPlane, end);
+      assert endCutoffPlane.isWithin(start);
+      assert endCutoffPlane.isWithin(end);
       final Membership[] upperSide = new Membership[] {upperConnectingPlane};
       final Membership[] lowerSide = new Membership[] {lowerConnectingPlane};
       final Membership[] startSide = new Membership[] {startCutoffPlane};
