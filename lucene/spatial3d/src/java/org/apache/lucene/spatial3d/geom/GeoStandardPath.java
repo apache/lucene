@@ -277,7 +277,8 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return Double.POSITIVE_INFINITY;
     }
-    return rootComponent.pathCenterDistance(distanceStyle, x, y, z);
+    return distanceStyle.fromAggregationForm(
+        rootComponent.pathCenterDistance(distanceStyle, x, y, z));
   }
 
   @Override
@@ -286,7 +287,7 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return Double.POSITIVE_INFINITY;
     }
-    return rootComponent.nearestDistance(distanceStyle, x, y, z);
+    return distanceStyle.fromAggregationForm(rootComponent.nearestDistance(distanceStyle, x, y, z));
   }
 
   @Override
@@ -295,7 +296,7 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return Double.POSITIVE_INFINITY;
     }
-    return rootComponent.distance(distanceStyle, x, y, z);
+    return distanceStyle.fromAggregationForm(rootComponent.distance(distanceStyle, x, y, z));
   }
 
   @Override
@@ -321,7 +322,7 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return Double.POSITIVE_INFINITY;
     }
-    return rootComponent.outsideDistance(distanceStyle, x, y, z);
+    return distanceStyle.fromAggregationForm(rootComponent.outsideDistance(distanceStyle, x, y, z));
   }
 
   @Override
@@ -814,8 +815,7 @@ class GeoStandardPath extends GeoBasePath {
       }
       final double startingDistance = getStartingDistance(distanceStyle);
       final double pathDistance = pathDistance(distanceStyle, x, y, z);
-      return distanceStyle.fromAggregationForm(
-          distanceStyle.aggregateDistances(startingDistance, pathDistance));
+      return distanceStyle.aggregateDistances(startingDistance, pathDistance);
     }
 
     @Override
@@ -824,7 +824,10 @@ class GeoStandardPath extends GeoBasePath {
       if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
-      return distanceStyle.fromAggregationForm(getStartingDistance(distanceStyle));
+      return distanceStyle.aggregateDistances(
+          getStartingDistance(distanceStyle),
+          nearestPathDistance(distanceStyle, x, y, z),
+          pathCenterDistance(distanceStyle, x, y, z));
     }
 
     @Override
@@ -867,13 +870,13 @@ class GeoStandardPath extends GeoBasePath {
       if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
-      return distanceStyle.computeDistance(this.point, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
 
     @Override
     public double outsideDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      return distanceStyle.computeDistance(this.point, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
 
     @Override
@@ -1461,8 +1464,8 @@ class GeoStandardPath extends GeoBasePath {
       }
       return distanceStyle.fromAggregationForm(
           distanceStyle.aggregateDistances(
-              distanceStyle.aggregateDistances(
-                  getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)),
+              getStartingDistance(distanceStyle),
+              nearestPathDistance(distanceStyle, x, y, z),
               pathCenterDistance(distanceStyle, x, y, z)));
     }
 
@@ -1734,9 +1737,12 @@ class GeoStandardPath extends GeoBasePath {
       final double URHCDistance = distanceStyle.computeDistance(URHC, x, y, z);
       final double LLHCDistance = distanceStyle.computeDistance(LLHC, x, y, z);
       final double LRHCDistance = distanceStyle.computeDistance(LRHC, x, y, z);
-      return Math.min(
-          Math.min(Math.min(upperDistance, lowerDistance), Math.min(startDistance, endDistance)),
-          Math.min(Math.min(ULHCDistance, URHCDistance), Math.min(LLHCDistance, LRHCDistance)));
+      return distanceStyle.toAggregationForm(
+          Math.min(
+              Math.min(
+                  Math.min(upperDistance, lowerDistance), Math.min(startDistance, endDistance)),
+              Math.min(
+                  Math.min(ULHCDistance, URHCDistance), Math.min(LLHCDistance, LRHCDistance))));
     }
 
     @Override
