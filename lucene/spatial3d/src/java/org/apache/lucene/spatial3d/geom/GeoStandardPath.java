@@ -108,7 +108,7 @@ class GeoStandardPath extends GeoBasePath {
 
     final List<SegmentEndpoint> endPoints = new ArrayList<>(points.size());
     final List<PathSegment> segments = new ArrayList<>(points.size());
-    
+
     // Compute an offset to use for all segments.  This will be based on the minimum magnitude of
     // the entire ellipsoid.
     final double cutoffOffset = this.sinAngle * planetModel.getMinimumMagnitude();
@@ -351,7 +351,11 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return false;
     }
-    return rootComponent.intersects(plane, notablePoints, bounds);
+    final boolean rval = rootComponent.intersects(plane, notablePoints, bounds);
+    if (rval) {
+      System.out.println("Plane " + plane + " within its bounds intersects " + rootComponent);
+    }
+    return rval;
   }
 
   @Override
@@ -359,7 +363,11 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return false;
     }
-    return rootComponent.intersects(geoShape);
+    final boolean rval = rootComponent.intersects(geoShape);
+    if (rval) {
+      System.out.println("Shape " + geoShape + " intersects " + rootComponent);
+    }
+    return rval;
   }
 
   @Override
@@ -430,6 +438,12 @@ class GeoStandardPath extends GeoBasePath {
      */
     boolean isWithin(final double x, final double y, final double z);
 
+    /** Check if point is within this section (within cutoff planes). */
+    boolean isWithinSection(final Vector point);
+
+    /** Check if point is within this section (within cutoff planes). */
+    boolean isWithinSection(final double x, final double y, final double z);
+
     /**
      * Retrieve the starting distance along the path for this path element.
      *
@@ -498,28 +512,28 @@ class GeoStandardPath extends GeoBasePath {
         final DistanceStyle distanceStyle, final double x, final double y, final double z);
 
     /**
-     * Compute nearest path distance.
+     * Compute nearest path distance (distance from start of segment to point adjacent the one
+     * specitied, if reachable by this segment).
      *
      * @param distanceStyle is the distance style.
      * @param x is the point x.
      * @param y is the point y.
      * @param z is the point z.
-     * @return the distance metric (always value zero), in aggregation form, or POSITIVE_INFINITY if
-     *     the point is not within the bounds of the endpoint.
+     * @return the distance metric, in aggregation form.
      */
     double nearestPathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z);
 
     /**
-     * Compute path center distance. Returns POSITIVE_INFINITY if the point is outside of the
-     * bounds.
+     * Compute path center distance (distance from the point to center of the path, if reachable by
+     * this segment).
      *
      * @param distanceStyle is the distance style.
      * @param x is the point x.
      * @param y is the point y.
      * @param z is the point z.
      * @return the distance metric, or POSITIVE_INFINITY if the point is not within the bounds of
-     *     the endpoint.
+     *     the path segment.
      */
     double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z);
@@ -612,6 +626,16 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
+    public boolean isWithinSection(final Vector point) {
+      return child1.isWithinSection(point) || child2.isWithinSection(point);
+    }
+
+    @Override
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      return child1.isWithinSection(x, y, z) || child2.isWithinSection(x, y, z);
+    }
+
+    @Override
     public double getStartingDistance(final DistanceStyle distanceStyle) {
       return child1.getStartingDistance(distanceStyle);
     }
@@ -632,7 +656,7 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       return Math.min(
@@ -672,7 +696,7 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestPathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       return Math.min(
@@ -683,7 +707,7 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       return Math.min(
@@ -703,8 +727,17 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public boolean intersects(
         final Plane p, final GeoPoint[] notablePoints, final Membership[] bounds) {
-      return child1.intersects(p, notablePoints, bounds)
-          || child2.intersects(p, notablePoints, bounds);
+      final boolean rval =
+          child1.intersects(p, notablePoints, bounds)
+              || child2.intersects(p, notablePoints, bounds);
+      if (rval) {
+        if (child1.intersects(p, notablePoints, bounds)) {
+          System.out.println("Plane " + p + " intersected " + child1);
+        } else if (child2.intersects(p, notablePoints, bounds)) {
+          System.out.println("Plane " + p + " intersected " + child2);
+        }
+      }
+      return rval;
     }
 
     @Override
@@ -770,6 +803,16 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      return true;
+    }
+
+    @Override
+    public boolean isWithinSection(final Vector point) {
+      return true;
+    }
+
+    @Override
     public double getStartingDistance(DistanceStyle distanceStyle) {
       if (previous == null) {
         return distanceStyle.toAggregationForm(0.0);
@@ -793,7 +836,7 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       return distanceStyle.fromAggregationForm(getStartingDistance(distanceStyle));
@@ -827,16 +870,16 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestPathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
-      return distanceStyle.toAggregationForm(0.0);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
 
     @Override
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       return distanceStyle.computeDistance(this.point, x, y, z);
@@ -1024,6 +1067,16 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
+    public boolean isWithinSection(final Vector point) {
+      return cutoffPlane.isWithin(point);
+    }
+
+    @Override
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      return cutoffPlane.isWithin(x, y, z);
+    }
+
+    @Override
     public boolean intersects(
         final Plane p, final GeoPoint[] notablePoints, final Membership[] bounds) {
       return circlePlane.intersects(
@@ -1033,6 +1086,28 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public boolean intersects(final GeoShape geoShape) {
       return geoShape.intersects(circlePlane, this.notablePoints, this.cutoffPlanes);
+    }
+
+    @Override
+    public double nearestPathDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      for (final Membership cutoff : cutoffPlanes) {
+        if (!cutoff.isWithin(x, y, z)) {
+          return Double.POSITIVE_INFINITY;
+        }
+      }
+      return super.nearestPathDistance(distanceStyle, x, y, z);
+    }
+
+    @Override
+    public double pathCenterDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      for (final Membership cutoff : cutoffPlanes) {
+        if (!cutoff.isWithin(x, y, z)) {
+          return Double.POSITIVE_INFINITY;
+        }
+      }
+      return super.pathCenterDistance(distanceStyle, x, y, z);
     }
 
     @Override
@@ -1145,6 +1220,26 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
+    public boolean isWithinSection(final Vector point) {
+      for (final Membership m : cutoffPlanes) {
+        if (!m.isWithin(point)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      for (final Membership m : cutoffPlanes) {
+        if (!m.isWithin(x, y, z)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    @Override
     public boolean intersects(
         final Plane p, final GeoPoint[] notablePoints, final Membership[] bounds) {
       return circlePlane1.intersects(
@@ -1157,6 +1252,28 @@ class GeoStandardPath extends GeoBasePath {
     public boolean intersects(final GeoShape geoShape) {
       return geoShape.intersects(circlePlane1, this.notablePoints1, this.cutoffPlanes)
           || geoShape.intersects(circlePlane2, this.notablePoints2, this.cutoffPlanes);
+    }
+
+    @Override
+    public double nearestPathDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      for (final Membership cutoff : cutoffPlanes) {
+        if (!cutoff.isWithin(x, y, z)) {
+          return Double.POSITIVE_INFINITY;
+        }
+      }
+      return super.nearestPathDistance(distanceStyle, x, y, z);
+    }
+
+    @Override
+    public double pathCenterDistance(
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
+      for (final Membership cutoff : cutoffPlanes) {
+        if (!cutoff.isWithin(x, y, z)) {
+          return Double.POSITIVE_INFINITY;
+        }
+      }
+      return super.pathCenterDistance(distanceStyle, x, y, z);
     }
 
     @Override
@@ -1312,6 +1429,16 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
+    public boolean isWithinSection(final Vector point) {
+      return startCutoffPlane.isWithin(point) && endCutoffPlane.isWithin(point);
+    }
+
+    @Override
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      return startCutoffPlane.isWithin(x, y, z) && endCutoffPlane.isWithin(x, y, z);
+    }
+
+    @Override
     public double getStartingDistance(final DistanceStyle distanceStyle) {
       Double dist = startDistanceCache.get(distanceStyle);
       if (dist == null) {
@@ -1338,12 +1465,14 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       return distanceStyle.fromAggregationForm(
           distanceStyle.aggregateDistances(
-              getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)));
+              distanceStyle.aggregateDistances(
+                  getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)),
+              pathCenterDistance(distanceStyle, x, y, z)));
     }
 
     private double computeStartingDistance(final DistanceStyle distanceStyle) {
@@ -1358,10 +1487,10 @@ class GeoStandardPath extends GeoBasePath {
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       // Computes the distance to the path center from the specified point, or returns
-      // POSITIVE_INFINITY if the point is outside the path.
+      // POSITIVE_INFINITY if the point is outside the path section.
 
       // First, if this point is outside the endplanes of the segment, return POSITIVE_INFINITY.
-      if (!startCutoffPlane.isWithin(x, y, z) || !endCutoffPlane.isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       // (1) Compute normalizedPerpPlane.  If degenerate, then there is no such plane, which means
@@ -1400,7 +1529,7 @@ class GeoStandardPath extends GeoBasePath {
               "Can't find world intersection for point x=" + x + " y=" + y + " z=" + z);
         }
       }
-      return distanceStyle.computeDistance(thePoint, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(thePoint, x, y, z));
     }
 
     @Override
@@ -1408,7 +1537,10 @@ class GeoStandardPath extends GeoBasePath {
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       // Computes the distance along the path to a point on the path where a perpendicular plane
       // goes through the specified point.
-
+      // First, if this point is outside the endplanes of the segment, return POSITIVE_INFINITY.
+      if (!isWithinSection(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
+      }
       // (1) Compute normalizedPerpPlane.  If degenerate, then there is no such plane, which means
       // that the point given is insufficient to distinguish between a family of such planes.
       // This can happen only if the point is one of the "poles", imagining the normalized plane
@@ -1452,7 +1584,7 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double pathDeltaDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      // Returns 2x the pathCenterDistance.  Represents the cost of an "excursion" to and
+      // Represents the cost of an "excursion" to and
       // from the path.
 
       if (!isWithin(x, y, z)) {

@@ -432,6 +432,52 @@ public class TestGeoPath extends LuceneTestCase {
   }
 
   @Test
+  public void testInterpolation2() {
+    final double lat = 52.5665;
+    final double lon = 13.3076;
+    final double[] pathLats =
+        new double[] {
+          52.5355, 52.54, 52.5626, 52.5665, 52.6007, 52.6135, 52.6303, 52.6651, 52.7074
+        };
+    final double[] pathLons =
+        new double[] {
+          13.3634, 13.3704, 13.3307, 13.3076, 13.2806, 13.2484, 13.2406, 13.241, 13.1926
+        };
+
+    final GeoPoint carPoint =
+        new GeoPoint(PlanetModel.SPHERE, Math.toRadians(lat), Math.toRadians(lon));
+    final GeoPoint[] pathPoints = new GeoPoint[pathLats.length];
+    for (int i = 0; i < pathPoints.length; i++) {
+      pathPoints[i] =
+          new GeoPoint(
+              PlanetModel.SPHERE, Math.toRadians(pathLats[i]), Math.toRadians(pathLons[i]));
+    }
+
+    // Construct a path with no width
+    final GeoPath thisPath = GeoPathFactory.makeGeoPath(PlanetModel.SPHERE, 0.0, pathPoints);
+    // Construct a path with a width
+    final GeoPath legacyPath = GeoPathFactory.makeGeoPath(PlanetModel.SPHERE, 1e-6, pathPoints);
+
+    // Compute the inside distance to the atPoint using zero-width path
+    final double distance = thisPath.computeNearestDistance(DistanceStyle.ARC, carPoint);
+    // Compute the inside distance using legacy path
+    final double legacyDistance = legacyPath.computeNearestDistance(DistanceStyle.ARC, carPoint);
+
+    // Compute the inside distance using the legacy formula
+    final double oldFormulaDistance = thisPath.computeDistance(DistanceStyle.ARC, carPoint);
+    // Compute the inside distance using the legacy formula with the legacy shape
+    final double oldFormulaLegacyDistance = legacyPath.computeDistance(DistanceStyle.ARC, carPoint);
+
+    // These should be about the same
+    assertEquals(legacyDistance, distance, 1e-12);
+
+    assertEquals(oldFormulaLegacyDistance, oldFormulaDistance, 1e-12);
+
+    // Since the point we picked is actually on the path, this should also be true
+    assertEquals(oldFormulaDistance, distance, 1e-12);
+  }
+
+  @Test
   public void testIdenticalPoints() {
     PlanetModel planetModel = PlanetModel.WGS84;
     GeoPoint point1 = new GeoPoint(planetModel, 1.5707963267948963, -2.4818290647609542E-148);
