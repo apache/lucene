@@ -109,12 +109,17 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
   public static final int VERSION_CURRENT = VERSION_START;
 
   /**
-   * A maximum configurable maximum max conn. We eagerly populate `float[MAX_CONN*2]` and
-   * `int[MAX_CONN*2]` So, a maximum conn of this size means 1MB (16*65_536) per node on layer 0.
+   * A maximum configurable maximum max conn.
+   *
+   * <p>NOTE: We eagerly populate `float[MAX_CONN*2]` and `int[MAX_CONN*2]`, so exceptionally large
+   * numbers here will use an inordinate amount of heap
    */
-  private static final int MAXIMUM_MAX_CONN = 65_536;
+  private static final int MAXIMUM_MAX_CONN = 512;
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
+
+  /** The maximum size of the queue to maintain while searching during graph construction */
+  private static final int MAXIMUM_BEAM_WIDTH = 3200;
   /**
    * Default number of the size of the queue maintained while searching during a graph construction.
    */
@@ -148,12 +153,19 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene95HnswVectorsFormat(int maxConn, int beamWidth) {
     super("Lucene95HnswVectorsFormat");
-    if (maxConn <= 0 || maxConn >= MAXIMUM_MAX_CONN) {
+    if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
-          "maxConn must be postive and less than " + MAXIMUM_MAX_CONN + "; maxConn=" + maxConn);
+          "maxConn must be postive and less than or equal to"
+              + MAXIMUM_MAX_CONN
+              + "; maxConn="
+              + maxConn);
     }
-    if (beamWidth <= 0) {
-      throw new IllegalArgumentException("beamWidth must be positive; beamWidth=" + beamWidth);
+    if (beamWidth <= 0 || beamWidth > MAXIMUM_BEAM_WIDTH) {
+      throw new IllegalArgumentException(
+          "beamWidth must be postive and less than or equal to"
+              + MAXIMUM_BEAM_WIDTH
+              + "; beamWidth="
+              + beamWidth);
     }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;

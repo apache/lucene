@@ -45,7 +45,7 @@ public class TestLucene95HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(0, 20));
     expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, 0));
     expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, -1));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(1024 * 1024, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(512 + 1, 20));
+    expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, 3201));
   }
 }
