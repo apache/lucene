@@ -39,13 +39,16 @@ public abstract class VectorValues extends DocIdSetIterator {
   public abstract int dimension();
 
   /**
-   * TODO: should we use cost() for this? We rely on its always being exactly the number of
-   * documents having a value for this field, which is not guaranteed by the cost() contract, but in
-   * all the implementations so far they are the same.
+   * Return the number of vectors for this field.
    *
    * @return the number of vectors returned by this iterator
    */
   public abstract int size();
+
+  @Override
+  public final long cost() {
+    return size();
+  }
 
   /**
    * Return the vector value for the current document ID. It is illegal to call this method when the
@@ -104,11 +107,6 @@ public abstract class VectorValues extends DocIdSetIterator {
         @Override
         public int advance(int target) {
           return NO_MORE_DOCS;
-        }
-
-        @Override
-        public long cost() {
-          return 0;
         }
       };
 
@@ -170,11 +168,6 @@ public abstract class VectorValues extends DocIdSetIterator {
     @Override
     public int advance(int target) throws IOException {
       throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long cost() {
-      return size();
     }
   }
 }
