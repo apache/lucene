@@ -44,10 +44,6 @@ class GeoStandardPath extends GeoBasePath {
   /** The original list of path points */
   protected final List<GeoPoint> points = new ArrayList<GeoPoint>();
 
-  /** A list of SegmentEndpoints */
-  protected List<SegmentEndpoint> endPoints;
-  /** A list of PathSegments */
-  protected List<PathSegment> segments;
   /** The b-tree of PathComponents */
   protected PathComponent rootComponent;
 
@@ -110,8 +106,9 @@ class GeoStandardPath extends GeoBasePath {
     }
     isDone = true;
 
-    endPoints = new ArrayList<>(points.size());
-    segments = new ArrayList<>(points.size());
+    final List<SegmentEndpoint> endPoints = new ArrayList<>(points.size());
+    final List<PathSegment> segments = new ArrayList<>(points.size());
+    
     // Compute an offset to use for all segments.  This will be based on the minimum magnitude of
     // the entire ellipsoid.
     final double cutoffOffset = this.sinAngle * planetModel.getMinimumMagnitude();
@@ -179,7 +176,6 @@ class GeoStandardPath extends GeoBasePath {
       final GeoPoint point = points.get(0);
 
       // Construct normal plane
-      // TBD - what does this actually do?  Why Z??
       final Plane normalPlane = Plane.constructNormalizedZPlane(upperPoint, lowerPoint, point);
 
       final CircleSegmentEndpoint onlyEndpoint =
@@ -213,29 +209,8 @@ class GeoStandardPath extends GeoBasePath {
         // General intersection case.
         // The CutoffDualCircleSegmentEndpoint is advanced enough now to handle
         // joinings that are perfectly in a line, I believe, so I am disabling
-        // the special code for that situation. TBD (and testing) to remove it.
+        // the special code for that situation.
         final PathSegment prevSegment = segments.get(i - 1);
-        /*
-        if (prevSegment.endCutoffPlane.isWithin(currentSegment.ULHC)
-            && prevSegment.endCutoffPlane.isWithin(currentSegment.LLHC)
-            && currentSegment.startCutoffPlane.isWithin(prevSegment.URHC)
-            && currentSegment.startCutoffPlane.isWithin(prevSegment.LRHC)) {
-          // The planes are identical.  We wouldn't need a circle at all except for the possibility
-          // of
-          // backing up, which is hard to detect here.
-          final SegmentEndpoint midEndpoint =
-              new CutoffSingleCircleSegmentEndpoint(
-                  planetModel,
-                  prevSegment,
-                  currentSegment.start,
-                  prevSegment.endCutoffPlane,
-                  currentSegment.startCutoffPlane,
-                  currentSegment.ULHC,
-                  currentSegment.LLHC);
-          // don't need a circle at all.  Special constructor...
-          endPoints.add(midEndpoint);
-        } else {
-        */
         endPoints.add(
             new CutoffDualCircleSegmentEndpoint(
                 planetModel,
@@ -247,7 +222,6 @@ class GeoStandardPath extends GeoBasePath {
                 prevSegment.LRHC,
                 currentSegment.ULHC,
                 currentSegment.LLHC));
-        // }
       }
       // Do final endpoint
       final PathSegment lastSegment = segments.get(segments.size() - 1);
