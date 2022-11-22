@@ -212,11 +212,11 @@ public class StageArtifacts {
           .text();
     }
 
-    public void uploadArtifact(String stagingRepoId, Path path) throws IOException {
+    public void uploadArtifact(String stagingRepoId, Path path, String relativePath) throws IOException {
       sendPost("/service/local/staging/deployByRepositoryId/"
               + URLEncoder.encode(stagingRepoId, StandardCharsets.UTF_8)
               + "/"
-              + URLEncoder.encode(path.getFileName().toString(), StandardCharsets.UTF_8),
+              + relativePath,
           "application/octet-stream",
           HttpURLConnection.HTTP_CREATED,
           Files.readAllBytes(path));
@@ -248,7 +248,7 @@ public class StageArtifacts {
         HttpResponse<String> response = client.send(req, bodyHandler);
         if (response.statusCode() != expectedStatus) {
           throw new IOException("Unexpected HTTP error returned: " + response.statusCode() + ", response body: "
-            + response.body());
+              + response.body());
         }
         return response.body();
       } catch (InterruptedException e) {
@@ -373,6 +373,24 @@ public class StageArtifacts {
               .findFirst()
               .orElseThrow());
 
+      // Sanity check for directory structure - all files should have the groupId folder prefix.
+      {
+        String expectedPrefix = pomInfo.groupId.replace('.', '/');
+        for (Path path : artifacts) {
+          Path relative = params.mavenDir.relativize(path);
+          List<String> urlSegments = new ArrayList<>();
+          for (Path segment : relative) {
+            urlSegments.add(URLEncoder.encode(segment.toString(), StandardCharsets.UTF_8));
+          }
+          String relativeUrl = String.join("/", urlSegments);
+
+          if (!relativeUrl.startsWith(expectedPrefix)) {
+            throw new RuntimeException("Maven folder structure does not match the expected groupId, "
+              + "expected prefix: " + expectedPrefix + ", artifact: " + relativeUrl);
+          }
+        }
+      }
+
       System.out.println("Requesting profile ID for artifact: "
           + pomInfo.groupId + ":" + pomInfo.artifactId + ":" + pomInfo.version);
       String profileId = nexus.requestProfileId(pomInfo);
@@ -387,8 +405,14 @@ public class StageArtifacts {
 
       System.out.printf("Uploading %s artifact(s).%n", artifacts.size());
       for (Path path : artifacts) {
-        System.out.println("  => " + params.mavenDir.relativize(path));
-        nexus.uploadArtifact(stagingRepoId, path);
+        Path relative = params.mavenDir.relativize(path);
+        List<String> urlSegments = new ArrayList<>();
+        for (Path segment : relative) {
+          urlSegments.add(URLEncoder.encode(segment.toString(), StandardCharsets.UTF_8));
+        }
+        String relativeUrl = String.join("/", urlSegments);
+        System.out.println("  => " + relative + ": " + relativeUrl);
+        nexus.uploadArtifact(stagingRepoId, path, relativeUrl);
       }
 
       System.out.println("Closing the staging repository.");
