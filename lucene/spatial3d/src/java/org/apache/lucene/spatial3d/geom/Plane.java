@@ -232,7 +232,14 @@ public class Plane extends Vector {
         A1 = (-C1 * zDiff - yDiff) / xDiff;
       } else {
         // B1choice is C-A, so numerator is B-C
-        A1 = (B0 * xDiff - C0 * yDiff) / B1choice;
+        // A1 * xDiff + 1.0 * yDiff + C1 * zDiff = 0
+        // C1 * zDiff = -A1 * xDiff - 1.0 * yDiff
+        // C1 = (-A1 * xDiff - yDiff) / zDiff
+        // A0 * A1 + B0 * 1.0 + C0 * (-A1 * xDiff - yDiff) / zDiff = 0
+        // A1 * A0 * zDiff - A1 * C0 * xDiff + B0 * zDiff - C0 * yDiff = 0
+        // A1 * A0 * zDiff - A1 * C0 * xDiff = C0 * yDiff - B0 * zDiff
+        // A1 = (C0 * yDiff - B0 * zDiff) / (A0 * zDiff - C0 * xDiff)
+        A1 = (B0 * zDiff - C0 * yDiff) / B1choice;
         C1 = (-A1 * xDiff - yDiff) / zDiff;
       }
     } else if (Math.abs(C1choice) >= Math.abs(A1choice)
