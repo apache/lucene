@@ -344,10 +344,5 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     public int advance(int target) {
       throw new UnsupportedOperationException();
     }
-
-    @Override
-    public long cost() {
-      return docsWithFieldIter.cost();
-    }
   }
 }

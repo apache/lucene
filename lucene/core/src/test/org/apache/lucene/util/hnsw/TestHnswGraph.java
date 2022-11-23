@@ -767,11 +767,6 @@ public class TestHnswGraph extends LuceneTestCase {
     }
 
     @Override
-    public long cost() {
-      return size;
-    }
-
-    @Override
     public float[] vectorValue(int ord) {
       return unitVector2d(ord / (double) size, value);
     }

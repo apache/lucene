@@ -39,13 +39,16 @@ public abstract class VectorValues extends DocIdSetIterator {
   public abstract int dimension();
 
   /**
-   * TODO: should we use cost() for this? We rely on its always being exactly the number of
-   * documents having a value for this field, which is not guaranteed by the cost() contract, but in
-   * all the implementations so far they are the same.
+   * Return the number of vectors for this field.
    *
    * @return the number of vectors returned by this iterator
    */
   public abstract int size();
+
+  @Override
+  public final long cost() {
+    return size();
+  }
 
   /**
    * Return the vector value for the current document ID. It is illegal to call this method when the
@@ -68,47 +71,4 @@ public abstract class VectorValues extends DocIdSetIterator {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * Represents the lack of vector values. It is returned by providers that do not support
-   * VectorValues.
-   */
-  public static final VectorValues EMPTY =
-      new VectorValues() {
-
-        @Override
-        public int size() {
-          return 0;
-        }
-
-        @Override
-        public int dimension() {
-          return 0;
-        }
-
-        @Override
-        public float[] vectorValue() {
-          throw new IllegalStateException(
-              "Attempt to get vectors from EMPTY values (which was not advanced)");
-        }
-
-        @Override
-        public int docID() {
-          throw new IllegalStateException("VectorValues is EMPTY, and not positioned on a doc");
-        }
-
-        @Override
-        public int nextDoc() {
-          return NO_MORE_DOCS;
-        }
-
-        @Override
-        public int advance(int target) {
-          return NO_MORE_DOCS;
-        }
-
-        @Override
-        public long cost() {
-          return 0;
-        }
-      };
 }

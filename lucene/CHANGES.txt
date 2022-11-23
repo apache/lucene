@@ -60,7 +60,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance
+* GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
 Bug Fixes
 ---------------------
@@ -90,6 +90,8 @@ Other
 
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
 
+* GITHUB#11960: Hunspell: supported empty dictionaries (Peter Gromov)
+
 ======================== Lucene 9.5.0 =======================
 
 API Changes
@@ -116,6 +118,13 @@ API Changes
 * GITHUB#11941: QueryBuilder#add and #newSynonymQuery methods now take a `field` parameter,
   to avoid possible exceptions when building queries from an empty term list.  The helper
   TermAndBoost class now holds a BytesRef rather than a Term. (Alan Woodward)
+
+* GITHUB#11961: VectorValues#EMPTY was removed as this instance was not
+  necessary and also illegal as it reported a number of dimensions equal to
+  zero. (Adrien Grand)
+
+* GITHUB#11962: VectorValues#cost() now delegates to VectorValues#size().
+  (Adrien Grand)
 
 New Features
 ---------------------
