@@ -34,6 +34,7 @@ public final class CollectionUtil {
    * array.
    */
   public static <K, V> HashMap<K, V> newHashMap(int size) {
+    // This should be replaced with HashMap.newHashMap when lucene moves to jdk19 minimum version
     return new HashMap<>((int) (size / 0.75f) + 1);
   }
 
@@ -42,6 +43,7 @@ public final class CollectionUtil {
    * array.
    */
   public static <E> HashSet<E> newHashSet(int size) {
+    // This should be replaced with HashSet.newHashSet when lucene moves to jdk19 minimum version
     return new HashSet<>((int) (size / 0.75f) + 1);
   }
 
