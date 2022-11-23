@@ -382,7 +382,7 @@ allprojects { prj ->
             '-Xep:MalformedInlineTag:WARN',
             // '-Xep:MathAbsoluteRandom:OFF',
             // '-Xep:MemoizeConstantVisitorStateLookups:OFF', // we don't use this class
-            '-Xep:MissingCasesInEnumSwitch:WARN',
+            // '-Xep:MissingCasesInEnumSwitch:OFF', // redundant with ECJ incompleteEnumSwitch/missingEnumCaseDespiteDefault
             // '-Xep:MissingFail:OFF',
             '-Xep:MissingImplementsComparable:WARN',
             // '-Xep:MissingOverride:OFF',
