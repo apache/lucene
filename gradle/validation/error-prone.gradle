@@ -163,9 +163,9 @@ allprojects { prj ->
             // '-Xep:IsLoggableTagLength:OFF', // we don't use android
             // '-Xep:JUnit3TestNotRun:OFF', // we don't use junit3
             '-Xep:JUnit4ClassAnnotationNonStatic:ERROR',
-            '-Xep:JUnit4SetUpNotRun:ERROR',
-            '-Xep:JUnit4TearDownNotRun:ERROR',
-            //'-Xep:JUnit4TestNotRun:OFF',
+            // '-Xep:JUnit4SetUpNotRun:OFF', // LuceneTestCase takes care
+            // '-Xep:JUnit4TearDownNotRun:OFF', // LuceneTestCase takes care
+            // '-Xep:JUnit4TestNotRun:OFF',
             '-Xep:JUnit4TestsNotRunWithinEnclosed:ERROR',
             '-Xep:JUnitAssertSameCheck:ERROR',
             '-Xep:JUnitParameterMethodNotFound:ERROR',
