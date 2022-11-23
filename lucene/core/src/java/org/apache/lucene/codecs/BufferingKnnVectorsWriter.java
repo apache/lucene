@@ -156,10 +156,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
       throw new UnsupportedOperationException();
     }
 
-    @Override
-    public long cost() {
-      return size();
-    }
   }
 
   @Override
