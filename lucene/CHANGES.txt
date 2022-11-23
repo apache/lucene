@@ -123,6 +123,9 @@ API Changes
   necessary and also illegal as it reported a number of dimensions equal to
   zero. (Adrien Grand)
 
+* GITHUB#11962: VectorValues#cost() now delegates to VectorValues#size().
+  (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
