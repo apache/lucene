@@ -89,7 +89,7 @@ allprojects { prj ->
             // '-Xep:AutoValueConstructorOrderChecker:OFF', // we don't use autovalue
             '-Xep:BadAnnotationImplementation:ERROR',
             // '-Xep:BadShiftAmount:OFF',
-            '-Xep:BanJNDI:ERROR', // TODO: implement via forbidden APIs which is much faster
+            // '-Xep:BanJNDI:OFF', // implemented with forbidden APIs instead
             '-Xep:BoxedPrimitiveEquality:ERROR',
             // '-Xep:BundleDeserializationCast:OFF', // we don't use android
             '-Xep:ChainingConstructorIgnoresParameter:ERROR',
