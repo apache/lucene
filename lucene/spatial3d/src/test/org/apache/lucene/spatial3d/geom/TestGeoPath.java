@@ -415,9 +415,9 @@ public class TestGeoPath extends LuceneTestCase {
     // Construct a path with a width
     final GeoPath legacyPath = GeoPathFactory.makeGeoPath(PlanetModel.SPHERE, 1e-6, pathPoints);
     // Compute the inside distance to the atPoint using zero-width path
-    final double distance = thisPath.computeNearestDistance(DistanceStyle.ARC, carPoint);
+    // final double distance = thisPath.computeNearestDistance(DistanceStyle.ARC, carPoint);
     // Compute the inside distance using legacy path
-    final double legacyDistance = legacyPath.computeNearestDistance(DistanceStyle.ARC, carPoint);
+    // final double legacyDistance = legacyPath.computeNearestDistance(DistanceStyle.ARC, carPoint);
     // Compute the inside distance using the legacy formula
     final double oldFormulaDistance = thisPath.computeDistance(DistanceStyle.ARC, carPoint);
     // Compute the inside distance using the legacy formula with the legacy shape

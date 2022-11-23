@@ -463,6 +463,7 @@ class GeoDegeneratePath extends GeoBasePath {
      * @param z is the point z.
      * @return true of within.
      */
+    @Override
     public boolean isWithin(final double x, final double y, final double z) {
       return this.point.isIdentical(x, y, z);
     }
@@ -554,10 +555,10 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Get the bounds for a segment endpoint.
      *
-     * @param planetModel is the planet model.
      * @param bounds are the bounds to be modified.
      */
-    public void getBounds(final PlanetModel planetModel, Bounds bounds) {
+    @Override
+    public void getBounds(final Bounds bounds) {
       bounds.addPoint(point);
     }
 
@@ -771,7 +772,6 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Compute interior path distance.
      *
-     * @param planetModel is the planet model.
      * @param distanceStyle is the distance style.
      * @param x is the point x.
      * @param y is the point y.
@@ -831,7 +831,6 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Compute external distance.
      *
-     * @param planetModel is the planet model.
      * @param distanceStyle is the distance style.
      * @param x is the point x.
      * @param y is the point y.
@@ -851,7 +850,6 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Determine if this endpoint intersects a specified plane.
      *
-     * @param planetModel is the planet model.
      * @param p is the plane.
      * @param notablePoints are the points associated with the plane.
      * @param bounds are any bounds which the intersection must lie within.
@@ -883,7 +881,6 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Get the bounds for a segment endpoint.
      *
-     * @param planetModel is the planet model.
      * @param bounds are the bounds to be modified.
      */
     @Override

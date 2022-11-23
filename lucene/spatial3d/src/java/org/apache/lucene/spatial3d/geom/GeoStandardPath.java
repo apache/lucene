@@ -1147,20 +1147,6 @@ class GeoStandardPath extends GeoBasePath {
     public String toString() {
       return "CutoffSingleCircleSegmentEndpoint: " + super.toString();
     }
-
-    @Override
-    public void getBounds(final Bounds bounds) {
-      super.getBounds(bounds);
-      bounds.addPlane(planetModel, circlePlane, cutoffPlane);
-      bounds.addPlane(planetModel, cutoffPlane, circlePlane);
-      bounds.addIntersection(planetModel, circlePlane, cutoffPlane);
-      bounds.addIntersection(planetModel, cutoffPlane, circlePlane);
-    }
-
-    @Override
-    public String toString() {
-      return "CutoffSingleCircleSegmentEndpoint: " + super.toString();
-    }
   }
 
   /**
