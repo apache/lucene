@@ -295,7 +295,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
       return docId = docsWithField.nextSetBit(target);
     }
-
   }
 
   /**

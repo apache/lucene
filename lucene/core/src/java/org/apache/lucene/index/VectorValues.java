@@ -70,5 +70,4 @@ public abstract class VectorValues extends DocIdSetIterator {
   public BytesRef binaryValue() throws IOException {
     throw new UnsupportedOperationException();
   }
-
 }
