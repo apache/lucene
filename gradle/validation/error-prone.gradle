@@ -113,10 +113,10 @@ allprojects { prj ->
             // '-Xep:DoNotMock:OFF', // we don't use mocking libraries
             // '-Xep:DoubleBraceInitialization:OFF',
             '-Xep:DuplicateMapKeys:ERROR',
-            '-Xep:DurationFrom:ERROR',
-            '-Xep:DurationGetTemporalUnit:ERROR',
-            '-Xep:DurationTemporalUnit:ERROR',
-            '-Xep:DurationToLongTimeUnit:ERROR',
+            // '-Xep:DurationFrom:OFF', // we don't use Duration.from()
+            // '-Xep:DurationGetTemporalUnit:OFF', // we don't use Duration.get()
+            // '-Xep:DurationTemporalUnit:OFF', // we don't use Duration.of() etc
+            // '-Xep:DurationToLongTimeUnit:OFF', // we don't use TimeUnit.convert Duration, etc
             // '-Xep:EmptyTopLevelDeclaration:OFF',
             '-Xep:EqualsHashCode:ERROR',
             '-Xep:EqualsNaN:ERROR',
@@ -129,7 +129,7 @@ allprojects { prj ->
             // '-Xep:ForOverride:OFF', // we don't use this annotation
             // '-Xep:FormatString:OFF',
             // '-Xep:FormatStringAnnotation:OFF', // we don't use this annotation
-            '-Xep:FromTemporalAccessor:ERROR',
+            // '-Xep:FromTemporalAccessor:OFF', // we don't use .from(LocalDate) etc
             '-Xep:FunctionalInterfaceMethodChanged:ERROR',
             '-Xep:FuturesGetCheckedIllegalExceptionType:ERROR',
             '-Xep:FuzzyEqualsShouldNotBeUsedInEqualsMethod:ERROR',
@@ -153,11 +153,11 @@ allprojects { prj ->
             // '-Xep:InjectMoreThanOneScopeAnnotationOnClass:OFF', // we don't use this annotation
             // '-Xep:InjectOnMemberAndConstructor:OFF', // we don't use this annotation
             // '-Xep:InlineMeValidator:OFF', // we don't use this annotation
-            '-Xep:InstantTemporalUnit:ERROR',
-            '-Xep:InvalidJavaTimeConstant:ERROR',
+            // '-Xep:InstantTemporalUnit:OFF', // we don't use Instant apis with strange temporal units
+            // '-Xep:InvalidJavaTimeConstant:OFF', // we don't use impacted java.time classes (Month, etc)
             // '-Xep:InvalidPatternSyntax:OFF',
-            '-Xep:InvalidTimeZoneID:ERROR',
-            '-Xep:InvalidZoneId:ERROR',
+            // '-Xep:InvalidTimeZoneID:OFF', // we don't use getTimeZone with constant IDs except UTC/GMT
+            // '-Xep:InvalidZoneId:OFF', // we don't use ZoneId.of
             '-Xep:IsInstanceIncompatibleType:ERROR',
             '-Xep:IsInstanceOfClass:ERROR',
             // '-Xep:IsLoggableTagLength:OFF', // we don't use android
@@ -172,7 +172,7 @@ allprojects { prj ->
             // '-Xep:JavaxInjectOnAbstractMethod:OFF', // we don't this annotation
             // '-Xep:JodaToSelf:OFF', // we don't use joda-time
             // '-Xep:LiteByteStringUtf8:OFF', // we don't use protobuf
-            '-Xep:LocalDateTemporalAmount:ERROR',
+            // '-Xep:LocalDateTemporalAmount:OFF', // we don't use LocalDate math
             '-Xep:LockOnBoxedPrimitive:ERROR',
             '-Xep:LoopConditionChecker:ERROR',
             '-Xep:LossyPrimitiveCompare:ERROR',
@@ -181,8 +181,8 @@ allprojects { prj ->
             // '-Xep:MisplacedScopeAnnotations:OFF', // we don't use this annotation
             // '-Xep:MissingSuperCall:OFF', // we don't use this annotation
             // '-Xep:MissingTestCall:OFF', // we don't use guava
-            // '-Xep:MisusedDayOfYear:OFF',
-            '-Xep:MisusedWeekYear:ERROR',
+            // '-Xep:MisusedDayOfYear:OFF', // we don't use date patterns
+            // '-Xep:MisusedWeekYear:OFF', // we don't use date patterns
             // '-Xep:MixedDescriptors:OFF', // we don't use protobuf
             // '-Xep:MockitoUsage:OFF', // we don't use mockito
             '-Xep:ModifyingCollectionWithItself:ERROR',
@@ -204,9 +204,9 @@ allprojects { prj ->
             '-Xep:PackageInfo:ERROR',
             '-Xep:ParametersButNotParameterized:ERROR',
             // '-Xep:ParcelableCreator:OFF', // we don't use android
-            '-Xep:PeriodFrom:ERROR',
-            '-Xep:PeriodGetTemporalUnit:ERROR',
-            '-Xep:PeriodTimeMath:ERROR',
+            // '-Xep:PeriodFrom:OFF', // we don't use Period
+            // '-Xep:PeriodGetTemporalUnit:OFF', // we don't use Period
+            // '-Xep:PeriodTimeMath:OFF', // we don't use Period
             // '-Xep:PreconditionsInvalidPlaceholder:OFF', // we don't use guava
             // '-Xep:PrivateSecurityContractProtoAccess:OFF', // we don't use protobuf
             // '-Xep:ProtoBuilderReturnValueIgnored:OFF', // we don't use protobuf
@@ -230,7 +230,7 @@ allprojects { prj ->
             '-Xep:StringBuilderInitWithChar:ERROR',
             '-Xep:SubstringOfZero:ERROR',
             '-Xep:SuppressWarningsDeprecated:ERROR',
-            '-Xep:TemporalAccessorGetChronoField:ERROR',
+            // '-Xep:TemporalAccessorGetChronoField:OFF', // we don't use TemporalAccessor.get
             '-Xep:TestParametersNotInitialized:ERROR',
             // '-Xep:TheoryButNoTheories:OFF', // we don't use junit theory apis/runner
             '-Xep:ThrowIfUncheckedKnownChecked:ERROR',
@@ -249,7 +249,7 @@ allprojects { prj ->
             '-Xep:VarTypeName:ERROR',
             // '-Xep:WrongOneof:OFF', // we don't use protobuf
             '-Xep:XorPower:ERROR',
-            '-Xep:ZoneIdOfZ:ERROR',
+            // '-Xep:ZoneIdOfZ:OFF', // we don't use ZoneId.of
 
             // On by Default : WARNING
 
@@ -276,7 +276,7 @@ allprojects { prj ->
             // '-Xep:BugPatternNaming:OFF', // we don't use this annotation
             // '-Xep:ByteBufferBackingArray:OFF',
             // '-Xep:CacheLoaderNull:OFF', // we don't use guava
-            '-Xep:CanonicalDuration:WARN',
+            // '-Xep:CanonicalDuration:OFF', // barely use Duration.of (one test), just a style thing
             // '-Xep:CatchAndPrintStackTrace:OFF',
             // '-Xep:CatchFail:OFF',
             // '-Xep:ChainedAssertionLosesContext:OFF', // we don't use truth
@@ -290,7 +290,7 @@ allprojects { prj ->
             '-Xep:CompareToZero:WARN',
             // '-Xep:ComplexBooleanConstant:OFF',
             '-Xep:DateChecker:WARN',
-            '-Xep:DateFormatConstant:WARN',
+            // '-Xep:DateFormatConstant:OFF', // we don't use Date setters
             // '-Xep:DefaultCharset:OFF', // we have forbiddenapis for that
             // '-Xep:DefaultPackage:OFF',
             '-Xep:DeprecatedVariable:WARN',
@@ -352,15 +352,15 @@ allprojects { prj ->
             // '-Xep:JUnit3FloatingPointComparisonWithoutDelta:OFF', // we don't use junit3
             '-Xep:JUnit4ClassUsedInJUnit3:WARN',
             '-Xep:JUnitAmbiguousTestClass:WARN',
-            '-Xep:JavaDurationGetSecondsGetNano:WARN',
-            '-Xep:JavaDurationWithNanos:WARN',
-            '-Xep:JavaDurationWithSeconds:WARN',
-            '-Xep:JavaInstantGetSecondsGetNano:WARN',
+            // '-Xep:JavaDurationGetSecondsGetNano:OFF', // we don't use these Duration methods
+            // '-Xep:JavaDurationWithNanos:OFF', // we don't use these Duration methods
+            // '-Xep:JavaDurationWithSeconds:OFF', // we don't use these Duration methods
+            // '-Xep:JavaInstantGetSecondsGetNano:OFF', // we don't use these Instant methods
             // '-Xep:JavaLangClash:OFF',
-            '-Xep:JavaLocalDateTimeGetNano:WARN',
-            '-Xep:JavaLocalTimeGetNano:WARN',
-            '-Xep:JavaPeriodGetDays:WARN',
-            '-Xep:JavaTimeDefaultTimeZone:WARN',
+            // '-Xep:JavaLocalDateTimeGetNano:OFF', // we don't use LocalDateTime
+            // '-Xep:JavaLocalTimeGetNano:OFF', // we don't use LocalTime
+            // '-Xep:JavaPeriodGetDays:OFF', // we don't use Period
+            // '-Xep:JavaTimeDefaultTimeZone:OFF', // forbidden-apis checks this
             // '-Xep:JavaUtilDate:OFF',
             // '-Xep:JavaxInjectOnFinalField:OFF', // we don't use this annotation
             // '-Xep:JdkObsolete:OFF',
