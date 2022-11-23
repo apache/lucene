@@ -1901,7 +1901,7 @@ class GeoStandardPath extends GeoBasePath {
       componentStack.add(component);
       depthStack.add(0);
       while (depthStack.size() >= 2) {
-        if (depthStack.get(depthStack.size() - 1) == depthStack.get(depthStack.size() - 2)) {
+        if (depthStack.get(depthStack.size() - 1).equals(depthStack.get(depthStack.size() - 2))) {
           mergeTop();
         } else {
           break;
