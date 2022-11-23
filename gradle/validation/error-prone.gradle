@@ -481,7 +481,7 @@ allprojects { prj ->
             '-Xep:VariableNameSameAsType:WARN',
             // '-Xep:WaitNotInLoop:OFF',
             // '-Xep:WakelockReleasedDangerously:OFF', // we don't use android
-            '-Xep:WithSignatureDiscouraged:WARN',
+            // '-Xep:WithSignatureDiscouraged:OFF', // we aren't using this error-prone internal api
         ]
       }
     }
