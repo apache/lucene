@@ -287,7 +287,11 @@ class GeoStandardPath extends GeoBasePath {
     if (rootComponent == null) {
       return Double.POSITIVE_INFINITY;
     }
-    return distanceStyle.fromAggregationForm(rootComponent.nearestDistance(distanceStyle, x, y, z));
+    final DistancePair distancePair = rootComponent.nearestDistance(distanceStyle, x, y, z);
+    if (distancePair == null) {
+      return Double.POSITIVE_INFINITY;
+    }
+    return distanceStyle.fromAggregationForm(distancePair.distanceAlongPath);
   }
 
   @Override
@@ -410,6 +414,16 @@ class GeoStandardPath extends GeoBasePath {
         + "}}";
   }
 
+  private static class DistancePair {
+    public final double pathCenterDistance;
+    public final double distanceAlongPath;
+
+    public DistancePair(final double pathCenterDistance, final double distanceAlongPath) {
+      this.pathCenterDistance = pathCenterDistance;
+      this.distanceAlongPath = distanceAlongPath;
+    }
+  }
+
   /**
    * Path components consist of both path segments and segment endpoints. This interface links their
    * behavior without having to know anything else about them.
@@ -469,17 +483,22 @@ class GeoStandardPath extends GeoBasePath {
         final DistanceStyle distanceStyle, final double x, final double y, final double z);
 
     /**
-     * Compute distance starting from the beginning of the path all along the center of the
-     * corridor, and then for the last section to a point perpendicular to mentioned point, unless
-     * that point is outside of the corridor.
+     * Get the nearest distance for a point. This is the old "legacy" computation: We find the
+     * segment endpoint or path segment with the closest pathCenterDistance(), and keep track of the
+     * one where that's at a minimum. We then compute nearestPathDistance() if it's a segment and
+     * add that to fullPathDistance() computed along the entire path up to that point.
+     *
+     * <p>So what we are minimizing is not what we are returning here. That is why this is tricky to
+     * modularize; we need to return two values: the best pathCenterDistance, and the corresponding
+     * nearestPathDistance + startingDistance.
      *
      * @param distanceStyle is the distance style
      * @param x is the x coordinate of the point we want to get the distance to
      * @param y is the y coordinate of the point we want to get the distance to
      * @param z is the z coordinate of the point we want to get the distance to
-     * @return the distance from start of path
+     * @return the DistancePair containing both distances described above
      */
-    double nearestDistance(
+    DistancePair nearestDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z);
 
     /**
@@ -649,14 +668,31 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
-    public double nearestDistance(
+    public DistancePair nearestDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       if (!isWithinSection(x, y, z)) {
-        return Double.POSITIVE_INFINITY;
+        return null;
       }
-      return Math.min(
-          child1.nearestDistance(distanceStyle, x, y, z),
-          child2.nearestDistance(distanceStyle, x, y, z));
+      final DistancePair firstChildDistance = child1.nearestDistance(distanceStyle, x, y, z);
+      final DistancePair secondChildDistance = child2.nearestDistance(distanceStyle, x, y, z);
+
+      if (firstChildDistance == null) {
+        return secondChildDistance;
+      } else if (secondChildDistance == null) {
+        return firstChildDistance;
+      }
+
+      // Optimize for lowest pathCenterDistance, but if those are equal, optimize for distance along
+      // path.
+      if (firstChildDistance.pathCenterDistance < secondChildDistance.pathCenterDistance) {
+        return firstChildDistance;
+      } else if (secondChildDistance.pathCenterDistance < firstChildDistance.pathCenterDistance) {
+        return secondChildDistance;
+      } else if (firstChildDistance.distanceAlongPath < secondChildDistance.distanceAlongPath) {
+        return firstChildDistance;
+      } else {
+        return secondChildDistance;
+      }
     }
 
     @Override
@@ -819,15 +855,15 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
-    public double nearestDistance(
+    public DistancePair nearestDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       if (!isWithinSection(x, y, z)) {
-        return Double.POSITIVE_INFINITY;
+        return null;
       }
-      return distanceStyle.aggregateDistances(
-          getStartingDistance(distanceStyle),
-          nearestPathDistance(distanceStyle, x, y, z),
-          pathCenterDistance(distanceStyle, x, y, z));
+      return new DistancePair(
+          pathCenterDistance(distanceStyle, x, y, z),
+          distanceStyle.aggregateDistances(
+              getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)));
     }
 
     @Override
@@ -1457,16 +1493,15 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     @Override
-    public double nearestDistance(
+    public DistancePair nearestDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       if (!isWithinSection(x, y, z)) {
-        return Double.POSITIVE_INFINITY;
+        return null;
       }
-      return distanceStyle.fromAggregationForm(
+      return new DistancePair(
+          pathCenterDistance(distanceStyle, x, y, z),
           distanceStyle.aggregateDistances(
-              getStartingDistance(distanceStyle),
-              nearestPathDistance(distanceStyle, x, y, z),
-              pathCenterDistance(distanceStyle, x, y, z)));
+              getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)));
     }
 
     private double computeStartingDistance(final DistanceStyle distanceStyle) {

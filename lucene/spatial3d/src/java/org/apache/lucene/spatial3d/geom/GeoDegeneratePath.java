@@ -186,6 +186,13 @@ class GeoDegeneratePath extends GeoBasePath {
     double bestDistance = Double.POSITIVE_INFINITY;
     int segmentIndex = 0;
 
+    // This is the old "legacy" computation: We find the segment endpoint or path
+    // segment with the closest pathCenterDistance, and keep track of the one where
+    // that's at a minimum. We then compute nearestPathDistance() if it's a segment
+    // and add that to fullPathDistance() computed along the entire path up to that
+    // point.
+    //
+    // So what we are minimizing is not what we are returning here.
     for (SegmentEndpoint endpoint : endPoints) {
       final double endpointPathCenterDistance = endpoint.pathCenterDistance(distanceStyle, x, y, z);
       if (endpointPathCenterDistance < minPathCenterDistance) {
@@ -208,7 +215,7 @@ class GeoDegeneratePath extends GeoBasePath {
                 currentDistance, segment.fullPathDistance(distanceStyle));
       }
     }
-    return bestDistance;
+    return distanceStyle.fromAggregationForm(bestDistance);
   }
 
   @Override
