@@ -414,7 +414,7 @@ allprojects { prj ->
             '-Xep:OptionalMapToOptional:WARN',
             '-Xep:OptionalNotPresent:WARN',
             '-Xep:OrphanedFormatString:WARN',
-            '-Xep:OutlineNone:WARN',
+            // '-Xep:OutlineNone:OFF', // we don't use gwt
             '-Xep:OverrideThrowableToString:WARN',
             '-Xep:Overrides:WARN',
             // '-Xep:OverridesGuiceInjectableMethod:OFF', // we don't use guice
