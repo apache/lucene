@@ -120,7 +120,8 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     int dimension = info.getVectorDimension();
     if (dimension == 0) {
-      return VectorValues.EMPTY;
+      throw new IllegalStateException(
+          "KNN vectors readers should not be called on fields that don't enable KNN vectors");
     }
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {

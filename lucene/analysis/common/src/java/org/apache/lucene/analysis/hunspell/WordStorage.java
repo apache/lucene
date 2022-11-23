@@ -424,10 +424,13 @@ class WordStorage {
     }
 
     WordStorage build() throws IOException {
-      assert !group.isEmpty() : "build() should be only called once";
-      flushGroup();
+      if (hashTable.length > 0) {
+        assert !group.isEmpty() : "build() should be only called once";
+        flushGroup();
+      }
       byte[] trimmedData = ArrayUtil.copyOfSubArray(wordData, 0, dataWriter.getPosition());
-      return new WordStorage(maxEntryLength, hasCustomMorphData, hashTable, trimmedData);
+      int[] table = hashTable.length == 0 ? new int[1] : hashTable;
+      return new WordStorage(maxEntryLength, hasCustomMorphData, table, trimmedData);
     }
   }
 

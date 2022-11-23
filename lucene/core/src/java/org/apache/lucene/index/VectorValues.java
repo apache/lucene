@@ -71,45 +71,6 @@ public abstract class VectorValues extends DocIdSetIterator {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * Represents the lack of vector values. It is returned by providers that do not support
-   * VectorValues.
-   */
-  public static final VectorValues EMPTY =
-      new VectorValues() {
-
-        @Override
-        public int size() {
-          return 0;
-        }
-
-        @Override
-        public int dimension() {
-          return 0;
-        }
-
-        @Override
-        public float[] vectorValue() {
-          throw new IllegalStateException(
-              "Attempt to get vectors from EMPTY values (which was not advanced)");
-        }
-
-        @Override
-        public int docID() {
-          throw new IllegalStateException("VectorValues is EMPTY, and not positioned on a doc");
-        }
-
-        @Override
-        public int nextDoc() {
-          return NO_MORE_DOCS;
-        }
-
-        @Override
-        public int advance(int target) {
-          return NO_MORE_DOCS;
-        }
-      };
-
   /** Sorting VectorValues that iterate over documents in the order of the provided sortMap */
   public static class SortingVectorValues extends VectorValues {
     private final RandomAccessVectorValues randomAccess;
