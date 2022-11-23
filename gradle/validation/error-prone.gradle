@@ -150,7 +150,7 @@ allprojects { prj ->
             '-Xep:IndexOfChar:ERROR',
             '-Xep:InexactVarargsConditional:ERROR',
             // '-Xep:InfiniteRecursion:OFF',
-            '-Xep:InjectMoreThanOneScopeAnnotationOnClass:ERROR',
+            // '-Xep:InjectMoreThanOneScopeAnnotationOnClass:OFF', // we don't use this annotation
             // '-Xep:InjectOnMemberAndConstructor:OFF', // we don't use this annotation
             // '-Xep:InlineMeValidator:OFF', // we don't use this annotation
             '-Xep:InstantTemporalUnit:ERROR',
@@ -178,7 +178,7 @@ allprojects { prj ->
             '-Xep:LossyPrimitiveCompare:ERROR',
             '-Xep:MathRoundIntLong:ERROR',
             // '-Xep:MislabeledAndroidString:OFF', // we don't use android
-            '-Xep:MisplacedScopeAnnotations:ERROR',
+            // '-Xep:MisplacedScopeAnnotations:OFF', // we don't use this annotation
             // '-Xep:MissingSuperCall:OFF', // we don't use this annotation
             // '-Xep:MissingTestCall:OFF', // we don't use guava
             // '-Xep:MisusedDayOfYear:OFF',
@@ -199,7 +199,7 @@ allprojects { prj ->
             '-Xep:OptionalEquality:ERROR',
             '-Xep:OptionalMapUnusedValue:ERROR',
             '-Xep:OptionalOfRedundantMethod:ERROR',
-            '-Xep:OverlappingQualifierAndScopeAnnotation:ERROR',
+            // '-Xep:OverlappingQualifierAndScopeAnnotation:OFF', // we don't use this annotation
             // '-Xep:OverridesJavaxInjectableMethod:OFF', // we don't use this annotation
             '-Xep:PackageInfo:ERROR',
             '-Xep:ParametersButNotParameterized:ERROR',
@@ -283,7 +283,7 @@ allprojects { prj ->
             // '-Xep:CharacterGetNumericValue:OFF',
             // '-Xep:ClassCanBeStatic:OFF',
             '-Xep:ClassNewInstance:WARN',
-            '-Xep:CloseableProvides:WARN',
+            // '-Xep:CloseableProvides:OFF', // we don't use this annotation
             // '-Xep:CollectionUndefinedEquality:OFF',
             '-Xep:CollectorShouldNotUseState:WARN',
             '-Xep:ComparableAndComparator:WARN',
