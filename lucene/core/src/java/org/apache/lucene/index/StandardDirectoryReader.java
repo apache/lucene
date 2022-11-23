@@ -16,6 +16,15 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.IOFunction;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.Version;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,10 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.*;
 
 /** Default implementation of {@link DirectoryReader}. */
 public final class StandardDirectoryReader extends DirectoryReader {

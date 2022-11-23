@@ -16,7 +16,12 @@
  */
 package org.apache.lucene.util;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.RandomAccess;
 
 /**
  * Methods for manipulating (sorting) and creating collections. Sort methods work directly on the

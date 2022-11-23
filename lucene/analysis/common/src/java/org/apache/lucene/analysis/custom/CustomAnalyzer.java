@@ -16,7 +16,23 @@
  */
 package org.apache.lucene.analysis.custom;
 
-import static org.apache.lucene.analysis.AnalysisSPILoader.newFactoryClassInstance;
+import org.apache.lucene.analysis.AbstractAnalysisFactory;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharFilterFactory;
+import org.apache.lucene.analysis.TokenFilterFactory;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.TokenizerFactory;
+import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilter;
+import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilterFactory;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.util.FilesystemResourceLoader;
+import org.apache.lucene.util.ClasspathResourceLoader;
+import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.ResourceLoader;
+import org.apache.lucene.util.ResourceLoaderAware;
+import org.apache.lucene.util.SetOnce;
+import org.apache.lucene.util.Version;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -29,18 +45,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import org.apache.lucene.analysis.AbstractAnalysisFactory;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CharFilterFactory;
-import org.apache.lucene.analysis.TokenFilterFactory;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.TokenizerFactory;
-import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilter;
-import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilterFactory;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.analysis.util.FilesystemResourceLoader;
-import org.apache.lucene.util.*;
+
+import static org.apache.lucene.analysis.AnalysisSPILoader.newFactoryClassInstance;
 
 /**
  * A general-purpose Analyzer that can be created with a builder-style API. Under the hood it uses
@@ -589,8 +595,8 @@ public final class CustomAnalyzer extends Analyzer {
     }
 
     private Map<String, String> applyDefaultParams(Map<String, String> map) {
-      Version v;
-      if ((v = defaultMatchVersion.get()) != null) {
+      Version v = defaultMatchVersion.get();
+      if (v != null) {
         map.putIfAbsent(AbstractAnalysisFactory.LUCENE_MATCH_VERSION_PARAM, v.toString());
       }
       return map;

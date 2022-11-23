@@ -16,12 +16,18 @@
  */
 package org.apache.lucene.search.suggest.document;
 
-import java.io.IOException;
-import java.util.*;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * {@link SuggestField} which additionally takes in a set of contexts. Example usage of adding a
