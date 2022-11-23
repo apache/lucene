@@ -671,9 +671,10 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public DistancePair nearestDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithinSection(x, y, z)) {
-        return null;
-      }
+      // Since there's no early-out for sections, this has no benefit and is actually a drawback
+      // if (!isWithinSection(x, y, z)) {
+      //   return null;
+      // }
       final DistancePair firstChildDistance = child1.nearestDistance(distanceStyle, x, y, z);
       final DistancePair secondChildDistance = child2.nearestDistance(distanceStyle, x, y, z);
 
@@ -728,9 +729,10 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestPathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithinSection(x, y, z)) {
-        return Double.POSITIVE_INFINITY;
-      }
+      // No benefit, actually a drawback
+      // if (!isWithinSection(x, y, z)) {
+      //  return Double.POSITIVE_INFINITY;
+      // }
       return Math.min(
           child1.nearestPathDistance(distanceStyle, x, y, z),
           child2.nearestPathDistance(distanceStyle, x, y, z));
@@ -739,9 +741,10 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithinSection(x, y, z)) {
-        return Double.POSITIVE_INFINITY;
-      }
+      // No benefit, actually a drawback
+      // if (!isWithinSection(x, y, z)) {
+      //   return Double.POSITIVE_INFINITY;
+      // }
       return Math.min(
           child1.pathCenterDistance(distanceStyle, x, y, z),
           child2.pathCenterDistance(distanceStyle, x, y, z));
