@@ -462,7 +462,7 @@ allprojects { prj ->
             // '-Xep:UndefinedEquals:OFF',
             // '-Xep:UnescapedEntity:OFF',
             // '-Xep:UnicodeEscape:OFF',
-            '-Xep:UnnecessaryAssignment:WARN',
+            // '-Xep:UnnecessaryAssignment:OFF', // we don't use these annotations
             // '-Xep:UnnecessaryLambda:OFF',
             // '-Xep:UnnecessaryLongToIntConversion:OFF',
             // '-Xep:UnnecessaryMethodInvocationMatcher:OFF', // we don't use spring
