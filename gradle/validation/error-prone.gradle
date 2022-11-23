@@ -232,7 +232,7 @@ allprojects { prj ->
             '-Xep:SuppressWarningsDeprecated:ERROR',
             '-Xep:TemporalAccessorGetChronoField:ERROR',
             '-Xep:TestParametersNotInitialized:ERROR',
-            '-Xep:TheoryButNoTheories:ERROR',
+            // '-Xep:TheoryButNoTheories:OFF', // we don't use junit theory apis/runner
             '-Xep:ThrowIfUncheckedKnownChecked:ERROR',
             // '-Xep:ThrowNull:OFF',
             '-Xep:TreeToString:ERROR',
