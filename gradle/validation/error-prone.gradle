@@ -160,7 +160,7 @@ allprojects { prj ->
             '-Xep:InvalidZoneId:ERROR',
             '-Xep:IsInstanceIncompatibleType:ERROR',
             '-Xep:IsInstanceOfClass:ERROR',
-            '-Xep:IsLoggableTagLength:ERROR',
+            // '-Xep:IsLoggableTagLength:OFF', // we don't use android
             // '-Xep:JUnit3TestNotRun:OFF', // we don't use junit3
             '-Xep:JUnit4ClassAnnotationNonStatic:ERROR',
             '-Xep:JUnit4SetUpNotRun:ERROR',
