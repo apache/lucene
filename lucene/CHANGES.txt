@@ -119,6 +119,10 @@ API Changes
   to avoid possible exceptions when building queries from an empty term list.  The helper
   TermAndBoost class now holds a BytesRef rather than a Term. (Alan Woodward)
 
+* GITHUB#11961: VectorValues#EMPTY was removed as this instance was not
+  necessary and also illegal as it reported a number of dimensions equal to
+  zero. (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
