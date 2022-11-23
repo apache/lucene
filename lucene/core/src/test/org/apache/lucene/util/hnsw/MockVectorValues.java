@@ -122,9 +122,4 @@ class MockVectorValues extends VectorValues implements RandomAccessVectorValues 
     }
     return NO_MORE_DOCS;
   }
-
-  @Override
-  public long cost() {
-    return size();
-  }
 }

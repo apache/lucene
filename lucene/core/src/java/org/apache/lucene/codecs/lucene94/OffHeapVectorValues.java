@@ -60,11 +60,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
   }
 
   @Override
-  public long cost() {
-    return size;
-  }
-
-  @Override
   public float[] vectorValue(int targetOrd) throws IOException {
     slice.seek((long) targetOrd * byteSize);
     slice.readFloats(value, 0, value.length);
@@ -289,11 +284,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     @Override
     public int advance(int target) throws IOException {
       return doc = NO_MORE_DOCS;
-    }
-
-    @Override
-    public long cost() {
-      return 0;
     }
 
     @Override

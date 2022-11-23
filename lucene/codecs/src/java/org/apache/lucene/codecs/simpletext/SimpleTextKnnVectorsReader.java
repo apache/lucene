@@ -333,11 +333,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       return slowAdvance(target);
     }
 
-    @Override
-    public long cost() {
-      return size();
-    }
-
     private void readAllVectors() throws IOException {
       for (float[] value : values) {
         readVector(value);

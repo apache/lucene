@@ -496,11 +496,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public long cost() {
-      return size;
-    }
-
-    @Override
     public RandomAccessVectorValues copy() {
       return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
