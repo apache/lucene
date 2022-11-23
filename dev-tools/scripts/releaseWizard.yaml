@@ -108,7 +108,7 @@ templates:
 
     .Mail template
     ----
-    To: dev@lucene.apache.org, general@lucene.apache.org, java-user@lucene.apache.org
+    To: dev@lucene.apache.org, java-user@lucene.apache.org
     Subject: [ANNOUNCE] Apache Lucene {{ release_version }} released
 
     (( template=announce_lucene_mail_body ))
