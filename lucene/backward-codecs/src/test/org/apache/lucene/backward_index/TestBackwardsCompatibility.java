@@ -412,7 +412,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.4.0-cfs",
     "9.4.0-nocfs",
     "9.4.1-cfs",
-    "9.4.1-nocfs"
+    "9.4.1-nocfs",
+    "9.4.2-cfs",
+    "9.4.2-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -450,7 +452,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.9.2.0",
     "sorted.9.3.0",
     "sorted.9.4.0",
-    "sorted.9.4.1"
+    "sorted.9.4.1",
+    "sorted.9.4.2"
   };
 
   public static String[] getOldSortedNames() {
