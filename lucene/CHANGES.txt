@@ -186,6 +186,9 @@ Optimizations
 
 * GITHUB#11895: count() in BooleanQuery could be early quit. (Lu Xugang)
 
+* GITHUB#11972: `IndexSortSortedNumericDocValuesRangeQuery` can now also
+  optimize query execution with points for descending sorts. (Adrien Grand)
+
 Other
 ---------------------
 
