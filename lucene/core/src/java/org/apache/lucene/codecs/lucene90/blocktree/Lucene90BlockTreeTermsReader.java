@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene90.blocktree;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +35,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.Outputs;
@@ -166,7 +166,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
           if (numFields < 0) {
             throw new CorruptIndexException("invalid numFields: " + numFields, metaIn);
           }
-          fieldMap = new HashMap<>((int) (numFields / 0.75f) + 1);
+          fieldMap = CollectionUtil.newHashMap(numFields);
           for (int i = 0; i < numFields; ++i) {
             final int field = metaIn.readVInt();
             final long numTerms = metaIn.readVLong();

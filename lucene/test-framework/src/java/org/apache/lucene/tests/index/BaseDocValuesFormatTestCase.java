@@ -282,7 +282,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
     RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory);
     int numDocs = 1 + random().nextInt(100);
 
-    HashMap<Integer, BytesRef> writtenValues = new HashMap<>(numDocs);
+    HashMap<Integer, BytesRef> writtenValues = new HashMap<>();
 
     // Small vocabulary ranges will be highly compressible
     int vocabRange = 1 + random().nextInt(Byte.MAX_VALUE - 1);

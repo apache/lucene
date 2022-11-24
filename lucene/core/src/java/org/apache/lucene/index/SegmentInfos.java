@@ -43,6 +43,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
@@ -450,7 +451,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (numDVFields == 0) {
         dvUpdateFiles = Collections.emptyMap();
       } else {
-        Map<Integer, Set<String>> map = new HashMap<>(numDVFields);
+        Map<Integer, Set<String>> map = CollectionUtil.newHashMap(numDVFields);
         for (int i = 0; i < numDVFields; i++) {
           map.put(CodecUtil.readBEInt(input), input.readSetOfStrings());
         }

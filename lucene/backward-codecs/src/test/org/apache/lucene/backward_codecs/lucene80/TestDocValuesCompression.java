@@ -40,6 +40,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.CollectionUtil;
 
 public class TestDocValuesCompression extends LuceneTestCase {
   private final Codec bestSpeed =
@@ -87,7 +88,7 @@ public class TestDocValuesCompression extends LuceneTestCase {
 
   public void testReseekAfterSkipDecompression() throws IOException {
     final int CARDINALITY = (Lucene80DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE << 1) + 11;
-    Set<String> valueSet = new HashSet<>(CARDINALITY);
+    Set<String> valueSet = CollectionUtil.newHashSet(CARDINALITY);
     for (int i = 0; i < CARDINALITY; i++) {
       valueSet.add(TestUtil.randomSimpleString(random(), 64));
     }
