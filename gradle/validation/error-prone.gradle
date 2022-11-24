@@ -78,23 +78,23 @@ allprojects { prj ->
 
             // '-Xep:AlwaysThrows:OFF', // we don't use google collections
             // '-Xep:AndroidInjectionBeforeSuper:OFF', // we don't use android
-            // '-Xep:ArrayEquals:OFF',
+            // '-Xep:ArrayEquals:OFF', // TODO: there are problems
             '-Xep:ArrayFillIncompatibleType:ERROR',
             // '-Xep:ArrayHashCode:OFF',
-            // '-Xep:ArrayToString:OFF',
+            // '-Xep:ArrayToString:OFF', // TODO: there are problems
             '-Xep:ArraysAsListPrimitiveArray:ERROR',
             '-Xep:AsyncCallableReturnsNull:ERROR',
             // '-Xep:AsyncFunctionReturnsNull:OFF', // we don't use guava
             // '-Xep:AutoValueBuilderDefaultsInConstructor:OFF', // we don't use autovalue
             // '-Xep:AutoValueConstructorOrderChecker:OFF', // we don't use autovalue
             '-Xep:BadAnnotationImplementation:ERROR',
-            // '-Xep:BadShiftAmount:OFF',
+            // '-Xep:BadShiftAmount:OFF', // TODO: there are problems
             // '-Xep:BanJNDI:OFF', // implemented with forbidden APIs instead
             '-Xep:BoxedPrimitiveEquality:ERROR',
             // '-Xep:BundleDeserializationCast:OFF', // we don't use android
             '-Xep:ChainingConstructorIgnoresParameter:ERROR',
             // '-Xep:CheckNotNullMultipleTimes:OFF', // we don't use guava
-            // '-Xep:CheckReturnValue:oFF', // we don't use these annotations
+            // '-Xep:CheckReturnValue:OFF', // we don't use these annotations
             '-Xep:CollectionToArraySafeParameter:ERROR',
             // '-Xep:ComparableType:OFF',
             '-Xep:ComparingThisWithNull:ERROR',
@@ -109,15 +109,15 @@ allprojects { prj ->
             '-Xep:DeadException:ERROR',
             '-Xep:DeadThread:ERROR',
             '-Xep:DiscardedPostfixExpression:ERROR',
-            // '-Xep:DoNotCall:OFF',
+            // '-Xep:DoNotCall:OFF', // we don't use this annotation
             // '-Xep:DoNotMock:OFF', // we don't use mocking libraries
-            // '-Xep:DoubleBraceInitialization:OFF',
+            // '-Xep:DoubleBraceInitialization:OFF', // we don't use guava
             '-Xep:DuplicateMapKeys:ERROR',
             // '-Xep:DurationFrom:OFF', // we don't use Duration.from()
             // '-Xep:DurationGetTemporalUnit:OFF', // we don't use Duration.get()
             // '-Xep:DurationTemporalUnit:OFF', // we don't use Duration.of() etc
             // '-Xep:DurationToLongTimeUnit:OFF', // we don't use TimeUnit.convert Duration, etc
-            // '-Xep:EmptyTopLevelDeclaration:OFF',
+            // '-Xep:EmptyTopLevelDeclaration:OFF', // noisy
             '-Xep:EqualsHashCode:ERROR',
             '-Xep:EqualsNaN:ERROR',
             '-Xep:EqualsNull:ERROR',
@@ -165,7 +165,7 @@ allprojects { prj ->
             '-Xep:JUnit4ClassAnnotationNonStatic:ERROR',
             // '-Xep:JUnit4SetUpNotRun:OFF', // LuceneTestCase takes care
             // '-Xep:JUnit4TearDownNotRun:OFF', // LuceneTestCase takes care
-            // '-Xep:JUnit4TestNotRun:OFF',
+            // '-Xep:JUnit4TestNotRun:OFF', // noisy
             '-Xep:JUnit4TestsNotRunWithinEnclosed:ERROR',
             '-Xep:JUnitAssertSameCheck:ERROR',
             '-Xep:JUnitParameterMethodNotFound:ERROR',
@@ -220,8 +220,8 @@ allprojects { prj ->
             // '-Xep:RectIntersectReturnValueIgnored:OFF', // we don't use android
             // '-Xep:RequiredModifiers:OFF', // we don't use this annotation
             // '-Xep:RestrictedApiChecker:OFF', // we don't use this annotation
-            // '-Xep:ReturnValueIgnored:OFF',
-            // '-Xep:SelfAssignment:OFF',
+            // '-Xep:ReturnValueIgnored:OFF', // noisy
+            // '-Xep:SelfAssignment:OFF', // TODO: there are problems
             '-Xep:SelfComparison:ERROR',
             '-Xep:SelfEquals:ERROR',
             '-Xep:ShouldHaveEvenArgs:ERROR',
@@ -234,13 +234,13 @@ allprojects { prj ->
             '-Xep:TestParametersNotInitialized:ERROR',
             // '-Xep:TheoryButNoTheories:OFF', // we don't use junit theory apis/runner
             '-Xep:ThrowIfUncheckedKnownChecked:ERROR',
-            // '-Xep:ThrowNull:OFF',
+            // '-Xep:ThrowNull:OFF', // noisy (LuceneTestCase)
             '-Xep:TreeToString:ERROR',
             // '-Xep:TruthSelfEquals:OFF', // we don't use truth
             // '-Xep:TryFailThrowable:OFF',
             '-Xep:TypeParameterQualifier:ERROR',
             '-Xep:UnicodeDirectionalityCharacters:ERROR',
-            // '-Xep:UnicodeInCode:OFF',
+            // '-Xep:UnicodeInCode:OFF', // noisy (spatial3d)
             '-Xep:UnnecessaryCheckNotNull:ERROR',
             '-Xep:UnnecessaryTypeArgument:ERROR',
             '-Xep:UnsafeWildcard:ERROR',
@@ -253,22 +253,22 @@ allprojects { prj ->
 
             // On by Default : WARNING
 
-            // '-Xep:AlmostJavadoc:OFF',
-            // '-Xep:AlreadyChecked:OFF',
+            // '-Xep:AlmostJavadoc:OFF', // TODO: there are problems
+            // '-Xep:AlreadyChecked:OFF', // TODO: there are problems
             // '-Xep:AmbiguousMethodReference:OFF',
             // '-Xep:AnnotateFormatMethod:OFF', // we don't use this annotation
-            // '-Xep:ArgumentSelectionDefectChecker:OFF',
-            // '-Xep:ArrayAsKeyOfSetOrMap:OFF',
+            // '-Xep:ArgumentSelectionDefectChecker:OFF', // noisy
+            // '-Xep:ArrayAsKeyOfSetOrMap:OFF', // TODO: there are problems
             '-Xep:AssertEqualsArgumentOrderChecker:WARN',
             '-Xep:AssertThrowsMultipleStatements:WARN',
-            // '-Xep:AssertionFailureIgnored:OFF',
+            // '-Xep:AssertionFailureIgnored:OFF', // TODO: there are problems
             // '-Xep:AssistedInjectAndInjectOnSameConstructor:OFF', // we don't use this annotation
             // '-Xep:AutoValueFinalMethods:OFF', // we don't use autovalue
             // '-Xep:AutoValueImmutableFields:OFF', // we don't use autovalue
             // '-Xep:AutoValueSubclassLeaked:OFF', // we don't use autovalue
             '-Xep:BadComparable:WARN',
-            // '-Xep:BadImport:OFF',
-            // '-Xep:BadInstanceof:OFF',
+            // '-Xep:BadImport:OFF', // TODO: there are problems
+            // '-Xep:BadInstanceof:OFF', // TODO: there are problems
             '-Xep:BareDotMetacharacter:WARN',
             '-Xep:BigDecimalEquals:WARN',
             '-Xep:BigDecimalLiteralDouble:WARN',
@@ -277,18 +277,18 @@ allprojects { prj ->
             // '-Xep:ByteBufferBackingArray:OFF',
             // '-Xep:CacheLoaderNull:OFF', // we don't use guava
             // '-Xep:CanonicalDuration:OFF', // barely use Duration.of (one test), just a style thing
-            // '-Xep:CatchAndPrintStackTrace:OFF',
-            // '-Xep:CatchFail:OFF',
+            // '-Xep:CatchAndPrintStackTrace:OFF', // noisy
+            // '-Xep:CatchFail:OFF', // TODO: there are problems
             // '-Xep:ChainedAssertionLosesContext:OFF', // we don't use truth
-            // '-Xep:CharacterGetNumericValue:OFF',
-            // '-Xep:ClassCanBeStatic:OFF',
+            // '-Xep:CharacterGetNumericValue:OFF', // noisy
+            // '-Xep:ClassCanBeStatic:OFF', // noisy
             '-Xep:ClassNewInstance:WARN',
             // '-Xep:CloseableProvides:OFF', // we don't use this annotation
-            // '-Xep:CollectionUndefinedEquality:OFF',
+            // '-Xep:CollectionUndefinedEquality:OFF', // TODO: there are problems
             '-Xep:CollectorShouldNotUseState:WARN',
             '-Xep:ComparableAndComparator:WARN',
             '-Xep:CompareToZero:WARN',
-            // '-Xep:ComplexBooleanConstant:OFF',
+            // '-Xep:ComplexBooleanConstant:OFF', // TODO: there are problems
             '-Xep:DateChecker:WARN',
             // '-Xep:DateFormatConstant:OFF', // we don't use Date setters
             // '-Xep:DefaultCharset:OFF', // we have forbiddenapis for that
@@ -296,39 +296,39 @@ allprojects { prj ->
             '-Xep:DeprecatedVariable:WARN',
             // '-Xep:DirectInvocationOnMock:OFF', // we don't use mocking libraries
             // '-Xep:DistinctVarargsChecker:OFF', // we don't use google collections
-            // '-Xep:DoNotCallSuggester:OFF',
+            // '-Xep:DoNotCallSuggester:OFF', // we don't use this annotation
             // '-Xep:DoNotClaimAnnotations:OFF', // we don't use annotation processors
             // '-Xep:DoNotMockAutoValue:OFF', // we don't use autovalue
-            // '-Xep:DoubleCheckedLocking:OFF',
+            // '-Xep:DoubleCheckedLocking:OFF', // TODO: there are problems
             '-Xep:EmptyBlockTag:WARN',
-            // '-Xep:EmptyCatch:OFF',
+            // '-Xep:EmptyCatch:OFF', // ECJ takes care
             // '-Xep:EmptySetMultibindingContributions:OFF', // we don't use this annotation
-            // '-Xep:EqualsGetClass:OFF',
+            // '-Xep:EqualsGetClass:OFF', // noisy
             // '-Xep:EqualsIncompatibleType:OFF',
-            // '-Xep:EqualsUnsafeCast:OFF',
+            // '-Xep:EqualsUnsafeCast:OFF', // noisy
             '-Xep:EqualsUsingHashCode:WARN',
             '-Xep:ErroneousBitwiseExpression:WARN',
             '-Xep:ErroneousThreadPoolConstructorChecker:WARN',
             // '-Xep:EscapedEntity:OFF',
-            // '-Xep:ExtendingJUnitAssert:OFF',
-            // '-Xep:ExtendsObject:OFF',
-            // '-Xep:FallThrough:OFF',
-            // '-Xep:Finally:OFF',
+            // '-Xep:ExtendingJUnitAssert:OFF', // noisy
+            // '-Xep:ExtendsObject:OFF', // TODO: there are problems
+            // '-Xep:FallThrough:OFF', // TODO: there are problems
+            // '-Xep:Finally:OFF', // TODO: there are problems
             '-Xep:FloatCast:WARN',
             '-Xep:FloatingPointAssertionWithinEpsilon:WARN',
-            // '-Xep:FloatingPointLiteralPrecision:OFF',
+            // '-Xep:FloatingPointLiteralPrecision:OFF', // TODO: there are problems
             // '-Xep:FloggerArgumentToString:OFF', // we don't use flogger
             // '-Xep:FloggerStringConcatenation:OFF', // we don't use flogger
             // '-Xep:FragmentInjection:OFF', // we don't use android
             // '-Xep:FragmentNotInstantiable:OFF', // we don't use android
-            // '-Xep:FutureReturnValueIgnored:OFF',
+            // '-Xep:FutureReturnValueIgnored:OFF', // TODO: there are problems
             '-Xep:GetClassOnEnum:WARN',
-            // '-Xep:HidingField:OFF',
-            // '-Xep:IdentityHashMapUsage:OFF',
+            // '-Xep:HidingField:OFF', // noisy
+            // '-Xep:IdentityHashMapUsage:OFF', // noisy
             // '-Xep:ImmutableAnnotationChecker:OFF', // we don't use this annotation
-            // '-Xep:ImmutableEnumChecker:OFF',
-            // '-Xep:InconsistentCapitalization:OFF',
-            // '-Xep:InconsistentHashCode:OFF',
+            // '-Xep:ImmutableEnumChecker:OFF', // noisy
+            // '-Xep:InconsistentCapitalization:OFF', // TODO: there are problems
+            // '-Xep:InconsistentHashCode:OFF', // noisy
             '-Xep:IncorrectMainMethod:WARN',
             '-Xep:IncrementInForLoopAndHeader:WARN',
             '-Xep:InheritDoc:WARN',
@@ -336,16 +336,16 @@ allprojects { prj ->
             // '-Xep:InjectOnConstructorOfAbstractClass:OFF', // we don't use this annotation
             // '-Xep:InjectScopeAnnotationOnInterfaceOrAbstractClass:OFF', // we don't use this annotation
             // '-Xep:InjectedConstructorAnnotations:OFF', // we don't use this annotation
-            // '-Xep:InlineFormatString:OFF',
+            // '-Xep:InlineFormatString:OFF', // noisy
             // '-Xep:InlineMeInliner:OFF', // we don't use this annotation
-            // '-Xep:InlineMeSuggester:OFF',
+            // '-Xep:InlineMeSuggester:OFF', // we don't use this annotation
             // '-Xep:InputStreamSlowMultibyteRead:OFF',
             '-Xep:InstanceOfAndCastMatchWrongType:WARN',
-            // '-Xep:IntLongMath:OFF',
-            // '-Xep:InvalidBlockTag:OFF',
-            // '-Xep:InvalidInlineTag:OFF',
+            // '-Xep:IntLongMath:OFF', // noisy
+            // '-Xep:InvalidBlockTag:OFF', // noisy (e.g. lucene.experimental)
+            // '-Xep:InvalidInlineTag:OFF', // TODO: there are problems
             '-Xep:InvalidLink:WARN',
-            // '-Xep:InvalidParam:OFF',
+            // '-Xep:InvalidParam:OFF', // TODO: there are problems
             '-Xep:InvalidThrows:WARN',
             '-Xep:InvalidThrowsLink:WARN',
             '-Xep:IterableAndIterator:WARN',
@@ -356,14 +356,14 @@ allprojects { prj ->
             // '-Xep:JavaDurationWithNanos:OFF', // we don't use these Duration methods
             // '-Xep:JavaDurationWithSeconds:OFF', // we don't use these Duration methods
             // '-Xep:JavaInstantGetSecondsGetNano:OFF', // we don't use these Instant methods
-            // '-Xep:JavaLangClash:OFF',
+            // '-Xep:JavaLangClash:OFF', // TODO: there are problems
             // '-Xep:JavaLocalDateTimeGetNano:OFF', // we don't use LocalDateTime
             // '-Xep:JavaLocalTimeGetNano:OFF', // we don't use LocalTime
             // '-Xep:JavaPeriodGetDays:OFF', // we don't use Period
             // '-Xep:JavaTimeDefaultTimeZone:OFF', // forbidden-apis checks this
-            // '-Xep:JavaUtilDate:OFF',
+            // '-Xep:JavaUtilDate:OFF', // noisy
             // '-Xep:JavaxInjectOnFinalField:OFF', // we don't use this annotation
-            // '-Xep:JdkObsolete:OFF',
+            // '-Xep:JdkObsolete:OFF', // noisy
             // '-Xep:JodaConstructors:OFF', // we don't use joda-time
             // '-Xep:JodaDateTimeConstants:OFF', // we don't use joda-time
             // '-Xep:JodaDurationWithMillis:OFF', // we don't use joda-time
@@ -374,33 +374,33 @@ allprojects { prj ->
             // '-Xep:JodaWithDurationAddedLong:OFF', // we don't use joda-time
             // '-Xep:LiteEnumValueOf:OFF', // we don't use protobuf
             // '-Xep:LiteProtoToString:OFF', // we don't use protobuf
-            // '-Xep:LockNotBeforeTry:OFF',
-            // '-Xep:LogicalAssignment:OFF',
-            // '-Xep:LongDoubleConversion:OFF',
+            // '-Xep:LockNotBeforeTry:OFF', // TODO: there are problems
+            // '-Xep:LogicalAssignment:OFF', // TODO: there are problems
+            // '-Xep:LongDoubleConversion:OFF', // TODO: there are problems
             '-Xep:LongFloatConversion:WARN',
             '-Xep:LoopOverCharArray:WARN',
             '-Xep:MalformedInlineTag:WARN',
-            // '-Xep:MathAbsoluteRandom:OFF',
+            // '-Xep:MathAbsoluteRandom:OFF', // TODO: there are problems
             // '-Xep:MemoizeConstantVisitorStateLookups:OFF', // we don't use this class
             // '-Xep:MissingCasesInEnumSwitch:OFF', // redundant with ECJ incompleteEnumSwitch/missingEnumCaseDespiteDefault
-            // '-Xep:MissingFail:OFF',
+            // '-Xep:MissingFail:OFF', // TODO: there are problems
             '-Xep:MissingImplementsComparable:WARN',
-            // '-Xep:MissingOverride:OFF',
-            // '-Xep:MissingSummary:OFF',
-            // '-Xep:MixedMutabilityReturnType:OFF',
+            // '-Xep:MissingOverride:OFF', // ECJ takes care of this
+            // '-Xep:MissingSummary:OFF', // TODO: there are problems
+            // '-Xep:MixedMutabilityReturnType:OFF', // noisy
             // '-Xep:MockNotUsedInProduction:OFF', // we don't use mocking libraries
-            // '-Xep:ModifiedButNotUsed:OFF',
+            // '-Xep:ModifiedButNotUsed:OFF', // TODO: there are problems
             '-Xep:ModifyCollectionInEnhancedForLoop:WARN',
             '-Xep:ModifySourceCollectionInStream:WARN',
             '-Xep:MultipleParallelOrSequentialCalls:WARN',
             '-Xep:MultipleUnaryOperatorsInMethodCall:WARN',
-            // '-Xep:MutablePublicArray:OFF',
+            // '-Xep:MutablePublicArray:OFF', // TODO: there are problems
             '-Xep:NarrowCalculation:WARN',
-            // '-Xep:NarrowingCompoundAssignment:OFF',
+            // '-Xep:NarrowingCompoundAssignment:OFF', // noisy
             '-Xep:NegativeCharLiteral:WARN',
             '-Xep:NestedInstanceOfConditions:WARN',
-            // '-Xep:NonAtomicVolatileUpdate:OFF',
-            // '-Xep:NonCanonicalType:OFF',
+            // '-Xep:NonAtomicVolatileUpdate:OFF', // TODO: there are problems
+            // '-Xep:NonCanonicalType:OFF', // noisy
             '-Xep:NonOverridingEquals:WARN',
             '-Xep:NullOptional:WARN',
             // '-Xep:NullableConstructor:OFF', // we don't use this annotation
@@ -408,9 +408,9 @@ allprojects { prj ->
             // '-Xep:NullablePrimitiveArray:OFF', // we don't use this annotation
             // '-Xep:NullableVoid:OFF', // we don't use this annotation
             '-Xep:ObjectEqualsForPrimitives:WARN',
-            // '-Xep:ObjectToString:OFF',
-            // '-Xep:ObjectsHashCodePrimitive:OFF',
-            // '-Xep:OperatorPrecedence:OFF',
+            // '-Xep:ObjectToString:OFF', // TODO: there are problems
+            // '-Xep:ObjectsHashCodePrimitive:OFF', // TODO: there are problems
+            // '-Xep:OperatorPrecedence:OFF', // noisy
             '-Xep:OptionalMapToOptional:WARN',
             '-Xep:OptionalNotPresent:WARN',
             '-Xep:OrphanedFormatString:WARN',
@@ -427,29 +427,29 @@ allprojects { prj ->
             // '-Xep:ProtoTimestampGetSecondsGetNano:OFF', // we don't use protobuf
             // '-Xep:QualifierOrScopeOnInjectMethod:OFF', // we don't use this annotation
             '-Xep:ReachabilityFenceUsage:WARN',
-            // '-Xep:ReferenceEquality:OFF',
+            // '-Xep:ReferenceEquality:OFF', // noisy
             '-Xep:RethrowReflectiveOperationExceptionAsLinkageError:WARN',
             '-Xep:ReturnFromVoid:WARN',
             // '-Xep:RobolectricShadowDirectlyOn:OFF', // we don't use robolectric
             // '-Xep:RxReturnValueIgnored:OFF', // we don't use rxjava
-            // '-Xep:SameNameButDifferent:OFF',
+            // '-Xep:SameNameButDifferent:OFF', // TODO: there are problems
             '-Xep:SelfAlwaysReturnsThis:WARN',
-            // '-Xep:ShortCircuitBoolean:OFF',
+            // '-Xep:ShortCircuitBoolean:OFF', // TODO: there are problems
             // '-Xep:StaticAssignmentInConstructor:OFF',
-            // '-Xep:StaticAssignmentOfThrowable:OFF',
+            // '-Xep:StaticAssignmentOfThrowable:OFF', // noisy
             // '-Xep:StaticGuardedByInstance:OFF',
             // '-Xep:StaticMockMember:OFF', // we don't use mock libraries
-            // '-Xep:StreamResourceLeak:OFF',
+            // '-Xep:StreamResourceLeak:OFF', // TODO: there are problems
             '-Xep:StreamToIterable:WARN',
-            // '-Xep:StringSplitter:OFF',
+            // '-Xep:StringSplitter:OFF', // noisy, can use forbidden-apis for this
             // '-Xep:SwigMemoryLeak:OFF', // we don't use swig
-            // '-Xep:SynchronizeOnNonFinalField:OFF',
+            // '-Xep:SynchronizeOnNonFinalField:OFF', // noisy
             // '-Xep:ThreadJoinLoop:OFF',
-            // '-Xep:ThreadLocalUsage:OFF',
-            // '-Xep:ThreadPriorityCheck:OFF',
+            // '-Xep:ThreadLocalUsage:OFF', // noisy
+            // '-Xep:ThreadPriorityCheck:OFF', // noisy, forbidden APIs can do this
             '-Xep:ThreeLetterTimeZoneID:WARN',
             '-Xep:TimeUnitConversionChecker:WARN',
-            // '-Xep:ToStringReturnsNull:OFF',
+            // '-Xep:ToStringReturnsNull:OFF', // TODO: there are problems
             // '-Xep:TruthAssertExpected:OFF', // we don't use truth
             // '-Xep:TruthConstantAsserts:OFF', // we don't use truth
             // '-Xep:TruthGetOrDefault:OFF', // we don't use truth
@@ -459,27 +459,27 @@ allprojects { prj ->
             // '-Xep:TypeParameterShadowing:OFF',
             // '-Xep:TypeParameterUnusedInFormals:OFF',
             '-Xep:URLEqualsHashCode:WARN',
-            // '-Xep:UndefinedEquals:OFF',
-            // '-Xep:UnescapedEntity:OFF',
-            // '-Xep:UnicodeEscape:OFF',
+            // '-Xep:UndefinedEquals:OFF', // TODO: there are problems
+            // '-Xep:UnescapedEntity:OFF', // TODO: there are problems
+            // '-Xep:UnicodeEscape:OFF', // noisy
             // '-Xep:UnnecessaryAssignment:OFF', // we don't use these annotations
-            // '-Xep:UnnecessaryLambda:OFF',
-            // '-Xep:UnnecessaryLongToIntConversion:OFF',
+            // '-Xep:UnnecessaryLambda:OFF', // TODO: there are problems
+            // '-Xep:UnnecessaryLongToIntConversion:OFF', // TODO: there are problems
             // '-Xep:UnnecessaryMethodInvocationMatcher:OFF', // we don't use spring
             '-Xep:UnnecessaryMethodReference:WARN',
-            // '-Xep:UnnecessaryParentheses:OFF',
+            // '-Xep:UnnecessaryParentheses:OFF', // noisy
             '-Xep:UnrecognisedJavadocTag:WARN',
             // '-Xep:UnsafeFinalization:OFF', // we don't use finalizers, deprecated for removal, fails build
             '-Xep:UnsafeReflectiveConstructionCast:WARN',
-            // '-Xep:UnsynchronizedOverridesSynchronized:OFF',
-            // '-Xep:UnusedMethod:OFF',
+            // '-Xep:UnsynchronizedOverridesSynchronized:OFF', // TODO: there are problems
+            // '-Xep:UnusedMethod:OFF', // TODO: there are problems
             '-Xep:UnusedNestedClass:WARN',
-            // '-Xep:UnusedTypeParameter:OFF',
-            // '-Xep:UnusedVariable:OFF',
+            // '-Xep:UnusedTypeParameter:OFF', // TODO: there are problems
+            // '-Xep:UnusedVariable:OFF', // noisy, can use ECJ
             // '-Xep:UseBinds:OFF', // we don't use this annotation
-            // '-Xep:UseCorrectAssertInTests:OFF',
+            // '-Xep:UseCorrectAssertInTests:OFF', // noisy
             '-Xep:VariableNameSameAsType:WARN',
-            // '-Xep:WaitNotInLoop:OFF',
+            // '-Xep:WaitNotInLoop:OFF', // TODO: there are problems
             // '-Xep:WakelockReleasedDangerously:OFF', // we don't use android
             // '-Xep:WithSignatureDiscouraged:OFF', // we aren't using this error-prone internal api
         ]
