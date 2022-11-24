@@ -1662,8 +1662,7 @@ public class Plane extends Vector {
       } else {
         // Since a==b==0, any plane including the Z axis suffices.
         // System.err.println("      Perpendicular to z");
-        GeoPoint[] points =
-            findIntersections(planetModel, normalYPlane, NO_BOUNDS, NO_BOUNDS);
+        GeoPoint[] points = findIntersections(planetModel, normalYPlane, NO_BOUNDS, NO_BOUNDS);
         if (points.length == 0) {
           points = findIntersections(planetModel, normalXPlane, NO_BOUNDS, NO_BOUNDS);
         }
@@ -2209,8 +2208,7 @@ public class Plane extends Vector {
         }
       } else {
         // Horizontal circle.  Since a==b, any vertical plane suffices.
-        GeoPoint[] points =
-            findIntersections(planetModel, normalXPlane, NO_BOUNDS, NO_BOUNDS);
+        GeoPoint[] points = findIntersections(planetModel, normalXPlane, NO_BOUNDS, NO_BOUNDS);
         if (points.length == 0) {
           points = findIntersections(planetModel, normalYPlane, NO_BOUNDS, NO_BOUNDS);
         }
