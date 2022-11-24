@@ -75,11 +75,6 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
         }
         return false;
       }
-
-      @Override
-      public boolean isTimeoutEnabled() {
-        return true;
-      }
     };
   }
 }

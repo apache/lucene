@@ -737,7 +737,7 @@ public class IndexSearcher {
       }
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
-        if (queryTimeout != null && queryTimeout.isTimeoutEnabled()) {
+        if (queryTimeout != null) {
           scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
         }
         try {
