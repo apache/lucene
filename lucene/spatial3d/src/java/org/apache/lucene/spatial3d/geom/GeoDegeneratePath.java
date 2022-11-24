@@ -282,7 +282,7 @@ class GeoDegeneratePath extends GeoBasePath {
         minDistance = newDistance;
       }
     }
-    return minDistance;
+    return distanceStyle.fromAggregationForm(minDistance);
   }
 
   @Override
@@ -468,6 +468,15 @@ class GeoDegeneratePath extends GeoBasePath {
       return this.point.isIdentical(x, y, z);
     }
 
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      for (final Membership cutoffPlane : cutoffPlanes) {
+        if (!cutoffPlane.isWithin(x, y, z)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
     /**
      * Compute interior path distance.
      *
@@ -502,7 +511,7 @@ class GeoDegeneratePath extends GeoBasePath {
           return Double.POSITIVE_INFINITY;
         }
       }
-      return distanceStyle.computeDistance(this.point, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
 
     /**
@@ -516,7 +525,7 @@ class GeoDegeneratePath extends GeoBasePath {
      */
     public double outsideDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      return distanceStyle.computeDistance(this.point, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
 
     /**
@@ -578,7 +587,7 @@ class GeoDegeneratePath extends GeoBasePath {
 
     @Override
     public String toString() {
-      return point.toString();
+      return "SegmentEndpoint: " + point;
     }
   }
 
@@ -659,6 +668,10 @@ class GeoDegeneratePath extends GeoBasePath {
           && normalizedConnectingPlane.evaluateIsZero(x, y, z);
     }
 
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      return startCutoffPlane.isWithin(x, y, z) && endCutoffPlane.isWithin(x, y, z);
+    }
+
     /**
      * Compute path center distance (distance from path to current point).
      *
@@ -671,7 +684,7 @@ class GeoDegeneratePath extends GeoBasePath {
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       // First, if this point is outside the endplanes of the segment, return POSITIVE_INFINITY.
-      if (!startCutoffPlane.isWithin(x, y, z) || !endCutoffPlane.isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       // (1) Compute normalizedPerpPlane.  If degenerate, then there is no such plane, which means
@@ -710,7 +723,7 @@ class GeoDegeneratePath extends GeoBasePath {
               "Can't find world intersection for point x=" + x + " y=" + y + " z=" + z);
         }
       }
-      return distanceStyle.computeDistance(thePoint, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(thePoint, x, y, z));
     }
 
     /**
@@ -726,7 +739,7 @@ class GeoDegeneratePath extends GeoBasePath {
     public double nearestPathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       // First, if this point is outside the endplanes of the segment, return POSITIVE_INFINITY.
-      if (!startCutoffPlane.isWithin(x, y, z) || !endCutoffPlane.isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       // (1) Compute normalizedPerpPlane.  If degenerate, then there is no such plane, which means
@@ -891,6 +904,11 @@ class GeoDegeneratePath extends GeoBasePath {
           .addPoint(start)
           .addPoint(end)
           .addPlane(planetModel, normalizedConnectingPlane, startCutoffPlane, endCutoffPlane);
+    }
+
+    @Override
+    public String toString() {
+      return "PathSegment: " + start + " to " + end;
     }
   }
 }
