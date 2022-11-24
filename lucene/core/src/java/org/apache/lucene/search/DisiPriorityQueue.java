@@ -49,6 +49,11 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
     size = 0;
   }
 
+  public void clear() {
+    Arrays.fill(heap, null);
+    size = 0;
+  }
+
   public int size() {
     return size;
   }

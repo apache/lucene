@@ -20,14 +20,14 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import org.apache.lucene.index.NumericDocValues;
+
 import org.apache.lucene.util.Bits;
 
-final class SameFieldBlockMaxMaxScoreBulkScorer extends BulkScorer {
+final class MaxScoreBulkScorer extends BulkScorer {
 
-  private final NumericDocValues norms;
   private final DisiWrapper[] allScorers;
   private final DisiPriorityQueue essentialQueue;
+  private final MaxScoreSumPropagator maxScorePropagator;
   private final long cost;
   private float minCompetitiveScore;
   private boolean minCompetitiveScoreUpdated;
@@ -35,18 +35,17 @@ final class SameFieldBlockMaxMaxScoreBulkScorer extends BulkScorer {
   private int firstEssentialScorer;
   private final double[] maxScoreSums;
 
-  SameFieldBlockMaxMaxScoreBulkScorer(NumericDocValues norms, List<TermScorer> clauses)
-      throws IOException {
-    this.norms = norms;
-    allScorers = new DisiWrapper[clauses.size()];
+  MaxScoreBulkScorer(List<Scorer> scorers) throws IOException {
+    allScorers = new DisiWrapper[scorers.size()];
     int i = 0;
     long cost = 0;
-    for (TermScorer clause : clauses) {
-      DisiWrapper w = new DisiWrapper(clause);
+    for (Scorer scorer : scorers) {
+      DisiWrapper w = new DisiWrapper(scorer);
       cost += w.cost;
       allScorers[i++] = w;
     }
     this.cost = cost;
+    maxScorePropagator = new MaxScoreSumPropagator(scorers);
     essentialQueue = new DisiPriorityQueue(allScorers.length);
     maxScoreSums = new double[allScorers.length];
   }
@@ -75,24 +74,14 @@ final class SameFieldBlockMaxMaxScoreBulkScorer extends BulkScorer {
       while (top.doc < windowMax) {
         if (acceptDocs == null || acceptDocs.get(top.doc)) {
           DisiWrapper topList = essentialQueue.topList();
-          final long norm;
-          if (norms != null) {
-            final boolean advanced = norms.advanceExact(top.doc);
-            assert advanced;
-            norm = norms.longValue();
-          } else {
-            norm = 1L;
-          }
-          double score = topList.termScorer.score(norm);
+          double score = topList.scorer.score();
           for (DisiWrapper w = topList.next; w != null; w = w.next) {
-            score += w.termScorer.score(norm);
+            score += w.scorer.score();
           }
 
           boolean possibleMatch = true;
           for (int i = firstEssentialScorer - 1; i >= 0; --i) {
-            float maxPossibleScore =
-                MaxScoreSumPropagator.scoreSumUpperBound(
-                    score + maxScoreSums[i], allScorers.length);
+            float maxPossibleScore = maxScorePropagator.scoreSumUpperBound(score + maxScoreSums[i]);
             if (maxPossibleScore < minCompetitiveScore) {
               possibleMatch = false;
               break;
@@ -103,7 +92,7 @@ final class SameFieldBlockMaxMaxScoreBulkScorer extends BulkScorer {
               scorer.doc = scorer.iterator.advance(top.doc);
             }
             if (scorer.doc == top.doc) {
-              score += scorer.termScorer.score(norm);
+              score += scorer.scorer.score();
             }
           }
 
@@ -151,23 +140,25 @@ final class SameFieldBlockMaxMaxScoreBulkScorer extends BulkScorer {
     }
     for (DisiWrapper scorer : allScorers) {
       if (scorer.doc < windowMax) {
-        scorer.maxScore = scorer.scorer.getMaxScore(windowMax - 1);
+        scorer.maxWindowScore = scorer.scorer.getMaxScore(windowMax - 1);
       } else {
-        scorer.maxScore = 0;
+        scorer.maxWindowScore = 0;
       }
     }
     return windowMax;
   }
 
   private boolean partitionScorers() {
-    Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxScore));
+    Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxWindowScore));
     firstEssentialScorer = 0;
     double maxScoreSum = 0;
     for (; firstEssentialScorer < allScorers.length; ++firstEssentialScorer) {
-      maxScoreSum += allScorers[firstEssentialScorer].maxScore;
+      maxScoreSum += allScorers[firstEssentialScorer].maxWindowScore;
       maxScoreSums[firstEssentialScorer] = maxScoreSum;
       float maxScoreSumFloat =
-          MaxScoreSumPropagator.scoreSumUpperBound(maxScoreSum, firstEssentialScorer + 1);
+          MaxScoreSumPropagator.scoreSumUpperBound(
+              maxScoreSum,
+              firstEssentialScorer + 1);
       if (maxScoreSumFloat >= minCompetitiveScore) {
         break;
       }
@@ -218,7 +209,8 @@ final class SameFieldBlockMaxMaxScoreBulkScorer extends BulkScorer {
 
     @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
-      SameFieldBlockMaxMaxScoreBulkScorer.this.minCompetitiveScore = minScore;
+      MaxScoreBulkScorer.this.minCompetitiveScore = minScore;
+      maxScorePropagator.setMinCompetitiveScore(minScore);
       minCompetitiveScoreUpdated = true;
     }
   }

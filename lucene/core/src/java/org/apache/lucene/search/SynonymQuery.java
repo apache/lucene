@@ -303,9 +303,9 @@ public final class SynonymQuery extends Query {
       if (iterators.size() == 1) {
         final TermScorer scorer;
         if (scoreMode == ScoreMode.TOP_SCORES) {
-          scorer = new TermScorer(this, field, impacts.get(0), simScorer);
+          scorer = new TermScorer(this, impacts.get(0), simScorer);
         } else {
-          scorer = new TermScorer(this, field, iterators.get(0), simScorer);
+          scorer = new TermScorer(this, iterators.get(0), simScorer);
         }
         float boost = termBoosts.get(0);
         return scoreMode == ScoreMode.COMPLETE_NO_SCORES || boost == 1f
@@ -317,7 +317,7 @@ public final class SynonymQuery extends Query {
       DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
       for (int i = 0; i < iterators.size(); i++) {
         PostingsEnum postings = iterators.get(i);
-        final TermScorer termScorer = new TermScorer(this, field, postings, simScorer);
+        final TermScorer termScorer = new TermScorer(this, postings, simScorer);
         float boost = termBoosts.get(i);
         final DisiWrapperFreq wrapper = new DisiWrapperFreq(termScorer, boost);
         queue.add(wrapper);
