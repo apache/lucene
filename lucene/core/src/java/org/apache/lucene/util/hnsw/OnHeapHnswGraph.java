@@ -22,15 +22,16 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
  * construct the HNSW graph before it's written to the index.
  */
-public final class OnHeapHnswGraph extends HnswGraph {
+public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
-  private final boolean similarityReversed;
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
 
@@ -52,8 +53,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
   private int upto;
   private NeighborArray cur;
 
-  OnHeapHnswGraph(int M, int levelOfFirstNode, boolean similarityReversed) {
-    this.similarityReversed = similarityReversed;
+  OnHeapHnswGraph(int M, int levelOfFirstNode) {
     this.numLevels = levelOfFirstNode + 1;
     this.graph = new ArrayList<>(numLevels);
     this.entryNode = 0;
@@ -63,7 +63,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
     this.nsize0 = (M * 2 + 1);
     for (int l = 0; l < numLevels; l++) {
       graph.add(new ArrayList<>());
-      graph.get(l).add(new NeighborArray(l == 0 ? nsize0 : nsize, similarityReversed == false));
+      graph.get(l).add(new NeighborArray(l == 0 ? nsize0 : nsize, true));
     }
 
     this.nodesByLevel = new ArrayList<>(numLevels);
@@ -123,9 +123,7 @@ public final class OnHeapHnswGraph extends HnswGraph {
         }
       }
     }
-    graph
-        .get(level)
-        .add(new NeighborArray(level == 0 ? nsize0 : nsize, similarityReversed == false));
+    graph.get(level).add(new NeighborArray(level == 0 ? nsize0 : nsize, true));
   }
 
   @Override
@@ -170,5 +168,37 @@ public final class OnHeapHnswGraph extends HnswGraph {
     } else {
       return new NodesIterator(nodesByLevel.get(level), graph.get(level).size());
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long neighborArrayBytes0 =
+        nsize0 * (Integer.BYTES + Float.BYTES)
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + Integer.BYTES * 2;
+    long neighborArrayBytes =
+        nsize * (Integer.BYTES + Float.BYTES)
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + Integer.BYTES * 2;
+    long total = 0;
+    for (int l = 0; l < numLevels; l++) {
+      int numNodesOnLevel = graph.get(l).size();
+      if (l == 0) {
+        total +=
+            numNodesOnLevel * neighborArrayBytes0
+                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
+      } else {
+        total +=
+            nodesByLevel.get(l).length * Integer.BYTES
+                + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for nodesByLevel
+        total +=
+            numNodesOnLevel * neighborArrayBytes
+                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
+      }
+    }
+    return total;
   }
 }

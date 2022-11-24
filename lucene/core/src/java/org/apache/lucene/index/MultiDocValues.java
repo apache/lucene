@@ -930,11 +930,7 @@ public class MultiDocValues {
     @Override
     public long nextOrd() throws IOException {
       long segmentOrd = currentValues.nextOrd();
-      if (segmentOrd == NO_MORE_ORDS) {
-        return segmentOrd;
-      } else {
-        return mapping.getGlobalOrds(nextLeaf - 1).get(segmentOrd);
-      }
+      return mapping.getGlobalOrds(nextLeaf - 1).get(segmentOrd);
     }
 
     @Override

@@ -499,12 +499,12 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-      Query rewritten = query.rewrite(reader);
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      Query rewritten = query.rewrite(indexSearcher);
       if (rewritten != query) {
         return new DocValueScoreQuery(rewritten, scoreField);
       }
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
 
     @Override

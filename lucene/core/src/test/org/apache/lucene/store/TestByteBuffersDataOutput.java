@@ -205,6 +205,42 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
   }
 
   @Test
+  public void testCopyBytesOnHeap() throws IOException {
+    byte[] bytes = new byte[1024 * 8 + 10];
+    random().nextBytes(bytes);
+    int offset = TestUtil.nextInt(random(), 0, 100);
+    int len = bytes.length - offset;
+    ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
+    ByteBuffersDataOutput o =
+        new ByteBuffersDataOutput(
+            ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP,
+            ByteBuffersDataOutput.NO_REUSE);
+    o.copyBytes(in, len);
+    Assert.assertArrayEquals(
+        o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
+  }
+
+  @Test
+  public void testCopyBytesOnDirectByteBuffer() throws IOException {
+    byte[] bytes = new byte[1024 * 8 + 10];
+    random().nextBytes(bytes);
+    int offset = TestUtil.nextInt(random(), 0, 100);
+    int len = bytes.length - offset;
+    ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
+    ByteBuffersDataOutput o =
+        new ByteBuffersDataOutput(
+            ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+            ByteBuffer::allocateDirect,
+            ByteBuffersDataOutput.NO_REUSE);
+    o.copyBytes(in, len);
+    Assert.assertArrayEquals(
+        o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
+  }
+
+  @Test
   public void testToBufferListReturnsReadOnlyBuffers() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     dst.writeBytes(new byte[100]);

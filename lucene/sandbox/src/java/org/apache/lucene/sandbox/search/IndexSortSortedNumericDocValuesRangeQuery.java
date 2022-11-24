@@ -18,12 +18,16 @@ package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.function.Predicate;
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValues.IntersectVisitor;
+import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -43,6 +47,8 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -141,12 +147,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (lowerValue == Long.MIN_VALUE && upperValue == Long.MAX_VALUE) {
       return new FieldExistsQuery(field);
     }
 
-    Query rewrittenFallback = fallbackQuery.rewrite(reader);
+    Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
     if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
       return new MatchAllDocsQuery();
     }
@@ -214,12 +220,166 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     };
   }
 
+  /**
+   * Returns the first document whose packed value is greater than or equal (if allowEqual is true)
+   * to the provided packed value or -1 if all packed values are smaller than the provided one,
+   */
+  public final int nextDoc(PointValues values, byte[] packedValue, boolean allowEqual)
+      throws IOException {
+    assert values.getNumDimensions() == 1;
+    final int bytesPerDim = values.getBytesPerDimension();
+    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+    final Predicate<byte[]> biggerThan =
+        testPackedValue -> {
+          int cmp = comparator.compare(testPackedValue, 0, packedValue, 0);
+          return cmp > 0 || (cmp == 0 && allowEqual);
+        };
+    return nextDoc(values.getPointTree(), biggerThan);
+  }
+
+  private int nextDoc(PointValues.PointTree pointTree, Predicate<byte[]> biggerThan)
+      throws IOException {
+    if (biggerThan.test(pointTree.getMaxPackedValue()) == false) {
+      // doc is before us
+      return -1;
+    } else if (pointTree.moveToChild()) {
+      // navigate down
+      do {
+        final int doc = nextDoc(pointTree, biggerThan);
+        if (doc != -1) {
+          return doc;
+        }
+      } while (pointTree.moveToSibling());
+      pointTree.moveToParent();
+      return -1;
+    } else {
+      // doc is in this leaf
+      final int[] doc = {-1};
+      pointTree.visitDocValues(
+          new IntersectVisitor() {
+            @Override
+            public void visit(int docID) {
+              throw new AssertionError("Invalid call to visit(docID)");
+            }
+
+            @Override
+            public void visit(int docID, byte[] packedValue) {
+              if (doc[0] == -1 && biggerThan.test(packedValue)) {
+                doc[0] = docID;
+              }
+            }
+
+            @Override
+            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+              return Relation.CELL_CROSSES_QUERY;
+            }
+          });
+      return doc[0];
+    }
+  }
+
+  private boolean matchNone(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint)
+      throws IOException {
+    final ByteArrayComparator comparator =
+        ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
+    for (int dim = 0; dim < points.getNumDimensions(); dim++) {
+      int offset = dim * points.getBytesPerDimension();
+      if (comparator.compare(points.getMinPackedValue(), offset, queryUpperPoint, offset) > 0
+          || comparator.compare(points.getMaxPackedValue(), offset, queryLowerPoint, offset) < 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean matchAll(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint)
+      throws IOException {
+    final ByteArrayComparator comparator =
+        ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
+    for (int dim = 0; dim < points.getNumDimensions(); dim++) {
+      int offset = dim * points.getBytesPerDimension();
+      if (comparator.compare(points.getMinPackedValue(), offset, queryLowerPoint, offset) >= 0
+          && comparator.compare(points.getMaxPackedValue(), offset, queryUpperPoint, offset) <= 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private BoundedDocIdSetIterator getDocIdSetIteratorOrNullFromBkd(
+      LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
+    Sort indexSort = context.reader().getMetaData().getSort();
+    if (indexSort != null
+        && indexSort.getSort().length > 0
+        && indexSort.getSort()[0].getField().equals(field)
+        && indexSort.getSort()[0].getReverse() == false) {
+      PointValues points = context.reader().getPointValues(field);
+      if (points == null) {
+        return null;
+      }
+
+      if (points.getNumDimensions() != 1) {
+        return null;
+      }
+
+      if (points.getBytesPerDimension() != Long.BYTES
+          && points.getBytesPerDimension() != Integer.BYTES) {
+        return null;
+      }
+
+      // Each doc that has points has exactly one point.
+      if (points.size() == points.getDocCount()) {
+
+        byte[] queryLowerPoint;
+        byte[] queryUpperPoint;
+        if (points.getBytesPerDimension() == Integer.BYTES) {
+          queryLowerPoint = IntPoint.pack((int) lowerValue).bytes;
+          queryUpperPoint = IntPoint.pack((int) upperValue).bytes;
+        } else {
+          queryLowerPoint = LongPoint.pack(lowerValue).bytes;
+          queryUpperPoint = LongPoint.pack(upperValue).bytes;
+        }
+        if (lowerValue > upperValue || matchNone(points, queryLowerPoint, queryUpperPoint)) {
+          return new BoundedDocIdSetIterator(0, 0, null);
+        }
+        int minDocId, maxDocId;
+        if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
+          minDocId = 0;
+          maxDocId = context.reader().maxDoc();
+        } else {
+          // >=queryLowerPoint
+          minDocId = nextDoc(points, queryLowerPoint, true);
+
+          if (minDocId == -1) {
+            return new BoundedDocIdSetIterator(0, 0, null);
+          }
+          // >queryUpperPoint,
+          maxDocId = nextDoc(points, queryUpperPoint, false);
+          if (maxDocId == -1) {
+            maxDocId = context.reader().maxDoc();
+          }
+        }
+
+        if ((points.getDocCount() == context.reader().maxDoc())) {
+          return new BoundedDocIdSetIterator(minDocId, maxDocId, null);
+        } else {
+          return new BoundedDocIdSetIterator(minDocId, maxDocId, delegate);
+        }
+      }
+    }
+    return null;
+  }
+
   private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
       throws IOException {
     SortedNumericDocValues sortedNumericValues =
         DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
     if (numericValues != null) {
+      BoundedDocIdSetIterator iterator = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
+      if (iterator != null) {
+        return iterator;
+      }
       Sort indexSort = context.reader().getMetaData().getSort();
       if (indexSort != null
           && indexSort.getSort().length > 0

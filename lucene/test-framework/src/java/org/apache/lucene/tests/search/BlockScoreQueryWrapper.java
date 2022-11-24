@@ -19,7 +19,6 @@ package org.apache.lucene.tests.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
@@ -69,12 +68,12 @@ public final class BlockScoreQueryWrapper extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    final Query rewritten = query.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    final Query rewritten = query.rewrite(indexSearcher);
     if (rewritten != query) {
       return new BlockScoreQueryWrapper(rewritten, blockLength);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

@@ -157,12 +157,16 @@ public class DocValuesTermsQuery extends Query implements Accountable {
     return builder.toString();
   }
 
-  /** @return the name of the field searched by this query. */
+  /**
+   * @return the name of the field searched by this query.
+   */
   public String getField() {
     return field;
   }
 
-  /** @return the terms looked up by this query, prefix-encoded. */
+  /**
+   * @return the terms looked up by this query, prefix-encoded.
+   */
   public PrefixCodedTerms getTerms() {
     return termData;
   }
@@ -210,10 +214,8 @@ public class DocValuesTermsQuery extends Query implements Accountable {
 
               @Override
               public boolean matches() throws IOException {
-                for (long ord = values.nextOrd();
-                    ord != SortedSetDocValues.NO_MORE_ORDS;
-                    ord = values.nextOrd()) {
-                  if (bits.get(ord)) {
+                for (int i = 0; i < values.docValueCount(); i++) {
+                  if (bits.get(values.nextOrd())) {
                     return true;
                   }
                 }

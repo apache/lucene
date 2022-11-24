@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.BooleanClause.Occur;
 
 /**
@@ -193,7 +192,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   // Utility method for rewriting BooleanQuery when scores are not needed.
   // This is called from ConstantScoreQuery#rewrite
-  BooleanQuery rewriteNoScoring(IndexReader reader) throws IOException {
+  BooleanQuery rewriteNoScoring(IndexSearcher indexSearcher) throws IOException {
     boolean actuallyRewritten = false;
     BooleanQuery.Builder newQuery =
         new BooleanQuery.Builder().setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
@@ -204,7 +203,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
     for (BooleanClause clause : clauses) {
       Query query = clause.getQuery();
-      Query rewritten = new ConstantScoreQuery(query).rewrite(reader);
+      Query rewritten = new ConstantScoreQuery(query).rewrite(indexSearcher);
       if (rewritten instanceof ConstantScoreQuery) {
         rewritten = ((ConstantScoreQuery) rewritten).getQuery();
       }
@@ -238,7 +237,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (clauses.size() == 0) {
       return new MatchNoDocsQuery("empty BooleanQuery");
     }
@@ -277,12 +276,12 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         Query rewritten;
         if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
           // Clauses that are not involved in scoring can get some extra simplifications
-          rewritten = new ConstantScoreQuery(query).rewrite(reader);
+          rewritten = new ConstantScoreQuery(query).rewrite(indexSearcher);
           if (rewritten instanceof ConstantScoreQuery) {
             rewritten = ((ConstantScoreQuery) rewritten).getQuery();
           }
         } else {
-          rewritten = query.rewrite(reader);
+          rewritten = query.rewrite(indexSearcher);
         }
         if (rewritten != query || query.getClass() == MatchNoDocsQuery.class) {
           // rewrite clause
@@ -557,7 +556,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

@@ -281,6 +281,9 @@ final class ConjunctionDISI extends DocIdSetIterator {
       advanceLead:
       for (; ; doc = lead.nextDoc()) {
         if (doc >= minLength) {
+          if (doc != NO_MORE_DOCS) {
+            lead.advance(NO_MORE_DOCS);
+          }
           return NO_MORE_DOCS;
         }
         for (BitSet bitSet : bitSets) {

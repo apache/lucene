@@ -30,6 +30,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
@@ -237,6 +238,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
             target,
             k,
             vectorValues,
+            VectorEncoding.FLOAT32,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
@@ -246,9 +248,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
       int node = results.topNode();
-      float score = fieldEntry.similarityFunction.convertToScore(results.topScore());
+      float minSimilarity = results.topScore();
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), minSimilarity);
     }
 
     TotalHits.Relation relation =
@@ -364,16 +366,20 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       // calculate for each level the start offsets in vectorIndex file from where to read
       // neighbours
       graphOffsetsByLevel = new long[numLevels];
+      final long connectionsAndSizeLevel0Bytes =
+          Math.multiplyExact(Math.addExact(1, Math.multiplyExact(M, 2L)), Integer.BYTES);
+      final long connectionsAndSizeBytes = Math.multiplyExact(Math.addExact(1L, M), Integer.BYTES);
       for (int level = 0; level < numLevels; level++) {
         if (level == 0) {
           graphOffsetsByLevel[level] = 0;
         } else if (level == 1) {
-          int numNodesOnLevel0 = size;
-          graphOffsetsByLevel[level] = (1 + (M * 2)) * Integer.BYTES * numNodesOnLevel0;
+          graphOffsetsByLevel[level] = Math.multiplyExact(connectionsAndSizeLevel0Bytes, size);
         } else {
           int numNodesOnPrevLevel = nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              graphOffsetsByLevel[level - 1] + (1 + M) * Integer.BYTES * numNodesOnPrevLevel;
+              Math.addExact(
+                  graphOffsetsByLevel[level - 1],
+                  Math.multiplyExact(connectionsAndSizeBytes, numNodesOnPrevLevel));
         }
       }
     }
@@ -406,8 +412,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = ((long) entry.M + 1) * Integer.BYTES;
-      this.bytesForConns0 = ((long) (entry.M * 2) + 1) * Integer.BYTES;
+      this.bytesForConns = Math.multiplyExact(Math.addExact(entry.M, 1L), Integer.BYTES);
+      this.bytesForConns0 =
+          Math.multiplyExact(Math.addExact(Math.multiplyExact(entry.M, 2L), 1), Integer.BYTES);
     }
 
     @Override

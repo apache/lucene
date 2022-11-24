@@ -28,6 +28,7 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -85,11 +86,16 @@ public class TestDictionary extends LuceneTestCase {
     }
   }
 
+  public void testProcessSuggestibleWords() throws Exception {
+    Dictionary dictionary = loadDictionary("suggestible.aff", "suggestible.dic");
+
+    Set<String> processed = processSuggestibleWords(dictionary, 1, 100);
+    assertEquals(Set.of("normal", "ambiguous"), processed);
+  }
+
   private void checkProcessWords(
       Dictionary dictionary, Set<String> allWords, int minLength, int maxLength) {
-    Set<String> processed = new HashSet<>();
-    dictionary.words.processAllWords(
-        minLength, maxLength, (word, __) -> processed.add(word.toString()));
+    Set<String> processed = processSuggestibleWords(dictionary, minLength, maxLength);
 
     Set<String> filtered =
         allWords.stream()
@@ -97,6 +103,20 @@ public class TestDictionary extends LuceneTestCase {
             .collect(Collectors.toSet());
 
     assertEquals("For lengths [" + minLength + "," + maxLength + "]", filtered, processed);
+  }
+
+  private static Set<String> processSuggestibleWords(
+      Dictionary dictionary, int minLength, int maxLength) {
+    Set<String> processed = new HashSet<>();
+    dictionary.words.processSuggestibleWords(
+        minLength, maxLength, (word, __) -> processed.add(word.toString()));
+
+    Set<String> cached = new HashSet<>();
+    SuggestibleEntryCache.buildCache(dictionary.words)
+        .processSuggestibleWords(minLength, maxLength, (word, __) -> cached.add(word.toString()));
+    assertEquals(processed, cached);
+
+    return processed;
   }
 
   public void testCompressedDictionary() throws Exception {
@@ -275,7 +295,9 @@ public class TestDictionary extends LuceneTestCase {
     DictEntries simpleNoun = dic.lookupEntries("simplenoun");
     assertEquals(1, simpleNoun.size());
     assertEquals(Collections.emptyList(), simpleNoun.getMorphologicalValues(0, "aa:"));
-    assertEquals(Collections.singletonList("42"), simpleNoun.getMorphologicalValues(0, "fr:"));
+    assertEquals(List.of("42"), simpleNoun.getMorphologicalValues(0, "fr:"));
+    assertEquals(List.of("42"), simpleNoun.get(0).getMorphologicalValues("fr:"));
+    assertEquals("A", simpleNoun.get(0).getFlags());
 
     DictEntries lay = dic.lookupEntries("lay");
     String actual =

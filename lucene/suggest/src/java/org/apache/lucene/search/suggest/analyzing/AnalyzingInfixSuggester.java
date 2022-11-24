@@ -751,7 +751,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       mgr.release(searcher);
     }
 
-    // System.out.println((System.currentTimeMillis() - t0) + " msec for infix suggest");
+    // System.out.println((System.currentTimeMillis() - t0) + " ms for infix suggest");
     // System.out.println(results);
 
     return results;
@@ -811,9 +811,8 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
         contexts = new HashSet<BytesRef>();
         int targetDocID = fd.doc - leaves.get(segment).docBase;
         if (contextsDV.advance(targetDocID) == targetDocID) {
-          long ord;
-          while ((ord = contextsDV.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-            BytesRef context = BytesRef.deepCopyOf(contextsDV.lookupOrd(ord));
+          for (int j = 0; j < contextsDV.docValueCount(); j++) {
+            BytesRef context = BytesRef.deepCopyOf(contextsDV.lookupOrd(contextsDV.nextOrd()));
             contexts.add(context);
           }
         }

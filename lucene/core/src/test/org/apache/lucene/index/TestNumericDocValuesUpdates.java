@@ -459,12 +459,14 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       long ord = ssdv.nextOrd();
       term = ssdv.lookupOrd(ord);
       assertEquals(i, Integer.parseInt(term.utf8ToString()));
-      if (i != 0) {
+      if (i == 0) {
+        assertEquals(1, ssdv.docValueCount());
+      } else {
+        assertEquals(2, ssdv.docValueCount());
         ord = ssdv.nextOrd();
         term = ssdv.lookupOrd(ord);
         assertEquals(i * 2, Integer.parseInt(term.utf8ToString()));
       }
-      assertEquals(SortedSetDocValues.NO_MORE_ORDS, ssdv.nextOrd());
     }
 
     reader.close();

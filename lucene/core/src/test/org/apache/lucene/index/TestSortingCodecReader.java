@@ -43,6 +43,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSortField;
+import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -54,6 +55,45 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 public class TestSortingCodecReader extends LuceneTestCase {
+
+  public void testSortOnAddIndicesOrd() throws IOException {
+    Directory tmpDir = newDirectory();
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    IndexWriter w = new IndexWriter(tmpDir, iwc);
+
+    Document doc;
+    doc = new Document();
+    doc.add(new SortedSetDocValuesField("foo", new BytesRef("b")));
+    w.addDocument(doc);
+
+    doc.add(new SortedSetDocValuesField("foo", new BytesRef("a")));
+    doc.add(new SortedSetDocValuesField("foo", new BytesRef("b")));
+    doc.add(new SortedSetDocValuesField("foo", new BytesRef("b")));
+    w.addDocument(doc);
+
+    w.commit();
+
+    Sort indexSort = new Sort(new SortedSetSortField("foo", false, SortedSetSelector.Type.MIN));
+    try (DirectoryReader reader = DirectoryReader.open(tmpDir)) {
+      for (LeafReaderContext ctx : reader.leaves()) {
+        CodecReader wrap =
+            SortingCodecReader.wrap(SlowCodecReaderWrapper.wrap(ctx.reader()), indexSort);
+        assertTrue(wrap.toString(), wrap.toString().startsWith("SortingCodecReader("));
+        SortingCodecReader sortingCodecReader = (SortingCodecReader) wrap;
+        SortedSetDocValues sortedSetDocValues =
+            sortingCodecReader
+                .getDocValuesReader()
+                .getSortedSet(ctx.reader().getFieldInfos().fieldInfo("foo"));
+        sortedSetDocValues.nextDoc();
+        assertEquals(sortedSetDocValues.docValueCount(), 2);
+        sortedSetDocValues.nextDoc();
+        assertEquals(sortedSetDocValues.docValueCount(), 1);
+        assertEquals(sortedSetDocValues.nextDoc(), DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+    IOUtils.close(w, dir, tmpDir);
+  }
 
   public void testSortOnAddIndicesInt() throws IOException {
     Directory tmpDir = newDirectory();

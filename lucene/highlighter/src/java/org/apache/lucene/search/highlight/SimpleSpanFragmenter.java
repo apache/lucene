@@ -39,7 +39,9 @@ public class SimpleSpanFragmenter implements Fragmenter {
   private PositionIncrementAttribute posIncAtt;
   private OffsetAttribute offsetAtt;
 
-  /** @param queryScorer QueryScorer that was used to score hits */
+  /**
+   * @param queryScorer QueryScorer that was used to score hits
+   */
   public SimpleSpanFragmenter(QueryScorer queryScorer) {
     this(queryScorer, DEFAULT_FRAGMENT_SIZE);
   }

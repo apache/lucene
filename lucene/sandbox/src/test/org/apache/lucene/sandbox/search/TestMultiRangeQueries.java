@@ -37,9 +37,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -806,10 +806,10 @@ public class TestMultiRangeQueries extends LuceneTestCase {
         builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
       }
 
-      MultiRangeQuery multiRangeQuery = (MultiRangeQuery) builder1.build().rewrite(reader);
+      MultiRangeQuery multiRangeQuery = (MultiRangeQuery) builder1.build().rewrite(searcher);
       BooleanQuery booleanQuery = builder2.build();
-      int count = searcher.search(multiRangeQuery, new TotalHitCountCollectorManager());
-      int booleanCount = searcher.search(booleanQuery, new TotalHitCountCollectorManager());
+      int count = searcher.search(multiRangeQuery, DummyTotalHitCountCollector.createManager());
+      int booleanCount = searcher.search(booleanQuery, DummyTotalHitCountCollector.createManager());
       assertEquals(booleanCount, count);
     }
     IOUtils.close(reader, w, dir);
@@ -839,7 +839,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
         builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
       }
 
-      MultiRangeQuery multiRangeQuery = (MultiRangeQuery) builder1.build().rewrite(reader);
+      MultiRangeQuery multiRangeQuery = (MultiRangeQuery) builder1.build().rewrite(searcher);
       BooleanQuery booleanQuery = builder2.build();
       int count =
           multiRangeQuery

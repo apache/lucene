@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -605,7 +606,7 @@ final class IndexFileDeleter implements Closeable {
 
     if (infoStream.isEnabled("IFD")) {
       long t1 = System.nanoTime();
-      infoStream.message("IFD", ((t1 - t0) / 1000000) + " msec to checkpoint");
+      infoStream.message("IFD", TimeUnit.NANOSECONDS.toMillis(t1 - t0) + " ms to checkpoint");
     }
   }
 

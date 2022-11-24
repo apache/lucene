@@ -369,12 +369,14 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
       assertEquals(i, Integer.parseInt(term.utf8ToString()));
       // For the i=0 case, we added the same value twice, which was dedup'd by IndexWriter so it has
       // only one value:
-      if (i != 0) {
+      if (i == 0) {
+        assertEquals(1, ssdv.docValueCount());
+      } else {
+        assertEquals(2, ssdv.docValueCount());
         ord = ssdv.nextOrd();
         term = ssdv.lookupOrd(ord);
         assertEquals(i * 2, Integer.parseInt(term.utf8ToString()));
       }
-      assertEquals(SortedSetDocValues.NO_MORE_ORDS, ssdv.nextOrd());
     }
 
     reader.close();

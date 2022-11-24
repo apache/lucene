@@ -107,7 +107,8 @@ public class FieldExistsQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    IndexReader reader = indexSearcher.getIndexReader();
     boolean allReadersRewritable = true;
 
     for (LeafReaderContext context : reader.leaves()) {
@@ -126,7 +127,7 @@ public class FieldExistsQuery extends Query {
           break;
         }
       } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
-        if (leaf.getVectorValues(field).size() != reader.maxDoc()) {
+        if (leaf.getVectorValues(field).size() != leaf.maxDoc()) {
           allReadersRewritable = false;
           break;
         }
@@ -155,7 +156,7 @@ public class FieldExistsQuery extends Query {
     if (allReadersRewritable) {
       return new MatchAllDocsQuery();
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -230,9 +231,11 @@ public class FieldExistsQuery extends Query {
             != DocValuesType.NONE) { // the field indexes doc values
           if (reader.hasDeletions() == false) {
             if (fieldInfo.getPointDimensionCount() > 0) {
-              return reader.getPointValues(field).getDocCount();
+              PointValues pointValues = reader.getPointValues(field);
+              return pointValues == null ? 0 : pointValues.getDocCount();
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
-              return reader.terms(field).getDocCount();
+              Terms terms = reader.terms(field);
+              return terms == null ? 0 : terms.getDocCount();
             }
           }
 

@@ -103,7 +103,9 @@ public abstract class FunctionValues {
     throw new UnsupportedOperationException();
   }
 
-  /** @return the number of unique sort ordinals this instance has */
+  /**
+   * @return the number of unique sort ordinals this instance has
+   */
   public int numOrd() {
     throw new UnsupportedOperationException();
   }
@@ -135,7 +137,9 @@ public abstract class FunctionValues {
     public abstract void fillValue(int doc) throws IOException;
   }
 
-  /** @lucene.experimental */
+  /**
+   * @lucene.experimental
+   */
   public ValueFiller getValueFiller() {
     return new ValueFiller() {
       private final MutableValueFloat mval = new MutableValueFloat();

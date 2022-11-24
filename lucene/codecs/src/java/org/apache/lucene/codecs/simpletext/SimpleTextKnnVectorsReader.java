@@ -29,7 +29,6 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -121,7 +120,8 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     int dimension = info.getVectorDimension();
     if (dimension == 0) {
-      return VectorValues.EMPTY;
+      throw new IllegalStateException(
+          "KNN vectors readers should not be called on fields that don't enable KNN vectors");
     }
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {
@@ -149,7 +149,10 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     VectorValues values = getVectorValues(field);
     if (target.length != values.dimension()) {
       throw new IllegalArgumentException(
-          "vector dimensions differ: " + target.length + "!=" + values.dimension());
+          "vector query dimension: "
+              + target.length
+              + " differs from field dimension: "
+              + values.dimension());
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
@@ -170,7 +173,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       }
 
       float[] vector = values.vectorValue();
-      float score = vectorSimilarity.convertToScore(vectorSimilarity.compare(vector, target));
+      float score = vectorSimilarity.compare(vector, target);
       topK.insertWithOverflow(new ScoreDoc(doc, score));
       numVisited++;
     }
@@ -257,7 +260,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   private static class SimpleTextVectorValues extends VectorValues
-      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
+      implements RandomAccessVectorValues {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
@@ -299,7 +302,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues randomAccess() {
+    public RandomAccessVectorValues copy() {
       return this;
     }
 
@@ -328,11 +331,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     @Override
     public int advance(int target) throws IOException {
       return slowAdvance(target);
-    }
-
-    @Override
-    public long cost() {
-      return size();
     }
 
     private void readAllVectors() throws IOException {

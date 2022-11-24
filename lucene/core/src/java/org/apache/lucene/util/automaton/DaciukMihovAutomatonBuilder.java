@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.util.automaton;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
@@ -35,7 +39,7 @@ public final class DaciukMihovAutomatonBuilder {
    * This builder rejects terms that are more than 1k chars long since it then uses recursion based
    * on the length of the string, which might cause stack overflows.
    */
-  static final int MAX_TERM_LENGTH = 1_000;
+  public static final int MAX_TERM_LENGTH = 1_000;
 
   /** The default constructor is private. Use static methods directly. */
   private DaciukMihovAutomatonBuilder() {

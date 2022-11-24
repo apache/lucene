@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
@@ -733,8 +734,9 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
       }
     }
 
-    // Run for .5 sec in normal tests, else 60 seconds for nightly:
-    final long stopTime = System.currentTimeMillis() + (TEST_NIGHTLY ? 60000 : 500);
+    // Run for 20k iterations in normal tests, else 2m iterations for nightly:
+    final AtomicInteger iterations = new AtomicInteger(0);
+    final int stopIterations = TEST_NIGHTLY ? 2_000_000 : 20_000;
 
     for (int i = 0; i < threads.length; i++) {
       threads[i] =
@@ -752,8 +754,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
               startingGun.await();
               PerThreadVersionPKLookup lookup = null;
               IndexReader lookupReader = null;
-              while (System.currentTimeMillis() < stopTime) {
-
+              while (iterations.incrementAndGet() < stopIterations) {
                 // Intentionally pull version first, and then sleep/yield, to provoke version
                 // conflicts:
                 long newVersion;

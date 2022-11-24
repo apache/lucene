@@ -70,9 +70,9 @@ Feel free to share your findings (especially if your implementation performs bet
 
 ## Contributing your work
 
-You have two options to contribute your work: you can either create a patch and attach it to an issue on [Jira](https://issues.apache.org/jira/browse/LUCENE), or open a pull request at https://github.com/apache/lucene - whichever works best for you.
+You can open a pull request at https://github.com/apache/lucene.
 
-Please be patient. Committers are busy people too. If no one responds to your patch after a few days, please make friendly reminders. Please incorporate others' suggestions into into your patch if you think they're reasonable. Finally, remember that even a patch that is not committed is useful to the community.
+Please be patient. Committers are busy people too. If no one responds to your patch after a few days, please make friendly reminders. Please incorporate others' suggestions into your patch if you think they're reasonable. Finally, remember that even a patch that is not committed is useful to the community.
 
 ### Opening a pull request
 
@@ -80,14 +80,11 @@ Please refer to [GitHub's documentation](https://docs.github.com/en/pull-request
 
 You should open a pull request against the `main` branch. Committers will backport it to the maintenance branches once the change is merged into `main` (as far as it is possible).
 
-You can open a pull request with or without Jira issue. If there is an associated Jira issue, the pull request title should start with the Jira issue number that your work is related to, this way your pull request will get automatically linked from the Jira issue.
-
-
 ### Creating a patch
 
-Note that you do not need to create a patch if you already opened a pull request on GitHub.
+Note that you do not need to create a patch if you already opened a pull request.
 
-Patches should be attached to an issue in [Apache Jira](https://issues.apache.org/jira/projects/LUCENE/issues/), so first you'll need to create an account for it (if you don't have one).
+Patches should be attached to an issue. Since GitHub does not accept attachments with extension `.patch`, please rename your patch file `XXX.patch` to `XXX.patch.txt` or something like that.
 
 Please refer to [git diff documentation](https://git-scm.com/docs/git-diff) for information of how to create a patch.
 
@@ -95,7 +92,7 @@ Before creating your patch, you may want to get 'main' up to date with the lates
 
 ### Add a CHANGES entry
 
-You may want to add a CHANGES entry to [CHANGES.txt](./lucene/CHANGES.txt). A CHANGES entry should start with the Jira issue key `LUCENE-XXXXX` or pull request number `GITHUB#XXX` that is followed by the description of the change and contributors' name. Please see the existing entries for reference.
+You may want to add a CHANGES entry to [CHANGES.txt](./lucene/CHANGES.txt). A CHANGES entry should start with the issue or pull request number `GITHUB#XXX` that is followed by the description of the change and contributors' name. Please see the existing entries for reference.
 
 ## Stay involved
 
@@ -105,15 +102,13 @@ Please keep discussions about Lucene on list so that everyone benefits. Emailing
 
 ## Getting your feet wet: where to begin?
 
-New to Lucene? Want to find JIRA issues that you can work on without taking on the whole world?
+New to Lucene? Want to find issues that you can work on without taking on the whole world?
 
-The Lucene/Solr developers use the "newdev" label to mark issues that developers new to Lucene might be interested in working on. The rough criteria used to make this selection are:
+The rough criteria for picking your first issues are:
 
 - Nobody has done any work on the issue yet.
 - The issue is likely not controversial.
 - The issue is likely self-contained with limited scope.
-
-To see a list of open Lucene issues with the newdev label, look at this link [http://s.apache.org/newdevlucenesolr](https://issues.apache.org/jira/browse/SOLR-15591?jql=(project%3DLUCENE)%20AND%20resolution%3DUnresolved%20AND%20labels%3Dnewdev).
 
 ## Developer tips
 

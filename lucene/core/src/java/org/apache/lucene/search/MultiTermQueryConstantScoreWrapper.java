@@ -125,11 +125,11 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
     return new ConstantScoreWeight(this, boost) {
 
       /**
-       * Try to collect terms from the given terms enum and return true iff all terms could be
-       * collected. If {@code false} is returned, the enum is left positioned on the next term.
+       * Try to collect terms from the given terms enum and return true if all terms could be
+       * collected or if one of the iterated terms contains all docs for the field. If {@code false}
+       * is returned, the enum is left positioned on the next term.
        */
-      private boolean collectTerms(
-          LeafReaderContext context, TermsEnum termsEnum, List<TermAndState> terms)
+      private boolean collectTerms(int fieldDocCount, TermsEnum termsEnum, List<TermAndState> terms)
           throws IOException {
         final int threshold =
             Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
@@ -139,12 +139,18 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
             return true;
           }
           TermState state = termsEnum.termState();
-          terms.add(
+          int docFreq = termsEnum.docFreq();
+          TermAndState termAndState =
               new TermAndState(
-                  BytesRef.deepCopyOf(term),
-                  state,
-                  termsEnum.docFreq(),
-                  termsEnum.totalTermFreq()));
+                  BytesRef.deepCopyOf(term), state, docFreq, termsEnum.totalTermFreq());
+          if (fieldDocCount == docFreq) {
+            // If the term contains every document with a value for the field, we can ignore all
+            // other terms:
+            terms.clear();
+            terms.add(termAndState);
+            return true;
+          }
+          terms.add(termAndState);
         }
         return termsEnum.next() == null;
       }
@@ -160,13 +166,14 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
           return new WeightOrDocIdSet((DocIdSet) null);
         }
 
+        final int fieldDocCount = terms.getDocCount();
         final TermsEnum termsEnum = query.getTermsEnum(terms);
         assert termsEnum != null;
 
         PostingsEnum docs = null;
 
         final List<TermAndState> collectedTerms = new ArrayList<>();
-        if (collectTerms(context, termsEnum, collectedTerms)) {
+        if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
           // build a boolean query
           BooleanQuery.Builder bq = new BooleanQuery.Builder();
           for (TermAndState t : collectedTerms) {
@@ -193,6 +200,19 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
         // Then keep filling the bit set with remaining terms
         do {
           docs = termsEnum.postings(docs, PostingsEnum.NONE);
+          // If a term contains all docs with a value for the specified field, we can discard the
+          // other terms and just use the dense term's postings:
+          int docFreq = termsEnum.docFreq();
+          if (fieldDocCount == docFreq) {
+            TermStates termStates = new TermStates(searcher.getTopReaderContext());
+            termStates.register(
+                termsEnum.termState(), context.ord, docFreq, termsEnum.totalTermFreq());
+            Query q =
+                new ConstantScoreQuery(
+                    new TermQuery(new Term(query.field, termsEnum.term()), termStates));
+            Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+            return new WeightOrDocIdSet(weight);
+          }
           builder.add(docs);
         } while (termsEnum.next() != null);
 

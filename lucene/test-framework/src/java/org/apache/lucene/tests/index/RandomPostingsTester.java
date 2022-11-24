@@ -62,6 +62,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -163,6 +164,7 @@ public class RandomPostingsTester {
               0,
               0,
               0,
+              VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false);
       fieldUpto++;
@@ -734,6 +736,7 @@ public class RandomPostingsTester {
               0,
               0,
               0,
+              VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false);
     }
@@ -1602,7 +1605,7 @@ public class RandomPostingsTester {
       while (true) {
         Automaton a = AutomatonTestUtil.randomAutomaton(random);
         a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-        CompiledAutomaton ca = new CompiledAutomaton(a, null, true, false);
+        CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
         if (ca.type != CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
           // Keep retrying until we get an A that will really "use" the PF's intersect code:
           continue;

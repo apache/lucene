@@ -65,10 +65,9 @@ configure(rootProject) {
 systemProp.file.encoding=UTF-8
 
 # Set up gradle JVM defaults.
-# The heap seems huge but gradle runs out of memory on lower values (don't know why).
 #
 # We also open up internal compiler modules for spotless/ google java format.
-org.gradle.jvmargs=-Xmx3g \\
+org.gradle.jvmargs=-Xmx1g -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1 \\
  --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \\
  --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \\
  --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \\
@@ -98,12 +97,12 @@ org.gradle.workers.max=${maxWorkers}
 # Maximum number of test JVMs forked per test task.
 tests.jvms=${testsJvms}
 
-# Disable auto JVM provisioning (we don't use toolchains yet but want no surprises).
-org.gradle.java.installations.auto-download=false
+# Enable auto JVM provisioning.
+org.gradle.java.installations.auto-download=true
 
 # Set these to enable automatic JVM location discovery.
-org.gradle.java.installations.fromEnv=JDK11,JDK12,JDK13,JDK14,JDK15,JDK16,JDK17
-org.gradle.java.installations.paths=(custom paths)
+org.gradle.java.installations.fromEnv=JAVA17_HOME,JAVA19_HOME
+#org.gradle.java.installations.paths=(custom paths)
 
 """, "UTF-8")
 

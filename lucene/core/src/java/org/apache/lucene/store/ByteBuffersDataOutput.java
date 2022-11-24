@@ -309,6 +309,29 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     return arr;
   }
 
+  @Override
+  public void copyBytes(DataInput input, long numBytes) throws IOException {
+    assert numBytes >= 0 : "numBytes=" + numBytes;
+    int length = (int) numBytes;
+    while (length > 0) {
+      if (!currentBlock.hasRemaining()) {
+        appendBlock();
+      }
+      if (!currentBlock.hasArray()) {
+        break;
+      }
+      int chunk = Math.min(currentBlock.remaining(), length);
+      final int pos = currentBlock.position();
+      input.readBytes(currentBlock.array(), Math.addExact(currentBlock.arrayOffset(), pos), chunk);
+      length -= chunk;
+      currentBlock.position(pos + chunk);
+    }
+    // if current block is Direct, we fall back to super.copyBytes for remaining bytes
+    if (length > 0) {
+      super.copyBytes(input, length);
+    }
+  }
+
   /** Copy the current content of this object into another {@link DataOutput}. */
   public void copyTo(DataOutput output) throws IOException {
     for (ByteBuffer bb : blocks) {
@@ -321,7 +344,9 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     }
   }
 
-  /** @return The number of bytes written to this output so far. */
+  /**
+   * @return The number of bytes written to this output so far.
+   */
   public long size() {
     long size = 0;
     int blockCount = blocks.size();
@@ -434,7 +459,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     // any special distinction for direct memory buffers.
     assert ramBytesUsed
         == blocks.stream().mapToLong(ByteBuffer::capacity).sum()
-            + blocks.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+            + (long) blocks.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     return ramBytesUsed;
   }
 
@@ -454,7 +479,9 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     currentBlock = EMPTY;
   }
 
-  /** @return Returns a new {@link ByteBuffersDataOutput} with the {@link #reset()} capability. */
+  /**
+   * @return Returns a new {@link ByteBuffersDataOutput} with the {@link #reset()} capability.
+   */
   // TODO: perhaps we can move it out to an utility class (as a supplier of preconfigured
   // instances?)
   public static ByteBuffersDataOutput newResettableInstance() {

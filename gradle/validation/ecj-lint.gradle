@@ -52,6 +52,11 @@ allprojects {
         // that don't have any Java source directories.
         enabled = !srcDirs.isEmpty()
 
+        // Ignore MR-JAR sourceSets.
+        if (sourceSet.name ==~ /main\d+/) {
+          enabled = false
+        }
+        
         classpath = rootProject.configurations.ecjDeps
         mainClass = "org.eclipse.jdt.internal.compiler.batch.Main"
 

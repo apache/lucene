@@ -21,7 +21,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
@@ -61,12 +60,12 @@ public abstract class TopTermsRewrite<B> extends TermCollectingRewrite<B> {
   protected abstract int getMaxSize();
 
   @Override
-  public final Query rewrite(final IndexReader reader, final MultiTermQuery query)
+  public final Query rewrite(IndexSearcher indexSearcher, final MultiTermQuery query)
       throws IOException {
     final int maxSize = Math.min(size, getMaxSize());
     final PriorityQueue<ScoreTerm> stQueue = new PriorityQueue<>();
     collectTerms(
-        reader,
+        indexSearcher.getIndexReader(),
         query,
         new TermCollector() {
           private final MaxNonCompetitiveBoostAttribute maxBoostAtt =

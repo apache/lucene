@@ -18,6 +18,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -26,6 +27,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.TestUtil;
@@ -59,20 +61,20 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
-        throws IOException {
-      assert fieldInfo != null;
-      assert knnVectorsReader != null;
-      // assert that knnVectorsReader#getVectorValues returns different instances upon repeated
-      // calls
-      assert knnVectorsReader.getVectorValues(fieldInfo.name)
-          != knnVectorsReader.getVectorValues(fieldInfo.name);
-      delegate.writeField(fieldInfo, knnVectorsReader);
+    public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+      return delegate.addField(fieldInfo);
     }
 
     @Override
-    public void merge(MergeState mergeState) throws IOException {
-      delegate.merge(mergeState);
+    public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+      delegate.flush(maxDoc, sortMap);
+    }
+
+    @Override
+    public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+      assert fieldInfo != null;
+      assert mergeState != null;
+      delegate.mergeOneField(fieldInfo, mergeState);
     }
 
     @Override
@@ -83,6 +85,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void close() throws IOException {
       delegate.close();
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return delegate.ramBytesUsed();
     }
   }
 
