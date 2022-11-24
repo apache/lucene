@@ -436,6 +436,14 @@ class GeoStandardPath extends GeoBasePath {
       this.pathCenterDistance = pathCenterDistance;
       this.distanceAlongPath = distanceAlongPath;
     }
+
+    @Override
+    public String toString() {
+      return "DistancePair: pathCenterDistance="
+          + pathCenterDistance
+          + ",distanceAlongPath="
+          + distanceAlongPath;
+    }
   }
 
   /**
@@ -887,10 +895,12 @@ class GeoStandardPath extends GeoBasePath {
       if (!isWithinSection(x, y, z)) {
         return null;
       }
-      return new DistancePair(
-          pathCenterDistance(distanceStyle, x, y, z),
-          distanceStyle.aggregateDistances(
-              getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)));
+      final DistancePair rval =
+          new DistancePair(
+              pathCenterDistance(distanceStyle, x, y, z),
+              distanceStyle.aggregateDistances(
+                  getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)));
+      return rval;
     }
 
     @Override
@@ -924,7 +934,7 @@ class GeoStandardPath extends GeoBasePath {
       if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
-      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
+      return distanceStyle.toAggregationForm(0.0);
     }
 
     @Override
@@ -1149,10 +1159,8 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestPathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      for (final Membership cutoff : cutoffPlanes) {
-        if (!cutoff.isWithin(x, y, z)) {
-          return Double.POSITIVE_INFINITY;
-        }
+      if (!isWithinSection(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
       }
       return super.nearestPathDistance(distanceStyle, x, y, z);
     }
@@ -1160,10 +1168,8 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      for (final Membership cutoff : cutoffPlanes) {
-        if (!cutoff.isWithin(x, y, z)) {
-          return Double.POSITIVE_INFINITY;
-        }
+      if (!isWithinSection(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
       }
       return super.pathCenterDistance(distanceStyle, x, y, z);
     }
@@ -1318,10 +1324,8 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double nearestPathDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      for (final Membership cutoff : cutoffPlanes) {
-        if (!cutoff.isWithin(x, y, z)) {
-          return Double.POSITIVE_INFINITY;
-        }
+      if (!isWithinSection(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
       }
       return super.nearestPathDistance(distanceStyle, x, y, z);
     }
@@ -1329,10 +1333,8 @@ class GeoStandardPath extends GeoBasePath {
     @Override
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      for (final Membership cutoff : cutoffPlanes) {
-        if (!cutoff.isWithin(x, y, z)) {
-          return Double.POSITIVE_INFINITY;
-        }
+      if (!isWithinSection(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
       }
       return super.pathCenterDistance(distanceStyle, x, y, z);
     }
@@ -1537,10 +1539,12 @@ class GeoStandardPath extends GeoBasePath {
       if (!isWithinSection(x, y, z)) {
         return null;
       }
-      return new DistancePair(
-          pathCenterDistance(distanceStyle, x, y, z),
-          distanceStyle.aggregateDistances(
-              getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)));
+      final DistancePair rval =
+          new DistancePair(
+              pathCenterDistance(distanceStyle, x, y, z),
+              distanceStyle.aggregateDistances(
+                  getStartingDistance(distanceStyle), nearestPathDistance(distanceStyle, x, y, z)));
+      return rval;
     }
 
     private double computeStartingDistance(final DistanceStyle distanceStyle) {
