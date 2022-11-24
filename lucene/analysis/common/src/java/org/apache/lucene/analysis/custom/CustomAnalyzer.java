@@ -16,6 +16,19 @@
  */
 package org.apache.lucene.analysis.custom;
 
+import static org.apache.lucene.analysis.AnalysisSPILoader.newFactoryClassInstance;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import org.apache.lucene.analysis.AbstractAnalysisFactory;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharFilterFactory;
@@ -33,20 +46,6 @@ import org.apache.lucene.util.ResourceLoader;
 import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.Version;
-
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
-import static org.apache.lucene.analysis.AnalysisSPILoader.newFactoryClassInstance;
 
 /**
  * A general-purpose Analyzer that can be created with a builder-style API. Under the hood it uses

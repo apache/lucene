@@ -16,6 +16,12 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexFileNames;
@@ -36,13 +42,6 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * plain text segments file format.

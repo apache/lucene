@@ -16,14 +16,9 @@
  */
 package org.apache.lucene.search;
 
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import static org.hamcrest.CoreMatchers.instanceOf;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,8 +30,12 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
-
-import static org.hamcrest.CoreMatchers.instanceOf;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCollectorManager extends LuceneTestCase {
 

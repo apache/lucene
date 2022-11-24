@@ -16,7 +16,26 @@
  */
 package org.apache.lucene.tests.index;
 
+import static org.apache.lucene.index.PostingsEnum.ALL;
+import static org.apache.lucene.index.PostingsEnum.FREQS;
+import static org.apache.lucene.index.PostingsEnum.NONE;
+import static org.apache.lucene.index.PostingsEnum.OFFSETS;
+import static org.apache.lucene.index.PostingsEnum.PAYLOADS;
+import static org.apache.lucene.index.PostingsEnum.POSITIONS;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -57,26 +76,6 @@ import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.lucene.index.PostingsEnum.ALL;
-import static org.apache.lucene.index.PostingsEnum.FREQS;
-import static org.apache.lucene.index.PostingsEnum.NONE;
-import static org.apache.lucene.index.PostingsEnum.OFFSETS;
-import static org.apache.lucene.index.PostingsEnum.PAYLOADS;
-import static org.apache.lucene.index.PostingsEnum.POSITIONS;
 
 /**
  * Base class aiming at testing {@link TermVectorsFormat term vectors formats}. To test a new
