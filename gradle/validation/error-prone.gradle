@@ -73,6 +73,8 @@ allprojects { prj ->
 
             // List of enabled/disabled checks
             // Please keep this synced with https://errorprone.info/bugpatterns when upgrading!
+            // Do *NOT* enable checks based on their name or description. Read the source code and make sure they are useful!
+            // Most error-prone checks are not useful for non-google software.
 
             // On by Default : ERROR
 
@@ -270,8 +272,8 @@ allprojects { prj ->
             // '-Xep:BadImport:OFF', // TODO: there are problems
             // '-Xep:BadInstanceof:OFF', // TODO: there are problems
             '-Xep:BareDotMetacharacter:WARN',
-            '-Xep:BigDecimalEquals:WARN',
-            '-Xep:BigDecimalLiteralDouble:WARN',
+            // '-Xep:BigDecimalEquals:OFF', // BigDecimal barely used, can use forbidden-apis for this
+            // '-Xep:BigDecimalLiteralDouble:OFF', // BigDecimal barely used, can use forbidden-apis for this
             // '-Xep:BoxedPrimitiveConstructor:OFF', // we have forbiddenapis for that
             // '-Xep:BugPatternNaming:OFF', // we don't use this annotation
             // '-Xep:ByteBufferBackingArray:OFF',
@@ -289,7 +291,7 @@ allprojects { prj ->
             '-Xep:ComparableAndComparator:WARN',
             '-Xep:CompareToZero:WARN',
             // '-Xep:ComplexBooleanConstant:OFF', // TODO: there are problems
-            '-Xep:DateChecker:WARN',
+            // '-Xep:DateChecker:OFF', // we don't use these Date setters/ctors
             // '-Xep:DateFormatConstant:OFF', // we don't use Date setters
             // '-Xep:DefaultCharset:OFF', // we have forbiddenapis for that
             // '-Xep:DefaultPackage:OFF',
@@ -350,8 +352,8 @@ allprojects { prj ->
             '-Xep:InvalidThrowsLink:WARN',
             '-Xep:IterableAndIterator:WARN',
             // '-Xep:JUnit3FloatingPointComparisonWithoutDelta:OFF', // we don't use junit3
-            '-Xep:JUnit4ClassUsedInJUnit3:WARN',
-            '-Xep:JUnitAmbiguousTestClass:WARN',
+            // '-Xep:JUnit4ClassUsedInJUnit3:OFF', // we don't use junit3
+            // '-Xep:JUnitAmbiguousTestClass:OFF', // we don't use junit3
             // '-Xep:JavaDurationGetSecondsGetNano:OFF', // we don't use these Duration methods
             // '-Xep:JavaDurationWithNanos:OFF', // we don't use these Duration methods
             // '-Xep:JavaDurationWithSeconds:OFF', // we don't use these Duration methods
@@ -433,7 +435,7 @@ allprojects { prj ->
             // '-Xep:RobolectricShadowDirectlyOn:OFF', // we don't use robolectric
             // '-Xep:RxReturnValueIgnored:OFF', // we don't use rxjava
             // '-Xep:SameNameButDifferent:OFF', // TODO: there are problems
-            '-Xep:SelfAlwaysReturnsThis:WARN',
+            // '-Xep:SelfAlwaysReturnsThis:OFF', // we don't use self() methods, this isn't python.
             // '-Xep:ShortCircuitBoolean:OFF', // TODO: there are problems
             // '-Xep:StaticAssignmentInConstructor:OFF',
             // '-Xep:StaticAssignmentOfThrowable:OFF', // noisy
