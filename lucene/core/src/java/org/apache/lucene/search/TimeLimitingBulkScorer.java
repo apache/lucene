@@ -18,6 +18,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.util.Bits;
 
@@ -55,14 +56,14 @@ final class TimeLimitingBulkScorer extends BulkScorer {
    */
   public TimeLimitingBulkScorer(BulkScorer bulkScorer, QueryTimeout queryTimeout) {
     this.in = bulkScorer;
-    this.queryTimeout = queryTimeout;
+    this.queryTimeout = Objects.requireNonNull(queryTimeout);
   }
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     while (min < max) {
       final int newMax = (int) Math.min((long) min + INTERVAL, max);
-      if (queryTimeout.shouldExit() == true) {
+      if (queryTimeout.shouldExit()) {
         throw new TimeLimitingBulkScorer.TimeExceededException();
       }
       min = in.score(collector, acceptDocs, min, newMax); // in is the wrapped bulk scorer
