@@ -26,23 +26,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDisiPriorityQueue extends LuceneTestCase {
 
-  public void testRandomSize2() throws Exception {
-    doTestRandom(true);
-  }
-
-  public void testRandomSizeN() throws Exception {
-    doTestRandom(false);
-  }
-
-  private void doTestRandom(boolean size2) throws IOException {
+  public void testRandom() throws Exception {
     Random r = random();
 
-    int size;
-    if (size2) {
-      size = r.nextInt(1, 3);
-    } else {
-      size = r.nextInt(3, TEST_NIGHTLY ? 1000 : 10);
-    }
+    int size = r.nextInt(1, TEST_NIGHTLY ? 1000 : 10);
     DisiWrapper[] all = new DisiWrapper[size];
     for (int i = 0; i < size; i++) {
       DocIdSetIterator it = randomDisi(r);
@@ -50,7 +37,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
       all[i] = w;
     }
 
-    DisiPriorityQueue pq = DisiPriorityQueue.create(size);
+    DisiPriorityQueue pq = new DisiPriorityQueue(size);
     if (r.nextBoolean()) {
       for (DisiWrapper w : all) {
         pq.add(w);

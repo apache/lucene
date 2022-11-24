@@ -67,7 +67,7 @@ class BlockMaxMaxscoreScorer extends Scorer {
     this.doc = -1;
     this.minCompetitiveScore = 0;
     this.allScorers = new DisiWrapper[scorers.size()];
-    this.essentialsScorers = DisiPriorityQueue.create(scorers.size());
+    this.essentialsScorers = new DisiPriorityQueue(scorers.size());
     this.firstEssentialScorerIndex = 0;
 
     long cost = 0;

@@ -38,7 +38,7 @@ abstract class DisjunctionScorer extends Scorer {
     if (subScorers.size() <= 1) {
       throw new IllegalArgumentException("There must be at least 2 subScorers");
     }
-    this.subScorers = DisiPriorityQueue.create(subScorers.size());
+    this.subScorers = new DisiPriorityQueue(subScorers.size());
     for (Scorer scorer : subScorers) {
       final DisiWrapper w = new DisiWrapper(scorer);
       this.subScorers.add(w);
