@@ -82,8 +82,8 @@ allprojects { prj ->
             '-Xep:ArrayFillIncompatibleType:ERROR',
             // '-Xep:ArrayHashCode:OFF',
             // '-Xep:ArrayToString:OFF', // TODO: there are problems
-            '-Xep:ArraysAsListPrimitiveArray:ERROR',
-            '-Xep:AsyncCallableReturnsNull:ERROR',
+            // '-Xep:ArraysAsListPrimitiveArray:OFF', // we don't use guava
+            // '-Xep:AsyncCallableReturnsNull:OFF', // we don't use guava
             // '-Xep:AsyncFunctionReturnsNull:OFF', // we don't use guava
             // '-Xep:AutoValueBuilderDefaultsInConstructor:OFF', // we don't use autovalue
             // '-Xep:AutoValueConstructorOrderChecker:OFF', // we don't use autovalue
@@ -224,18 +224,18 @@ allprojects { prj ->
             // '-Xep:SelfAssignment:OFF', // TODO: there are problems
             '-Xep:SelfComparison:ERROR',
             '-Xep:SelfEquals:ERROR',
-            '-Xep:ShouldHaveEvenArgs:ERROR',
+            // '-Xep:ShouldHaveEvenArgs:OFF', // we don't use truth
             '-Xep:SizeGreaterThanOrEqualsZero:ERROR',
             '-Xep:StreamToString:ERROR',
             '-Xep:StringBuilderInitWithChar:ERROR',
             '-Xep:SubstringOfZero:ERROR',
             '-Xep:SuppressWarningsDeprecated:ERROR',
             // '-Xep:TemporalAccessorGetChronoField:OFF', // we don't use TemporalAccessor.get
-            '-Xep:TestParametersNotInitialized:ERROR',
+            // '-Xep:TestParametersNotInitialized:OFF', // we don't use this annotation
             // '-Xep:TheoryButNoTheories:OFF', // we don't use junit theory apis/runner
-            '-Xep:ThrowIfUncheckedKnownChecked:ERROR',
+            // '-Xep:ThrowIfUncheckedKnownChecked:OFF', // we don't use this annotation
             // '-Xep:ThrowNull:OFF', // noisy (LuceneTestCase)
-            '-Xep:TreeToString:ERROR',
+            // '-Xep:TreeToString:OFF', // we don't use javac API
             // '-Xep:TruthSelfEquals:OFF', // we don't use truth
             // '-Xep:TryFailThrowable:OFF',
             '-Xep:TypeParameterQualifier:ERROR',
