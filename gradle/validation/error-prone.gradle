@@ -375,7 +375,7 @@ allprojects { prj ->
             '-Xep:LiteEnumValueOf:WARN',
             '-Xep:LiteProtoToString:WARN',
             // '-Xep:LockNotBeforeTry:OFF',
-            // '-Xep:LogicalAssignment:OFF',
+            '-Xep:LogicalAssignment:WARN',
             // '-Xep:LongDoubleConversion:OFF',
             '-Xep:LongFloatConversion:WARN',
             '-Xep:LoopOverCharArray:WARN',
