@@ -27,6 +27,7 @@ import org.apache.lucene.index.SlowImpactsEnum;
  * @lucene.internal
  */
 public final class TermScorer extends Scorer {
+  private final String field;
   private final PostingsEnum postingsEnum;
   private final ImpactsEnum impactsEnum;
   private final DocIdSetIterator iterator;
@@ -34,8 +35,10 @@ public final class TermScorer extends Scorer {
   private final ImpactsDISI impactsDisi;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
-  public TermScorer(Weight weight, PostingsEnum postingsEnum, LeafSimScorer docScorer) {
+  public TermScorer(
+      Weight weight, String field, PostingsEnum postingsEnum, LeafSimScorer docScorer) {
     super(weight);
+    this.field = field;
     iterator = this.postingsEnum = postingsEnum;
     impactsEnum = new SlowImpactsEnum(postingsEnum);
     impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
@@ -46,12 +49,20 @@ public final class TermScorer extends Scorer {
    * Construct a {@link TermScorer} that will use impacts to skip blocks of non-competitive
    * documents.
    */
-  TermScorer(Weight weight, ImpactsEnum impactsEnum, LeafSimScorer docScorer) {
+  TermScorer(Weight weight, String field, ImpactsEnum impactsEnum, LeafSimScorer docScorer) {
     super(weight);
+    this.field = field;
     postingsEnum = this.impactsEnum = impactsEnum;
     impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
     iterator = impactsDisi;
     this.docScorer = docScorer;
+  }
+
+  /**
+   * Return the field that this {@link TermScorer} runs on, or {@code null} if none.
+   */
+  String getField() {
+    return field;
   }
 
   @Override
@@ -73,6 +84,10 @@ public final class TermScorer extends Scorer {
   public float score() throws IOException {
     assert docID() != DocIdSetIterator.NO_MORE_DOCS;
     return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
+  }
+
+  float score(long norm) throws IOException {
+    return docScorer.scoreFromProvidedNorm(postingsEnum.freq(), norm);
   }
 
   @Override

@@ -23,6 +23,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Bits;
@@ -216,6 +217,35 @@ final class BooleanWeight extends Weight {
       List<Scorer> optionalScorers = new ArrayList<>();
       for (ScorerSupplier ss : optional) {
         optionalScorers.add(ss.get(Long.MAX_VALUE));
+      }
+
+      String field = null;
+      boolean sameField = true;
+      for (Scorer scorer : optionalScorers) {
+        if (scorer instanceof TermScorer termScorer) {
+          if (field == null) {
+            field = termScorer.getField();
+            if (field == null) {
+              // TermScorer without a proper field such as created by CombinedFieldsQuery
+              sameField = false;
+              break;
+            }
+          } else if (field.equals(termScorer.getField()) == false) {
+            field = null;
+            sameField = false;
+            break;
+          }
+        } else {
+          field = null;
+          sameField = false;
+          break;
+        }
+      }
+
+      if (sameField) {
+        final NumericDocValues norms = context.reader().getNormValues(field);
+        return new SameFieldBlockMaxMaxScoreBulkScorer(
+            norms, optionalScorers.stream().map(TermScorer.class::cast).toList());
       }
 
       return new BulkScorer() {

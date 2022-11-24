@@ -428,7 +428,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         float weight = fields.get(i).weight;
         queue.add(
             new WeightedDisiWrapper(
-                new TermScorer(this, iterators.get(i), nonScoringSimScorer), weight));
+                new TermScorer(this, null, iterators.get(i), nonScoringSimScorer), weight));
       }
       // Even though it is called approximation, it is accurate since none of
       // the sub iterators are two-phase iterators.

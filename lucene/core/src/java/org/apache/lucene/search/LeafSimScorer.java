@@ -60,6 +60,10 @@ public final class LeafSimScorer {
     return scorer.score(freq, getNormValue(doc));
   }
 
+  float scoreFromProvidedNorm(float freq, long norm) {
+    return scorer.score(freq, norm);
+  }
+
   /**
    * Explain the score for the provided document assuming the given term document frequency. This
    * method must be called on non-decreasing sequences of doc ids.

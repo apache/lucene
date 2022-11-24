@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import org.apache.lucene.index.ImpactsEnum;
+
 /**
  * Wrapper used in {@link DisiPriorityQueue}.
  *
@@ -24,6 +26,7 @@ package org.apache.lucene.search;
 public class DisiWrapper {
   public final DocIdSetIterator iterator;
   public final Scorer scorer;
+  public final ImpactsEnum postings;
   public final long cost;
   public final float matchCost; // the match cost for two-phase iterators, 0 otherwise
   public int doc; // the current doc, used for comparison
@@ -42,12 +45,13 @@ public class DisiWrapper {
   // For BlockMaxMaxscoreScorer
   float maxScore;
 
-  // for MaxScoreBulkScorer
-  float maxWindowScore;
+  // For SameFieldBlockMaxMaxScoreBulkScorer
+  TermScorer termScorer;
 
   public DisiWrapper(Scorer scorer) {
     this.scorer = scorer;
     this.iterator = scorer.iterator();
+    this.postings = null;
     this.cost = iterator.cost();
     this.doc = -1;
     this.twoPhaseView = scorer.twoPhaseIterator();
@@ -59,5 +63,10 @@ public class DisiWrapper {
       approximation = iterator;
       matchCost = 0f;
     }
+  }
+
+  public DisiWrapper(TermScorer scorer) {
+    this((Scorer) scorer);
+    this.termScorer = scorer;
   }
 }
