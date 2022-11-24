@@ -423,7 +423,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       LeafSimScorer nonScoringSimScorer =
           new LeafSimScorer(simWeight, context.reader(), "pseudo_field", false);
       // we use termscorers + disjunction as an impl detail
-      DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
+      DisiPriorityQueue queue = DisiPriorityQueue.create(iterators.size());
       for (int i = 0; i < iterators.size(); i++) {
         float weight = fields.get(i).weight;
         queue.add(

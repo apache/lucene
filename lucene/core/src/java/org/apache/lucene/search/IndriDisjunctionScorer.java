@@ -34,7 +34,7 @@ public abstract class IndriDisjunctionScorer extends IndriScorer {
       Weight weight, List<Scorer> subScorersList, ScoreMode scoreMode, float boost) {
     super(weight, boost);
     this.subScorersList = subScorersList;
-    this.subScorers = new DisiPriorityQueue(subScorersList.size());
+    this.subScorers = DisiPriorityQueue.create(subScorersList.size());
     for (Scorer scorer : subScorersList) {
       final DisiWrapper w = new DisiWrapper(scorer);
       this.subScorers.add(w);

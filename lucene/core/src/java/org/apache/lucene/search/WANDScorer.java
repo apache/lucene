@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.search.DisiPriorityQueue.leftNode;
-import static org.apache.lucene.search.DisiPriorityQueue.parentNode;
-import static org.apache.lucene.search.DisiPriorityQueue.rightNode;
+import static org.apache.lucene.search.DisiPriorityQueueN.leftNode;
+import static org.apache.lucene.search.DisiPriorityQueueN.parentNode;
+import static org.apache.lucene.search.DisiPriorityQueueN.rightNode;
 import static org.apache.lucene.search.ScorerUtil.costWithMinShouldMatch;
 
 import java.io.IOException;
@@ -166,7 +166,7 @@ final class WANDScorer extends Scorer {
 
     this.scoreMode = scoreMode;
 
-    head = new DisiPriorityQueue(scorers.size());
+    head = DisiPriorityQueue.create(scorers.size());
     // there can be at most num_scorers - 1 scorers beyond the current position
     tail = new DisiWrapper[scorers.size()];
 

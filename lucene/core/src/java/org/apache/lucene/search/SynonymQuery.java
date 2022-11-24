@@ -314,7 +314,7 @@ public final class SynonymQuery extends Query {
       }
 
       // we use termscorers + disjunction as an impl detail
-      DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
+      DisiPriorityQueue queue = DisiPriorityQueue.create(iterators.size());
       for (int i = 0; i < iterators.size(); i++) {
         PostingsEnum postings = iterators.get(i);
         final TermScorer termScorer = new TermScorer(this, field, postings, simScorer);
