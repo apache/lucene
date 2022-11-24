@@ -295,9 +295,9 @@ allprojects { prj ->
             // '-Xep:DefaultPackage:OFF',
             '-Xep:DeprecatedVariable:WARN',
             // '-Xep:DirectInvocationOnMock:OFF', // we don't use mocking libraries
-            '-Xep:DistinctVarargsChecker:WARN',
+            // '-Xep:DistinctVarargsChecker:OFF', // we don't use google collections
             // '-Xep:DoNotCallSuggester:OFF',
-            '-Xep:DoNotClaimAnnotations:WARN',
+            // '-Xep:DoNotClaimAnnotations:OFF', // we don't use annotation processors
             // '-Xep:DoNotMockAutoValue:OFF', // we don't use autovalue
             // '-Xep:DoubleCheckedLocking:OFF',
             '-Xep:EmptyBlockTag:WARN',
@@ -418,7 +418,7 @@ allprojects { prj ->
             '-Xep:OverrideThrowableToString:WARN',
             '-Xep:Overrides:WARN',
             // '-Xep:OverridesGuiceInjectableMethod:OFF', // we don't use guice
-            '-Xep:ParameterName:WARN',
+            // '-Xep:ParameterName:OFF', // we don't pass parameters with comments in this way
             // '-Xep:PreconditionsCheckNotNullRepeated:OFF', // we don't use guava
             '-Xep:PrimitiveAtomicReference:WARN',
             // '-Xep:ProtectedMembersInFinalClass:OFF', // we don't use protobuf
@@ -438,10 +438,10 @@ allprojects { prj ->
             // '-Xep:StaticAssignmentInConstructor:OFF',
             // '-Xep:StaticAssignmentOfThrowable:OFF',
             // '-Xep:StaticGuardedByInstance:OFF',
-            '-Xep:StaticMockMember:WARN',
+            // '-Xep:StaticMockMember:OFF', // we don't use mock libraries
             // '-Xep:StreamResourceLeak:OFF',
             '-Xep:StreamToIterable:WARN',
-            '-Xep:StringSplitter:OFF',
+            // '-Xep:StringSplitter:OFF',
             // '-Xep:SwigMemoryLeak:OFF', // we don't use swig
             // '-Xep:SynchronizeOnNonFinalField:OFF',
             // '-Xep:ThreadJoinLoop:OFF',
@@ -454,7 +454,7 @@ allprojects { prj ->
             // '-Xep:TruthConstantAsserts:OFF', // we don't use truth
             // '-Xep:TruthGetOrDefault:OFF', // we don't use truth
             // '-Xep:TruthIncompatibleType:OFF', // we don't use truth
-            '-Xep:TypeEquals:WARN',
+            // '-Xep:TypeEquals:OFF', // we don't use this internal javac api
             '-Xep:TypeNameShadowing:WARN',
             // '-Xep:TypeParameterShadowing:OFF',
             // '-Xep:TypeParameterUnusedInFormals:OFF',
@@ -469,7 +469,7 @@ allprojects { prj ->
             '-Xep:UnnecessaryMethodReference:WARN',
             // '-Xep:UnnecessaryParentheses:OFF',
             '-Xep:UnrecognisedJavadocTag:WARN',
-            '-Xep:UnsafeFinalization:WARN',
+            // '-Xep:UnsafeFinalization:OFF', // we don't use finalizers, deprecated for removal, fails build
             '-Xep:UnsafeReflectiveConstructionCast:WARN',
             // '-Xep:UnsynchronizedOverridesSynchronized:OFF',
             // '-Xep:UnusedMethod:OFF',
