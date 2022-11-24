@@ -468,15 +468,6 @@ class GeoDegeneratePath extends GeoBasePath {
       return this.point.isIdentical(x, y, z);
     }
 
-    public boolean isWithinSection(final double x, final double y, final double z) {
-      for (final Membership cutoffPlane : cutoffPlanes) {
-        if (!cutoffPlane.isWithin(x, y, z)) {
-          return false;
-        }
-      }
-      return true;
-    }
-
     /**
      * Compute interior path distance.
      *
