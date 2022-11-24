@@ -76,7 +76,7 @@ allprojects { prj ->
 
             // On by Default : ERROR
 
-            '-Xep:AlwaysThrows:ERROR',
+            // '-Xep:AlwaysThrows:OFF', // we don't use google collections
             // '-Xep:AndroidInjectionBeforeSuper:OFF', // we don't use android
             // '-Xep:ArrayEquals:OFF',
             '-Xep:ArrayFillIncompatibleType:ERROR',
@@ -84,7 +84,7 @@ allprojects { prj ->
             // '-Xep:ArrayToString:OFF',
             '-Xep:ArraysAsListPrimitiveArray:ERROR',
             '-Xep:AsyncCallableReturnsNull:ERROR',
-            '-Xep:AsyncFunctionReturnsNull:ERROR',
+            // '-Xep:AsyncFunctionReturnsNull:OFF', // we don't use guava
             // '-Xep:AutoValueBuilderDefaultsInConstructor:OFF', // we don't use autovalue
             // '-Xep:AutoValueConstructorOrderChecker:OFF', // we don't use autovalue
             '-Xep:BadAnnotationImplementation:ERROR',
@@ -93,8 +93,8 @@ allprojects { prj ->
             '-Xep:BoxedPrimitiveEquality:ERROR',
             // '-Xep:BundleDeserializationCast:OFF', // we don't use android
             '-Xep:ChainingConstructorIgnoresParameter:ERROR',
-            '-Xep:CheckNotNullMultipleTimes:ERROR',
-            '-Xep:CheckReturnValue:ERROR',
+            // '-Xep:CheckNotNullMultipleTimes:OFF', // we don't use guava
+            // '-Xep:CheckReturnValue:oFF', // we don't use these annotations
             '-Xep:CollectionToArraySafeParameter:ERROR',
             // '-Xep:ComparableType:OFF',
             '-Xep:ComparingThisWithNull:ERROR',
@@ -131,8 +131,8 @@ allprojects { prj ->
             // '-Xep:FormatStringAnnotation:OFF', // we don't use this annotation
             // '-Xep:FromTemporalAccessor:OFF', // we don't use .from(LocalDate) etc
             '-Xep:FunctionalInterfaceMethodChanged:ERROR',
-            '-Xep:FuturesGetCheckedIllegalExceptionType:ERROR',
-            '-Xep:FuzzyEqualsShouldNotBeUsedInEqualsMethod:ERROR',
+            // '-Xep:FuturesGetCheckedIllegalExceptionType:OFF', // we don't use guava
+            // '-Xep:FuzzyEqualsShouldNotBeUsedInEqualsMethod:OFF', // we don't use guava
             '-Xep:GetClassOnAnnotation:ERROR',
             '-Xep:GetClassOnClass:ERROR',
             // '-Xep:GuardedBy:OFF', // we don't use this annotation
