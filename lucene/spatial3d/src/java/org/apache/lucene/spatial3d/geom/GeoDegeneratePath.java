@@ -497,8 +497,10 @@ class GeoDegeneratePath extends GeoBasePath {
      */
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      if (!isWithinSection(x, y, z)) {
-        return Double.POSITIVE_INFINITY;
+      for (final Membership m : cutoffPlanes) {
+        if (!m.isWithin(x, y, z)) {
+          return Double.POSITIVE_INFINITY;
+        }
       }
       return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
