@@ -78,7 +78,7 @@ allprojects { prj ->
 
             '-Xep:AlwaysThrows:ERROR',
             '-Xep:AndroidInjectionBeforeSuper:ERROR',
-            // '-Xep:ArrayEquals:OFF',
+            '-Xep:ArrayEquals:ERROR',
             '-Xep:ArrayFillIncompatibleType:ERROR',
             // '-Xep:ArrayHashCode:OFF',
             // '-Xep:ArrayToString:OFF',
