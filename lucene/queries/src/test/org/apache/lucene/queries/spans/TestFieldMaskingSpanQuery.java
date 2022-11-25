@@ -164,7 +164,7 @@ public class TestFieldMaskingSpanQuery extends LuceneTestCase {
         new FieldMaskingSpanQuery(
             new SpanTermQuery(new Term("last", "sally")) {
               @Override
-              public Query rewrite(IndexReader reader) {
+              public Query rewrite(IndexSearcher indexSearcher) {
                 return new SpanOrQuery(
                     new SpanTermQuery(new Term("first", "sally")),
                     new SpanTermQuery(new Term("first", "james")));

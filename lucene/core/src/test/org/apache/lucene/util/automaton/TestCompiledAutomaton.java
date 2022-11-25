@@ -130,7 +130,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     a.addTransition(state, state, 0, 0xff);
     a.finishState();
 
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, true);
+    CompiledAutomaton ca = new CompiledAutomaton(a, false, true, true);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.ALL, ca.type);
   }
 
@@ -142,7 +142,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     a.addTransition(state, state, 0, Character.MAX_CODE_POINT);
     a.finishState();
 
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, false);
+    CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.ALL, ca.type);
   }
 
@@ -150,14 +150,14 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   public void testBinarySingleton() throws Exception {
     // This is just ascii so we can pretend it's binary:
     Automaton a = Automata.makeString("foobar");
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, true);
+    CompiledAutomaton ca = new CompiledAutomaton(a, true, true, true);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);
   }
 
   // LUCENE-6367
   public void testUnicodeSingleton() throws Exception {
     Automaton a = Automata.makeString(TestUtil.randomRealisticUnicodeString(random()));
-    CompiledAutomaton ca = new CompiledAutomaton(a, null, true, false);
+    CompiledAutomaton ca = new CompiledAutomaton(a, true, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);
   }
 }

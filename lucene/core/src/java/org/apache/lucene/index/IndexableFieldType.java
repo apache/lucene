@@ -103,6 +103,9 @@ public interface IndexableFieldType {
 
   /** If vector multivalued */
   boolean vectorMultiValued();
+  
+  /** The {@link VectorEncoding} of the field's vector value */
+  VectorEncoding vectorEncoding();
 
   /** The {@link VectorSimilarityFunction} of the field's vector value */
   VectorSimilarityFunction vectorSimilarityFunction();

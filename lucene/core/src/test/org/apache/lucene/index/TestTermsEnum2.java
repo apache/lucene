@@ -38,7 +38,11 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.automaton.*;
+import org.apache.lucene.util.automaton.Automata;
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.automaton.RegExp;
 
 public class TestTermsEnum2 extends LuceneTestCase {
   private Directory dir;
@@ -167,8 +171,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
       String reg = AutomatonTestUtil.randomRegexp(random());
       Automaton automaton = new RegExp(reg, RegExp.NONE).toAutomaton();
       automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-      CompiledAutomaton ca =
-          new CompiledAutomaton(automaton, Operations.isFinite(automaton), false);
+      CompiledAutomaton ca = new CompiledAutomaton(automaton, false, false);
       TermsEnum te = MultiTerms.getTerms(reader, "field").intersect(ca, null);
       Automaton expected =
           Operations.determinize(

@@ -123,15 +123,19 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
 
         System.out.println("Indexing 20 Newsgroups...");
 
-        long startIndex = System.currentTimeMillis();
+        long startIndex = System.nanoTime();
         IndexWriter indexWriter = new IndexWriter(directory, new IndexWriterConfig(analyzer));
 
         Path indexDir = Paths.get(INDEX_DIR);
         int docsIndexed = buildIndex(indexDir, indexWriter);
 
-        long endIndex = System.currentTimeMillis();
+        long endIndex = System.nanoTime();
         System.out.println(
-            "Indexed " + docsIndexed + " docs in " + (endIndex - startIndex) / 1000 + "s");
+            "Indexed "
+                + docsIndexed
+                + " docs in "
+                + TimeUnit.NANOSECONDS.toSeconds(endIndex - startIndex)
+                + "s");
 
         indexWriter.close();
       }
@@ -145,7 +149,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
       if (index && split) {
         System.out.println("Splitting the index...");
 
-        long startSplit = System.currentTimeMillis();
+        long startSplit = System.nanoTime();
         DatasetSplitter datasetSplitter = new DatasetSplitter(0.2, 0);
         datasetSplitter.split(
             reader,
@@ -160,8 +164,9 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
             CATEGORY_FIELD);
         reader.close();
         reader = DirectoryReader.open(train); // using the train index from now on
-        long endSplit = System.currentTimeMillis();
-        System.out.println("Splitting done in " + (endSplit - startSplit) / 1000 + "s");
+        long endSplit = System.nanoTime();
+        System.out.println(
+            "Splitting done in " + TimeUnit.NANOSECONDS.toSeconds(endSplit - startSplit) + "s");
       }
 
       classifiers.add(
@@ -359,7 +364,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     futures.add(
         service.submit(
             () -> {
-              final long startTime = System.currentTimeMillis();
+              final long startTime = System.nanoTime();
               ConfusionMatrixGenerator.ConfusionMatrix confusionMatrix;
               if (split) {
                 confusionMatrix =
@@ -370,8 +375,8 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
                     ConfusionMatrixGenerator.getConfusionMatrix(
                         ar, classifier, CATEGORY_FIELD, BODY_FIELD, 60000 * 30);
               }
-              final long endTime = System.currentTimeMillis();
-              final int elapse = (int) (endTime - startTime) / 1000;
+              final long endTime = System.nanoTime();
+              final int elapse = (int) TimeUnit.NANOSECONDS.toSeconds(endTime - startTime);
 
               return " * "
                   + classifier

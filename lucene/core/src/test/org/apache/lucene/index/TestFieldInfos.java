@@ -260,7 +260,9 @@ public class TestFieldInfos extends LuceneTestCase {
               0,
               0,
               0,
-                  false, VectorSimilarityFunction.EUCLIDEAN,
+              false,
+              VectorEncoding.FLOAT32,
+              VectorSimilarityFunction.EUCLIDEAN,
               false));
     }
     int idx =
@@ -279,7 +281,9 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 0,
                 0,
-                    false, VectorSimilarityFunction.EUCLIDEAN,
+                false,
+                VectorEncoding.FLOAT32,
+                VectorSimilarityFunction.EUCLIDEAN,
                 false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
 
@@ -300,7 +304,9 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 0,
                 0,
-                    false, VectorSimilarityFunction.EUCLIDEAN,
+                false,
+                VectorEncoding.FLOAT32,
+                VectorSimilarityFunction.EUCLIDEAN,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);
   }

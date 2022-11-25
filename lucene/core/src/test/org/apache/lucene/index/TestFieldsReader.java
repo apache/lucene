@@ -19,7 +19,8 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
@@ -64,7 +65,9 @@ public class TestFieldsReader extends LuceneTestCase {
               0,
               0,
               0,
-                  false, VectorSimilarityFunction.EUCLIDEAN,
+              false,
+              VectorEncoding.FLOAT32,
+              VectorSimilarityFunction.EUCLIDEAN,
               field.name().equals(softDeletesFieldName)));
     }
     dir = newDirectory();

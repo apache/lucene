@@ -65,7 +65,9 @@ public class NeighborQueue {
     this.nodeIdToHeapIndex = new HashMap<>(initialSize);
   }
 
-  /** @return the number of elements in the heap */
+  /**
+   * @return the number of elements in the heap
+   */
   public int size() {
     return heap.size();
   }

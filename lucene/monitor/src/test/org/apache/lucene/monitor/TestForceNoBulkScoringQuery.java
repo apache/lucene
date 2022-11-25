@@ -67,7 +67,7 @@ public class TestForceNoBulkScoringQuery extends LuceneTestCase {
 
       assertEquals(q.getWrappedQuery(), pq);
 
-      Query rewritten = q.rewrite(reader);
+      Query rewritten = q.rewrite(newSearcher(reader));
       assertTrue(rewritten instanceof ForceNoBulkScoringQuery);
 
       Query inner = ((ForceNoBulkScoringQuery) rewritten).getWrappedQuery();

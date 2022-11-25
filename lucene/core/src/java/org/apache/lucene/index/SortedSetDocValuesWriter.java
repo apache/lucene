@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.index.SortedSetDocValues.NO_MORE_ORDS;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
@@ -144,7 +143,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     if (currentUpto == currentValues.length) {
       currentValues = ArrayUtil.grow(currentValues, currentValues.length + 1);
-      iwBytesUsed.addAndGet((currentValues.length - currentUpto) * Integer.BYTES);
+      iwBytesUsed.addAndGet((currentValues.length - currentUpto) * (long) Integer.BYTES);
     }
 
     currentValues[currentUpto] = termID;
@@ -305,11 +304,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     @Override
     public long nextOrd() {
-      if (ordUpto == ordCount) {
-        return NO_MORE_ORDS;
-      } else {
-        return currentDoc[ordUpto++];
-      }
+      return currentDoc[ordUpto++];
     }
 
     @Override
@@ -352,7 +347,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     private final DocOrds ords;
     private int docID = -1;
     private long ordUpto;
-    private long limit;
     private int count;
 
     SortingSortedSetDocValues(SortedSetDocValues in, DocOrds ords) {
@@ -392,11 +386,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     @Override
     public long nextOrd() {
-      if (limit == ordUpto) {
-        return NO_MORE_ORDS;
-      } else {
-        return ords.ords.get(ordUpto++);
-      }
+      return ords.ords.get(ordUpto++);
     }
 
     @Override
@@ -424,7 +414,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       assert docID >= 0;
       ordUpto = ords.offsets[docID] - 1;
       count = (int) ords.docValueCounts.get(docID);
-      limit = ordUpto + count;
     }
   }
 
@@ -450,10 +439,10 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       while ((docID = oldValues.nextDoc()) != NO_MORE_DOCS) {
         int newDocID = sortMap.oldToNew(docID);
         long startOffset = ordOffset;
-        long ord;
-        while ((ord = oldValues.nextOrd()) != NO_MORE_ORDS) {
-          builder.add(ord);
-          ordOffset++;
+        int docValueCount = oldValues.docValueCount();
+        ordOffset += docValueCount;
+        for (int i = 0; i < docValueCount; i++) {
+          builder.add(oldValues.nextOrd());
         }
         docValueCounts.set(newDocID, ordOffset - startOffset);
         if (startOffset != ordOffset) { // do we have any values?

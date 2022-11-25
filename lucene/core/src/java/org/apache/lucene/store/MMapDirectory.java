@@ -16,29 +16,16 @@
  */
 package org.apache.lucene.store;
 
-import static java.lang.invoke.MethodHandles.*;
-import static java.lang.invoke.MethodType.methodType;
-
 import java.io.IOException;
-import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.MappedByteBuffer;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.concurrent.Future;
+import java.util.function.BiPredicate;
 import java.util.logging.Logger;
-import org.apache.lucene.store.ByteBufferGuard.BufferCleaner;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -48,9 +35,13 @@ import org.apache.lucene.util.SuppressForbidden;
  * process equal to the size of the file being mapped. Before using this class, be sure your have
  * plenty of virtual address space, e.g. by using a 64 bit JRE, or a 32 bit JRE with indexes that
  * are guaranteed to fit within the address space. On 32 bit platforms also consult {@link
- * #MMapDirectory(Path, LockFactory, int)} if you have problems with mmap failing because of
+ * #MMapDirectory(Path, LockFactory, long)} if you have problems with mmap failing because of
  * fragmented address space. If you get an OutOfMemoryException, it is recommended to reduce the
  * chunk size, until it works.
+ *
+ * <p>This class supports preloading files into physical memory upon opening. This can help improve
+ * performance of searches on a cold page cache at the expense of slowing down opening an index. See
+ * {@link #setPreload(BiPredicate)} for more details.
  *
  * <p>Due to <a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038">this bug</a> in
  * Sun's JRE, MMapDirectory's {@link IndexInput#close} is unable to close the underlying OS file
@@ -70,6 +61,9 @@ import org.apache.lucene.util.SuppressForbidden;
  * the workaround will be automatically enabled (with no guarantees; if you discover any problems,
  * you can disable it).
  *
+ * <p>On <b>Java 19</b> with {@code --enable-preview} command line setting, this class will use the
+ * modern {@code MemorySegment} API which allows to safely unmap.
+ *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying channel immediately if at the same time the thread is
  * blocked on IO. The channel will remain closed and subsequent access to {@link MMapDirectory} will
@@ -77,19 +71,48 @@ import org.apache.lucene.util.SuppressForbidden;
  * Thread#interrupt()} or {@link Future#cancel(boolean)} you should use the legacy {@code
  * RAFDirectory} from the Lucene {@code misc} module in favor of {@link MMapDirectory}.
  *
+ * <p><b>NOTE:</b> If your application requires external synchronization, you should <b>not</b>
+ * synchronize on the <code>MMapDirectory</code> instance as this may cause deadlock; use your own
+ * (non-Lucene) objects instead.
+ *
  * @see <a href="http://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html">Blog post
  *     about MMapDirectory</a>
  */
 public class MMapDirectory extends FSDirectory {
-  private boolean useUnmapHack = UNMAP_SUPPORTED;
-  private boolean preload;
 
   /**
-   * Default max chunk size.
-   *
-   * @see #MMapDirectory(Path, LockFactory, int)
+   * Argument for {@link #setPreload(BiPredicate)} that configures all files to be preloaded upon
+   * opening them.
    */
-  public static final int DEFAULT_MAX_CHUNK_SIZE = Constants.JRE_IS_64BIT ? (1 << 30) : (1 << 28);
+  public static final BiPredicate<String, IOContext> ALL_FILES = (filename, context) -> true;
+
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures no files to be preloaded upon
+   * opening them.
+   */
+  public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
+
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
+   * opening them if they use the {@link IOContext#LOAD} I/O context.
+   */
+  public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
+      (filename, context) -> context.load;
+
+  private boolean useUnmapHack = UNMAP_SUPPORTED;
+  private BiPredicate<String, IOContext> preload = NO_FILES;
+
+  /**
+   * Default max chunk size:
+   *
+   * <ul>
+   *   <li>16 GiBytes for 64 bit <b>Java 19</b> JVMs running with {@code --enable-preview} as
+   *       command line parameter
+   *   <li>1 GiBytes for other 64 bit JVMs
+   *   <li>256 MiBytes for 32 bit JVMs
+   * </ul>
+   */
+  public static final long DEFAULT_MAX_CHUNK_SIZE;
 
   final int chunkSizePower;
 
@@ -121,11 +144,11 @@ public class MMapDirectory extends FSDirectory {
    * directory is created at the named location if it does not yet exist.
    *
    * @param path the path of the directory
-   * @param maxChunkSize maximum chunk size (default is 1 GiBytes for 64 bit JVMs and 256 MiBytes
-   *     for 32 bit JVMs) used for memory mapping.
+   * @param maxChunkSize maximum chunk size (for default see {@link #DEFAULT_MAX_CHUNK_SIZE}) used
+   *     for memory mapping.
    * @throws IOException if there is a low-level I/O error
    */
-  public MMapDirectory(Path path, int maxChunkSize) throws IOException {
+  public MMapDirectory(Path path, long maxChunkSize) throws IOException {
     this(path, FSLockFactory.getDefault(), maxChunkSize);
   }
 
@@ -136,25 +159,28 @@ public class MMapDirectory extends FSDirectory {
    * <p>Especially on 32 bit platform, the address space can be very fragmented, so large index
    * files cannot be mapped. Using a lower chunk size makes the directory implementation a little
    * bit slower (as the correct chunk may be resolved on lots of seeks) but the chance is higher
-   * that mmap does not fail. On 64 bit Java platforms, this parameter should always be {@code 1 <<
-   * 30}, as the address space is big enough.
+   * that mmap does not fail. On 64 bit Java platforms, this parameter should always be large (like
+   * 1 GiBytes, or even larger with Java 19), as the address space is big enough. If it is larger,
+   * fragmentation of address space increases, but number of file handles and mappings is lower for
+   * huge installations with many open indexes.
    *
    * <p><b>Please note:</b> The chunk size is always rounded down to a power of 2.
    *
    * @param path the path of the directory
    * @param lockFactory the lock factory to use, or null for the default ({@link
    *     NativeFSLockFactory});
-   * @param maxChunkSize maximum chunk size (default is 1 GiBytes for 64 bit JVMs and 256 MiBytes
-   *     for 32 bit JVMs) used for memory mapping.
+   * @param maxChunkSize maximum chunk size (for default see {@link #DEFAULT_MAX_CHUNK_SIZE}) used
+   *     for memory mapping.
    * @throws IOException if there is a low-level I/O error
    */
-  public MMapDirectory(Path path, LockFactory lockFactory, int maxChunkSize) throws IOException {
+  public MMapDirectory(Path path, LockFactory lockFactory, long maxChunkSize) throws IOException {
     super(path, lockFactory);
-    if (maxChunkSize <= 0) {
+    if (maxChunkSize <= 0L) {
       throw new IllegalArgumentException("Maximum chunk size for mmap must be >0");
     }
-    this.chunkSizePower = 31 - Integer.numberOfLeadingZeros(maxChunkSize);
-    assert this.chunkSizePower >= 0 && this.chunkSizePower <= 30;
+    this.chunkSizePower = Long.SIZE - 1 - Long.numberOfLeadingZeros(maxChunkSize);
+    assert (1L << chunkSizePower) <= maxChunkSize;
+    assert (1L << chunkSizePower) > (maxChunkSize / 2);
   }
 
   /**
@@ -162,6 +188,10 @@ public class MMapDirectory extends FSDirectory {
    * {@link IndexInput}, that is mentioned in the bug report. This hack may fail on
    * non-Oracle/OpenJDK JVMs. It forcefully unmaps the buffer on close by using an undocumented
    * internal cleanup functionality.
+   *
+   * <p>On Java 19 with {@code --enable-preview} command line setting, this class will use the
+   * modern {@code MemorySegment} API which allows to safely unmap. <em>The following warnings no
+   * longer apply in that case!</em>
    *
    * <p><b>NOTE:</b> Enabling this is completely unsupported by Java and may lead to JVM crashes if
    * <code>IndexInput</code> is closed while another thread is still accessing it (SIGSEGV).
@@ -199,31 +229,48 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
-   * Set to {@code true} to ask mapped pages to be loaded into physical memory on init. The behavior
-   * is best-effort and operating system dependent.
+   * Configure which files to preload in physical memory upon opening. The default implementation
+   * does not preload anything. The behavior is best effort and operating system-dependent.
    *
-   * @see MappedByteBuffer#load
+   * @param preload a {@link BiPredicate} whose first argument is the file name, and second argument
+   *     is the {@link IOContext} used to open the file
+   * @see #ALL_FILES
+   * @see #NO_FILES
    */
-  public void setPreload(boolean preload) {
+  public void setPreload(BiPredicate<String, IOContext> preload) {
     this.preload = preload;
   }
 
   /**
-   * Returns {@code true} if mapped pages should be loaded.
+   * Configure whether to preload files on this {@link MMapDirectory} into physical memory upon
+   * opening. The behavior is best effort and operating system-dependent.
    *
-   * @see #setPreload
+   * @deprecated Use {@link #setPreload(BiPredicate)} instead which provides more granular control.
    */
+  @Deprecated
+  public void setPreload(boolean preload) {
+    this.preload = preload ? ALL_FILES : NO_FILES;
+  }
+
+  /**
+   * Return whether files are loaded into physical memory upon opening.
+   *
+   * @deprecated This information is no longer reliable now that preloading is more granularly
+   *     configured via a predicate.
+   * @see #setPreload(BiPredicate)
+   */
+  @Deprecated
   public boolean getPreload() {
-    return preload;
+    return preload == ALL_FILES;
   }
 
   /**
    * Returns the current mmap chunk size.
    *
-   * @see #MMapDirectory(Path, LockFactory, int)
+   * @see #MMapDirectory(Path, LockFactory, long)
    */
-  public final int getMaxChunkSize() {
-    return 1 << chunkSizePower;
+  public final long getMaxChunkSize() {
+    return 1L << chunkSizePower;
   }
 
   /** Creates an IndexInput for the file with the given name. */
@@ -232,94 +279,12 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    try (FileChannel c = FileChannel.open(path, StandardOpenOption.READ)) {
-      final String resourceDescription = "MMapIndexInput(path=\"" + path.toString() + "\")";
-      final boolean useUnmap = getUseUnmap();
-      return ByteBufferIndexInput.newInstance(
-          resourceDescription,
-          map(resourceDescription, c, 0, c.size()),
-          c.size(),
-          chunkSizePower,
-          new ByteBufferGuard(resourceDescription, useUnmap ? CLEANER : null));
-    }
+    return PROVIDER.openInput(
+        path, context, chunkSizePower, preload.test(name, context), useUnmapHack);
   }
 
-  /** Maps a file into a set of buffers */
-  final ByteBuffer[] map(String resourceDescription, FileChannel fc, long offset, long length)
-      throws IOException {
-    if ((length >>> chunkSizePower) >= Integer.MAX_VALUE)
-      throw new IllegalArgumentException(
-          "RandomAccessFile too big for chunk size: " + resourceDescription);
-
-    final long chunkSize = 1L << chunkSizePower;
-
-    // we always allocate one more buffer, the last one may be a 0 byte one
-    final int nrBuffers = (int) (length >>> chunkSizePower) + 1;
-
-    ByteBuffer[] buffers = new ByteBuffer[nrBuffers];
-
-    long bufferStart = 0L;
-    for (int bufNr = 0; bufNr < nrBuffers; bufNr++) {
-      int bufSize =
-          (int) ((length > (bufferStart + chunkSize)) ? chunkSize : (length - bufferStart));
-      MappedByteBuffer buffer;
-      try {
-        buffer = fc.map(MapMode.READ_ONLY, offset + bufferStart, bufSize);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-      } catch (IOException ioe) {
-        throw convertMapFailedIOException(ioe, resourceDescription, bufSize);
-      }
-      if (preload) {
-        buffer.load();
-      }
-      buffers[bufNr] = buffer;
-      bufferStart += bufSize;
-    }
-
-    return buffers;
-  }
-
-  private IOException convertMapFailedIOException(
-      IOException ioe, String resourceDescription, int bufSize) {
-    final String originalMessage;
-    final Throwable originalCause;
-    if (ioe.getCause() instanceof OutOfMemoryError) {
-      // nested OOM confuses users, because it's "incorrect", just print a plain message:
-      originalMessage = "Map failed";
-      originalCause = null;
-    } else {
-      originalMessage = ioe.getMessage();
-      originalCause = ioe.getCause();
-    }
-    final String moreInfo;
-    if (!Constants.JRE_IS_64BIT) {
-      moreInfo =
-          "MMapDirectory should only be used on 64bit platforms, because the address space on 32bit operating systems is too small. ";
-    } else if (Constants.WINDOWS) {
-      moreInfo =
-          "Windows is unfortunately very limited on virtual address space. If your index size is several hundred Gigabytes, consider changing to Linux. ";
-    } else if (Constants.LINUX) {
-      moreInfo =
-          "Please review 'ulimit -v', 'ulimit -m' (both should return 'unlimited'), and 'sysctl vm.max_map_count'. ";
-    } else {
-      moreInfo = "Please review 'ulimit -v', 'ulimit -m' (both should return 'unlimited'). ";
-    }
-    final IOException newIoe =
-        new IOException(
-            String.format(
-                Locale.ENGLISH,
-                "%s: %s [this may be caused by lack of enough unfragmented virtual address space "
-                    + "or too restrictive virtual memory limits enforced by the operating system, "
-                    + "preventing us to map a chunk of %d bytes. %sMore information: "
-                    + "http://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html]",
-                originalMessage,
-                resourceDescription,
-                bufSize,
-                moreInfo),
-            originalCause);
-    newIoe.setStackTrace(ioe.getStackTrace());
-    return newIoe;
-  }
+  // visible for tests:
+  static final MMapIndexInputProvider PROVIDER;
 
   /** <code>true</code>, if this platform supports unmapping mmapped files. */
   public static final boolean UNMAP_SUPPORTED;
@@ -330,84 +295,101 @@ public class MMapDirectory extends FSDirectory {
    */
   public static final String UNMAP_NOT_SUPPORTED_REASON;
 
-  /** Reference to a BufferCleaner that does unmapping; {@code null} if not supported. */
-  private static final BufferCleaner CLEANER;
+  static interface MMapIndexInputProvider {
+    IndexInput openInput(
+        Path path, IOContext context, int chunkSizePower, boolean preload, boolean useUnmapHack)
+        throws IOException;
+
+    long getDefaultMaxChunkSize();
+
+    boolean isUnmapSupported();
+
+    String getUnmapNotSupportedReason();
+
+    default IOException convertMapFailedIOException(
+        IOException ioe, String resourceDescription, long bufSize) {
+      final String originalMessage;
+      final Throwable originalCause;
+      if (ioe.getCause() instanceof OutOfMemoryError) {
+        // nested OOM confuses users, because it's "incorrect", just print a plain message:
+        originalMessage = "Map failed";
+        originalCause = null;
+      } else {
+        originalMessage = ioe.getMessage();
+        originalCause = ioe.getCause();
+      }
+      final String moreInfo;
+      if (!Constants.JRE_IS_64BIT) {
+        moreInfo =
+            "MMapDirectory should only be used on 64bit platforms, because the address space on 32bit operating systems is too small. ";
+      } else if (Constants.WINDOWS) {
+        moreInfo =
+            "Windows is unfortunately very limited on virtual address space. If your index size is several hundred Gigabytes, consider changing to Linux. ";
+      } else if (Constants.LINUX) {
+        moreInfo =
+            "Please review 'ulimit -v', 'ulimit -m' (both should return 'unlimited'), and 'sysctl vm.max_map_count'. ";
+      } else {
+        moreInfo = "Please review 'ulimit -v', 'ulimit -m' (both should return 'unlimited'). ";
+      }
+      final IOException newIoe =
+          new IOException(
+              String.format(
+                  Locale.ENGLISH,
+                  "%s: %s [this may be caused by lack of enough unfragmented virtual address space "
+                      + "or too restrictive virtual memory limits enforced by the operating system, "
+                      + "preventing us to map a chunk of %d bytes. %sMore information: "
+                      + "https://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html]",
+                  originalMessage,
+                  resourceDescription,
+                  bufSize,
+                  moreInfo),
+              originalCause);
+      newIoe.setStackTrace(ioe.getStackTrace());
+      return newIoe;
+    }
+  }
+
+  private static MMapIndexInputProvider lookupProvider() {
+    final var lookup = MethodHandles.lookup();
+    try {
+      final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
+      // we use method handles, so we do not need to deal with setAccessible as we have private
+      // access through the lookup:
+      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+      try {
+        return (MMapIndexInputProvider) constr.invoke();
+      } catch (RuntimeException | Error e) {
+        throw e;
+      } catch (Throwable th) {
+        throw new AssertionError(th);
+      }
+    } catch (
+        @SuppressWarnings("unused")
+        ClassNotFoundException e) {
+      // we're before Java 19
+      return new MappedByteBufferIndexInputProvider();
+    } catch (
+        @SuppressWarnings("unused")
+        UnsupportedClassVersionError e) {
+      var log = Logger.getLogger(lookup.lookupClass().getName());
+      if (Runtime.version().feature() == 19) {
+        log.warning(
+            "You are running with Java 19. To make full use of MMapDirectory, please pass '--enable-preview' to the Java command line.");
+      } else {
+        log.warning(
+            "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
+      }
+      return new MappedByteBufferIndexInputProvider();
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      throw new LinkageError(
+          "MemorySegmentIndexInputProvider is missing correctly typed constructor", e);
+    }
+  }
 
   static {
-    final Object hack = doPrivileged(MMapDirectory::unmapHackImpl);
-    if (hack instanceof BufferCleaner) {
-      CLEANER = (BufferCleaner) hack;
-      UNMAP_SUPPORTED = true;
-      UNMAP_NOT_SUPPORTED_REASON = null;
-    } else {
-      CLEANER = null;
-      UNMAP_SUPPORTED = false;
-      UNMAP_NOT_SUPPORTED_REASON = hack.toString();
-      Logger.getLogger(MMapDirectory.class.getName()).warning(UNMAP_NOT_SUPPORTED_REASON);
-    }
-  }
-
-  // Extracted to a method to be able to apply the SuppressForbidden annotation
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static <T> T doPrivileged(PrivilegedAction<T> action) {
-    return AccessController.doPrivileged(action);
-  }
-
-  @SuppressForbidden(reason = "Needs access to sun.misc.Unsafe to enable hack")
-  private static Object unmapHackImpl() {
-    final Lookup lookup = lookup();
-    try {
-      // *** sun.misc.Unsafe unmapping (Java 9+) ***
-      final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-      // first check if Unsafe has the right method, otherwise we can give up
-      // without doing any security critical stuff:
-      final MethodHandle unmapper =
-          lookup.findVirtual(
-              unsafeClass, "invokeCleaner", methodType(void.class, ByteBuffer.class));
-      // fetch the unsafe instance and bind it to the virtual MH:
-      final Field f = unsafeClass.getDeclaredField("theUnsafe");
-      f.setAccessible(true);
-      final Object theUnsafe = f.get(null);
-      return newBufferCleaner(unmapper.bindTo(theUnsafe));
-    } catch (SecurityException se) {
-      return "Unmapping is not supported, because not all required permissions are given to the Lucene JAR file: "
-          + se
-          + " [Please grant at least the following permissions: RuntimePermission(\"accessClassInPackage.sun.misc\") "
-          + " and ReflectPermission(\"suppressAccessChecks\")]";
-    } catch (ReflectiveOperationException | RuntimeException e) {
-      final Module module = MMapDirectory.class.getModule();
-      final ModuleLayer layer = module.getLayer();
-      // classpath / unnamed module has no layer, so we need to check:
-      if (layer != null
-          && layer.findModule("jdk.unsupported").map(module::canRead).orElse(false) == false) {
-        return "Unmapping is not supported, because Lucene cannot read 'jdk.unsupported' module "
-            + "[please add 'jdk.unsupported' to modular application either by command line or its module descriptor]";
-      }
-      return "Unmapping is not supported on this platform, because internal Java APIs are not compatible with this Lucene version: "
-          + e;
-    }
-  }
-
-  private static BufferCleaner newBufferCleaner(final MethodHandle unmapper) {
-    assert Objects.equals(methodType(void.class, ByteBuffer.class), unmapper.type());
-    return (String resourceDescription, ByteBuffer buffer) -> {
-      if (!buffer.isDirect()) {
-        throw new IllegalArgumentException("unmapping only works with direct buffers");
-      }
-      final Throwable error =
-          doPrivileged(
-              () -> {
-                try {
-                  unmapper.invokeExact(buffer);
-                  return null;
-                } catch (Throwable t) {
-                  return t;
-                }
-              });
-      if (error != null) {
-        throw new IOException("Unable to unmap the mapped buffer: " + resourceDescription, error);
-      }
-    };
+    PROVIDER = lookupProvider();
+    DEFAULT_MAX_CHUNK_SIZE = PROVIDER.getDefaultMaxChunkSize();
+    UNMAP_SUPPORTED = PROVIDER.isUnmapSupported();
+    UNMAP_NOT_SUPPORTED_REASON = PROVIDER.getUnmapNotSupportedReason();
   }
 }

@@ -360,7 +360,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             proto.getPointIndexDimensionCount(),
             proto.getPointNumBytes(),
             proto.getVectorDimension(),
-                false, proto.getVectorSimilarityFunction(),
+            false,
+            proto.getVectorEncoding(),
+            proto.getVectorSimilarityFunction(),
             proto.isSoftDeletesField());
 
     FieldInfos fieldInfos = new FieldInfos(new FieldInfo[] {field});

@@ -23,7 +23,9 @@ import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
 /** A {@link OrQueryNode} represents an OR boolean operation performed on a list of nodes. */
 public class OrQueryNode extends BooleanQueryNode {
 
-  /** @param clauses - the query nodes to be or'ed */
+  /**
+   * @param clauses - the query nodes to be or'ed
+   */
   public OrQueryNode(List<QueryNode> clauses) {
     super(clauses);
     if ((clauses == null) || (clauses.size() == 0)) {

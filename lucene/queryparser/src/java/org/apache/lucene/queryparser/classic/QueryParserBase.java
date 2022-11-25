@@ -20,7 +20,13 @@ import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WO
 
 import java.io.StringReader;
 import java.text.DateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
@@ -30,9 +36,22 @@ import org.apache.lucene.queryparser.charstream.CharStream;
 import org.apache.lucene.queryparser.charstream.FastCharStream;
 import org.apache.lucene.queryparser.classic.QueryParser.Operator;
 import org.apache.lucene.queryparser.flexible.standard.CommonQueryParserConfiguration;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher.TooManyClauses;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiPhraseQuery;
+import org.apache.lucene.search.MultiTermQuery;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TermRangeQuery;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.QueryBuilder;
@@ -128,12 +147,16 @@ public abstract class QueryParserBase extends QueryBuilder
     }
   }
 
-  /** @return Returns the default field. */
+  /**
+   * @return Returns the default field.
+   */
   public String getField() {
     return field;
   }
 
-  /** @see #setAutoGeneratePhraseQueries(boolean) */
+  /**
+   * @see #setAutoGeneratePhraseQueries(boolean)
+   */
   public final boolean getAutoGeneratePhraseQueries() {
     return autoGeneratePhraseQueries;
   }
@@ -209,7 +232,9 @@ public abstract class QueryParserBase extends QueryBuilder
     this.allowLeadingWildcard = allowLeadingWildcard;
   }
 
-  /** @see #setAllowLeadingWildcard(boolean) */
+  /**
+   * @see #setAllowLeadingWildcard(boolean)
+   */
   @Override
   public boolean getAllowLeadingWildcard() {
     return allowLeadingWildcard;
@@ -245,7 +270,9 @@ public abstract class QueryParserBase extends QueryBuilder
     multiTermRewriteMethod = method;
   }
 
-  /** @see #setMultiTermRewriteMethod */
+  /**
+   * @see #setMultiTermRewriteMethod
+   */
   @Override
   public MultiTermQuery.RewriteMethod getMultiTermRewriteMethod() {
     return multiTermRewriteMethod;

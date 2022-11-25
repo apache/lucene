@@ -235,8 +235,8 @@ public class MemoryIndex {
     final int maxBufferedByteBlocks = (int) ((maxReusedBytes / 2) / ByteBlockPool.BYTE_BLOCK_SIZE);
     final int maxBufferedIntBlocks =
         (int)
-            ((maxReusedBytes - (maxBufferedByteBlocks * ByteBlockPool.BYTE_BLOCK_SIZE))
-                / (IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES));
+            ((maxReusedBytes - (maxBufferedByteBlocks * (long) ByteBlockPool.BYTE_BLOCK_SIZE))
+                / (IntBlockPool.INT_BLOCK_SIZE * (long) Integer.BYTES));
     assert (maxBufferedByteBlocks * ByteBlockPool.BYTE_BLOCK_SIZE)
             + (maxBufferedIntBlocks * IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
         <= maxReusedBytes;
@@ -516,6 +516,7 @@ public class MemoryIndex {
         fieldType.pointNumBytes(),
         fieldType.vectorDimension(),
         fieldType.vectorMultiValued(),
+        fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
         false);
   }
@@ -549,6 +550,7 @@ public class MemoryIndex {
               info.fieldInfo.getPointNumBytes(),
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.isVectorMultiValued(),
+              info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
               info.fieldInfo.isSoftDeletesField());
     } else if (existingDocValuesType != docValuesType) {
@@ -1153,7 +1155,6 @@ public class MemoryIndex {
 
       @Override
       public long nextOrd() throws IOException {
-        if (ord >= values.size()) return NO_MORE_ORDS;
         return ord++;
       }
 

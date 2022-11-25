@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.document;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import org.apache.lucene.index.IndexReader; // for javadoc
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.IndexSearcher; // for javadoc

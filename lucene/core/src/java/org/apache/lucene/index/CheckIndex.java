@@ -60,6 +60,7 @@ import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -2592,8 +2593,21 @@ public final class CheckIndex implements Closeable {
             status.totalKnnVectorFields++;
 
             int docCount = 0;
+            int everyNdoc = Math.max(values.size() / 64, 1);
             while (values.nextDoc() != NO_MORE_DOCS) {
-              int valueLength = values.vectorValue().length;
+              float[] vectorValue = values.vectorValue();
+              // search the first maxNumSearches vectors to exercise the graph
+              if (values.docID() % everyNdoc == 0) {
+                TopDocs docs =
+                    reader
+                        .getVectorReader()
+                        .search(fieldInfo.name, vectorValue, 10, null, Integer.MAX_VALUE);
+                if (docs.scoreDocs.length == 0) {
+                  throw new CheckIndexException(
+                      "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+                }
+              }
+              int valueLength = vectorValue.length;
               if (valueLength != dimension) {
                 throw new CheckIndexException(
                     "Field \""
@@ -3353,9 +3367,8 @@ public final class CheckIndex implements Closeable {
             "advanceExact reports different value count: " + count + " != " + count2);
       }
       long lastOrd = -1;
-      long ord;
       int ordCount = 0;
-      while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+      for (int i = 0; i < count; i++) {
         if (count != dv.docValueCount()) {
           throw new CheckIndexException(
               "value count changed from "
@@ -3364,6 +3377,7 @@ public final class CheckIndex implements Closeable {
                   + dv.docValueCount()
                   + " during iterating over all values");
         }
+        long ord = dv.nextOrd();
         long ord2 = dv2.nextOrd();
         if (ord != ord2) {
           throw new CheckIndexException(
@@ -3391,11 +3405,6 @@ public final class CheckIndex implements Closeable {
       if (ordCount == 0) {
         throw new CheckIndexException(
             "dv for field: " + fieldName + " returned docID=" + docID + " yet has no ordinals");
-      }
-      long ord2 = dv2.nextOrd();
-      if (ord != ord2) {
-        throw new CheckIndexException(
-            "nextDoc and advanceExact report different ords: " + ord + " != " + ord2);
       }
     }
     if (maxOrd != maxOrd2) {
@@ -4194,7 +4203,7 @@ public final class CheckIndex implements Closeable {
   }
 
   private static double nsToSec(long ns) {
-    return ns / 1000000000.0;
+    return ns / (double) TimeUnit.SECONDS.toNanos(1);
   }
 
   /**

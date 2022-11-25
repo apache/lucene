@@ -39,13 +39,16 @@ public abstract class VectorValues extends DocIdSetIterator {
   public abstract int dimension();
 
   /**
-   * TODO: should we use cost() for this? We rely on its always being exactly the number of
-   * documents having a value for this field, which is not guaranteed by the cost() contract, but in
-   * all the implementations so far they are the same.
+   * Return the number of vectors for this field.
    *
    * @return the number of vectors returned by this iterator
    */
   public abstract int size();
+
+  @Override
+  public final long cost() {
+    return size();
+  }
 
   /**
    * Return the vector value for the current document ID. It is illegal to call this method when the
@@ -78,52 +81,64 @@ public abstract class VectorValues extends DocIdSetIterator {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * Represents the lack of vector values. It is returned by providers that do not support
-   * VectorValues.
-   */
-  public static final VectorValues EMPTY =
-      new VectorValues() {
+  /** Sorting VectorValues that iterate over documents in the order of the provided sortMap */
+  public static class SortingVectorValues extends VectorValues {
+    private final RandomAccessVectorValues randomAccess;
+    private final int[] docIdOffsets;
+    private int docId = -1;
 
-        @Override
-        public int size() {
-          return 0;
+    SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+      this.randomAccess = ((RandomAccessVectorValues) delegate).copy();
+      this.docIdOffsets = new int[sortMap.size()];
+
+      int offset = 1; // 0 means no vector for this (field, document)
+      int docID;
+      while ((docID = delegate.nextDoc()) != NO_MORE_DOCS) {
+        int newDocID = sortMap.oldToNew(docID);
+        docIdOffsets[newDocID] = offset++;
+      }
+    }
+
+    @Override
+    public int docID() {
+      return docId;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      while (docId < docIdOffsets.length - 1) {
+        ++docId;
+        if (docIdOffsets[docId] != 0) {
+          return docId;
         }
+      }
+      docId = NO_MORE_DOCS;
+      return docId;
+    }
 
-        @Override
-        public int dimension() {
-          return 0;
-        }
+    @Override
+    public BytesRef binaryValue() throws IOException {
+      return randomAccess.binaryValue(docIdOffsets[docId] - 1);
+    }
 
-        @Override
-        public float[] vectorValue() {
-          throw new IllegalStateException(
-              "Attempt to get vectors from EMPTY values (which was not advanced)");
-        }
+    @Override
+    public float[] vectorValue() throws IOException {
+      return randomAccess.vectorValue(docIdOffsets[docId] - 1);
+    }
 
-          @Override
-          public long nextOrd() throws IOException {
-              return 0;
-          }
+    @Override
+    public int dimension() {
+      return randomAccess.dimension();
+    }
 
-          @Override
-        public int docID() {
-          throw new IllegalStateException("VectorValues is EMPTY, and not positioned on a doc");
-        }
+    @Override
+    public int size() {
+      return randomAccess.size();
+    }
 
-        @Override
-        public int nextDoc() {
-          return NO_MORE_DOCS;
-        }
-
-        @Override
-        public int advance(int target) {
-          return NO_MORE_DOCS;
-        }
-
-        @Override
-        public long cost() {
-          return 0;
-        }
-      };
+    @Override
+    public int advance(int target) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+  }
 }

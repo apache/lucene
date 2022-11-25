@@ -17,8 +17,10 @@
 
 package org.apache.lucene.document;
 
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.VectorUtil;
 
 /**
@@ -39,7 +41,18 @@ public class KnnVectorField extends Field {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
-    int dimension = v.length;
+    return createType(v.length, VectorEncoding.FLOAT32, similarityFunction);
+  }
+
+  private static FieldType createType(BytesRef v, VectorSimilarityFunction similarityFunction) {
+    if (v == null) {
+      throw new IllegalArgumentException("vector value must not be null");
+    }
+    return createType(v.length, VectorEncoding.BYTE, similarityFunction);
+  }
+
+  private static FieldType createType(
+      int dimension, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction) {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
@@ -51,13 +64,13 @@ public class KnnVectorField extends Field {
       throw new IllegalArgumentException("similarity function must not be null");
     }
     FieldType type = new FieldType();
-    type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction, multiValued);
+    type.setVectorAttributes(dimension, vectorEncoding, similarityFunction, multiValued);
     type.freeze();
     return type;
   }
 
   /**
-   * A convenience method for creating a vector field type.
+   * A convenience method for creating a vector field type with the default FLOAT32 encoding.
    *
    * @param dimension dimension of vectors
    * @param similarityFunction a function defining vector proximity.
@@ -65,8 +78,21 @@ public class KnnVectorField extends Field {
    */
   public static FieldType createFieldType(
       int dimension, VectorSimilarityFunction similarityFunction) {
+    return createFieldType(dimension, VectorEncoding.FLOAT32, similarityFunction);
+  }
+
+  /**
+   * A convenience method for creating a vector field type.
+   *
+   * @param dimension dimension of vectors
+   * @param vectorEncoding the encoding of the scalar values
+   * @param similarityFunction a function defining vector proximity.
+   * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
+   */
+  public static FieldType createFieldType(
+      int dimension, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
-    type.setVectorDimensionsAndSimilarityFunction(dimension, similarityFunction, false);
+    type.setVectorAttributes(dimension, vectorEncoding, similarityFunction, multiValued);
     type.freeze();
     return type;
   }
@@ -91,8 +117,8 @@ public class KnnVectorField extends Field {
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some strategies (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to be
-   * unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
+   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
+   * be unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
    *
    * @param name field name
    * @param vector value
@@ -102,6 +128,23 @@ public class KnnVectorField extends Field {
    */
   public KnnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction, false));
+    fieldsData = vector;
+  }
+
+  /**
+   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
+   * no value. Vectors of a single field share the same dimension and similarity function. Note that
+   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
+   * be constant-length.
+   *
+   * @param name field name
+   * @param vector value
+   * @param similarityFunction a function defining vector proximity.
+   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
+   *     dimension &gt; 1024.
+   */
+  public KnnVectorField(String name, BytesRef vector, VectorSimilarityFunction similarityFunction) {
+    super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }
 
@@ -131,6 +174,35 @@ public class KnnVectorField extends Field {
    */
   public KnnVectorField(String name, float[] vector, FieldType fieldType) {
     super(name, fieldType);
+    if (fieldType.vectorEncoding() != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "Attempt to create a vector for field "
+              + name
+              + " using float[] but the field encoding is "
+              + fieldType.vectorEncoding());
+    }
+    fieldsData = vector;
+  }
+
+  /**
+   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
+   * no value. Vectors of a single field share the same dimension and similarity function.
+   *
+   * @param name field name
+   * @param vector value
+   * @param fieldType field type
+   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
+   *     dimension &gt; 1024.
+   */
+  public KnnVectorField(String name, BytesRef vector, FieldType fieldType) {
+    super(name, fieldType);
+    if (fieldType.vectorEncoding() != VectorEncoding.BYTE) {
+      throw new IllegalArgumentException(
+          "Attempt to create a vector for field "
+              + name
+              + " using BytesRef but the field encoding is "
+              + fieldType.vectorEncoding());
+    }
     fieldsData = vector;
   }
 

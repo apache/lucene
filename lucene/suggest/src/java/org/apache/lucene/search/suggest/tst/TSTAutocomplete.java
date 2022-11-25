@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.search.suggest.tst;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Stack;
 
 /**
  * Ternary Search Trie implementation.

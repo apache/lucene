@@ -20,10 +20,10 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
@@ -52,7 +52,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
 
     for (int iter = 0; iter < 100; iter++) {
       int docs = RandomNumbers.randomIntBetween(random(), 1000, 10000);
-      List<Integer> expected = generateDocIds(docs, random());
+      SortedSet<Integer> expected = generateDocIds(docs, random());
       List<Integer> expectedEven =
           expected.stream().filter(evenPredicate).collect(Collectors.toList());
       List<Integer> expectedOdd =
@@ -157,7 +157,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     LeafReaderContext ctx = reader.leaves().get(0);
 
     int docs = RandomNumbers.randomIntBetween(random(), 1000, 10000);
-    List<Integer> expected = generateDocIds(docs, random());
+    Collection<Integer> expected = generateDocIds(docs, random());
 
     // The first collector manager should collect all docs even though the second throws
     // CollectionTerminatedException immediately:
@@ -192,7 +192,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
   }
 
   private static <C extends Collector> Object collectAll(
-      LeafReaderContext ctx, List<Integer> values, CollectorManager<C, ?> collectorManager)
+      LeafReaderContext ctx, Collection<Integer> values, CollectorManager<C, ?> collectorManager)
       throws IOException {
     List<C> collectors = new ArrayList<>();
     C collector = collectorManager.newCollector();
@@ -210,18 +210,17 @@ public class TestMultiCollectorManager extends LuceneTestCase {
   }
 
   /**
-   * Generate test doc ids. This will de-dupe and create a sorted list to be more realistic with
-   * real-world use-cases. Note that it's possible this will generate fewer than 'count' entries
-   * because of de-duping, but that should be quite rare and probably isn't worth worrying about for
-   * these testing purposes.
+   * Generate test doc ids. This will de-dupe and create a sorted collection to be more realistic
+   * with real-world use-cases. Note that it's possible this will generate fewer than 'count'
+   * entries because of de-duping, but that should be quite rare and probably isn't worth worrying
+   * about for these testing purposes.
    */
-  private List<Integer> generateDocIds(int count, Random random) {
-    Set<Integer> generated = new HashSet<>(count);
+  private static SortedSet<Integer> generateDocIds(int count, Random random) {
+    SortedSet<Integer> generated = new TreeSet<>();
     for (int i = 0; i < count; i++) {
       generated.add(random.nextInt());
     }
-
-    return generated.stream().sorted().collect(Collectors.toList());
+    return generated;
   }
 
   private static final class SimpleCollectorManager

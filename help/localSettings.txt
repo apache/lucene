@@ -47,7 +47,7 @@ separately from the gradle workers, for example:
 tests.jvms=3
 tests.heapsize=512m
 tests.minheapsize=512m
-tests.jvmargs=-XX:+UseParallelGC -XX:TieredStopAtLevel=1
+tests.jvmargs=-XX:+UseParallelGC -XX:TieredStopAtLevel=1 -XX:ActiveProcessorCount=1
 
 Gradle Daemon
 -------------

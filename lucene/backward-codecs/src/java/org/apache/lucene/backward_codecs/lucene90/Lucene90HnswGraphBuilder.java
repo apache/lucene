@@ -21,8 +21,8 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.NeighborQueue;
@@ -72,14 +72,14 @@ public final class Lucene90HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene90HnswGraphBuilder(
-      RandomAccessVectorValuesProducer vectors,
+      RandomAccessVectorValues vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
       long seed)
       throws IOException {
-    vectorValues = vectors.randomAccess();
-    buildVectors = vectors.randomAccess();
+    vectorValues = vectors.copy();
+    buildVectors = vectors.copy();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -124,8 +124,8 @@ public final class Lucene90HnswGraphBuilder {
                   Locale.ROOT,
                   "built %d in %d/%d ms",
                   node,
-                  ((now - t) / 1_000_000),
-                  ((now - start) / 1_000_000)));
+                  TimeUnit.NANOSECONDS.toMillis(now - t),
+                  TimeUnit.NANOSECONDS.toMillis(now - start)));
           t = now;
         }
       }

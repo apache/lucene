@@ -66,7 +66,7 @@ class PointValuesWriter {
 
     if (docIDs.length == numPoints) {
       docIDs = ArrayUtil.grow(docIDs, numPoints + 1);
-      iwBytesUsed.addAndGet((docIDs.length - numPoints) * Integer.BYTES);
+      iwBytesUsed.addAndGet((docIDs.length - numPoints) * (long) Integer.BYTES);
     }
     final long bytesRamBytesUsedBefore = bytes.ramBytesUsed();
     bytesOut.writeBytes(value.bytes, value.offset, value.length);

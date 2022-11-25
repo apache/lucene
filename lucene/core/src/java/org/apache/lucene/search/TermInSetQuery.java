@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.SortedSet;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -113,7 +112,7 @@ public class TermInSetQuery extends Query implements Accountable {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     final int threshold =
         Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
     if (termData.size() <= threshold) {
@@ -124,7 +123,7 @@ public class TermInSetQuery extends Query implements Accountable {
       }
       return new ConstantScoreQuery(bq.build());
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -266,12 +265,13 @@ public class TermInSetQuery extends Query implements Accountable {
         if (terms == null) {
           return null;
         }
+        final int fieldDocCount = terms.getDocCount();
         TermsEnum termsEnum = terms.iterator();
         PostingsEnum docs = null;
         TermIterator iterator = termData.iterator();
 
         // We will first try to collect up to 'threshold' terms into 'matchingTerms'
-        // if there are two many terms, we will fall back to building the 'builder'
+        // if there are too many terms, we will fall back to building the 'builder'
         final int threshold =
             Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
         assert termData.size() > threshold : "Query should have been rewritten";
@@ -281,6 +281,20 @@ public class TermInSetQuery extends Query implements Accountable {
         for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
           assert field.equals(iterator.field());
           if (termsEnum.seekExact(term)) {
+            // If a term contains all docs with a value for the specified field (likely rare),
+            // we can discard the other terms and just use the dense term's postings:
+            int docFreq = termsEnum.docFreq();
+            if (fieldDocCount == docFreq) {
+              TermStates termStates = new TermStates(searcher.getTopReaderContext());
+              termStates.register(
+                  termsEnum.termState(), context.ord, docFreq, termsEnum.totalTermFreq());
+              Query q =
+                  new ConstantScoreQuery(
+                      new TermQuery(new Term(field, termsEnum.term()), termStates));
+              Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+              return new WeightOrDocIdSet(weight);
+            }
+
             if (matchingTerms == null) {
               docs = termsEnum.postings(docs, PostingsEnum.NONE);
               builder.add(docs);
@@ -300,6 +314,7 @@ public class TermInSetQuery extends Query implements Accountable {
             }
           }
         }
+
         if (matchingTerms != null) {
           assert builder == null;
           BooleanQuery.Builder bq = new BooleanQuery.Builder();
@@ -345,15 +360,67 @@ public class TermInSetQuery extends Query implements Accountable {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSet weightOrBitSet = rewrite(context);
-        if (weightOrBitSet == null) {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        Terms indexTerms = context.reader().terms(field);
+        if (indexTerms == null) {
           return null;
-        } else if (weightOrBitSet.weight != null) {
-          return weightOrBitSet.weight.scorer(context);
-        } else {
-          return scorer(weightOrBitSet.set);
         }
+
+        // Cost estimation reasoning is:
+        //  1. Assume every query term matches at least one document (queryTermsCount).
+        //  2. Determine the total number of docs beyond the first one for each term.
+        //     That count provides a ceiling on the number of extra docs that could match beyond
+        //     that first one. (We omit the first since it's already been counted in #1).
+        // This approach still provides correct worst-case cost in general, but provides tighter
+        // estimates for primary-key-like fields. See: LUCENE-10207
+
+        // TODO: This cost estimation may grossly overestimate since we have no index statistics
+        // for the specific query terms. While it's nice to avoid the cost of intersecting the
+        // query terms with the index, it could be beneficial to do that work and get better
+        // cost estimates.
+        final long cost;
+        final long queryTermsCount = termData.size();
+        long potentialExtraCost = indexTerms.getSumDocFreq();
+        final long indexedTermCount = indexTerms.size();
+        if (indexedTermCount != -1) {
+          potentialExtraCost -= indexedTermCount;
+        }
+        cost = queryTermsCount + potentialExtraCost;
+
+        final Weight weight = this;
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            WeightOrDocIdSet weightOrDocIdSet = rewrite(context);
+            final Scorer scorer;
+            if (weightOrDocIdSet == null) {
+              scorer = null;
+            } else if (weightOrDocIdSet.weight != null) {
+              scorer = weightOrDocIdSet.weight.scorer(context);
+            } else {
+              scorer = scorer(weightOrDocIdSet.set);
+            }
+
+            return Objects.requireNonNullElseGet(
+                scorer,
+                () ->
+                    new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty()));
+          }
+
+          @Override
+          public long cost() {
+            return cost;
+          }
+        };
+      }
+
+      @Override
+      public Scorer scorer(LeafReaderContext context) throws IOException {
+        final ScorerSupplier supplier = scorerSupplier(context);
+        if (supplier == null) {
+          return null;
+        }
+        return supplier.get(Long.MAX_VALUE);
       }
 
       @Override

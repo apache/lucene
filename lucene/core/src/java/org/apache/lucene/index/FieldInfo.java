@@ -56,6 +56,7 @@ public final class FieldInfo {
 
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
+  private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
   private final boolean vectorMultiValued;
 
@@ -68,22 +69,23 @@ public final class FieldInfo {
    * @lucene.experimental
    */
   public FieldInfo(
-          String name,
-          int number,
-          boolean storeTermVector,
-          boolean omitNorms,
-          boolean storePayloads,
-          IndexOptions indexOptions,
-          DocValuesType docValues,
-          long dvGen,
-          Map<String, String> attributes,
-          int pointDimensionCount,
-          int pointIndexDimensionCount,
-          int pointNumBytes,
-          int vectorDimension,
-          boolean multiValuedVectors,
-          VectorSimilarityFunction vectorSimilarityFunction,
-          boolean softDeletesField) {
+      String name,
+      int number,
+      boolean storeTermVector,
+      boolean omitNorms,
+      boolean storePayloads,
+      IndexOptions indexOptions,
+      DocValuesType docValues,
+      long dvGen,
+      Map<String, String> attributes,
+      int pointDimensionCount,
+      int pointIndexDimensionCount,
+      int pointNumBytes,
+      int vectorDimension,
+      boolean multiValuedVectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
     this.docValuesType =
@@ -108,6 +110,7 @@ public final class FieldInfo {
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
     this.vectorMultiValued = multiValuedVectors;
+    this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.checkConsistency();
@@ -232,8 +235,10 @@ public final class FieldInfo {
     verifySameVectorOptions(
         fieldName,
         this.vectorDimension,
+        this.vectorEncoding,
         this.vectorSimilarityFunction,
         o.vectorDimension,
+        o.vectorEncoding,
         o.vectorSimilarityFunction);
   }
 
@@ -350,19 +355,25 @@ public final class FieldInfo {
   static void verifySameVectorOptions(
       String fieldName,
       int vd1,
+      VectorEncoding ve1,
       VectorSimilarityFunction vsf1,
       int vd2,
+      VectorEncoding ve2,
       VectorSimilarityFunction vsf2) {
-    if (vd1 != vd2 || vsf1 != vsf2) {
+    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
               + "\" from vector dimension="
               + vd1
+              + ", vector encoding="
+              + ve1
               + ", vector similarity function="
               + vsf1
               + " to inconsistent vector dimension="
               + vd2
+              + ", vector encoding="
+              + ve2
               + ", vector similarity function="
               + vsf2);
     }
@@ -476,6 +487,11 @@ public final class FieldInfo {
   /** Returns true if the vector field can have multiple values */
   public boolean isVectorMultiValued() {
     return vectorMultiValued;
+  }
+  
+  /** Returns the number of dimensions of the vector value */
+  public VectorEncoding getVectorEncoding() {
+    return vectorEncoding;
   }
 
   /** Returns {@link VectorSimilarityFunction} for the field */

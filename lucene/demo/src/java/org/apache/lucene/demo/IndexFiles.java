@@ -174,7 +174,7 @@ public class IndexFiles implements AutoCloseable {
                 + reader.numDocs()
                 + " documents in "
                 + (end.getTime() - start.getTime())
-                + " milliseconds");
+                + " ms");
         if (reader.numDocs() > 100
             && vectorDictSize < 1_000_000
             && System.getProperty("smoketester") == null) {

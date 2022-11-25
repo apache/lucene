@@ -152,7 +152,7 @@ public final class SearchImpl extends LukeModel implements Search {
 
     if (rewrite) {
       try {
-        query = query.rewrite(reader);
+        query = query.rewrite(searcher);
       } catch (IOException e) {
         throw new LukeException(
             String.format(Locale.ENGLISH, "Failed to rewrite query: %s", query.toString()), e);
@@ -343,7 +343,7 @@ public final class SearchImpl extends LukeModel implements Search {
 
     if (totalHits.value == 0
         || (totalHits.relation == TotalHits.Relation.EQUAL_TO
-            && currentPage * pageSize >= totalHits.value)) {
+            && currentPage * (long) pageSize >= totalHits.value)) {
       log.warning("No more next search results are available.");
       return Optional.empty();
     }

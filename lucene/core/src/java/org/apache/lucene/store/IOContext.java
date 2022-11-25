@@ -41,16 +41,27 @@ public class IOContext {
 
   public final FlushInfo flushInfo;
 
+  /** This flag indicates that the file will be opened, then fully read sequentially then closed. */
   public final boolean readOnce;
+
+  /**
+   * This flag is used for files that are a small fraction of the total index size and are expected
+   * to be heavily accessed in random-access fashion. Some {@link Directory} implementations may
+   * choose to load such files into physical memory (e.g. Java heap) as a way to provide stronger
+   * guarantees on query latency.
+   */
+  public final boolean load;
 
   public static final IOContext DEFAULT = new IOContext(Context.DEFAULT);
 
-  public static final IOContext READONCE = new IOContext(true);
+  public static final IOContext READONCE = new IOContext(true, false);
 
-  public static final IOContext READ = new IOContext(false);
+  public static final IOContext READ = new IOContext(false, false);
+
+  public static final IOContext LOAD = new IOContext(false, true);
 
   public IOContext() {
-    this(false);
+    this(false, false);
   }
 
   public IOContext(FlushInfo flushInfo) {
@@ -58,6 +69,7 @@ public class IOContext {
     this.context = Context.FLUSH;
     this.mergeInfo = null;
     this.readOnce = false;
+    this.load = false;
     this.flushInfo = flushInfo;
   }
 
@@ -65,10 +77,11 @@ public class IOContext {
     this(context, null);
   }
 
-  private IOContext(boolean readOnce) {
+  private IOContext(boolean readOnce, boolean load) {
     this.context = Context.READ;
     this.mergeInfo = null;
     this.readOnce = readOnce;
+    this.load = load;
     this.flushInfo = null;
   }
 
@@ -82,6 +95,7 @@ public class IOContext {
     assert context != Context.FLUSH : "Use IOContext(FlushInfo) to create a FLUSH IOContext";
     this.context = context;
     this.readOnce = false;
+    this.load = false;
     this.mergeInfo = mergeInfo;
     this.flushInfo = null;
   }
@@ -99,6 +113,7 @@ public class IOContext {
     this.mergeInfo = ctxt.mergeInfo;
     this.flushInfo = ctxt.flushInfo;
     this.readOnce = readOnce;
+    this.load = false;
   }
 
   @Override

@@ -45,22 +45,30 @@ public class ProfilerCollectorResult {
     this.children = children;
   }
 
-  /** @return the profiled time for this collector (inclusive of children) */
+  /**
+   * @return the profiled time for this collector (inclusive of children)
+   */
   public long getTime() {
     return this.time;
   }
 
-  /** @return a human readable "hint" about what this collector was used for */
+  /**
+   * @return a human readable "hint" about what this collector was used for
+   */
   public String getReason() {
     return this.reason;
   }
 
-  /** @return the lucene class name of the collector */
+  /**
+   * @return the lucene class name of the collector
+   */
   public String getName() {
     return this.collectorName;
   }
 
-  /** @return a list of children collectors */
+  /**
+   * @return a list of children collectors
+   */
   public List<ProfilerCollectorResult> getProfiledChildren() {
     return children;
   }

@@ -509,7 +509,7 @@ public abstract class LogMergePolicy extends MergePolicy {
                 + " level="
                 + infoLevel.level
                 + " size="
-                + String.format(Locale.ROOT, "%.3f MB", segBytes / 1024 / 1024.)
+                + String.format(Locale.ROOT, "%.3f MB", segBytes / 1024. / 1024.)
                 + extra,
             mergeContext);
       }
@@ -530,18 +530,22 @@ public abstract class LogMergePolicy extends MergePolicy {
 
     final int numMergeableSegments = levels.size();
 
+    // precompute the max level on the right side.
+    // arr size is numMergeableSegments + 1 to handle the case
+    // when numMergeableSegments is 0.
+    float[] maxLevels = new float[numMergeableSegments + 1];
+    // -1 is definitely the minimum value, because Math.log(1) is 0.
+    maxLevels[numMergeableSegments] = -1.0f;
+    for (int i = numMergeableSegments - 1; i >= 0; i--) {
+      maxLevels[i] = Math.max(levels.get(i).level, maxLevels[i + 1]);
+    }
+
     int start = 0;
     while (start < numMergeableSegments) {
 
       // Find max level of all segments not already
       // quantized.
-      float maxLevel = levels.get(start).level;
-      for (int i = 1 + start; i < numMergeableSegments; i++) {
-        final float level = levels.get(i).level;
-        if (level > maxLevel) {
-          maxLevel = level;
-        }
-      }
+      float maxLevel = maxLevels[start];
 
       // Now search backwards for the rightmost segment that
       // falls into this level:

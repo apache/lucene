@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.document.ShapeField.QueryRelation; // javadoc
 import org.apache.lucene.document.ShapeField.Triangle;
@@ -35,6 +36,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * An geo shape utility class for indexing and searching gis geometries whose vertices are latitude,
@@ -44,10 +46,18 @@ import org.apache.lucene.search.Query;
  *
  * <ul>
  *   <li>{@link #createIndexableFields(String, Polygon)} for indexing a geo polygon.
+ *   <li>{@link #createDocValueField(String, Polygon)} for indexing a geo polygon doc value field.
  *   <li>{@link #createIndexableFields(String, Polygon, boolean)} for indexing a geo polygon with
  *       the possibility of checking for self-intersections.
+ *   <li>{@link #createIndexableFields(String, Polygon, boolean)} for indexing a geo polygon doc
+ *       value field with the possibility of checking for self-intersections.
  *   <li>{@link #createIndexableFields(String, Line)} for indexing a geo linestring.
+ *   <li>{@link #createDocValueField(String, Line)} for indexing a geo linestring doc value.
  *   <li>{@link #createIndexableFields(String, double, double)} for indexing a lat, lon geo point.
+ *   <li>{@link #createDocValueField(String, double, double)} for indexing a lat, lon geo point doc
+ *       value.
+ *   <li>{@link #createDocValueField(String, BytesRef)} for indexing a cartesian doc value from
+ *       existing encoding.
  *   <li>{@link #newBoxQuery newBoxQuery()} for matching geo shapes that have some {@link
  *       QueryRelation} with a bounding box.
  *   <li>{@link #newLineQuery newLineQuery()} for matching geo shapes that have some {@link
@@ -56,6 +66,7 @@ import org.apache.lucene.search.Query;
  *       QueryRelation} with a polygon.
  *   <li>{@link #newGeometryQuery newGeometryQuery()} for matching geo shapes that have some {@link
  *       QueryRelation} with one or more {@link LatLonGeometry}.
+ *   <li>{@link #createLatLonShapeDocValues(BytesRef)} for creating the {@link LatLonShapeDocValues}
  * </ul>
  *
  * <b>WARNING</b>: Like {@link LatLonPoint}, vertex values are indexed with some loss of precision
@@ -75,6 +86,11 @@ public class LatLonShape {
     return createIndexableFields(fieldName, polygon, false);
   }
 
+  /** create doc value field for lat lon polygon geometry without creating indexable fields */
+  public static LatLonShapeDocValuesField createDocValueField(String fieldName, Polygon polygon) {
+    return createDocValueField(fieldName, polygon, false);
+  }
+
   /**
    * create indexable fields for polygon geometry. If {@code checkSelfIntersections} is set to true,
    * the validity of the provided polygon is checked with a small performance penalty.
@@ -89,6 +105,30 @@ public class LatLonShape {
       fields[i] = new Triangle(fieldName, tessellation.get(i));
     }
     return fields;
+  }
+
+  /** create doc value field for lat lon polygon geometry without creating indexable fields. */
+  public static LatLonShapeDocValuesField createDocValueField(
+      String fieldName, Polygon polygon, boolean checkSelfIntersections) {
+    List<Tessellator.Triangle> tessellation =
+        Tessellator.tessellate(polygon, checkSelfIntersections);
+    ArrayList<ShapeField.DecodedTriangle> triangles = new ArrayList<>(tessellation.size());
+    for (Tessellator.Triangle t : tessellation) {
+      ShapeField.DecodedTriangle dt = new ShapeField.DecodedTriangle();
+      dt.type = ShapeField.DecodedTriangle.TYPE.TRIANGLE;
+      dt.setValues(
+          t.getEncodedX(0),
+          t.getEncodedY(0),
+          t.isEdgefromPolygon(0),
+          t.getEncodedX(1),
+          t.getEncodedY(1),
+          t.isEdgefromPolygon(0),
+          t.getEncodedX(2),
+          t.getEncodedY(2),
+          t.isEdgefromPolygon(2));
+      triangles.add(dt);
+    }
+    return new LatLonShapeDocValuesField(fieldName, triangles);
   }
 
   /** create indexable fields for line geometry */
@@ -110,6 +150,29 @@ public class LatLonShape {
     return fields;
   }
 
+  /** create doc value field for lat lon line geometry without creating indexable fields. */
+  public static LatLonShapeDocValuesField createDocValueField(String fieldName, Line line) {
+    int numPoints = line.numPoints();
+    List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(numPoints - 1);
+    // create "flat" triangles
+    for (int i = 0, j = 1; j < numPoints; ++i, ++j) {
+      ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
+      t.type = ShapeField.DecodedTriangle.TYPE.LINE;
+      t.setValues(
+          encodeLongitude(line.getLon(i)),
+          encodeLatitude(line.getLat(i)),
+          true,
+          encodeLongitude(line.getLon(j)),
+          encodeLatitude(line.getLat(j)),
+          true,
+          encodeLongitude(line.getLon(i)),
+          encodeLatitude(line.getLat(i)),
+          true);
+      triangles.add(t);
+    }
+    return new LatLonShapeDocValuesField(fieldName, triangles);
+  }
+
   /** create indexable fields for point geometry */
   public static Field[] createIndexableFields(String fieldName, double lat, double lon) {
     return new Field[] {
@@ -122,6 +185,54 @@ public class LatLonShape {
           encodeLongitude(lon),
           encodeLatitude(lat))
     };
+  }
+
+  /** create doc value field for lat lon line geometry without creating indexable fields. */
+  public static LatLonShapeDocValuesField createDocValueField(
+      String fieldName, double lat, double lon) {
+    List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(1);
+    ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
+    t.type = ShapeField.DecodedTriangle.TYPE.POINT;
+    t.setValues(
+        encodeLongitude(lon),
+        encodeLatitude(lat),
+        true,
+        encodeLongitude(lon),
+        encodeLatitude(lat),
+        true,
+        encodeLongitude(lon),
+        encodeLatitude(lat),
+        true);
+    triangles.add(t);
+    return new LatLonShapeDocValuesField(fieldName, triangles);
+  }
+
+  /** create a {@link LatLonShapeDocValuesField} from an existing encoded representation */
+  public static LatLonShapeDocValuesField createDocValueField(
+      String fieldName, BytesRef binaryValue) {
+    return new LatLonShapeDocValuesField(fieldName, binaryValue);
+  }
+
+  /** create a {@link LatLonShapeDocValuesField} from an existing tessellation */
+  public static LatLonShapeDocValuesField createDocValueField(
+      String fieldName, List<ShapeField.DecodedTriangle> tessellation) {
+    return new LatLonShapeDocValuesField(fieldName, tessellation);
+  }
+
+  /** create a shape docvalue field from indexable fields */
+  public static LatLonShapeDocValuesField createDocValueField(
+      String fieldName, Field[] indexableFields) {
+    ArrayList<ShapeField.DecodedTriangle> tess = new ArrayList<>(indexableFields.length);
+    final byte[] scratch = new byte[7 * Integer.BYTES];
+    for (Field f : indexableFields) {
+      BytesRef br = f.binaryValue();
+      assert br.length == 7 * ShapeField.BYTES;
+      System.arraycopy(br.bytes, br.offset, scratch, 0, 7 * ShapeField.BYTES);
+      ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
+      ShapeField.decodeTriangle(scratch, t);
+      tess.add(t);
+    }
+    return new LatLonShapeDocValuesField(fieldName, tess);
   }
 
   /** create a query to find all indexed geo shapes that intersect a defined bounding box * */
@@ -146,6 +257,30 @@ public class LatLonShape {
     }
     Rectangle rectangle = new Rectangle(minLatitude, maxLatitude, minLongitude, maxLongitude);
     return new LatLonShapeBoundingBoxQuery(field, queryRelation, rectangle);
+  }
+
+  /** create a docvalue query to find all geo shapes that intersect a defined bounding box * */
+  public static Query newSlowDocValuesBoxQuery(
+      String field,
+      QueryRelation queryRelation,
+      double minLatitude,
+      double maxLatitude,
+      double minLongitude,
+      double maxLongitude) {
+    if (queryRelation == QueryRelation.CONTAINS && minLongitude > maxLongitude) {
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      builder.add(
+          newBoxQuery(
+              field, queryRelation, minLatitude, maxLatitude, minLongitude, GeoUtils.MAX_LON_INCL),
+          BooleanClause.Occur.MUST);
+      builder.add(
+          newBoxQuery(
+              field, queryRelation, minLatitude, maxLatitude, GeoUtils.MIN_LON_INCL, maxLongitude),
+          BooleanClause.Occur.MUST);
+      return builder.build();
+    }
+    return new LatLonShapeDocValuesQuery(
+        field, queryRelation, new Rectangle(minLatitude, maxLatitude, minLongitude, maxLongitude));
   }
 
   /**
@@ -205,6 +340,16 @@ public class LatLonShape {
         return new LatLonShapeQuery(field, queryRelation, latLonGeometries);
       }
     }
+  }
+
+  /**
+   * Factory method for creating the {@link LatLonShapeDocValues}
+   *
+   * @param bytesRef {@link BytesRef}
+   * @return {@link LatLonShapeDocValues}
+   */
+  public static LatLonShapeDocValues createLatLonShapeDocValues(BytesRef bytesRef) {
+    return new LatLonShapeDocValues(bytesRef);
   }
 
   private static Query makeContainsGeometryQuery(String field, LatLonGeometry... latLonGeometries) {

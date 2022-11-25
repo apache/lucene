@@ -40,6 +40,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -528,7 +529,7 @@ public class TestFSTs extends LuceneTestCase {
       BufferedReader is = Files.newBufferedReader(wordsFileIn, StandardCharsets.UTF_8);
       try {
         final IntsRefBuilder intsRefBuilder = new IntsRefBuilder();
-        long tStart = System.currentTimeMillis();
+        long tStart = System.nanoTime();
         int ord = 0;
         while (true) {
           String w = is.readLine();
@@ -543,7 +544,7 @@ public class TestFSTs extends LuceneTestCase {
             System.out.printf(
                 Locale.ROOT,
                 "%6.2fs: %9d...",
-                ((System.currentTimeMillis() - tStart) / 1000.0),
+                (System.nanoTime() - tStart) / (double) TimeUnit.SECONDS.toNanos(1),
                 ord);
           }
           if (ord >= limit) {
@@ -551,13 +552,15 @@ public class TestFSTs extends LuceneTestCase {
           }
         }
 
-        long tMid = System.currentTimeMillis();
-        System.out.println(((tMid - tStart) / 1000.0) + " sec to add all terms");
+        long tMid = System.nanoTime();
+        System.out.println(
+            ((tMid - tStart) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to add all terms");
 
         assert fstCompiler.getTermCount() == ord;
         FST<T> fst = fstCompiler.compile();
-        long tEnd = System.currentTimeMillis();
-        System.out.println(((tEnd - tMid) / 1000.0) + " sec to finish/pack");
+        long tEnd = System.nanoTime();
+        System.out.println(
+            ((tEnd - tMid) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to finish/pack");
         if (fst == null) {
           System.out.println("FST was fully pruned!");
           System.exit(0);
@@ -598,7 +601,7 @@ public class TestFSTs extends LuceneTestCase {
         is = Files.newBufferedReader(wordsFileIn, StandardCharsets.UTF_8);
 
         ord = 0;
-        tStart = System.currentTimeMillis();
+        tStart = System.nanoTime();
         while (true) {
           String w = is.readLine();
           if (w == null) {
@@ -622,14 +625,17 @@ public class TestFSTs extends LuceneTestCase {
           ord++;
           if (ord % 500000 == 0) {
             System.out.println(
-                ((System.currentTimeMillis() - tStart) / 1000.0) + "s: " + ord + "...");
+                (System.nanoTime() - tStart) / (double) TimeUnit.SECONDS.toNanos(1)
+                    + "sec: "
+                    + ord
+                    + "...");
           }
           if (ord >= limit) {
             break;
           }
         }
 
-        double totSec = ((System.currentTimeMillis() - tStart) / 1000.0);
+        double totSec = (System.nanoTime() - tStart) / (double) TimeUnit.SECONDS.toNanos(1);
         System.out.println(
             "Verify took "
                 + totSec

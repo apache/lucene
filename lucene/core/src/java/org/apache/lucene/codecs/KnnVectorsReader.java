@@ -76,7 +76,7 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @return the k nearest neighbor documents, along with their (searchStrategy-specific) scores.
+   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
   public abstract TopDocs search(
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException;

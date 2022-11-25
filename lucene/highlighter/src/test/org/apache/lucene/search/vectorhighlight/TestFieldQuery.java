@@ -63,7 +63,7 @@ public class TestFieldQuery extends AbstractTestCase {
 
     FieldQuery fq = new FieldQuery(booleanQuery, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(booleanQuery, reader, flatQueries, 1f);
+    fq.flatten(booleanQuery, searcher, flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"), tq(boost, "B"), tq(boost, "C"));
   }
 
@@ -73,7 +73,7 @@ public class TestFieldQuery extends AbstractTestCase {
     query = new BoostQuery(query, boost);
     FieldQuery fq = new FieldQuery(query, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(query, reader, flatQueries, 1f);
+    fq.flatten(query, searcher, flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"), tq(boost, "B"), pqF(boost, "C", "D"));
   }
 
@@ -87,7 +87,7 @@ public class TestFieldQuery extends AbstractTestCase {
 
     FieldQuery fq = new FieldQuery(booleanQuery, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(booleanQuery, reader, flatQueries, 1f);
+    fq.flatten(booleanQuery, searcher, flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"), pqF(boost, "B", "C"));
   }
 
@@ -99,7 +99,7 @@ public class TestFieldQuery extends AbstractTestCase {
 
     FieldQuery fq = new FieldQuery(query.build(), true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(query.build(), reader, flatQueries, 1f);
+    fq.flatten(query.build(), searcher, flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq("AA"), pqF("BC", "CD"), pqF("EF", "FG", "GH"));
   }
 
@@ -107,7 +107,7 @@ public class TestFieldQuery extends AbstractTestCase {
     Query query = pqF("A");
     FieldQuery fq = new FieldQuery(query, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(query, reader, flatQueries, 1f);
+    fq.flatten(query, searcher, flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq("A"));
   }
 
@@ -950,7 +950,7 @@ public class TestFieldQuery extends AbstractTestCase {
     query = new BoostQuery(query, boost);
     FieldQuery fq = new FieldQuery(query, true, true);
     Set<Query> flatQueries = new HashSet<>();
-    fq.flatten(query, reader, flatQueries, 1f);
+    fq.flatten(query, searcher, flatQueries, 1f);
     assertCollectionQueries(flatQueries, tq(boost, "A"));
   }
 }

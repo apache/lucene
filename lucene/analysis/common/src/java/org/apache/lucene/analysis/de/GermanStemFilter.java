@@ -51,7 +51,9 @@ public final class GermanStemFilter extends TokenFilter {
     super(in);
   }
 
-  /** @return Returns true for next token in the stream, or false at EOS */
+  /**
+   * @return Returns true for next token in the stream, or false at EOS
+   */
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
