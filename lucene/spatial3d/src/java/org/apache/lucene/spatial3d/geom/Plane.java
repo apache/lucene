@@ -127,6 +127,123 @@ public class Plane extends Vector {
   }
 
   /**
+   * Given a plane and one point that is on that plane, find a perpendicular plane that goes through
+   * both the origin and the point.
+   *
+   * @param plane is the original plane
+   * @param M is the point on that plane
+   * @return a plane that goes through M, the origin, and is perpendicular to the original plane
+   */
+  public static Plane constructPerpendicularCenterPlaneOnePoint(final Plane plane, final Vector M) {
+    // Original plane:
+    // A0x + B0y + C0z = 0 (D0 = 0)
+    assert plane.evaluateIsZero(M);
+
+    final double A0 = plane.x;
+    final double B0 = plane.y;
+    final double C0 = plane.z;
+
+    // Second plane equations:
+    // A1Mx + B1My + C1Mz + D1 = 0
+    // A0*A1 + B0*B1 + C0*C1 = 0
+    // A1^2 + B1^2 + C1^2 = 1
+
+    // D1 = 0.0 because it goes through origin.
+
+    // Basic strategy: Pick a variable and set it to 1.
+    final double a1Denom = C0 * M.y - B0 * M.z;
+    final double b1Denom = C0 * M.x - A0 * M.z;
+    final double c1Denom = B0 * M.x - A0 * M.y;
+
+    final double A1;
+    final double B1;
+    final double C1;
+
+    if (Math.abs(a1Denom) >= Math.abs(b1Denom) && Math.abs(a1Denom) >= Math.abs(c1Denom)) {
+      A1 = 1.0;
+      if (Math.abs(M.y) >= Math.abs(M.z)) {
+        // e.g. A1 = 1.
+        // Then:
+        //
+        // Mx + B1 My + C1 Mz = 0
+        // B1 = (-Mx - C1 Mz) / My
+        // A0 + B0 * (-Mx - C1Mz)/My + C0*C1 = 0
+        // A0 * My - B0 * Mx - B0 * C1 * Mz + C0 * C1 * My = 0
+        // C1 (C0 * My - B0 * Mz) = B0 * Mx - A0 * My
+        // C1 = (B0 * Mx - A0 * My) / (C0 * My - B0 * Mz)
+        C1 = (B0 * M.x - A0 * M.y) / a1Denom;
+        B1 = (-M.x - C1 * M.z) / M.y;
+      } else {
+        // Alternative substitution sequence:
+        // C1 = (-Mx - B1 My) / Mz
+        // A0 + B0 * B1 + C0 * (-Mx - B1 My) / Mz = 0
+        // A0 * Mz + B0 * B1 * Mz - C0 * Mx - C0 * B1 * My = 0
+        // B1 (B0 * Mz - C0 * My) = C0 * Mx - A0 * Mz
+        // B1 = (C0 * Mx - A0 * Mz) / (B0 * Mz - C0 * My)
+        B1 = (A0 * M.z - C0 * M.x) / a1Denom;
+        C1 = (-M.x - B1 * M.y) / M.z;
+      }
+    } else if (Math.abs(b1Denom) >= Math.abs(a1Denom) && Math.abs(b1Denom) >= Math.abs(c1Denom)) {
+      B1 = 1.0;
+      if (Math.abs(M.x) >= Math.abs(M.z)) {
+
+        // B1 = 1
+        // Then:
+        //
+        // A1 * Mx + My + C1 * Mz = 0
+        // A1 = (-My - C1 * Mz) / Mx
+        // A0 * (-My - C1 * Mz) / Mx + B0 + C0 * C1 = 0
+        // -A0 * My - C1 * Mz + B0 * Mx + C0 * C1 * Mx = 0
+        // C1 (C0 * Mx - A0 * Mz) = A0 * My - B0 * Mx
+        // C1 = (A0 * My - B0 * Mx) / (C0 * Mx - A0 * Mz)
+        C1 = (A0 * M.y - B0 * M.x) / b1Denom;
+        A1 = (-M.y - C1 * M.z) / M.x;
+      } else {
+        // Alternative:
+        // C1 = (-My - A1 * Mx) / Mz
+        // A0 * A1 + B0 + C0 * (-My - A1 * Mx) / Mz = 0
+        // A0 * A1 * Mz + B0 * Mz - C0 * My - C0 * A1 * Mx = 0
+        // A1 (A0 * Mz - C0 * Mx) = C0 * My - B0 * Mz
+        // A1 = (C0 * My - B0 * Mz) / (A0 * Mz - C0 * Mx)
+        A1 = (B0 * M.z - C0 * M.y) / b1Denom;
+        C1 = (-M.y - A1 * M.x) / M.z;
+      }
+    } else if (Math.abs(c1Denom) >= Math.abs(a1Denom) && Math.abs(c1Denom) >= Math.abs(b1Denom)) {
+      C1 = 1.0;
+      if (Math.abs(M.x) >= Math.abs(M.y)) {
+        // C1 = 1
+        // Then:
+        //
+        // A1 * Mx + B1 * My + Mz = 0
+        // A1 = (-Mz - B1 * My)/Mx
+        // A0 * (-Mz - B1 * My)/Mx + B0 * B1 + C0 = 0
+        // - A0 * Mz - A0 * B1 * My + B0 * B1 * Mx + C0 * Mx = 0
+        // B1 (B0 * Mx - A0 * My) = A0 * Mz - C0 * Mx
+        // B1 = (A0 * Mz - C0 * Mx) / (B0 * Mx - A0 * My)
+        B1 = (A0 * M.z - C0 * M.x) / c1Denom;
+        A1 = (-M.z - B1 * M.y) / M.x;
+      } else {
+        // Alternative:
+        // B1 = (-Mz - A1 * Mx) / My
+        // A0 * A1 + B0 * (-Mz - A1 * Mx) / My + C0 = 0
+        // A0 * A1 * My - B0 * Mz - B0 * A1 * Mx + C0 * My = 0
+        // A1 (A0 * My - B0 * Mx) = B0 * Mz - C0 * My
+        // A1 = (B0 * Mz - C0 * My) / (A0 * My - B0 * Mx)
+        A1 = (C0 * M.y - B0 * M.z) / c1Denom;
+        B1 = (-M.z - A1 * M.x) / M.y;
+      }
+    } else {
+      throw new IllegalArgumentException("Cannot find perpendicular plane as requested");
+    }
+
+    // Normalize the vector
+    final double normFactor = 1.0 / Math.sqrt(A1 * A1 + B1 * B1 + C1 * C1);
+    final Vector v = new Vector(A1 * normFactor, B1 * normFactor, C1 * normFactor);
+    final Plane rval = new Plane(v, -(v.x * M.x + v.y * M.y + v.z * M.z));
+    return rval;
+  }
+
+  /**
    * Given two points, construct a plane that goes through them and the origin. Then, find a plane
    * that is perpendicular to that which also goes through the original two points. This is useful
    * for building path endpoints on worlds that can be ellipsoids.
