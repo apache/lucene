@@ -221,7 +221,7 @@ allprojects { prj ->
             '-Xep:RequiredModifiers:ERROR',
             '-Xep:RestrictedApiChecker:ERROR',
             // '-Xep:ReturnValueIgnored:OFF',
-            // '-Xep:SelfAssignment:OFF',
+            '-Xep:SelfAssignment:ERROR',
             '-Xep:SelfComparison:ERROR',
             '-Xep:SelfEquals:ERROR',
             '-Xep:ShouldHaveEvenArgs:ERROR',
