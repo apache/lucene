@@ -469,6 +469,23 @@ class GeoDegeneratePath extends GeoBasePath {
     }
 
     /**
+     * Check if point is within this section's purview.
+     *
+     * @param x is the point x
+     * @param y is the point y
+     * @param z is the point z
+     * @return true if this point "belongs" to this section, falso otherwise.
+     */
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      for (final Membership m : cutoffPlanes) {
+        if (!m.isWithin(x, y, z)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /**
      * Compute interior path distance.
      *
      * @param distanceStyle is the distance style.
@@ -497,10 +514,8 @@ class GeoDegeneratePath extends GeoBasePath {
      */
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      for (final Membership m : cutoffPlanes) {
-        if (!m.isWithin(x, y, z)) {
-          return Double.POSITIVE_INFINITY;
-        }
+      if (!isWithinSection(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
       }
       return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
