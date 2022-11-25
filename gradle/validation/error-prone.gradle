@@ -255,7 +255,7 @@ allprojects { prj ->
 
             // On by Default : WARNING
 
-            // '-Xep:AlmostJavadoc:OFF', // TODO: there are problems
+            // '-Xep:AlmostJavadoc:OFF', // noisy (e.g. commented-out code misinterpreted as javadocs)
             // '-Xep:AlreadyChecked:OFF', // TODO: there are problems
             // '-Xep:AmbiguousMethodReference:OFF',
             // '-Xep:AnnotateFormatMethod:OFF', // we don't use this annotation
