@@ -41,41 +41,17 @@ public class TestGeoPolygon extends LuceneTestCase {
     addToList(points2, PlanetModel.SPHERE, -64.21000754228744, -39.142217759529174);
     addToList(points2, PlanetModel.SPHERE, -64.21006288371667, -39.14228379892317);
     addToList(points2, PlanetModel.SPHERE, -64.21001660889377, -39.14236649277811);
-   
+
     final GeoPolygon polygon1 = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points1);
     final GeoPolygon polygon2 = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points2);
-    // System.out.println("Polygon1 = "+polygon1);
-    // System.out.println("Polygon2 = "+polygon2);
-    System.out.println("Assessing whether any points of poly 1 are inside poly2:");
-    for (GeoPoint p : points1) {
-      if (polygon2.isWithin(p)) {
-        System.out.println(" Point "+p+" is within Polygon 2");
-      }
-    }
-    System.out.println("Assessing whether any points of poly 2 are inside poly 1:");
-    for (GeoPoint p : points2) {
-      if (polygon1.isWithin(p)) {
-        System.out.println(" Point "+p+" is within Polygon 1");
-      }
-    }
-    final GeoPoint intersectionPoint = new GeoPoint(0.3374386757253078,-0.6983427934019486,-0.6312309268629938);
-    if (polygon1.isWithin(intersectionPoint)) {
-      System.out.println("IntersectionPoint "+intersectionPoint+" is within polygon1");
-    }
-    if (polygon2.isWithin(intersectionPoint)) {
-      System.out.println("IntersectionPoint is within polygon2");
-    }
     assertFalse(polygon1.intersects(polygon2));
   }
 
-  private static void addToList(List<GeoPoint> points, PlanetModel planetModel, double lon, double lat) {
-    points.add(
-               new GeoPoint(
-                            planetModel,
-                            Geo3DUtil.fromDegrees(lat),
-                            Geo3DUtil.fromDegrees(lon)));
+  private static void addToList(
+      List<GeoPoint> points, PlanetModel planetModel, double lon, double lat) {
+    points.add(new GeoPoint(planetModel, Geo3DUtil.fromDegrees(lat), Geo3DUtil.fromDegrees(lon)));
   }
-  
+
   @Test
   public void testPolygonPointFiltering() {
     final GeoPoint point1 = new GeoPoint(PlanetModel.WGS84, 1.0, 2.0);
