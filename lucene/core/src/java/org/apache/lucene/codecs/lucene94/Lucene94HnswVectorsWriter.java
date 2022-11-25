@@ -26,6 +26,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Stack;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -189,6 +190,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexOffset,
         vectorIndexLength,
         fieldData.docsWithField,
+        fieldData.vectors.size(),
         graph);
   }
 
@@ -257,6 +259,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexOffset,
         vectorIndexLength,
         newDocsWithField,
+        fieldData.vectors.size(),
         mockGraph);
   }
 
@@ -408,7 +411,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       int byteSize = vectors.dimension() * fieldInfo.getVectorEncoding().byteSize;
       OffHeapVectorValues offHeapVectors =
           new OffHeapVectorValues.DenseOffHeapVectorValues(
-              vectors.dimension(), docsWithField.cardinality(), vectorDataInput, byteSize);
+              vectors.dimension(), vectors.size(), vectorDataInput, byteSize);
       OnHeapHnswGraph graph = null;
       if (offHeapVectors.size() != 0) {
         // build graph
@@ -433,6 +436,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
           vectorIndexOffset,
           vectorIndexLength,
           docsWithField,
+          vectors.size(),
           graph);
       success = true;
     } finally {
@@ -484,6 +488,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       long vectorIndexOffset,
       long vectorIndexLength,
       DocsWithFieldSet docsWithField,
+      int vectorsSize,
       HnswGraph graph)
       throws IOException {
     meta.writeInt(field.number);
@@ -496,14 +501,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeInt(field.getVectorDimension());
 
     // write docIDs
-    int count = docsWithField.cardinality();
-    meta.writeInt(count);
-    if (count == 0) {
+    meta.writeInt(vectorsSize);
+    if (vectorsSize == 0) {
       meta.writeLong(-2); // docsWithFieldOffset
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount
       meta.writeByte((byte) -1); // denseRankPower
-    } else if (count == maxDoc) {
+    } else if (!field.isVectorMultiValued() && vectorsSize == maxDoc ) {
       meta.writeLong(-1); // docsWithFieldOffset
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount
@@ -524,12 +528,16 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
       // dense case and empty case do not need to store ordToMap mapping
       final DirectMonotonicWriter ordToDocWriter =
-          DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
+          DirectMonotonicWriter.getInstance(meta, vectorData, vectorsSize, DIRECT_MONOTONIC_BLOCK_SHIFT);
       DocIdSetIterator iterator = docsWithField.iterator();
+      int[] valuesPerDocument = docsWithField.getValuesPerDocument();
       for (int doc = iterator.nextDoc();
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = iterator.nextDoc()) {
-        ordToDocWriter.add(doc);
+           doc != DocIdSetIterator.NO_MORE_DOCS;
+           doc = iterator.nextDoc()) {
+        int documentVectorsCount = valuesPerDocument[doc];
+        for (int i = 0; i < documentVectorsCount; i++) {
+          ordToDocWriter.add(doc);
+        }
       }
       ordToDocWriter.finish();
       meta.writeLong(vectorData.getFilePointer() - start);
@@ -560,13 +568,24 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   private static DocsWithFieldSet writeVectorData(
       IndexOutput output, VectorValues vectors, int scalarSize) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    Stack<Integer> valuesPerDocumemts = new Stack<>();
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
+      int valuesPerDocument = 0;
+      for(long vectorId = vectors.nextOrd();vectorId!=-1;vectorId = vectors.nextOrd()) {
       // write vector
       BytesRef binaryValue = vectors.binaryValue();
-      assert binaryValue.length == vectors.dimension() * scalarSize;
+        assert binaryValue.length == vectors.dimension() * scalarSize;
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+        valuesPerDocument++;
+      }
+      valuesPerDocumemts.push(valuesPerDocument);
       docsWithField.add(docV);
     }
+    int[] valuesPerDocument = new int[docsWithField.cardinality()];
+    for(int i=valuesPerDocument.length-1; i>-1;i--){
+      valuesPerDocument[i] = valuesPerDocumemts.pop();
+    }
+    docsWithField.setValuesPerDocument(valuesPerDocument);
     return docsWithField;
   }
 
@@ -694,6 +713,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
       return (BytesRef) vectors.get(targetOrd);
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return 0;
     }
 
     @Override
