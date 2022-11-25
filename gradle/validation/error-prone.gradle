@@ -88,7 +88,7 @@ allprojects { prj ->
             '-Xep:AutoValueBuilderDefaultsInConstructor:ERROR',
             '-Xep:AutoValueConstructorOrderChecker:ERROR',
             '-Xep:BadAnnotationImplementation:ERROR',
-            // '-Xep:BadShiftAmount:OFF',
+            '-Xep:BadShiftAmount:ERROR',
             '-Xep:BanJNDI:ERROR',
             '-Xep:BoxedPrimitiveEquality:ERROR',
             '-Xep:BundleDeserializationCast:ERROR',
