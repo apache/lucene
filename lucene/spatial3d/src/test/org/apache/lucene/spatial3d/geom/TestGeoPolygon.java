@@ -46,6 +46,25 @@ public class TestGeoPolygon extends LuceneTestCase {
     final GeoPolygon polygon2 = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points2);
     // System.out.println("Polygon1 = "+polygon1);
     // System.out.println("Polygon2 = "+polygon2);
+    System.out.println("Assessing whether any points of poly 1 are inside poly2:");
+    for (GeoPoint p : points1) {
+      if (polygon2.isWithin(p)) {
+        System.out.println(" Point "+p+" is within Polygon 2");
+      }
+    }
+    System.out.println("Assessing whether any points of poly 2 are inside poly 1:");
+    for (GeoPoint p : points2) {
+      if (polygon1.isWithin(p)) {
+        System.out.println(" Point "+p+" is within Polygon 1");
+      }
+    }
+    final GeoPoint intersectionPoint = new GeoPoint(0.3374386757253078,-0.6983427934019486,-0.6312309268629938);
+    if (polygon1.isWithin(intersectionPoint)) {
+      System.out.println("IntersectionPoint "+intersectionPoint+" is within polygon1");
+    }
+    if (polygon2.isWithin(intersectionPoint)) {
+      System.out.println("IntersectionPoint is within polygon2");
+    }
     assertFalse(polygon1.intersects(polygon2));
   }
 
