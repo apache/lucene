@@ -158,6 +158,8 @@ Bug Fixes
 
 * GITHUB#11907: Fix latent casting bugs in BKDWriter. (Ben Trent)
 
+* GITHUB#11954: Remove QueryTimeout#isTimeoutEnabled method and move check to caller. (Shubham Chaudhary)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all

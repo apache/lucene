@@ -80,17 +80,17 @@ allprojects { prj ->
 
             // '-Xep:AlwaysThrows:OFF', // we don't use google collections
             // '-Xep:AndroidInjectionBeforeSuper:OFF', // we don't use android
-            // '-Xep:ArrayEquals:OFF', // TODO: there are problems
+            '-Xep:ArrayEquals:ERROR',
             '-Xep:ArrayFillIncompatibleType:ERROR',
-            // '-Xep:ArrayHashCode:OFF',
-            // '-Xep:ArrayToString:OFF', // TODO: there are problems
+            '-Xep:ArrayHashCode:ERROR',
+            '-Xep:ArrayToString:ERROR',
             // '-Xep:ArraysAsListPrimitiveArray:OFF', // we don't use guava
             // '-Xep:AsyncCallableReturnsNull:OFF', // we don't use guava
             // '-Xep:AsyncFunctionReturnsNull:OFF', // we don't use guava
             // '-Xep:AutoValueBuilderDefaultsInConstructor:OFF', // we don't use autovalue
             // '-Xep:AutoValueConstructorOrderChecker:OFF', // we don't use autovalue
             '-Xep:BadAnnotationImplementation:ERROR',
-            // '-Xep:BadShiftAmount:OFF', // TODO: there are problems
+            '-Xep:BadShiftAmount:ERROR',
             // '-Xep:BanJNDI:OFF', // implemented with forbidden APIs instead
             '-Xep:BoxedPrimitiveEquality:ERROR',
             // '-Xep:BundleDeserializationCast:OFF', // we don't use android
@@ -223,7 +223,7 @@ allprojects { prj ->
             // '-Xep:RequiredModifiers:OFF', // we don't use this annotation
             // '-Xep:RestrictedApiChecker:OFF', // we don't use this annotation
             // '-Xep:ReturnValueIgnored:OFF', // noisy
-            // '-Xep:SelfAssignment:OFF', // TODO: there are problems
+            '-Xep:SelfAssignment:ERROR',
             '-Xep:SelfComparison:ERROR',
             '-Xep:SelfEquals:ERROR',
             // '-Xep:ShouldHaveEvenArgs:OFF', // we don't use truth

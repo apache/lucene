@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -49,10 +50,7 @@ public class DocumentStoredFieldVisitor extends StoredFieldVisitor {
 
   /** Load only fields named in the provided fields. */
   public DocumentStoredFieldVisitor(String... fields) {
-    fieldsToAdd = new HashSet<>(fields.length);
-    for (String field : fields) {
-      fieldsToAdd.add(field);
-    }
+    fieldsToAdd = new HashSet<>(Arrays.asList(fields));
   }
 
   /** Load all stored fields. */
