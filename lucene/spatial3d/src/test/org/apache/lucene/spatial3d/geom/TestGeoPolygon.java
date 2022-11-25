@@ -26,6 +26,57 @@ import org.junit.Test;
 public class TestGeoPolygon extends LuceneTestCase {
 
   @Test
+  public void testH3CellsWrongIntersection() {
+    final List<GeoPoint> points1 = new ArrayList<>();
+    addToList(points1, PlanetModel.SPHERE, -64.2102198418716, -39.14233318389477);
+    addToList(points1, PlanetModel.SPHERE, -64.21016450005413, -39.142267144439614);
+    addToList(points1, PlanetModel.SPHERE, -64.21021077465937, -39.1421844504783);
+    addToList(points1, PlanetModel.SPHERE, -64.21031239098929, -39.142167795785085);
+    addToList(points1, PlanetModel.SPHERE, -64.2103677330169, -39.14223383513698);
+    addToList(points1, PlanetModel.SPHERE, -64.21032145850448, -39.14231652928534);
+    final List<GeoPoint> points2 = new ArrayList<>();
+    addToList(points2, PlanetModel.SPHERE, -64.20991499254879, -39.14238314705201);
+    addToList(points2, PlanetModel.SPHERE, -64.20985965132967, -39.14231710755475);
+    addToList(points2, PlanetModel.SPHERE, -64.20990592624541, -39.142234413886875);
+    addToList(points2, PlanetModel.SPHERE, -64.21000754228744, -39.142217759529174);
+    addToList(points2, PlanetModel.SPHERE, -64.21006288371667, -39.14228379892317);
+    addToList(points2, PlanetModel.SPHERE, -64.21001660889377, -39.14236649277811);
+   
+    final GeoPolygon polygon1 = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points1);
+    final GeoPolygon polygon2 = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points2);
+    // System.out.println("Polygon1 = "+polygon1);
+    // System.out.println("Polygon2 = "+polygon2);
+    System.out.println("Assessing whether any points of poly 1 are inside poly2:");
+    for (GeoPoint p : points1) {
+      if (polygon2.isWithin(p)) {
+        System.out.println(" Point "+p+" is within Polygon 2");
+      }
+    }
+    System.out.println("Assessing whether any points of poly 2 are inside poly 1:");
+    for (GeoPoint p : points2) {
+      if (polygon1.isWithin(p)) {
+        System.out.println(" Point "+p+" is within Polygon 1");
+      }
+    }
+    final GeoPoint intersectionPoint = new GeoPoint(0.3374386757253078,-0.6983427934019486,-0.6312309268629938);
+    if (polygon1.isWithin(intersectionPoint)) {
+      System.out.println("IntersectionPoint "+intersectionPoint+" is within polygon1");
+    }
+    if (polygon2.isWithin(intersectionPoint)) {
+      System.out.println("IntersectionPoint is within polygon2");
+    }
+    assertFalse(polygon1.intersects(polygon2));
+  }
+
+  private static void addToList(List<GeoPoint> points, PlanetModel planetModel, double lon, double lat) {
+    points.add(
+               new GeoPoint(
+                            planetModel,
+                            Geo3DUtil.fromDegrees(lat),
+                            Geo3DUtil.fromDegrees(lon)));
+  }
+  
+  @Test
   public void testPolygonPointFiltering() {
     final GeoPoint point1 = new GeoPoint(PlanetModel.WGS84, 1.0, 2.0);
     final GeoPoint point2 = new GeoPoint(PlanetModel.WGS84, 0.5, 2.5);

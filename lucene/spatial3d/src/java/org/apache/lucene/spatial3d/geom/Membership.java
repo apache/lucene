@@ -42,4 +42,5 @@ public interface Membership {
    * @return true if the point is within this shape
    */
   public boolean isWithin(final double x, final double y, final double z);
+
 }
