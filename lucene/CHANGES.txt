@@ -66,6 +66,9 @@ Bug Fixes
 
 * GITHUB#11954: Remove QueryTimeout#isTimeoutEnabled method and move check to caller. (Shubham Chaudhary)
 
+* GITHUB#11950: Fix NPE in BinaryRangeFieldRangeQuery variants when the queried field doesn't exist
+  in a segment or is of the wrong type. (Greg Miller)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all

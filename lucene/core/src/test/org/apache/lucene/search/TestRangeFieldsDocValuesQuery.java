@@ -20,9 +20,11 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleRangeDocValuesField;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatRangeDocValuesField;
 import org.apache.lucene.document.IntRangeDocValuesField;
 import org.apache.lucene.document.LongRangeDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -225,5 +227,31 @@ public class TestRangeFieldsDocValuesQuery extends LuceneTestCase {
     long[] longMax = {138, 145, 156};
     Query q4 = LongRangeDocValuesField.newSlowIntersectsQuery("foo", longMin, longMax);
     assertEquals("foo:[[101, 124, 137] TO [138, 145, 156]]", q4.toString());
+  }
+
+  public void testNoData() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(new StringField("foo", "abc", Store.NO));
+    iw.addDocument(doc);
+
+    final IndexReader reader = iw.getReader();
+    final IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // test on field that doesn't exist
+    Query q1 =
+        LongRangeDocValuesField.newSlowIntersectsQuery("bar", new long[] {20}, new long[] {27});
+    TopDocs r = searcher.search(q1, 10);
+    assertEquals(0, r.totalHits.value);
+
+    // test on field of wrong type
+    Query q2 =
+        LongRangeDocValuesField.newSlowIntersectsQuery("foo", new long[] {20}, new long[] {27});
+    expectThrows(IllegalStateException.class, () -> searcher.search(q2, 10));
+
+    reader.close();
+    dir.close();
   }
 }

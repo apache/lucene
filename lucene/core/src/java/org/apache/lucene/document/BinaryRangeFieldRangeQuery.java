@@ -20,7 +20,6 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -92,9 +91,15 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
   }
 
   private BinaryRangeDocValues getValues(LeafReader reader, String field) throws IOException {
-    BinaryDocValues binaryDocValues = reader.getBinaryDocValues(field);
+    if (reader.getFieldInfos().fieldInfo(field) == null) {
+      // Returning null when the field doesn't exist in the segment allows us to return a null
+      // Scorer, which is
+      // just a bit more efficient:
+      return null;
+    }
 
-    return new BinaryRangeDocValues(binaryDocValues, numDims, numBytesPerDimension);
+    return new BinaryRangeDocValues(
+        DocValues.getBinary(reader, field), numDims, numBytesPerDimension);
   }
 
   @Override
