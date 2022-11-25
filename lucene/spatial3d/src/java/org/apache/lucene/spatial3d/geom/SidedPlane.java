@@ -242,13 +242,12 @@ public class SidedPlane extends Plane implements Membership {
    * passed-in plane, and goes through both the origin and the point.
    */
   public static SidedPlane constructSidedPlaneFromOnePoint(
-                                                           final Vector insidePoint,
-                                                           final Plane plane,
-                                                           final Vector intersectionPoint) {
-    final Plane newPlane = Plane.constructPerpendicularCenterPlaneOnePoint(plane, intersectionPoint);
+      final Vector insidePoint, final Plane plane, final Vector intersectionPoint) {
+    final Plane newPlane =
+        Plane.constructPerpendicularCenterPlaneOnePoint(plane, intersectionPoint);
     return new SidedPlane(insidePoint, newPlane.x, newPlane.y, newPlane.z, newPlane.D);
   }
-  
+
   /** Construct a sided plane from three points. */
   public static SidedPlane constructNormalizedThreePointSidedPlane(
       final Vector insidePoint, final Vector point1, final Vector point2, final Vector point3) {
