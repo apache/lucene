@@ -17,8 +17,6 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * IndexInput implementation that delegates calls to another directory. This class can be used to
@@ -65,11 +63,6 @@ public class FilterIndexInput extends IndexInput {
   }
 
   @Override
-  public void skipBytes(long numBytes) throws IOException {
-    in.skipBytes(numBytes);
-  }
-
-  @Override
   public long length() {
     return in.length();
   }
@@ -77,16 +70,6 @@ public class FilterIndexInput extends IndexInput {
   @Override
   public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
     return in.slice(sliceDescription, offset, length);
-  }
-
-  @Override
-  protected String getFullSliceDescription(String sliceDescription) {
-    return in.getFullSliceDescription(sliceDescription);
-  }
-
-  @Override
-  public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
-    return in.randomAccessSlice(offset, length);
   }
 
   @Override
@@ -102,70 +85,5 @@ public class FilterIndexInput extends IndexInput {
   @Override
   public void readBytes(byte[] b, int offset, int len, boolean useBuffer) throws IOException {
     in.readBytes(b, offset, len, useBuffer);
-  }
-
-  @Override
-  public short readShort() throws IOException {
-    return in.readShort();
-  }
-
-  @Override
-  public int readInt() throws IOException {
-    return in.readInt();
-  }
-
-  @Override
-  public int readVInt() throws IOException {
-    return in.readVInt();
-  }
-
-  @Override
-  public int readZInt() throws IOException {
-    return in.readZInt();
-  }
-
-  @Override
-  public long readLong() throws IOException {
-    return in.readLong();
-  }
-
-  @Override
-  public void readLongs(long[] dst, int offset, int length) throws IOException {
-    in.readLongs(dst, offset, length);
-  }
-
-  @Override
-  public void readInts(int[] dst, int offset, int length) throws IOException {
-    in.readInts(dst, offset, length);
-  }
-
-  @Override
-  public void readFloats(float[] floats, int offset, int len) throws IOException {
-    in.readFloats(floats, offset, len);
-  }
-
-  @Override
-  public long readVLong() throws IOException {
-    return in.readVLong();
-  }
-
-  @Override
-  public long readZLong() throws IOException {
-    return in.readZLong();
-  }
-
-  @Override
-  public String readString() throws IOException {
-    return in.readString();
-  }
-
-  @Override
-  public Map<String, String> readMapOfStrings() throws IOException {
-    return in.readMapOfStrings();
-  }
-
-  @Override
-  public Set<String> readSetOfStrings() throws IOException {
-    return in.readSetOfStrings();
   }
 }

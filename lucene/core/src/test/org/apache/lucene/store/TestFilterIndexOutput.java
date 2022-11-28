@@ -19,6 +19,7 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import org.junit.Test;
 
@@ -44,17 +45,23 @@ public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOut
     Set<Method> exclude = new HashSet<>();
 
     exclude.add(DataOutput.class.getMethod("copyBytes", DataInput.class, long.class));
-
-    exclude.add(IndexOutput.class.getMethod("toString"));
-    exclude.add(IndexOutput.class.getMethod("getName"));
-
-    // final methods
-    exclude.add(IndexOutput.class.getMethod("alignOffset", long.class, int.class));
-    exclude.add(IndexOutput.class.getMethod("alignFilePointer", int.class));
+    exclude.add(DataOutput.class.getMethod("writeBytes", byte[].class, int.class));
+    exclude.add(DataOutput.class.getMethod("writeInt", int.class));
+    exclude.add(DataOutput.class.getMethod("writeShort", short.class));
+    exclude.add(DataOutput.class.getMethod("writeLong", long.class));
+    exclude.add(DataOutput.class.getMethod("writeString", String.class));
     exclude.add(DataOutput.class.getMethod("writeZLong", long.class));
     exclude.add(DataOutput.class.getMethod("writeVLong", long.class));
     exclude.add(DataOutput.class.getMethod("writeZInt", int.class));
     exclude.add(DataOutput.class.getMethod("writeVInt", int.class));
+    exclude.add(DataOutput.class.getMethod("copyBytes", DataInput.class, long.class));
+    exclude.add(DataOutput.class.getMethod("writeMapOfStrings", Map.class));
+    exclude.add(DataOutput.class.getMethod("writeSetOfStrings", Set.class));
+
+    exclude.add(IndexOutput.class.getMethod("toString"));
+    exclude.add(IndexOutput.class.getMethod("getName"));
+    exclude.add(IndexOutput.class.getMethod("alignOffset", long.class, int.class));
+    exclude.add(IndexOutput.class.getMethod("alignFilePointer", int.class));
 
     for (Method m : FilterIndexOutput.class.getMethods()) {
       if (m.getDeclaringClass() == IndexOutput.class || m.getDeclaringClass() == DataOutput.class) {

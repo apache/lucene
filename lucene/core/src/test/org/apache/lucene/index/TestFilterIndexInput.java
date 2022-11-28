@@ -63,11 +63,30 @@ public class TestFilterIndexInput extends TestIndexInput {
 
   @Test
   public void testOverrides() throws Exception {
-    // verify that all methods of IndexInput/DataInput are overridden by FilterDirectory,
+    // verify that all abstract methods of IndexInput/DataInput are overridden by FilterDirectory,
     // except those under the 'exclude' list
     Set<Method> exclude = new HashSet<>();
 
     exclude.add(IndexInput.class.getMethod("toString"));
+    exclude.add(IndexInput.class.getMethod("skipBytes", long.class));
+    exclude.add(IndexInput.class.getDeclaredMethod("getFullSliceDescription", String.class));
+    exclude.add(IndexInput.class.getMethod("randomAccessSlice", long.class, long.class));
+
+    exclude.add(
+        DataInput.class.getMethod("readBytes", byte[].class, int.class, int.class, boolean.class));
+    exclude.add(DataInput.class.getMethod("readShort"));
+    exclude.add(DataInput.class.getMethod("readInt"));
+    exclude.add(DataInput.class.getMethod("readVInt"));
+    exclude.add(DataInput.class.getMethod("readZInt"));
+    exclude.add(DataInput.class.getMethod("readLong"));
+    exclude.add(DataInput.class.getMethod("readLongs", long[].class, int.class, int.class));
+    exclude.add(DataInput.class.getMethod("readInts", int[].class, int.class, int.class));
+    exclude.add(DataInput.class.getMethod("readFloats", float[].class, int.class, int.class));
+    exclude.add(DataInput.class.getMethod("readVLong"));
+    exclude.add(DataInput.class.getMethod("readZLong"));
+    exclude.add(DataInput.class.getMethod("readString"));
+    exclude.add(DataInput.class.getMethod("readMapOfStrings"));
+    exclude.add(DataInput.class.getMethod("readSetOfStrings"));
 
     for (Method m : FilterIndexInput.class.getMethods()) {
       if (m.getName().contains("clone")) {
