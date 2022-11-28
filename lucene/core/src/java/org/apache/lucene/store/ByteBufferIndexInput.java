@@ -177,7 +177,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     try {
       final int position = curBuf.position();
       guard.getLongs(
-          curLongBufferViews[position & 0x07].position(position >>> 3), dst, offset, length);
+          curLongBufferViews[position & 0x07], position >>> 3, dst, offset, length);
       // if the above call succeeded, then we know the below sum cannot overflow
       curBuf.position(position + (length << 3));
     } catch (
@@ -206,7 +206,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     try {
       final int position = curBuf.position();
       guard.getInts(
-          curIntBufferViews[position & 0x03].position(position >>> 2), dst, offset, length);
+          curIntBufferViews[position & 0x03], position >>> 2, dst, offset, length);
       // if the above call succeeded, then we know the below sum cannot overflow
       curBuf.position(position + (length << 2));
     } catch (
@@ -219,16 +219,15 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   }
 
   @Override
-  public final void readFloats(float[] floats, int offset, int len) throws IOException {
+  public final void readFloats(float[] floats, int offset, int length) throws IOException {
     // See notes about readLongs above
     if (curFloatBufferViews == null) {
       curFloatBufferViews = new FloatBuffer[Float.BYTES];
       for (int i = 0; i < Float.BYTES; ++i) {
         // Compute a view for each possible alignment.
         if (i < curBuf.limit()) {
-          ByteBuffer dup = curBuf.duplicate().order(ByteOrder.LITTLE_ENDIAN);
-          dup.position(i);
-          curFloatBufferViews[i] = dup.asFloatBuffer();
+          curFloatBufferViews[i] =
+                curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
         } else {
           curFloatBufferViews[i] = EMPTY_FLOATBUFFER;
         }
@@ -236,15 +235,14 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     }
     try {
       final int position = curBuf.position();
-      FloatBuffer floatBuffer = curFloatBufferViews[position & 0x03];
-      floatBuffer.position(position >>> 2);
-      guard.getFloats(floatBuffer, floats, offset, len);
+      guard.getFloats(
+              curFloatBufferViews[position & 0x03], position >>> 2, floats, offset, length);
       // if the above call succeeded, then we know the below sum cannot overflow
-      curBuf.position(position + (len << 2));
+      curBuf.position(position + (length << 2));
     } catch (
         @SuppressWarnings("unused")
         BufferUnderflowException e) {
-      super.readFloats(floats, offset, len);
+      super.readFloats(floats, offset, length);
     } catch (NullPointerException e) {
       throw alreadyClosed(e);
     }

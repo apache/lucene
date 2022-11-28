@@ -134,18 +134,18 @@ final class ByteBufferGuard {
     return receiver.getLong(pos);
   }
 
-  public void getLongs(LongBuffer receiver, long[] dst, int offset, int length) {
+  public void getLongs(LongBuffer receiver, int index, long[] dst, int offset, int length) {
     ensureValid();
-    receiver.get(dst, offset, length);
+    receiver.get(index, dst, offset, length);
   }
 
-  public void getInts(IntBuffer receiver, int[] dst, int offset, int length) {
+  public void getInts(IntBuffer receiver, int index, int[] dst, int offset, int length) {
     ensureValid();
-    receiver.get(dst, offset, length);
+    receiver.get(index, dst, offset, length);
   }
 
-  public void getFloats(FloatBuffer receiver, float[] dst, int offset, int length) {
+  public void getFloats(FloatBuffer receiver, int index, float[] dst, int offset, int length) {
     ensureValid();
-    receiver.get(dst, offset, length);
+    receiver.get(index, dst, offset, length);
   }
 }
