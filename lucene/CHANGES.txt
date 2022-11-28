@@ -206,6 +206,9 @@ Other
 
 * GITHUB#11752: Added interface to relate a LatLonShape with another shape represented as Component2D. (Navneet Verma)
 
+* GITHUB#11983: Make constructors for OffsetFromPositions and OffsetsFromMatchIterator
+  public. (Alan Woodward)
+
 Build
 ---------------------
 
