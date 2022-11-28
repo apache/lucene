@@ -191,7 +191,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       curBuf.position(position + (length << 3));
     } catch (
         @SuppressWarnings("unused")
-        BufferUnderflowException e) {
+        IndexOutOfBoundsException e) {
       super.readLongs(dst, offset, length);
     } catch (NullPointerException e) {
       throw alreadyClosed(e);
@@ -212,7 +212,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       curBuf.position(position + (length << 2));
     } catch (
         @SuppressWarnings("unused")
-        BufferUnderflowException e) {
+        IndexOutOfBoundsException e) {
       super.readInts(dst, offset, length);
     } catch (NullPointerException e) {
       throw alreadyClosed(e);
@@ -233,7 +233,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
       curBuf.position(position + (length << 2));
     } catch (
         @SuppressWarnings("unused")
-        BufferUnderflowException e) {
+        IndexOutOfBoundsException e) {
       super.readFloats(floats, offset, length);
     } catch (NullPointerException e) {
       throw alreadyClosed(e);

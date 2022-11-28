@@ -330,7 +330,11 @@ public final class ByteBuffersDataInput extends DataInput
     int floatBufferIndex = bufferIndex * Float.BYTES + alignment;
     if (floatBuffers[floatBufferIndex] == null) {
       floatBuffers[floatBufferIndex] =
-          blocks[bufferIndex].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
+          blocks[bufferIndex]
+              .duplicate()
+              .position(alignment)
+              .order(ByteOrder.LITTLE_ENDIAN)
+              .asFloatBuffer();
     }
     return floatBuffers[floatBufferIndex];
   }
@@ -342,7 +346,11 @@ public final class ByteBuffersDataInput extends DataInput
     int longBufferIndex = bufferIndex * Long.BYTES + alignment;
     if (longBuffers[longBufferIndex] == null) {
       longBuffers[longBufferIndex] =
-          blocks[bufferIndex].order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
+          blocks[bufferIndex]
+              .duplicate()
+              .position(alignment)
+              .order(ByteOrder.LITTLE_ENDIAN)
+              .asLongBuffer();
     }
     return longBuffers[longBufferIndex];
   }
