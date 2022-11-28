@@ -17,16 +17,6 @@
 
 package org.apache.lucene.codecs.lucene94;
 
-import static org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Stack;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -53,6 +43,17 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Stack;
+
+import static org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -566,16 +567,16 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   private static DocsWithFieldSet writeVectorData(
-      IndexOutput output, VectorValues vectors, int scalarSize) throws IOException {
+          IndexOutput output, VectorValues vectors, int scalarSize) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     Stack<Integer> valuesPerDocumemts = new Stack<>();
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
       int valuesPerDocument = 0;
-      for(long vectorId = vectors.nextOrd();vectorId!=-1;vectorId = vectors.nextOrd()) {
-      // write vector
-      BytesRef binaryValue = vectors.binaryValue();
+      for (long vectorId = vectors.nextOrd(); vectorId != -1; vectorId = vectors.nextOrd()) {
+        // write vector
+        BytesRef binaryValue = vectors.binaryValue();
         assert binaryValue.length == vectors.dimension() * scalarSize;
-      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+        output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
         valuesPerDocument++;
       }
       valuesPerDocumemts.push(valuesPerDocument);
@@ -648,12 +649,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     @Override
     @SuppressWarnings("unchecked")
     public void addValue(int docID, Object value) throws IOException {
-      if (docID == lastDocID) {
-        throw new IllegalArgumentException(
-            "VectorValuesField \""
-                + fieldInfo.name
-                + "\" appears more than once in this document (only one value is allowed per field)");
-      }
       T vectorValue = (T) value;
       assert docID > lastDocID;
       docsWithField.add(docID);

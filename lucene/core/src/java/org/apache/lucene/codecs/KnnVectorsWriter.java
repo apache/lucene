@@ -29,7 +29,6 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Accountable, Closeable {
@@ -167,7 +166,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
     @Override
     public long nextOrd() throws IOException {
-      return 0;
+      return 0; //do we need access to Ordinals?
     }
 
     @Override

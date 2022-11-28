@@ -83,11 +83,14 @@ public abstract class VectorValues extends DocIdSetIterator {
 
   /** Sorting VectorValues that iterate over documents in the order of the provided sortMap */
   public static class SortingVectorValues extends VectorValues {
+    private final VectorValues delegate;
     private final RandomAccessVectorValues randomAccess;
     private final int[] docIdOffsets;
+    private final int[] ordMap;
     private int docId = -1;
 
     SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+      this.delegate = delegate;
       this.randomAccess = ((RandomAccessVectorValues) delegate).copy();
       this.docIdOffsets = new int[sortMap.size()];
 
@@ -97,6 +100,16 @@ public abstract class VectorValues extends DocIdSetIterator {
         int newDocID = sortMap.oldToNew(docID);
         docIdOffsets[newDocID] = offset++;
       }
+
+      // set up ordMap to map from new dense ordinal to old dense ordinal
+      ordMap = new int[offset - 1];
+      int ord = 0;
+      for (int docIdOffset : docIdOffsets) {
+        if (docIdOffset != 0) {
+          ordMap[ord++] = docIdOffset - 1;
+        }
+      }
+      assert ord == ordMap.length;
     }
 
     @Override
@@ -124,6 +137,11 @@ public abstract class VectorValues extends DocIdSetIterator {
     @Override
     public float[] vectorValue() throws IOException {
       return randomAccess.vectorValue(docIdOffsets[docId] - 1);
+    }
+
+    @Override
+    public long nextOrd() throws IOException {
+      return delegate.nextOrd();
     }
 
     @Override

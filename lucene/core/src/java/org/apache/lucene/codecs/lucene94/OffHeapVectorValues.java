@@ -118,7 +118,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
 
     @Override
     public long nextOrd() throws IOException {
-      return 0;
+      return 0; //it should be never called
     }
 
     @Override
