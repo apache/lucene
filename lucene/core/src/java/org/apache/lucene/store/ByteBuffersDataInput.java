@@ -118,7 +118,7 @@ public final class ByteBuffersDataInput extends DataInput
       while (len > 0) {
         ByteBuffer block = blocks[blockIndex(pos)];
         int blockOffset = blockOffset(pos);
-        int chunk = Math.min(len, block.limit()-blockOffset);
+        int chunk = Math.min(len, block.limit() - blockOffset);
         if (chunk == 0) {
           throw new EOFException();
         }
@@ -145,7 +145,7 @@ public final class ByteBuffersDataInput extends DataInput
       while (len > 0) {
         ByteBuffer block = blocks[blockIndex(pos)];
         int blockOffset = blockOffset(pos);
-        int chunk = Math.min(len, block.limit()-blockOffset);
+        int chunk = Math.min(len, block.limit() - blockOffset);
         if (chunk == 0) {
           throw new EOFException();
         }
@@ -329,7 +329,8 @@ public final class ByteBuffersDataInput extends DataInput
     int alignment = (int) pos & 0x3;
     int floatBufferIndex = bufferIndex * Float.BYTES + alignment;
     if (floatBuffers[floatBufferIndex] == null) {
-      floatBuffers[floatBufferIndex] = blocks[bufferIndex].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
+      floatBuffers[floatBufferIndex] =
+          blocks[bufferIndex].order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
     }
     return floatBuffers[floatBufferIndex];
   }
@@ -340,7 +341,8 @@ public final class ByteBuffersDataInput extends DataInput
     int alignment = (int) pos & 0x7;
     int longBufferIndex = bufferIndex * Long.BYTES + alignment;
     if (longBuffers[longBufferIndex] == null) {
-      longBuffers[longBufferIndex] = blocks[bufferIndex].order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
+      longBuffers[longBufferIndex] =
+          blocks[bufferIndex].order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
     }
     return longBuffers[longBufferIndex];
   }
