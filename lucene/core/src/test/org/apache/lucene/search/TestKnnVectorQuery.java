@@ -123,7 +123,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     float[][] doc3Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 300,1}};
     
     try (Directory indexStore =
-                 getMultiValuedIndexStore("vector3D", doc1Vectors,doc2Vectors,doc3Vectors);
+                 getMultiValuedIndexStore("vector3D", doc1Vectors,doc2Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       KnnVectorQuery kvq = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, null, HnswGraphSearcher.Multivalued.SUM);
@@ -910,10 +910,11 @@ public class TestKnnVectorQuery extends LuceneTestCase {
       Document doc = new Document();
       float[][] vectors = documents[i];
       for (int j = 0; j < vectors.length; ++j) {
-        doc.add(new KnnVectorField(field, vectors[j], VectorSimilarityFunction.EUCLIDEAN, true));
+        doc.add(new KnnVectorField(field, vectors[j], EUCLIDEAN, true));
       }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);
+      writer.commit();
     }
     // Add some documents without a vector
     for (int i = 0; i < 5; i++) {

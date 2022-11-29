@@ -1149,6 +1149,7 @@ public class TestSortOptimization extends LuceneTestCase {
                 0,
                 0,
                 0,
+                false,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.DOT_PRODUCT,
                 fi.isSoftDeletesField());

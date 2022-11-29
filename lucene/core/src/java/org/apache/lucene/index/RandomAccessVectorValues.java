@@ -50,12 +50,6 @@ public interface RandomAccessVectorValues {
    */
   BytesRef binaryValue(int targetOrd) throws IOException;
 
-  /**
-   * bla bla
-   * @param ord
-   * @return
-   */
-  int ordToDoc(int ord);
   
   /**
    * Creates a new copy of this {@link RandomAccessVectorValues}. This is helpful when you need to
@@ -63,4 +57,8 @@ public interface RandomAccessVectorValues {
    * {@link RandomAccessVectorValues#vectorValue}.
    */
   RandomAccessVectorValues copy() throws IOException;
+
+  default int ordToDoc(int vectorId){
+    return vectorId;
+  }
 }

@@ -133,7 +133,8 @@ public class HnswGraphSearcher<T> {
           similarityFunction,
           graph,
           acceptOrds,
-          visitedLimit);
+          visitedLimit,
+          strategy);
     }
     HnswGraphSearcher<float[]> graphSearcher =
         new HnswGraphSearcher<>(
@@ -168,7 +169,8 @@ public class HnswGraphSearcher<T> {
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
       Bits acceptOrds,
-      int visitedLimit)
+      int visitedLimit,
+      Multivalued strategy)
       throws IOException {
     HnswGraphSearcher<BytesRef> graphSearcher =
         new HnswGraphSearcher<>(
@@ -245,7 +247,7 @@ public class HnswGraphSearcher<T> {
           results.markIncomplete();
           break;
         }
-        float score = compare(query, vectors.vectorValue(vectorId), ep);
+        float score = compare(query, vectors, vectorId);
         numVisited++;
         candidates.add(vectorId, score);
         int docId = vectors.ordToDoc(vectorId);
@@ -281,7 +283,7 @@ public class HnswGraphSearcher<T> {
           results.markIncomplete();
           break;
         }
-        float friendSimilarity = compare(query, vectors, vectors.vectorValue(friendVectorId));
+        float friendSimilarity = compare(query, vectors, friendVectorId);
         numVisited++;
         if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendVectorId, friendSimilarity);

@@ -17,10 +17,6 @@
 
 package org.apache.lucene.codecs;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
@@ -29,6 +25,11 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Accountable, Closeable {
@@ -102,6 +103,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     public int nextDoc() throws IOException {
       return values.nextDoc();
     }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return values.ordToDoc(ord);
+    }
   }
 
   /** View over multiple VectorValues supporting iterator-style access via DocIdMerger. */
@@ -160,13 +166,32 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
 
     @Override
+    public int nextOrd() throws IOException {
+      int nextOrdinal;
+      if (current == null) {
+        current = docIdMerger.next();
+        nextOrdinal = current.values.nextOrd();
+      } else {
+        nextOrdinal = current.values.nextOrd();
+        while (NO_MORE_DOCS == nextOrdinal && current != null) {
+          current = docIdMerger.next();
+          if (current != null) {
+            nextOrdinal = current.values.nextOrd();
+          } 
+        }
+      }
+      return nextOrdinal;
+    }
+
+    @Override
     public float[] vectorValue() throws IOException {
       return current.values.vectorValue();
     }
 
     @Override
-    public long nextOrd() throws IOException {
-      return 0; //do we need access to Ordinals?
+    public int ordToDoc(int ord) {
+      int localDocId = current.values.ordToDoc(ord);
+      return current.docMap.get(localDocId);
     }
 
     @Override

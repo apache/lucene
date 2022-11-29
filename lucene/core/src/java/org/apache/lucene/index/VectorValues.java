@@ -59,15 +59,19 @@ public abstract class VectorValues extends DocIdSetIterator {
    */
   public abstract float[] vectorValue() throws IOException;
 
-    /**
-     * Returns the next ordinal for the current document. It is illegal to call this method after
-     * advanceExact(int) returned {@code false}.
-     *
-     * @return next ordinal for the document, or . ordinals are dense, start at
-     *     0, then increment by 1 for the next value in sorted order.
-     */
-    
-    public abstract long nextOrd() throws IOException;
+
+  /**
+   * bla bla
+   * @param ord
+   * @return
+   */
+  public int ordToDoc(int ord){
+    return ord;
+  }
+  
+  public int nextOrd() throws IOException {
+    return nextDoc();
+  }
 
   /**
    * Return the binary encoded vector value for the current document ID. These are the bytes
@@ -137,11 +141,6 @@ public abstract class VectorValues extends DocIdSetIterator {
     @Override
     public float[] vectorValue() throws IOException {
       return randomAccess.vectorValue(docIdOffsets[docId] - 1);
-    }
-
-    @Override
-    public long nextOrd() throws IOException {
-      return delegate.nextOrd();
     }
 
     @Override

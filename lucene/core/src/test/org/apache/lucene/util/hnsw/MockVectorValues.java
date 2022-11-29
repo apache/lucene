@@ -95,11 +95,6 @@ class MockVectorValues extends VectorValues implements RandomAccessVectorValues 
     return binaryValue;
   }
 
-  @Override
-  public int ordToDoc(int ord) {
-    return ord;
-  }
-
   private boolean seek(int target) {
     if (target >= 0 && target < values.length && values[target] != null) {
       pos = target;

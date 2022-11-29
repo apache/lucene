@@ -66,8 +66,6 @@ final class IndexingChain implements Accountable {
   final TermsHash termsHash;
   // Shared pool for doc-value terms
   final ByteBlockPool docValuesBytePool;
-  // Shared pool for doc-value terms
-  final ByteBlockPool vectorIdsBytePool;
   // Writes stored fields
   final StoredFieldsConsumer storedFieldsConsumer;
   final VectorValuesConsumer vectorValuesConsumer;
@@ -135,7 +133,6 @@ final class IndexingChain implements Accountable {
         new FreqProxTermsWriter(
             intBlockAllocator, byteBlockAllocator, bytesUsed, termVectorsWriter);
     docValuesBytePool = new ByteBlockPool(byteBlockAllocator);
-    vectorIdsBytePool = new ByteBlockPool(byteBlockAllocator);
   }
 
   private void onAbortingException(Throwable th) {
@@ -674,7 +671,7 @@ final class IndexingChain implements Accountable {
     }
     if (fi.getVectorDimension() != 0) {
       try {
-        pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed, vectorIdsBytePool);
+        pf.knnFieldVectorsWriter = vectorValuesConsumer.addField(fi);
       } catch (Throwable th) {
         onAbortingException(th);
         throw th;
@@ -1409,7 +1406,7 @@ final class IndexingChain implements Accountable {
       pointIndexDimensionCount = 0;
       pointNumBytes = 0;
       vectorDimension = 0;
-      multiValued = false;
+      vectorMultiValued = false;
       vectorEncoding = VectorEncoding.FLOAT32;
       vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     }
@@ -1423,7 +1420,7 @@ final class IndexingChain implements Accountable {
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
-      assertSame("vector multi valued", fi.isMultiValued(), vectorMultiValued);
+      assertSame("vector multi valued", fi.isVectorMultiValued(), vectorMultiValued);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);

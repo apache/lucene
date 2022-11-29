@@ -43,6 +43,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -129,7 +130,9 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         for (int i = 0; i < 3; i++) {
           Document doc = new Document();
           doc.add(newTextField("id", "1", Field.Store.YES));
-          doc.add(new KnnVectorField("field1", new float[] {1, 2, 3}));
+          doc.add(new KnnVectorField("field1", new float[] {1, 2, 3}, VectorSimilarityFunction.EUCLIDEAN,true));
+          doc.add(new KnnVectorField("field1", new float[] {2, 2, 7}, VectorSimilarityFunction.EUCLIDEAN,true));
+          doc.add(new KnnVectorField("field1", new float[] {3, 5, 3}, VectorSimilarityFunction.EUCLIDEAN,true));
           doc.add(new KnnVectorField("field2", new float[] {1, 2, 3}));
           iw.addDocument(doc);
           iw.commit();

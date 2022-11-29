@@ -297,11 +297,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public long nextOrd() throws IOException {
-      return ++curOrd;
-    }
-
-    @Override
     public BytesRef binaryValue() {
       ByteBuffer.wrap(binaryValue.bytes).asFloatBuffer().get(values[curOrd]);
       return binaryValue;
@@ -365,11 +360,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
       throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return ord;
     }
   }
 

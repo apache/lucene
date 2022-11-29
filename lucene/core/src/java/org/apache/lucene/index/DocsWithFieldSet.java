@@ -22,6 +22,8 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
 
+import java.util.Stack;
+
 /**
  * Accumulator for documents that have a value for a field. This is optimized for the case that all
  * documents have a value.
@@ -33,8 +35,10 @@ public final class DocsWithFieldSet extends DocIdSet {
 
   private FixedBitSet set;
   private int cardinality = 0;
-  private int lastDocId = -1;
-  private int[] valuesPerDocument;
+  private int lastDocId = 0;
+  
+  private Stack<Integer> valuesPerDocuments;
+  private int currentDocVectorsCount = 0;
 
   /** Creates an empty DocsWithFieldSet. */
   public DocsWithFieldSet() {}
@@ -45,21 +49,29 @@ public final class DocsWithFieldSet extends DocIdSet {
    * @param docID – document ID to be added
    */
   public void add(int docID) {
-    if (docID <= lastDocId) {
+    if (docID < lastDocId) {
       throw new IllegalArgumentException(
           "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
     }
     if (set != null) {
       set = FixedBitSet.ensureCapacity(set, docID);
-      set.set(docID);
-    } else if (docID != cardinality) {
+      if (!set.getAndSet(docID)) {
+        cardinality++;
+      }
+    } else {
       // migrate to a sparse encoding using a bit set
+      valuesPerDocuments = new Stack<>();
       set = new FixedBitSet(docID + 1);
       set.set(0, cardinality);
       set.set(docID);
+      cardinality++;
     }
+    if(docID!=lastDocId){
+      valuesPerDocuments.push(currentDocVectorsCount);
+      currentDocVectorsCount = 0;
+    }
+    currentDocVectorsCount++;
     lastDocId = docID;
-    cardinality++;
   }
 
   @Override
@@ -78,10 +90,14 @@ public final class DocsWithFieldSet extends DocIdSet {
   }
 
   public int[] getValuesPerDocument() {
-    return valuesPerDocument;
-  }
-
-  public void setValuesPerDocument(int[] valuesPerDocument) {
-    this.valuesPerDocument = valuesPerDocument;
+    int[] valuesPerDocumentArray = new int[cardinality];
+    if (currentDocVectorsCount != 0) {
+      valuesPerDocuments.push(currentDocVectorsCount);
+      currentDocVectorsCount = 0;
+    }
+    for (int i = valuesPerDocumentArray.length - 1; i > -1; i--) {
+      valuesPerDocumentArray[i] = valuesPerDocuments.pop();
+    }
+    return valuesPerDocumentArray;
   }
 }

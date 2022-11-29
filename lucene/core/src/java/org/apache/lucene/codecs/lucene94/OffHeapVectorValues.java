@@ -77,8 +77,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
   }
 
-  public abstract int ordToDoc(int ord);
-
   static OffHeapVectorValues load(
       Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2) {
@@ -117,11 +115,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public long nextOrd() throws IOException {
-      return 0; //it should be never called
-    }
-
-    @Override
     public BytesRef binaryValue() throws IOException {
       slice.seek((long) doc * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
@@ -153,17 +146,14 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public int ordToDoc(int ord) {
-      return ord;
-    }
-
-    @Override
     Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
   }
 
+  /*Used also for Multi Valued*/
  static class SparseOffHeapVectorValues extends OffHeapVectorValues {
+    private int vectorId = -1; 
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
@@ -201,11 +191,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public long nextOrd() throws IOException {
-      return 0; //it should not be used at query time
-    }
-
-    @Override
     public BytesRef binaryValue() throws IOException {
       slice.seek((long) (disi.index()) * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
@@ -216,10 +201,19 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     public int docID() {
       return disi.docID();
     }
-
+    
     @Override
     public int nextDoc() throws IOException {
       return disi.nextDoc();
+    }
+
+    @Override
+    public int nextOrd() throws IOException {
+      if (vectorId + 1 >= size) {
+        return vectorId = NO_MORE_DOCS;
+      }
+      vectorId++;
+      return vectorId;
     }
 
     @Override
@@ -278,11 +272,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     @Override
     public float[] vectorValue() throws IOException {
       throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long nextOrd() throws IOException {
-      return 0;
     }
 
     @Override

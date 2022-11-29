@@ -170,6 +170,11 @@ public abstract class DocValuesConsumer implements Closeable {
     public int nextDoc() throws IOException {
       return values.nextDoc();
     }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ord;
+    }
   }
 
   /**

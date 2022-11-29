@@ -77,6 +77,7 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -2601,7 +2602,7 @@ public final class CheckIndex implements Closeable {
                 TopDocs docs =
                     reader
                         .getVectorReader()
-                        .search(fieldInfo.name, vectorValue, 10, null, Integer.MAX_VALUE);
+                        .search(fieldInfo.name, vectorValue, 10, null, Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
                 if (docs.scoreDocs.length == 0) {
                   throw new CheckIndexException(
                       "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");

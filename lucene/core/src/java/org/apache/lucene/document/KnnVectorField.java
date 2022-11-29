@@ -41,18 +41,18 @@ public class KnnVectorField extends Field {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
-    return createType(v.length, VectorEncoding.FLOAT32, similarityFunction);
+    return createType(v.length, VectorEncoding.FLOAT32, similarityFunction, multiValued);
   }
 
-  private static FieldType createType(BytesRef v, VectorSimilarityFunction similarityFunction) {
+  private static FieldType createType(BytesRef v, VectorSimilarityFunction similarityFunction, boolean multiValued) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
-    return createType(v.length, VectorEncoding.BYTE, similarityFunction);
+    return createType(v.length, VectorEncoding.BYTE, similarityFunction, multiValued);
   }
 
   private static FieldType createType(
-      int dimension, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction) {
+      int dimension, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction, boolean multiValued) {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
@@ -77,8 +77,8 @@ public class KnnVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, VectorSimilarityFunction similarityFunction) {
-    return createFieldType(dimension, VectorEncoding.FLOAT32, similarityFunction);
+      int dimension, VectorSimilarityFunction similarityFunction, boolean multiValued) {
+    return createFieldType(dimension, VectorEncoding.FLOAT32, similarityFunction, multiValued);
   }
 
   /**
@@ -90,12 +90,14 @@ public class KnnVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction) {
+      int dimension, VectorEncoding vectorEncoding, VectorSimilarityFunction similarityFunction, boolean multiValued) {
     FieldType type = new FieldType();
     type.setVectorAttributes(dimension, vectorEncoding, similarityFunction, multiValued);
     type.freeze();
     return type;
   }
+  
+  
 
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
@@ -143,11 +145,28 @@ public class KnnVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnVectorField(String name, BytesRef vector, VectorSimilarityFunction similarityFunction) {
-    super(name, createType(vector, similarityFunction));
+  public KnnVectorField(String name, BytesRef vector, VectorSimilarityFunction similarityFunction, boolean multiValued) {
+    super(name, createType(vector, similarityFunction, multiValued));
     fieldsData = vector;
   }
 
+  /**
+   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
+   * no value. Vectors of a single field share the same dimension and similarity function. Note that
+   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
+   * be constant-length.
+   *
+   * @param name field name
+   * @param vector value
+   * @param similarityFunction a function defining vector proximity.
+   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
+   *     dimension &gt; 1024.
+   */
+  public KnnVectorField(String name, BytesRef vector, VectorSimilarityFunction similarityFunction) {
+    super(name, createType(vector, similarityFunction, false));
+    fieldsData = vector;
+  }
+  
   /**
    * Creates a numeric vector field with the default EUCLIDEAN_HNSW (L2) similarity. Fields are
    * single-valued: each document has either one value or no value. Vectors of a single field share

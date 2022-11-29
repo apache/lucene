@@ -44,4 +44,5 @@ public class ExpandingVectorValues extends FilterVectorValues {
     }
     return value;
   }
+
 }

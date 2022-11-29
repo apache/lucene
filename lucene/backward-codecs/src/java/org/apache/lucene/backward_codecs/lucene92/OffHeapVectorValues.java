@@ -76,9 +76,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
   }
-
-  public abstract int ordToDoc(int ord);
-
+  
   static OffHeapVectorValues load(
       Lucene92HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2) {
@@ -139,11 +137,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     @Override
     public RandomAccessVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone());
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return ord;
     }
 
     @Override
@@ -293,11 +286,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
 
     @Override
     public BytesRef binaryValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
       throw new UnsupportedOperationException();
     }
 

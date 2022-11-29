@@ -343,22 +343,8 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public int ordToDoc(int ord) {
-      return ord; // do I need the ordMap?
-    }
-
-    @Override
     public float[] vectorValue() {
      return vectors.get(currentDocVectorsId[visitedVectorIdPerCurrentDoc-1]);
-    }
-
-    @Override
-    public long nextOrd() {
-      if (visitedVectorIdPerCurrentDoc == vectorsPerDocumentCount) {
-        return -1;
-      } else {
-        return currentDocVectorsId[visitedVectorIdPerCurrentDoc++];
-      }
     }
 
     @Override

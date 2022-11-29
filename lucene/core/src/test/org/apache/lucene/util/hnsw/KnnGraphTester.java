@@ -702,7 +702,7 @@ public class KnnGraphTester {
     iwc.setUseCompoundFile(false);
     // iwc.setMaxBufferedDocs(10000);
 
-    FieldType fieldType = KnnVectorField.createFieldType(dim, vectorEncoding, similarityFunction);
+    FieldType fieldType = KnnVectorField.createFieldType(dim, vectorEncoding, similarityFunction, false);
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);

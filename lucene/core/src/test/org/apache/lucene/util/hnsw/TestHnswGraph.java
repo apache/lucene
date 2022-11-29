@@ -749,11 +749,6 @@ public class TestHnswGraph extends LuceneTestCase {
     }
 
     @Override
-    public long nextOrd() throws IOException {
-      return 0;
-    }
-
-    @Override
     public int docID() {
       return doc;
     }
@@ -785,11 +780,6 @@ public class TestHnswGraph extends LuceneTestCase {
         binaryValue.bytes[i] = (byte) (vectorValue[i] * 127);
       }
       return binaryValue;
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return 0;
     }
   }
 
