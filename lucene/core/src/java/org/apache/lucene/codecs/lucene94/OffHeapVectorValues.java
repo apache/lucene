@@ -77,6 +77,8 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
   }
 
+  public abstract int ordToDoc(int ord);
+
   static OffHeapVectorValues load(
       Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2) {
@@ -146,6 +148,11 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
+    public int ordToDoc(int ord) {
+      return ord;
+    }
+
+    @Override
     Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
@@ -201,7 +208,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     public int docID() {
       return disi.docID();
     }
-    
+
     @Override
     public int nextDoc() throws IOException {
       return disi.nextDoc();

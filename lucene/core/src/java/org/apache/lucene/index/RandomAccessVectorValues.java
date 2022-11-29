@@ -50,7 +50,6 @@ public interface RandomAccessVectorValues {
    */
   BytesRef binaryValue(int targetOrd) throws IOException;
 
-  
   /**
    * Creates a new copy of this {@link RandomAccessVectorValues}. This is helpful when you need to
    * access different values at once, to avoid overwriting the underlying float vector returned by
@@ -58,7 +57,7 @@ public interface RandomAccessVectorValues {
    */
   RandomAccessVectorValues copy() throws IOException;
 
-  default int ordToDoc(int vectorId){
-    return vectorId;
+  default int ordToDoc(int ord){
+    return ord;
   }
 }

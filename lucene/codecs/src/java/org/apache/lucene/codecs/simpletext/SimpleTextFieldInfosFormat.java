@@ -70,7 +70,6 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   static final BytesRef DIM_NUM_BYTES = new BytesRef("  dimensional num bytes ");
   static final BytesRef VECTOR_NUM_DIMS = new BytesRef("  vector number of dimensions ");
   static final BytesRef VECTOR_MULTI_VALUED = new BytesRef("  vector multi valued ");
-  static final BytesRef VECTOR_SEARCH_STRATEGY = new BytesRef("  vector search strategy ");
   static final BytesRef VECTOR_ENCODING = new BytesRef("  vector encoding ");
   static final BytesRef VECTOR_SIMILARITY = new BytesRef("  vector similarity ");
   static final BytesRef SOFT_DELETES = new BytesRef("  soft-deletes ");

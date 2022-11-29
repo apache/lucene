@@ -87,14 +87,12 @@ public abstract class VectorValues extends DocIdSetIterator {
 
   /** Sorting VectorValues that iterate over documents in the order of the provided sortMap */
   public static class SortingVectorValues extends VectorValues {
-    private final VectorValues delegate;
     private final RandomAccessVectorValues randomAccess;
     private final int[] docIdOffsets;
     private final int[] ordMap;
     private int docId = -1;
 
     SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
-      this.delegate = delegate;
       this.randomAccess = ((RandomAccessVectorValues) delegate).copy();
       this.docIdOffsets = new int[sortMap.size()];
 
