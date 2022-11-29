@@ -438,13 +438,12 @@ public final class Tessellator {
     p = connection;
     do {
       if (hx >= p.getX()
-              && p.getX() >= mx
-              && hx != p.getX()
-              && pointInEar(
-              p.getX(), p.getY(), hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy)) {
+          && p.getX() >= mx
+          && hx != p.getX()
+          && pointInEar(p.getX(), p.getY(), hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy)) {
         tan = Math.abs(hy - p.getY()) / (hx - p.getX()); // tangential
         if ((tan < tanMin || (tan == tanMin && p.getX() > connection.getX()))
-                && isLocallyInside(p, holeNode)) {
+            && isLocallyInside(p, holeNode)) {
           connection = p;
           tanMin = tan;
         }
