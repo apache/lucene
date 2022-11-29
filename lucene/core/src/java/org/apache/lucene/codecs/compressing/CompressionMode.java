@@ -237,6 +237,7 @@ public abstract class CompressionMode {
         }
       } finally {
         decompressor.end();
+        compressed = new byte[0];
       }
       if (bytes.length != originalLength) {
         throw new CorruptIndexException(

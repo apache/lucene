@@ -139,6 +139,9 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
       bytes.offset = offsetInBytesRef;
       bytes.length = length;
+
+      compressedLengths = new int[0];
+      buffer = new byte[0];
       assert bytes.isValid();
     }
 

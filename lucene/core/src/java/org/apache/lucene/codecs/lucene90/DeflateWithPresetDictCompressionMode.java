@@ -150,6 +150,7 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
         assert bytes.isValid();
       } finally {
         decompressor.end();
+        compressed = new byte[0];
       }
     }
 
