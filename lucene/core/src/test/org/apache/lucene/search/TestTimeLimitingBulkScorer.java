@@ -17,6 +17,7 @@
 
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -29,8 +30,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
-
-import java.io.IOException;
 
 /** Tests the {@link TimeLimitingBulkScorer}. */
 public class TestTimeLimitingBulkScorer extends LuceneTestCase {
@@ -66,39 +65,43 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
     directoryReader.close();
     directory.close();
   }
-  
+
   public void testExponentialRate() throws Exception {
-    var bulkScorer = new BulkScorer() {
-      int expectedInterval = TimeLimitingBulkScorer.INTERVAL;
-      int lastInterval = 0;
-      int runs = TestUtil.nextInt(random(), 1, 100);
+    var bulkScorer =
+        new BulkScorer() {
+          int expectedInterval = TimeLimitingBulkScorer.INTERVAL;
+          int lastInterval = 0;
+          int runs = TestUtil.nextInt(random(), 1, 100);
 
-      @Override
-      public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-        var difference = max - min;
-        // the rate shouldn't overflow - only increase or remain equal
-        assertTrue("Rate should only go up", difference >= lastInterval);
-        assertEquals("Incorrect rate encountered", expectedInterval, difference);
+          @Override
+          public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+              throws IOException {
+            var difference = max - min;
+            // the rate shouldn't overflow - only increase or remain equal
+            assertTrue("Rate should only go up", difference >= lastInterval);
+            assertEquals("Incorrect rate encountered", expectedInterval, difference);
 
-        lastInterval = difference;
-        // use integer sum since the exponential growth formula yields different result due to rounding
-        expectedInterval = expectedInterval + expectedInterval / 2;
-        // overflow - stop at the previous one
-        if (expectedInterval < 0) {
-          expectedInterval = lastInterval;
-        }
-        // keep going or finish the test?
-        return --runs == 0 ? DocIdSetIterator.NO_MORE_DOCS : 0;
-      }
+            lastInterval = difference;
+            // use integer sum since the exponential growth formula yields different result due to
+            // rounding
+            expectedInterval = expectedInterval + expectedInterval / 2;
+            // overflow - stop at the previous one
+            if (expectedInterval < 0) {
+              expectedInterval = lastInterval;
+            }
+            // keep going or finish the test?
+            return --runs == 0 ? DocIdSetIterator.NO_MORE_DOCS : 0;
+          }
 
-      @Override
-      public long cost() {
-        return 1;
-      }
-    };
+          @Override
+          public long cost() {
+            return 1;
+          }
+        };
 
     var scorer = new TimeLimitingBulkScorer(bulkScorer, new QueryTimeoutImpl(-1));
-    scorer.score(dummyCollector(), new Bits.MatchAllBits(Integer.MAX_VALUE), 0,  Integer.MAX_VALUE - 1);
+    scorer.score(
+        dummyCollector(), new Bits.MatchAllBits(Integer.MAX_VALUE), 0, Integer.MAX_VALUE - 1);
   }
 
   private static QueryTimeout countingQueryTimeout(int timeallowed) {
@@ -117,7 +120,7 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
     };
   }
 
-  private static LeafCollector dummyCollector()  {
+  private static LeafCollector dummyCollector() {
     return new SimpleCollector() {
       @Override
       public ScoreMode scoreMode() {
@@ -125,8 +128,7 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
       }
 
       @Override
-      public void collect(int doc) throws IOException {
-      }
+      public void collect(int doc) throws IOException {}
     };
   }
 }

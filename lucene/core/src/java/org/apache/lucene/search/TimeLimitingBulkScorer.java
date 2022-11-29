@@ -64,7 +64,8 @@ final class TimeLimitingBulkScorer extends BulkScorer {
     int interval = INTERVAL;
     while (min < max) {
       final int newMax = (int) Math.min((long) min + interval, max);
-      final int newInterval = interval + (interval >> 1); // increase the interval by 50% on each iteration
+      final int newInterval =
+          interval + (interval >> 1); // increase the interval by 50% on each iteration
       // overflow check
       if (interval < newInterval) {
         interval = newInterval;
