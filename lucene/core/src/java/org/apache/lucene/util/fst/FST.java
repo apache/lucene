@@ -1454,7 +1454,6 @@ public final class FST<T> implements Accountable {
         in.setPosition(arc.nextArc());
         arc.flags = in.readByte();
     }
-
     return readArc(arc, in, node);
   }
 

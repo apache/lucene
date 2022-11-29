@@ -1309,7 +1309,6 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
             } else {
               // System.out.println("  next arc");
               // Read next arc in this node:
-
               fr.index.readNextRealArc(arc, fstReader, node);
             }
           }
