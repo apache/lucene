@@ -115,6 +115,15 @@ public final class IntSequenceOutputs extends Outputs<IntsRef> {
   }
 
   @Override
+  public long outputSize(IntsRef prefix) {
+    long length = Util.calculateVIntLength(prefix.length);
+    for (int idx = 0; idx < prefix.length; idx++) {
+      length += Util.calculateVIntLength(prefix.ints[prefix.offset + idx]);
+    }
+    return length;
+  }
+
+  @Override
   public IntsRef read(DataInput in) throws IOException {
     final int len = in.readVInt();
     if (len == 0) {

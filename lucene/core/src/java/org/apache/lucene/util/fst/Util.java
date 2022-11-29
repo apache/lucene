@@ -883,13 +883,30 @@ public final class Util {
     }
   }
 
-  public static int calculateVLongLength(long i) {
-    int l = 1;
-    while ((i & ~0x7FL) != 0L) {
-      i >>>= 7;
-      ++l;
+  public static int calculateVLongLength(long value) {
+    // todo: test if branching is faster, handle negative longs
+    return (63 - Long.numberOfLeadingZeros(value)) / 7 + 1;
+  }
+
+  public static int calculateVIntLength(int value) {
+    // branching is faster than counting Zeros
+    if (value < 0) {
+      return 5;
     }
-    return l;
+
+    if ((value & (~0 << 7)) == 0) {
+      return 1;
+    }
+    if ((value & (~0 << 14)) == 0) {
+      return 2;
+    }
+    if ((value & (~0 << 21)) == 0) {
+      return 3;
+    }
+    if ((value & (~0 << 28)) == 0) {
+      return 4;
+    }
+    return 5;
   }
 
   /**

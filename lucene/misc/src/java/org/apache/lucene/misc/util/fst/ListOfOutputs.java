@@ -25,6 +25,7 @@ import org.apache.lucene.util.IntsRef; // javadocs
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.Outputs;
+import org.apache.lucene.util.fst.Util;
 
 /**
  * Wraps another Outputs implementation and encodes one or more of its output values. You can use
@@ -99,6 +100,11 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
   }
 
   @Override
+  public long outputSize(Object output) {
+    return outputs.outputSize((T) output);
+  }
+
+  @Override
   public void writeFinalOutput(Object output, DataOutput out) throws IOException {
     if (!(output instanceof List)) {
       out.writeVInt(1);
@@ -109,6 +115,20 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
       for (T eachOutput : outputList) {
         outputs.write(eachOutput, out);
       }
+    }
+  }
+
+  @Override
+  public long finalOutputSize(Object output) {
+    if (!(output instanceof List)) {
+      return 1 + outputs.outputSize((T) output);
+    } else {
+      List<T> outputList = (List<T>) output;
+      long outputSize = Util.calculateVIntLength(outputList.size());
+      for (T eachOutput : outputList) {
+        outputSize += outputs.outputSize(eachOutput);
+      }
+      return outputSize;
     }
   }
 

@@ -25,6 +25,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.Outputs;
+import org.apache.lucene.util.fst.Util;
 
 /**
  * An FST {@link Outputs} implementation for {@link FSTTermsWriter}.
@@ -217,6 +218,33 @@ class FSTTermOutputs extends Outputs<FSTTermOutputs.TermData> {
         out.writeVInt(data.docFreq);
       }
     }
+  }
+
+  @Override
+  public long outputSize(TermData data) {
+    int bit0 = ((data.bytes == null || data.bytes.length == 0) ? 0 : 1);
+    int bit1 = ((data.docFreq == 0) ? 0 : 1) << 1;
+    long outputSize = 1;
+    if (bit0 > 0) {
+      if (data.bytes.length > 31) {
+        outputSize += Util.calculateVIntLength(data.bytes.length);
+      }
+      outputSize += data.bytes.length;
+    }
+
+    if (bit1 > 0) { // stats exist
+      if (hasPos) {
+        if (data.docFreq == data.totalTermFreq) {
+          outputSize += Util.calculateVIntLength((data.docFreq << 1) | 1);
+        } else {
+          outputSize += Util.calculateVIntLength((data.docFreq << 1));
+          outputSize += Util.calculateVLongLength(data.totalTermFreq - data.docFreq);
+        }
+      } else {
+        outputSize += Util.calculateVIntLength(data.docFreq);
+      }
+    }
+    return outputSize;
   }
 
   @Override

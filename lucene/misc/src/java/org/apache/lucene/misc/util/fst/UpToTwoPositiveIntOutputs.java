@@ -22,6 +22,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.Outputs;
+import org.apache.lucene.util.fst.Util;
 
 /**
  * An FST {@link Outputs} implementation where each output is one or two non-negative long values.
@@ -170,6 +171,18 @@ public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
       final TwoLongs output = (TwoLongs) _output;
       out.writeVLong((output.first << 1) | 1);
       out.writeVLong(output.second);
+    }
+  }
+
+  @Override
+  public long outputSize(Object _output) {
+    if (_output instanceof Long) {
+      final Long output = (Long) _output;
+      return Util.calculateVLongLength(output << 1);
+    } else {
+      final TwoLongs output = (TwoLongs) _output;
+      return Util.calculateVLongLength((output.first << 1) | 1)
+          + Util.calculateVLongLength(output.second);
     }
   }
 

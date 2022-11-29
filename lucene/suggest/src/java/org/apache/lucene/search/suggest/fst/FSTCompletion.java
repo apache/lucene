@@ -294,10 +294,12 @@ public class FSTCompletion {
     FST.BytesReader fstReader = automaton.getBytesReader();
 
     class State {
+      long node;
       Arc<Object> arc;
       int outputLength;
 
       State(Arc<Object> arc, int outputLength) throws IOException {
+        this.node = arc.target();
         this.arc = automaton.readFirstTargetArc(arc, new Arc<>(), fstReader);
         this.outputLength = outputLength;
       }
@@ -324,7 +326,7 @@ public class FSTCompletion {
                   if (arc.isLast()) {
                     states.removeLast();
                   } else {
-                    automaton.readNextArc(arc, fstReader);
+                    automaton.readNextArc(arc, fstReader, state.node);
                   }
 
                   return true;
@@ -340,7 +342,7 @@ public class FSTCompletion {
                   if (arc.isLast()) {
                     states.removeLast();
                   } else {
-                    automaton.readNextArc(arc, fstReader);
+                    automaton.readNextArc(arc, fstReader, state.node);
                   }
 
                   states.addLast(newState);

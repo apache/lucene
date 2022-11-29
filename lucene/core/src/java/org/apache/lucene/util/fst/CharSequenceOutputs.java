@@ -116,6 +116,15 @@ public final class CharSequenceOutputs extends Outputs<CharsRef> {
   }
 
   @Override
+  public long outputSize(CharsRef prefix) {
+    long length = Util.calculateVIntLength(prefix.length);
+    for (int idx = 0; idx < prefix.length; idx++) {
+      length += Util.calculateVIntLength(prefix.chars[prefix.offset + idx]);
+    }
+    return length;
+  }
+
+  @Override
   public CharsRef read(DataInput in) throws IOException {
     final int len = in.readVInt();
     if (len == 0) {

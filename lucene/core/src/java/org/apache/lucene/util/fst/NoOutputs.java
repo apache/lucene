@@ -83,6 +83,11 @@ public final class NoOutputs extends Outputs<Object> {
   }
 
   @Override
+  public long outputSize(Object ouput) {
+    return 0;
+  }
+
+  @Override
   public Object read(DataInput in) {
     // assert false;
     // return null;

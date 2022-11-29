@@ -150,6 +150,11 @@ public class PairOutputs<A, B> extends Outputs<PairOutputs.Pair<A, B>> {
   }
 
   @Override
+  public long outputSize(Pair<A, B> output) {
+    return outputs1.outputSize(output.output1) + outputs2.outputSize(output.output2);
+  }
+
+  @Override
   public Pair<A, B> read(DataInput in) throws IOException {
     A output1 = outputs1.read(in);
     B output2 = outputs2.read(in);

@@ -50,18 +50,7 @@ public abstract class Outputs<T> {
   public abstract void write(T output, DataOutput out) throws IOException;
 
   /** Get the required size of the output before writing */
-  // TODO: this must become abstract
-  public long outputSize(T ouput) {
-    return 1;
-  }
-  ;
-
-  /** Get the required size of the final output before writing */
-  // TODO: this must become abstract
-  public long finalOutputSize(T ouput) {
-    return 1;
-  }
-  ;
+  public abstract long outputSize(T ouput);
 
   /**
    * Encode an final node output value into a {@link DataOutput}. By default this just calls {@link
@@ -69,6 +58,14 @@ public abstract class Outputs<T> {
    */
   public void writeFinalOutput(T output, DataOutput out) throws IOException {
     write(output, out);
+  }
+
+  /**
+   * Get the required size of the final output before writing By default this just calls {@link
+   * #outputSize(Object)}.
+   */
+  public long finalOutputSize(T output) {
+    return outputSize(output);
   }
 
   /** Decode an output value previously written with {@link #write(Object, DataOutput)}. */

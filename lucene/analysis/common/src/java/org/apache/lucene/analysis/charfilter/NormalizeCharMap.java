@@ -49,6 +49,8 @@ public class NormalizeCharMap {
         final FST.BytesReader fstReader = map.getBytesReader();
         map.getFirstArc(scratchArc);
         if (FST.targetHasArcs(scratchArc)) {
+          long node = scratchArc.target();
+
           map.readFirstRealTargetArc(scratchArc.target(), scratchArc, fstReader);
           while (true) {
             assert scratchArc.label() != FST.END_LABEL;
@@ -58,7 +60,7 @@ public class NormalizeCharMap {
             if (scratchArc.isLast()) {
               break;
             }
-            map.readNextRealArc(scratchArc, fstReader, scratchArc.target());
+            map.readNextRealArc(scratchArc, fstReader, node);
           }
         }
         // System.out.println("cached " + cachedRootArcs.size() + " root arcs");

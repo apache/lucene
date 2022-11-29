@@ -23,6 +23,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.fst.Outputs;
+import org.apache.lucene.util.fst.Util;
 
 /**
  * A custom FST outputs implementation that stores block data (BytesRef), long ordStart, long
@@ -180,6 +181,14 @@ final class FSTOrdsOutputs extends Outputs<FSTOrdsOutputs.Output> {
     out.writeBytes(prefix.bytes.bytes, prefix.bytes.offset, prefix.bytes.length);
     out.writeVLong(prefix.startOrd);
     out.writeVLong(prefix.endOrd);
+  }
+
+  @Override
+  public long outputSize(Output prefix) {
+    return Util.calculateVIntLength(prefix.bytes.length)
+        + prefix.bytes.length
+        + Util.calculateVLongLength(prefix.startOrd)
+        + Util.calculateVLongLength(prefix.endOrd);
   }
 
   @Override

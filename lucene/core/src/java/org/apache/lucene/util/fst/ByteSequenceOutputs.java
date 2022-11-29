@@ -117,6 +117,11 @@ public final class ByteSequenceOutputs extends Outputs<BytesRef> {
   }
 
   @Override
+  public long outputSize(BytesRef prefix) {
+    return Util.calculateVIntLength(prefix.length) + prefix.length;
+  }
+
+  @Override
   public BytesRef read(DataInput in) throws IOException {
     final int len = in.readVInt();
     if (len == 0) {
