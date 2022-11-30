@@ -279,6 +279,35 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     directory.close();
   }
 
+  public void testExitableTermsMinAndMax() throws IOException {
+    Directory directory = newDirectory();
+    IndexWriter w = new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
+    Document doc = new Document();
+    StringField fooField = new StringField("foo", "bar", Field.Store.NO);
+    doc.add(fooField);
+    w.addDocument(doc);
+    w.flush();
+
+    DirectoryReader directoryReader = DirectoryReader.open(w);
+    for (LeafReaderContext lfc : directoryReader.leaves()) {
+      ExitableDirectoryReader.ExitableTerms terms =
+          new ExitableDirectoryReader.ExitableTerms(
+              lfc.reader().terms("foo"), infiniteQueryTimeout()) {
+            @Override
+            public TermsEnum iterator() {
+              fail("min and max should be retrieved from block tree, no need to iterate");
+              return null;
+            }
+          };
+      assertEquals("bar", terms.getMin().utf8ToString());
+      assertEquals("bar", terms.getMax().utf8ToString());
+    }
+
+    w.close();
+    directoryReader.close();
+    directory.close();
+  }
+
   private static QueryTimeout infiniteQueryTimeout() {
     return () -> false;
   }
