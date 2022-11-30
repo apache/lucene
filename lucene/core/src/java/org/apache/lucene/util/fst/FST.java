@@ -125,7 +125,7 @@ public final class FST<T> implements Accountable {
   private static final String FILE_FORMAT_NAME = "FST";
   private static final int VERSION_START = 6;
   private static final int VERSION_LITTLE_ENDIAN = 8;
-  private static final int VERSION_CURRENT = VERSION_LITTLE_ENDIAN;
+  private static final int VERSION_CURRENT = 9;
 
   // Never serialized; just used to represent the virtual
   // final node w/ no arcs:
@@ -672,10 +672,10 @@ public final class FST<T> implements Accountable {
     int maxBytesPerArc = 0;
     int maxBytesPerArcWithoutLabel = 0;
 
-    long precalculatedNodeAddress = 0;
+    long calculatedNodeAddress = 0;
 
     if (doFixedLengthArcs == false) {
-      precalculatedNodeAddress = precalculateNodeAddress(fstCompiler, nodeIn);
+      calculatedNodeAddress = calculateNodeAddress(fstCompiler, nodeIn);
     }
 
     for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
@@ -721,7 +721,7 @@ public final class FST<T> implements Accountable {
       if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
         assert target.node > 0;
         long relativeTarget =
-            precalculatedNodeAddress > 0 ? precalculatedNodeAddress - target.node : Long.MAX_VALUE;
+            calculatedNodeAddress > 0 ? calculatedNodeAddress - target.node : Long.MAX_VALUE;
 
         if (relativeTarget > target.node) {
           targetNode = target.node;
@@ -811,7 +811,7 @@ public final class FST<T> implements Accountable {
     fstCompiler.bytes.reverse(startAddress, thisNodeAddress);
     fstCompiler.nodeCount++;
 
-    assert precalculatedNodeAddress == 0 || precalculatedNodeAddress == thisNodeAddress;
+    assert calculatedNodeAddress == 0 || calculatedNodeAddress == thisNodeAddress;
     return thisNodeAddress;
   }
 
@@ -1033,7 +1033,7 @@ public final class FST<T> implements Accountable {
     assert bytePos - dest == numPresenceBytes;
   }
 
-  private long precalculateNodeAddress(
+  private long calculateNodeAddress(
       FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn) {
     T NO_OUTPUT = outputs.getNoOutput();
 
