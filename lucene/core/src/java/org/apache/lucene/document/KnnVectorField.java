@@ -37,18 +37,18 @@ import org.apache.lucene.util.VectorUtil;
  */
 public class KnnVectorField extends Field {
 
-  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction, boolean multiValued) {
+  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
-    return createType(v.length, VectorEncoding.FLOAT32, similarityFunction, multiValued);
+    return createType(v.length, VectorEncoding.FLOAT32, similarityFunction, false);
   }
 
-  private static FieldType createType(BytesRef v, VectorSimilarityFunction similarityFunction, boolean multiValued) {
+  private static FieldType createType(BytesRef v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
-    return createType(v.length, VectorEncoding.BYTE, similarityFunction, multiValued);
+    return createType(v.length, VectorEncoding.BYTE, similarityFunction, false);
   }
 
   private static FieldType createType(
@@ -77,8 +77,8 @@ public class KnnVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, VectorSimilarityFunction similarityFunction, boolean multiValued) {
-    return createFieldType(dimension, VectorEncoding.FLOAT32, similarityFunction, multiValued);
+      int dimension, VectorSimilarityFunction similarityFunction) {
+    return createFieldType(dimension, VectorEncoding.FLOAT32, similarityFunction, false);
   }
 
   /**
@@ -97,25 +97,6 @@ public class KnnVectorField extends Field {
     return type;
   }
   
-  
-
-  /**
-   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
-   * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some strategies (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to be
-   * unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
-   *
-   * @param name field name
-   * @param vector value
-   * @param similarityFunction a function defining vector proximity.
-   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
-   *     dimension &gt; 1024.
-   */
-  public KnnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction, boolean multiValued) {
-    super(name, createType(vector, similarityFunction, multiValued));
-    fieldsData = vector;
-  }
-  
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function. Note that
@@ -129,24 +110,7 @@ public class KnnVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    super(name, createType(vector, similarityFunction, false));
-    fieldsData = vector;
-  }
-
-  /**
-   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
-   * no value. Vectors of a single field share the same dimension and similarity function. Note that
-   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
-   * be constant-length.
-   *
-   * @param name field name
-   * @param vector value
-   * @param similarityFunction a function defining vector proximity.
-   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
-   *     dimension &gt; 1024.
-   */
-  public KnnVectorField(String name, BytesRef vector, VectorSimilarityFunction similarityFunction, boolean multiValued) {
-    super(name, createType(vector, similarityFunction, multiValued));
+    super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }
 
@@ -163,7 +127,41 @@ public class KnnVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnVectorField(String name, BytesRef vector, VectorSimilarityFunction similarityFunction) {
-    super(name, createType(vector, similarityFunction, false));
+    super(name, createType(vector, similarityFunction));
+    fieldsData = vector;
+  }
+
+  /**
+   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
+   * no value. Vectors of a single field share the same dimension and similarity function. Note that
+   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
+   * be unit-length, which can be enforced using {@link VectorUtil#l2normalize(float[])}.
+   *
+   * @param name field name
+   * @param vector value
+   * @param similarityFunction a function defining vector proximity.
+   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
+   *     dimension &gt; 1024.
+   */
+  public KnnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction, boolean multiValued) {
+    super(name, createType(vector.length,VectorEncoding.FLOAT32, similarityFunction,multiValued));
+    fieldsData = vector;
+  }
+
+  /**
+   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
+   * no value. Vectors of a single field share the same dimension and similarity function. Note that
+   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
+   * be constant-length.
+   *
+   * @param name field name
+   * @param vector value
+   * @param similarityFunction a function defining vector proximity.
+   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
+   *     dimension &gt; 1024.
+   */
+  public KnnVectorField(String name, BytesRef vector, VectorSimilarityFunction similarityFunction, boolean multiValued) {
+    super(name, createType(vector.length, VectorEncoding.BYTE, similarityFunction, multiValued));
     fieldsData = vector;
   }
   

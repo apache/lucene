@@ -288,7 +288,7 @@ public class TestHnswGraph extends LuceneTestCase {
             similarityFunction,
             hnsw,
             null,
-            Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+            Integer.MAX_VALUE);
 
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
@@ -330,7 +330,7 @@ public class TestHnswGraph extends LuceneTestCase {
             similarityFunction,
             hnsw,
             acceptOrds,
-            Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+            Integer.MAX_VALUE);
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
@@ -369,7 +369,7 @@ public class TestHnswGraph extends LuceneTestCase {
             similarityFunction,
             hnsw,
             acceptOrds,
-            Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+            Integer.MAX_VALUE);
     int[] nodes = nn.nodes();
     assertEquals(numAccepted, nodes.length);
     for (int node : nodes) {
@@ -404,7 +404,7 @@ public class TestHnswGraph extends LuceneTestCase {
             similarityFunction,
             hnsw,
             acceptOrds,
-            Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+            Integer.MAX_VALUE);
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
@@ -438,7 +438,7 @@ public class TestHnswGraph extends LuceneTestCase {
             similarityFunction,
             hnsw,
             createRandomAcceptOrds(0, vectors.size),
-            visitedLimit, HnswGraphSearcher.Multivalued.NONE);
+            visitedLimit);
     assertTrue(nn.incomplete());
     // The visited count shouldn't exceed the limit
     assertTrue(nn.visitedCount() <= visitedLimit);
@@ -670,8 +670,7 @@ public class TestHnswGraph extends LuceneTestCase {
               similarityFunction,
               hnsw,
               acceptOrds,
-              Integer.MAX_VALUE,
-              HnswGraphSearcher.Multivalued.NONE);
+              Integer.MAX_VALUE);
       while (actual.size() > topK) {
         actual.pop();
       }
@@ -679,9 +678,9 @@ public class TestHnswGraph extends LuceneTestCase {
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
           if (vectorEncoding == VectorEncoding.BYTE) {
-            expected.add(j, similarityFunction.compare(bQuery, vectors.binaryValue(j)), HnswGraphSearcher.Multivalued.NONE);
+            expected.add(j, similarityFunction.compare(bQuery, vectors.binaryValue(j)));
           } else {
-            expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)), HnswGraphSearcher.Multivalued.NONE);
+            expected.add(j, similarityFunction.compare(query, vectors.vectorValue(j)));
           }
           if (expected.size() > topK) {
             expected.pop();

@@ -119,7 +119,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
           @Override
           public TopDocs search(
-              String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+                  String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
             throw new UnsupportedOperationException();
           }
 

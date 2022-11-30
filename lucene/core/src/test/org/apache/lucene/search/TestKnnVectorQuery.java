@@ -54,19 +54,6 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-
-import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.TestVectorUtil.randomVector;
-
 /** TestKnnVectorQuery tests KnnVectorQuery. */
 public class TestKnnVectorQuery extends LuceneTestCase {
 
@@ -123,7 +110,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     float[][] doc3Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 300,1}};
     
     try (Directory indexStore =
-                 getMultiValuedIndexStore("vector3D", doc1Vectors,doc2Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors,doc3Vectors);
+                 getMultiValuedIndexStore("vector3D", doc1Vectors,doc2Vectors,doc3Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       KnnVectorQuery kvq = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, null, HnswGraphSearcher.Multivalued.SUM);

@@ -21,7 +21,6 @@ import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import java.io.IOException;
 
 class MockVectorValues extends VectorValues implements RandomAccessVectorValues {
   private final float[] scratch;

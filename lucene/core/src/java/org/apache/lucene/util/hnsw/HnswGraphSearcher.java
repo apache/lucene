@@ -107,6 +107,34 @@ public class HnswGraphSearcher<T> {
    * @return a priority queue holding the closest neighbors found
    */
   public static NeighborQueue search(
+          float[] query,
+          int topK,
+          RandomAccessVectorValues vectors,
+          VectorEncoding vectorEncoding,
+          VectorSimilarityFunction similarityFunction,
+          HnswGraph graph,
+          Bits acceptOrds,
+          int visitedLimit)
+          throws IOException {
+    return search(query, topK, vectors, vectorEncoding, similarityFunction, graph, acceptOrds, visitedLimit,Multivalued.NONE);
+  }
+  
+  /**
+   * Searches HNSW graph for the nearest neighbors of a query vector.
+   *
+   * @param query search query vector
+   * @param topK the number of nodes to be returned
+   * @param vectors the vector values
+   * @param similarityFunction the similarity function to compare vectors
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @param strategy stragey to use for multi valued fields search
+   * @return a priority queue holding the closest neighbors found
+   */
+  public static NeighborQueue search(
       float[] query,
       int topK,
       RandomAccessVectorValues vectors,
