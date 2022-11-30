@@ -89,8 +89,9 @@ public class PassageSelector {
     }
 
     // Best passages so far.
+    int pqSize = Math.max(markers.size(), maxPassages);
     PriorityQueue<Passage> pq =
-        new PriorityQueue<>(maxPassages) {
+        new PriorityQueue<>(pqSize) {
           @Override
           protected boolean lessThan(Passage a, Passage b) {
             return passageScorer.compare(a, b) < 0;
@@ -215,6 +216,7 @@ public class PassageSelector {
     }
 
     // Remove nullified slots.
+    last = Math.min(last, maxPassages);
     if (passages.length != last) {
       passages = ArrayUtil.copyOfSubArray(passages, 0, last);
     }
