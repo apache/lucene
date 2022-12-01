@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +31,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.Version;
@@ -184,10 +184,10 @@ public final class StandardDirectoryReader extends DirectoryReader {
 
     // we put the old SegmentReaders in a map, that allows us
     // to lookup a reader using its segment name
-    final Map<String, Integer> segmentReaders =
-        (oldReaders == null ? Collections.emptyMap() : new HashMap<>(oldReaders.size()));
+    Map<String, Integer> segmentReaders = Collections.emptyMap();
 
     if (oldReaders != null) {
+      segmentReaders = CollectionUtil.newHashMap(oldReaders.size());
       // create a Map SegmentName->SegmentReader
       for (int i = 0, c = oldReaders.size(); i < c; i++) {
         final SegmentReader sr = (SegmentReader) oldReaders.get(i);

@@ -179,6 +179,55 @@ public class XYZBounds implements Bounds {
   // Modification methods
 
   /**
+   * Check if another XYZBounds object overlaps this one.
+   *
+   * @param bounds is the other bounds object.
+   * @return true if there is overlap.
+   */
+  public boolean overlaps(final XYZBounds bounds) {
+    // Overlap occurs when any one corner is inside the other bounds
+    // object, and visa versa
+    return isCornerInside(this, bounds) || isCornerInside(bounds, this);
+  }
+
+  private static boolean isCornerInside(final XYZBounds one, final XYZBounds other) {
+    if (one.minX == null
+        || one.maxX == null
+        || one.minY == null
+        || one.maxY == null
+        || one.minZ == null
+        || one.maxZ == null) {
+      return false;
+    }
+    if (other.minX == null
+        || other.maxX == null
+        || other.minY == null
+        || other.maxY == null
+        || other.minZ == null
+        || other.maxZ == null) {
+      return false;
+    }
+    return isPointInside(other, one.minX, one.minY, one.minZ)
+        || isPointInside(other, one.maxX, one.minY, one.minZ)
+        || isPointInside(other, one.minX, one.maxY, one.minZ)
+        || isPointInside(other, one.maxX, one.maxY, one.minZ)
+        || isPointInside(other, one.minX, one.minY, one.maxZ)
+        || isPointInside(other, one.maxX, one.minY, one.maxZ)
+        || isPointInside(other, one.minX, one.maxY, one.maxZ)
+        || isPointInside(other, one.maxX, one.maxY, one.maxZ);
+  }
+
+  private static boolean isPointInside(
+      final XYZBounds other, final double x, final double y, final double z) {
+    return other.minX <= x
+        && other.maxX >= x
+        && other.minY <= y
+        && other.maxY >= y
+        && other.minZ <= z
+        && other.maxZ >= z;
+  }
+
+  /**
    * Add a fully-formed XYZBounds to the current one.
    *
    * @param bounds is the bounds object to modify

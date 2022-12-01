@@ -1931,7 +1931,7 @@ public class TestJoinUtil extends LuceneTestCase {
     document.add(new IntPoint(fieldName + "INT", linkInt));
     document.add(new FloatPoint(fieldName + "FLOAT", linkInt));
 
-    final long linkLong = linkInt << 32 | linkInt;
+    final long linkLong = (long) linkInt << 32 | linkInt;
     document.add(new LongPoint(fieldName + "LONG", linkLong));
     document.add(new DoublePoint(fieldName + "DOUBLE", linkLong));
 
