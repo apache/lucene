@@ -1,0 +1,5 @@
+{
+    "lucene/test-framework/src/java/org/apache/lucene/tests/analysis/standard/EmojiTokenizationTestUnicode_12_1.java": "22e03ada47168b0986220c57260cfaf8e6e12e16",
+    "lucene/test-framework/src/java/org/apache/lucene/tests/analysis/standard/generateEmojiTokenizationTest.pl": "a21d8aea5d2c30fb47b2bf9b24e20ddf605de46d",
+    "property:unicodeVersion": "12.1"
+}

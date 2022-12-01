@@ -92,6 +92,7 @@ configure([
         project(":lucene:core"),
         project(":lucene:queryparser"),
         project(":lucene:expressions"),
+        project(":lucene:test-framework"),
 ]) {
     task regenerate() {
       description "Rerun any code or static data generation tasks."

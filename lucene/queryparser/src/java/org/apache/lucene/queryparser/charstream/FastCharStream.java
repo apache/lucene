@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.queryparser.charstream;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.UncheckedIOException;
 
 /**
  * An efficient implementation of JavaCC's CharStream interface.

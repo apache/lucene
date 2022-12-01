@@ -87,6 +87,9 @@ set CLASSPATH=%GRADLE_WRAPPER_JAR%
 SET GRADLE_DAEMON_CTRL=
 IF NOT EXIST "%DIRNAME%\gradle.properties" SET GRADLE_DAEMON_CTRL=--no-daemon
 
+@rem Prevent jgit from forking/searching git.exe
+SET GIT_CONFIG_NOSYSTEM=1
+
 @rem Execute Gradle
 "%JAVA_EXE%" %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %GRADLE_DAEMON_CTRL% %*
 

@@ -19,14 +19,15 @@ package org.apache.lucene.luke.app.desktop;
 
 import static org.apache.lucene.luke.app.desktop.util.ExceptionHandler.handle;
 
-import java.awt.*;
+import java.awt.GraphicsEnvironment;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.*;
+import javax.swing.JFrame;
+import javax.swing.UIManager;
 import org.apache.lucene.luke.app.desktop.components.LukeWindowProvider;
 import org.apache.lucene.luke.app.desktop.components.dialog.menubar.OpenIndexDialogFactory;
 import org.apache.lucene.luke.app.desktop.util.DialogOpener;

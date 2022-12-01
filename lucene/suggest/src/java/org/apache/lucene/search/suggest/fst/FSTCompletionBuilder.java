@@ -24,7 +24,11 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.fst.*;
+import org.apache.lucene.util.fst.FST;
+import org.apache.lucene.util.fst.FSTCompiler;
+import org.apache.lucene.util.fst.NoOutputs;
+import org.apache.lucene.util.fst.Outputs;
+import org.apache.lucene.util.fst.Util;
 
 /**
  * Finite state automata based implementation of "autocomplete" functionality.

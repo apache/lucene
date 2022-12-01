@@ -29,6 +29,7 @@ class BinaryRangeDocValues extends BinaryDocValues {
   private int docID = -1;
 
   BinaryRangeDocValues(BinaryDocValues in, int numDims, int numBytesPerDimension) {
+    assert in != null;
     this.in = in;
     this.numBytesPerDimension = numBytesPerDimension;
     this.numDims = numDims;

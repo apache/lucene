@@ -37,6 +37,10 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestSpellChecking extends LuceneTestCase {
 
+  public void testEmpty() throws Exception {
+    doTest("empty");
+  }
+
   public void testBase() throws Exception {
     doTest("base");
   }

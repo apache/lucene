@@ -180,11 +180,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
 
     @Override
-    public long cost() {
-      return size;
-    }
-
-    @Override
     public int dimension() {
       return subs.get(0).values.dimension();
     }
