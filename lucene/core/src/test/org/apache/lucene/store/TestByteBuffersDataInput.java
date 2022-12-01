@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.store;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -25,6 +26,7 @@ import com.carrotsearch.randomizedtesting.annotations.Timeout;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -284,5 +286,69 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
         assertEquals(expected, slice.readByte(i));
       }
     }
+  }
+
+  @Test
+  public void testFloatArrayRead() throws IOException {
+    ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
+
+    byte[] data = new byte[40];
+    for (byte i = 0; i < data.length; i++) {
+      data[i] = i;
+    }
+    dst.writeBytes(data);
+
+    ByteBuffersDataInput input = dst.toDataInput();
+
+    // test each alignment
+    for (int i = 0; i < Float.BYTES; i++) {
+      input.seek(i);
+      float[] expected = toFloat(data, i);
+      float[] actual = new float[expected.length];
+      input.readFloats(actual, 0, actual.length);
+
+      assertArrayEquals("Alignment " + i + " incorrect", expected, actual, 0f);
+    }
+  }
+
+  private static float[] toFloat(byte[] data, int start) {
+    float[] ls = new float[(data.length - start) / Float.BYTES];
+    ByteBuffer read = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).position(start);
+    for (int li = 0; li < ls.length; li++) {
+      ls[li] = read.getFloat();
+    }
+    return ls;
+  }
+
+  @Test
+  public void testLongArrayRead() throws IOException {
+    ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
+
+    byte[] data = new byte[40];
+    for (byte i = 0; i < data.length; i++) {
+      data[i] = i;
+    }
+    dst.writeBytes(data);
+
+    ByteBuffersDataInput input = dst.toDataInput();
+
+    // test each alignment
+    for (int i = 0; i < Long.BYTES; i++) {
+      input.seek(i);
+      long[] expected = toLongs(data, i);
+      long[] actual = new long[expected.length];
+      input.readLongs(actual, 0, actual.length);
+
+      assertArrayEquals("Alignment " + i + " incorrect", expected, actual);
+    }
+  }
+
+  private static long[] toLongs(byte[] data, int start) {
+    long[] ls = new long[(data.length - start) / Long.BYTES];
+    ByteBuffer read = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).position(start);
+    for (int li = 0; li < ls.length; li++) {
+      ls[li] = read.getLong();
+    }
+    return ls;
   }
 }

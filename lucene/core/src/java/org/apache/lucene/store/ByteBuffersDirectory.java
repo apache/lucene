@@ -108,7 +108,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
                 new ByteBufferGuard("none", (String resourceDescription, ByteBuffer b) -> {});
             return ByteBufferIndexInput.newInstance(
                 inputName,
-                bufferList.toArray(new ByteBuffer[bufferList.size()]),
+                bufferList.toArray(ByteBuffer[]::new),
                 output.size(),
                 chunkSizePower,
                 guard);

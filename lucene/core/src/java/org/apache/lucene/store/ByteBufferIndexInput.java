@@ -24,6 +24,8 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
+import java.util.function.Function;
+import java.util.function.IntFunction;
 
 /**
  * Base IndexInput implementation that uses an array of ByteBuffers to represent a file.
@@ -151,38 +153,45 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     }
   }
 
+  private <T> T[] createViewBuffers(
+      int size,
+      IntFunction<T[]> arrayFactory,
+      Function<ByteBuffer, T> toViewBuffer,
+      T emptyBuffer) {
+    // ByteBuffer#getX could work but it has some per-long overhead and there
+    // is no ByteBuffer#getXs to read multiple values at once. So we use the
+    // below trick in order to be able to leverage XBuffer#get(value[]) to
+    // read multiple values at once with as little overhead as possible.
+    T[] buffers = arrayFactory.apply(size);
+    ByteBuffer base = curBuf.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+    for (int i = 0; i < size; ++i) {
+      // Compute a view for each possible alignment. We cache these views
+      // because #asXBuffer() has some cost that we don't want to pay on
+      // each invocation of #readXs.
+      if (i < curBuf.limit()) {
+        buffers[i] = toViewBuffer.apply(base.position(i));
+      } else {
+        buffers[i] = emptyBuffer;
+      }
+    }
+    return buffers;
+  }
+
   @Override
   public void readLongs(long[] dst, int offset, int length) throws IOException {
-    // ByteBuffer#getLong could work but it has some per-long overhead and there
-    // is no ByteBuffer#getLongs to read multiple longs at once. So we use the
-    // below trick in order to be able to leverage LongBuffer#get(long[]) to
-    // read multiple longs at once with as little overhead as possible.
     if (curLongBufferViews == null) {
-      // readLELongs is only used for postings today, so we compute the long
-      // views lazily so that other data-structures don't have to pay for the
-      // associated initialization/memory overhead.
-      curLongBufferViews = new LongBuffer[Long.BYTES];
-      for (int i = 0; i < Long.BYTES; ++i) {
-        // Compute a view for each possible alignment. We cache these views
-        // because #asLongBuffer() has some cost that we don't want to pay on
-        // each invocation of #readLELongs.
-        if (i < curBuf.limit()) {
-          curLongBufferViews[i] =
-              curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asLongBuffer();
-        } else {
-          curLongBufferViews[i] = EMPTY_LONGBUFFER;
-        }
-      }
+      curLongBufferViews =
+          createViewBuffers(
+              Long.BYTES, LongBuffer[]::new, ByteBuffer::asLongBuffer, EMPTY_LONGBUFFER);
     }
     try {
       final int position = curBuf.position();
-      guard.getLongs(
-          curLongBufferViews[position & 0x07].position(position >>> 3), dst, offset, length);
+      guard.getLongs(curLongBufferViews[position & 0x07], position >>> 3, dst, offset, length);
       // if the above call succeeded, then we know the below sum cannot overflow
       curBuf.position(position + (length << 3));
     } catch (
         @SuppressWarnings("unused")
-        BufferUnderflowException e) {
+        IndexOutOfBoundsException e) {
       super.readLongs(dst, offset, length);
     } catch (NullPointerException e) {
       throw alreadyClosed(e);
@@ -191,27 +200,19 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   @Override
   public void readInts(int[] dst, int offset, int length) throws IOException {
-    // See notes about readLongs above
     if (curIntBufferViews == null) {
-      curIntBufferViews = new IntBuffer[Integer.BYTES];
-      for (int i = 0; i < Integer.BYTES; ++i) {
-        if (i < curBuf.limit()) {
-          curIntBufferViews[i] =
-              curBuf.duplicate().position(i).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
-        } else {
-          curIntBufferViews[i] = EMPTY_INTBUFFER;
-        }
-      }
+      curIntBufferViews =
+          createViewBuffers(
+              Integer.BYTES, IntBuffer[]::new, ByteBuffer::asIntBuffer, EMPTY_INTBUFFER);
     }
     try {
       final int position = curBuf.position();
-      guard.getInts(
-          curIntBufferViews[position & 0x03].position(position >>> 2), dst, offset, length);
+      guard.getInts(curIntBufferViews[position & 0x03], position >>> 2, dst, offset, length);
       // if the above call succeeded, then we know the below sum cannot overflow
       curBuf.position(position + (length << 2));
     } catch (
         @SuppressWarnings("unused")
-        BufferUnderflowException e) {
+        IndexOutOfBoundsException e) {
       super.readInts(dst, offset, length);
     } catch (NullPointerException e) {
       throw alreadyClosed(e);
@@ -219,32 +220,21 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   }
 
   @Override
-  public final void readFloats(float[] floats, int offset, int len) throws IOException {
-    // See notes about readLongs above
+  public final void readFloats(float[] floats, int offset, int length) throws IOException {
     if (curFloatBufferViews == null) {
-      curFloatBufferViews = new FloatBuffer[Float.BYTES];
-      for (int i = 0; i < Float.BYTES; ++i) {
-        // Compute a view for each possible alignment.
-        if (i < curBuf.limit()) {
-          ByteBuffer dup = curBuf.duplicate().order(ByteOrder.LITTLE_ENDIAN);
-          dup.position(i);
-          curFloatBufferViews[i] = dup.asFloatBuffer();
-        } else {
-          curFloatBufferViews[i] = EMPTY_FLOATBUFFER;
-        }
-      }
+      curFloatBufferViews =
+          createViewBuffers(
+              Float.BYTES, FloatBuffer[]::new, ByteBuffer::asFloatBuffer, EMPTY_FLOATBUFFER);
     }
     try {
       final int position = curBuf.position();
-      FloatBuffer floatBuffer = curFloatBufferViews[position & 0x03];
-      floatBuffer.position(position >>> 2);
-      guard.getFloats(floatBuffer, floats, offset, len);
+      guard.getFloats(curFloatBufferViews[position & 0x03], position >>> 2, floats, offset, length);
       // if the above call succeeded, then we know the below sum cannot overflow
-      curBuf.position(position + (len << 2));
+      curBuf.position(position + (length << 2));
     } catch (
         @SuppressWarnings("unused")
-        BufferUnderflowException e) {
-      super.readFloats(floats, offset, len);
+        IndexOutOfBoundsException e) {
+      super.readFloats(floats, offset, length);
     } catch (NullPointerException e) {
       throw alreadyClosed(e);
     }
