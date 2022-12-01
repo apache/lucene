@@ -104,6 +104,18 @@ public class TestPassageSelector extends LuceneTestCase {
   }
 
   @Test
+  public void overlappingResultsDontPushOutLowerScoringResults() {
+    String value =
+        "a fair amount of space and then two matches here and then two big long spaces for matches";
+    checkPassages(
+        "...and then >two< >matches<...|...and then >two< big lon...",
+        value,
+        20,
+        2,
+        ranges(new OffsetRange(32, 35), new OffsetRange(36, 43), new OffsetRange(58, 61)));
+  }
+
+  @Test
   public void highlightLargerThanWindowWithSubranges() {
     String value = "0123456789a";
     checkPassages(
