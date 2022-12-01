@@ -163,6 +163,10 @@ Bug Fixes
 * GITHUB#11950: Fix NPE in BinaryRangeFieldRangeQuery variants when the queried field doesn't exist
   in a segment or is of the wrong type. (Greg Miller)
 
+* GITHUB#11990: PassageSelector now has a larger minimum size for its priority queue,
+  so that subsequent passage merges don't mean that we return too few passages in
+  total. (Alan Woodward, Dawid Weiss)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
