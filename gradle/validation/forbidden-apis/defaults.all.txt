@@ -58,3 +58,14 @@ java.io.ObjectOutputStream
 @defaultMessage Don't set a dictionary on a Deflater using a method that takes an offset or ByteBuffer (JDK-8252739)
 java.util.zip.Deflater#setDictionary(byte[],int,int)
 java.util.zip.Deflater#setDictionary(java.nio.ByteBuffer)
+
+@defaultMessage JNDI is RCE-in-a-box, avoid it.
+javax.naming.Context
+javax.management.remote.JMXConnectorFactory
+javax.management.remote.rmi.RMIConnector
+javax.naming.directory.InitialDirContext
+javax.naming.InitialContext
+javax.naming.spi.ContinuationContext
+javax.naming.spi.ContinuationDirContext
+javax.sql.rowset.spi.ProviderImpl
+javax.sql.rowset.spi.SyncFactory
