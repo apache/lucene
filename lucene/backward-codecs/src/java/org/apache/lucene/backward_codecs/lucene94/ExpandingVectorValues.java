@@ -23,7 +23,7 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BytesRef;
 
 /** reads from byte-encoded data */
-public class ExpandingVectorValues extends FilterVectorValues {
+class ExpandingVectorValues extends FilterVectorValues {
 
   private final float[] value;
 
