@@ -377,7 +377,7 @@ allprojects { prj ->
             // '-Xep:LiteEnumValueOf:OFF', // we don't use protobuf
             // '-Xep:LiteProtoToString:OFF', // we don't use protobuf
             // '-Xep:LockNotBeforeTry:OFF', // TODO: there are problems
-            // '-Xep:LogicalAssignment:OFF', // TODO: there are problems
+            '-Xep:LogicalAssignment:WARN',
             // '-Xep:LongDoubleConversion:OFF', // TODO: there are problems
             '-Xep:LongFloatConversion:WARN',
             '-Xep:LoopOverCharArray:WARN',
