@@ -42,6 +42,10 @@ API Changes
 
 * GITHUB#11962: VectorValues#cost() now delegates to VectorValues#size().
   (Adrien Grand)
+  
+* GITHUB#11984: Improved TimeLimitBulkScorer to check the timeout at exponantial rate.
+  (Costin Leau)
+
 
 New Features
 ---------------------
