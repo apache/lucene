@@ -54,7 +54,14 @@ public class WrapperDownloader {
       new WrapperDownloader().run(Paths.get(args[0]));
     } catch (Exception e) {
       System.err.println("ERROR: " + e.getMessage());
-      System.exit(1);
+      System.exit(3);
+    }
+  }
+
+  public static void checkVersion() {
+    int major = Runtime.getRuntime().version().feature();
+    if (major < 11 || major > 19) {
+      throw new IllegalStateException("java version must be between 11 and 19, your version: " + major);
     }
   }
 
