@@ -17,15 +17,20 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.function.BiFunction;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
+import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatDocValuesField;
+import org.apache.lucene.document.FloatField;
 import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -34,6 +39,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -204,19 +210,28 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type int */
   public void testInt() throws IOException {
+    doTestIntSorting(NumericDocValuesField::new);
+  }
+
+  public void testIntField() throws IOException {
+    doTestIntSorting((name, value) -> new IntField(name, value, false));
+  }
+
+  private void doTestIntSorting(BiFunction<String, Integer, IndexableField> intFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new NumericDocValuesField("value", 300000));
-    doc.add(newStringField("value", "300000", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", 300000));
+    doc.add(newStringField("value", "300000", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", -1));
-    doc.add(newStringField("value", "-1", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", -1));
+    doc.add(newStringField("value", "-1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", 4));
-    doc.add(newStringField("value", "4", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", 4));
+    doc.add(newStringField("value", "4", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -237,19 +252,28 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type int in reverse */
   public void testIntReverse() throws IOException {
+    doTestIntReverse(NumericDocValuesField::new);
+  }
+
+  public void testIntFieldReverse() throws IOException {
+    doTestIntReverse((name, value) -> new IntField(name, value, false));
+  }
+
+  private void doTestIntReverse(BiFunction<String, Integer, IndexableField> intFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new NumericDocValuesField("value", 300000));
-    doc.add(newStringField("value", "300000", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", 300000));
+    doc.add(newStringField("value", "300000", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", -1));
-    doc.add(newStringField("value", "-1", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", -1));
+    doc.add(newStringField("value", "-1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", 4));
-    doc.add(newStringField("value", "4", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", 4));
+    doc.add(newStringField("value", "4", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -270,17 +294,26 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type int with a missing value */
   public void testIntMissing() throws IOException {
+    doTestIntMissing(NumericDocValuesField::new);
+  }
+
+  public void testIntFieldMissing() throws IOException {
+    doTestIntMissing((name, value) -> new IntField(name, value, false));
+  }
+
+  private void doTestIntMissing(BiFunction<String, Integer, IndexableField> intFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", -1));
-    doc.add(newStringField("value", "-1", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", -1));
+    doc.add(newStringField("value", "-1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", 4));
-    doc.add(newStringField("value", "4", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", 4));
+    doc.add(newStringField("value", "4", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -303,17 +336,26 @@ public class TestSort extends LuceneTestCase {
    * Tests sorting on type int, specifying the missing value should be treated as Integer.MAX_VALUE
    */
   public void testIntMissingLast() throws IOException {
+    doTestIntMissingLast(NumericDocValuesField::new);
+  }
+
+  public void testIntFieldMissingLast() throws IOException {
+    doTestIntMissingLast((name, value) -> new IntField(name, value, false));
+  }
+
+  private void doTestIntMissingLast(BiFunction<String, Integer, IndexableField> intFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", -1));
-    doc.add(newStringField("value", "-1", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", -1));
+    doc.add(newStringField("value", "-1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", 4));
-    doc.add(newStringField("value", "4", Field.Store.YES));
+    doc.add(intFieldSupplier.apply("value", 4));
+    doc.add(newStringField("value", "4", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -336,19 +378,28 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type long */
   public void testLong() throws IOException {
+    doTestLongSorting(NumericDocValuesField::new);
+  }
+
+  public void testLongField() throws IOException {
+    doTestLongSorting((name, value) -> new LongField(name, value, false));
+  }
+
+  private void doTestLongSorting(BiFunction<String, Long, IndexableField> longFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new NumericDocValuesField("value", 3000000000L));
-    doc.add(newStringField("value", "3000000000", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", 3000000000L));
+    doc.add(newStringField("value", "3000000000", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", -1));
-    doc.add(newStringField("value", "-1", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", -1L));
+    doc.add(newStringField("value", "-1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", 4));
-    doc.add(newStringField("value", "4", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", 4L));
+    doc.add(newStringField("value", "4", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -369,19 +420,28 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type long in reverse */
   public void testLongReverse() throws IOException {
+    doTestLongReverseSorting(NumericDocValuesField::new);
+  }
+
+  public void testLongFieldReverse() throws IOException {
+    doTestLongReverseSorting((name, value) -> new LongField(name, value, false));
+  }
+
+  private void doTestLongReverseSorting(BiFunction<String, Long, IndexableField> longFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new NumericDocValuesField("value", 3000000000L));
-    doc.add(newStringField("value", "3000000000", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", 3000000000L));
+    doc.add(newStringField("value", "3000000000", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", -1));
-    doc.add(newStringField("value", "-1", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", -1L));
+    doc.add(newStringField("value", "-1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", 4));
-    doc.add(newStringField("value", "4", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", 4L));
+    doc.add(newStringField("value", "4", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -402,17 +462,26 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type long with a missing value */
   public void testLongMissing() throws IOException {
+    doTestLongSortWithMissingFields(NumericDocValuesField::new);
+  }
+
+  public void testLongFieldMissing() throws IOException {
+    doTestLongSortWithMissingFields((name, value) -> new LongField(name, value, false));
+  }
+
+  private void doTestLongSortWithMissingFields(
+      BiFunction<String, Long, IndexableField> longFieldSupplier) throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", -1));
-    doc.add(newStringField("value", "-1", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", -1L));
+    doc.add(newStringField("value", "-1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", 4));
-    doc.add(newStringField("value", "4", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", 4L));
+    doc.add(newStringField("value", "4", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -435,17 +504,26 @@ public class TestSort extends LuceneTestCase {
    * Tests sorting on type long, specifying the missing value should be treated as Long.MAX_VALUE
    */
   public void testLongMissingLast() throws IOException {
+    doTestLongMissingLast(NumericDocValuesField::new);
+  }
+
+  public void testLongFieldMissingLast() throws IOException {
+    doTestLongMissingLast((name, value) -> new LongField(name, value, false));
+  }
+
+  private void doTestLongMissingLast(BiFunction<String, Long, IndexableField> longFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", -1));
-    doc.add(newStringField("value", "-1", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", -1L));
+    doc.add(newStringField("value", "-1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new NumericDocValuesField("value", 4));
-    doc.add(newStringField("value", "4", Field.Store.YES));
+    doc.add(longFieldSupplier.apply("value", 4L));
+    doc.add(newStringField("value", "4", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -468,19 +546,28 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type float */
   public void testFloat() throws IOException {
+    doTestFloatSorting(FloatDocValuesField::new);
+  }
+
+  public void testFloatFields() throws IOException {
+    doTestFloatSorting((name, value) -> new FloatField(name, value, false));
+  }
+
+  private void doTestFloatSorting(BiFunction<String, Float, IndexableField> floatFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new FloatDocValuesField("value", 30.1F));
-    doc.add(newStringField("value", "30.1", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", 30.1F));
+    doc.add(newStringField("value", "30.1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new FloatDocValuesField("value", -1.3F));
-    doc.add(newStringField("value", "-1.3", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", -1.3F));
+    doc.add(newStringField("value", "-1.3", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new FloatDocValuesField("value", 4.2F));
-    doc.add(newStringField("value", "4.2", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", 4.2F));
+    doc.add(newStringField("value", "4.2", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -501,19 +588,28 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type float in reverse */
   public void testFloatReverse() throws IOException {
+    doTestFloatReverse(FloatDocValuesField::new);
+  }
+
+  public void testFloatFieldReverse() throws IOException {
+    doTestFloatReverse((name, value) -> new FloatField(name, value, false));
+  }
+
+  private void doTestFloatReverse(BiFunction<String, Float, IndexableField> floatFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new FloatDocValuesField("value", 30.1F));
-    doc.add(newStringField("value", "30.1", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", 30.1F));
+    doc.add(newStringField("value", "30.1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new FloatDocValuesField("value", -1.3F));
-    doc.add(newStringField("value", "-1.3", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", -1.3F));
+    doc.add(newStringField("value", "-1.3", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new FloatDocValuesField("value", 4.2F));
-    doc.add(newStringField("value", "4.2", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", 4.2F));
+    doc.add(newStringField("value", "4.2", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -534,17 +630,26 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type float with a missing value */
   public void testFloatMissing() throws IOException {
+    doTestFloatMissing(FloatDocValuesField::new);
+  }
+
+  public void testFloatFieldMissing() throws IOException {
+    doTestFloatMissing((name, value) -> new FloatField(name, value, false));
+  }
+
+  private void doTestFloatMissing(BiFunction<String, Float, IndexableField> floatFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new FloatDocValuesField("value", -1.3F));
-    doc.add(newStringField("value", "-1.3", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", -1.3F));
+    doc.add(newStringField("value", "-1.3", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new FloatDocValuesField("value", 4.2F));
-    doc.add(newStringField("value", "4.2", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", 4.2F));
+    doc.add(newStringField("value", "4.2", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -567,17 +672,26 @@ public class TestSort extends LuceneTestCase {
    * Tests sorting on type float, specifying the missing value should be treated as Float.MAX_VALUE
    */
   public void testFloatMissingLast() throws IOException {
+    doTestFloatMissingLast(FloatDocValuesField::new);
+  }
+
+  public void testFloatFieldMissingLast() throws IOException {
+    doTestFloatMissingLast((name, value) -> new FloatField(name, value, false));
+  }
+
+  private void doTestFloatMissingLast(BiFunction<String, Float, IndexableField> floatFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new FloatDocValuesField("value", -1.3F));
-    doc.add(newStringField("value", "-1.3", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", -1.3F));
+    doc.add(newStringField("value", "-1.3", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new FloatDocValuesField("value", 4.2F));
-    doc.add(newStringField("value", "4.2", Field.Store.YES));
+    doc.add(floatFieldSupplier.apply("value", 4.2F));
+    doc.add(newStringField("value", "4.2", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -600,23 +714,32 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type double */
   public void testDouble() throws IOException {
+    doTestDouble(DoubleDocValuesField::new);
+  }
+
+  public void testDoubleField() throws IOException {
+    doTestDouble((name, value) -> new DoubleField(name, value, false));
+  }
+
+  private void doTestDouble(BiFunction<String, Double, IndexableField> doubleFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 30.1));
-    doc.add(newStringField("value", "30.1", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 30.1));
+    doc.add(newStringField("value", "30.1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", -1.3));
-    doc.add(newStringField("value", "-1.3", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", -1.3));
+    doc.add(newStringField("value", "-1.3", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 4.2333333333333));
-    doc.add(newStringField("value", "4.2333333333333", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 4.2333333333333));
+    doc.add(newStringField("value", "4.2333333333333", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 4.2333333333332));
-    doc.add(newStringField("value", "4.2333333333332", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 4.2333333333332));
+    doc.add(newStringField("value", "4.2333333333332", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -638,15 +761,24 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type double with +/- zero */
   public void testDoubleSignedZero() throws IOException {
+    doTestDoubleSignedZero(DoubleDocValuesField::new);
+  }
+
+  public void testDoubleFieldSignedZero() throws IOException {
+    doTestDoubleSignedZero((name, value) -> new DoubleField(name, value, false));
+  }
+
+  private void doTestDoubleSignedZero(
+      BiFunction<String, Double, IndexableField> doubleFieldSupplier) throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new DoubleDocValuesField("value", +0D));
-    doc.add(newStringField("value", "+0", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", +0D));
+    doc.add(newStringField("value", "+0", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", -0D));
-    doc.add(newStringField("value", "-0", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", -0D));
+    doc.add(newStringField("value", "-0", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
     IndexReader ir = writer.getReader();
@@ -667,23 +799,32 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type double in reverse */
   public void testDoubleReverse() throws IOException {
+    doTestDoubleReverse(DoubleDocValuesField::new);
+  }
+
+  public void testDoubleFieldReverse() throws IOException {
+    doTestDoubleReverse((name, value) -> new DoubleField(name, value, false));
+  }
+
+  private void doTestDoubleReverse(BiFunction<String, Double, IndexableField> doubleFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 30.1));
-    doc.add(newStringField("value", "30.1", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 30.1));
+    doc.add(newStringField("value", "30.1", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", -1.3));
-    doc.add(newStringField("value", "-1.3", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", -1.3));
+    doc.add(newStringField("value", "-1.3", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 4.2333333333333));
-    doc.add(newStringField("value", "4.2333333333333", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 4.2333333333333));
+    doc.add(newStringField("value", "4.2333333333333", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 4.2333333333332));
-    doc.add(newStringField("value", "4.2333333333332", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 4.2333333333332));
+    doc.add(newStringField("value", "4.2333333333332", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -705,21 +846,30 @@ public class TestSort extends LuceneTestCase {
 
   /** Tests sorting on type double with a missing value */
   public void testDoubleMissing() throws IOException {
+    doTestDoubleMissing(DoubleDocValuesField::new);
+  }
+
+  public void testDoubleFieldMissing() throws IOException {
+    doTestDoubleMissing((name, value) -> new DoubleField(name, value, false));
+  }
+
+  private void doTestDoubleMissing(BiFunction<String, Double, IndexableField> doubleFieldSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", -1.3));
-    doc.add(newStringField("value", "-1.3", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", -1.3));
+    doc.add(newStringField("value", "-1.3", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 4.2333333333333));
-    doc.add(newStringField("value", "4.2333333333333", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 4.2333333333333));
+    doc.add(newStringField("value", "4.2333333333333", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 4.2333333333332));
-    doc.add(newStringField("value", "4.2333333333332", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 4.2333333333332));
+    doc.add(newStringField("value", "4.2333333333332", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
@@ -744,21 +894,30 @@ public class TestSort extends LuceneTestCase {
    * Double.MAX_VALUE
    */
   public void testDoubleMissingLast() throws IOException {
+    doTestDoubleMissingLast(DoubleDocValuesField::new);
+  }
+
+  public void testDoubleFieldMissingLast() throws IOException {
+    doTestDoubleMissingLast((name, value) -> new DoubleField(name, value, false));
+  }
+
+  private void doTestDoubleMissingLast(
+      BiFunction<String, Double, IndexableField> doubleFieldSupplier) throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", -1.3));
-    doc.add(newStringField("value", "-1.3", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", -1.3));
+    doc.add(newStringField("value", "-1.3", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 4.2333333333333));
-    doc.add(newStringField("value", "4.2333333333333", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 4.2333333333333));
+    doc.add(newStringField("value", "4.2333333333333", Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new DoubleDocValuesField("value", 4.2333333333332));
-    doc.add(newStringField("value", "4.2333333333332", Field.Store.YES));
+    doc.add(doubleFieldSupplier.apply("value", 4.2333333333332));
+    doc.add(newStringField("value", "4.2333333333332", Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
     writer.close();
