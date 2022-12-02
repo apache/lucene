@@ -77,6 +77,7 @@ goto fail
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 "%JAVA_EXE%" %JAVA_OPTS% --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
 IF %ERRORLEVEL% NEQ 0 goto fail
 
 @rem Setup the command line
@@ -94,12 +95,17 @@ SET GIT_CONFIG_NOSYSTEM=1
 
 :end
 @rem End local scope for the variables with windows NT shell
-if "%ERRORLEVEL%"=="0" goto mainEnd
+if %ERRORLEVEL% EQU 0 goto mainEnd
+goto fail
+
+:failWithJvmMessage
+@rem https://github.com/apache/lucene/pull/819
+echo Error: Something went wrong. Make sure you're using Java 11 or later.
 
 :fail
 rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
 rem the _cmd.exe /c_ return code!
-if  not "" == "%GRADLE_EXIT_CONSOLE%" exit 1
+if not "" == "%GRADLE_EXIT_CONSOLE%" exit 1
 exit /b 1
 
 :mainEnd
