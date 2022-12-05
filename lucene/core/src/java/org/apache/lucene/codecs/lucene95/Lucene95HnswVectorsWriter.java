@@ -571,7 +571,9 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
         valueCount += nodesOnLevel.size();
         if (level > 0) {
-          int[] nol = nodesOnLevel.copy();
+          int[] nol = new int[nodesOnLevel.size()];
+          int numberConsumed = nodesOnLevel.consume(nol);
+          assert numberConsumed == nodesOnLevel.size();
           meta.writeVInt(nol.length); // number of nodes on a level
           for (int i = nodesOnLevel.size() - 1; i > 0; --i) {
             nol[i] -= nol[i - 1];
