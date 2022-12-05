@@ -39,6 +39,9 @@ public final class BytesRef implements Comparable<BytesRef>, Cloneable {
   /** The contents of the BytesRef. Should never be {@code null}. */
   public byte[] bytes;
 
+  /** The Buffer for copy bytes and holds the buffer's lifecycle */
+  public byte[] buffer;
+
   /** Offset of first valid byte. */
   public int offset;
 
@@ -53,6 +56,7 @@ public final class BytesRef implements Comparable<BytesRef>, Cloneable {
   /** This instance will directly reference bytes w/o making a copy. bytes should not be null. */
   public BytesRef(byte[] bytes, int offset, int length) {
     this.bytes = bytes;
+    this.buffer = EMPTY_BYTES;
     this.offset = offset;
     this.length = length;
     assert isValid();

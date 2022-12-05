@@ -193,11 +193,7 @@ public abstract class CompressionMode {
 
   private static final class DeflateDecompressor extends Decompressor {
 
-    byte[] compressed;
-
-    DeflateDecompressor() {
-      compressed = new byte[0];
-    }
+    DeflateDecompressor() {}
 
     @Override
     public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
@@ -211,14 +207,14 @@ public abstract class CompressionMode {
       // pad with extra "dummy byte": see javadocs for using Inflater(true)
       // we do it for compliance, but it's unnecessary for years in zlib.
       final int paddedLength = compressedLength + 1;
-      compressed = new byte[paddedLength];
-      in.readBytes(compressed, 0, compressedLength);
-      compressed[compressedLength] = 0; // explicitly set dummy byte to 0
+      bytes.buffer = ArrayUtil.growNoCopy(bytes.buffer, paddedLength);
+      in.readBytes(bytes.buffer, 0, compressedLength);
+      bytes.buffer[compressedLength] = 0; // explicitly set dummy byte to 0
 
       final Inflater decompressor = new Inflater(true);
       try {
         // extra "dummy byte"
-        decompressor.setInput(compressed, 0, paddedLength);
+        decompressor.setInput(bytes.buffer, 0, paddedLength);
 
         bytes.offset = bytes.length = 0;
         bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, originalLength);
@@ -237,7 +233,6 @@ public abstract class CompressionMode {
         }
       } finally {
         decompressor.end();
-        compressed = null;
       }
       if (bytes.length != originalLength) {
         throw new CorruptIndexException(
