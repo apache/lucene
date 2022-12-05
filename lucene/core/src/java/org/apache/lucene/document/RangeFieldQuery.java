@@ -306,7 +306,6 @@ public abstract class RangeFieldQuery extends Query {
         int bytesPerDim,
         int dim,
         ByteArrayComparator comparator);
-
     public boolean matches(
         byte[] queryPackedValue,
         byte[] packedValue,

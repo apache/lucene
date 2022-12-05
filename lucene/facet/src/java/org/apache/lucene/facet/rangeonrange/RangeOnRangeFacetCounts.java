@@ -35,7 +35,8 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
 
   private final Range[] ranges;
   private final String[] labels;
-  private final int numBytesPerRange;
+  private final int numEncodedValueBytes;
+  private final int dims;
   private final int numRanges;
 
   /** Counts, initialized in by subclass. */
@@ -62,11 +63,12 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
     super(fastMatchQuery);
     this.field = field;
     this.ranges = ranges;
-    this.numBytesPerRange = ranges[0].getNumBytesPerRange();
+    this.numEncodedValueBytes = ranges[0].getEncodedValueBytes();
+    this.dims = ranges[0].dims;
     this.labels = getLabels(ranges);
     this.numRanges = ranges.length;
     this.queryType = queryType;
-    this.comparator = ArrayUtil.getUnsignedComparator(this.numBytesPerRange);
+    this.comparator = ArrayUtil.getUnsignedComparator(this.numEncodedValueBytes);
     counts = new int[numRanges];
     count(field, hits.getMatchingDocs());
   }
@@ -82,7 +84,7 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
       FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
       BinaryRangeDocValues binaryRangeDocValues =
           new BinaryRangeDocValues(
-              DocValues.getBinary(hits.context.reader(), field), 1, numBytesPerRange);
+              DocValues.getBinary(hits.context.reader(), field), dims, numEncodedValueBytes);
 
       final DocIdSetIterator it = createIterator(hits);
       if (it == null) {
@@ -92,17 +94,17 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
       totCount += hits.totalHits;
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         if (binaryRangeDocValues.advanceExact(doc)) {
-          boolean validRange = false;
+          boolean hasValidRange = false;
           for (int range = 0; range < numRanges; range++) {
             byte[] encodedRange = getEncodedRange(ranges[range]);
             byte[] packedRange = binaryRangeDocValues.getPackedValue();
             assert encodedRange.length == packedRange.length;
-            if (queryType.matches(encodedRange, packedRange, 1, numBytesPerRange, comparator)) {
+            if (queryType.matches(encodedRange, packedRange, 1, numEncodedValueBytes, comparator)) {
               counts[range]++;
-              validRange = true;
+              hasValidRange = true;
             }
           }
-          if (validRange == false) {
+          if (hasValidRange == false) {
             missingCount++;
           }
         } else {

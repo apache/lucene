@@ -28,11 +28,22 @@ public class DoubleRangeDocValuesFacetField extends DoubleRangeDocValuesField {
    * Constructor for DoubleRangeDocValuesFacetField
    *
    * @param field the field name
+   * @param min the min of the represented multidimensional range
+   * @param max the max of the represented multidimensional range
+   */
+  public DoubleRangeDocValuesFacetField(String field, final double[] min, final double[] max) {
+    super(field, min, max);
+  }
+
+  /**
+   * Constructor for DoubleRangeDocValuesFacetField
+   *
+   * @param field the field name
    * @param min the min of the represented range
    * @param max the max of the represented range
    */
   public DoubleRangeDocValuesFacetField(String field, final double min, final double max) {
-    super(field, new double[] {min}, new double[] {max});
+    this(field, new double[] {min}, new double[] {max});
   }
 
   /**
@@ -42,8 +53,20 @@ public class DoubleRangeDocValuesFacetField extends DoubleRangeDocValuesField {
    * @param max the new max
    */
   public void setDoubleRangeValue(double min, double max) {
-    byte[] encodedValue = new byte[2 * Double.BYTES];
-    DoubleRange.verifyAndEncode(new double[] {min}, new double[] {max}, encodedValue);
+    setDoubleRangeValue(new double[] {min}, new double[] {max});
+  }
+
+  /**
+   * Sets the value of this field to a new multidimensional value
+   *
+   * @param min the new multidimensional min
+   * @param max the new multidimensional max
+   */
+  public void setDoubleRangeValue(double[] min, double[] max) {
+    checkArgs(min, max);
+    assert min.length == this.min.length : "Cannot change number of dimensions";
+    byte[] encodedValue = new byte[2 * min.length * Double.BYTES];
+    DoubleRange.verifyAndEncode(min, max, encodedValue);
     setBytesValue(new BytesRef(encodedValue));
   }
 }

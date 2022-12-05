@@ -16,18 +16,19 @@
  */
 package org.apache.lucene.facet.rangeonrange;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 /** Represents a long range for RangeOnRange faceting */
 public class LongRange extends Range {
   /** Minimum (inclusive). */
-  public final long min;
+  public final long[] min;
 
   /** Maximum (inclusive). */
-  public final long max;
+  public final long[] max;
 
   /**
-   * Represents a long range for RangeOnRange faceting
+   * Represents a single dimensional long range for RangeOnRange faceting
    *
    * @param label the name of the range
    * @param minIn the minimum
@@ -37,7 +38,7 @@ public class LongRange extends Range {
    */
   public LongRange(
       String label, long minIn, boolean minInclusive, long maxIn, boolean maxInclusive) {
-    super(label);
+    super(label, 1);
 
     if (!minInclusive) {
       if (minIn != Long.MAX_VALUE) {
@@ -59,31 +60,65 @@ public class LongRange extends Range {
       failNoMatch();
     }
 
-    this.min = minIn;
-    this.max = maxIn;
+    this.min = new long[] {minIn};
+    this.max = new long[] {maxIn};
+  }
+
+  /**
+   * Represents a multidimensional long range for RangeOnRange faceting
+   *
+   * @param label the name of the range
+   * @param min the minimum
+   * @param max the maximum
+   */
+  public LongRange(String label, long[] min, long[] max) {
+    super(label, min.length);
+    checkArgs(min, max);
+    this.min = min;
+    this.max = max;
   }
 
   @Override
-  public int getNumBytesPerRange() {
+  public int getEncodedValueBytes() {
     return Long.BYTES;
   }
 
   @Override
   public String toString() {
-    return "LongRange(" + label + ": " + min + " to " + max + ")";
+    return "LongRange(label: "
+        + label
+        + ", min: "
+        + Arrays.toString(min)
+        + ", max: "
+        + Arrays.toString(max)
+        + ")";
   }
 
   @Override
-  public boolean equals(Object _that) {
-    if (_that instanceof LongRange == false) {
-      return false;
-    }
-    LongRange that = (LongRange) _that;
-    return that.label.equals(this.label) && that.min == this.min && that.max == this.max;
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    LongRange longRange = (LongRange) o;
+    return Arrays.equals(min, longRange.min) && Arrays.equals(max, longRange.max);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(label, min, max);
+    return Objects.hash(label, Arrays.hashCode(min), Arrays.hashCode(max));
+  }
+
+  private static void checkArgs(final long[] min, final long[] max) {
+    if (min == null || max == null || min.length == 0 || max.length == 0) {
+      throw new IllegalArgumentException("min/max range values cannot be null or empty");
+    }
+    if (min.length != max.length) {
+      throw new IllegalArgumentException("min/max ranges must agree");
+    }
+
+    for (int i = 0; i < min.length; i++) {
+      if (min[i] > max[i]) {
+        throw new IllegalArgumentException("min should be less than max");
+      }
+    }
   }
 }

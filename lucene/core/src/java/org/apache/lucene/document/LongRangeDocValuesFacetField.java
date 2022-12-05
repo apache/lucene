@@ -28,11 +28,22 @@ public class LongRangeDocValuesFacetField extends LongRangeDocValuesField {
    * Constructor for LongRangeDocValuesFacetField
    *
    * @param field the field name
+   * @param min the min of the represented multdimensional range
+   * @param max the max of the represented multidimensional range
+   */
+  public LongRangeDocValuesFacetField(String field, final long[] min, final long[] max) {
+    super(field, min, max);
+  }
+
+  /**
+   * Constructor for LongRangeDocValuesFacetField
+   *
+   * @param field the field name
    * @param min the min of the represented range
    * @param max the max of the represented range
    */
   public LongRangeDocValuesFacetField(String field, final long min, final long max) {
-    super(field, new long[] {min}, new long[] {max});
+    this(field, new long[] {min}, new long[] {max});
   }
 
   /**
@@ -42,8 +53,20 @@ public class LongRangeDocValuesFacetField extends LongRangeDocValuesField {
    * @param max the new max
    */
   public void setLongRangeValue(long min, long max) {
-    byte[] encodedValue = new byte[2 * Long.BYTES];
-    LongRange.verifyAndEncode(new long[] {min}, new long[] {max}, encodedValue);
+    setLongRangeValue(new long[] {min}, new long[] {max});
+  }
+
+  /**
+   * Sets the value of this field to a new multidimensional value
+   *
+   * @param min the new multidimensional min
+   * @param max the new multidimensional max
+   */
+  public void setLongRangeValue(long[] min, long[] max) {
+    checkArgs(min, max);
+    assert min.length == this.min.length : "Cannot change number of dimensions";
+    byte[] encodedValue = new byte[2 * min.length * Long.BYTES];
+    LongRange.verifyAndEncode(min, max, encodedValue);
     setBytesValue(new BytesRef(encodedValue));
   }
 }

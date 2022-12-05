@@ -26,20 +26,24 @@ public abstract class Range {
   /** Label that identifies this range. */
   public final String label;
 
+  /** Number of dims per range */
+  public final int dims;
+
   /** Sole constructor. */
-  protected Range(String label) {
+  protected Range(String label, int dims) {
     if (label == null) {
       throw new NullPointerException("label must not be null");
     }
     this.label = label;
+    this.dims = dims;
   }
 
   /**
-   * Gets the number of bytes it takes to represent a single range
+   * Gets the number of bytes it takes to represent an encoded value in a range
    *
    * @return the number of bytes to represent a single range
    */
-  public abstract int getNumBytesPerRange();
+  public abstract int getEncodedValueBytes();
 
   /** Invoke this for a useless range. */
   protected void failNoMatch() {

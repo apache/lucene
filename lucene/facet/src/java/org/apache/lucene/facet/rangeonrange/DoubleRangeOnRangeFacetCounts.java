@@ -27,7 +27,7 @@ import org.apache.lucene.search.Query;
 public class DoubleRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
 
   /**
-   * Represents counts for double range on range faceting
+   * Represents counts for double range on range faceting (inclusive)
    *
    * @param field document's field
    * @param hits hits we want the counts of
@@ -67,8 +67,8 @@ public class DoubleRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
   @Override
   public byte[] getEncodedRange(Range range) {
     DoubleRange doubleRange = (DoubleRange) range;
-    byte[] result = new byte[2 * Double.BYTES];
-    verifyAndEncode(new double[] {doubleRange.min}, new double[] {doubleRange.max}, result);
+    byte[] result = new byte[2 * Double.BYTES * doubleRange.dims];
+    verifyAndEncode(doubleRange.min, doubleRange.max, result);
     return result;
   }
 }

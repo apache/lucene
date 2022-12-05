@@ -54,7 +54,7 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestRangeOnRangeFacetCounts extends FacetTestCase {
 
-  public void testBasicLong() throws Exception {
+  public void testBasicSingleDimLong() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
@@ -107,7 +107,67 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     d.close();
   }
 
-  public void testLongGetAllDims() throws Exception {
+  public void testBasicMultiDimLong() throws Exception {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    Document doc = new Document();
+    long[] min = longArray(0L, 1L, 2L);
+    long[] max = longArray(10L, 11L, 12L);
+    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", min, max);
+    doc.add(field);
+    for (long l = 0; l < 100; l++) {
+      field.setLongRangeValue(longArray(l, l + 1L, l + 2L), longArray(l + 10L, l + 11L, l + 12L));
+      w.addDocument(doc);
+    }
+
+    // Also add Long.MAX_VALUE
+    long[] infMin = longArray(Long.MAX_VALUE - 12L, Long.MAX_VALUE - 11L, Long.MAX_VALUE - 10L);
+    long[] infMax = longArray(Long.MAX_VALUE - 2L, Long.MAX_VALUE - 1L, Long.MAX_VALUE);
+    field.setLongRangeValue(infMin, infMax);
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    Facets facets =
+        new LongRangeOnRangeFacetCounts(
+            "field",
+            fc,
+            RangeFieldQuery.QueryType.INTERSECTS,
+            new LongRange("less than 10", longArray(0L, 1L, 2L), longArray(8L, 9L, 10L)),
+            new LongRange("a bit over 10", longArray(0L, 1L, 2L), longArray(10L, 11L, 12L)),
+            new LongRange("a bit under 90", longArray(88L, 89L, 90L), longArray(100L, 101L, 102L)),
+            new LongRange("over 90", longArray(90L, 91L, 92L), longArray(100L, 101L, 102L)),
+            new LongRange(
+                "over 1000",
+                longArray(1000L, 1001L, 1002L),
+                longArray(Long.MAX_VALUE - 2L, Long.MAX_VALUE - 1L, Long.MAX_VALUE)));
+
+    FacetResult result = facets.getAllChildren("field");
+    assertEquals(
+        "dim=field path=[] value=34 childCount=5\n  less than 10 (9)\n  a bit over 10 (11)\n  a bit under 90 (22)\n  over 90 (20)\n  over 1000 (1)\n",
+        result.toString());
+
+    result = facets.getTopChildren(4, "field");
+    assertEquals(
+        "dim=field path=[] value=34 childCount=5\n  a bit under 90 (22)\n  over 90 (20)\n  a bit over 10 (11)\n  less than 10 (9)\n",
+        result.toString());
+
+    // test getTopChildren(0, dim)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(0, "field");
+        });
+
+    r.close();
+    d.close();
+  }
+
+  public void testLongGetAllDimsSingleDim() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
@@ -170,7 +230,72 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     d.close();
   }
 
-  public void testUselessRange() {
+  public void testGetAllDimsMultiDim() throws Exception {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    Document doc = new Document();
+    long[] min = longArray(0L, 1L, 2L);
+    long[] max = longArray(10L, 11L, 12L);
+    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", min, max);
+    doc.add(field);
+    for (long l = 0; l < 100; l++) {
+      long[] newMin = longArray(l, l + 1L, l + 2L);
+      long[] newMax = longArray(l + 10L, l + 11L, l + 12L);
+      field.setLongRangeValue(newMin, newMax);
+      w.addDocument(doc);
+    }
+
+    // Also add Long.MAX_VALUE
+    long[] infMin = longArray(Long.MAX_VALUE - 12L, Long.MAX_VALUE - 11L, Long.MAX_VALUE - 10L);
+    long[] infMax = longArray(Long.MAX_VALUE - 2L, Long.MAX_VALUE - 1L, Long.MAX_VALUE);
+    field.setLongRangeValue(infMin, infMax);
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    Facets facets =
+        new LongRangeOnRangeFacetCounts(
+            "field",
+            fc,
+            RangeFieldQuery.QueryType.INTERSECTS,
+            new LongRange("less than 10", longArray(0L, 1L, 2L), longArray(8L, 9L, 10L)),
+            new LongRange("a bit over 10", longArray(0L, 1L, 2L), longArray(10L, 11L, 12L)),
+            new LongRange("a bit under 90", longArray(88L, 89L, 90L), longArray(100L, 101L, 102L)),
+            new LongRange("over 90", longArray(90L, 91L, 92L), longArray(100L, 101L, 102L)),
+            new LongRange(
+                "over 1000",
+                longArray(1000L, 1001L, 1002L),
+                longArray(Long.MAX_VALUE - 2L, Long.MAX_VALUE - 1L, Long.MAX_VALUE)));
+
+    List<FacetResult> result = facets.getAllDims(10);
+    assertEquals(1, result.size());
+    assertEquals(
+        "dim=field path=[] value=34 childCount=5\n  a bit under 90 (22)\n  over 90 (20)\n  a bit over 10 (11)\n  less than 10 (9)\n  over 1000 (1)\n",
+        result.get(0).toString());
+
+    // test getAllDims(1)
+    result = facets.getAllDims(1);
+    assertEquals(1, result.size());
+    assertEquals(
+        "dim=field path=[] value=34 childCount=5\n  a bit under 90 (22)\n",
+        result.get(0).toString());
+
+    // test getTopChildren(0, dim)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(0, "field");
+        });
+
+    r.close();
+    d.close();
+  }
+
+  public void testUselessRangeSingleDim() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -193,7 +318,30 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         });
   }
 
-  public void testLongMinMax() throws Exception {
+  public void testUselessMultiDimRange() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LongRange("useless", longArray(7L, 7L), longArray(6L, 6L));
+        });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LongRange("useless", longArray(7L, 7L), longArray(7L, 6L));
+        });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(6.0, 6.0));
+        });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(7.0, 6.0));
+        });
+  }
+
+  public void testSingleDimLongMinMax() throws Exception {
 
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
@@ -239,7 +387,72 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     d.close();
   }
 
-  public void testOverlappedEndStart() throws Exception {
+  public void testMultiDimLongMinMax() throws Exception {
+
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    Document doc = new Document();
+    LongRangeDocValuesFacetField field =
+        new LongRangeDocValuesFacetField("field", longArray(0L, 1L), longArray(1L, 2L));
+    doc.add(field);
+    field.setLongRangeValue(
+        longArray(Long.MIN_VALUE, Long.MIN_VALUE),
+        longArray(Long.MIN_VALUE + 10L, Long.MIN_VALUE + 11L));
+    w.addDocument(doc);
+    field.setLongRangeValue(longArray(0L, 1L), longArray(10L, 11L));
+    w.addDocument(doc);
+    field.setLongRangeValue(
+        longArray(Long.MAX_VALUE - 11L, Long.MAX_VALUE - 10L),
+        longArray(Long.MAX_VALUE, Long.MAX_VALUE));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    Facets facets =
+        new LongRangeOnRangeFacetCounts(
+            "field",
+            fc,
+            RangeFieldQuery.QueryType.INTERSECTS,
+            new LongRange(
+                "min",
+                longArray(Long.MIN_VALUE, Long.MIN_VALUE),
+                longArray(Long.MIN_VALUE, Long.MIN_VALUE)),
+            new LongRange(
+                "max",
+                longArray(Long.MAX_VALUE, Long.MAX_VALUE),
+                longArray(Long.MAX_VALUE, Long.MAX_VALUE)),
+            new LongRange(
+                "all0",
+                longArray(Long.MIN_VALUE, Long.MIN_VALUE),
+                longArray(Long.MIN_VALUE, Long.MAX_VALUE)),
+            new LongRange(
+                "all1",
+                longArray(Long.MIN_VALUE, Long.MIN_VALUE),
+                longArray(Long.MAX_VALUE, Long.MIN_VALUE)),
+            new LongRange(
+                "all2",
+                longArray(Long.MIN_VALUE, Long.MIN_VALUE),
+                longArray(Long.MAX_VALUE, Long.MAX_VALUE)));
+
+    FacetResult result = facets.getAllChildren("field");
+    assertEquals(
+        "dim=field path=[] value=3 childCount=5\n  min (1)\n  max (1)\n  all0 (1)\n  all1 (1)\n  all2 (3)\n",
+        result.toString());
+
+    result = facets.getTopChildren(4, "field");
+    assertEquals(
+        "dim=field path=[] value=3 childCount=5\n  all2 (3)\n  all0 (1)\n  all1 (1)\n  max (1)\n",
+        result.toString());
+
+    r.close();
+    d.close();
+  }
+
+  public void testSingleDimOverlappedEndStart() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
@@ -282,7 +495,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     d.close();
   }
 
-  public void testMixedRangeAndNonRangeTaxonomy() throws Exception {
+  public void testSingleDimMixedRangeAndNonRangeTaxonomy() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Directory td = newDirectory();
@@ -391,14 +604,131 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     IOUtils.close(tw, tr, td, r, d);
   }
 
-  public void testBasicDouble() throws Exception {
+  public void testMultiDimMixedRangeAndNonRangeTaxonomy() throws Exception {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    Directory td = newDirectory();
+    DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(td, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+
+    for (long l = 0; l < 100; l++) {
+      Document doc = new Document();
+      // For computing range facet counts:
+      doc.add(
+          new LongRangeDocValuesFacetField(
+              "field", longArray(l, l + 1L, l + 2L), longArray(l + 10L, l + 11L, l + 12L)));
+      // For drill down by numeric range:
+      doc.add(
+          new org.apache.lucene.document.LongRange(
+              "field", longArray(l, l + 1L, l + 2L), longArray(l + 10L, l + 11L, l + 12L)));
+
+      if ((l & 3) == 0) {
+        doc.add(new FacetField("dim", "a"));
+      } else {
+        doc.add(new FacetField("dim", "b"));
+      }
+      w.addDocument(config.build(tw, doc));
+    }
+
+    final IndexReader r = w.getReader();
+
+    final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
+
+    IndexSearcher s = newSearcher(r, false, false);
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    s.setTimeout(null);
+
+    if (VERBOSE) {
+      System.out.println("TEST: searcher=" + s);
+    }
+
+    DrillSideways ds =
+        new DrillSideways(s, config, tr) {
+
+          @Override
+          protected Facets buildFacetsResult(
+              FacetsCollector drillDowns,
+              FacetsCollector[] drillSideways,
+              String[] drillSidewaysDims)
+              throws IOException {
+            FacetsCollector dimFC = drillDowns;
+            FacetsCollector fieldFC = drillDowns;
+            if (drillSideways != null) {
+              for (int i = 0; i < drillSideways.length; i++) {
+                String dim = drillSidewaysDims[i];
+                if (dim.equals("field")) {
+                  fieldFC = drillSideways[i];
+                } else {
+                  dimFC = drillSideways[i];
+                }
+              }
+            }
+
+            Map<String, Facets> byDim = new HashMap<>();
+            byDim.put(
+                "field",
+                new LongRangeOnRangeFacetCounts(
+                    "field",
+                    fieldFC,
+                    RangeFieldQuery.QueryType.INTERSECTS,
+                    new LongRange("less than 10", longArray(0L, 1L, 2L), longArray(8L, 9L, 10L)),
+                    new LongRange("a bit over 10", longArray(0L, 1L, 2L), longArray(10L, 11L, 12L)),
+                    new LongRange(
+                        "a bit under 90", longArray(88L, 89L, 90L), longArray(100L, 101L, 102L)),
+                    new LongRange("over 90", longArray(90L, 91L, 92L), longArray(100L, 101L, 102L)),
+                    new LongRange(
+                        "over 1000",
+                        longArray(1000L, 1001L, 1002L),
+                        longArray(Long.MAX_VALUE - 2L, Long.MAX_VALUE - 1L, Long.MAX_VALUE))));
+            byDim.put("dim", getTaxonomyFacetCounts(taxoReader, config, dimFC));
+            return new MultiFacets(byDim, null);
+          }
+
+          @Override
+          protected boolean scoreSubDocsAtOnce() {
+            return random().nextBoolean();
+          }
+        };
+
+    // First search, no drill downs:
+    DrillDownQuery ddq = new DrillDownQuery(config);
+    DrillSideways.DrillSidewaysResult dsr = ds.search(null, ddq, 10);
+
+    assertEquals(100, dsr.hits.totalHits.value);
+    assertEquals(
+        "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
+        dsr.facets.getTopChildren(10, "dim").toString());
+    assertEquals(
+        "dim=field path=[] value=33 childCount=4\n  a bit under 90 (22)\n  over 90 (20)\n  a bit over 10 (11)\n  less than 10 (9)\n",
+        dsr.facets.getTopChildren(10, "field").toString());
+
+    // Second search, drill down on dim=b:
+    ddq = new DrillDownQuery(config);
+    ddq.add("dim", "b");
+    dsr = ds.search(null, ddq, 10);
+
+    assertEquals(75, dsr.hits.totalHits.value);
+    assertEquals(
+        "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
+        dsr.facets.getTopChildren(10, "dim").toString());
+    assertEquals(
+        "dim=field path=[] value=25 childCount=4\n  a bit under 90 (17)\n  over 90 (15)\n  a bit over 10 (8)\n  less than 10 (6)\n",
+        dsr.facets.getTopChildren(10, "field").toString());
+
+    w.close();
+    IOUtils.close(tw, tr, td, r, d);
+  }
+
+  public void testBasicSingleDimDouble() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
     DoubleRangeDocValuesFacetField field = new DoubleRangeDocValuesFacetField("field", 0.0, 10.0);
     doc.add(field);
-    for (long l = 0; l < 100; l++) {
-      field.setDoubleRangeValue(l, 10L + l);
+    for (double l = 0; l < 100; l++) {
+      field.setDoubleRangeValue(l, 10.0 + l);
       w.addDocument(doc);
     }
 
@@ -439,7 +769,68 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     IOUtils.close(r, d);
   }
 
-  public void testRandomLongs() throws Exception {
+  public void testBasicMultiDimDouble() throws Exception {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    Document doc = new Document();
+    double[] min = doubleArray(0.0, 1.0, 2.0);
+    double[] max = doubleArray(10.0, 11.0, 12.0);
+    DoubleRangeDocValuesFacetField field = new DoubleRangeDocValuesFacetField("field", min, max);
+    doc.add(field);
+    for (double l = 0; l < 100; l++) {
+      field.setDoubleRangeValue(
+          doubleArray(l, l + 1.0, l + 2.0), doubleArray(l + 10.0, l + 11.0, l + 12.0));
+      w.addDocument(doc);
+    }
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    Facets facets =
+        new DoubleRangeOnRangeFacetCounts(
+            "field",
+            fc,
+            RangeFieldQuery.QueryType.INTERSECTS,
+            new DoubleRange(
+                "less than 10", doubleArray(0.0, 1.0, 2.0), doubleArray(8.0, 9.0, 10.0)),
+            new DoubleRange(
+                "a bit over 10", doubleArray(0.0, 1.0, 2.0), doubleArray(10.0, 11.0, 12.0)),
+            new DoubleRange(
+                "a bit under 90", doubleArray(88.0, 89.0, 90.0), doubleArray(100.0, 101.0, 102.0)),
+            new DoubleRange(
+                "over 90", doubleArray(90.0, 91.0, 92.0), doubleArray(100.0, 101.0, 102.0)),
+            new DoubleRange(
+                "over 1000",
+                doubleArray(1000.0, 1001.0, 1002.0),
+                doubleArray(
+                    Double.POSITIVE_INFINITY - 2.0,
+                    Double.POSITIVE_INFINITY - 1.0,
+                    Double.POSITIVE_INFINITY)));
+
+    FacetResult result = facets.getAllChildren("field");
+    assertEquals(
+        "dim=field path=[] value=33 childCount=5\n  less than 10 (9)\n  a bit over 10 (11)\n  a bit under 90 (22)\n  over 90 (20)\n  over 1000 (0)\n",
+        result.toString());
+
+    result = facets.getTopChildren(4, "field");
+    assertEquals(
+        "dim=field path=[] value=33 childCount=4\n  a bit under 90 (22)\n  over 90 (20)\n  a bit over 10 (11)\n  less than 10 (9)\n",
+        result.toString());
+
+    // test getTopChildren(0, dim)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          facets.getTopChildren(0, "field");
+        });
+
+    IOUtils.close(r, d);
+  }
+
+  public void testRandomSingleDimLongs() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
@@ -490,9 +881,9 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
           // Use an existing boundary:
           LongRange prevRange = ranges[random().nextInt(rangeID)];
           if (random().nextBoolean()) {
-            min = prevRange.min;
+            min = prevRange.min[0];
           } else {
-            min = prevRange.max;
+            min = prevRange.max[0];
           }
         } else {
           min = random().nextLong();
@@ -502,9 +893,9 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
           // Use an existing boundary:
           LongRange prevRange = ranges[random().nextInt(rangeID)];
           if (random().nextBoolean()) {
-            max = prevRange.min;
+            max = prevRange.min[0];
           } else {
-            max = prevRange.max;
+            max = prevRange.max[0];
           }
         } else {
           max = random().nextLong();
@@ -586,8 +977,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         DrillDownQuery ddq = new DrillDownQuery(config);
         ddq.add(
             "field",
-            org.apache.lucene.document.LongRange.newIntersectsQuery(
-                "field", new long[] {range.min}, new long[] {range.max}));
+            org.apache.lucene.document.LongRange.newIntersectsQuery("field", range.min, range.max));
         assertEquals(expectedCounts[rangeID], s.count(ddq));
       }
     }
@@ -596,7 +986,172 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     IOUtils.close(r, dir);
   }
 
-  public void testRandomDoubles() throws Exception {
+  public void testRandomMultiDimLongs() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numDocs = atLeast(1000);
+    int dims = atLeast(2);
+    if (VERBOSE) {
+      System.out.println("TEST: numDocs=" + numDocs);
+    }
+    long[][] mins = new long[numDocs][dims];
+    long[][] maxes = new long[numDocs][dims];
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      for (int dim = 0; dim < dims; dim++) {
+        long min = random().nextLong();
+        long max = random().nextLong();
+        if (min > max) {
+          long tmp = min;
+          min = max;
+          max = tmp;
+        }
+        mins[i][dim] = min;
+        maxes[i][dim] = max;
+      }
+      doc.add(new LongRangeDocValuesFacetField("field", mins[i], maxes[i]));
+      doc.add(new org.apache.lucene.document.LongRange("field", mins[i], maxes[i]));
+      w.addDocument(doc);
+    }
+    IndexReader r = w.getReader();
+
+    IndexSearcher s = newSearcher(r, false);
+    FacetsConfig config = new FacetsConfig();
+
+    int numIters = atLeast(10);
+    for (int iter = 0; iter < numIters; iter++) {
+      if (VERBOSE) {
+        System.out.println("TEST: iter=" + iter);
+      }
+      int numRange = TestUtil.nextInt(random(), 1, 100);
+      LongRange[] ranges = new LongRange[numRange];
+      int[] expectedCounts = new int[numRange];
+      int[] expectedTopNChildrenCounts = new int[numRange];
+      long[] minAcceptedValue = new long[dims];
+      Arrays.fill(minAcceptedValue, Long.MAX_VALUE);
+      long[] maxAcceptedValue = new long[dims];
+      Arrays.fill(maxAcceptedValue, Long.MIN_VALUE);
+      for (int rangeID = 0; rangeID < numRange; rangeID++) {
+        long[] min = new long[dims];
+        if (rangeID > 0 && random().nextInt(10) == 7) {
+          // Use an existing boundary:
+          LongRange prevRange = ranges[random().nextInt(rangeID)];
+          for (int dim = 0; dim < dims; dim++) {
+            if (random().nextBoolean()) {
+              min[dim] = prevRange.min[dim];
+            } else {
+              min[dim] = prevRange.max[dim];
+            }
+          }
+        } else {
+          for (int dim = 0; dim < dims; dim++) {
+            min[dim] = random().nextLong();
+          }
+        }
+        long[] max = new long[dims];
+        if (rangeID > 0 && random().nextInt(10) == 7) {
+          // Use an existing boundary:
+          LongRange prevRange = ranges[random().nextInt(rangeID)];
+          for (int dim = 0; dim < dims; dim++) {
+            if (random().nextBoolean()) {
+              max[dim] = prevRange.min[dim];
+            } else {
+              max[dim] = prevRange.max[dim];
+            }
+          }
+        } else {
+          for (int dim = 0; dim < dims; dim++) {
+            max[dim] = random().nextLong();
+          }
+        }
+
+        for (int dim = 0; dim < dims; dim++) {
+          if (min[dim] > max[dim]) {
+            long x = min[dim];
+            min[dim] = max[dim];
+            max[dim] = x;
+          }
+        }
+
+        ranges[rangeID] = new LongRange("r" + rangeID, min, max);
+        if (VERBOSE) {
+          System.out.println("  range " + rangeID + ": " + ranges[rangeID]);
+        }
+
+        byte[] queryPackedValue = new byte[2 * Long.BYTES * dims];
+        verifyAndEncode(min, max, queryPackedValue);
+        for (int i = 0; i < numDocs; i++) {
+          byte[] packedValue = new byte[2 * Long.BYTES * dims];
+          verifyAndEncode(mins[i], maxes[i], packedValue);
+          boolean validRange = true;
+          for (int dim = 0; dim < dims; dim++) {
+            if (RangeFieldQuery.QueryType.INTERSECTS.matches(
+                    queryPackedValue, packedValue, dims, Long.BYTES, dim)
+                == false) {
+              validRange = false;
+              break;
+            }
+          }
+          if (validRange) {
+            expectedCounts[rangeID]++;
+            expectedTopNChildrenCounts[rangeID]++;
+            for (int dim = 0; dim < dims; dim++) {
+              minAcceptedValue[dim] = Math.min(minAcceptedValue[dim], mins[i][dim]);
+              maxAcceptedValue[dim] = Math.max(maxAcceptedValue[dim], maxes[i][dim]);
+            }
+          }
+        }
+      }
+
+      FacetsCollector sfc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      Query fastMatchQuery;
+      if (random().nextBoolean()) {
+        fastMatchQuery =
+            org.apache.lucene.document.LongRange.newIntersectsQuery(
+                "field", minAcceptedValue, maxAcceptedValue);
+      } else {
+        fastMatchQuery = null;
+      }
+
+      Facets facets =
+          new LongRangeOnRangeFacetCounts(
+              "field", sfc, RangeFieldQuery.QueryType.INTERSECTS, fastMatchQuery, ranges);
+      FacetResult result = facets.getAllChildren("field");
+      assertEquals(numRange, result.labelValues.length);
+      FacetResult topNResult = facets.getTopChildren(numRange, "field");
+      Arrays.sort(expectedTopNChildrenCounts);
+
+      for (int rangeID = 0; rangeID < numRange; rangeID++) {
+        if (VERBOSE) {
+          System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
+        }
+        LabelAndValue subNode = result.labelValues[rangeID];
+        assertEquals("r" + rangeID, subNode.label);
+        assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        // test topNChildren and assert topNResults are sorted by count
+        if (rangeID < topNResult.labelValues.length) {
+          LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
+          assertEquals(
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+        }
+
+        LongRange range = ranges[rangeID];
+
+        // Test drill-down:
+        DrillDownQuery ddq = new DrillDownQuery(config);
+        ddq.add(
+            "field",
+            org.apache.lucene.document.LongRange.newIntersectsQuery("field", range.min, range.max));
+        assertEquals(expectedCounts[rangeID], s.count(ddq));
+      }
+    }
+
+    w.close();
+    IOUtils.close(r, dir);
+  }
+
+  public void testRandomSingleDimDoubles() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
@@ -647,9 +1202,9 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
           // Use an existing boundary:
           DoubleRange prevRange = ranges[random().nextInt(rangeID)];
           if (random().nextBoolean()) {
-            min = prevRange.min;
+            min = prevRange.min[0];
           } else {
-            min = prevRange.max;
+            min = prevRange.max[0];
           }
         } else {
           min = random().nextDouble();
@@ -659,9 +1214,9 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
           // Use an existing boundary:
           DoubleRange prevRange = ranges[random().nextInt(rangeID)];
           if (random().nextBoolean()) {
-            max = prevRange.min;
+            max = prevRange.min[0];
           } else {
-            max = prevRange.max;
+            max = prevRange.max[0];
           }
         } else {
           max = random().nextDouble();
@@ -744,7 +1299,173 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         ddq.add(
             "field",
             org.apache.lucene.document.DoubleRange.newIntersectsQuery(
-                "field", new double[] {range.min}, new double[] {range.max}));
+                "field", range.min, range.max));
+        assertEquals(expectedCounts[rangeID], s.count(ddq));
+      }
+    }
+
+    w.close();
+    IOUtils.close(r, dir);
+  }
+
+  public void testRandomMultiDimDoubles() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numDocs = atLeast(1000);
+    int dims = atLeast(2);
+    if (VERBOSE) {
+      System.out.println("TEST: numDocs=" + numDocs);
+    }
+    double[][] mins = new double[numDocs][dims];
+    double[][] maxes = new double[numDocs][dims];
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      for (int dim = 0; dim < dims; dim++) {
+        double min = random().nextDouble();
+        double max = random().nextDouble();
+        if (min > max) {
+          double tmp = min;
+          min = max;
+          max = tmp;
+        }
+        mins[i][dim] = min;
+        maxes[i][dim] = max;
+      }
+      doc.add(new DoubleRangeDocValuesFacetField("field", mins[i], maxes[i]));
+      doc.add(new org.apache.lucene.document.DoubleRange("field", mins[i], maxes[i]));
+      w.addDocument(doc);
+    }
+    IndexReader r = w.getReader();
+
+    IndexSearcher s = newSearcher(r, false);
+    FacetsConfig config = new FacetsConfig();
+
+    int numIters = atLeast(10);
+    for (int iter = 0; iter < numIters; iter++) {
+      if (VERBOSE) {
+        System.out.println("TEST: iter=" + iter);
+      }
+      int numRange = TestUtil.nextInt(random(), 1, 100);
+      DoubleRange[] ranges = new DoubleRange[numRange];
+      int[] expectedCounts = new int[numRange];
+      int[] expectedTopNChildrenCounts = new int[numRange];
+      double[] minAcceptedValue = new double[dims];
+      Arrays.fill(minAcceptedValue, Double.POSITIVE_INFINITY);
+      double[] maxAcceptedValue = new double[dims];
+      Arrays.fill(maxAcceptedValue, Double.NEGATIVE_INFINITY);
+      for (int rangeID = 0; rangeID < numRange; rangeID++) {
+        double[] min = new double[dims];
+        if (rangeID > 0 && random().nextInt(10) == 7) {
+          // Use an existing boundary:
+          DoubleRange prevRange = ranges[random().nextInt(rangeID)];
+          for (int dim = 0; dim < dims; dim++) {
+            if (random().nextBoolean()) {
+              min[dim] = prevRange.min[dim];
+            } else {
+              min[dim] = prevRange.max[dim];
+            }
+          }
+        } else {
+          for (int dim = 0; dim < dims; dim++) {
+            min[dim] = random().nextDouble();
+          }
+        }
+        double[] max = new double[dims];
+        if (rangeID > 0 && random().nextInt(10) == 7) {
+          // Use an existing boundary:
+          DoubleRange prevRange = ranges[random().nextInt(rangeID)];
+          for (int dim = 0; dim < dims; dim++) {
+            if (random().nextBoolean()) {
+              max[dim] = prevRange.min[dim];
+            } else {
+              max[dim] = prevRange.max[dim];
+            }
+          }
+        } else {
+          for (int dim = 0; dim < dims; dim++) {
+            max[dim] = random().nextDouble();
+          }
+        }
+
+        for (int dim = 0; dim < dims; dim++) {
+          if (min[dim] > max[dim]) {
+            double x = min[dim];
+            min[dim] = max[dim];
+            max[dim] = x;
+          }
+        }
+
+        ranges[rangeID] = new DoubleRange("r" + rangeID, min, max);
+        if (VERBOSE) {
+          System.out.println("  range " + rangeID + ": " + ranges[rangeID]);
+        }
+
+        byte[] queryPackedValue = new byte[2 * Double.BYTES * dims];
+        verifyAndEncode(min, max, queryPackedValue);
+        for (int i = 0; i < numDocs; i++) {
+          byte[] packedValue = new byte[2 * Double.BYTES * dims];
+          verifyAndEncode(mins[i], maxes[i], packedValue);
+          boolean validRange = true;
+          for (int dim = 0; dim < dims; dim++) {
+            if (RangeFieldQuery.QueryType.INTERSECTS.matches(
+                    queryPackedValue, packedValue, dims, Double.BYTES, dim)
+                == false) {
+              validRange = false;
+              break;
+            }
+          }
+          if (validRange) {
+            expectedCounts[rangeID]++;
+            expectedTopNChildrenCounts[rangeID]++;
+            for (int dim = 0; dim < dims; dim++) {
+              minAcceptedValue[dim] = Math.min(minAcceptedValue[dim], mins[i][dim]);
+              maxAcceptedValue[dim] = Math.max(maxAcceptedValue[dim], maxes[i][dim]);
+            }
+          }
+        }
+      }
+
+      FacetsCollector sfc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      Query fastMatchQuery;
+      if (random().nextBoolean()) {
+        fastMatchQuery =
+            org.apache.lucene.document.DoubleRange.newIntersectsQuery(
+                "field", minAcceptedValue, maxAcceptedValue);
+      } else {
+        fastMatchQuery = null;
+      }
+
+      Facets facets =
+          new DoubleRangeOnRangeFacetCounts(
+              "field", sfc, RangeFieldQuery.QueryType.INTERSECTS, fastMatchQuery, ranges);
+      FacetResult result = facets.getAllChildren("field");
+      assertEquals(numRange, result.labelValues.length);
+      FacetResult topNResult = facets.getTopChildren(numRange, "field");
+      Arrays.sort(expectedTopNChildrenCounts);
+
+      for (int rangeID = 0; rangeID < numRange; rangeID++) {
+        if (VERBOSE) {
+          System.out.println("  range " + rangeID + " expectedCount=" + expectedCounts[rangeID]);
+        }
+        LabelAndValue subNode = result.labelValues[rangeID];
+        assertEquals("r" + rangeID, subNode.label);
+        assertEquals(expectedCounts[rangeID], subNode.value.intValue());
+        // test topNChildren and assert topNResults are sorted by count
+        if (rangeID < topNResult.labelValues.length) {
+          LabelAndValue topNsubNode = topNResult.labelValues[rangeID];
+          assertEquals(
+              expectedTopNChildrenCounts[numRange - rangeID - 1], topNsubNode.value.intValue());
+        }
+
+        DoubleRange range = ranges[rangeID];
+
+        // Test drill-down:
+        DrillDownQuery ddq = new DrillDownQuery(config);
+        ddq.add(
+            "field",
+            org.apache.lucene.document.DoubleRange.newIntersectsQuery(
+                "field", range.min, range.max));
         assertEquals(expectedCounts[rangeID], s.count(ddq));
       }
     }
@@ -801,18 +1522,32 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     assertEquals(
         new LongRange("field", -7, true, 17, false).hashCode(),
         new LongRange("field", -7, true, 17, false).hashCode());
-    assertFalse(
-        new LongRange("field", -7, true, 17, false)
-            .equals(new LongRange("field", -7, true, 17, true)));
-    assertFalse(
-        new LongRange("field", -7, true, 17, false).hashCode()
-            == new LongRange("field", -7, true, 17, true).hashCode());
-    assertFalse(
-        new LongRange("field", -7, true, 17, false)
-            .equals(new LongRange("field", -7, true, 18, false)));
-    assertFalse(
-        new LongRange("field", -7, true, 17, false).hashCode()
-            == new LongRange("field", -7, true, 18, false).hashCode());
+    assertNotEquals(
+        new LongRange("field", -7, true, 17, false), new LongRange("field", -7, true, 17, true));
+    assertNotEquals(
+        new LongRange("field", -7, true, 17, false).hashCode(),
+        new LongRange("field", -7, true, 17, true).hashCode());
+    assertNotEquals(
+        new LongRange("field", -7, true, 17, false), new LongRange("field", -7, true, 18, false));
+    assertNotEquals(
+        new LongRange("field", -7, true, 17, false).hashCode(),
+        new LongRange("field", -7, true, 18, false).hashCode());
+    // mutlidim tests
+    assertEquals(
+        new LongRange("field", longArray(-7, -8), longArray(17, 18)),
+        new LongRange("field", longArray(-7, -8), longArray(17, 18)));
+    assertEquals(
+        new LongRange("field", longArray(-7, -8), longArray(17, 18)).hashCode(),
+        new LongRange("field", longArray(-7, -8), longArray(17, 18)).hashCode());
+    assertNotEquals(
+        new LongRange("field", longArray(-7, -8, -9), longArray(17, 18, 19)).hashCode(),
+        new LongRange("field", longArray(-7, -8), longArray(17, 18)).hashCode());
+    assertNotEquals(
+        new LongRange("field", longArray(-7, -9), longArray(17, 18)).hashCode(),
+        new LongRange("field", longArray(-7, -8), longArray(17, 18)).hashCode());
+    assertNotEquals(
+        new LongRange("field", longArray(-7, -8), longArray(17, 19)).hashCode(),
+        new LongRange("field", longArray(-7, -8), longArray(17, 18)).hashCode());
   }
 
   public void testDoubleRangeEquals() throws Exception {
@@ -822,17 +1557,45 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     assertEquals(
         new DoubleRange("field", -7d, true, 17d, false).hashCode(),
         new DoubleRange("field", -7d, true, 17d, false).hashCode());
-    assertFalse(
-        new DoubleRange("field", -7d, true, 17d, false)
-            .equals(new DoubleRange("field", -7d, true, 17d, true)));
-    assertFalse(
-        new DoubleRange("field", -7d, true, 17d, false).hashCode()
-            == new DoubleRange("field", -7d, true, 17d, true).hashCode());
-    assertFalse(
-        new DoubleRange("field", -7d, true, 17d, false)
-            .equals(new DoubleRange("field", -7d, true, 18d, false)));
-    assertFalse(
-        new DoubleRange("field", -7d, true, 17d, false).hashCode()
-            == new DoubleRange("field", -7d, true, 18, false).hashCode());
+    assertNotEquals(
+        new DoubleRange("field", -7d, true, 17d, false),
+        new DoubleRange("field", -7d, true, 17d, true));
+    assertNotEquals(
+        new DoubleRange("field", -7d, true, 17d, false).hashCode(),
+        new DoubleRange("field", -7d, true, 17d, true).hashCode());
+    assertNotEquals(
+        new DoubleRange("field", -7d, true, 17d, false),
+        new DoubleRange("field", -7d, true, 18d, false));
+    assertNotEquals(
+        new DoubleRange("field", -7d, true, 17d, false).hashCode(),
+        new DoubleRange("field", -7d, true, 18, false).hashCode());
+    // multidim tests
+    assertEquals(
+        new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 18d)),
+        new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 18d)));
+    assertEquals(
+        new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 18d)).hashCode(),
+        new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 18d)).hashCode());
+    assertNotEquals(
+        new DoubleRange("field", doubleArray(-7d, -8d, -9d), doubleArray(17d, 18d, 19d)),
+        new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 18d)));
+    assertNotEquals(
+        new DoubleRange("field", doubleArray(-7d, -9d), doubleArray(17d, 18d)),
+        new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 18d)));
+    assertNotEquals(
+        new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 19d)),
+        new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 18d)));
+  }
+
+  private static long[] longArray(long... longs) {
+    long[] ret = new long[longs.length];
+    System.arraycopy(longs, 0, ret, 0, longs.length);
+    return ret;
+  }
+
+  private static double[] doubleArray(double... doubles) {
+    double[] ret = new double[doubles.length];
+    System.arraycopy(doubles, 0, ret, 0, doubles.length);
+    return ret;
   }
 }

@@ -72,7 +72,7 @@ public class LongRangeDocValuesField extends BinaryRangeDocValuesField {
   }
 
   /** validate the arguments */
-  private static void checkArgs(final long[] min, final long[] max) {
+  protected static void checkArgs(final long[] min, final long[] max) {
     if (min == null || max == null || min.length == 0 || max.length == 0) {
       throw new IllegalArgumentException("min/max range values cannot be null or empty");
     }
