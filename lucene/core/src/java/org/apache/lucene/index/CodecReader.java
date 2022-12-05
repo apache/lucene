@@ -86,7 +86,7 @@ public abstract class CodecReader extends LeafReader {
   @Override
   public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
     checkBounds(docID);
-    getFieldsReader().visitDocument(docID, visitor);
+    getFieldsReader().document(docID, visitor);
   }
 
   @Override

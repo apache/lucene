@@ -246,7 +246,7 @@ public final class SlowCodecReaderWrapper {
   private static StoredFieldsReader readerToStoredFieldsReader(final LeafReader reader) {
     return new StoredFieldsReader() {
       @Override
-      public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         reader.document(docID, visitor);
       }
 

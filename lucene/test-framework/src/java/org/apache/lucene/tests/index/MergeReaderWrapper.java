@@ -242,7 +242,7 @@ class MergeReaderWrapper extends LeafReader {
   public void document(int docID, StoredFieldVisitor visitor) throws IOException {
     ensureOpen();
     checkBounds(docID);
-    store.visitDocument(docID, visitor);
+    store.document(docID, visitor);
   }
 
   @Override

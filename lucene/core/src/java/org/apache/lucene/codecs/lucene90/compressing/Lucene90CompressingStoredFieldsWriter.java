@@ -513,7 +513,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private void copyOneDoc(Lucene90CompressingStoredFieldsReader reader, int docID)
       throws IOException {
     assert reader.getVersion() == VERSION_CURRENT;
-    SerializedDocument doc = reader.document(docID);
+    SerializedDocument doc = reader.serializedDocument(docID);
     startDocument();
     bufferedDocs.copyBytes(doc.in, doc.length);
     numStoredFieldsInDoc = doc.numStoredFields;
@@ -641,7 +641,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       } else if (sub.mergeStrategy == MergeStrategy.VISITOR) {
         assert visitors[sub.readerIndex] != null;
         startDocument();
-        reader.visitDocument(sub.docID, visitors[sub.readerIndex]);
+        reader.document(sub.docID, visitors[sub.readerIndex]);
         finishDocument();
         ++docCount;
         sub = docIDMerger.next();
