@@ -22,9 +22,7 @@ import java.lang.reflect.Modifier;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
 
-@AwaitsFix(bugUrl = "needs to ignore deprecated apis which are intentionally UOE'd")
 public class TestFilterCodecReader extends LuceneTestCase {
 
   public void testDeclaredMethodsOverridden() throws Exception {

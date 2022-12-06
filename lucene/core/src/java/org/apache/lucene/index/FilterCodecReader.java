@@ -85,6 +85,18 @@ public abstract class FilterCodecReader extends CodecReader {
   }
 
   @Override
+  @Deprecated
+  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+    in.document(docID, visitor);
+  }
+
+  @Override
+  @Deprecated
+  public Fields getTermVectors(int docID) throws IOException {
+    return in.getTermVectors(docID);
+  }
+
+  @Override
   public Bits getLiveDocs() {
     return in.getLiveDocs();
   }
