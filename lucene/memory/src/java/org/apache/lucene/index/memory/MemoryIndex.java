@@ -1785,6 +1785,20 @@ public class MemoryIndex {
     }
 
     @Override
+    public TermVectors termVectors() {
+      return new TermVectors() {
+        @Override
+        public Fields get(int docID) {
+          if (docID == 0) {
+            return memoryFields;
+          } else {
+            return null;
+          }
+        }
+      };
+    }
+
+    @Override
     public int numDocs() {
       if (DEBUG) System.err.println("MemoryIndexReader.numDocs");
       return 1;
@@ -1800,6 +1814,17 @@ public class MemoryIndex {
     public void document(int docID, StoredFieldVisitor visitor) {
       if (DEBUG) System.err.println("MemoryIndexReader.document");
       // no-op: there are no stored fields
+    }
+
+    @Override
+    public StoredFields storedFields() {
+      return new StoredFields() {
+        @Override
+        public void document(int docID, StoredFieldVisitor visitor) {
+          if (DEBUG) System.err.println("MemoryIndexReader.document");
+          // no-op: there are no stored fields
+        }
+      };
     }
 
     @Override

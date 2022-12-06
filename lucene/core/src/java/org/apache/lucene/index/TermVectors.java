@@ -48,4 +48,13 @@ public abstract class TermVectors {
     }
     return vectors.terms(field);
   }
+
+  /** Instance that never returns term vectors */
+  public static final TermVectors EMPTY =
+      new TermVectors() {
+        @Override
+        public Fields get(int doc) {
+          return null;
+        }
+      };
 }

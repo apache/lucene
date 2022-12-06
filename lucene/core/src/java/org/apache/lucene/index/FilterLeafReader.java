@@ -364,6 +364,12 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
+  public TermVectors termVectors() throws IOException {
+    ensureOpen();
+    return in.termVectors();
+  }
+
+  @Override
   public int numDocs() {
     // Don't call ensureOpen() here (it could affect performance)
     return in.numDocs();
@@ -373,6 +379,12 @@ public abstract class FilterLeafReader extends LeafReader {
   public int maxDoc() {
     // Don't call ensureOpen() here (it could affect performance)
     return in.maxDoc();
+  }
+
+  @Override
+  public StoredFields storedFields() throws IOException {
+    ensureOpen();
+    return in.storedFields();
   }
 
   @Override

@@ -119,6 +119,23 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
+  public final TermVectors termVectors() throws IOException {
+    ensureOpen();
+    TermVectors[] subVectors = new TermVectors[subReaders.length];
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        // dispatch to subreader, reusing if possible
+        if (subVectors[i] == null) {
+          subVectors[i] = subReaders[i].termVectors();
+        }
+        return subVectors[i].get(docID - starts[i]);
+      }
+    };
+  }
+
+  @Override
   public final int numDocs() {
     // Don't call ensureOpen() here (it could affect performance)
     // We want to compute numDocs() lazily so that creating a wrapper that hides
@@ -152,6 +169,23 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     ensureOpen();
     final int i = readerIndex(docID); // find subreader num
     subReaders[i].document(docID - starts[i], visitor); // dispatch to subreader
+  }
+
+  @Override
+  public final StoredFields storedFields() throws IOException {
+    ensureOpen();
+    StoredFields[] subFields = new StoredFields[subReaders.length];
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        // dispatch to subreader, reusing if possible
+        if (subFields[i] == null) {
+          subFields[i] = subReaders[i].storedFields();
+        }
+        subFields[i].document(docID - starts[i], visitor);
+      }
+    };
   }
 
   @Override

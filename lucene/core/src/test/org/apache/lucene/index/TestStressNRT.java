@@ -456,7 +456,7 @@ public class TestStressNRT extends LuceneTestCase {
                       }
                       fail("id=" + id + " reader=" + r + " totalHits=" + results.totalHits.value);
                     }
-                    Document doc = searcher.doc(results.scoreDocs[0].doc);
+                    Document doc = searcher.storedFields().document(results.scoreDocs[0].doc);
                     long foundVal = Long.parseLong(doc.get(field));
                     if (foundVal < Math.abs(val)) {
                       fail("foundVal=" + foundVal + " val=" + val + " id=" + id + " reader=" + r);

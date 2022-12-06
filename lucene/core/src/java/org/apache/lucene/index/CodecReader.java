@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -35,14 +34,14 @@ public abstract class CodecReader extends LeafReader {
   protected CodecReader() {}
 
   /**
-   * Expert: retrieve thread-private StoredFieldsReader
+   * Expert: retrieve underlying StoredFieldsReader
    *
    * @lucene.internal
    */
   public abstract StoredFieldsReader getFieldsReader();
 
   /**
-   * Expert: retrieve thread-private TermVectorsReader
+   * Expert: retrieve underlying TermVectorsReader
    *
    * @lucene.internal
    */
@@ -83,24 +82,34 @@ public abstract class CodecReader extends LeafReader {
    */
   public abstract KnnVectorsReader getVectorReader();
 
+  // intentionally throw UOE for deprecated APIs: keep CodecReader clean!
+  // (IndexWriter should not be triggering threadlocals in any way)
+
   @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    checkBounds(docID);
-    getFieldsReader().document(docID, visitor);
+  @Deprecated
+  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+    throw new UnsupportedOperationException("deprecated document access is not supported");
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
-    TermVectorsReader termVectorsReader = getTermVectorsReader();
-    if (termVectorsReader == null) {
-      return null;
+  @Deprecated
+  public Fields getTermVectors(int docID) throws IOException {
+    throw new UnsupportedOperationException("deprecated term vector access is not supported");
+  }
+
+  @Override
+  public final StoredFields storedFields() throws IOException {
+    return getFieldsReader();
+  }
+
+  @Override
+  public final TermVectors termVectors() throws IOException {
+    TermVectorsReader reader = getTermVectorsReader();
+    if (reader == null) {
+      return TermVectors.EMPTY;
+    } else {
+      return reader;
     }
-    checkBounds(docID);
-    return termVectorsReader.get(docID);
-  }
-
-  private void checkBounds(int docID) {
-    Objects.checkIndex(docID, maxDoc());
   }
 
   @Override

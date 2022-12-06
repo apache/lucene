@@ -274,6 +274,23 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
+  public StoredFields storedFields() throws IOException {
+    ensureOpen();
+    StoredFields[] fields = new StoredFields[storedFieldsReaders.length];
+    for (int i = 0; i < fields.length; i++) {
+      fields[i] = storedFieldsReaders[i].storedFields();
+    }
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        for (StoredFields reader : fields) {
+          reader.document(docID, visitor);
+        }
+      }
+    };
+  }
+
+  @Override
   public CacheHelper getCoreCacheHelper() {
     // ParallelReader instances can be short-lived, which would make caching trappy
     // so we do not cache on them, unless they wrap a single reader in which
@@ -315,6 +332,30 @@ public class ParallelLeafReader extends LeafReader {
     }
 
     return fields;
+  }
+
+  @Override
+  public TermVectors termVectors() throws IOException {
+    ensureOpen();
+    // TODO: optimize
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) throws IOException {
+        ParallelFields fields = null;
+        for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
+          String fieldName = ent.getKey();
+          Terms vector = ent.getValue().termVectors().get(docID, fieldName);
+          if (vector != null) {
+            if (fields == null) {
+              fields = new ParallelFields();
+            }
+            fields.addField(fieldName, vector);
+          }
+        }
+
+        return fields;
+      }
+    };
   }
 
   @Override

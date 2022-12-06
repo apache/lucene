@@ -40,6 +40,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -382,7 +383,9 @@ public class IndexSearcher {
    * Sugar for <code>.getIndexReader().document(docID)</code>
    *
    * @see IndexReader#document(int)
+   * @deprecated Use {@link #storedFields()} to access fields for one or more documents
    */
+  @Deprecated
   public Document doc(int docID) throws IOException {
     return reader.document(docID);
   }
@@ -391,7 +394,9 @@ public class IndexSearcher {
    * Sugar for <code>.getIndexReader().document(docID, fieldVisitor)</code>
    *
    * @see IndexReader#document(int, StoredFieldVisitor)
+   * @deprecated Use {@link #storedFields()} to access fields for one or more documents
    */
+  @Deprecated
   public void doc(int docID, StoredFieldVisitor fieldVisitor) throws IOException {
     reader.document(docID, fieldVisitor);
   }
@@ -400,9 +405,20 @@ public class IndexSearcher {
    * Sugar for <code>.getIndexReader().document(docID, fieldsToLoad)</code>
    *
    * @see IndexReader#document(int, Set)
+   * @deprecated Use {@link #storedFields()} to access fields for one or more documents
    */
+  @Deprecated
   public Document doc(int docID, Set<String> fieldsToLoad) throws IOException {
     return reader.document(docID, fieldsToLoad);
+  }
+
+  /**
+   * Sugar for <code>.getIndexReader().storedFields()</code>
+   *
+   * @see IndexReader#storedFields()
+   */
+  public StoredFields storedFields() throws IOException {
+    return reader.storedFields();
   }
 
   /** Expert: Set the Similarity implementation used by this IndexSearcher. */

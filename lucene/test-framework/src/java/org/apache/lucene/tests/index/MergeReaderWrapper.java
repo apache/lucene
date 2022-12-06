@@ -38,6 +38,8 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
@@ -213,6 +215,16 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
+  public TermVectors termVectors() throws IOException {
+    ensureOpen();
+    if (vectors == null) {
+      return TermVectors.EMPTY;
+    } else {
+      return vectors;
+    }
+  }
+
+  @Override
   public PointValues getPointValues(String fieldName) throws IOException {
     return in.getPointValues(fieldName);
   }
@@ -243,6 +255,12 @@ class MergeReaderWrapper extends LeafReader {
     ensureOpen();
     checkBounds(docID);
     store.document(docID, visitor);
+  }
+
+  @Override
+  public StoredFields storedFields() throws IOException {
+    ensureOpen();
+    return store;
   }
 
   @Override

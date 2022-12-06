@@ -311,13 +311,19 @@ public abstract class IndexReader implements Closeable {
   /**
    * Retrieve term vectors for this document, or null if term vectors were not indexed. The returned
    * Fields instance acts like a single-document inverted index (the docID will be 0).
+   *
+   * @deprecated use {@link #termVectors()} to retrieve one or more documents
    */
+  @Deprecated
   public abstract Fields getTermVectors(int docID) throws IOException;
 
   /**
    * Retrieve term vector for this document and field, or null if term vectors were not indexed. The
    * returned Fields instance acts like a single-document inverted index (the docID will be 0).
+   *
+   * @deprecated use {@link #termVectors()} to retrieve one or more documents
    */
+  @Deprecated
   public final Terms getTermVector(int docID, String field) throws IOException {
     Fields vectors = getTermVectors(docID);
     if (vectors == null) {
@@ -325,6 +331,9 @@ public abstract class IndexReader implements Closeable {
     }
     return vectors.terms(field);
   }
+
+  /** Returns a reader for term vectors of this index. */
+  public abstract TermVectors termVectors() throws IOException;
 
   /**
    * Returns the number of documents in this index.
@@ -354,7 +363,10 @@ public abstract class IndexReader implements Closeable {
    * Expert: visits the fields of a stored document, for custom processing/loading of each field. If
    * you simply want to load all fields, use {@link #document(int)}. If you want to load a subset,
    * use {@link DocumentStoredFieldVisitor}.
+   *
+   * @deprecated use {@link #storedFields()} to retrieve one or more documents
    */
+  @Deprecated
   public abstract void document(int docID, StoredFieldVisitor visitor) throws IOException;
 
   /**
@@ -371,10 +383,12 @@ public abstract class IndexReader implements Closeable {
    *
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
+   * @deprecated use {@link #storedFields()} to retrieve one or more documents
    */
   // TODO: we need a separate StoredField, so that the
   // Document returned here contains that class not
   // IndexableField
+  @Deprecated
   public final Document document(int docID) throws IOException {
     final DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
     document(docID, visitor);
@@ -384,12 +398,18 @@ public abstract class IndexReader implements Closeable {
   /**
    * Like {@link #document(int)} but only loads the specified fields. Note that this is simply sugar
    * for {@link DocumentStoredFieldVisitor#DocumentStoredFieldVisitor(Set)}.
+   *
+   * @deprecated use {@link #storedFields()} to retrieve one or more documents
    */
+  @Deprecated
   public final Document document(int docID, Set<String> fieldsToLoad) throws IOException {
     final DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor(fieldsToLoad);
     document(docID, visitor);
     return visitor.getDocument();
   }
+
+  /** Returns a reader for stored fields of this index. */
+  public abstract StoredFields storedFields() throws IOException;
 
   /**
    * Returns true if any documents have been deleted. Implementers should consider overriding this

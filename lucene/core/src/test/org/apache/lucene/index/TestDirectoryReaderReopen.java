@@ -285,7 +285,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
                                 1000)
                             .scoreDocs;
                     if (hits.length > 0) {
-                      searcher.doc(hits[0].doc);
+                      searcher.storedFields().document(hits[0].doc);
                     }
                     if (refreshed != r) {
                       refreshed.close();
