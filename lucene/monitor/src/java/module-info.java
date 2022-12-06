@@ -17,7 +17,7 @@
 
 /** Reverse-search implementation for monitoring and classification */
 module org.apache.lucene.monitor {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
   requires org.apache.lucene.memory;
 

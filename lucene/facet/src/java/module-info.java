@@ -19,7 +19,7 @@
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.facet {
   requires com.carrotsearch.hppc;
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
 
   exports org.apache.lucene.facet;
   exports org.apache.lucene.facet.range;

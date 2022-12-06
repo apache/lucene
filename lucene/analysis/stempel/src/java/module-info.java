@@ -17,7 +17,7 @@
 
 /** Analyzer for indexing Polish */
 module org.apache.lucene.analysis.stempel {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
   requires org.apache.lucene.analysis.common;
 
   exports org.apache.lucene.analysis.pl;

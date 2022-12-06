@@ -17,8 +17,8 @@
 
 /** Collectors for grouping search results */
 module org.apache.lucene.grouping {
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.queries;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.queries;
 
   exports org.apache.lucene.search.grouping;
 }

@@ -17,7 +17,7 @@
 
 /** Filters and Queries that add to core Lucene */
 module org.apache.lucene.queries {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
 
   exports org.apache.lucene.queries;
   exports org.apache.lucene.queries.function;

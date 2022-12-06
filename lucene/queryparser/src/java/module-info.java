@@ -17,9 +17,9 @@
 
 /** Query parsers and parsing framework */
 module org.apache.lucene.queryparser {
-  requires java.xml;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.queries;
+  requires transitive java.xml;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.queries;
   requires org.apache.lucene.sandbox;
 
   exports org.apache.lucene.queryparser.charstream;

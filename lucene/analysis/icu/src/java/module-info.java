@@ -18,9 +18,9 @@
 /** Analysis integration with ICU */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.analysis.icu {
-  requires com.ibm.icu;
+  requires transitive com.ibm.icu;
   requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
+  requires transitive org.apache.lucene.analysis.common;
 
   exports org.apache.lucene.analysis.icu;
   exports org.apache.lucene.analysis.icu.segmentation;

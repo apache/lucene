@@ -17,7 +17,7 @@
 
 /** Index tools and other miscellaneous code */
 module org.apache.lucene.misc {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
 
   exports org.apache.lucene.misc;
   exports org.apache.lucene.misc.document;

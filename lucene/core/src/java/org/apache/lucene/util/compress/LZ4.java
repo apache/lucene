@@ -190,7 +190,7 @@ public final class LZ4 {
   }
 
   /** A record of previous occurrences of sequences of 4 bytes. */
-  abstract static class HashTable {
+  public abstract static class HashTable {
 
     /** Reset this hash table in order to compress the given content. */
     abstract void reset(byte[] b, int off, int len);

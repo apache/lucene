@@ -18,10 +18,10 @@
 /** Geospatial search */
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.spatial_extras {
-  requires spatial4j;
-  requires s2.geometry.library.java;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.spatial3d;
+  requires transitive spatial4j;
+  requires transitive s2.geometry.library.java;
+  requires transitive org.apache.lucene.core;
+  requires transitive org.apache.lucene.spatial3d;
 
   exports org.apache.lucene.spatial;
   exports org.apache.lucene.spatial.bbox;

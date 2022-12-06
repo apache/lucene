@@ -17,7 +17,7 @@
 
 /** Codecs for older versions of Lucene */
 module org.apache.lucene.backward_codecs {
-  requires org.apache.lucene.core;
+  requires transitive org.apache.lucene.core;
 
   exports org.apache.lucene.backward_codecs;
   exports org.apache.lucene.backward_codecs.compressing;
