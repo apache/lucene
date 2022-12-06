@@ -416,6 +416,10 @@ public class MemoryIndex {
     if (field.fieldType().pointDimensionCount() > 0) {
       storePointValues(info, field.binaryValue());
     }
+
+    if (field.fieldType().stored()) {
+      storeValues(info, field);
+    }
   }
 
   /**
@@ -525,6 +529,13 @@ public class MemoryIndex {
     }
     info.pointValues = ArrayUtil.grow(info.pointValues, info.pointValuesCount + 1);
     info.pointValues[info.pointValuesCount++] = BytesRef.deepCopyOf(pointValue);
+  }
+
+  private void storeValues(Info info, IndexableField field) {
+    if (info.storedValues == null) {
+      info.storedValues = new StoredValues();
+    }
+    info.storedValues.store(field);
   }
 
   private void storeDocValues(Info info, DocValuesType docValuesType, Object docValuesValue) {
@@ -874,6 +885,8 @@ public class MemoryIndex {
     private NumericDocValuesProducer numericProducer;
 
     private boolean preparedDocValuesAndPointValues;
+
+    private StoredValues storedValues;
 
     private BytesRef[] pointValues;
 
@@ -1797,9 +1810,20 @@ public class MemoryIndex {
     }
 
     @Override
-    public void document(int docID, StoredFieldVisitor visitor) {
+    public void document(int docID, StoredFieldVisitor visitor) throws IOException {
       if (DEBUG) System.err.println("MemoryIndexReader.document");
-      // no-op: there are no stored fields
+      for (Info info : fields.values()) {
+        StoredFieldVisitor.Status status = visitor.needsField(info.fieldInfo);
+        if (status == StoredFieldVisitor.Status.STOP) {
+          return;
+        }
+        if (status == StoredFieldVisitor.Status.NO) {
+          continue;
+        }
+        if (info.storedValues != null) {
+          info.storedValues.retrieve(visitor, info.fieldInfo);
+        }
+      }
     }
 
     @Override
