@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene94;
+package org.apache.lucene.codecs.lucene95;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -80,13 +80,23 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
   public abstract int ordToDoc(int ord);
 
   static OffHeapVectorValues load(
-      Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
+      Lucene95HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    int byteSize = fieldEntry.dimension * fieldEntry.vectorEncoding.byteSize;
+    int byteSize;
+    switch (fieldEntry.vectorEncoding) {
+      case BYTE:
+        byteSize = fieldEntry.dimension;
+        break;
+      case FLOAT32:
+        byteSize = fieldEntry.dimension * Float.BYTES;
+        break;
+      default:
+        throw new AssertionError();
+    }
     if (fieldEntry.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
           fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
@@ -159,10 +169,10 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene94HnswVectorsReader.FieldEntry fieldEntry;
+    private final Lucene95HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene94HnswVectorsReader.FieldEntry fieldEntry,
+        Lucene95HnswVectorsReader.FieldEntry fieldEntry,
         IndexInput dataIn,
         IndexInput slice,
         int byteSize)
