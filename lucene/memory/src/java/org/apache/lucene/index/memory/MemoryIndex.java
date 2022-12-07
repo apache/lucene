@@ -17,10 +17,12 @@
 package org.apache.lucene.index.memory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SortedMap;
@@ -533,9 +535,22 @@ public class MemoryIndex {
 
   private void storeValues(Info info, IndexableField field) {
     if (info.storedValues == null) {
-      info.storedValues = new StoredValues();
+      info.storedValues = new ArrayList<>();
     }
-    info.storedValues.store(field);
+    BytesRef binaryValue = field.binaryValue();
+    if (binaryValue != null) {
+      info.storedValues.add(binaryValue);
+      return;
+    }
+    Number numberValue = field.numericValue();
+    if (numberValue != null) {
+      info.storedValues.add(numberValue);
+      return;
+    }
+    String stringValue = field.stringValue();
+    if (stringValue != null) {
+      info.storedValues.add(stringValue);
+    }
   }
 
   private void storeDocValues(Info info, DocValuesType docValuesType, Object docValuesValue) {
@@ -886,7 +901,7 @@ public class MemoryIndex {
 
     private boolean preparedDocValuesAndPointValues;
 
-    private StoredValues storedValues;
+    private List<Object> storedValues;
 
     private BytesRef[] pointValues;
 
@@ -1821,7 +1836,21 @@ public class MemoryIndex {
           continue;
         }
         if (info.storedValues != null) {
-          info.storedValues.retrieve(visitor, info.fieldInfo);
+          for (Object value : info.storedValues) {
+            if (value instanceof BytesRef bytes) {
+              visitor.binaryField(info.fieldInfo, BytesRef.deepCopyOf(bytes).bytes);
+            } else if (value instanceof Double d) {
+              visitor.doubleField(info.fieldInfo, d);
+            } else if (value instanceof Float f) {
+              visitor.floatField(info.fieldInfo, f);
+            } else if (value instanceof Long l) {
+              visitor.longField(info.fieldInfo, l);
+            } else if (value instanceof Integer i) {
+              visitor.intField(info.fieldInfo, i);
+            } else if (value instanceof String s) {
+              visitor.stringField(info.fieldInfo, s);
+            }
+          }
         }
       }
     }
