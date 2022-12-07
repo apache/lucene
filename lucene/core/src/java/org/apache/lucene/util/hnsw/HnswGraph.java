@@ -144,6 +144,28 @@ public abstract class HnswGraph {
       this.size = size;
     }
 
+    /**
+     * Consume integers from the iterator and place them into the `dest` array.
+     *
+     * @param dest where to put the integers
+     * @return The number of integers written to `dest`
+     */
+    public int consume(int[] dest) {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      int numToCopy = Math.min(size - cur, dest.length);
+      if (nodes == null) {
+        for (int i = 0; i < numToCopy; i++) {
+          dest[i] = cur + i;
+        }
+        return numToCopy;
+      }
+      System.arraycopy(nodes, cur, dest, 0, numToCopy);
+      cur += numToCopy;
+      return numToCopy;
+    }
+
     @Override
     public int nextInt() {
       if (hasNext() == false) {
