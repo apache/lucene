@@ -1780,7 +1780,7 @@ public class TestIndexSorting extends LuceneTestCase {
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
-        Document document = reader.document(topDocs.scoreDocs[0].doc);
+        Document document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
         assertEquals(Integer.toString(i), document.get("id"));
       }
     }
@@ -1831,7 +1831,7 @@ public class TestIndexSorting extends LuceneTestCase {
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
-        Document document = reader.document(topDocs.scoreDocs[0].doc);
+        Document document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
         assertEquals(Integer.toString(i), document.get("id"));
       }
     }
@@ -2634,7 +2634,7 @@ public class TestIndexSorting extends LuceneTestCase {
     System.out.println("TEST: full index:");
     SortedDocValues docValues = MultiDocValues.getSortedValues(r2, "bytes");
     for(int i=0;i<r2.maxDoc();i++) {
-      System.out.println("  doc " + i + " id=" + r2.document(i).get("id") + " bytes=" + docValues.get(i));
+      System.out.println("  doc " + i + " id=" + r2.storedFields().document(i).get("id") + " bytes=" + docValues.get(i));
     }
     */
 
@@ -2668,7 +2668,9 @@ public class TestIndexSorting extends LuceneTestCase {
       for (int i = 0; i < hits2.scoreDocs.length; i++) {
         ScoreDoc hit1 = hits1.scoreDocs[i];
         ScoreDoc hit2 = hits2.scoreDocs[i];
-        assertEquals(r1.document(hit1.doc).get("id"), r2.document(hit2.doc).get("id"));
+        assertEquals(
+            r1.storedFields().document(hit1.doc).get("id"),
+            r2.storedFields().document(hit2.doc).get("id"));
         assertArrayEquals(((FieldDoc) hit1).fields, ((FieldDoc) hit2).fields);
       }
     }
@@ -2706,7 +2708,8 @@ public class TestIndexSorting extends LuceneTestCase {
       } else {
         expectedID = docID - 500;
       }
-      assertEquals(expectedID, r.document(docID).getField("id").numericValue().intValue());
+      assertEquals(
+          expectedID, r.storedFields().document(docID).getField("id").numericValue().intValue());
     }
     IOUtils.close(r, w, dir);
   }
@@ -2887,7 +2890,8 @@ public class TestIndexSorting extends LuceneTestCase {
             continue;
           }
           int globalId =
-              Integer.parseInt(leafCtx.reader().document(id).getField("id").stringValue());
+              Integer.parseInt(
+                  leafCtx.reader().storedFields().document(id).getField("id").stringValue());
           assertTrue(values.advanceExact(id));
           assertEquals(expectedValues[globalId], values.longValue());
           docCount++;

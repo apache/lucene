@@ -295,7 +295,7 @@ class SimpleReplicaNode extends ReplicaNode {
                         new TermQuery(new Term("marker", "marker")), expectedAtLeastCount);
                 List<Integer> seen = new ArrayList<>();
                 for (ScoreDoc hit : hits.scoreDocs) {
-                  Document doc = searcher.doc(hit.doc);
+                  Document doc = searcher.storedFields().document(hit.doc);
                   seen.add(Integer.parseInt(doc.get("docid").substring(1)));
                 }
                 Collections.sort(seen);

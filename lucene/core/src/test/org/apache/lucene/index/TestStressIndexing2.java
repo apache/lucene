@@ -315,7 +315,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
       Bits liveDocs = sub.getLiveDocs();
       System.out.println("  " + ((SegmentReader) sub).getSegmentInfo());
       for (int docID = 0; docID < sub.maxDoc(); docID++) {
-        Document doc = sub.document(docID);
+        Document doc = sub.storedFields().document(docID);
         if (liveDocs == null || liveDocs.get(docID)) {
           System.out.println("    docID=" + docID + " id:" + doc.get("id"));
         } else {
@@ -415,11 +415,11 @@ public class TestStressIndexing2 extends LuceneTestCase {
 
       // verify stored fields are equivalent
       try {
-        verifyEquals(r1.document(id1), r2.document(id2));
+        verifyEquals(r1.storedFields().document(id1), r2.storedFields().document(id2));
       } catch (Throwable t) {
         System.out.println("FAILED id=" + term + " id1=" + id1 + " id2=" + id2 + " term=" + term);
-        System.out.println("  d1=" + r1.document(id1));
-        System.out.println("  d2=" + r2.document(id2));
+        System.out.println("  d1=" + r1.storedFields().document(id1));
+        System.out.println("  d2=" + r2.storedFields().document(id2));
         throw t;
       }
 

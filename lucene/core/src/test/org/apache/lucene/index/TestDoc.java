@@ -258,7 +258,7 @@ public class TestDoc extends LuceneTestCase {
   private void printSegment(PrintWriter out, SegmentCommitInfo si) throws Exception {
     SegmentReader reader = new SegmentReader(si, Version.LATEST.major, newIOContext(random()));
 
-    for (int i = 0; i < reader.numDocs(); i++) out.println(reader.document(i));
+    for (int i = 0; i < reader.numDocs(); i++) out.println(reader.storedFields().document(i));
 
     for (FieldInfo fieldInfo : reader.getFieldInfos()) {
       if (fieldInfo.getIndexOptions() == IndexOptions.NONE) {

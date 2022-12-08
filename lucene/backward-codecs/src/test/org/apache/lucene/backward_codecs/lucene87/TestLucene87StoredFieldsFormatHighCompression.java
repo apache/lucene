@@ -58,7 +58,7 @@ public class TestLucene87StoredFieldsFormatHighCompression extends BaseStoredFie
     DirectoryReader ir = DirectoryReader.open(dir);
     assertEquals(10, ir.numDocs());
     for (int i = 0; i < 10; i++) {
-      Document doc = ir.document(i);
+      Document doc = ir.storedFields().document(i);
       assertEquals("value1", doc.get("field1"));
       assertEquals("value2", doc.get("field2"));
     }

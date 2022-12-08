@@ -215,7 +215,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
     for (int i = 0; i < 50; i++) {
       assertEquals(i, dv.nextDoc());
       assertEquals(i, dv.longValue());
-      Document d = r.document(i);
+      Document d = r.storedFields().document(i);
       // cannot use d.get("dv") due to another bug!
       assertNull(d.getField("dv"));
       assertEquals(Integer.toString(i), d.get("docId"));

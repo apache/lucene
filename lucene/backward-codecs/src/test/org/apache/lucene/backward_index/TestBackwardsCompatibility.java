@@ -1361,7 +1361,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     ScoreDoc[] hits =
         searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
     assertEquals("wrong number of hits", expectedHitsCount, hits.length);
-    Document d = searcher.doc(hits[0].doc);
+    Document d = searcher.storedFields().document(hits[0].doc);
     assertEquals("wrong first document", expectedFirstDocId, d.get("id"));
     return hits;
   }
@@ -1450,7 +1450,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     ScoreDoc[] hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
     assertEquals("wrong number of hits", 34, hits.length);
-    Document d = searcher.doc(hits[0].doc);
+    Document d = searcher.storedFields().document(hits[0].doc);
     assertEquals("wrong first document", "0", d.get("id"));
 
     if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {

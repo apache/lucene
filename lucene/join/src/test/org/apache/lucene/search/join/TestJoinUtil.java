@@ -536,7 +536,7 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(numParents, topDocs.totalHits.value);
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
       ScoreDoc scoreDoc = topDocs.scoreDocs[i];
-      String id = searcher.doc(scoreDoc.doc).get("id");
+      String id = searcher.storedFields().document(scoreDoc.doc).get("id");
       assertEquals(lowestScoresPerParent.get(id), scoreDoc.score, 0f);
     }
 
@@ -547,7 +547,7 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(numParents, topDocs.totalHits.value);
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
       ScoreDoc scoreDoc = topDocs.scoreDocs[i];
-      String id = searcher.doc(scoreDoc.doc).get("id");
+      String id = searcher.storedFields().document(scoreDoc.doc).get("id");
       assertEquals(highestScoresPerParent.get(id), scoreDoc.score, 0f);
     }
 
@@ -1550,7 +1550,7 @@ public class TestJoinUtil extends LuceneTestCase {
                 Locale.ROOT,
                 "Expected doc[%d] with id value %s",
                 doc,
-                indexSearcher.doc(doc).get("id")));
+                indexSearcher.storedFields().document(doc).get("id")));
       }
       System.out.println("actual cardinality:" + actualResult.cardinality());
       iterator = new BitSetIterator(actualResult, actualResult.cardinality());
@@ -1562,7 +1562,7 @@ public class TestJoinUtil extends LuceneTestCase {
                 Locale.ROOT,
                 "Actual doc[%d] with id value %s",
                 doc,
-                indexSearcher.doc(doc).get("id")));
+                indexSearcher.storedFields().document(doc).get("id")));
       }
     }
     assertEquals(expectedResult, actualResult);

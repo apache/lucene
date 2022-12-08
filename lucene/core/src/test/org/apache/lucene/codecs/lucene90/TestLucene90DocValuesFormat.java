@@ -235,7 +235,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       final SortedSetDocValues sortedSet = DocValues.getSortedSet(reader, "sorted_set");
 
       for (int i = 0; i < reader.maxDoc(); ++i) {
-        final Document doc = reader.document(i);
+        final Document doc = reader.storedFields().document(i);
         final IndexableField valueField = doc.getField("value");
         final Long value = valueField == null ? null : valueField.numericValue().longValue();
 
@@ -679,7 +679,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
         if (i > docValues.docID()) {
           docValues.nextDoc();
         }
-        String[] expectedStored = r.document(i).getValues("stored");
+        String[] expectedStored = r.storedFields().document(i).getValues("stored");
         if (i < docValues.docID()) {
           assertEquals(0, expectedStored.length);
         } else {
@@ -761,7 +761,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
                   + jump
                   + " from #"
                   + (docID - jump);
-          String storedValue = r.document(docID).get("stored");
+          String storedValue = r.storedFields().document(docID).get("stored");
           if (storedValue == null) {
             assertFalse("There should be no DocValue for " + base, docValues.advanceExact(docID));
           } else {

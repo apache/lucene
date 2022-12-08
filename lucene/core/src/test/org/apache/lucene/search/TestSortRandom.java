@@ -213,7 +213,7 @@ public class TestSortRandom extends LuceneTestCase {
                   + ": "
                   + (br == null ? "<missing>" : br.utf8ToString())
                   + " id="
-                  + s.doc(fd.doc).get("id"));
+                  + s.storedFields().document(fd.doc).get("id"));
         }
       }
       for (int hitIDX = 0; hitIDX < hits.scoreDocs.length; hitIDX++) {

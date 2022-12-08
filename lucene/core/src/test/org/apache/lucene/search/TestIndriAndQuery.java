@@ -157,7 +157,7 @@ public class TestIndriAndQuery extends LuceneTestCase {
     System.err.println("------- " + test + " -------");
 
     for (int i = 0; i < h.length; i++) {
-      Document d = searcher.doc(h[i].doc);
+      Document d = searcher.storedFields().document(h[i].doc);
       float score = h[i].score;
       System.err.println("#" + i + ": " + score + " - " + d.get("body"));
     }

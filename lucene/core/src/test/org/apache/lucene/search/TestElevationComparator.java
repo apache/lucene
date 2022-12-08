@@ -120,7 +120,7 @@ public class TestElevationComparator extends LuceneTestCase {
       ScoreDoc scoreDoc = topDocs.scoreDocs[i];
       ids[i] = scoreDoc.doc;
       scores[i] = scoreDoc.score;
-      documents[i] = searcher.doc(ids[i]);
+      documents[i] = searcher.storedFields().document(ids[i]);
       System.out.println("ids[i] = " + ids[i]);
       System.out.println("documents[i] = " + documents[i]);
       System.out.println("scores[i] = " + scores[i]);

@@ -705,7 +705,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), hits);
         TopDocs topDocs = searcher.search(query, numDocs);
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-          Document doc = reader.document(scoreDoc.doc, Set.of("index"));
+          Document doc = reader.storedFields().document(scoreDoc.doc, Set.of("index"));
           String index = doc.get("index");
           assertFalse(
               "search returned a deleted document: " + index,
@@ -868,7 +868,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
 
   private void assertIdMatches(IndexReader reader, String expectedId, ScoreDoc scoreDoc)
       throws IOException {
-    String actualId = reader.document(scoreDoc.doc).get("id");
+    String actualId = reader.storedFields().document(scoreDoc.doc).get("id");
     assertEquals(expectedId, actualId);
   }
 

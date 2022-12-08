@@ -216,7 +216,7 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
       Result[] expected = new Result[reader.maxDoc()];
 
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
-        Document targetDoc = reader.document(doc);
+        Document targetDoc = reader.storedFields().document(doc);
         final double distance;
         if (targetDoc.getField("x") == null) {
           distance = missingValue; // missing

@@ -148,7 +148,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     TopDocs td = searcher.search(q, 10);
     ScoreDoc[] sd = td.scoreDocs;
     for (int i = 0; i < sd.length; i++) {
-      Document doc = searcher.doc(sd[i].doc);
+      Document doc = searcher.storedFields().document(sd[i].doc);
       String id = doc.get("id");
       assertTrue(qString + "matched doc#" + id + " not expected", expecteds.contains(id));
       expecteds.remove(id);

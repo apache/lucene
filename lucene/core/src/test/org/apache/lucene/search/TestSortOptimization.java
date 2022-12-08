@@ -600,7 +600,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
       assertEquals(numHits, topDocs.scoreDocs.length);
       for (int i = 0; i < numHits; i++) {
-        Document d = searcher.doc(topDocs.scoreDocs[i].doc);
+        Document d = searcher.storedFields().document(topDocs.scoreDocs[i].doc);
         assertEquals(Integer.toString(i + lowerRange), d.get("slf"));
         assertEquals("seg1", d.get("tf"));
       }

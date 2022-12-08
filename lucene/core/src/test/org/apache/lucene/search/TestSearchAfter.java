@@ -252,7 +252,7 @@ public class TestSearchAfter extends LuceneTestCase {
             "    hit "
                 + (upto++)
                 + ": id="
-                + searcher.doc(scoreDoc.doc).get("id")
+                + searcher.storedFields().document(scoreDoc.doc).get("id")
                 + " "
                 + scoreDoc);
       }
@@ -308,8 +308,10 @@ public class TestSearchAfter extends LuceneTestCase {
       ScoreDoc sd2 = paged.scoreDocs[i];
       if (VERBOSE) {
         System.out.println("    hit " + (pageStart + i));
-        System.out.println("      expected id=" + searcher.doc(sd1.doc).get("id") + " " + sd1);
-        System.out.println("        actual id=" + searcher.doc(sd2.doc).get("id") + " " + sd2);
+        System.out.println(
+            "      expected id=" + searcher.storedFields().document(sd1.doc).get("id") + " " + sd1);
+        System.out.println(
+            "        actual id=" + searcher.storedFields().document(sd2.doc).get("id") + " " + sd2);
       }
       assertEquals(sd1.doc, sd2.doc);
       assertEquals(sd1.score, sd2.score, 0f);

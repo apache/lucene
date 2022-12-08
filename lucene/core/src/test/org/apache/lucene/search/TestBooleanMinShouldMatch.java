@@ -468,7 +468,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     DecimalFormat f = new DecimalFormat("0.000000", DecimalFormatSymbols.getInstance(Locale.ROOT));
 
     for (int i = 0; i < h.length; i++) {
-      Document d = searcher.doc(h[i].doc);
+      Document d = searcher.storedFields().document(h[i].doc);
       float score = h[i].score;
       System.err.println(
           "#" + i + ": " + f.format(score) + " - " + d.get("id") + " - " + d.get("data"));

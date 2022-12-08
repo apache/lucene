@@ -62,7 +62,7 @@ public class TestSegmentReader extends LuceneTestCase {
   public void testDocument() throws IOException {
     assertTrue(reader.numDocs() == 1);
     assertTrue(reader.maxDoc() >= 1);
-    Document result = reader.document(0);
+    Document result = reader.storedFields().document(0);
     assertTrue(result != null);
     // There are 2 unstored fields on the document that are not preserved across writing
     assertTrue(
@@ -208,7 +208,7 @@ public class TestSegmentReader extends LuceneTestCase {
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.document(-1);
+          reader.storedFields().document(-1);
         });
 
     expectThrows(
@@ -220,7 +220,7 @@ public class TestSegmentReader extends LuceneTestCase {
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.document(numDocs);
+          reader.storedFields().document(numDocs);
         });
 
     expectThrows(

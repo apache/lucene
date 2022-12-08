@@ -64,8 +64,8 @@ public class TestCollationDocValuesField extends LuceneTestCase {
     SortField sortField = new SortField("collated", SortField.Type.STRING);
 
     TopDocs td = is.search(new MatchAllDocsQuery(), 5, new Sort(sortField));
-    assertEquals("abc", ir.document(td.scoreDocs[0].doc).get("field"));
-    assertEquals("ABC", ir.document(td.scoreDocs[1].doc).get("field"));
+    assertEquals("abc", ir.storedFields().document(td.scoreDocs[0].doc).get("field"));
+    assertEquals("ABC", ir.storedFields().document(td.scoreDocs[1].doc).get("field"));
     ir.close();
     dir.close();
   }
@@ -121,7 +121,7 @@ public class TestCollationDocValuesField extends LuceneTestCase {
       throws Exception {
     SortedDocValues dvs = MultiDocValues.getSortedValues(is.getIndexReader(), "collated");
     for (int docID = 0; docID < is.getIndexReader().maxDoc(); docID++) {
-      Document doc = is.doc(docID);
+      Document doc = is.storedFields().document(docID);
       String s = doc.getField("field").stringValue();
       boolean collatorAccepts =
           collate(collator, s, startPoint) >= 0 && collate(collator, s, endPoint) <= 0;

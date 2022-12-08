@@ -221,13 +221,13 @@ public class TestHnswGraph extends LuceneTestCase {
             } else {
               lastScore = scoreDoc.score;
             }
-            Document doc = reader.document(scoreDoc.doc, Set.of("id"));
+            Document doc = reader.storedFields().document(scoreDoc.doc, Set.of("id"));
             ids1.add(doc.get("id"));
             docs1.add(scoreDoc.doc);
           }
           TopDocs topDocs2 = searcher2.search(query, 5);
           for (ScoreDoc scoreDoc : topDocs2.scoreDocs) {
-            Document doc = reader2.document(scoreDoc.doc, Set.of("id"));
+            Document doc = reader2.storedFields().document(scoreDoc.doc, Set.of("id"));
             ids2.add(doc.get("id"));
             docs2.add(scoreDoc.doc);
           }

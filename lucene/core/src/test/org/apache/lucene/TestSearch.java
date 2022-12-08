@@ -117,7 +117,7 @@ public class TestSearch extends LuceneTestCase {
 
       out.println(hits.length + " total results");
       for (int i = 0; i < hits.length && i < 10; i++) {
-        Document d = searcher.doc(hits[i].doc);
+        Document d = searcher.storedFields().document(hits[i].doc);
         out.println(i + " " + hits[i].score + " " + d.get("contents"));
       }
     }

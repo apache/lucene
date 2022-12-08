@@ -756,7 +756,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
         System.out.println("TEST: maxDoc=" + r.maxDoc());
       }
       for (int i = 0; i < r.maxDoc(); i++) {
-        Document rdoc = r.document(i);
+        Document rdoc = r.storedFields().document(i);
         assertEquals(i, ndv.nextDoc());
         assertEquals("docid=" + i + " has wrong ndv value; doc=" + rdoc, value, ndv.longValue());
       }
@@ -908,7 +908,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
           long lastSortValue = Long.MIN_VALUE;
           for (int i = 0; i < leafReader.maxDoc(); i++) {
 
-            Document doc = leafReader.document(i);
+            Document doc = leafReader.storedFields().document(i);
             OneSortDoc sortDoc = docs.get(Integer.parseInt(doc.get("id")));
 
             assertEquals(i, values.nextDoc());
@@ -1039,13 +1039,13 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
                   "invalid value for docID="
                       + doc
                       + " id="
-                      + r.document(doc).get("id")
+                      + r.storedFields().document(doc).get("id")
                       + ", field="
                       + f
                       + ", reader="
                       + r
                       + " doc="
-                      + r.document(doc),
+                      + r.storedFields().document(doc),
                   fieldValues[field],
                   ndv.longValue());
             }

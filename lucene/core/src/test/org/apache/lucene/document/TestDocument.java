@@ -208,7 +208,7 @@ public class TestDocument extends LuceneTestCase {
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(1, hits.length);
 
-    doAssert(searcher.doc(hits[0].doc), true);
+    doAssert(searcher.storedFields().document(hits[0].doc), true);
     writer.close();
     reader.close();
     dir.close();
@@ -234,7 +234,7 @@ public class TestDocument extends LuceneTestCase {
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(1, hits.length);
 
-    doAssert(searcher.doc(hits[0].doc), true);
+    doAssert(searcher.storedFields().document(hits[0].doc), true);
     writer.close();
     reader.close();
     dir.close();
@@ -314,7 +314,7 @@ public class TestDocument extends LuceneTestCase {
     assertEquals(3, hits.length);
     int result = 0;
     for (int i = 0; i < 3; i++) {
-      Document doc2 = searcher.doc(hits[i].doc);
+      Document doc2 = searcher.storedFields().document(hits[i].doc);
       Field f = (Field) doc2.getField("id");
       if (f.stringValue().equals("id1")) result |= 1;
       else if (f.stringValue().equals("id2")) result |= 2;
@@ -350,7 +350,7 @@ public class TestDocument extends LuceneTestCase {
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     iw.addDocument(doc);
     DirectoryReader ir = iw.getReader();
-    Document sdoc = ir.document(0);
+    Document sdoc = ir.storedFields().document(0);
     assertEquals("5", sdoc.get("int"));
     assertNull(sdoc.get("somethingElse"));
     assertArrayEquals(new String[] {"5", "4"}, sdoc.getValues("int"));

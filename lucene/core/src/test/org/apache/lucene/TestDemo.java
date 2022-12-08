@@ -73,7 +73,7 @@ public class TestDemo extends LuceneTestCase {
 
         // Iterate through the results.
         for (int i = 0; i < hits.scoreDocs.length; i++) {
-          Document hitDoc = searcher.doc(hits.scoreDocs[i].doc);
+          Document hitDoc = searcher.storedFields().document(hits.scoreDocs[i].doc);
           assertEquals(text, hitDoc.get("fieldname"));
         }
 

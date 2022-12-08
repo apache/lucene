@@ -144,7 +144,7 @@ public class TestParallelLeafReader extends LuceneTestCase {
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          pr.document(0);
+          pr.storedFields().document(0);
         });
 
     // noop:
@@ -200,10 +200,10 @@ public class TestParallelLeafReader extends LuceneTestCase {
     // with overlapping
     ParallelLeafReader pr =
         new ParallelLeafReader(false, new LeafReader[] {ir1, ir2}, new LeafReader[] {ir1});
-    assertEquals("v1", pr.document(0).get("f1"));
-    assertEquals("v1", pr.document(0).get("f2"));
-    assertNull(pr.document(0).get("f3"));
-    assertNull(pr.document(0).get("f4"));
+    assertEquals("v1", pr.storedFields().document(0).get("f1"));
+    assertEquals("v1", pr.storedFields().document(0).get("f2"));
+    assertNull(pr.storedFields().document(0).get("f3"));
+    assertNull(pr.storedFields().document(0).get("f4"));
     // check that fields are there
     assertNotNull(pr.terms("f1"));
     assertNotNull(pr.terms("f2"));
@@ -213,10 +213,10 @@ public class TestParallelLeafReader extends LuceneTestCase {
 
     // no stored fields at all
     pr = new ParallelLeafReader(false, new LeafReader[] {ir2}, new LeafReader[0]);
-    assertNull(pr.document(0).get("f1"));
-    assertNull(pr.document(0).get("f2"));
-    assertNull(pr.document(0).get("f3"));
-    assertNull(pr.document(0).get("f4"));
+    assertNull(pr.storedFields().document(0).get("f1"));
+    assertNull(pr.storedFields().document(0).get("f2"));
+    assertNull(pr.storedFields().document(0).get("f3"));
+    assertNull(pr.storedFields().document(0).get("f4"));
     // check that fields are there
     assertNull(pr.terms("f1"));
     assertNull(pr.terms("f2"));
@@ -226,10 +226,10 @@ public class TestParallelLeafReader extends LuceneTestCase {
 
     // without overlapping
     pr = new ParallelLeafReader(true, new LeafReader[] {ir2}, new LeafReader[] {ir1});
-    assertEquals("v1", pr.document(0).get("f1"));
-    assertEquals("v1", pr.document(0).get("f2"));
-    assertNull(pr.document(0).get("f3"));
-    assertNull(pr.document(0).get("f4"));
+    assertEquals("v1", pr.storedFields().document(0).get("f1"));
+    assertEquals("v1", pr.storedFields().document(0).get("f2"));
+    assertNull(pr.storedFields().document(0).get("f3"));
+    assertNull(pr.storedFields().document(0).get("f4"));
     // check that fields are there
     assertNull(pr.terms("f1"));
     assertNull(pr.terms("f2"));
@@ -254,8 +254,8 @@ public class TestParallelLeafReader extends LuceneTestCase {
     assertEquals(parallelHits.length, singleHits.length);
     for (int i = 0; i < parallelHits.length; i++) {
       assertEquals(parallelHits[i].score, singleHits[i].score, 0.001f);
-      Document docParallel = parallel.doc(parallelHits[i].doc);
-      Document docSingle = single.doc(singleHits[i].doc);
+      Document docParallel = parallel.storedFields().document(parallelHits[i].doc);
+      Document docSingle = single.storedFields().document(singleHits[i].doc);
       assertEquals(docParallel.get("f1"), docSingle.get("f1"));
       assertEquals(docParallel.get("f2"), docSingle.get("f2"));
       assertEquals(docParallel.get("f3"), docSingle.get("f3"));

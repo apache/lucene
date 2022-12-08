@@ -719,7 +719,7 @@ public class TestSuggestField extends LuceneTestCase {
       assertTrue(key.startsWith("abc_"));
       String substring = key.substring(4);
       int fieldValue = Integer.parseInt(substring);
-      Document doc = reader.document(suggestScoreDoc.doc);
+      Document doc = reader.storedFields().document(suggestScoreDoc.doc);
       assertEquals(doc.getField("int_field").numericValue().intValue(), fieldValue);
     }
 

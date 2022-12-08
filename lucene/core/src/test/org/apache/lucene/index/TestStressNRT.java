@@ -445,7 +445,7 @@ public class TestStressNRT extends LuceneTestCase {
                     if (results.totalHits.value != 1) {
                       System.out.println("FAIL: hits id:" + id + " val=" + val);
                       for (ScoreDoc sd : results.scoreDocs) {
-                        final Document doc = r.document(sd.doc);
+                        final Document doc = r.storedFields().document(sd.doc);
                         System.out.println(
                             "  docID="
                                 + sd.doc

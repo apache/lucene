@@ -412,7 +412,7 @@ public class KnnGraphTester {
               // there is a bug somewhere that can result in doc=NO_MORE_DOCS!  I think it happens
               // in some degenerate case (like input query has NaN in it?) that causes no results to
               // be returned from HNSW search?
-              doc.doc = Integer.parseInt(reader.document(doc.doc).get("id"));
+              doc.doc = Integer.parseInt(reader.storedFields().document(doc.doc).get("id"));
             } else {
               System.out.println("NO_MORE_DOCS!");
             }

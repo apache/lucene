@@ -73,9 +73,9 @@ public class TestFeatureSort extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // numeric order
-    assertEquals("30.1", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("4.2", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[2].doc).get("value"));
+    assertEquals("30.1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("4.2", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertEquals("1.3", searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -105,9 +105,9 @@ public class TestFeatureSort extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null is treated as 0
-    assertEquals("4.2", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[2].doc).get("value"));
+    assertEquals("4.2", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("1.3", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -138,9 +138,9 @@ public class TestFeatureSort extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null is treated as 0
-    assertEquals("4.2", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[2].doc).get("value"));
+    assertEquals("4.2", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("1.3", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -172,9 +172,9 @@ public class TestFeatureSort extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // null is treated as 0
-    assertEquals("4.2", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[2].doc).get("value"));
+    assertEquals("4.2", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("1.3", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -212,13 +212,13 @@ public class TestFeatureSort extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(7, td.totalHits.value);
     // null is treated as 0
-    assertEquals("4.2", searcher.doc(td.scoreDocs[0].doc).get("value"));
-    assertEquals("1.3", searcher.doc(td.scoreDocs[1].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[2].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[3].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[4].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[5].doc).get("value"));
-    assertNull(searcher.doc(td.scoreDocs[6].doc).get("value"));
+    assertEquals("4.2", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("1.3", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[3].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[4].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[5].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[6].doc).get("value"));
 
     ir.close();
     dir.close();

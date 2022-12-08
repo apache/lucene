@@ -1208,20 +1208,20 @@ public class TestIndexWriter extends LuceneTestCase {
     w.close();
 
     IndexReader ir = DirectoryReader.open(dir);
-    Document doc2 = ir.document(0);
+    Document doc2 = ir.storedFields().document(0);
     IndexableField f3 = doc2.getField("binary");
     b = f3.binaryValue().bytes;
     assertTrue(b != null);
     assertEquals(17, b.length, 17);
     assertEquals(87, b[0]);
 
-    assertTrue(ir.document(0).getField("binary").binaryValue() != null);
-    assertTrue(ir.document(1).getField("binary").binaryValue() != null);
-    assertTrue(ir.document(2).getField("binary").binaryValue() != null);
+    assertTrue(ir.storedFields().document(0).getField("binary").binaryValue() != null);
+    assertTrue(ir.storedFields().document(1).getField("binary").binaryValue() != null);
+    assertTrue(ir.storedFields().document(2).getField("binary").binaryValue() != null);
 
-    assertEquals("value", ir.document(0).get("string"));
-    assertEquals("value", ir.document(1).get("string"));
-    assertEquals("value", ir.document(2).get("string"));
+    assertEquals("value", ir.storedFields().document(0).get("string"));
+    assertEquals("value", ir.storedFields().document(1).get("string"));
+    assertEquals("value", ir.storedFields().document(2).get("string"));
 
     // test that the terms were indexed.
     assertTrue(
@@ -2114,7 +2114,7 @@ public class TestIndexWriter extends LuceneTestCase {
       int maxDoc = ar.maxDoc();
       for (int i = 0; i < maxDoc; i++) {
         if (liveDocs == null || liveDocs.get(i)) {
-          assertTrue(liveIds.remove(ar.document(i).get("id")));
+          assertTrue(liveIds.remove(ar.storedFields().document(i).get("id")));
         }
       }
     }
@@ -2162,7 +2162,7 @@ public class TestIndexWriter extends LuceneTestCase {
       int maxDoc = ar.maxDoc();
       for (int i = 0; i < maxDoc; i++) {
         if (liveDocs == null || liveDocs.get(i)) {
-          assertTrue(liveIds.remove(ar.document(i).get("id")));
+          assertTrue(liveIds.remove(ar.storedFields().document(i).get("id")));
         }
       }
     }
@@ -3346,7 +3346,7 @@ public class TestIndexWriter extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(reader);
     TopDocs topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
     assertEquals(1, topDocs.totalHits.value);
-    Document document = reader.document(topDocs.scoreDocs[0].doc);
+    Document document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("2", document.get("version"));
 
     // update the on-disk version
@@ -3362,7 +3362,7 @@ public class TestIndexWriter extends LuceneTestCase {
     searcher = new IndexSearcher(reader);
     topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
     assertEquals(1, topDocs.totalHits.value);
-    document = reader.document(topDocs.scoreDocs[0].doc);
+    document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("3", document.get("version"));
 
     // now delete it

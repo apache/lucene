@@ -73,7 +73,7 @@ public class TestCustomNorms extends LuceneTestCase {
     NumericDocValues norms = MultiDocValues.getNormValues(open, FLOAT_TEST_FIELD);
     assertNotNull(norms);
     for (int i = 0; i < open.maxDoc(); i++) {
-      Document document = open.document(i);
+      Document document = open.storedFields().document(i);
       int expected = Integer.parseInt(document.get(FLOAT_TEST_FIELD).split(" ")[0]);
       assertEquals(i, norms.nextDoc());
       assertEquals(expected, norms.longValue());

@@ -241,7 +241,8 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     final int maxDoc = r.maxDoc();
     assertEquals(1000, maxDoc);
     for (int i = 0; i < 1000; i++) {
-      assertNotNull("doc " + i + " has null country", r.document(i).getField("country"));
+      assertNotNull(
+          "doc " + i + " has null country", r.storedFields().document(i).getField("country"));
     }
     r.close();
   }

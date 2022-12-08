@@ -762,7 +762,7 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
           long lastSortValue = Long.MIN_VALUE;
           for (int i = 0; i < leafReader.maxDoc(); i++) {
 
-            Document doc = leafReader.document(i);
+            Document doc = leafReader.storedFields().document(i);
             OneSortDoc sortDoc = docs.get(Integer.parseInt(doc.get("id")));
 
             assertEquals(i, values.nextDoc());
