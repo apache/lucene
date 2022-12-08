@@ -200,6 +200,9 @@ Optimizations
 * GITHUB#11876: Use ByteArrayComparator to speed up PointInSetQuery in single dimension case.
   (Guo Feng)
 
+* GITHUB#11880: Use ByteArrayComparator to speed up BinaryRangeFieldRangeQuery, RangeFieldQuery
+  LatLonPointDistanceFeatureQuery and CheckIndex. (Guo Feng)
+
 * GITHUB#11881: Further optimize drill-sideways scoring by specializing the single dimension case
   and borrowing some concepts from "min should match" scoring. (Greg Miller)
 
