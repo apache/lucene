@@ -438,7 +438,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
 
     IndexReader r = DirectoryReader.open(w);
 
-    Fields fields = r.getTermVectors(0);
+    Fields fields = r.termVectors().get(0);
     TermsEnum termsEnum = fields.terms("field").iterator();
     assertTrue(termsEnum.seekExact(newBytesRef("bar")));
     assertEquals(228, termsEnum.totalTermFreq());
@@ -456,7 +456,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     assertEquals(59, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
-    fields = r.getTermVectors(1);
+    fields = r.termVectors().get(1);
     termsEnum = fields.terms("field").iterator();
     assertTrue(termsEnum.seekExact(newBytesRef("bar")));
     assertEquals(140, termsEnum.totalTermFreq());

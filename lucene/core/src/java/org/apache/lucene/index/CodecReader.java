@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
-
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;

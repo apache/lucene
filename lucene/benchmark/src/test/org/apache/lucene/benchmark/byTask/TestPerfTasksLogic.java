@@ -645,7 +645,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     writer.close();
     Directory dir = benchmark.getRunData().getDirectory();
     IndexReader reader = DirectoryReader.open(dir);
-    Fields tfv = reader.getTermVectors(0);
+    Fields tfv = reader.termVectors().get(0);
     assertNotNull(tfv);
     assertTrue(tfv.size() > 0);
     reader.close();

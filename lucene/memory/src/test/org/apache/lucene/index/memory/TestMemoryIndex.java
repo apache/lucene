@@ -151,7 +151,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     IndexSearcher searcher = mi.createSearcher();
     IndexReader reader = searcher.getIndexReader();
 
-    assertEquals(reader.getTermVectors(0).size(), 1);
+    assertEquals(reader.termVectors().get(0).size(), 1);
   }
 
   public void testReaderConsistency() throws IOException {

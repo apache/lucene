@@ -127,10 +127,10 @@ public class TestMultiThreadTermVectors extends LuceneTestCase {
       // check:
       int numDocs = reader.numDocs();
       for (int docId = 0; docId < numDocs; docId++) {
-        Fields vectors = reader.getTermVectors(docId);
+        Fields vectors = reader.termVectors().get(docId);
         // verify vectors result
         verifyVectors(vectors, docId);
-        Terms vector = reader.getTermVectors(docId).terms("field");
+        Terms vector = reader.termVectors().get(docId).terms("field");
         verifyVector(vector.iterator(), docId);
       }
     }

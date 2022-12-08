@@ -139,7 +139,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
   private TokenStream getAnyTokenStream(String fieldName, int docId) throws IOException {
     return TokenSources.getTokenStream(
         fieldName,
-        searcher.getIndexReader().getTermVectors(docId),
+        searcher.getIndexReader().termVectors().get(docId),
         searcher.storedFields().document(docId).get(fieldName),
         analyzer,
         -1);
@@ -2493,7 +2493,7 @@ final class SynonymTokenizer extends TokenStream {
         TokenStream tokenStream =
             TokenSources.getTokenStream(
                 TestHighlighter.FIELD_NAME,
-                searcher.getIndexReader().getTermVectors(docId),
+                searcher.getIndexReader().termVectors().get(docId),
                 text,
                 analyzer,
                 -1);

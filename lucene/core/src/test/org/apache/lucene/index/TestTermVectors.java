@@ -61,7 +61,7 @@ public class TestTermVectors extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       assertNotNull(
           "term vectors should not have been null for document " + i,
-          r.getTermVectors(i).terms("c"));
+          r.termVectors().get(i).terms("c"));
     }
     r.close();
   }

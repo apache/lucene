@@ -811,7 +811,7 @@ public class TestIndexWriter extends LuceneTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    Terms tpv = r.getTermVectors(0).terms("field");
+    Terms tpv = r.termVectors().get(0).terms("field");
     TermsEnum termsEnum = tpv.iterator();
     assertNotNull(termsEnum.next());
     PostingsEnum dpEnum = termsEnum.postings(null, PostingsEnum.ALL);

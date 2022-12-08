@@ -146,7 +146,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
                   seenDocIDs.set(docID);
                 }
 
-                return super.getTermVectors(docID);
+                return super.termVectors().get(docID);
               }
 
               @Override

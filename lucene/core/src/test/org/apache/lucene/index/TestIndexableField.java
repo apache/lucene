@@ -299,7 +299,7 @@ public class TestIndexableField extends LuceneTestCase {
         if (indexed) {
           final boolean tv = counter % 2 == 1 && fieldID != 9;
           if (tv) {
-            final Terms tfv = r.getTermVectors(docID).terms(name);
+            final Terms tfv = r.termVectors().get(docID).terms(name);
             assertNotNull(tfv);
             TermsEnum termsEnum = tfv.iterator();
             assertEquals(newBytesRef("" + counter), termsEnum.next());
@@ -321,7 +321,7 @@ public class TestIndexableField extends LuceneTestCase {
             // TODO: offsets
 
           } else {
-            Fields vectors = r.getTermVectors(docID);
+            Fields vectors = r.termVectors().get(docID);
             assertTrue(vectors == null || vectors.terms(name) == null);
           }
 

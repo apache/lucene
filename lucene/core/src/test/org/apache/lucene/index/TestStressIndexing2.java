@@ -425,10 +425,10 @@ public class TestStressIndexing2 extends LuceneTestCase {
 
       try {
         // verify term vectors are equivalent
-        verifyEquals(r1.getTermVectors(id1), r2.getTermVectors(id2));
+        verifyEquals(r1.termVectors().get(id1), r2.termVectors().get(id2));
       } catch (Throwable e) {
         System.out.println("FAILED id=" + term + " id1=" + id1 + " id2=" + id2);
-        Fields tv1 = r1.getTermVectors(id1);
+        Fields tv1 = r1.termVectors().get(id1);
         System.out.println("  d1=" + tv1);
         if (tv1 != null) {
           PostingsEnum dpEnum = null;
@@ -461,7 +461,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
           }
         }
 
-        Fields tv2 = r2.getTermVectors(id2);
+        Fields tv2 = r2.termVectors().get(id2);
         System.out.println("  d2=" + tv2);
         if (tv2 != null) {
           PostingsEnum dpEnum = null;

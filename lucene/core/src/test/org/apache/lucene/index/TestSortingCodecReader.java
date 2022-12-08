@@ -278,7 +278,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertEquals(1, vectorValue.length);
               assertEquals((float) ids.longValue(), vectorValue[0], 0.001f);
 
-              Fields termVectors = leaf.getTermVectors(idNext);
+              Fields termVectors = leaf.termVectors().get(idNext);
               assertTrue(
                   termVectors
                       .terms("term_vectors")
