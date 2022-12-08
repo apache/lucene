@@ -16,3 +16,4 @@
 org.apache.lucene.backward_codecs.lucene90.Lucene90HnswVectorsFormat
 org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat
 org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat
+org.apache.lucene.backward_codecs.lucene94.Lucene94HnswVectorsFormat

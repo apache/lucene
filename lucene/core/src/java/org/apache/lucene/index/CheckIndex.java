@@ -66,6 +66,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -2678,6 +2680,7 @@ public final class CheckIndex implements Closeable {
     private final int numDataDims;
     private final int numIndexDims;
     private final int bytesPerDim;
+    private final ByteArrayComparator comparator;
     private final String fieldName;
 
     /** Sole constructor */
@@ -2687,6 +2690,7 @@ public final class CheckIndex implements Closeable {
       numDataDims = values.getNumDimensions();
       numIndexDims = values.getNumIndexDimensions();
       bytesPerDim = values.getBytesPerDimension();
+      comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       packedBytesCount = numDataDims * bytesPerDim;
       packedIndexBytesCount = numIndexDims * bytesPerDim;
       globalMinPackedValue = values.getMinPackedValue();
@@ -2778,14 +2782,7 @@ public final class CheckIndex implements Closeable {
         int offset = bytesPerDim * dim;
 
         // Compare to last cell:
-        if (Arrays.compareUnsigned(
-                packedValue,
-                offset,
-                offset + bytesPerDim,
-                lastMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
+        if (comparator.compare(packedValue, offset, lastMinPackedValue, offset) < 0) {
           // This doc's point, in this dimension, is lower than the minimum value of the last cell
           // checked:
           throw new CheckIndexException(
@@ -2803,14 +2800,7 @@ public final class CheckIndex implements Closeable {
                   + dim);
         }
 
-        if (Arrays.compareUnsigned(
-                packedValue,
-                offset,
-                offset + bytesPerDim,
-                lastMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(packedValue, offset, lastMaxPackedValue, offset) > 0) {
           // This doc's point, in this dimension, is greater than the maximum value of the last cell
           // checked:
           throw new CheckIndexException(
@@ -2835,8 +2825,7 @@ public final class CheckIndex implements Closeable {
       // for data dimension > 1, leaves are sorted by the dimension with the lowest cardinality to
       // improve block compression
       if (numDataDims == 1) {
-        int cmp =
-            Arrays.compareUnsigned(lastPackedValue, 0, bytesPerDim, packedValue, 0, bytesPerDim);
+        int cmp = comparator.compare(lastPackedValue, 0, packedValue, 0);
         if (cmp > 0) {
           throw new CheckIndexException(
               "packed points value "
@@ -2874,14 +2863,7 @@ public final class CheckIndex implements Closeable {
       for (int dim = 0; dim < numIndexDims; dim++) {
         int offset = bytesPerDim * dim;
 
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(minPackedValue, offset, maxPackedValue, offset) > 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2895,14 +2877,7 @@ public final class CheckIndex implements Closeable {
         }
 
         // Make sure this cell is not outside of the global min/max:
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
+        if (comparator.compare(minPackedValue, offset, globalMinPackedValue, offset) < 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2915,14 +2890,7 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        if (Arrays.compareUnsigned(
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
+        if (comparator.compare(maxPackedValue, offset, globalMinPackedValue, offset) < 0) {
           throw new CheckIndexException(
               "packed points cell maxPackedValue "
                   + Arrays.toString(maxPackedValue)
@@ -2935,14 +2903,7 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(minPackedValue, offset, globalMaxPackedValue, offset) > 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2954,14 +2915,7 @@ public final class CheckIndex implements Closeable {
                   + fieldName
                   + "\"");
         }
-        if (Arrays.compareUnsigned(
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(maxPackedValue, offset, globalMaxPackedValue, offset) > 0) {
           throw new CheckIndexException(
               "packed points cell maxPackedValue "
                   + Arrays.toString(maxPackedValue)

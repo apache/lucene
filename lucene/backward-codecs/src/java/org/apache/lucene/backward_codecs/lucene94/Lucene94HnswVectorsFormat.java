@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene94;
+package org.apache.lucene.backward_codecs.lucene94;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -105,8 +105,8 @@ public final class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
 
-  public static final int VERSION_START = 0;
-  public static final int VERSION_CURRENT = 1;
+  static final int VERSION_START = 0;
+  static final int VERSION_CURRENT = 1;
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
