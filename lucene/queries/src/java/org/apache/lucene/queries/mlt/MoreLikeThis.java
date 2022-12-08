@@ -33,7 +33,9 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
@@ -268,6 +270,12 @@ public final class MoreLikeThis {
   /** IndexReader to use */
   private final IndexReader ir;
 
+  /** Stored fields for {@code ir}. */
+  private final StoredFields storedFields;
+
+  /** Term vectors for {@code ir}. */
+  private final TermVectors termVectors;
+
   /** Boost factor to use when boosting the terms */
   private float boostFactor = 1;
 
@@ -291,12 +299,14 @@ public final class MoreLikeThis {
   }
 
   /** Constructor requiring an IndexReader. */
-  public MoreLikeThis(IndexReader ir) {
+  public MoreLikeThis(IndexReader ir) throws IOException {
     this(ir, new ClassicSimilarity());
   }
 
-  public MoreLikeThis(IndexReader ir, TFIDFSimilarity sim) {
+  public MoreLikeThis(IndexReader ir, TFIDFSimilarity sim) throws IOException {
     this.ir = ir;
+    this.storedFields = ir.storedFields();
+    this.termVectors = ir.termVectors();
     this.similarity = sim;
   }
 
@@ -711,7 +721,7 @@ public final class MoreLikeThis {
   private PriorityQueue<ScoreTerm> retrieveTerms(int docNum) throws IOException {
     Map<String, Map<String, Int>> field2termFreqMap = new HashMap<>();
     for (String fieldName : fieldNames) {
-      final Fields vectors = ir.getTermVectors(docNum);
+      final Fields vectors = termVectors.get(docNum);
       final Terms vector;
       if (vectors != null) {
         vector = vectors.terms(fieldName);
@@ -721,7 +731,7 @@ public final class MoreLikeThis {
 
       // field does not store term vector info
       if (vector == null) {
-        Document d = ir.document(docNum);
+        Document d = storedFields.document(docNum);
         IndexableField[] fields = d.getFields(fieldName);
         for (IndexableField field : fields) {
           final String stringValue = field.stringValue();

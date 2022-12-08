@@ -75,7 +75,8 @@ public class KNearestNeighborDocumentClassifier extends KNearestNeighborClassifi
       int minTermFreq,
       String classFieldName,
       Map<String, Analyzer> field2analyzer,
-      String... textFieldNames) {
+      String... textFieldNames)
+      throws IOException {
     super(
         indexReader,
         similarity,

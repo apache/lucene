@@ -96,7 +96,8 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
       int minDocsFreq,
       int minTermFreq,
       String classFieldName,
-      String... textFieldNames) {
+      String... textFieldNames)
+      throws IOException {
     this.textFieldNames = textFieldNames;
     this.classFieldName = classFieldName;
     this.mlt = new MoreLikeThis(indexReader);

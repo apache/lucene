@@ -30,7 +30,7 @@ import org.apache.lucene.document.DocumentStoredFieldVisitor;
  *
  * <p>See {@link DocumentStoredFieldVisitor}, which is a <code>StoredFieldVisitor</code> that builds
  * the {@link Document} containing all stored fields. This is used by {@link
- * IndexReader#document(int)}.
+ * StoredFields#document(int)}.
  *
  * @lucene.experimental
  */

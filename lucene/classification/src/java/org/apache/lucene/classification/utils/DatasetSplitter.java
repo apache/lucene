@@ -29,6 +29,7 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -134,6 +135,7 @@ public class DatasetSplitter {
       int b = 0;
 
       // iterate over existing documents
+      StoredFields storedFields = originalIndex.storedFields();
       for (GroupDocs<Object> group : topGroups.groups) {
         assert group.totalHits.relation == TotalHits.Relation.EQUAL_TO;
         long totalHits = group.totalHits.value;
@@ -144,7 +146,7 @@ public class DatasetSplitter {
         for (ScoreDoc scoreDoc : group.scoreDocs) {
 
           // create a new document for indexing
-          Document doc = createNewDoc(originalIndex, ft, scoreDoc, fieldNames);
+          Document doc = createNewDoc(storedFields, ft, scoreDoc, fieldNames);
 
           // add it to one of the IDXs
           if (b % 2 == 0 && tc < testSize) {
@@ -180,10 +182,10 @@ public class DatasetSplitter {
   }
 
   private Document createNewDoc(
-      IndexReader originalIndex, FieldType ft, ScoreDoc scoreDoc, String[] fieldNames)
+      StoredFields originalFields, FieldType ft, ScoreDoc scoreDoc, String[] fieldNames)
       throws IOException {
     Document doc = new Document();
-    Document document = originalIndex.document(scoreDoc.doc);
+    Document document = originalFields.document(scoreDoc.doc);
     if (fieldNames != null && fieldNames.length > 0) {
       for (String fieldName : fieldNames) {
         IndexableField field = document.getField(fieldName);

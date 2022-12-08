@@ -39,6 +39,7 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -529,9 +530,10 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           final Bits liveDocs = reader.getLiveDocs();
           int sum = 0;
           final int inc = Math.max(1, maxDoc / 50);
+          StoredFields storedFields = reader.storedFields();
           for (int docID = 0; docID < maxDoc; docID += inc) {
             if (liveDocs == null || liveDocs.get(docID)) {
-              final Document doc = reader.document(docID);
+              final Document doc = storedFields.document(docID);
               sum += doc.getFields().size();
             }
           }
