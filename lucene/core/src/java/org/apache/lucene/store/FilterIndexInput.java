@@ -81,9 +81,4 @@ public class FilterIndexInput extends IndexInput {
   public void readBytes(byte[] b, int offset, int len) throws IOException {
     in.readBytes(b, offset, len);
   }
-
-  @Override
-  public void readBytes(byte[] b, int offset, int len, boolean useBuffer) throws IOException {
-    in.readBytes(b, offset, len, useBuffer);
-  }
 }

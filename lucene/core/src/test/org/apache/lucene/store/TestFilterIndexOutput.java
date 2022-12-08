@@ -18,9 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.lang.reflect.Modifier;
 import org.junit.Test;
 
 public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOutput> {
@@ -39,39 +37,19 @@ public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOut
   }
 
   @Test
-  public void testOverrides() throws Exception {
-    // verify that all methods of IndexOutput/DataOutput are overridden by FilterDirectory,
-    // except those under the 'exclude' list
-    Set<Method> exclude = new HashSet<>();
-
-    exclude.add(DataOutput.class.getMethod("copyBytes", DataInput.class, long.class));
-    exclude.add(DataOutput.class.getMethod("writeBytes", byte[].class, int.class));
-    exclude.add(DataOutput.class.getMethod("writeInt", int.class));
-    exclude.add(DataOutput.class.getMethod("writeShort", short.class));
-    exclude.add(DataOutput.class.getMethod("writeLong", long.class));
-    exclude.add(DataOutput.class.getMethod("writeString", String.class));
-    exclude.add(DataOutput.class.getMethod("writeZLong", long.class));
-    exclude.add(DataOutput.class.getMethod("writeVLong", long.class));
-    exclude.add(DataOutput.class.getMethod("writeZInt", int.class));
-    exclude.add(DataOutput.class.getMethod("writeVInt", int.class));
-    exclude.add(DataOutput.class.getMethod("copyBytes", DataInput.class, long.class));
-    exclude.add(DataOutput.class.getMethod("writeMapOfStrings", Map.class));
-    exclude.add(DataOutput.class.getMethod("writeSetOfStrings", Set.class));
-
-    exclude.add(IndexOutput.class.getMethod("toString"));
-    exclude.add(IndexOutput.class.getMethod("getName"));
-    exclude.add(IndexOutput.class.getMethod("alignOffset", long.class, int.class));
-    exclude.add(IndexOutput.class.getMethod("alignFilePointer", int.class));
-
+  public void testOverrides() {
     for (Method m : FilterIndexOutput.class.getMethods()) {
-      if (m.getDeclaringClass() == IndexOutput.class || m.getDeclaringClass() == DataOutput.class) {
-        String className = IndexOutput.class.getSimpleName();
-        if (m.getDeclaringClass() == DataOutput.class) {
-          className = DataOutput.class.getSimpleName();
+      if (m.getDeclaringClass() == FilterIndexOutput.class) {
+        // verify that only abstract methods are overridden
+        Method indexOutputMethod;
+        try {
+          indexOutputMethod = IndexOutput.class.getMethod(m.getName(), m.getParameterTypes());
+          assertTrue(
+              "Non-abstract method " + m.getName() + " is overridden",
+              Modifier.isAbstract(indexOutputMethod.getModifiers()));
+        } catch (Exception e) {
+          assertTrue(e instanceof NoSuchMethodException);
         }
-        assertTrue(
-            "method " + m.getName() + " not overridden from " + className + "!",
-            exclude.contains(m));
       }
     }
   }
