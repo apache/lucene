@@ -45,6 +45,8 @@ New Features
 * GITHUB#11929: MMapDirectory gives more granular control on which files to
   preload. (Adrien Grand, Uwe Schindler)
 
+* GITHUB#11999: MemoryIndex now supports stored fields. (Alan Woodward)
+
 Improvements
 ---------------------
 * GITHUB#11785: Improve Tessellator performance by delaying calls to the method

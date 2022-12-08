@@ -17,10 +17,12 @@
 package org.apache.lucene.index.memory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SortedMap;
@@ -416,6 +418,10 @@ public class MemoryIndex {
     if (field.fieldType().pointDimensionCount() > 0) {
       storePointValues(info, field.binaryValue());
     }
+
+    if (field.fieldType().stored()) {
+      storeValues(info, field);
+    }
   }
 
   /**
@@ -525,6 +531,26 @@ public class MemoryIndex {
     }
     info.pointValues = ArrayUtil.grow(info.pointValues, info.pointValuesCount + 1);
     info.pointValues[info.pointValuesCount++] = BytesRef.deepCopyOf(pointValue);
+  }
+
+  private void storeValues(Info info, IndexableField field) {
+    if (info.storedValues == null) {
+      info.storedValues = new ArrayList<>();
+    }
+    BytesRef binaryValue = field.binaryValue();
+    if (binaryValue != null) {
+      info.storedValues.add(binaryValue);
+      return;
+    }
+    Number numberValue = field.numericValue();
+    if (numberValue != null) {
+      info.storedValues.add(numberValue);
+      return;
+    }
+    String stringValue = field.stringValue();
+    if (stringValue != null) {
+      info.storedValues.add(stringValue);
+    }
   }
 
   private void storeDocValues(Info info, DocValuesType docValuesType, Object docValuesValue) {
@@ -874,6 +900,8 @@ public class MemoryIndex {
     private NumericDocValuesProducer numericProducer;
 
     private boolean preparedDocValuesAndPointValues;
+
+    private List<Object> storedValues;
 
     private BytesRef[] pointValues;
 
@@ -1798,9 +1826,34 @@ public class MemoryIndex {
     }
 
     @Override
-    public void document(int docID, StoredFieldVisitor visitor) {
+    public void document(int docID, StoredFieldVisitor visitor) throws IOException {
       if (DEBUG) System.err.println("MemoryIndexReader.document");
-      // no-op: there are no stored fields
+      for (Info info : fields.values()) {
+        StoredFieldVisitor.Status status = visitor.needsField(info.fieldInfo);
+        if (status == StoredFieldVisitor.Status.STOP) {
+          return;
+        }
+        if (status == StoredFieldVisitor.Status.NO) {
+          continue;
+        }
+        if (info.storedValues != null) {
+          for (Object value : info.storedValues) {
+            if (value instanceof BytesRef) {
+              visitor.binaryField(info.fieldInfo, BytesRef.deepCopyOf((BytesRef) value).bytes);
+            } else if (value instanceof Double) {
+              visitor.doubleField(info.fieldInfo, (double) value);
+            } else if (value instanceof Float) {
+              visitor.floatField(info.fieldInfo, (float) value);
+            } else if (value instanceof Long) {
+              visitor.longField(info.fieldInfo, (long) value);
+            } else if (value instanceof Integer) {
+              visitor.intField(info.fieldInfo, (int) value);
+            } else if (value instanceof String) {
+              visitor.stringField(info.fieldInfo, (String) value);
+            }
+          }
+        }
+      }
     }
 
     @Override
