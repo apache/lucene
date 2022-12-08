@@ -48,6 +48,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
@@ -599,8 +600,9 @@ public class TestSortOptimization extends LuceneTestCase {
       TopDocs topDocs = searcher.search(bq.build(), manager);
 
       assertEquals(numHits, topDocs.scoreDocs.length);
+      StoredFields storedFields = searcher.storedFields();
       for (int i = 0; i < numHits; i++) {
-        Document d = searcher.storedFields().document(topDocs.scoreDocs[i].doc);
+        Document d = storedFields.document(topDocs.scoreDocs[i].doc);
         assertEquals(Integer.toString(i + lowerRange), d.get("slf"));
         assertEquals("seg1", d.get("tf"));
       }

@@ -313,9 +313,10 @@ public class TestStressIndexing2 extends LuceneTestCase {
       // TODO: improve this
       LeafReader sub = ctx.reader();
       Bits liveDocs = sub.getLiveDocs();
+      StoredFields storedFields = sub.storedFields();
       System.out.println("  " + ((SegmentReader) sub).getSegmentInfo());
       for (int docID = 0; docID < sub.maxDoc(); docID++) {
-        Document doc = sub.storedFields().document(docID);
+        Document doc = storedFields.document(docID);
         if (liveDocs == null || liveDocs.get(docID)) {
           System.out.println("    docID=" + docID + " id:" + doc.get("id"));
         } else {

@@ -1236,7 +1236,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         searcher.search(new TermQuery(new Term(new String("content"), "aaa")), 1000).scoreDocs;
 
     // First document should be #0
-    Document d = searcher.getIndexReader().storedFields().document(hits[0].doc);
+    Document d = storedFields.document(hits[0].doc);
     assertEquals("didn't get the right document first", "0", d.get("id"));
 
     doTestHits(hits, 34, searcher.getIndexReader());

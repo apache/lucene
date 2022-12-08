@@ -411,9 +411,11 @@ public class TestTermVectorsWriter extends LuceneTestCase {
       writer.close();
 
       IndexReader reader = DirectoryReader.open(dir);
+      StoredFields storedFields = reader.storedFields();
+      TermVectors termVectors = reader.termVectors();
       for (int i = 0; i < reader.numDocs(); i++) {
-        reader.storedFields().document(i);
-        reader.termVectors().get(i);
+        storedFields.document(i);
+        termVectors.get(i);
       }
       reader.close();
 
@@ -519,9 +521,11 @@ public class TestTermVectorsWriter extends LuceneTestCase {
     writer.close();
 
     IndexReader reader = DirectoryReader.open(dir);
+    StoredFields storedFields = reader.storedFields();
+    TermVectors termVectors = reader.termVectors();
     for (int i = 0; i < 10; i++) {
-      reader.termVectors().get(i);
-      reader.storedFields().document(i);
+      termVectors.get(i);
+      storedFields.document(i);
     }
     reader.close();
     dir.close();

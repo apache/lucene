@@ -66,12 +66,13 @@ public class TestDirectoryReader extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(dir);
     assertTrue(reader != null);
     assertTrue(reader instanceof StandardDirectoryReader);
+    StoredFields storedFields = reader.storedFields();
 
-    Document newDoc1 = reader.storedFields().document(0);
+    Document newDoc1 = storedFields.document(0);
     assertTrue(newDoc1 != null);
     assertTrue(
         DocHelper.numFields(newDoc1) == DocHelper.numFields(doc1) - DocHelper.unstored.size());
-    Document newDoc2 = reader.storedFields().document(1);
+    Document newDoc2 = storedFields.document(1);
     assertTrue(newDoc2 != null);
     assertTrue(
         DocHelper.numFields(newDoc2) == DocHelper.numFields(doc2) - DocHelper.unstored.size());
@@ -612,10 +613,12 @@ public class TestDirectoryReader extends LuceneTestCase {
     }
 
     // check stored fields
+    StoredFields storedFields1 = index1.storedFields();
+    StoredFields storedFields2 = index2.storedFields();
     for (int i = 0; i < index1.maxDoc(); i++) {
       if (liveDocs1 == null || liveDocs1.get(i)) {
-        Document doc1 = index1.storedFields().document(i);
-        Document doc2 = index2.storedFields().document(i);
+        Document doc1 = storedFields1.document(i);
+        Document doc2 = storedFields2.document(i);
         List<IndexableField> field1 = doc1.getFields();
         List<IndexableField> field2 = doc2.getFields();
         assertEquals(

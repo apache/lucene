@@ -48,6 +48,7 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -240,9 +241,9 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
     final int maxDoc = r.maxDoc();
     assertEquals(1000, maxDoc);
+    StoredFields storedFields = r.storedFields();
     for (int i = 0; i < 1000; i++) {
-      assertNotNull(
-          "doc " + i + " has null country", r.storedFields().document(i).getField("country"));
+      assertNotNull("doc " + i + " has null country", storedFields.document(i).getField("country"));
     }
     r.close();
   }

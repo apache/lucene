@@ -1770,6 +1770,7 @@ public class TestIndexSorting extends LuceneTestCase {
 
     // Now check that the index is consistent
     IndexSearcher searcher = newSearcher(reader);
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numDocs; ++i) {
       TermQuery termQuery = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(termQuery, 1);
@@ -1780,7 +1781,7 @@ public class TestIndexSorting extends LuceneTestCase {
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
-        Document document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
+        Document document = storedFields.document(topDocs.scoreDocs[0].doc);
         assertEquals(Integer.toString(i), document.get("id"));
       }
     }
@@ -1821,6 +1822,7 @@ public class TestIndexSorting extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(w);
     // Now check that the index is consistent
     IndexSearcher searcher = newSearcher(reader);
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numDocs; ++i) {
       TermQuery termQuery = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(termQuery, 1);
@@ -1831,7 +1833,7 @@ public class TestIndexSorting extends LuceneTestCase {
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
-        Document document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
+        Document document = storedFields.document(topDocs.scoreDocs[0].doc);
         assertEquals(Integer.toString(i), document.get("id"));
       }
     }
@@ -2665,12 +2667,13 @@ public class TestIndexSorting extends LuceneTestCase {
       }
 
       assertEquals(hits2.scoreDocs.length, hits1.scoreDocs.length);
+      StoredFields storedFields1 = r1.storedFields();
+      StoredFields storedFields2 = r2.storedFields();
       for (int i = 0; i < hits2.scoreDocs.length; i++) {
         ScoreDoc hit1 = hits1.scoreDocs[i];
         ScoreDoc hit2 = hits2.scoreDocs[i];
         assertEquals(
-            r1.storedFields().document(hit1.doc).get("id"),
-            r2.storedFields().document(hit2.doc).get("id"));
+            storedFields1.document(hit1.doc).get("id"), storedFields2.document(hit2.doc).get("id"));
         assertArrayEquals(((FieldDoc) hit1).fields, ((FieldDoc) hit2).fields);
       }
     }
@@ -2701,6 +2704,7 @@ public class TestIndexSorting extends LuceneTestCase {
     }
     w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
+    StoredFields storedFields = r.storedFields();
     for (int docID = 0; docID < 1000; docID++) {
       int expectedID;
       if (docID < 500) {
@@ -2709,7 +2713,7 @@ public class TestIndexSorting extends LuceneTestCase {
         expectedID = docID - 500;
       }
       assertEquals(
-          expectedID, r.storedFields().document(docID).getField("id").numericValue().intValue());
+          expectedID, storedFields.document(docID).getField("id").numericValue().intValue());
     }
     IOUtils.close(r, w, dir);
   }
@@ -2882,6 +2886,7 @@ public class TestIndexSorting extends LuceneTestCase {
         if (values == null) {
           continue;
         }
+        StoredFields storedFields = leafCtx.reader().storedFields();
         for (int id = 0; id < leafCtx.reader().maxDoc(); id++) {
           if (liveDocs != null && liveDocs.get(id) == false) {
             continue;
@@ -2889,9 +2894,7 @@ public class TestIndexSorting extends LuceneTestCase {
           if (values.advanceExact(id) == false) {
             continue;
           }
-          int globalId =
-              Integer.parseInt(
-                  leafCtx.reader().storedFields().document(id).getField("id").stringValue());
+          int globalId = Integer.parseInt(storedFields.document(id).getField("id").stringValue());
           assertTrue(values.advanceExact(id));
           assertEquals(expectedValues[globalId], values.longValue());
           docCount++;

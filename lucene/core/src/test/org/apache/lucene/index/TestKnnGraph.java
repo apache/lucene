@@ -397,11 +397,10 @@ public class TestKnnGraph extends LuceneTestCase {
                   try {
                     KnnVectorQuery query = new KnnVectorQuery("vector", new float[] {0f, 0.1f}, 5);
                     TopDocs results = searcher.search(query, 5);
+                    StoredFields storedFields = searcher.storedFields();
                     for (ScoreDoc doc : results.scoreDocs) {
                       // map docId to insertion id
-                      doc.doc =
-                          Integer.parseInt(
-                              searcher.getIndexReader().storedFields().document(doc.doc).get("id"));
+                      doc.doc = Integer.parseInt(storedFields.document(doc.doc).get("id"));
                     }
                     assertResults(new int[] {0, 15, 3, 18, 5}, results);
                   } finally {
@@ -424,9 +423,10 @@ public class TestKnnGraph extends LuceneTestCase {
   private void assertGraphSearch(int[] expected, float[] vector, IndexReader reader)
       throws IOException {
     TopDocs results = doKnnSearch(reader, vector, 5);
+    StoredFields storedFields = reader.storedFields();
     for (ScoreDoc doc : results.scoreDocs) {
       // map docId to insertion id
-      doc.doc = Integer.parseInt(reader.storedFields().document(doc.doc).get("id"));
+      doc.doc = Integer.parseInt(storedFields.document(doc.doc).get("id"));
     }
     assertResults(expected, results);
   }
@@ -490,17 +490,18 @@ public class TestKnnGraph extends LuceneTestCase {
         // assert vector values:
         // stored vector values are the same as original
         int nextDocWithVectors = 0;
+        StoredFields storedFields = reader.storedFields();
         for (int i = 0; i < reader.maxDoc(); i++) {
           nextDocWithVectors = vectorValues.advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
-            int id = Integer.parseInt(reader.storedFields().document(i).get("id"));
+            int id = Integer.parseInt(storedFields.document(i).get("id"));
             assertNull("document " + id + " has no vector, but was expected to", values[id]);
             ++i;
           }
           if (nextDocWithVectors == NO_MORE_DOCS) {
             break;
           }
-          int id = Integer.parseInt(reader.storedFields().document(i).get("id"));
+          int id = Integer.parseInt(storedFields.document(i).get("id"));
           // documents with KnnGraphValues have the expected vectors
           float[] scratch = vectorValues.vectorValue();
           assertArrayEquals(

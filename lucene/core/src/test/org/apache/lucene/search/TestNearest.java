@@ -29,6 +29,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.geo.GeoTestUtil;
@@ -232,11 +233,12 @@ public class TestNearest extends LuceneTestCase {
               new Sort(LatLonDocValuesField.newDistanceSort("point", pointLat, pointLon)));
 
       ScoreDoc[] hits = LatLonPoint.nearest(s, "point", pointLat, pointLon, topN).scoreDocs;
+      StoredFields storedFields = r.storedFields();
       for (int i = 0; i < topN; i++) {
         FieldDoc expected = expectedHits[i];
         FieldDoc expected2 = (FieldDoc) fieldDocs.scoreDocs[i];
         FieldDoc actual = (FieldDoc) hits[i];
-        Document actualDoc = r.storedFields().document(actual.doc);
+        Document actualDoc = storedFields.document(actual.doc);
 
         if (VERBOSE) {
           System.out.println("hit " + i);

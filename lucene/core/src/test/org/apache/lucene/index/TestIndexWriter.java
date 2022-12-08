@@ -1208,20 +1208,21 @@ public class TestIndexWriter extends LuceneTestCase {
     w.close();
 
     IndexReader ir = DirectoryReader.open(dir);
-    Document doc2 = ir.storedFields().document(0);
+    StoredFields storedFields = ir.storedFields();
+    Document doc2 = storedFields.document(0);
     IndexableField f3 = doc2.getField("binary");
     b = f3.binaryValue().bytes;
     assertTrue(b != null);
     assertEquals(17, b.length, 17);
     assertEquals(87, b[0]);
 
-    assertTrue(ir.storedFields().document(0).getField("binary").binaryValue() != null);
-    assertTrue(ir.storedFields().document(1).getField("binary").binaryValue() != null);
-    assertTrue(ir.storedFields().document(2).getField("binary").binaryValue() != null);
+    assertTrue(storedFields.document(0).getField("binary").binaryValue() != null);
+    assertTrue(storedFields.document(1).getField("binary").binaryValue() != null);
+    assertTrue(storedFields.document(2).getField("binary").binaryValue() != null);
 
-    assertEquals("value", ir.storedFields().document(0).get("string"));
-    assertEquals("value", ir.storedFields().document(1).get("string"));
-    assertEquals("value", ir.storedFields().document(2).get("string"));
+    assertEquals("value", storedFields.document(0).get("string"));
+    assertEquals("value", storedFields.document(1).get("string"));
+    assertEquals("value", storedFields.document(2).get("string"));
 
     // test that the terms were indexed.
     assertTrue(
@@ -2112,9 +2113,10 @@ public class TestIndexWriter extends LuceneTestCase {
       LeafReader ar = leafReaderContext.reader();
       Bits liveDocs = ar.getLiveDocs();
       int maxDoc = ar.maxDoc();
+      StoredFields storedFields = ar.storedFields();
       for (int i = 0; i < maxDoc; i++) {
         if (liveDocs == null || liveDocs.get(i)) {
-          assertTrue(liveIds.remove(ar.storedFields().document(i).get("id")));
+          assertTrue(liveIds.remove(storedFields.document(i).get("id")));
         }
       }
     }
@@ -2160,9 +2162,10 @@ public class TestIndexWriter extends LuceneTestCase {
       LeafReader ar = leafReaderContext.reader();
       Bits liveDocs = ar.getLiveDocs();
       int maxDoc = ar.maxDoc();
+      StoredFields storedFields = ar.storedFields();
       for (int i = 0; i < maxDoc; i++) {
         if (liveDocs == null || liveDocs.get(i)) {
-          assertTrue(liveIds.remove(ar.storedFields().document(i).get("id")));
+          assertTrue(liveIds.remove(storedFields.document(i).get("id")));
         }
       }
     }

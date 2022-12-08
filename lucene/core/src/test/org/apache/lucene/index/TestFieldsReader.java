@@ -214,9 +214,10 @@ public class TestFieldsReader extends LuceneTestCase {
 
     boolean exc = false;
 
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < 2; i++) {
       try {
-        reader.storedFields().document(i);
+        storedFields.document(i);
       } catch (
           @SuppressWarnings("unused")
           IOException ioe) {
@@ -224,7 +225,7 @@ public class TestFieldsReader extends LuceneTestCase {
         exc = true;
       }
       try {
-        reader.storedFields().document(i);
+        storedFields.document(i);
       } catch (
           @SuppressWarnings("unused")
           IOException ioe) {

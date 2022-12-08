@@ -36,6 +36,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
@@ -581,8 +582,9 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     DecimalFormat f =
         new DecimalFormat("0.000000000", DecimalFormatSymbols.getInstance(Locale.ROOT));
 
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < h.length; i++) {
-      Document d = searcher.storedFields().document(h[i].doc);
+      Document d = storedFields.document(h[i].doc);
       float score = h[i].score;
       System.err.println("#" + i + ": " + f.format(score) + " - " + d.get("id"));
     }

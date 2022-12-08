@@ -55,6 +55,7 @@ import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -234,8 +235,9 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
 
       final SortedSetDocValues sortedSet = DocValues.getSortedSet(reader, "sorted_set");
 
+      StoredFields storedFields = reader.storedFields();
       for (int i = 0; i < reader.maxDoc(); ++i) {
-        final Document doc = reader.storedFields().document(i);
+        final Document doc = storedFields.document(i);
         final IndexableField valueField = doc.getField("value");
         final Long value = valueField == null ? null : valueField.numericValue().longValue();
 
@@ -675,11 +677,12 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(r, "dv");
+      StoredFields storedFields = r.storedFields();
       for (int i = 0; i < r.maxDoc(); i++) {
         if (i > docValues.docID()) {
           docValues.nextDoc();
         }
-        String[] expectedStored = r.storedFields().document(i).getValues("stored");
+        String[] expectedStored = storedFields.document(i).getValues("stored");
         if (i < docValues.docID()) {
           assertEquals(0, expectedStored.length);
         } else {
@@ -747,6 +750,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
+      StoredFields storedFields = r.storedFields();
 
       for (int jump = jumpStep; jump < r.maxDoc(); jump += jumpStep) {
         // Create a new instance each time to ensure jumps from the beginning
@@ -761,7 +765,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
                   + jump
                   + " from #"
                   + (docID - jump);
-          String storedValue = r.storedFields().document(docID).get("stored");
+          String storedValue = storedFields.document(docID).get("stored");
           if (storedValue == null) {
             assertFalse("There should be no DocValue for " + base, docValues.advanceExact(docID));
           } else {

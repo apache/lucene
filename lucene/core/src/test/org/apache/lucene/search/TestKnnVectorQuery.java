@@ -40,6 +40,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.Directory;
@@ -704,8 +705,9 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), hits);
         TopDocs topDocs = searcher.search(query, numDocs);
+        StoredFields storedFields = reader.storedFields();
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-          Document doc = reader.storedFields().document(scoreDoc.doc, Set.of("index"));
+          Document doc = storedFields.document(scoreDoc.doc, Set.of("index"));
           String index = doc.get("index");
           assertFalse(
               "search returned a deleted document: " + index,

@@ -677,8 +677,9 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
 
       TopDocs is_live = searcher.search(new FieldExistsQuery("is_live"), 5);
       assertEquals(numHits, is_live.totalHits.value);
+      StoredFields storedFields = reader.storedFields();
       for (ScoreDoc doc : is_live.scoreDocs) {
-        int id = Integer.parseInt(reader.storedFields().document(doc.doc).get("id"));
+        int id = Integer.parseInt(storedFields.document(doc.doc).get("id"));
         int i = ReaderUtil.subIndex(doc.doc, reader.leaves());
         assertTrue(i >= 0);
         LeafReaderContext leafReaderContext = reader.leaves().get(i);

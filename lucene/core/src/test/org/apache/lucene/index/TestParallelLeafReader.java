@@ -252,10 +252,12 @@ public class TestParallelLeafReader extends LuceneTestCase {
     ScoreDoc[] parallelHits = parallel.search(query, 1000).scoreDocs;
     ScoreDoc[] singleHits = single.search(query, 1000).scoreDocs;
     assertEquals(parallelHits.length, singleHits.length);
+    StoredFields parallelFields = parallel.storedFields();
+    StoredFields singleFields = single.storedFields();
     for (int i = 0; i < parallelHits.length; i++) {
       assertEquals(parallelHits[i].score, singleHits[i].score, 0.001f);
-      Document docParallel = parallel.storedFields().document(parallelHits[i].doc);
-      Document docSingle = single.storedFields().document(singleHits[i].doc);
+      Document docParallel = parallelFields.document(parallelHits[i].doc);
+      Document docSingle = singleFields.document(singleHits[i].doc);
       assertEquals(docParallel.get("f1"), docSingle.get("f1"));
       assertEquals(docParallel.get("f2"), docSingle.get("f2"));
       assertEquals(docParallel.get("f3"), docSingle.get("f3"));

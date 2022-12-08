@@ -688,19 +688,21 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
             }
           }
           TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1 + actualCount);
+          StoredFields storedFields = s.storedFields();
           for (ScoreDoc hit : hits.scoreDocs) {
-            System.out.println("  hit: " + s.storedFields().document(hit.doc).get("threadop"));
+            System.out.println("  hit: " + storedFields.document(hit.doc).get("threadop"));
           }
 
           for (LeafReaderContext ctx : r.leaves()) {
             System.out.println("  sub=" + ctx.reader());
             Bits liveDocs = ctx.reader().getLiveDocs();
+            storedFields = ctx.reader().storedFields();
             for (int docID = 0; docID < ctx.reader().maxDoc(); docID++) {
               System.out.println(
                   "    docID="
                       + docID
                       + " threadop="
-                      + ctx.reader().storedFields().document(docID).get("threadop")
+                      + storedFields.document(docID).get("threadop")
                       + (liveDocs != null && liveDocs.get(docID) == false ? " (deleted)" : ""));
             }
           }
