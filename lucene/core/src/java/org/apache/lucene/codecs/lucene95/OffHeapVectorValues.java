@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene95;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexInput;
