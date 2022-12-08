@@ -305,6 +305,13 @@ public class KnnGraphTester {
   @SuppressForbidden(reason = "Prints stuff")
   private void forceMerge() throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.APPEND);
+    iwc.setCodec(
+        new Lucene95Codec() {
+          @Override
+          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+            return new Lucene95HnswVectorsFormat(maxConn, beamWidth);
+          }
+        });
     iwc.setInfoStream(new PrintStreamInfoStream(System.out));
     System.out.println("Force merge index in " + indexPath);
     try (IndexWriter iw = new IndexWriter(FSDirectory.open(indexPath), iwc)) {
