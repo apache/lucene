@@ -125,6 +125,10 @@ API Changes
 
 * GITHUB#11962: VectorValues#cost() now delegates to VectorValues#size().
   (Adrien Grand)
+  
+* GITHUB#11984: Improved TimeLimitBulkScorer to check the timeout at exponantial rate.
+  (Costin Leau)
+
 
 New Features
 ---------------------
@@ -145,6 +149,12 @@ Improvements
 * GITHUB#687: speed up IndexSortSortedNumericDocValuesRangeQuery#BoundedDocIdSetIterator
   construction using bkd binary search. (Jianping Weng)
 
+* GITHUB#11985: ExitableTerms to override Terms#getMin and Terms#getMax in order to avoid
+  iterating through the terms when the wrapped implementation caches such values. (Luca Cavanna)
+
+* GITHUB#11860: Improve storage efficiency of connections in the HNSW graph that Lucene uses for
+  vector search. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
@@ -157,6 +167,15 @@ Bug Fixes
 * GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
 
 * GITHUB#11907: Fix latent casting bugs in BKDWriter. (Ben Trent)
+
+* GITHUB#11954: Remove QueryTimeout#isTimeoutEnabled method and move check to caller. (Shubham Chaudhary)
+
+* GITHUB#11950: Fix NPE in BinaryRangeFieldRangeQuery variants when the queried field doesn't exist
+  in a segment or is of the wrong type. (Greg Miller)
+
+* GITHUB#11990: PassageSelector now has a larger minimum size for its priority queue,
+  so that subsequent passage merges don't mean that we return too few passages in
+  total. (Alan Woodward, Dawid Weiss)
 
 Optimizations
 ---------------------
@@ -200,6 +219,9 @@ Other
 * LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
 
 * GITHUB#11752: Added interface to relate a LatLonShape with another shape represented as Component2D. (Navneet Verma)
+
+* GITHUB#11983: Make constructors for OffsetFromPositions and OffsetsFromMatchIterator
+  public. (Alan Woodward)
 
 Build
 ---------------------

@@ -20,8 +20,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.SegmentInfoFormat;
@@ -41,6 +39,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
@@ -117,7 +116,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_NUM_DIAG);
       int numDiag = Integer.parseInt(readString(SI_NUM_DIAG.length, scratch));
-      Map<String, String> diagnostics = new HashMap<>();
+      Map<String, String> diagnostics = CollectionUtil.newHashMap(numDiag);
 
       for (int i = 0; i < numDiag; i++) {
         SimpleTextUtil.readLine(input, scratch);
@@ -133,7 +132,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_NUM_ATT);
       int numAtt = Integer.parseInt(readString(SI_NUM_ATT.length, scratch));
-      Map<String, String> attributes = new HashMap<>(numAtt);
+      Map<String, String> attributes = CollectionUtil.newHashMap(numAtt);
 
       for (int i = 0; i < numAtt; i++) {
         SimpleTextUtil.readLine(input, scratch);
@@ -149,7 +148,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_NUM_FILES);
       int numFiles = Integer.parseInt(readString(SI_NUM_FILES.length, scratch));
-      Set<String> files = new HashSet<>();
+      Set<String> files = CollectionUtil.newHashSet(numFiles);
 
       for (int i = 0; i < numFiles; i++) {
         SimpleTextUtil.readLine(input, scratch);

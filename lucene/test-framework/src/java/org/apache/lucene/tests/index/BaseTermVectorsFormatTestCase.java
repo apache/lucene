@@ -74,6 +74,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -250,26 +251,16 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         }
       }
 
-      positionToTerms = new HashMap<>(len);
-      startOffsetToTerms = new HashMap<>(len);
+      positionToTerms = CollectionUtil.newHashMap(len);
+      startOffsetToTerms = CollectionUtil.newHashMap(len);
       for (int i = 0; i < len; ++i) {
-        if (!positionToTerms.containsKey(positions[i])) {
-          positionToTerms.put(positions[i], new HashSet<Integer>(1));
-        }
-        positionToTerms.get(positions[i]).add(i);
-        if (!startOffsetToTerms.containsKey(startOffsets[i])) {
-          startOffsetToTerms.put(startOffsets[i], new HashSet<Integer>(1));
-        }
-        startOffsetToTerms.get(startOffsets[i]).add(i);
+        positionToTerms.computeIfAbsent(positions[i], k -> new HashSet<>(1)).add(i);
+        startOffsetToTerms.computeIfAbsent(startOffsets[i], k -> new HashSet<>(1)).add(i);
       }
 
       freqs = new HashMap<>();
       for (String term : terms) {
-        if (freqs.containsKey(term)) {
-          freqs.put(term, freqs.get(term) + 1);
-        } else {
-          freqs.put(term, 1);
-        }
+        freqs.merge(term, 1, Integer::sum);
       }
 
       addAttributeImpl(new PermissiveOffsetAttributeImpl());
