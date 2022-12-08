@@ -17,7 +17,6 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.GeoUtils;
@@ -38,6 +37,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;
@@ -425,53 +425,21 @@ final class LatLonPointDistanceFeatureQuery extends Query {
                 // Already visited or skipped
                 return;
               }
-              if (Arrays.compareUnsigned(
-                          packedValue, 0, LatLonPoint.BYTES, maxLat, 0, LatLonPoint.BYTES)
-                      > 0
-                  || Arrays.compareUnsigned(
-                          packedValue, 0, LatLonPoint.BYTES, minLat, 0, LatLonPoint.BYTES)
-                      < 0) {
+              if (ArrayUtil.compareUnsigned4(packedValue, 0, maxLat, 0) > 0
+                  || ArrayUtil.compareUnsigned4(packedValue, 0, minLat, 0) < 0) {
                 // Latitude out of range
                 return;
               }
               if (crossDateLine) {
-                if (Arrays.compareUnsigned(
-                            packedValue,
-                            LatLonPoint.BYTES,
-                            2 * LatLonPoint.BYTES,
-                            minLon,
-                            0,
-                            LatLonPoint.BYTES)
-                        < 0
-                    && Arrays.compareUnsigned(
-                            packedValue,
-                            LatLonPoint.BYTES,
-                            2 * LatLonPoint.BYTES,
-                            maxLon,
-                            0,
-                            LatLonPoint.BYTES)
-                        > 0) {
+                if (ArrayUtil.compareUnsigned4(packedValue, LatLonPoint.BYTES, minLon, 0) < 0
+                    && ArrayUtil.compareUnsigned4(packedValue, LatLonPoint.BYTES, maxLon, 0) > 0) {
                   // Longitude out of range
                   return;
                 }
 
               } else {
-                if (Arrays.compareUnsigned(
-                            packedValue,
-                            LatLonPoint.BYTES,
-                            2 * LatLonPoint.BYTES,
-                            maxLon,
-                            0,
-                            LatLonPoint.BYTES)
-                        > 0
-                    || Arrays.compareUnsigned(
-                            packedValue,
-                            LatLonPoint.BYTES,
-                            2 * LatLonPoint.BYTES,
-                            minLon,
-                            0,
-                            LatLonPoint.BYTES)
-                        < 0) {
+                if (ArrayUtil.compareUnsigned4(packedValue, LatLonPoint.BYTES, maxLon, 0) > 0
+                    || ArrayUtil.compareUnsigned4(packedValue, LatLonPoint.BYTES, minLon, 0) < 0) {
                   // Longitude out of range
                   return;
                 }
@@ -482,94 +450,34 @@ final class LatLonPointDistanceFeatureQuery extends Query {
             @Override
             public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
 
-              if (Arrays.compareUnsigned(
-                          minPackedValue, 0, LatLonPoint.BYTES, maxLat, 0, LatLonPoint.BYTES)
-                      > 0
-                  || Arrays.compareUnsigned(
-                          maxPackedValue, 0, LatLonPoint.BYTES, minLat, 0, LatLonPoint.BYTES)
-                      < 0) {
+              if (ArrayUtil.compareUnsigned4(minPackedValue, 0, maxLat, 0) > 0
+                  || ArrayUtil.compareUnsigned4(maxPackedValue, 0, minLat, 0) < 0) {
                 return Relation.CELL_OUTSIDE_QUERY;
               }
               boolean crosses =
-                  Arrays.compareUnsigned(
-                              minPackedValue, 0, LatLonPoint.BYTES, minLat, 0, LatLonPoint.BYTES)
-                          < 0
-                      || Arrays.compareUnsigned(
-                              maxPackedValue, 0, LatLonPoint.BYTES, maxLat, 0, LatLonPoint.BYTES)
-                          > 0;
+                  ArrayUtil.compareUnsigned4(minPackedValue, 0, minLat, 0) < 0
+                      || ArrayUtil.compareUnsigned4(maxPackedValue, 0, maxLat, 0) > 0;
 
               if (crossDateLine) {
-                if (Arrays.compareUnsigned(
-                            minPackedValue,
-                            LatLonPoint.BYTES,
-                            2 * LatLonPoint.BYTES,
-                            maxLon,
-                            0,
-                            LatLonPoint.BYTES)
-                        > 0
-                    && Arrays.compareUnsigned(
-                            maxPackedValue,
-                            LatLonPoint.BYTES,
-                            2 * LatLonPoint.BYTES,
-                            minLon,
-                            0,
-                            LatLonPoint.BYTES)
+                if (ArrayUtil.compareUnsigned4(minPackedValue, LatLonPoint.BYTES, maxLon, 0) > 0
+                    && ArrayUtil.compareUnsigned4(maxPackedValue, LatLonPoint.BYTES, minLon, 0)
                         < 0) {
                   return Relation.CELL_OUTSIDE_QUERY;
                 }
                 crosses |=
-                    Arrays.compareUnsigned(
-                                minPackedValue,
-                                LatLonPoint.BYTES,
-                                2 * LatLonPoint.BYTES,
-                                maxLon,
-                                0,
-                                LatLonPoint.BYTES)
-                            < 0
-                        || Arrays.compareUnsigned(
-                                maxPackedValue,
-                                LatLonPoint.BYTES,
-                                2 * LatLonPoint.BYTES,
-                                minLon,
-                                0,
-                                LatLonPoint.BYTES)
+                    ArrayUtil.compareUnsigned4(minPackedValue, LatLonPoint.BYTES, maxLon, 0) < 0
+                        || ArrayUtil.compareUnsigned4(maxPackedValue, LatLonPoint.BYTES, minLon, 0)
                             > 0;
 
               } else {
-                if (Arrays.compareUnsigned(
-                            minPackedValue,
-                            LatLonPoint.BYTES,
-                            2 * LatLonPoint.BYTES,
-                            maxLon,
-                            0,
-                            LatLonPoint.BYTES)
-                        > 0
-                    || Arrays.compareUnsigned(
-                            maxPackedValue,
-                            LatLonPoint.BYTES,
-                            2 * LatLonPoint.BYTES,
-                            minLon,
-                            0,
-                            LatLonPoint.BYTES)
+                if (ArrayUtil.compareUnsigned4(minPackedValue, LatLonPoint.BYTES, maxLon, 0) > 0
+                    || ArrayUtil.compareUnsigned4(maxPackedValue, LatLonPoint.BYTES, minLon, 0)
                         < 0) {
                   return Relation.CELL_OUTSIDE_QUERY;
                 }
                 crosses |=
-                    Arrays.compareUnsigned(
-                                minPackedValue,
-                                LatLonPoint.BYTES,
-                                2 * LatLonPoint.BYTES,
-                                minLon,
-                                0,
-                                LatLonPoint.BYTES)
-                            < 0
-                        || Arrays.compareUnsigned(
-                                maxPackedValue,
-                                LatLonPoint.BYTES,
-                                2 * LatLonPoint.BYTES,
-                                maxLon,
-                                0,
-                                LatLonPoint.BYTES)
+                    ArrayUtil.compareUnsigned4(minPackedValue, LatLonPoint.BYTES, minLon, 0) < 0
+                        || ArrayUtil.compareUnsigned4(maxPackedValue, LatLonPoint.BYTES, maxLon, 0)
                             > 0;
               }
               if (crosses) {
