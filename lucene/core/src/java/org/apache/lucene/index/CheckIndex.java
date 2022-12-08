@@ -65,7 +65,17 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.CommandLineUtil;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.LongBitSet;
+import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.Version;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 
 /**
