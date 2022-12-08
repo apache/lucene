@@ -161,7 +161,6 @@ public abstract class ReadTask extends PerfTask {
   }
 
   protected int withTopDocs(IndexSearcher searcher, Query q, TopDocs hits) throws Exception {
-    IndexReader reader = searcher.getIndexReader();
     int res = 0;
     if (withTraverse()) {
       final ScoreDoc[] scoreDocs = hits.scoreDocs;

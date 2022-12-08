@@ -18,7 +18,6 @@
 package org.apache.lucene.luke.models.documents;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,7 +26,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Logger;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.luke.util.LoggerFactory;
@@ -37,15 +35,10 @@ final class TermVectorsAdapter {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private TermVectors termVectors;
+  private IndexReader reader;
 
   TermVectorsAdapter(IndexReader reader) {
-    Objects.requireNonNull(reader);
-    try {
-      this.termVectors = reader.termVectors();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+    this.reader = Objects.requireNonNull(reader);
   }
 
   /**
@@ -58,7 +51,7 @@ final class TermVectorsAdapter {
    * @throws IOException - if there is a low level IO error.
    */
   List<TermVectorEntry> getTermVector(int docid, String field) throws IOException {
-    Terms termVector = termVectors.get(docid, field);
+    Terms termVector = reader.termVectors().get(docid, field);
     if (termVector == null) {
       // no term vector available
       log.warning(

@@ -28,9 +28,9 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -40,7 +40,7 @@ import org.apache.lucene.util.BytesRef;
  * @see #getField
  */
 public class LazyDocument {
-  private final StoredFields storedFields;
+  private final IndexReader reader;
   private final int docID;
 
   // null until first field is loaded
@@ -49,8 +49,8 @@ public class LazyDocument {
   private Map<Integer, List<LazyField>> fields = new HashMap<>();
   private Set<String> fieldNames = new HashSet<>();
 
-  public LazyDocument(StoredFields storedFields, int docID) {
-    this.storedFields = storedFields;
+  public LazyDocument(IndexReader reader, int docID) {
+    this.reader = reader;
     this.docID = docID;
   }
 
@@ -94,7 +94,7 @@ public class LazyDocument {
   synchronized Document getDocument() {
     if (doc == null) {
       try {
-        doc = storedFields.document(docID, fieldNames);
+        doc = reader.storedFields().document(docID, fieldNames);
       } catch (IOException ioe) {
         throw new IllegalStateException("unable to load document", ioe);
       }

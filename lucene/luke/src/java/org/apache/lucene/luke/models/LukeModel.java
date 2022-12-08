@@ -18,13 +18,11 @@
 package org.apache.lucene.luke.models;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.luke.models.util.IndexUtils;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
@@ -39,19 +37,12 @@ public abstract class LukeModel {
 
   protected IndexReader reader;
 
-  protected StoredFields storedFields;
-
   protected Bits liveDocs;
 
   protected IndexCommit commit;
 
   protected LukeModel(IndexReader reader) {
     this.reader = Objects.requireNonNull(reader);
-    try {
-      this.storedFields = reader.storedFields();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
 
     if (reader instanceof DirectoryReader) {
       DirectoryReader dr = (DirectoryReader) reader;
