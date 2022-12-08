@@ -837,7 +837,6 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
   }
 
   /** mix up field numbers, merge, and check that data is correct */
-  @AwaitsFix(bugUrl = "WTF with this test")
   public void testMismatchedFields() throws Exception {
     Directory[] dirs = new Directory[10];
     for (int i = 0; i < dirs.length; i++) {
