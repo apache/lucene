@@ -152,6 +152,9 @@ Improvements
 * GITHUB#11985: ExitableTerms to override Terms#getMin and Terms#getMax in order to avoid
   iterating through the terms when the wrapped implementation caches such values. (Luca Cavanna)
 
+* GITHUB#11860: Improve storage efficiency of connections in the HNSW graph that Lucene uses for
+  vector search. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
@@ -201,6 +204,9 @@ Optimizations
 * GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
 
 * GITHUB#11895: count() in BooleanQuery could be early quit. (Lu Xugang)
+
+* GITHUB#11972: `IndexSortSortedNumericDocValuesRangeQuery` can now also
+  optimize query execution with points for descending sorts. (Adrien Grand)
 
 Other
 ---------------------
