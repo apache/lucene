@@ -53,6 +53,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 import org.junit.Assert;
 
@@ -230,6 +231,12 @@ public class QueryUtils {
       @Override
       public TopDocs searchNearestVectors(
           String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+        return null;
+      }
+
+      @Override
+      public TopDocs searchNearestVectors(
+          String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
         return null;
       }
 

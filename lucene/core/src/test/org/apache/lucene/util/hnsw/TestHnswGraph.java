@@ -279,15 +279,26 @@ public class TestHnswGraph extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // run some searches
     NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            10,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            null,
-            Integer.MAX_VALUE);
+        switch (vectorEncoding) {
+          case BYTE -> HnswGraphSearcher.search(
+              getTargetByteVector(),
+              10,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              null,
+              Integer.MAX_VALUE);
+          case FLOAT32 -> HnswGraphSearcher.search(
+              getTargetVector(),
+              10,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              null,
+              Integer.MAX_VALUE);
+        };
 
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
@@ -321,15 +332,26 @@ public class TestHnswGraph extends LuceneTestCase {
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            10,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            acceptOrds,
-            Integer.MAX_VALUE);
+        switch (vectorEncoding) {
+          case BYTE -> HnswGraphSearcher.search(
+              getTargetByteVector(),
+              10,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              Integer.MAX_VALUE);
+          case FLOAT32 -> HnswGraphSearcher.search(
+              getTargetVector(),
+              10,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              Integer.MAX_VALUE);
+        };
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
@@ -360,15 +382,27 @@ public class TestHnswGraph extends LuceneTestCase {
     // Check the search finds all accepted vectors
     int numAccepted = acceptOrds.cardinality();
     NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            numAccepted,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            acceptOrds,
-            Integer.MAX_VALUE);
+        switch (vectorEncoding) {
+          case FLOAT32 -> HnswGraphSearcher.search(
+              getTargetVector(),
+              numAccepted,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              Integer.MAX_VALUE);
+          case BYTE -> HnswGraphSearcher.search(
+              getTargetByteVector(),
+              numAccepted,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              Integer.MAX_VALUE);
+        };
+
     int[] nodes = nn.nodes();
     assertEquals(numAccepted, nodes.length);
     for (int node : nodes) {
@@ -378,6 +412,10 @@ public class TestHnswGraph extends LuceneTestCase {
 
   private float[] getTargetVector() {
     return new float[] {1, 0};
+  }
+
+  private BytesRef getTargetByteVector() {
+    return new BytesRef(new byte[] {1, 0});
   }
 
   public void testSearchWithSkewedAcceptOrds() throws IOException {
@@ -429,15 +467,27 @@ public class TestHnswGraph extends LuceneTestCase {
     int topK = 50;
     int visitedLimit = topK + random().nextInt(5);
     NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            topK,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            createRandomAcceptOrds(0, vectors.size),
-            visitedLimit);
+        switch (vectorEncoding) {
+          case FLOAT32 -> HnswGraphSearcher.search(
+              getTargetVector(),
+              topK,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              createRandomAcceptOrds(0, vectors.size),
+              visitedLimit);
+          case BYTE -> HnswGraphSearcher.search(
+              getTargetByteVector(),
+              topK,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              createRandomAcceptOrds(0, vectors.size),
+              visitedLimit);
+        };
+
     assertTrue(nn.incomplete());
     // The visited count shouldn't exceed the limit
     assertTrue(nn.visitedCount() <= visitedLimit);
@@ -661,15 +711,27 @@ public class TestHnswGraph extends LuceneTestCase {
         query = randomVector(random(), dim);
       }
       actual =
-          HnswGraphSearcher.search(
-              query,
-              100,
-              vectors,
-              vectorEncoding,
-              similarityFunction,
-              hnsw,
-              acceptOrds,
-              Integer.MAX_VALUE);
+          switch (vectorEncoding) {
+            case BYTE -> HnswGraphSearcher.search(
+                bQuery,
+                100,
+                vectors,
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+            case FLOAT32 -> HnswGraphSearcher.search(
+                query,
+                100,
+                vectors,
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+          };
+
       while (actual.size() > topK) {
         actual.pop();
       }

@@ -22,7 +22,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.VectorUtil;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
@@ -40,14 +39,18 @@ abstract class VectorScorer {
    * @param fi the FieldInfo for the field containing document vectors
    * @param query the query vector to compute the similarity for
    */
-  static VectorScorer create(LeafReaderContext context, FieldInfo fi, float[] query)
+  static FloatVectorScorer create(LeafReaderContext context, FieldInfo fi, float[] query)
+      throws IOException {
+    VectorValues values = context.reader().getVectorValues(fi.name);
+    final VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
+    return new FloatVectorScorer(values, query, similarity);
+  }
+
+  static ByteVectorScorer create(LeafReaderContext context, FieldInfo fi, BytesRef query)
       throws IOException {
     VectorValues values = context.reader().getVectorValues(fi.name);
     VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
-    return switch (fi.getVectorEncoding()) {
-      case BYTE -> new ByteVectorScorer(values, query, similarity);
-      case FLOAT32 -> new FloatVectorScorer(values, query, similarity);
-    };
+    return new ByteVectorScorer(values, query, similarity);
   }
 
   VectorScorer(VectorValues values, VectorSimilarityFunction similarity) {
@@ -74,9 +77,9 @@ abstract class VectorScorer {
     private final BytesRef query;
 
     protected ByteVectorScorer(
-        VectorValues values, float[] query, VectorSimilarityFunction similarity) {
+        VectorValues values, BytesRef query, VectorSimilarityFunction similarity) {
       super(values, similarity);
-      this.query = VectorUtil.toBytesRef(query);
+      this.query = query;
     }
 
     @Override

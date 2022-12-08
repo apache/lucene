@@ -2598,18 +2598,25 @@ public final class CheckIndex implements Closeable {
             int docCount = 0;
             int everyNdoc = Math.max(values.size() / 64, 1);
             while (values.nextDoc() != NO_MORE_DOCS) {
-              float[] vectorValue = values.vectorValue();
               // search the first maxNumSearches vectors to exercise the graph
               if (values.docID() % everyNdoc == 0) {
                 TopDocs docs =
-                    reader
-                        .getVectorReader()
-                        .search(fieldInfo.name, vectorValue, 10, null, Integer.MAX_VALUE);
+                    switch (fieldInfo.getVectorEncoding()) {
+                      case FLOAT32 -> reader
+                          .getVectorReader()
+                          .search(
+                              fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE);
+                      case BYTE -> reader
+                          .getVectorReader()
+                          .search(
+                              fieldInfo.name, values.binaryValue(), 10, null, Integer.MAX_VALUE);
+                    };
                 if (docs.scoreDocs.length == 0) {
                   throw new CheckIndexException(
                       "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
                 }
               }
+              float[] vectorValue = values.vectorValue();
               int valueLength = vectorValue.length;
               if (valueLength != dimension) {
                 throw new CheckIndexException(

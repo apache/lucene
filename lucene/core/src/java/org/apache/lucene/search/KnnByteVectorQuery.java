@@ -17,16 +17,17 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, float[], int, Bits, int)} to perform nearest
+ * Uses {@link KnnVectorsReader#search(String, BytesRef, int, Bits, int)} to perform nearest
  * neighbour search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
@@ -38,11 +39,11 @@ import org.apache.lucene.util.Bits;
  *   <li>If the kNN search visits too many vectors without completing, stop and run an exact search
  * </ul>
  */
-public class KnnVectorQuery extends AbstractKnnVectorQuery {
+public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final float[] target;
+  private final BytesRef target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -53,7 +54,7 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
    * @param k the number of documents to find
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public KnnVectorQuery(String field, float[] target, int k) {
+  public KnnByteVectorQuery(String field, BytesRef target, int k) {
     this(field, target, k, null);
   }
 
@@ -67,7 +68,7 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
    * @param filter a filter applied before the vector search
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public KnnVectorQuery(String field, float[] target, int k, Query filter) {
+  public KnnByteVectorQuery(String field, BytesRef target, int k, Query filter) {
     super(field, k, filter);
     this.target = target;
   }
@@ -82,7 +83,7 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+    if (fi.getVectorEncoding() != VectorEncoding.BYTE) {
       return null;
     }
     return VectorScorer.create(context, fi, target);
@@ -90,7 +91,14 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
+    return getClass().getSimpleName()
+        + ":"
+        + this.field
+        + "["
+        + target.bytes[target.offset]
+        + ",...]["
+        + k
+        + "]";
   }
 
   @Override
@@ -105,14 +113,12 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    KnnVectorQuery that = (KnnVectorQuery) o;
-    return Arrays.equals(target, that.target);
+    KnnByteVectorQuery that = (KnnByteVectorQuery) o;
+    return Objects.equals(target, that.target);
   }
 
   @Override
   public int hashCode() {
-    int result = super.hashCode();
-    result = 31 * result + Arrays.hashCode(target);
-    return result;
+    return Objects.hash(super.hashCode(), target);
   }
 }
