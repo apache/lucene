@@ -15,13 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.index;
+package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Provides random access to vectors by dense ordinal.
+ * Provides random access to vectors by dense ordinal. This interface is used by HNSW-based
+ * implementations of KNN search.
  *
  * @lucene.experimental
  */
