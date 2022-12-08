@@ -212,9 +212,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public int count(LeafReaderContext context) throws IOException {
         if (context.reader().hasDeletions() == false) {
-          BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
-          if (disi != null && disi.delegate == null) {
-            return disi.lastDoc - disi.firstDoc;
+          DocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+          if (disi != null && disi instanceof BoundedDocIdSetIterator == false) {
+            return Math.toIntExact(disi.cost());
           }
         }
         return fallbackWeight.count(context);
@@ -406,117 +406,121 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
   private boolean matchNone(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint)
       throws IOException {
+    assert points.getNumDimensions() == 1;
     final ByteArrayComparator comparator =
         ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
-    for (int dim = 0; dim < points.getNumDimensions(); dim++) {
-      int offset = dim * points.getBytesPerDimension();
-      if (comparator.compare(points.getMinPackedValue(), offset, queryUpperPoint, offset) > 0
-          || comparator.compare(points.getMaxPackedValue(), offset, queryLowerPoint, offset) < 0) {
-        return true;
-      }
-    }
-    return false;
+    return comparator.compare(points.getMinPackedValue(), 0, queryUpperPoint, 0) > 0
+        || comparator.compare(points.getMaxPackedValue(), 0, queryLowerPoint, 0) < 0;
   }
 
   private boolean matchAll(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint)
       throws IOException {
+    assert points.getNumDimensions() == 1;
     final ByteArrayComparator comparator =
         ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
-    for (int dim = 0; dim < points.getNumDimensions(); dim++) {
-      int offset = dim * points.getBytesPerDimension();
-      if (comparator.compare(points.getMinPackedValue(), offset, queryLowerPoint, offset) >= 0
-          && comparator.compare(points.getMaxPackedValue(), offset, queryUpperPoint, offset) <= 0) {
-        return true;
-      }
-    }
-    return false;
+    return comparator.compare(points.getMinPackedValue(), 0, queryLowerPoint, 0) >= 0
+        && comparator.compare(points.getMaxPackedValue(), 0, queryUpperPoint, 0) <= 0;
   }
 
-  private BoundedDocIdSetIterator getDocIdSetIteratorOrNullFromBkd(
+  private DocIdSetIterator getDocIdSetIteratorOrNullFromBkd(
       LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
     Sort indexSort = context.reader().getMetaData().getSort();
-    if (indexSort != null
-        && indexSort.getSort().length > 0
-        && indexSort.getSort()[0].getField().equals(field)) {
-      final boolean reverse = indexSort.getSort()[0].getReverse();
-      PointValues points = context.reader().getPointValues(field);
-      if (points == null) {
-        return null;
-      }
+    if (indexSort == null
+        || indexSort.getSort().length == 0
+        || indexSort.getSort()[0].getField().equals(field) == false) {
+      return null;
+    }
 
-      if (points.getNumDimensions() != 1) {
-        return null;
-      }
+    final boolean reverse = indexSort.getSort()[0].getReverse();
 
-      if (points.getBytesPerDimension() != Long.BYTES
-          && points.getBytesPerDimension() != Integer.BYTES) {
-        return null;
-      }
+    PointValues points = context.reader().getPointValues(field);
+    if (points == null) {
+      return null;
+    }
 
-      if (points.size() != points.getDocCount()) {
-        return null;
-      }
+    if (points.getNumDimensions() != 1) {
+      return null;
+    }
 
-      byte[] queryLowerPoint;
-      byte[] queryUpperPoint;
-      if (points.getBytesPerDimension() == Integer.BYTES) {
-        queryLowerPoint = IntPoint.pack((int) lowerValue).bytes;
-        queryUpperPoint = IntPoint.pack((int) upperValue).bytes;
+    if (points.getBytesPerDimension() != Long.BYTES
+        && points.getBytesPerDimension() != Integer.BYTES) {
+      return null;
+    }
+
+    if (points.size() != points.getDocCount()) {
+      return null;
+    }
+
+    assert lowerValue <= upperValue;
+    byte[] queryLowerPoint;
+    byte[] queryUpperPoint;
+    if (points.getBytesPerDimension() == Integer.BYTES) {
+      queryLowerPoint = IntPoint.pack((int) lowerValue).bytes;
+      queryUpperPoint = IntPoint.pack((int) upperValue).bytes;
+    } else {
+      queryLowerPoint = LongPoint.pack(lowerValue).bytes;
+      queryUpperPoint = LongPoint.pack(upperValue).bytes;
+    }
+    if (matchNone(points, queryLowerPoint, queryUpperPoint)) {
+      return DocIdSetIterator.empty();
+    }
+    if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
+      int maxDoc = context.reader().maxDoc();
+      if (points.getDocCount() == maxDoc) {
+        return delegate;
       } else {
-        queryLowerPoint = LongPoint.pack(lowerValue).bytes;
-        queryUpperPoint = LongPoint.pack(upperValue).bytes;
-      }
-      if (lowerValue > upperValue || matchNone(points, queryLowerPoint, queryUpperPoint)) {
-        return new BoundedDocIdSetIterator(0, 0, null);
-      }
-      int minDocId, maxDocId;
-      if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
-        minDocId = 0;
-        maxDocId = context.reader().maxDoc();
-      } else {
-        final ByteArrayComparator comparator =
-            ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
-
-        if (reverse) {
-          minDocId = nextDoc(points.getPointTree(), queryUpperPoint, false, comparator, true) + 1;
-        } else {
-          minDocId = nextDoc(points.getPointTree(), queryLowerPoint, true, comparator, false);
-          if (minDocId == -1) {
-            // No matches
-            return new BoundedDocIdSetIterator(0, 0, null);
-          }
-        }
-
-        if (reverse) {
-          maxDocId = nextDoc(points.getPointTree(), queryLowerPoint, true, comparator, true) + 1;
-          if (maxDocId == 0) {
-            // No matches
-            return new BoundedDocIdSetIterator(0, 0, null);
-          }
-        } else {
-          maxDocId = nextDoc(points.getPointTree(), queryUpperPoint, false, comparator, false);
-          if (maxDocId == -1) {
-            maxDocId = context.reader().maxDoc();
-          }
-        }
-      }
-
-      if ((points.getDocCount() == context.reader().maxDoc())) {
-        return new BoundedDocIdSetIterator(minDocId, maxDocId, null);
-      } else {
-        return new BoundedDocIdSetIterator(minDocId, maxDocId, delegate);
+        return new BoundedDocIdSetIterator(0, maxDoc, delegate);
       }
     }
-    return null;
+
+    int minDocId, maxDocId;
+    final ByteArrayComparator comparator =
+        ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
+
+    if (reverse) {
+      minDocId = nextDoc(points.getPointTree(), queryUpperPoint, false, comparator, true) + 1;
+    } else {
+      minDocId = nextDoc(points.getPointTree(), queryLowerPoint, true, comparator, false);
+      if (minDocId == -1) {
+        // No matches
+        return DocIdSetIterator.empty();
+      }
+    }
+
+    if (reverse) {
+      maxDocId = nextDoc(points.getPointTree(), queryLowerPoint, true, comparator, true) + 1;
+      if (maxDocId == 0) {
+        // No matches
+        return DocIdSetIterator.empty();
+      }
+    } else {
+      maxDocId = nextDoc(points.getPointTree(), queryUpperPoint, false, comparator, false);
+      if (maxDocId == -1) {
+        maxDocId = context.reader().maxDoc();
+      }
+    }
+
+    if (minDocId == maxDocId) {
+      return DocIdSetIterator.empty();
+    }
+
+    if ((points.getDocCount() == context.reader().maxDoc())) {
+      return DocIdSetIterator.range(minDocId, maxDocId);
+    } else {
+      return new BoundedDocIdSetIterator(minDocId, maxDocId, delegate);
+    }
   }
 
-  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
-      throws IOException {
+  private DocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context) throws IOException {
+    if (lowerValue > upperValue) {
+      return DocIdSetIterator.empty();
+    }
+
     SortedNumericDocValues sortedNumericValues =
         DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
     if (numericValues != null) {
-      BoundedDocIdSetIterator iterator = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
+      DocIdSetIterator iterator = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
       if (iterator != null) {
         return iterator;
       }
@@ -548,7 +552,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * {@link DocIdSetIterator} makes sure to wrap the original docvalues to skip over documents with
    * no value.
    */
-  private BoundedDocIdSetIterator getDocIdSetIterator(
+  private DocIdSetIterator getDocIdSetIterator(
       SortField sortField,
       SortField.Type sortFieldType,
       LeafReaderContext context,
@@ -592,15 +596,20 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     int lastDocIdExclusive = high + 1;
+
+    if (firstDocIdInclusive == lastDocIdExclusive) {
+      return DocIdSetIterator.empty();
+    }
+
     Object missingValue = sortField.getMissingValue();
-    BoundedDocIdSetIterator disi;
+    DocIdSetIterator disi;
     LeafReader reader = context.reader();
     PointValues pointValues = reader.getPointValues(field);
     final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
     // all documents have docValues or missing value falls outside the range
     if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
         || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
-      disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, null);
+      disi = DocIdSetIterator.range(firstDocIdInclusive, lastDocIdExclusive);
     } else {
       disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
     }
@@ -655,6 +664,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     private int docID = -1;
 
     BoundedDocIdSetIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
+      assert delegate != null;
       this.firstDoc = firstDoc;
       this.lastDoc = lastDoc;
       this.delegate = delegate;
@@ -676,12 +686,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         target = firstDoc;
       }
 
-      int result;
-      if (delegate != null) {
-        result = delegate.advance(target);
-      } else {
-        result = target;
-      }
+      int result = delegate.advance(target);
       if (result < lastDoc) {
         docID = result;
       } else {
@@ -692,7 +697,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
     @Override
     public long cost() {
-      return lastDoc - firstDoc;
+      return Math.min(delegate.cost(), lastDoc - firstDoc);
     }
   }
 }
