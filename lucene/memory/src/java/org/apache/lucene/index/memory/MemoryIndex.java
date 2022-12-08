@@ -1841,14 +1841,14 @@ public class MemoryIndex {
     @Override
     public void document(int docID, StoredFieldVisitor visitor) throws IOException {
       if (DEBUG) System.err.println("MemoryIndexReader.document");
-      return storedFields().document(docID, visitor);
+      storedFields().document(docID, visitor);
     }
 
     @Override
     public StoredFields storedFields() {
       return new StoredFields() {
         @Override
-        public void document(int docID, StoredFieldVisitor visitor) {
+        public void document(int docID, StoredFieldVisitor visitor) throws IOException {
           if (DEBUG) System.err.println("MemoryIndexReader.document");
           for (Info info : fields.values()) {
             StoredFieldVisitor.Status status = visitor.needsField(info.fieldInfo);
