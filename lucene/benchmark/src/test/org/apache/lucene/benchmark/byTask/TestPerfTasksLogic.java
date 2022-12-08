@@ -24,6 +24,7 @@ import java.text.Collator;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -126,8 +127,9 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     execBenchmark(algLines);
     assertTrue(CountingSearchTestTask.numSearches > 0);
     long elapsed =
-        (CountingSearchTestTask.prevLastNanos - CountingSearchTestTask.startNanos) / 1_000_000;
-    assertTrue("elapsed time was " + elapsed + " msec", elapsed <= 1500);
+        TimeUnit.NANOSECONDS.toMillis(
+            CountingSearchTestTask.prevLastNanos - CountingSearchTestTask.startNanos);
+    assertTrue("elapsed time was " + elapsed + " ms", elapsed <= 1500);
   }
 
   // disabled until we fix BG thread prio -- this test

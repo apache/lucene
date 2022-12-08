@@ -21,10 +21,11 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import org.apache.lucene.index.RandomAccessVectorValues;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Builder for HNSW graph. See {@link Lucene90OnHeapHnswGraph} for a gloss on the algorithm and the
@@ -123,8 +124,8 @@ public final class Lucene90HnswGraphBuilder {
                   Locale.ROOT,
                   "built %d in %d/%d ms",
                   node,
-                  ((now - t) / 1_000_000),
-                  ((now - start) / 1_000_000)));
+                  TimeUnit.NANOSECONDS.toMillis(now - t),
+                  TimeUnit.NANOSECONDS.toMillis(now - start)));
           t = now;
         }
       }

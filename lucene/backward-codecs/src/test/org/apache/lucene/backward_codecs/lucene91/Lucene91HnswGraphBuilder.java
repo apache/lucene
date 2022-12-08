@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import org.apache.lucene.index.RandomAccessVectorValues;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
@@ -31,6 +31,7 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
@@ -176,8 +177,8 @@ public final class Lucene91HnswGraphBuilder {
             Locale.ROOT,
             "built %d in %d/%d ms",
             node,
-            ((now - t) / 1_000_000),
-            ((now - start) / 1_000_000)));
+            TimeUnit.NANOSECONDS.toMillis(now - t),
+            TimeUnit.NANOSECONDS.toMillis(now - start)));
     return now;
   }
 

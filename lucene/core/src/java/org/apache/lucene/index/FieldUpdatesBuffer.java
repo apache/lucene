@@ -82,7 +82,7 @@ final class FieldUpdatesBuffer {
   }
 
   private static long sizeOfString(String string) {
-    return STRING_SHALLOW_SIZE + (string.length() * Character.BYTES);
+    return STRING_SHALLOW_SIZE + (string.length() * (long) Character.BYTES);
   }
 
   FieldUpdatesBuffer(
@@ -130,7 +130,7 @@ final class FieldUpdatesBuffer {
           Arrays.fill(array, 1, ord, fields[0]);
         }
         bytesUsed.addAndGet(
-            (array.length - fields.length) * RamUsageEstimator.NUM_BYTES_OBJECT_REF);
+            (array.length - fields.length) * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF);
         fields = array;
       }
       if (field != fields[0]) { // that's an easy win of not accounting if there is an outlier
@@ -145,7 +145,7 @@ final class FieldUpdatesBuffer {
         if (docsUpTo.length == 1) {
           Arrays.fill(array, 1, ord, docsUpTo[0]);
         }
-        bytesUsed.addAndGet((array.length - docsUpTo.length) * Integer.BYTES);
+        bytesUsed.addAndGet((array.length - docsUpTo.length) * (long) Integer.BYTES);
         docsUpTo = array;
       }
       docsUpTo[ord] = docUpTo;
@@ -181,7 +181,7 @@ final class FieldUpdatesBuffer {
         if (numericValues.length == 1) {
           Arrays.fill(array, 1, ord, numericValues[0]);
         }
-        bytesUsed.addAndGet((array.length - numericValues.length) * Long.BYTES);
+        bytesUsed.addAndGet((array.length - numericValues.length) * (long) Long.BYTES);
         numericValues = array;
       }
       numericValues[ord] = value;

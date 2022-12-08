@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene94;
+package org.apache.lucene.backward_codecs.lucene94;
 
 import java.io.IOException;
 import org.apache.lucene.index.FilterVectorValues;
@@ -23,11 +23,13 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.util.BytesRef;
 
 /** reads from byte-encoded data */
-public class ExpandingVectorValues extends FilterVectorValues {
+class ExpandingVectorValues extends FilterVectorValues {
 
   private final float[] value;
 
   /**
+   * Constructs ExpandingVectorValues with passed byte encoded VectorValues iterator
+   *
    * @param in the wrapped values
    */
   protected ExpandingVectorValues(VectorValues in) {

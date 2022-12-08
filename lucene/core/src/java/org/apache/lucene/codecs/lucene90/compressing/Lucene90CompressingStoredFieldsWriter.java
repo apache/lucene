@@ -243,7 +243,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       lengths[i] = endOffsets[i] - endOffsets[i - 1];
       assert lengths[i] >= 0;
     }
-    final boolean sliced = bufferedDocs.size() >= 2 * chunkSize;
+    final boolean sliced = bufferedDocs.size() >= 2L * chunkSize;
     final boolean dirtyChunk = force;
     writeHeader(docBase, numBufferedDocs, numStoredFields, lengths, sliced, dirtyChunk);
     ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
@@ -729,7 +729,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   @Override
   public long ramBytesUsed() {
     return bufferedDocs.ramBytesUsed()
-        + numStoredFields.length * Integer.BYTES
-        + endOffsets.length * Integer.BYTES;
+        + numStoredFields.length * (long) Integer.BYTES
+        + endOffsets.length * (long) Integer.BYTES;
   }
 }

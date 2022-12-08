@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import org.apache.lucene.index.RandomAccessVectorValues;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BytesRef;
@@ -209,8 +209,8 @@ public final class HnswGraphBuilder<T> {
             Locale.ROOT,
             "built %d in %d/%d ms",
             node,
-            ((now - t) / 1_000_000),
-            ((now - start) / 1_000_000)));
+            TimeUnit.NANOSECONDS.toMillis(now - t),
+            TimeUnit.NANOSECONDS.toMillis(now - start)));
     return now;
   }
 

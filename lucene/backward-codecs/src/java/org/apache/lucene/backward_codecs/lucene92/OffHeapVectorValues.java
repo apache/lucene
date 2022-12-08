@@ -20,12 +20,12 @@ package org.apache.lucene.backward_codecs.lucene92;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
@@ -56,11 +56,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
 
   @Override
   public int size() {
-    return size;
-  }
-
-  @Override
-  public long cost() {
     return size;
   }
 
@@ -284,11 +279,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     @Override
     public int advance(int target) throws IOException {
       return doc = NO_MORE_DOCS;
-    }
-
-    @Override
-    public long cost() {
-      return 0;
     }
 
     @Override

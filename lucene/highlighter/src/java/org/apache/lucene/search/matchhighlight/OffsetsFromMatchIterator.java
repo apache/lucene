@@ -30,7 +30,7 @@ public final class OffsetsFromMatchIterator implements OffsetsRetrievalStrategy 
   private final String field;
   private final OffsetsFromPositions noOffsetsFallback;
 
-  OffsetsFromMatchIterator(String field, OffsetsFromPositions noOffsetsFallback) {
+  public OffsetsFromMatchIterator(String field, OffsetsFromPositions noOffsetsFallback) {
     this.field = field;
     this.noOffsetsFallback = Objects.requireNonNull(noOffsetsFallback);
   }

@@ -36,6 +36,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     return set;
   }
 
+  @SuppressWarnings("NarrowCalculation")
   public void testApproximateCardinality() {
     // The approximate cardinality works in such a way that it should be pretty accurate on a bitset
     // whose bits are uniformly distributed.

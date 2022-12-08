@@ -143,7 +143,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
 
     if (currentUpto == currentValues.length) {
       currentValues = ArrayUtil.grow(currentValues, currentValues.length + 1);
-      iwBytesUsed.addAndGet((currentValues.length - currentUpto) * Integer.BYTES);
+      iwBytesUsed.addAndGet((currentValues.length - currentUpto) * (long) Integer.BYTES);
     }
 
     currentValues[currentUpto] = termID;

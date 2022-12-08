@@ -31,7 +31,6 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -49,6 +48,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -383,13 +383,17 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       // calculate for each level the start offsets in vectorIndex file from where to read
       // neighbours
       graphOffsetsByLevel = new long[numLevels];
+      final long connectionsAndSizeBytes =
+          Math.multiplyExact(Math.addExact(1L, maxConn), Integer.BYTES);
       for (int level = 0; level < numLevels; level++) {
         if (level == 0) {
           graphOffsetsByLevel[level] = 0;
         } else {
           int numNodesOnPrevLevel = level == 1 ? size : nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              graphOffsetsByLevel[level - 1] + (1 + maxConn) * Integer.BYTES * numNodesOnPrevLevel;
+              Math.addExact(
+                  graphOffsetsByLevel[level - 1],
+                  Math.multiplyExact(connectionsAndSizeBytes, numNodesOnPrevLevel));
         }
       }
     }
@@ -492,11 +496,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public long cost() {
-      return size;
-    }
-
-    @Override
     public RandomAccessVectorValues copy() {
       return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
@@ -542,7 +541,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = ((long) entry.maxConn + 1) * Integer.BYTES;
+      this.bytesForConns = Math.multiplyExact(Math.addExact(entry.maxConn, 1L), Integer.BYTES);
     }
 
     @Override

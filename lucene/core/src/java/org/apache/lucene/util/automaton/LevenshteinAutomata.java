@@ -358,7 +358,7 @@ public class LevenshteinAutomata {
         };
 
     protected int unpack(long[] data, int index, int bitsPerValue) {
-      final long bitLoc = bitsPerValue * index;
+      final long bitLoc = bitsPerValue * (long) index;
       final int dataLoc = (int) (bitLoc >> 6);
       final int bitStart = (int) (bitLoc & 63);
       // System.out.println("index=" + index + " dataLoc=" + dataLoc + " bitStart=" + bitStart + "

@@ -43,7 +43,7 @@ configure(rootProject) {
             return prj.plugins.hasPlugin(JavaPlugin)
           }
           
-          Set<String> sourceSetNames = ["main", "test", "main${eclipseJavaVersion}", "test${eclipseJavaVersion}", "tools"] as Set
+          Set<String> sourceSetNames = ['main', 'test', "main${eclipseJavaVersion}" as String, "test${eclipseJavaVersion}" as String, 'tools'] as Set
           Set<String> sources = []
           Set<File> jars = []
           projects.each { prj ->

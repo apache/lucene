@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.util;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ThreadInterruptedException;
@@ -117,7 +118,7 @@ public class ThrottledIndexOutput extends IndexOutput {
       long actualBps = (timeElapsed / pendingBytes) * 1000000000l; // nano to sec
       if (actualBps > bytesPerSecond) {
         long expected = (pendingBytes * 1000l / bytesPerSecond);
-        final long delay = expected - (timeElapsed / 1000000l);
+        final long delay = expected - TimeUnit.NANOSECONDS.toMillis(timeElapsed);
         pendingBytes = 0;
         timeElapsed = 0;
         return delay;
