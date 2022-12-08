@@ -17,6 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Objects;
+
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -99,7 +101,15 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final StoredFields storedFields() throws IOException {
-    return getFieldsReader();
+    final StoredFields reader = getFieldsReader();
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.document(docID, visitor);
+      }
+    };
   }
 
   @Override
