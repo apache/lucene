@@ -400,12 +400,12 @@ public class TestDocValues extends LuceneTestCase {
     IOUtils.close(dr, iw, dir);
   }
 
-  public void testSortedFloatField() throws IOException {
+  public void testMultiValuedFloatField() throws IOException {
     Directory dir = newDirectory();
     IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null));
     Document doc = new Document();
-    doc.add(new FloatField("foo", 10.8f, true));
-    doc.add(new FloatField("foo", 128.8f, true));
+    doc.add(new FloatField("foo", 10.8f));
+    doc.add(new FloatField("foo", 128.8f));
     iw.addDocument(doc);
 
     DirectoryReader dr = DirectoryReader.open(iw);
@@ -441,12 +441,12 @@ public class TestDocValues extends LuceneTestCase {
     IOUtils.close(dr, iw, dir);
   }
 
-  public void testSortedDoubleField() throws IOException {
+  public void testMultiValuedDoubleField() throws IOException {
     Directory dir = newDirectory();
     IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null));
     Document doc = new Document();
-    doc.add(new DoubleField("foo", 10.8, true));
-    doc.add(new DoubleField("foo", 128.8, true));
+    doc.add(new DoubleField("foo", 10.8));
+    doc.add(new DoubleField("foo", 128.8));
     iw.addDocument(doc);
 
     DirectoryReader dr = DirectoryReader.open(iw);

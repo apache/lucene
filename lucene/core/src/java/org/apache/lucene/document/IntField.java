@@ -40,16 +40,18 @@ import org.apache.lucene.util.NumericUtils;
  * @see PointValues
  */
 public final class IntField extends Field {
-  /**
-   * Creates a new IntField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the int value
-   * @param sorted configure the field to support multiple DocValues
-   * @throws IllegalArgumentException if the field name or value is null.
-   */
-  public IntField(String name, int value, boolean sorted) {
-    this(name, Integer.valueOf(value), sorted);
+  private static final FieldType SINGLE_VALUE_TYPE = new FieldType();
+
+  private static final FieldType MULTI_VALUED_TYPE = new FieldType();
+
+  static {
+    SINGLE_VALUE_TYPE.setDimensions(1, Integer.BYTES);
+    SINGLE_VALUE_TYPE.setDocValuesType(DocValuesType.NUMERIC);
+    SINGLE_VALUE_TYPE.freeze();
+
+    MULTI_VALUED_TYPE.setDimensions(1, Integer.BYTES);
+    MULTI_VALUED_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    MULTI_VALUED_TYPE.freeze();
   }
 
   /**
@@ -57,11 +59,22 @@ public final class IntField extends Field {
    *
    * @param name field name
    * @param value the int value
-   * @param sorted configure the field to support multiple DocValues
    * @throws IllegalArgumentException if the field name or value is null.
    */
-  public IntField(String name, Integer value, boolean sorted) {
-    super(name, getType(sorted));
+  public IntField(String name, int value) {
+    this(name, value, true);
+  }
+
+  /**
+   * Creates a new IntField, indexing the provided point and storing it as a DocValue
+   *
+   * @param name field name
+   * @param value the int value
+   * @param multiValued configure the field to support multiple DocValues
+   * @throws IllegalArgumentException if the field name or value is null.
+   */
+  public IntField(String name, int value, boolean multiValued) {
+    super(name, multiValued ? MULTI_VALUED_TYPE : SINGLE_VALUE_TYPE);
     fieldsData = value;
   }
 
@@ -75,14 +88,6 @@ public final class IntField extends Field {
   @Override
   public String toString() {
     return getClass().getSimpleName() + " <" + name + ':' + fieldsData + '>';
-  }
-
-  private static FieldType getType(boolean sorted) {
-    FieldType type = new FieldType();
-    type.setDimensions(1, Integer.BYTES);
-    type.setDocValuesType(sorted ? DocValuesType.SORTED_NUMERIC : DocValuesType.NUMERIC);
-    type.freeze();
-    return type;
   }
 
   /**

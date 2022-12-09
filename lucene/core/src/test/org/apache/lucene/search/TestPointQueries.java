@@ -361,15 +361,15 @@ public class TestPointQueries extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    doc.add(new IntField("point", -7, false));
+    doc.add(new IntField("point", -7));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new IntField("point", 0, false));
+    doc.add(new IntField("point", 0));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new IntField("point", 3, false));
+    doc.add(new IntField("point", 3));
     w.addDocument(doc);
 
     DirectoryReader r = DirectoryReader.open(w);
@@ -388,15 +388,15 @@ public class TestPointQueries extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    doc.add(new LongField("long_field", -7, false));
+    doc.add(new LongField("long_field", -7));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new LongField("long_field", 0, false));
+    doc.add(new LongField("long_field", 0));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new LongField("long_field", 3, false));
+    doc.add(new LongField("long_field", 3));
     w.addDocument(doc);
 
     DirectoryReader r = DirectoryReader.open(w);
@@ -415,15 +415,15 @@ public class TestPointQueries extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    doc.add(new FloatField("point", -7.0f, false));
+    doc.add(new FloatField("point", -7.0f));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("point", 0.0f, false));
+    doc.add(new FloatField("point", 0.0f));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("point", 3.0f, false));
+    doc.add(new FloatField("point", 3.0f));
     w.addDocument(doc);
 
     DirectoryReader r = DirectoryReader.open(w);
@@ -442,31 +442,31 @@ public class TestPointQueries extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    doc.add(new FloatField("point", Float.NEGATIVE_INFINITY, false));
+    doc.add(new FloatField("point", Float.NEGATIVE_INFINITY));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("point", -0.0F, false));
+    doc.add(new FloatField("point", -0.0F));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("point", +0.0F, false));
+    doc.add(new FloatField("point", +0.0F));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("point", Float.MIN_VALUE, false));
+    doc.add(new FloatField("point", Float.MIN_VALUE));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("point", Float.MAX_VALUE, false));
+    doc.add(new FloatField("point", Float.MAX_VALUE));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("point", Float.POSITIVE_INFINITY, false));
+    doc.add(new FloatField("point", Float.POSITIVE_INFINITY));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("point", Float.NaN, false));
+    doc.add(new FloatField("point", Float.NaN));
     w.addDocument(doc);
 
     DirectoryReader r = DirectoryReader.open(w);
@@ -500,15 +500,15 @@ public class TestPointQueries extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    doc.add(new DoubleField("point", -7.0, false));
+    doc.add(new DoubleField("point", -7.0));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("point", 0.0, false));
+    doc.add(new DoubleField("point", 0.0));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("point", 3.0, false));
+    doc.add(new DoubleField("point", 3.0));
     w.addDocument(doc);
 
     DirectoryReader r = DirectoryReader.open(w);
@@ -527,31 +527,31 @@ public class TestPointQueries extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    doc.add(new DoubleField("point", Double.NEGATIVE_INFINITY, false));
+    doc.add(new DoubleField("point", Double.NEGATIVE_INFINITY));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("point", -0.0D, false));
+    doc.add(new DoubleField("point", -0.0D));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("point", +0.0D, false));
+    doc.add(new DoubleField("point", +0.0D));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("point", Double.MIN_VALUE, false));
+    doc.add(new DoubleField("point", Double.MIN_VALUE));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("point", Double.MAX_VALUE, false));
+    doc.add(new DoubleField("point", Double.MAX_VALUE));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("point", Double.POSITIVE_INFINITY, false));
+    doc.add(new DoubleField("point", Double.POSITIVE_INFINITY));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("point", Double.NaN, false));
+    doc.add(new DoubleField("point", Double.NaN));
     w.addDocument(doc);
 
     DirectoryReader r = DirectoryReader.open(w);
@@ -1509,19 +1509,19 @@ public class TestPointQueries extends LuceneTestCase {
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new IntField("int_field", 1, false));
+    doc.add(new IntField("int_field", 1));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new LongField("long_field", 48L, false));
+    doc.add(new LongField("long_field", 48L));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new FloatField("float_field", 2.0f, false));
+    doc.add(new FloatField("float_field", 2.0f));
     w.addDocument(doc);
 
     doc = new Document();
-    doc.add(new DoubleField("double_field", 4.0, false));
+    doc.add(new DoubleField("double_field", 4.0));
     w.addDocument(doc);
 
     IndexReader r = DirectoryReader.open(w);

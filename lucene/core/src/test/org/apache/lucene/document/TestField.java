@@ -213,7 +213,7 @@ public class TestField extends LuceneTestCase {
   }
 
   public void testIntField() throws Exception {
-    IntField field = new IntField("foo", 12, false);
+    IntField field = new IntField("foo", 12);
 
     trySetByteValue(field);
     trySetBytesValue(field);
@@ -234,7 +234,7 @@ public class TestField extends LuceneTestCase {
   }
 
   public void testLongField() throws Exception {
-    LongField field = new LongField("foo", 12, false);
+    LongField field = new LongField("foo", 12);
 
     trySetByteValue(field);
     trySetBytesValue(field);
@@ -254,7 +254,7 @@ public class TestField extends LuceneTestCase {
   }
 
   public void testFloatField() throws Exception {
-    FloatField field = new FloatField("foo", 12.6f, false);
+    FloatField field = new FloatField("foo", 12.6f);
 
     trySetByteValue(field);
     trySetBytesValue(field);
@@ -274,7 +274,7 @@ public class TestField extends LuceneTestCase {
   }
 
   public void testDoubleField() throws Exception {
-    DoubleField field = new DoubleField("foo", 12.7, false);
+    DoubleField field = new DoubleField("foo", 12.7);
 
     trySetByteValue(field);
     trySetBytesValue(field);

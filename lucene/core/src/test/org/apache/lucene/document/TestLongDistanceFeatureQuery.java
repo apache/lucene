@@ -122,6 +122,68 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     dir.close();
   }
 
+  public void testBasics2() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+    Document doc = new Document();
+    LongField field = new LongField("foo", 3);
+    doc.add(field);
+
+    field.setLongValue(3);
+    w.addDocument(doc);
+
+    field.setLongValue(12);
+    w.addDocument(doc);
+
+    field.setLongValue(8);
+    w.addDocument(doc);
+
+    field.setLongValue(-1);
+    w.addDocument(doc);
+
+    field.setLongValue(7);
+    w.addDocument(doc);
+
+    DirectoryReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(2, null, 1);
+    TopDocs topHits = searcher.search(q, manager);
+    assertEquals(2, topHits.scoreDocs.length);
+
+    CheckHits.checkEqual(
+        q,
+        new ScoreDoc[] {
+          new ScoreDoc(1, (float) (3f * (5. / (5. + 2.)))),
+          new ScoreDoc(2, (float) (3f * (5. / (5. + 2.))))
+        },
+        topHits.scoreDocs);
+
+    q = LongPoint.newDistanceFeatureQuery("foo", 3, 7, 5);
+    manager = TopScoreDocCollector.createSharedManager(2, null, 1);
+    topHits = searcher.search(q, manager);
+    assertEquals(2, topHits.scoreDocs.length);
+    CheckHits.checkExplanations(q, "", searcher);
+
+    CheckHits.checkEqual(
+        q,
+        new ScoreDoc[] {
+          new ScoreDoc(4, (float) (3f * (5. / (5. + 0.)))),
+          new ScoreDoc(2, (float) (3f * (5. / (5. + 1.))))
+        },
+        topHits.scoreDocs);
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
   public void testOverUnderFlow() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w =

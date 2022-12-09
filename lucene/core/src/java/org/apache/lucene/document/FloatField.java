@@ -40,16 +40,18 @@ import org.apache.lucene.util.NumericUtils;
  * @see PointValues
  */
 public final class FloatField extends Field {
-  /**
-   * Creates a new FloatField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the float value
-   * @param sorted configure the field to support multiple DocValues
-   * @throws IllegalArgumentException if the field name or value is null.
-   */
-  public FloatField(String name, float value, boolean sorted) {
-    this(name, Float.valueOf(value), sorted);
+  private static final FieldType SINGLE_VALUE_TYPE = new FieldType();
+
+  private static final FieldType MULTI_VALUED_TYPE = new FieldType();
+
+  static {
+    SINGLE_VALUE_TYPE.setDimensions(1, Float.BYTES);
+    SINGLE_VALUE_TYPE.setDocValuesType(DocValuesType.NUMERIC);
+    SINGLE_VALUE_TYPE.freeze();
+
+    MULTI_VALUED_TYPE.setDimensions(1, Float.BYTES);
+    MULTI_VALUED_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    MULTI_VALUED_TYPE.freeze();
   }
 
   /**
@@ -57,11 +59,22 @@ public final class FloatField extends Field {
    *
    * @param name field name
    * @param value the float value
-   * @param sorted configure the field to support multiple DocValues
    * @throws IllegalArgumentException if the field name or value is null.
    */
-  public FloatField(String name, Float value, boolean sorted) {
-    super(name, getType(sorted));
+  public FloatField(String name, float value) {
+    this(name, value, true);
+  }
+
+  /**
+   * Creates a new FloatField, indexing the provided point and storing it as a DocValue
+   *
+   * @param name field name
+   * @param value the float value
+   * @param multiValued configure the field to support multiple DocValues
+   * @throws IllegalArgumentException if the field name or value is null.
+   */
+  public FloatField(String name, float value, boolean multiValued) {
+    super(name, multiValued ? MULTI_VALUED_TYPE : SINGLE_VALUE_TYPE);
     fieldsData = (long) Float.floatToRawIntBits(value);
   }
 
@@ -90,14 +103,6 @@ public final class FloatField extends Field {
   @Override
   public void setLongValue(long value) {
     throw new IllegalArgumentException("cannot change value type from Float to Long");
-  }
-
-  private static FieldType getType(boolean sorted) {
-    FieldType type = new FieldType();
-    type.setDimensions(1, Float.BYTES);
-    type.setDocValuesType(sorted ? DocValuesType.SORTED_NUMERIC : DocValuesType.NUMERIC);
-    type.freeze();
-    return type;
   }
 
   /**
