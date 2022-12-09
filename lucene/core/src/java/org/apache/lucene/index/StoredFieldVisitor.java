@@ -22,7 +22,7 @@ import org.apache.lucene.document.DocumentStoredFieldVisitor;
 
 /**
  * Expert: provides a low-level means of accessing the stored field values in an index. See {@link
- * IndexReader#document(int, StoredFieldVisitor)}.
+ * StoredFields#document(int, StoredFieldVisitor)}.
  *
  * <p><b>NOTE</b>: a {@code StoredFieldVisitor} implementation should not try to load or visit other
  * stored documents in the same reader because the implementation of stored fields for most codecs
