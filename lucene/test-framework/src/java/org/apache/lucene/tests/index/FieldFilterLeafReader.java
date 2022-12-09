@@ -32,6 +32,8 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.util.FilterIterator;
 
@@ -69,57 +71,79 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
 
   @Override
   public Fields getTermVectors(int docID) throws IOException {
-    Fields f = super.getTermVectors(docID);
-    if (f == null) {
-      return null;
-    }
-    f = new FieldFilterFields(f);
-    // we need to check for emptyness, so we can return
-    // null:
-    return f.iterator().hasNext() ? f : null;
+    return termVectors().get(docID);
+  }
+
+  @Override
+  public TermVectors termVectors() throws IOException {
+    TermVectors orig = super.termVectors();
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) throws IOException {
+        Fields f = orig.get(docID);
+        if (f == null) {
+          return null;
+        }
+        f = new FieldFilterFields(f);
+        // we need to check for emptyness, so we can return
+        // null:
+        return f.iterator().hasNext() ? f : null;
+      }
+    };
   }
 
   @Override
   public void document(final int docID, final StoredFieldVisitor visitor) throws IOException {
-    super.document(
-        docID,
-        new StoredFieldVisitor() {
-          @Override
-          public void binaryField(FieldInfo fieldInfo, byte[] value) throws IOException {
-            visitor.binaryField(fieldInfo, value);
-          }
+    storedFields().document(docID, visitor);
+  }
 
-          @Override
-          public void stringField(FieldInfo fieldInfo, String value) throws IOException {
-            visitor.stringField(
-                fieldInfo, Objects.requireNonNull(value, "String value should not be null"));
-          }
+  @Override
+  public StoredFields storedFields() throws IOException {
+    StoredFields orig = super.storedFields();
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        orig.document(
+            docID,
+            new StoredFieldVisitor() {
+              @Override
+              public void binaryField(FieldInfo fieldInfo, byte[] value) throws IOException {
+                visitor.binaryField(fieldInfo, value);
+              }
 
-          @Override
-          public void intField(FieldInfo fieldInfo, int value) throws IOException {
-            visitor.intField(fieldInfo, value);
-          }
+              @Override
+              public void stringField(FieldInfo fieldInfo, String value) throws IOException {
+                visitor.stringField(
+                    fieldInfo, Objects.requireNonNull(value, "String value should not be null"));
+              }
 
-          @Override
-          public void longField(FieldInfo fieldInfo, long value) throws IOException {
-            visitor.longField(fieldInfo, value);
-          }
+              @Override
+              public void intField(FieldInfo fieldInfo, int value) throws IOException {
+                visitor.intField(fieldInfo, value);
+              }
 
-          @Override
-          public void floatField(FieldInfo fieldInfo, float value) throws IOException {
-            visitor.floatField(fieldInfo, value);
-          }
+              @Override
+              public void longField(FieldInfo fieldInfo, long value) throws IOException {
+                visitor.longField(fieldInfo, value);
+              }
 
-          @Override
-          public void doubleField(FieldInfo fieldInfo, double value) throws IOException {
-            visitor.doubleField(fieldInfo, value);
-          }
+              @Override
+              public void floatField(FieldInfo fieldInfo, float value) throws IOException {
+                visitor.floatField(fieldInfo, value);
+              }
 
-          @Override
-          public Status needsField(FieldInfo fieldInfo) throws IOException {
-            return hasField(fieldInfo.name) ? visitor.needsField(fieldInfo) : Status.NO;
-          }
-        });
+              @Override
+              public void doubleField(FieldInfo fieldInfo, double value) throws IOException {
+                visitor.doubleField(fieldInfo, value);
+              }
+
+              @Override
+              public Status needsField(FieldInfo fieldInfo) throws IOException {
+                return hasField(fieldInfo.name) ? visitor.needsField(fieldInfo) : Status.NO;
+              }
+            });
+      }
+    };
   }
 
   @Override
