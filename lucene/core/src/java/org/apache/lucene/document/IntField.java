@@ -121,6 +121,6 @@ public final class IntField extends Field {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
     return new IndexOrDocValuesQuery(
         IntPoint.newRangeQuery(field, lowerValue, upperValue),
-        NumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+        SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
   }
 }

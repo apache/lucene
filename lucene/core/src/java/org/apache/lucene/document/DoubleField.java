@@ -135,7 +135,7 @@ public final class DoubleField extends Field {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
     return new IndexOrDocValuesQuery(
         DoublePoint.newRangeQuery(field, lowerValue, upperValue),
-        NumericDocValuesField.newSlowRangeQuery(
+        SortedNumericDocValuesField.newSlowRangeQuery(
             field,
             NumericUtils.doubleToSortableLong(lowerValue),
             NumericUtils.doubleToSortableLong(upperValue)));

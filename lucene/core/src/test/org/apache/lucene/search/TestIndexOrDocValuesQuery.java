@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.function.IntFunction;
+import java.util.function.Supplier;
 import org.apache.lucene.document.*;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.DirectoryReader;
@@ -32,71 +34,46 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestIndexOrDocValuesQuery extends LuceneTestCase {
 
   public void testUseIndexForSelectiveQueries() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w =
-        new IndexWriter(
-            dir,
-            newIndexWriterConfig()
-                // relies on costs and PointValues.estimateCost so we need the default codec
-                .setCodec(TestUtil.getDefaultCodec()));
-    for (int i = 0; i < 2000; ++i) {
-      Document doc = new Document();
-      if (i == 42) {
-        doc.add(new StringField("f1", "bar", Store.NO));
-        doc.add(new LongPoint("f2", 42L));
-        doc.add(new NumericDocValuesField("f2", 42L));
-      } else if (i == 100) {
-        doc.add(new StringField("f1", "foo", Store.NO));
-        doc.add(new LongPoint("f2", 2L));
-        doc.add(new NumericDocValuesField("f2", 2L));
-      } else {
-        doc.add(new StringField("f1", "bar", Store.NO));
-        doc.add(new LongPoint("f2", 2L));
-        doc.add(new NumericDocValuesField("f2", 2L));
-      }
-      w.addDocument(doc);
-    }
-    w.forceMerge(1);
-    IndexReader reader = DirectoryReader.open(w);
-    IndexSearcher searcher = newSearcher(reader);
-    searcher.setQueryCache(null);
-
-    // The term query is more selective, so the IndexOrDocValuesQuery should use doc values
-    final Query q1 =
-        new BooleanQuery.Builder()
-            .add(new TermQuery(new Term("f1", "foo")), Occur.MUST)
-            .add(
-                new IndexOrDocValuesQuery(
-                    LongPoint.newExactQuery("f2", 2),
-                    NumericDocValuesField.newSlowRangeQuery("f2", 2L, 2L)),
-                Occur.MUST)
-            .build();
-
-    final Weight w1 = searcher.createWeight(searcher.rewrite(q1), ScoreMode.COMPLETE, 1);
-    final Scorer s1 = w1.scorer(searcher.getIndexReader().leaves().get(0));
-    assertNotNull(s1.twoPhaseIterator()); // means we use doc values
-
-    // The term query is less selective, so the IndexOrDocValuesQuery should use points
-    final Query q2 =
-        new BooleanQuery.Builder()
-            .add(new TermQuery(new Term("f1", "bar")), Occur.MUST)
-            .add(
-                new IndexOrDocValuesQuery(
-                    LongPoint.newExactQuery("f2", 42),
-                    NumericDocValuesField.newSlowRangeQuery("f2", 42L, 42L)),
-                Occur.MUST)
-            .build();
-
-    final Weight w2 = searcher.createWeight(searcher.rewrite(q2), ScoreMode.COMPLETE, 1);
-    final Scorer s2 = w2.scorer(searcher.getIndexReader().leaves().get(0));
-    assertNull(s2.twoPhaseIterator()); // means we use points
-
-    reader.close();
-    w.close();
-    dir.close();
+    testUseIndexForSelectiveQueries(
+        docIdx -> {
+          Document doc = new Document();
+          if (docIdx == 42) {
+            doc.add(new StringField("f1", "bar", Store.NO));
+            doc.add(new LongPoint("f2", 42L));
+            doc.add(new NumericDocValuesField("f2", 42L));
+          } else if (docIdx == 100) {
+            doc.add(new StringField("f1", "foo", Store.NO));
+            doc.add(new LongPoint("f2", 2L));
+            doc.add(new NumericDocValuesField("f2", 2L));
+          } else {
+            doc.add(new StringField("f1", "bar", Store.NO));
+            doc.add(new LongPoint("f2", 2L));
+            doc.add(new NumericDocValuesField("f2", 2L));
+          }
+          return doc;
+        });
   }
 
-  public void testUseIndexForSelectiveQueries2() throws IOException {
+  public void testUseIndexForSelectiveQueriesWithSingleValuedLongField() throws IOException {
+    testUseIndexForSelectiveQueries(
+        docIdx -> {
+          Document doc = new Document();
+          if (docIdx == 42) {
+            doc.add(new StringField("f1", "bar", Store.NO));
+            doc.add(new LongField("f2", 42L, false));
+          } else if (docIdx == 100) {
+            doc.add(new StringField("f1", "foo", Store.NO));
+            doc.add(new LongField("f2", 2L, false));
+          } else {
+            doc.add(new StringField("f1", "bar", Store.NO));
+            doc.add(new LongField("f2", 2L, false));
+          }
+          return doc;
+        });
+  }
+
+  public void testUseIndexForSelectiveQueries(IntFunction<Document> docSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
@@ -105,18 +82,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
                 // relies on costs and PointValues.estimateCost so we need the default codec
                 .setCodec(TestUtil.getDefaultCodec()));
     for (int i = 0; i < 2000; ++i) {
-      Document doc = new Document();
-      if (i == 42) {
-        doc.add(new StringField("f1", "bar", Store.NO));
-        doc.add(new LongField("f2", 42L));
-      } else if (i == 100) {
-        doc.add(new StringField("f1", "foo", Store.NO));
-        doc.add(new LongField("f2", 2L));
-      } else {
-        doc.add(new StringField("f1", "bar", Store.NO));
-        doc.add(new LongField("f2", 2L));
-      }
-      w.addDocument(doc);
+      w.addDocument(docSupplier.apply(i));
     }
     w.forceMerge(1);
     IndexReader reader = DirectoryReader.open(w);
@@ -159,6 +125,54 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
   }
 
   public void testUseIndexForSelectiveMultiValueQueries() throws IOException {
+    doTestUseIndexForSelectiveMultiValueQueries(
+        docIdx -> {
+          Document doc = new Document();
+          if (docIdx < 1000) {
+            doc.add(new StringField("f1", "bar", Store.NO));
+            for (int j = 0; j < 500; j++) {
+              doc.add(new LongPoint("f2", 42L));
+              doc.add(new SortedNumericDocValuesField("f2", 42L));
+            }
+          } else if (docIdx == 1001) {
+            doc.add(new StringField("f1", "foo", Store.NO));
+            doc.add(new LongPoint("f2", 2L));
+            doc.add(new SortedNumericDocValuesField("f2", 42L));
+          } else {
+            doc.add(new StringField("f1", "bar", Store.NO));
+            for (int j = 0; j < 100; j++) {
+              doc.add(new LongPoint("f2", 2L));
+              doc.add(new SortedNumericDocValuesField("f2", 2L));
+            }
+          }
+          return doc;
+        });
+  }
+
+  public void testUseIndexForSelectiveMultiValueQueriesWithLongField() throws IOException {
+    doTestUseIndexForSelectiveMultiValueQueries(
+        docIdx -> {
+          Document doc = new Document();
+          if (docIdx < 1000) {
+            doc.add(new StringField("f1", "bar", Store.NO));
+            for (int j = 0; j < 500; j++) {
+              doc.add(new LongField("f2", 42));
+            }
+          } else if (docIdx == 1001) {
+            doc.add(new StringField("f1", "foo", Store.NO));
+            doc.add(new LongField("f2", 2));
+          } else {
+            doc.add(new StringField("f1", "bar", Store.NO));
+            for (int j = 0; j < 100; j++) {
+              doc.add(new LongField("f2", 2));
+            }
+          }
+          return doc;
+        });
+  }
+
+  public void doTestUseIndexForSelectiveMultiValueQueries(IntFunction<Document> documentSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
@@ -167,24 +181,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
                 // relies on costs and PointValues.estimateCost so we need the default codec
                 .setCodec(TestUtil.getDefaultCodec()));
     for (int i = 0; i < 2000; ++i) {
-      Document doc = new Document();
-      if (i < 1000) {
-        doc.add(new StringField("f1", "bar", Store.NO));
-        for (int j = 0; j < 500; j++) {
-          doc.add(new LongPoint("f2", 42L));
-          doc.add(new SortedNumericDocValuesField("f2", 42L));
-        }
-      } else if (i == 1001) {
-        doc.add(new StringField("f1", "foo", Store.NO));
-        doc.add(new LongPoint("f2", 2L));
-        doc.add(new SortedNumericDocValuesField("f2", 42L));
-      } else {
-        doc.add(new StringField("f1", "bar", Store.NO));
-        for (int j = 0; j < 100; j++) {
-          doc.add(new LongPoint("f2", 2L));
-          doc.add(new SortedNumericDocValuesField("f2", 2L));
-        }
-      }
+      Document doc = documentSupplier.apply(i);
       w.addDocument(doc);
     }
     w.forceMerge(1);
@@ -244,6 +241,25 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
 
   // Weight#count is delegated to the inner weight
   public void testQueryMatchesCount() throws Exception {
+    doTestQueryMatchesCount(
+        () -> {
+          Document doc = new Document();
+          doc.add(new LongPoint("f2", 42L));
+          doc.add(new SortedNumericDocValuesField("f2", 42L));
+          return doc;
+        });
+  }
+
+  public void testQueryMatchesCountWithLongField() throws Exception {
+    doTestQueryMatchesCount(
+        () -> {
+          Document doc = new Document();
+          doc.add(new LongField("f2", 42));
+          return doc;
+        });
+  }
+
+  public void doTestQueryMatchesCount(Supplier<Document> documentSupplier) throws Exception {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
@@ -256,7 +272,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
       Document doc = new Document();
       doc.add(new LongPoint("f2", 42L));
       doc.add(new SortedNumericDocValuesField("f2", 42L));
-      w.addDocument(doc);
+      w.addDocument(documentSupplier.get());
     }
     w.forceMerge(1);
     IndexReader reader = DirectoryReader.open(w);

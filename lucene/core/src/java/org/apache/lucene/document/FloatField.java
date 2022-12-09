@@ -135,7 +135,7 @@ public final class FloatField extends Field {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
     return new IndexOrDocValuesQuery(
         FloatPoint.newRangeQuery(field, lowerValue, upperValue),
-        NumericDocValuesField.newSlowRangeQuery(
+        SortedNumericDocValuesField.newSlowRangeQuery(
             field,
             NumericUtils.floatToSortableInt(lowerValue),
             NumericUtils.floatToSortableInt(upperValue)));
