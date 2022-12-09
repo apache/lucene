@@ -210,7 +210,7 @@ public abstract class RangeFieldQuery extends Query {
       }
 
       @Override
-      public boolean matches(
+      boolean matches(
           byte[] queryPackedValue,
           byte[] packedValue,
           int numDims,

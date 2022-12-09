@@ -68,19 +68,14 @@ public class LongRange extends Range {
    * Represents a multidimensional long range for RangeOnRange faceting
    *
    * @param label the name of the range
-   * @param min the minimum
-   * @param max the maximum
+   * @param min the minimum, inclusive
+   * @param max the maximum, inclusive
    */
   public LongRange(String label, long[] min, long[] max) {
     super(label, min.length);
     checkArgs(min, max);
     this.min = min;
     this.max = max;
-  }
-
-  @Override
-  public int getEncodedValueNumBytes() {
-    return Long.BYTES;
   }
 
   @Override

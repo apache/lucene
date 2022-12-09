@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.facet.rangeonrange;
 
+import java.util.Arrays;
+
 /**
  * Base class for a single labeled range.
  *
@@ -38,15 +40,13 @@ public abstract class Range {
     this.dims = dims;
   }
 
-  /**
-   * Gets the number of bytes it takes to represent an encoded value in a range
-   *
-   * @return the number of bytes to represent an encoded value in a range
-   */
-  public abstract int getEncodedValueNumBytes();
-
   /** Invoke this for a useless range. */
   protected void failNoMatch() {
     throw new IllegalArgumentException("range \"" + label + "\" matches nothing");
+  }
+
+  /** Gets a corresponding array of labels given a range */
+  public static String[] getLabelsFromRanges(Range[] ranges) {
+    return Arrays.stream(ranges).map(r -> r.label).toArray(String[]::new);
   }
 }

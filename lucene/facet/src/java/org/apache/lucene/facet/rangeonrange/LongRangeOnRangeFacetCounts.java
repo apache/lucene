@@ -38,7 +38,14 @@ public class LongRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
   public LongRangeOnRangeFacetCounts(
       String field, FacetsCollector hits, RangeFieldQuery.QueryType queryType, LongRange... ranges)
       throws IOException {
-    super(field, hits, queryType, null, getEncodedRanges(ranges), ranges);
+    super(
+        field,
+        hits,
+        queryType,
+        null,
+        Long.BYTES,
+        getEncodedRanges(ranges),
+        Range.getLabelsFromRanges(ranges));
   }
 
   /**
@@ -58,7 +65,14 @@ public class LongRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
       Query fastMatchQuery,
       LongRange... ranges)
       throws IOException {
-    super(field, hits, queryType, fastMatchQuery, getEncodedRanges(ranges), ranges);
+    super(
+        field,
+        hits,
+        queryType,
+        fastMatchQuery,
+        Long.BYTES,
+        getEncodedRanges(ranges),
+        Range.getLabelsFromRanges(ranges));
   }
 
   private static byte[][] getEncodedRanges(LongRange... ranges) {
