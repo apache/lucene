@@ -25,6 +25,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
@@ -126,11 +127,12 @@ public class TestMultiThreadTermVectors extends LuceneTestCase {
     private void testTermVectors() throws Exception {
       // check:
       int numDocs = reader.numDocs();
+      TermVectors termVectors = reader.termVectors();
       for (int docId = 0; docId < numDocs; docId++) {
-        Fields vectors = reader.termVectors().get(docId);
+        Fields vectors = termVectors.get(docId);
         // verify vectors result
         verifyVectors(vectors, docId);
-        Terms vector = reader.termVectors().get(docId).terms("field");
+        Terms vector = termVectors.get(docId).terms("field");
         verifyVector(vector.iterator(), docId);
       }
     }

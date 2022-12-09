@@ -49,6 +49,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.queries.CommonTermsQuery;
 import org.apache.lucene.queries.function.FunctionScoreQuery;
 import org.apache.lucene.queries.payloads.SpanPayloadCheckQuery;
@@ -2483,6 +2484,7 @@ final class SynonymTokenizer extends TokenStream {
         boolean expandMT)
         throws Exception {
 
+      TermVectors termVectors = searcher.getIndexReader().termVectors();
       for (int i = 0; i < hits.totalHits.value; i++) {
         final int docId = hits.scoreDocs[i].doc;
         final Document doc = searcher.storedFields().document(docId);
@@ -2492,11 +2494,7 @@ final class SynonymTokenizer extends TokenStream {
         Scorer scorer = null;
         TokenStream tokenStream =
             TokenSources.getTokenStream(
-                TestHighlighter.FIELD_NAME,
-                searcher.getIndexReader().termVectors().get(docId),
-                text,
-                analyzer,
-                -1);
+                TestHighlighter.FIELD_NAME, termVectors.get(docId), text, analyzer, -1);
         if (mode == QUERY) {
           scorer = new QueryScorer(query);
         } else if (mode == QUERY_TERM) {

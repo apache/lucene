@@ -1123,6 +1123,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     final Bits liveDocs = MultiBits.getLiveDocs(reader);
     assertNotNull(liveDocs);
     StoredFields storedFields = reader.storedFields();
+    TermVectors termVectors = reader.termVectors();
 
     for (int i = 0; i < DOCS_COUNT; i++) {
       if (liveDocs.get(i)) {
@@ -1149,7 +1150,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
           assertEquals("field with non-ascii name", f.stringValue());
         }
 
-        Fields tfvFields = reader.termVectors().get(i);
+        Fields tfvFields = termVectors.get(i);
         assertNotNull("i=" + i, tfvFields);
         Terms tfv = tfvFields.terms("utf8");
         assertNotNull("docID=" + i + " index=" + oldName, tfv);
