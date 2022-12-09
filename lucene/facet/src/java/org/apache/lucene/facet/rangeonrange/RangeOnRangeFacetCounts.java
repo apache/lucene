@@ -34,10 +34,9 @@ import org.apache.lucene.util.PriorityQueue;
 abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
 
   private final Range[] ranges;
-  private final String[] labels;
+  private final byte[][] encodedRanges;
   private final int numEncodedValueBytes;
   private final int dims;
-  private final int numRanges;
 
   /** Counts, initialized in by subclass. */
   protected final int[] counts;
@@ -58,30 +57,34 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
       FacetsCollector hits,
       RangeFieldQuery.QueryType queryType,
       Query fastMatchQuery,
+      byte[][] encodedRanges,
       Range... ranges)
       throws IOException {
     super(fastMatchQuery);
     this.field = field;
     this.ranges = ranges;
-    this.numEncodedValueBytes = ranges[0].getEncodedValueBytes();
+    this.numEncodedValueBytes = ranges[0].getEncodedValueNumBytes();
     this.dims = ranges[0].dims;
-    this.labels = getLabels(ranges);
-    this.numRanges = ranges.length;
     this.queryType = queryType;
     this.comparator = ArrayUtil.getUnsignedComparator(this.numEncodedValueBytes);
-    counts = new int[numRanges];
+    this.encodedRanges = verifyEncodedRange(encodedRanges);
+    this.counts = new int[ranges.length];
     count(field, hits.getMatchingDocs());
   }
 
   /** Counts from the provided field. */
   protected void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
       throws IOException {
+    // TODO: We currently just exhaustively check the ranges in each document with every range in
+    // the ranges array.
+    // We might be able to do something more efficient here by grouping the ranges array into a
+    // space partitioning
+    // data structure of some sort.
 
     int missingCount = 0;
 
-    for (int i = 0; i < matchingDocs.size(); i++) {
+    for (FacetsCollector.MatchingDocs hits : matchingDocs) {
 
-      FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
       BinaryRangeDocValues binaryRangeDocValues =
           new BinaryRangeDocValues(
               DocValues.getBinary(hits.context.reader(), field), dims, numEncodedValueBytes);
@@ -95,11 +98,12 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         if (binaryRangeDocValues.advanceExact(doc)) {
           boolean hasValidRange = false;
-          for (int range = 0; range < numRanges; range++) {
-            byte[] encodedRange = getEncodedRange(ranges[range]);
+          for (int range = 0; range < ranges.length; range++) {
+            byte[] encodedRange = encodedRanges[range];
             byte[] packedRange = binaryRangeDocValues.getPackedValue();
             assert encodedRange.length == packedRange.length;
-            if (queryType.matches(encodedRange, packedRange, 1, numEncodedValueBytes, comparator)) {
+            if (queryType.matches(
+                encodedRange, packedRange, dims, numEncodedValueBytes, comparator)) {
               counts[range]++;
               hasValidRange = true;
             }
@@ -116,12 +120,18 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
     totCount -= missingCount;
   }
 
+  /**
+   * {@inheritDoc}
+   *
+   * <p>NOTE: This implementation guarantees that ranges will be returned in the order specified by
+   * the user when calling the constructor.
+   */
   @Override
   public FacetResult getAllChildren(String dim, String... path) throws IOException {
     validateDimAndPathForGetChildren(dim, path);
     LabelAndValue[] labelValues = new LabelAndValue[counts.length];
     for (int i = 0; i < counts.length; i++) {
-      labelValues[i] = new LabelAndValue(labels[i], counts[i]);
+      labelValues[i] = new LabelAndValue(ranges[i].label, counts[i]);
     }
     return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
   }
@@ -151,7 +161,7 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
         if (e == null) {
           e = new Entry();
         }
-        e.label = labels[i];
+        e.label = ranges[i].label;
         e.count = counts[i];
         e = pq.insertWithOverflow(e);
       }
@@ -160,6 +170,7 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
     LabelAndValue[] results = new LabelAndValue[pq.size()];
     while (pq.size() != 0) {
       Entry entry = pq.pop();
+      assert entry != null;
       results[pq.size()] = new LabelAndValue(entry.label, entry.count);
     }
     return new FacetResult(dim, path, totCount, results, childCount);
@@ -186,15 +197,11 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
     }
   }
 
-  private static String[] getLabels(Range... ranges) {
-    String[] labels = new String[ranges.length];
-    for (int i = 0; i < ranges.length; i++) {
-      labels[i] = ranges[i].label;
-    }
-    return labels;
+  private byte[][] verifyEncodedRange(byte[][] encodedRanges) {
+    assert encodedRanges.length == ranges.length;
+    assert encodedRanges[0].length == numEncodedValueBytes * dims * 2;
+    return encodedRanges;
   }
-
-  public abstract byte[] getEncodedRange(Range range);
 
   private static final class Entry {
     int count;

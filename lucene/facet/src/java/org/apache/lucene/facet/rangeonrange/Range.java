@@ -41,9 +41,9 @@ public abstract class Range {
   /**
    * Gets the number of bytes it takes to represent an encoded value in a range
    *
-   * @return the number of bytes to represent a single range
+   * @return the number of bytes to represent an encoded value in a range
    */
-  public abstract int getEncodedValueBytes();
+  public abstract int getEncodedValueNumBytes();
 
   /** Invoke this for a useless range. */
   protected void failNoMatch() {

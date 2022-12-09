@@ -41,7 +41,7 @@ public class DoubleRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
       RangeFieldQuery.QueryType queryType,
       DoubleRange... ranges)
       throws IOException {
-    super(field, hits, queryType, null, ranges);
+    super(field, hits, queryType, null, getEncodedRanges(ranges), ranges);
   }
 
   /**
@@ -61,14 +61,14 @@ public class DoubleRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
       Query fastMatchQuery,
       DoubleRange... ranges)
       throws IOException {
-    super(field, hits, queryType, fastMatchQuery, ranges);
+    super(field, hits, queryType, fastMatchQuery, getEncodedRanges(ranges), ranges);
   }
 
-  @Override
-  public byte[] getEncodedRange(Range range) {
-    DoubleRange doubleRange = (DoubleRange) range;
-    byte[] result = new byte[2 * Double.BYTES * doubleRange.dims];
-    verifyAndEncode(doubleRange.min, doubleRange.max, result);
+  private static byte[][] getEncodedRanges(DoubleRange... ranges) {
+    byte[][] result = new byte[ranges.length][2 * Double.BYTES * ranges[0].dims];
+    for (int i = 0; i < ranges.length; i++) {
+      verifyAndEncode(ranges[i].min, ranges[i].max, result[i]);
+    }
     return result;
   }
 }

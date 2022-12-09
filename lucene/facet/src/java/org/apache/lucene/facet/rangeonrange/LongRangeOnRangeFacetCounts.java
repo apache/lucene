@@ -38,7 +38,7 @@ public class LongRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
   public LongRangeOnRangeFacetCounts(
       String field, FacetsCollector hits, RangeFieldQuery.QueryType queryType, LongRange... ranges)
       throws IOException {
-    super(field, hits, queryType, null, ranges);
+    super(field, hits, queryType, null, getEncodedRanges(ranges), ranges);
   }
 
   /**
@@ -58,14 +58,14 @@ public class LongRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
       Query fastMatchQuery,
       LongRange... ranges)
       throws IOException {
-    super(field, hits, queryType, fastMatchQuery, ranges);
+    super(field, hits, queryType, fastMatchQuery, getEncodedRanges(ranges), ranges);
   }
 
-  @Override
-  public byte[] getEncodedRange(Range range) {
-    LongRange longRange = (LongRange) range;
-    byte[] result = new byte[2 * Long.BYTES * longRange.dims];
-    verifyAndEncode(longRange.min, longRange.max, result);
+  private static byte[][] getEncodedRanges(LongRange... ranges) {
+    byte[][] result = new byte[ranges.length][2 * Long.BYTES * ranges[0].dims];
+    for (int i = 0; i < ranges.length; i++) {
+      verifyAndEncode(ranges[i].min, ranges[i].max, result[i]);
+    }
     return result;
   }
 }

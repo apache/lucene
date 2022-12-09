@@ -61,17 +61,6 @@ public class DoubleRange extends Field {
     setRangeValues(min, max);
   }
 
-  /**
-   * Create a new DoubleRange type with one dimension
-   *
-   * @param name field name. must not be null.
-   * @param min min value
-   * @param max max value
-   */
-  public DoubleRange(String name, final double min, final double max) {
-    this(name, new double[] {min}, new double[] {max});
-  }
-
   /** set the field type */
   private static FieldType getType(int dimensions) {
     if (dimensions > 4) {

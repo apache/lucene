@@ -78,7 +78,7 @@ public class DoubleRange extends Range {
   }
 
   @Override
-  public int getEncodedValueBytes() {
+  public int getEncodedValueNumBytes() {
     return Double.BYTES;
   }
 

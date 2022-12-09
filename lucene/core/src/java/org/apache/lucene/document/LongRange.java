@@ -61,17 +61,6 @@ public class LongRange extends Field {
     setRangeValues(min, max);
   }
 
-  /**
-   * Create a new LongRange type with one dimension
-   *
-   * @param name field name. must not be null.
-   * @param min min value
-   * @param max max value
-   */
-  public LongRange(String name, final long min, final long max) {
-    this(name, new long[] {min}, new long[] {max});
-  }
-
   /** set the field type */
   private static FieldType getType(int dimensions) {
     if (dimensions > 4) {

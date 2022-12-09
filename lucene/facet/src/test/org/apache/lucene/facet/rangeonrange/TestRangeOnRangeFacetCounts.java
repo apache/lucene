@@ -25,8 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DoubleRangeDocValuesFacetField;
-import org.apache.lucene.document.LongRangeDocValuesFacetField;
+import org.apache.lucene.document.DoubleRangeDocValuesField;
+import org.apache.lucene.document.LongRangeDocValuesField;
 import org.apache.lucene.document.RangeFieldQuery;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.DrillSideways;
@@ -50,6 +50,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 
 public class TestRangeOnRangeFacetCounts extends FacetTestCase {
@@ -58,7 +59,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
-    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", 0L, 10L);
+    LongRangeDocValuesField field =
+        new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
     for (long l = 0; l < 100; l++) {
       field.setLongRangeValue(l, 10L + l);
@@ -113,7 +115,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Document doc = new Document();
     long[] min = longArray(0L, 1L, 2L);
     long[] max = longArray(10L, 11L, 12L);
-    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", min, max);
+    LongRangeDocValuesField field = new LongRangeDocValuesField("field", min, max);
     doc.add(field);
     for (long l = 0; l < 100; l++) {
       field.setLongRangeValue(longArray(l, l + 1L, l + 2L), longArray(l + 10L, l + 11L, l + 12L));
@@ -171,7 +173,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
-    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", 0L, 10L);
+    LongRangeDocValuesField field =
+        new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
     for (long l = 0; l < 100; l++) {
       field.setLongRangeValue(l, 10L + l);
@@ -236,7 +239,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Document doc = new Document();
     long[] min = longArray(0L, 1L, 2L);
     long[] max = longArray(10L, 11L, 12L);
-    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", min, max);
+    LongRangeDocValuesField field = new LongRangeDocValuesField("field", min, max);
     doc.add(field);
     for (long l = 0; l < 100; l++) {
       long[] newMin = longArray(l, l + 1L, l + 2L);
@@ -346,7 +349,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
-    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", 0L, 10L);
+    LongRangeDocValuesField field =
+        new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
     field.setLongRangeValue(Long.MIN_VALUE, Long.MIN_VALUE + 10L);
     w.addDocument(doc);
@@ -392,8 +396,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
-    LongRangeDocValuesFacetField field =
-        new LongRangeDocValuesFacetField("field", longArray(0L, 1L), longArray(1L, 2L));
+    LongRangeDocValuesField field =
+        new LongRangeDocValuesField("field", longArray(0L, 1L), longArray(1L, 2L));
     doc.add(field);
     field.setLongRangeValue(
         longArray(Long.MIN_VALUE, Long.MIN_VALUE),
@@ -456,7 +460,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
-    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", 0L, 10L);
+    LongRangeDocValuesField field =
+        new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
     for (long l = 0; l < 100; l++) {
       field.setLongRangeValue(l, 10L + l);
@@ -506,9 +511,9 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     for (long l = 0; l < 100; l++) {
       Document doc = new Document();
       // For computing range facet counts:
-      doc.add(new LongRangeDocValuesFacetField("field", l, l + 10L));
+      doc.add(new LongRangeDocValuesField("field", longArray(l), longArray(l + 10L)));
       // For drill down by numeric range:
-      doc.add(new org.apache.lucene.document.LongRange("field", l, l + 10L));
+      doc.add(new org.apache.lucene.document.LongRange("field", longArray(l), longArray(l + 10L)));
 
       if ((l & 3) == 0) {
         doc.add(new FacetField("dim", "a"));
@@ -616,7 +621,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
       Document doc = new Document();
       // For computing range facet counts:
       doc.add(
-          new LongRangeDocValuesFacetField(
+          new LongRangeDocValuesField(
               "field", longArray(l, l + 1L, l + 2L), longArray(l + 10L, l + 11L, l + 12L)));
       // For drill down by numeric range:
       doc.add(
@@ -725,7 +730,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
-    DoubleRangeDocValuesFacetField field = new DoubleRangeDocValuesFacetField("field", 0.0, 10.0);
+    DoubleRangeDocValuesField field =
+        new DoubleRangeDocValuesField("field", doubleArray(0.0), doubleArray(10.0));
     doc.add(field);
     for (double l = 0; l < 100; l++) {
       field.setDoubleRangeValue(l, 10.0 + l);
@@ -775,7 +781,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Document doc = new Document();
     double[] min = doubleArray(0.0, 1.0, 2.0);
     double[] max = doubleArray(10.0, 11.0, 12.0);
-    DoubleRangeDocValuesFacetField field = new DoubleRangeDocValuesFacetField("field", min, max);
+    DoubleRangeDocValuesField field = new DoubleRangeDocValuesField("field", min, max);
     doc.add(field);
     for (double l = 0; l < 100; l++) {
       field.setDoubleRangeValue(
@@ -853,8 +859,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
       }
       mins[i] = min;
       maxes[i] = max;
-      doc.add(new LongRangeDocValuesFacetField("field", min, max));
-      doc.add(new org.apache.lucene.document.LongRange("field", min, max));
+      doc.add(new LongRangeDocValuesField("field", longArray(min), longArray(max)));
+      doc.add(new org.apache.lucene.document.LongRange("field", longArray(min), longArray(max)));
       w.addDocument(doc);
       minValue = Math.min(minValue, min);
       maxValue = Math.max(maxValue, min);
@@ -925,12 +931,13 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         }
 
         byte[] queryPackedValue = new byte[2 * Long.BYTES];
+        ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(Long.BYTES);
         verifyAndEncode(new long[] {min}, new long[] {max}, queryPackedValue);
         for (int i = 0; i < numDocs; i++) {
           byte[] packedValue = new byte[2 * Long.BYTES];
           verifyAndEncode(new long[] {mins[i]}, new long[] {maxes[i]}, packedValue);
           if (RangeFieldQuery.QueryType.INTERSECTS.matches(
-              queryPackedValue, packedValue, 1, Long.BYTES, 0)) {
+              queryPackedValue, packedValue, 1, Long.BYTES, comparator)) {
             expectedCounts[rangeID]++;
             expectedTopNChildrenCounts[rangeID]++;
             minAcceptedValue = Math.min(minAcceptedValue, mins[i]);
@@ -1010,7 +1017,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         mins[i][dim] = min;
         maxes[i][dim] = max;
       }
-      doc.add(new LongRangeDocValuesFacetField("field", mins[i], maxes[i]));
+      doc.add(new LongRangeDocValuesField("field", mins[i], maxes[i]));
       doc.add(new org.apache.lucene.document.LongRange("field", mins[i], maxes[i]));
       w.addDocument(doc);
     }
@@ -1080,20 +1087,13 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         }
 
         byte[] queryPackedValue = new byte[2 * Long.BYTES * dims];
+        ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(Long.BYTES);
         verifyAndEncode(min, max, queryPackedValue);
         for (int i = 0; i < numDocs; i++) {
           byte[] packedValue = new byte[2 * Long.BYTES * dims];
           verifyAndEncode(mins[i], maxes[i], packedValue);
-          boolean validRange = true;
-          for (int dim = 0; dim < dims; dim++) {
-            if (RangeFieldQuery.QueryType.INTERSECTS.matches(
-                    queryPackedValue, packedValue, dims, Long.BYTES, dim)
-                == false) {
-              validRange = false;
-              break;
-            }
-          }
-          if (validRange) {
+          if (RangeFieldQuery.QueryType.INTERSECTS.matches(
+              queryPackedValue, packedValue, dims, Long.BYTES, comparator)) {
             expectedCounts[rangeID]++;
             expectedTopNChildrenCounts[rangeID]++;
             for (int dim = 0; dim < dims; dim++) {
@@ -1174,8 +1174,9 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
       }
       mins[i] = min;
       maxes[i] = max;
-      doc.add(new DoubleRangeDocValuesFacetField("field", min, max));
-      doc.add(new org.apache.lucene.document.DoubleRange("field", min, max));
+      doc.add(new DoubleRangeDocValuesField("field", doubleArray(min), doubleArray(max)));
+      doc.add(
+          new org.apache.lucene.document.DoubleRange("field", doubleArray(min), doubleArray(max)));
       w.addDocument(doc);
       minValue = Math.min(minValue, min);
       maxValue = Math.max(maxValue, min);
@@ -1247,11 +1248,12 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
 
         byte[] queryPackedValue = new byte[2 * Double.BYTES];
         verifyAndEncode(new double[] {min}, new double[] {max}, queryPackedValue);
+        ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(Double.BYTES);
         for (int i = 0; i < numDocs; i++) {
           byte[] packedValue = new byte[2 * Double.BYTES];
           verifyAndEncode(new double[] {mins[i]}, new double[] {maxes[i]}, packedValue);
           if (RangeFieldQuery.QueryType.INTERSECTS.matches(
-              queryPackedValue, packedValue, 1, Double.BYTES, 0)) {
+              queryPackedValue, packedValue, 1, Double.BYTES, comparator)) {
             expectedCounts[rangeID]++;
             expectedTopNChildrenCounts[rangeID]++;
             minAcceptedValue = Math.min(minAcceptedValue, mins[i]);
@@ -1332,7 +1334,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         mins[i][dim] = min;
         maxes[i][dim] = max;
       }
-      doc.add(new DoubleRangeDocValuesFacetField("field", mins[i], maxes[i]));
+      doc.add(new DoubleRangeDocValuesField("field", mins[i], maxes[i]));
       doc.add(new org.apache.lucene.document.DoubleRange("field", mins[i], maxes[i]));
       w.addDocument(doc);
     }
@@ -1402,20 +1404,13 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         }
 
         byte[] queryPackedValue = new byte[2 * Double.BYTES * dims];
+        ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(Double.BYTES);
         verifyAndEncode(min, max, queryPackedValue);
         for (int i = 0; i < numDocs; i++) {
           byte[] packedValue = new byte[2 * Double.BYTES * dims];
           verifyAndEncode(mins[i], maxes[i], packedValue);
-          boolean validRange = true;
-          for (int dim = 0; dim < dims; dim++) {
-            if (RangeFieldQuery.QueryType.INTERSECTS.matches(
-                    queryPackedValue, packedValue, dims, Double.BYTES, dim)
-                == false) {
-              validRange = false;
-              break;
-            }
-          }
-          if (validRange) {
+          if (RangeFieldQuery.QueryType.INTERSECTS.matches(
+              queryPackedValue, packedValue, dims, Double.BYTES, comparator)) {
             expectedCounts[rangeID]++;
             expectedTopNChildrenCounts[rangeID]++;
             for (int dim = 0; dim < dims; dim++) {
@@ -1478,7 +1473,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
     Document doc = new Document();
-    LongRangeDocValuesFacetField field = new LongRangeDocValuesFacetField("field", 0L, 10L);
+    LongRangeDocValuesField field =
+        new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
     for (long l = 0; l < 100; l++) {
       if (l % 5 == 0) {

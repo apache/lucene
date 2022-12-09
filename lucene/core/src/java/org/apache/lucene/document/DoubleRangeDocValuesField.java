@@ -18,6 +18,7 @@
 package org.apache.lucene.document;
 
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * DocValues field for DoubleRange. This is a single valued field i.e. can have only one value per
@@ -72,7 +73,7 @@ public class DoubleRangeDocValuesField extends BinaryRangeDocValuesField {
   }
 
   /** validate the arguments */
-  protected static void checkArgs(final double[] min, final double[] max) {
+  private static void checkArgs(final double[] min, final double[] max) {
     if (min == null || max == null || min.length == 0 || max.length == 0) {
       throw new IllegalArgumentException("min/max range values cannot be null or empty");
     }
@@ -85,5 +86,29 @@ public class DoubleRangeDocValuesField extends BinaryRangeDocValuesField {
         throw new IllegalArgumentException("min should be less than max");
       }
     }
+  }
+
+  /**
+   * Sets the value of this field to a new value
+   *
+   * @param min the new min
+   * @param max the new max
+   */
+  public void setDoubleRangeValue(double min, double max) {
+    setDoubleRangeValue(new double[] {min}, new double[] {max});
+  }
+
+  /**
+   * Sets the value of this field to a new multidimensional value
+   *
+   * @param min the new multidimensional min
+   * @param max the new multidimensional max
+   */
+  public void setDoubleRangeValue(double[] min, double[] max) {
+    checkArgs(min, max);
+    assert min.length == this.min.length : "Cannot change number of dimensions";
+    byte[] encodedValue = new byte[2 * min.length * Double.BYTES];
+    DoubleRange.verifyAndEncode(min, max, encodedValue);
+    setBytesValue(new BytesRef(encodedValue));
   }
 }

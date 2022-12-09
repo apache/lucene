@@ -79,7 +79,7 @@ public class LongRange extends Range {
   }
 
   @Override
-  public int getEncodedValueBytes() {
+  public int getEncodedValueNumBytes() {
     return Long.BYTES;
   }
 
