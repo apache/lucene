@@ -24,19 +24,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
+import java.util.function.BiFunction;
+import java.util.function.IntFunction;
+import java.util.function.LongFunction;
+import java.util.function.Supplier;
+import org.apache.lucene.document.*;
 import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.document.FloatDocValuesField;
-import org.apache.lucene.document.FloatPoint;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.IntRange;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -65,7 +58,26 @@ import org.apache.lucene.util.IOUtils;
 public class TestSortOptimization extends LuceneTestCase {
 
   public void testLongSortOptimization() throws IOException {
+    doTestLongSortOptimization(
+        docIdx -> {
+          final Document doc = new Document();
+          doc.add(new NumericDocValuesField("my_field", docIdx));
+          doc.add(new LongPoint("my_field", docIdx));
+          return doc;
+        });
+  }
 
+  public void testLongFieldSortOptimization() throws IOException {
+    doTestLongSortOptimization(
+        docIdx -> {
+          final Document doc = new Document();
+          doc.add(new LongField("my_field", docIdx, false));
+          return doc;
+        });
+  }
+
+  public void doTestLongSortOptimization(IntFunction<Document> documentSupplier)
+      throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
         new IndexWriterConfig()
@@ -75,9 +87,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
-      final Document doc = new Document();
-      doc.add(new NumericDocValuesField("my_field", i));
-      doc.add(new LongPoint("my_field", i));
+      final Document doc = documentSupplier.apply(i);
       writer.addDocument(doc);
       if (i == 7000) writer.flush(); // two segments
     }
@@ -191,6 +201,30 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void testSortOptimizationWithMissingValues() throws IOException {
+    doTestSortOptimizationWithMissingValues(
+        i -> {
+          final Document doc = new Document();
+          if ((i % 500) != 0) { // miss values on every 500th document
+            doc.add(new NumericDocValuesField("my_field", i));
+            doc.add(new LongPoint("my_field", i));
+          }
+          return doc;
+        });
+  }
+
+  public void testSortOptimizationWithMissingValuesUsingLongFields() throws IOException {
+    doTestSortOptimizationWithMissingValues(
+        i -> {
+          final Document doc = new Document();
+          if ((i % 500) != 0) { // miss values on every 500th document
+            doc.add(new LongField("my_field", i, false));
+          }
+          return doc;
+        });
+  }
+
+  public void doTestSortOptimizationWithMissingValues(IntFunction<Document> documentSupplier)
+      throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
         new IndexWriterConfig()
@@ -200,11 +234,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
-      final Document doc = new Document();
-      if ((i % 500) != 0) { // miss values on every 500th document
-        doc.add(new NumericDocValuesField("my_field", i));
-        doc.add(new LongPoint("my_field", i));
-      }
+      final Document doc = documentSupplier.apply(i);
       writer.addDocument(doc);
       if (i == 7000) writer.flush(); // two segments
     }
@@ -244,6 +274,29 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void testSortOptimizationEqualValues() throws IOException {
+    doTestSortOptimizationEqualValues(
+        i -> {
+          final Document doc = new Document();
+          doc.add(
+              new NumericDocValuesField(
+                  "my_field1", 100)); // all docs have the same value of my_field1
+          doc.add(new IntPoint("my_field1", 100));
+          return doc;
+        });
+  }
+
+  public void testSortOptimizationEqualValuesWithIntFields() throws IOException {
+    doTestSortOptimizationEqualValues(
+        i -> {
+          final Document doc = new Document();
+          doc.add(
+              new IntField("my_field1", 100, false)); // all docs have the same value of my_field1
+          return doc;
+        });
+  }
+
+  public void doTestSortOptimizationEqualValues(IntFunction<Document> documentSupplier)
+      throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
         new IndexWriterConfig()
@@ -253,10 +306,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(TEST_NIGHTLY ? 50_000 : 10_000);
     for (int i = 1; i <= numDocs; ++i) {
-      final Document doc = new Document();
-      doc.add(
-          new NumericDocValuesField("my_field1", 100)); // all docs have the same value of my_field1
-      doc.add(new IntPoint("my_field1", 100));
+      final Document doc = documentSupplier.apply(i);
       doc.add(
           new NumericDocValuesField(
               "my_field2", numDocs - i)); // diff values for the field my_field2
@@ -329,14 +379,32 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void testFloatSortOptimization() throws IOException {
+    doTestFloatSortOptimization(
+        i -> {
+          final Document doc = new Document();
+          float f = 1f * i;
+          doc.add(new FloatDocValuesField("my_field", f));
+          doc.add(new FloatPoint("my_field", i));
+          return doc;
+        });
+  }
+
+  public void testFloatFieldSortOptimization() throws IOException {
+    doTestFloatSortOptimization(
+        i -> {
+          final Document doc = new Document();
+          doc.add(new FloatField("my_field", 1f * i, false));
+          return doc;
+        });
+  }
+
+  public void doTestFloatSortOptimization(IntFunction<Document> documentSupplier)
+      throws IOException {
     final Directory dir = newDirectory();
     final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
-      final Document doc = new Document();
-      float f = 1f * i;
-      doc.add(new FloatDocValuesField("my_field", f));
-      doc.add(new FloatPoint("my_field", i));
+      final Document doc = documentSupplier.apply(i);
       writer.addDocument(doc);
     }
     final IndexReader reader = DirectoryReader.open(writer);
@@ -655,18 +723,43 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void testPointValidation() throws IOException {
+    doTestPointValidation(
+        () -> {
+          Document doc = new Document();
+
+          doc.add(new IntPoint("intField", 4));
+          doc.add(new NumericDocValuesField("intField", 4));
+
+          doc.add(new LongPoint("longField", 42));
+          doc.add(new NumericDocValuesField("longField", 42));
+
+          doc.add(new IntRange("intRange", new int[] {1}, new int[] {10}));
+          doc.add(new NumericDocValuesField("intRange", 4));
+
+          return doc;
+        });
+  }
+
+  public void testPointValidationForIntAndLongField() throws IOException {
+    doTestPointValidation(
+        () -> {
+          Document doc = new Document();
+
+          doc.add(new IntField("intField", 4, false));
+
+          doc.add(new LongField("longField", 42, false));
+
+          doc.add(new IntRange("intRange", new int[] {1}, new int[] {10}));
+          doc.add(new NumericDocValuesField("intRange", 4));
+
+          return doc;
+        });
+  }
+
+  public void doTestPointValidation(Supplier<Document> documentSupplier) throws IOException {
     final Directory dir = newDirectory();
     final RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
-    Document doc = new Document();
-
-    doc.add(new IntPoint("intField", 4));
-    doc.add(new NumericDocValuesField("intField", 4));
-
-    doc.add(new LongPoint("longField", 42));
-    doc.add(new NumericDocValuesField("longField", 42));
-
-    doc.add(new IntRange("intRange", new int[] {1}, new int[] {10}));
-    doc.add(new NumericDocValuesField("intRange", 4));
+    Document doc = documentSupplier.get();
 
     writer.addDocument(doc);
     IndexReader reader = writer.getReader();
@@ -736,7 +829,58 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
+  public void testMaxDocVisitedLongField() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    int numDocs = atLeast(10000);
+    long offset = 100 + random().nextInt(100);
+    long smallestValue = 50 + random().nextInt(50);
+    boolean flushed = false;
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(new LongField("my_field", i + offset, false));
+      writer.addDocument(doc);
+      if (i >= 5000 && flushed == false) {
+        flushed = true;
+        writer.flush();
+        // Index the smallest value to the first slot of the second segment
+        doc = new Document();
+        doc.add(new LongField("my_field", smallestValue, false));
+        writer.addDocument(doc);
+      }
+    }
+    IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
+    SortField sortField = new SortField("my_field", SortField.Type.LONG);
+    TopFieldDocs topDocs =
+        searcher.search(new MatchAllDocsQuery(), 1 + random().nextInt(100), new Sort(sortField));
+    FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[0];
+    assertEquals(smallestValue, ((Long) fieldDoc.fields[0]).intValue());
+    reader.close();
+    dir.close();
+  }
+
   public void testRandomLong() throws IOException {
+    doTestRandomLong(
+        seqNo -> {
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("seq_no", seqNo));
+          doc.add(new LongPoint("seq_no", seqNo));
+          return doc;
+        });
+  }
+
+  public void testRandomLongWithLongFields() throws IOException {
+    doTestRandomLong(
+        seqNo -> {
+          Document doc = new Document();
+          doc.add(new LongField("seq_no", seqNo, false));
+          return doc;
+        });
+  }
+
+  public void doTestRandomLong(LongFunction<Document> documentSupplier) throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     List<Long> seqNos = new ArrayList<>();
@@ -758,9 +902,7 @@ public class TestSortOptimization extends LuceneTestCase {
     Collections.shuffle(seqNos, random());
     int pendingDocs = 0;
     for (long seqNo : seqNos) {
-      Document doc = new Document();
-      doc.add(new NumericDocValuesField("seq_no", seqNo));
-      doc.add(new LongPoint("seq_no", seqNo));
+      Document doc = documentSupplier.apply(seqNo);
       writer.addDocument(doc);
       pendingDocs++;
       if (pendingDocs > 500 && random().nextInt(100) <= 5) {
@@ -800,17 +942,36 @@ public class TestSortOptimization extends LuceneTestCase {
   // Test that sort on sorted numeric field without sort optimization and
   // with sort optimization produce the same results
   public void testSortOptimizationOnSortedNumericField() throws IOException {
+    doTestSortOptimizationOnSortedNumericField(
+        (value, value2) -> {
+          final Document doc = new Document();
+          doc.add(new SortedNumericDocValuesField("my_field", value));
+          doc.add(new SortedNumericDocValuesField("my_field", value2));
+          doc.add(new LongPoint("my_field", value));
+          doc.add(new LongPoint("my_field", value2));
+          return doc;
+        });
+  }
+
+  public void testSortOptimizationOnSortedLongField() throws IOException {
+    doTestSortOptimizationOnSortedNumericField(
+        (value, value2) -> {
+          final Document doc = new Document();
+          doc.add(new LongField("my_field", value));
+          doc.add(new LongField("my_field", value2));
+          return doc;
+        });
+  }
+
+  public void doTestSortOptimizationOnSortedNumericField(
+      BiFunction<Integer, Integer, Document> documentSupplier) throws IOException {
     final Directory dir = newDirectory();
     final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     final int numDocs = atLeast(5000);
     for (int i = 0; i < numDocs; ++i) {
       int value = random().nextInt();
       int value2 = random().nextInt();
-      final Document doc = new Document();
-      doc.add(new SortedNumericDocValuesField("my_field", value));
-      doc.add(new SortedNumericDocValuesField("my_field", value2));
-      doc.add(new LongPoint("my_field", value));
-      doc.add(new LongPoint("my_field", value2));
+      final Document doc = documentSupplier.apply(value, value2);
       writer.addDocument(doc);
     }
     final IndexReader reader = DirectoryReader.open(writer);

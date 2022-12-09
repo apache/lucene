@@ -17,6 +17,8 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.util.function.BiConsumer;
+import java.util.function.LongFunction;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -54,99 +56,41 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
   }
 
   public void testBasics() throws IOException {
-    Directory dir = newDirectory();
-    RandomIndexWriter w =
-        new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-    Document doc = new Document();
-    LongPoint point = new LongPoint("foo", 0L);
-    doc.add(point);
-    NumericDocValuesField docValue = new NumericDocValuesField("foo", 0L);
-    doc.add(docValue);
-
-    point.setLongValue(3);
-    docValue.setLongValue(3);
-    w.addDocument(doc);
-
-    point.setLongValue(12);
-    docValue.setLongValue(12);
-    w.addDocument(doc);
-
-    point.setLongValue(8);
-    docValue.setLongValue(8);
-    w.addDocument(doc);
-
-    point.setLongValue(-1);
-    docValue.setLongValue(-1);
-    w.addDocument(doc);
-
-    point.setLongValue(7);
-    docValue.setLongValue(7);
-    w.addDocument(doc);
-
-    DirectoryReader reader = w.getReader();
-    IndexSearcher searcher = newSearcher(reader);
-
-    Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(2, null, 1);
-    TopDocs topHits = searcher.search(q, manager);
-    assertEquals(2, topHits.scoreDocs.length);
-
-    CheckHits.checkEqual(
-        q,
-        new ScoreDoc[] {
-          new ScoreDoc(1, (float) (3f * (5. / (5. + 2.)))),
-          new ScoreDoc(2, (float) (3f * (5. / (5. + 2.))))
-        },
-        topHits.scoreDocs);
-
-    q = LongPoint.newDistanceFeatureQuery("foo", 3, 7, 5);
-    manager = TopScoreDocCollector.createSharedManager(2, null, 1);
-    topHits = searcher.search(q, manager);
-    assertEquals(2, topHits.scoreDocs.length);
-    CheckHits.checkExplanations(q, "", searcher);
-
-    CheckHits.checkEqual(
-        q,
-        new ScoreDoc[] {
-          new ScoreDoc(4, (float) (3f * (5. / (5. + 0.)))),
-          new ScoreDoc(2, (float) (3f * (5. / (5. + 1.))))
-        },
-        topHits.scoreDocs);
-
-    reader.close();
-    w.close();
-    dir.close();
+    doTestBasics(
+        value -> {
+          Document doc = new Document();
+          doc.add(new LongPoint("foo", value));
+          doc.add(new NumericDocValuesField("foo", value));
+          return doc;
+        });
   }
 
-  public void testBasics2() throws IOException {
+  public void testBasicsWithLongField() throws IOException {
+    doTestBasics(
+        value -> {
+          Document doc = new Document();
+          doc.add(new LongField("foo", value));
+          return doc;
+        });
+  }
+
+  public void doTestBasics(LongFunction<Document> documentSupplier) throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w =
         new RandomIndexWriter(
             random(),
             dir,
             newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-    Document doc = new Document();
-    LongField field = new LongField("foo", 3);
-    doc.add(field);
 
-    field.setLongValue(3);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(3));
 
-    field.setLongValue(12);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(12));
 
-    field.setLongValue(8);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(8));
 
-    field.setLongValue(-1);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(-1));
 
-    field.setLongValue(7);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(7));
 
     DirectoryReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
@@ -185,37 +129,41 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
   }
 
   public void testOverUnderFlow() throws IOException {
+    doTestOverUnderFlow(
+        value -> {
+          Document doc = new Document();
+          doc.add(new LongPoint("foo", value));
+          doc.add(new NumericDocValuesField("foo", value));
+          return doc;
+        });
+  }
+
+  public void testOverUnderFlowWithLongField() throws IOException {
+    doTestOverUnderFlow(
+        value -> {
+          Document doc = new Document();
+          doc.add(new LongField("foo", value));
+          return doc;
+        });
+  }
+
+  public void doTestOverUnderFlow(LongFunction<Document> documentSupplier) throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w =
         new RandomIndexWriter(
             random(),
             dir,
             newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-    Document doc = new Document();
-    LongPoint point = new LongPoint("foo", 0L);
-    doc.add(point);
-    NumericDocValuesField docValue = new NumericDocValuesField("foo", 0L);
-    doc.add(docValue);
 
-    point.setLongValue(3);
-    docValue.setLongValue(3);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(3));
 
-    point.setLongValue(12);
-    docValue.setLongValue(12);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(12));
 
-    point.setLongValue(-10);
-    docValue.setLongValue(-10);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(-10));
 
-    point.setLongValue(Long.MAX_VALUE);
-    docValue.setLongValue(Long.MAX_VALUE);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(Long.MAX_VALUE));
 
-    point.setLongValue(Long.MIN_VALUE);
-    docValue.setLongValue(Long.MIN_VALUE);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(Long.MIN_VALUE));
 
     DirectoryReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
@@ -278,6 +226,25 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
   }
 
   public void testMissingValue() throws IOException {
+    doTestMissingValue(
+        value -> {
+          Document doc = new Document();
+          doc.add(new LongPoint("foo", value));
+          doc.add(new NumericDocValuesField("foo", value));
+          return doc;
+        });
+  }
+
+  public void testMissingValueWithLongField() throws IOException {
+    doTestMissingValue(
+        value -> {
+          Document doc = new Document();
+          doc.add(new LongField("foo", value));
+          return doc;
+        });
+  }
+
+  public void doTestMissingValue(LongFunction<Document> documentSupplier) throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w =
         new RandomIndexWriter(
@@ -290,15 +257,11 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     NumericDocValuesField docValue = new NumericDocValuesField("foo", 0L);
     doc.add(docValue);
 
-    point.setLongValue(3);
-    docValue.setLongValue(3);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(3));
 
     w.addDocument(new Document());
 
-    point.setLongValue(7);
-    docValue.setLongValue(7);
-    w.addDocument(doc);
+    w.addDocument(documentSupplier.apply(7));
 
     DirectoryReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
@@ -325,6 +288,19 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
   }
 
   public void testMultiValued() throws IOException {
+    doTestMultiValued(
+        (doc, value) -> {
+          doc.add(new LongPoint("foo", value));
+          doc.add(new SortedNumericDocValuesField("foo", value));
+        });
+  }
+
+  public void testMultiValuedLongField() throws IOException {
+    doTestMultiValued((doc, value) -> doc.add(new LongField("foo", value)));
+  }
+
+  public void doTestMultiValued(BiConsumer<Document, Long> docMultiValueSupplier)
+      throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w =
         new RandomIndexWriter(
@@ -334,36 +310,31 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
 
     Document doc = new Document();
     for (long v : new long[] {3, 1000, Long.MAX_VALUE}) {
-      doc.add(new LongPoint("foo", v));
-      doc.add(new SortedNumericDocValuesField("foo", v));
+      docMultiValueSupplier.accept(doc, v);
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {-100, 12, 999}) {
-      doc.add(new LongPoint("foo", v));
-      doc.add(new SortedNumericDocValuesField("foo", v));
+      docMultiValueSupplier.accept(doc, v);
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {Long.MIN_VALUE, -1000, 8}) {
-      doc.add(new LongPoint("foo", v));
-      doc.add(new SortedNumericDocValuesField("foo", v));
+      docMultiValueSupplier.accept(doc, v);
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {-1}) {
-      doc.add(new LongPoint("foo", v));
-      doc.add(new SortedNumericDocValuesField("foo", v));
+      docMultiValueSupplier.accept(doc, v);
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {Long.MIN_VALUE, 7}) {
-      doc.add(new LongPoint("foo", v));
-      doc.add(new SortedNumericDocValuesField("foo", v));
+      docMultiValueSupplier.accept(doc, v);
     }
     w.addDocument(doc);
 
@@ -404,6 +375,25 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
   }
 
   public void testRandom() throws IOException {
+    doTestRandom(
+        value -> {
+          Document doc = new Document();
+          doc.add(new LongPoint("foo", value));
+          doc.add(new NumericDocValuesField("foo", value));
+          return doc;
+        });
+  }
+
+  public void testRandomLongField() throws IOException {
+    doTestRandom(
+        value -> {
+          Document doc = new Document();
+          doc.add(new LongField("foo", value));
+          return doc;
+        });
+  }
+
+  public void doTestRandom(LongFunction<Document> documentSupplier) throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
@@ -417,9 +407,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       long v = random().nextLong();
-      point.setLongValue(v);
-      docValue.setLongValue(v);
-      w.addDocument(doc);
+      w.addDocument(documentSupplier.apply(v));
     }
 
     IndexReader reader = DirectoryReader.open(w);
