@@ -320,8 +320,10 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
     @Override
     public void withTopDocs(IndexSearcher searcher, Query q, TopDocs hits) throws Exception {
       // just retrieve the HL fields
+      StoredFields storedFields = searcher.storedFields();
       for (ScoreDoc scoreDoc : docIdOrder(hits.scoreDocs)) {
-        preventOptimizeAway += searcher.doc(scoreDoc.doc, hlFields).iterator().hasNext() ? 2 : 1;
+        preventOptimizeAway +=
+            storedFields.document(scoreDoc.doc, hlFields).iterator().hasNext() ? 2 : 1;
       }
     }
   }

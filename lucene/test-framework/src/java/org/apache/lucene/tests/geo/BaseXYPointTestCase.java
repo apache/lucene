@@ -630,6 +630,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
 
       boolean fail = false;
 
+      StoredFields storedFields = s.storedFields();
       for (int docID = 0; docID < ys.length / 2; docID++) {
         float yDoc1 = ys[2 * docID];
         float xDoc1 = xs[2 * docID];
@@ -642,7 +643,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
         boolean expected = result1 || result2;
 
         if (hits.get(docID) != expected) {
-          String id = s.doc(docID).get("id");
+          String id = storedFields.document(docID).get("id");
           if (expected) {
             System.out.println("TEST: id=" + id + " docID=" + docID + " should match but did not");
           } else {

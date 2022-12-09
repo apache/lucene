@@ -656,6 +656,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     // Verify: make sure each group of sub-docs are still in docID order:
     for (SubDocs subDocs : allSubDocs) {
       TopDocs hits = s.search(new TermQuery(new Term("packID", subDocs.packID)), 20);
+      StoredFields storedFields = s.storedFields();
       if (!subDocs.deleted) {
         // We sort by relevance but the scores should be identical so sort falls back to by docID:
         if (hits.totalHits.value != subDocs.subIDs.size()) {
@@ -678,7 +679,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
               startDocID = docID;
             }
             lastDocID = docID;
-            final Document doc = s.doc(docID);
+            final Document doc = storedFields.document(docID);
             assertEquals(subDocs.packID, doc.get("packID"));
           }
 

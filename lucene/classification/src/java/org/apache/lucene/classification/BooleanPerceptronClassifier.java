@@ -28,6 +28,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
@@ -134,9 +135,10 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       q.add(new BooleanClause(query, BooleanClause.Occur.MUST));
     }
     TermVectors termVectors = indexReader.termVectors();
+    StoredFields storedFields = indexReader.storedFields();
     // run the search and use stored field values
     for (ScoreDoc scoreDoc : indexSearcher.search(q.build(), Integer.MAX_VALUE).scoreDocs) {
-      Document doc = indexSearcher.doc(scoreDoc.doc);
+      Document doc = storedFields.document(scoreDoc.doc);
 
       IndexableField textField = doc.getField(textFieldName);
 

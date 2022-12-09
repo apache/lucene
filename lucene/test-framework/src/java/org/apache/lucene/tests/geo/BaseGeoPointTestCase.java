@@ -688,6 +688,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
       boolean fail = false;
 
+      StoredFields storedFields = s.storedFields();
       for (int docID = 0; docID < lats.length / 2; docID++) {
         double latDoc1 = lats[2 * docID];
         double lonDoc1 = lons[2 * docID];
@@ -700,7 +701,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
         boolean expected = result1 || result2;
 
         if (hits.get(docID) != expected) {
-          String id = s.doc(docID).get("id");
+          String id = storedFields.document(docID).get("id");
           if (expected) {
             System.out.println("TEST: id=" + id + " docID=" + docID + " should match but did not");
           } else {
