@@ -37,7 +37,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;
@@ -387,16 +386,11 @@ final class LatLonPointDistanceFeatureQuery extends Query {
       // Ideally we would be doing a distance query but that is too expensive so we approximate
       // with a box query which performs better.
       Rectangle box = Rectangle.fromPointDistance(originLat, originLon, maxDistance);
-      final byte[] minLat = new byte[LatLonPoint.BYTES];
-      final byte[] maxLat = new byte[LatLonPoint.BYTES];
-      final byte[] minLon = new byte[LatLonPoint.BYTES];
-      final byte[] maxLon = new byte[LatLonPoint.BYTES];
+      final int minLat = GeoEncodingUtils.encodeLatitude(box.minLat);
+      final int maxLat = GeoEncodingUtils.encodeLatitude(box.maxLat);
+      final int minLon = GeoEncodingUtils.encodeLongitude(box.minLon);
+      final int maxLon = GeoEncodingUtils.encodeLongitude(box.maxLon);
       final boolean crossDateLine = box.crossesDateline();
-
-      NumericUtils.intToSortableBytes(GeoEncodingUtils.encodeLatitude(box.minLat), minLat, 0);
-      NumericUtils.intToSortableBytes(GeoEncodingUtils.encodeLatitude(box.maxLat), maxLat, 0);
-      NumericUtils.intToSortableBytes(GeoEncodingUtils.encodeLongitude(box.minLon), minLon, 0);
-      NumericUtils.intToSortableBytes(GeoEncodingUtils.encodeLongitude(box.maxLon), maxLon, 0);
 
       DocIdSetBuilder result = new DocIdSetBuilder(maxDoc);
       final int doc = docID();
@@ -425,21 +419,20 @@ final class LatLonPointDistanceFeatureQuery extends Query {
                 // Already visited or skipped
                 return;
               }
-              if (ArrayUtil.compareUnsigned4(packedValue, 0, maxLat, 0) > 0
-                  || ArrayUtil.compareUnsigned4(packedValue, 0, minLat, 0) < 0) {
+              int lat = NumericUtils.sortableBytesToInt(packedValue, 0);
+              if (lat > maxLat || lat < minLat) {
                 // Latitude out of range
                 return;
               }
+              int lon = NumericUtils.sortableBytesToInt(packedValue, LatLonPoint.BYTES);
               if (crossDateLine) {
-                if (ArrayUtil.compareUnsigned4(packedValue, LatLonPoint.BYTES, minLon, 0) < 0
-                    && ArrayUtil.compareUnsigned4(packedValue, LatLonPoint.BYTES, maxLon, 0) > 0) {
+                if (lon < minLon && lon > maxLon) {
                   // Longitude out of range
                   return;
                 }
 
               } else {
-                if (ArrayUtil.compareUnsigned4(packedValue, LatLonPoint.BYTES, maxLon, 0) > 0
-                    || ArrayUtil.compareUnsigned4(packedValue, LatLonPoint.BYTES, minLon, 0) < 0) {
+                if (lon > maxLon || lon < minLon) {
                   // Longitude out of range
                   return;
                 }
@@ -449,36 +442,27 @@ final class LatLonPointDistanceFeatureQuery extends Query {
 
             @Override
             public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-
-              if (ArrayUtil.compareUnsigned4(minPackedValue, 0, maxLat, 0) > 0
-                  || ArrayUtil.compareUnsigned4(maxPackedValue, 0, minLat, 0) < 0) {
+              int latLowerBound = NumericUtils.sortableBytesToInt(minPackedValue, 0);
+              int latUpperBound = NumericUtils.sortableBytesToInt(maxPackedValue, 0);
+              if (latLowerBound > maxLat || latUpperBound < minLat) {
                 return Relation.CELL_OUTSIDE_QUERY;
               }
-              boolean crosses =
-                  ArrayUtil.compareUnsigned4(minPackedValue, 0, minLat, 0) < 0
-                      || ArrayUtil.compareUnsigned4(maxPackedValue, 0, maxLat, 0) > 0;
-
+              boolean crosses = latLowerBound < minLat || latUpperBound > maxLat;
+              int lonLowerBound =
+                  NumericUtils.sortableBytesToInt(minPackedValue, LatLonPoint.BYTES);
+              int lonUpperBound =
+                  NumericUtils.sortableBytesToInt(maxPackedValue, LatLonPoint.BYTES);
               if (crossDateLine) {
-                if (ArrayUtil.compareUnsigned4(minPackedValue, LatLonPoint.BYTES, maxLon, 0) > 0
-                    && ArrayUtil.compareUnsigned4(maxPackedValue, LatLonPoint.BYTES, minLon, 0)
-                        < 0) {
+                if (lonLowerBound > maxLon && lonUpperBound < minLon) {
                   return Relation.CELL_OUTSIDE_QUERY;
                 }
-                crosses |=
-                    ArrayUtil.compareUnsigned4(minPackedValue, LatLonPoint.BYTES, maxLon, 0) < 0
-                        || ArrayUtil.compareUnsigned4(maxPackedValue, LatLonPoint.BYTES, minLon, 0)
-                            > 0;
+                crosses |= lonLowerBound < maxLon || lonUpperBound > minLon;
 
               } else {
-                if (ArrayUtil.compareUnsigned4(minPackedValue, LatLonPoint.BYTES, maxLon, 0) > 0
-                    || ArrayUtil.compareUnsigned4(maxPackedValue, LatLonPoint.BYTES, minLon, 0)
-                        < 0) {
+                if (lonLowerBound > maxLon || lonUpperBound < minLon) {
                   return Relation.CELL_OUTSIDE_QUERY;
                 }
-                crosses |=
-                    ArrayUtil.compareUnsigned4(minPackedValue, LatLonPoint.BYTES, minLon, 0) < 0
-                        || ArrayUtil.compareUnsigned4(maxPackedValue, LatLonPoint.BYTES, maxLon, 0)
-                            > 0;
+                crosses |= lonLowerBound < minLon || lonUpperBound > maxLon;
               }
               if (crosses) {
                 return Relation.CELL_CROSSES_QUERY;
