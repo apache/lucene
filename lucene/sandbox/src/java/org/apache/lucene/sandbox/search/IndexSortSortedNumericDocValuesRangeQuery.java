@@ -467,7 +467,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
       int maxDoc = context.reader().maxDoc();
       if (points.getDocCount() == maxDoc) {
-        return delegate;
+        return DocIdSetIterator.all(maxDoc);
       } else {
         return new BoundedDocIdSetIterator(0, maxDoc, delegate);
       }
