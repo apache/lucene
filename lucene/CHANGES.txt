@@ -61,6 +61,8 @@ Improvements
 * GITHUB#11860: Improve storage efficiency of connections in the HNSW graph that Lucene uses for
   vector search. (Ben Trent)
 
+* GITHUB#12003: Minor cleanup/improvements to IndexSortSortedNumericDocValuesRangeQuery. (Greg Miller)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
