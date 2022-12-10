@@ -51,6 +51,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 public class TestRangeOnRangeFacetCounts extends FacetTestCase {
@@ -63,12 +64,12 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
     for (long l = 0; l < 100; l++) {
-      field.setLongRangeValue(l, 10L + l);
+      setLongRangeValue(field, l, 10L + l);
       w.addDocument(doc);
     }
 
     // Also add Long.MAX_VALUE
-    field.setLongRangeValue(Long.MAX_VALUE - 10L, Long.MAX_VALUE);
+    setLongRangeValue(field, Long.MAX_VALUE - 10L, Long.MAX_VALUE);
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -118,14 +119,14 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     LongRangeDocValuesField field = new LongRangeDocValuesField("field", min, max);
     doc.add(field);
     for (long l = 0; l < 100; l++) {
-      field.setLongRangeValue(longArray(l, l + 1L, l + 2L), longArray(l + 10L, l + 11L, l + 12L));
+      setLongRangeValue(field, longArray(l, l + 1L, l + 2L), longArray(l + 10L, l + 11L, l + 12L));
       w.addDocument(doc);
     }
 
     // Also add Long.MAX_VALUE
     long[] infMin = longArray(Long.MAX_VALUE - 12L, Long.MAX_VALUE - 11L, Long.MAX_VALUE - 10L);
     long[] infMax = longArray(Long.MAX_VALUE - 2L, Long.MAX_VALUE - 1L, Long.MAX_VALUE);
-    field.setLongRangeValue(infMin, infMax);
+    setLongRangeValue(field, infMin, infMax);
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -177,12 +178,12 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
     for (long l = 0; l < 100; l++) {
-      field.setLongRangeValue(l, 10L + l);
+      setLongRangeValue(field, l, 10L + l);
       w.addDocument(doc);
     }
 
     // Also add Long.MAX_VALUE
-    field.setLongRangeValue(Long.MAX_VALUE - 10L, Long.MAX_VALUE);
+    setLongRangeValue(field, Long.MAX_VALUE - 10L, Long.MAX_VALUE);
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -244,14 +245,14 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     for (long l = 0; l < 100; l++) {
       long[] newMin = longArray(l, l + 1L, l + 2L);
       long[] newMax = longArray(l + 10L, l + 11L, l + 12L);
-      field.setLongRangeValue(newMin, newMax);
+      setLongRangeValue(field, newMin, newMax);
       w.addDocument(doc);
     }
 
     // Also add Long.MAX_VALUE
     long[] infMin = longArray(Long.MAX_VALUE - 12L, Long.MAX_VALUE - 11L, Long.MAX_VALUE - 10L);
     long[] infMax = longArray(Long.MAX_VALUE - 2L, Long.MAX_VALUE - 1L, Long.MAX_VALUE);
-    field.setLongRangeValue(infMin, infMax);
+    setLongRangeValue(field, infMin, infMax);
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -352,11 +353,11 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     LongRangeDocValuesField field =
         new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
-    field.setLongRangeValue(Long.MIN_VALUE, Long.MIN_VALUE + 10L);
+    setLongRangeValue(field, Long.MIN_VALUE, Long.MIN_VALUE + 10L);
     w.addDocument(doc);
-    field.setLongRangeValue(0L, 10L);
+    setLongRangeValue(field, 0L, 10L);
     w.addDocument(doc);
-    field.setLongRangeValue(Long.MAX_VALUE - 10L, Long.MAX_VALUE);
+    setLongRangeValue(field, Long.MAX_VALUE - 10L, Long.MAX_VALUE);
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -399,13 +400,15 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     LongRangeDocValuesField field =
         new LongRangeDocValuesField("field", longArray(0L, 1L), longArray(1L, 2L));
     doc.add(field);
-    field.setLongRangeValue(
+    setLongRangeValue(
+        field,
         longArray(Long.MIN_VALUE, Long.MIN_VALUE),
         longArray(Long.MIN_VALUE + 10L, Long.MIN_VALUE + 11L));
     w.addDocument(doc);
-    field.setLongRangeValue(longArray(0L, 1L), longArray(10L, 11L));
+    setLongRangeValue(field, longArray(0L, 1L), longArray(10L, 11L));
     w.addDocument(doc);
-    field.setLongRangeValue(
+    setLongRangeValue(
+        field,
         longArray(Long.MAX_VALUE - 11L, Long.MAX_VALUE - 10L),
         longArray(Long.MAX_VALUE, Long.MAX_VALUE));
     w.addDocument(doc);
@@ -464,11 +467,11 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         new LongRangeDocValuesField("field", longArray(0L), longArray(10L));
     doc.add(field);
     for (long l = 0; l < 100; l++) {
-      field.setLongRangeValue(l, 10L + l);
+      setLongRangeValue(field, l, 10L + l);
       w.addDocument(doc);
     }
 
-    field.setLongRangeValue(Long.MAX_VALUE - 10L, Long.MAX_VALUE);
+    setLongRangeValue(field, Long.MAX_VALUE - 10L, Long.MAX_VALUE);
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -734,7 +737,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         new DoubleRangeDocValuesField("field", doubleArray(0.0), doubleArray(10.0));
     doc.add(field);
     for (double l = 0; l < 100; l++) {
-      field.setDoubleRangeValue(l, 10.0 + l);
+      setDoubleRangeValue(field, l, 10.0 + l);
       w.addDocument(doc);
     }
 
@@ -784,8 +787,8 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     DoubleRangeDocValuesField field = new DoubleRangeDocValuesField("field", min, max);
     doc.add(field);
     for (double l = 0; l < 100; l++) {
-      field.setDoubleRangeValue(
-          doubleArray(l, l + 1.0, l + 2.0), doubleArray(l + 10.0, l + 11.0, l + 12.0));
+      setDoubleRangeValue(
+          field, doubleArray(l, l + 1.0, l + 2.0), doubleArray(l + 10.0, l + 11.0, l + 12.0));
       w.addDocument(doc);
     }
 
@@ -1482,7 +1485,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         w.addDocument(new Document());
         continue;
       }
-      field.setLongRangeValue(l, l + 10L);
+      setLongRangeValue(field, l, l + 10L);
       w.addDocument(doc);
     }
 
@@ -1581,6 +1584,26 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     assertNotEquals(
         new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 19d)),
         new DoubleRange("field", doubleArray(-7d, -8d), doubleArray(17d, 18d)));
+  }
+
+  private void setLongRangeValue(LongRangeDocValuesField field, long min, long max) {
+    setLongRangeValue(field, longArray(min), longArray(max));
+  }
+
+  private void setLongRangeValue(LongRangeDocValuesField field, long[] min, long[] max) {
+    byte[] encodedValue = new byte[2 * min.length * Long.BYTES];
+    org.apache.lucene.document.LongRange.verifyAndEncode(min, max, encodedValue);
+    field.setBytesValue(new BytesRef(encodedValue));
+  }
+
+  private void setDoubleRangeValue(DoubleRangeDocValuesField field, double min, double max) {
+    setDoubleRangeValue(field, doubleArray(min), doubleArray(max));
+  }
+
+  private void setDoubleRangeValue(DoubleRangeDocValuesField field, double[] min, double[] max) {
+    byte[] encodedValue = new byte[2 * min.length * Double.BYTES];
+    org.apache.lucene.document.DoubleRange.verifyAndEncode(min, max, encodedValue);
+    field.setBytesValue(new BytesRef(encodedValue));
   }
 
   private static long[] longArray(long... longs) {

@@ -18,7 +18,6 @@
 package org.apache.lucene.document;
 
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * DocValues field for LongRange. This is a single valued field per document due to being an
@@ -86,29 +85,5 @@ public class LongRangeDocValuesField extends BinaryRangeDocValuesField {
         throw new IllegalArgumentException("min should be less than max");
       }
     }
-  }
-
-  /**
-   * Sets the value of this field to a new value
-   *
-   * @param min the new min
-   * @param max the new max
-   */
-  public void setLongRangeValue(long min, long max) {
-    setLongRangeValue(new long[] {min}, new long[] {max});
-  }
-
-  /**
-   * Sets the value of this field to a new multidimensional value
-   *
-   * @param min the new multidimensional min
-   * @param max the new multidimensional max
-   */
-  public void setLongRangeValue(long[] min, long[] max) {
-    checkArgs(min, max);
-    assert min.length == this.min.length : "Cannot change number of dimensions";
-    byte[] encodedValue = new byte[2 * min.length * Long.BYTES];
-    LongRange.verifyAndEncode(min, max, encodedValue);
-    setBytesValue(new BytesRef(encodedValue));
   }
 }

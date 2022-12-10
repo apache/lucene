@@ -43,14 +43,14 @@ public class DoubleRange extends Range {
     if (Double.isNaN(minIn)) {
       throw new IllegalArgumentException("min cannot be NaN");
     }
-    if (!minInclusive) {
+    if (minInclusive == false) {
       minIn = Math.nextUp(minIn);
     }
 
     if (Double.isNaN(maxIn)) {
       throw new IllegalArgumentException("max cannot be NaN");
     }
-    if (!maxInclusive) {
+    if (maxInclusive == false) {
       // Why no Math.nextDown?
       maxIn = Math.nextAfter(maxIn, Double.NEGATIVE_INFINITY);
     }

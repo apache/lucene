@@ -40,7 +40,7 @@ public class LongRange extends Range {
       String label, long minIn, boolean minInclusive, long maxIn, boolean maxInclusive) {
     super(label, 1);
 
-    if (!minInclusive) {
+    if (minInclusive == false) {
       if (minIn != Long.MAX_VALUE) {
         minIn++;
       } else {
@@ -48,7 +48,7 @@ public class LongRange extends Range {
       }
     }
 
-    if (!maxInclusive) {
+    if (maxInclusive == false) {
       if (maxIn != Long.MIN_VALUE) {
         maxIn--;
       } else {

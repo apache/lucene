@@ -46,7 +46,7 @@ public abstract class Range {
   }
 
   /** Gets a corresponding array of labels given a range */
-  public static String[] getLabelsFromRanges(Range[] ranges) {
+  protected static String[] getLabelsFromRanges(Range[] ranges) {
     return Arrays.stream(ranges).map(r -> r.label).toArray(String[]::new);
   }
 }
