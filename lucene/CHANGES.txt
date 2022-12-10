@@ -157,6 +157,8 @@ Improvements
 * GITHUB#11860: Improve storage efficiency of connections in the HNSW graph that Lucene uses for
   vector search. (Ben Trent)
 
+* GITHUB#12008: Clean up LongRange#verifyAndEncode logic to remove unnecessary NaN checks. (Greg Miller)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
