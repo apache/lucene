@@ -213,6 +213,8 @@ Optimizations
 * GITHUB#11972: `IndexSortSortedNumericDocValuesRangeQuery` can now also
   optimize query execution with points for descending sorts. (Adrien Grand)
 
+* GITHUB#12006: Do ints compare instead of ArrayUtil#compareUnsigned4 in LatlonPointQueries. (Guo Feng)
+
 Other
 ---------------------
 
