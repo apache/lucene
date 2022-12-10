@@ -22,7 +22,6 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.geo.GeoEncodingUtils;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.Rectangle;
@@ -42,7 +41,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
@@ -84,28 +82,25 @@ final class LatLonPointDistanceQuery extends Query {
     Rectangle box = Rectangle.fromPointDistance(latitude, longitude, radiusMeters);
     // create bounding box(es) for the distance range
     // these are pre-encoded with LatLonPoint's encoding
-    final byte[] minLat = new byte[Integer.BYTES];
-    final byte[] maxLat = new byte[Integer.BYTES];
-    final byte[] minLon = new byte[Integer.BYTES];
-    final byte[] maxLon = new byte[Integer.BYTES];
+    final int minLat = encodeLatitude(box.minLat);
+    final int maxLat = encodeLatitude(box.maxLat);
+    int minLon;
+    int maxLon;
     // second set of longitude ranges to check (for cross-dateline case)
-    final byte[] minLon2 = new byte[Integer.BYTES];
-
-    NumericUtils.intToSortableBytes(encodeLatitude(box.minLat), minLat, 0);
-    NumericUtils.intToSortableBytes(encodeLatitude(box.maxLat), maxLat, 0);
+    int minLon2;
 
     // crosses dateline: split
     if (box.crossesDateline()) {
       // box1
-      NumericUtils.intToSortableBytes(Integer.MIN_VALUE, minLon, 0);
-      NumericUtils.intToSortableBytes(encodeLongitude(box.maxLon), maxLon, 0);
+      minLon = Integer.MIN_VALUE;
+      maxLon = encodeLongitude(box.maxLon);
       // box2
-      NumericUtils.intToSortableBytes(encodeLongitude(box.minLon), minLon2, 0);
+      minLon2 = encodeLongitude(box.minLon);
     } else {
-      NumericUtils.intToSortableBytes(encodeLongitude(box.minLon), minLon, 0);
-      NumericUtils.intToSortableBytes(encodeLongitude(box.maxLon), maxLon, 0);
+      minLon = encodeLongitude(box.minLon);
+      maxLon = encodeLongitude(box.maxLon);
       // disable box2
-      NumericUtils.intToSortableBytes(Integer.MAX_VALUE, minLon2, 0);
+      minLon2 = Integer.MAX_VALUE;
     }
 
     // compute exact sort key: avoid any asin() computations
@@ -187,26 +182,18 @@ final class LatLonPointDistanceQuery extends Query {
       }
 
       private boolean matches(byte[] packedValue) {
+        int lat = NumericUtils.sortableBytesToInt(packedValue, 0);
         // bounding box check
-        if (ArrayUtil.compareUnsigned4(packedValue, 0, maxLat, 0) > 0
-            || ArrayUtil.compareUnsigned4(packedValue, 0, minLat, 0) < 0) {
+        if (lat > maxLat || lat < minLat) {
           // latitude out of bounding box range
           return false;
         }
-
-        if ((ArrayUtil.compareUnsigned4(packedValue, Integer.BYTES, maxLon, 0) > 0
-                || ArrayUtil.compareUnsigned4(packedValue, Integer.BYTES, minLon, 0) < 0)
-            && ArrayUtil.compareUnsigned4(packedValue, Integer.BYTES, minLon2, 0) < 0) {
+        int lon = NumericUtils.sortableBytesToInt(packedValue, Integer.BYTES);
+        if ((lon > maxLon || lon < minLon) && lon < minLon2) {
           // longitude out of bounding box range
           return false;
         }
-
-        int docLatitude = NumericUtils.sortableBytesToInt(packedValue, 0);
-        int docLongitude = NumericUtils.sortableBytesToInt(packedValue, Integer.BYTES);
-        if (distancePredicate.test(docLatitude, docLongitude)) {
-          return true;
-        }
-        return false;
+        return distancePredicate.test(lat, lon);
       }
 
       // algorithm: we create a bounding box (two bounding boxes if we cross the dateline).
@@ -217,24 +204,24 @@ final class LatLonPointDistanceQuery extends Query {
       // wrapping half way around the world, etc: then this can't work, just go to step 4.
       // 4. recurse naively (subtrees crossing over circle edge)
       private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
-        if (Arrays.compareUnsigned(minPackedValue, 0, Integer.BYTES, maxLat, 0, Integer.BYTES) > 0
-            || Arrays.compareUnsigned(maxPackedValue, 0, Integer.BYTES, minLat, 0, Integer.BYTES)
-                < 0) {
+        int latLowerBound = NumericUtils.sortableBytesToInt(minPackedValue, 0);
+        int latUpperBound = NumericUtils.sortableBytesToInt(maxPackedValue, 0);
+        if (latLowerBound > maxLat || latUpperBound < minLat) {
           // latitude out of bounding box range
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        if ((ArrayUtil.compareUnsigned4(minPackedValue, Integer.BYTES, maxLon, 0) > 0
-                || ArrayUtil.compareUnsigned4(maxPackedValue, Integer.BYTES, minLon, 0) < 0)
-            && ArrayUtil.compareUnsigned4(maxPackedValue, Integer.BYTES, minLon2, 0) < 0) {
+        int lonLowerBound = NumericUtils.sortableBytesToInt(minPackedValue, LatLonPoint.BYTES);
+        int lonUpperBound = NumericUtils.sortableBytesToInt(maxPackedValue, LatLonPoint.BYTES);
+        if ((lonLowerBound > maxLon || lonUpperBound < minLon) && lonUpperBound < minLon2) {
           // longitude out of bounding box range
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        double latMin = decodeLatitude(minPackedValue, 0);
-        double lonMin = decodeLongitude(minPackedValue, Integer.BYTES);
-        double latMax = decodeLatitude(maxPackedValue, 0);
-        double lonMax = decodeLongitude(maxPackedValue, Integer.BYTES);
+        double latMin = decodeLatitude(latLowerBound);
+        double lonMin = decodeLongitude(lonLowerBound);
+        double latMax = decodeLatitude(latUpperBound);
+        double lonMax = decodeLongitude(lonUpperBound);
 
         return GeoUtils.relate(
             latMin, latMax, lonMin, lonMax, latitude, longitude, sortKey, axisLat);
