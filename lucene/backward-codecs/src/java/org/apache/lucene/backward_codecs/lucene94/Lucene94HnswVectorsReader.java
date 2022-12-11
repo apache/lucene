@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene94;
+package org.apache.lucene.backward_codecs.lucene94;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
