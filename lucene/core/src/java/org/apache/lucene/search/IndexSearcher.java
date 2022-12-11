@@ -413,8 +413,24 @@ public class IndexSearcher {
   }
 
   /**
-   * Sugar for <code>.getIndexReader().storedFields()</code>
+   * Returns a {@link StoredFields} reader for the stored fields of this index.
    *
+   * <p>Sugar for <code>.getIndexReader().storedFields()</code>
+   *
+   * <p>This call never returns {@code null}, even if no stored fields were indexed. The returned
+   * instance should only be used by a single thread.
+   *
+   * <p>Example:
+   *
+   * <pre class="prettyprint">
+   * TopDocs hits = searcher.search(query, 10);
+   * StoredFields storedFields = searcher.storedFields();
+   * for (ScoreDoc hit : hits.scoreDocs) {
+   *   Document doc = storedFields.document(hit.doc);
+   * }
+   * </pre>
+   *
+   * @throws IOException If there is a low-level IO error
    * @see IndexReader#storedFields()
    */
   public StoredFields storedFields() throws IOException {

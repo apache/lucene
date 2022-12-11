@@ -19,6 +19,22 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### Removed deprecated IndexSearcher.doc, IndexReader.document, IndexReader.getTermVectors (GITHUB#11998)
+
+The deprecated Stored Fields and Term Vectors apis relied upon threadlocal storage and have been removed.
+
+Instead, call storedFields()/termVectors() to return an instance which can fetch data for multiple documents,
+and will be garbage-collected as usual.
+
+For example:
+```java
+TopDocs hits = searcher.search(query, 10);
+StoredFields storedFields = reader.storedFields();
+for (ScoreDoc hit : hits.scoreDocs) {
+  Document doc = storedFields.document(hit.doc);
+}
+```
+
 ### PersianStemFilter is added to PersianAnalyzer (LUCENE-10312)
 
 PersianAnalyzer now includes PersianStemFilter, that would change analysis results. If you need the exactly same analysis

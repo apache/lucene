@@ -332,7 +332,24 @@ public abstract class IndexReader implements Closeable {
     return vectors.terms(field);
   }
 
-  /** Returns a reader for term vectors of this index. */
+  /**
+   * Returns a {@link TermVectors} reader for the term vectors of this index.
+   *
+   * <p>This call never returns {@code null}, even if no term vectors were indexed. The returned
+   * instance should only be used by a single thread.
+   *
+   * <p>Example:
+   *
+   * <pre class="prettyprint">
+   * TopDocs hits = searcher.search(query, 10);
+   * TermVectors termVectors = reader.termVectors();
+   * for (ScoreDoc hit : hits.scoreDocs) {
+   *   Fields vector = termVectors.get(hit.doc);
+   * }
+   * </pre>
+   *
+   * @throws IOException If there is a low-level IO error
+   */
   public abstract TermVectors termVectors() throws IOException;
 
   /**
@@ -408,7 +425,24 @@ public abstract class IndexReader implements Closeable {
     return visitor.getDocument();
   }
 
-  /** Returns a reader for stored fields of this index. */
+  /**
+   * Returns a {@link StoredFields} reader for the stored fields of this index.
+   *
+   * <p>This call never returns {@code null}, even if no stored fields were indexed. The returned
+   * instance should only be used by a single thread.
+   *
+   * <p>Example:
+   *
+   * <pre class="prettyprint">
+   * TopDocs hits = searcher.search(query, 10);
+   * StoredFields storedFields = reader.storedFields();
+   * for (ScoreDoc hit : hits.scoreDocs) {
+   *   Document doc = storedFields.document(hit.doc);
+   * }
+   * </pre>
+   *
+   * @throws IOException If there is a low-level IO error
+   */
   public abstract StoredFields storedFields() throws IOException;
 
   /**
