@@ -19,7 +19,12 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute; // javadocs
 
-/** API for reading term vectors */
+/**
+ * API for reading term vectors.
+ *
+ * <p><b>NOTE</b>: This class is not thread-safe and should only be consumed in the thread where it
+ * was acquired.
+ */
 public abstract class TermVectors {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */

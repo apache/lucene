@@ -22,7 +22,12 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.util.Bits;
 
-/** API for reading stored fields. */
+/**
+ * API for reading stored fields.
+ *
+ * <p><b>NOTE</b>: This class is not thread-safe and should only be consumed in the thread where it
+ * was acquired.
+ */
 public abstract class StoredFields {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected StoredFields() {}

@@ -35,6 +35,9 @@ for (ScoreDoc hit : hits.scoreDocs) {
 }
 ```
 
+Note that these StoredFields and TermVectors instances should only be consumed in the thread where
+they were acquired. For instance, it is illegal to share them across threads.
+
 ### PersianStemFilter is added to PersianAnalyzer (LUCENE-10312)
 
 PersianAnalyzer now includes PersianStemFilter, that would change analysis results. If you need the exactly same analysis
