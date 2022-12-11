@@ -24,14 +24,15 @@ import org.apache.lucene.util.ByteBlockPool.DirectTrackingAllocator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefHash;
+import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.UnicodeUtil;
 
 /** A "cache" that never frees memory, and stores labels in a BytesRefHash (utf-8 encoding). */
 public final class UTF8TaxonomyWriterCache implements TaxonomyWriterCache, Accountable {
-  private final ThreadLocal<BytesRefBuilder> bytes =
-      new ThreadLocal<BytesRefBuilder>() {
+  private final CloseableThreadLocal<BytesRefBuilder> bytes =
+      new CloseableThreadLocal<>() {
         @Override
         protected BytesRefBuilder initialValue() {
           return new BytesRefBuilder();
@@ -153,7 +154,10 @@ public final class UTF8TaxonomyWriterCache implements TaxonomyWriterCache, Accou
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    map.clear();
+    this.bytes.close();
+  }
 
   private static final byte DELIM_CHAR = (byte) 0x1F;
 
