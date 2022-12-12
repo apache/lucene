@@ -108,6 +108,16 @@ public class TestUTF8TaxonomyWriterCache extends FacetTestCase {
     }
   }
 
+  public void testCacheClose() {
+    UTF8TaxonomyWriterCache cache = new UTF8TaxonomyWriterCache();
+    FacetLabel testLabel = new FacetLabel("test/label");
+    int testOrd = 7;
+    cache.put(testLabel, testOrd);
+    assertEquals(testOrd, cache.get(testLabel));
+    cache.close();
+    assertThrows(NullPointerException.class, () -> cache.get(testLabel));
+  }
+
   private static class LabelToOrdinalMap extends LabelToOrdinal {
     private Map<FacetLabel, Integer> map = new HashMap<>();
 
