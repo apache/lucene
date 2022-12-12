@@ -94,25 +94,28 @@ public class LongRange extends Range {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     LongRange longRange = (LongRange) o;
-    return Arrays.equals(min, longRange.min) && Arrays.equals(max, longRange.max);
+    return Arrays.equals(min, longRange.min)
+        && Arrays.equals(max, longRange.max)
+        && label.equals(longRange.label)
+        && dims == longRange.dims;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(label, Arrays.hashCode(min), Arrays.hashCode(max));
+    return Objects.hash(label, Arrays.hashCode(min), Arrays.hashCode(max), dims);
   }
 
-  private static void checkArgs(final long[] min, final long[] max) {
+  private void checkArgs(final long[] min, final long[] max) {
     if (min == null || max == null || min.length == 0 || max.length == 0) {
-      throw new IllegalArgumentException("min/max range values cannot be null or empty");
+      failNoMatch();
     }
     if (min.length != max.length) {
-      throw new IllegalArgumentException("min/max ranges must agree");
+      failNoMatch();
     }
 
     for (int i = 0; i < min.length; i++) {
       if (min[i] > max[i]) {
-        throw new IllegalArgumentException("min should be less than max");
+        failNoMatch();
       }
     }
   }

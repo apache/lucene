@@ -23,17 +23,21 @@ import org.apache.lucene.document.RangeFieldQuery;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.search.Query;
 
-/** Represents counts for long range on range faceting */
+/**
+ * Represents counts for long range on range faceting. To be more specific, this means that given a
+ * range (or list of ranges), this class will count all the documents in the {@link FacetsCollector}
+ * (or that match a fast match query) that contain ranges that "match" the provided ranges. These
+ * ranges are specified by the field parameter and expected to be of type {@link
+ * org.apache.lucene.document.LongRangeDocValuesField}. Matching is defined by the queryType param,
+ * you can see the type of matching supported by looking at {@link
+ * org.apache.lucene.document.RangeFieldQuery.QueryType}. In addition, this class supports
+ * multidimensional ranges. A multidimensional range will be counted as a match if every dimension
+ * matches the corresponding indexed range's dimension.
+ */
 public class LongRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
 
   /**
-   * Represents counts for long range on range faceting (inclusive)
-   *
-   * @param field document's field
-   * @param hits hits we want the counts of
-   * @param queryType type of intersection we want to count
-   * @param ranges ranges we want the counts of
-   * @throws IOException low level exception
+   * Constructor without the fast match query, see other constructor description for more details.
    */
   public LongRangeOnRangeFacetCounts(
       String field, FacetsCollector hits, RangeFieldQuery.QueryType queryType, LongRange... ranges)
@@ -49,12 +53,14 @@ public class LongRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
   }
 
   /**
-   * Represents counts for long range on range faceting
+   * Represents counts for long range on range faceting. See class javadoc for more details.
    *
-   * @param field document's field
-   * @param hits hits we want the counts of
-   * @param queryType type of intersection we want to count
-   * @param fastMatchQuery query to quickly discard hits
+   * @param field specifies a {@link org.apache.lucene.document.LongRangeDocValuesField} that will
+   *     define the indexed ranges
+   * @param hits hits we want to count against
+   * @param queryType type of intersection we want to count (IE: range intersection, range contains,
+   *     etc.)
+   * @param fastMatchQuery query to quickly discard hits using some heuristic
    * @param ranges ranges we want the counts of
    * @throws IOException low level exception
    */

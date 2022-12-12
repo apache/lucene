@@ -33,24 +33,16 @@ import org.apache.lucene.util.PriorityQueue;
 
 abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
 
-  private final byte[][] encodedRanges;
   private final String[] labels;
-  private final int numEncodedValueBytes;
-  private final int dims;
 
   /** Counts, initialized in by subclass. */
-  protected final int[] counts;
+  private final int[] counts;
 
   /** Our field name. */
-  protected final String field;
+  private final String field;
 
   /** Total number of hits. */
-  protected int totCount;
-
-  private final ArrayUtil.ByteArrayComparator comparator;
-
-  /** Type of "range overlap" we want to count. */
-  RangeFieldQuery.QueryType queryType;
+  private int totCount;
 
   protected RangeOnRangeFacetCounts(
       String field,
@@ -66,25 +58,30 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
     assert encodedRanges.length == labels.length;
     assert encodedRanges[0].length % (2 * numEncodedValueBytes) == 0;
 
-    this.encodedRanges = encodedRanges;
     this.field = field;
     this.labels = labels;
-    this.numEncodedValueBytes = numEncodedValueBytes;
-    this.dims = encodedRanges[0].length / (2 * this.numEncodedValueBytes);
-    this.queryType = queryType;
-    this.comparator = ArrayUtil.getUnsignedComparator(this.numEncodedValueBytes);
     this.counts = new int[encodedRanges.length];
-    count(field, hits.getMatchingDocs());
+
+    count(field, hits.getMatchingDocs(), encodedRanges, numEncodedValueBytes, queryType);
   }
 
   /** Counts from the provided field. */
-  protected void count(String field, List<FacetsCollector.MatchingDocs> matchingDocs)
+  protected void count(
+      String field,
+      List<FacetsCollector.MatchingDocs> matchingDocs,
+      byte[][] encodedRanges,
+      int numEncodedValueBytes,
+      RangeFieldQuery.QueryType queryType)
       throws IOException {
     // TODO: We currently just exhaustively check the ranges in each document with every range in
     // the ranges array.
     // We might be able to do something more efficient here by grouping the ranges array into a
     // space partitioning
     // data structure of some sort.
+
+    int dims = encodedRanges[0].length / (2 * numEncodedValueBytes);
+    ArrayUtil.ByteArrayComparator comparator =
+        ArrayUtil.getUnsignedComparator(numEncodedValueBytes);
 
     int missingCount = 0;
 
