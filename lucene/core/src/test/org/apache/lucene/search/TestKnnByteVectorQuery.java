@@ -27,12 +27,12 @@ import org.apache.lucene.util.TestVectorUtil;
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnByteVectorQuery(field, new BytesRef(floatToBytes(query)), k, queryFilter);
+    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
   }
 
   @Override
   AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, new BytesRef(floatToBytes(vec)), k, query);
+    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query);
   }
 
   @Override
@@ -80,7 +80,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
   private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
-    public ThrowingKnnVectorQuery(String field, BytesRef target, int k, Query filter) {
+    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
       super(field, target, k, filter);
     }
 

@@ -33,9 +33,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -260,23 +258,13 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
         throws IOException {
-      KnnVectorsReader knnVectorsReader = fields.get(field);
-      if (knnVectorsReader == null) {
-        return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-      } else {
-        return knnVectorsReader.search(field, target, k, acceptDocs, visitedLimit);
-      }
+      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
     }
 
     @Override
     public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
         throws IOException {
-      KnnVectorsReader knnVectorsReader = fields.get(field);
-      if (knnVectorsReader == null) {
-        return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-      } else {
-        return knnVectorsReader.search(field, target, k, acceptDocs, visitedLimit);
-      }
+      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
     }
 
     @Override

@@ -129,6 +129,9 @@ API Changes
 * GITHUB#11984: Improved TimeLimitBulkScorer to check the timeout at exponantial rate.
   (Costin Leau)
 
+* GITHUB#12004: Add new KnnByteVectorQuery for querying vector fields that are encoded as BYTE. Removes the ability to
+  use KnnVectorQuery against fields encoded as BYTE (Ben Trent)
+
 
 New Features
 ---------------------

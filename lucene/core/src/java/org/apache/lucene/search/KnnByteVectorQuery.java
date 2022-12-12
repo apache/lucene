@@ -54,7 +54,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @param k the number of documents to find
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public KnnByteVectorQuery(String field, BytesRef target, int k) {
+  public KnnByteVectorQuery(String field, byte[] target, int k) {
     this(field, target, k, null);
   }
 
@@ -68,9 +68,9 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @param filter a filter applied before the vector search
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public KnnByteVectorQuery(String field, BytesRef target, int k, Query filter) {
+  public KnnByteVectorQuery(String field, byte[] target, int k, Query filter) {
     super(field, k, filter);
-    this.target = target;
+    this.target = new BytesRef(target);
   }
 
   @Override
@@ -102,17 +102,9 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-    }
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (super.equals(o) == false) return false;
     KnnByteVectorQuery that = (KnnByteVectorQuery) o;
     return Objects.equals(target, that.target);
   }

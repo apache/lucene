@@ -94,17 +94,9 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-    }
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (super.equals(o) == false) return false;
     KnnVectorQuery that = (KnnVectorQuery) o;
     return Arrays.equals(target, that.target);
   }
