@@ -594,7 +594,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
     DoubleDocValuesField field = new DoubleDocValuesField("field", 0.0);
     doc.add(field);
     for (long l = 0; l < 100; l++) {
-      field.setDoubleValue(l);
+      field.setDoubleValue((double) l);
       w.addDocument(doc);
     }
 
@@ -632,8 +632,8 @@ public class TestRangeFacetCounts extends FacetTestCase {
     doc.add(field1);
     doc.add(field2);
     for (long l = 0; l < 100; l++) {
-      field1.setLongValue(NumericUtils.doubleToSortableLong(l));
-      field2.setLongValue(NumericUtils.doubleToSortableLong(l));
+      field1.setLongValue(NumericUtils.doubleToSortableLong((double) l));
+      field2.setLongValue(NumericUtils.doubleToSortableLong((double) l));
       w.addDocument(doc);
     }
 

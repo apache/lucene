@@ -147,8 +147,8 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
         Boolean assignedClass = classificationResult.getAssignedClass();
 
         Boolean correctClass = Boolean.valueOf(classField.stringValue());
-        long modifier = correctClass.compareTo(assignedClass);
-        if (modifier != 0) {
+        double modifier = Math.signum(correctClass.compareTo(assignedClass));
+        if (modifier != 0D) {
           updateWeights(
               indexReader,
               scoreDoc.doc,

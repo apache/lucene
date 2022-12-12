@@ -378,7 +378,7 @@ allprojects { prj ->
             // '-Xep:LiteProtoToString:OFF', // we don't use protobuf
             // '-Xep:LockNotBeforeTry:OFF', // TODO: there are problems
             '-Xep:LogicalAssignment:WARN',
-            // '-Xep:LongDoubleConversion:OFF', // TODO: there are problems
+            '-Xep:LongDoubleConversion:WARN',
             '-Xep:LongFloatConversion:WARN',
             '-Xep:LoopOverCharArray:WARN',
             '-Xep:MalformedInlineTag:WARN',

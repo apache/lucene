@@ -541,7 +541,10 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final long actualRamBytesUsed = RamUsageTester.ramUsed(queryCache, acc);
     final long expectedRamBytesUsed = queryCache.ramBytesUsed();
     // error < 30%
-    assertEquals(actualRamBytesUsed, expectedRamBytesUsed, 30.d * actualRamBytesUsed / 100.d);
+    assertEquals(
+        (double) actualRamBytesUsed,
+        (double) expectedRamBytesUsed,
+        30.d * actualRamBytesUsed / 100.d);
 
     reader.close();
     w.close();
