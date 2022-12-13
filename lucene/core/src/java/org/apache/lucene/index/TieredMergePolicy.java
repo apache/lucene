@@ -693,7 +693,7 @@ public class TieredMergePolicy extends MergePolicy {
     // don't want to make this exponent too large else we
     // can end up doing poor merges of small segments in
     // order to avoid the large merges:
-    mergeScore *= Math.pow(totAfterMergeBytes, 0.05);
+    mergeScore *= Math.pow((double) totAfterMergeBytes, 0.05);
 
     // Strongly favor merges that reclaim deletes:
     final double nonDelRatio = ((double) totAfterMergeBytes) / totBeforeMergeBytes;

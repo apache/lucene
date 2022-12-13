@@ -1943,7 +1943,7 @@ public class TestJoinUtil extends LuceneTestCase {
       document.add(new SortedNumericDocValuesField(fieldName + "LONG", linkLong));
       document.add(
           new SortedNumericDocValuesField(
-              fieldName + "DOUBLE", Double.doubleToRawLongBits(linkLong)));
+              fieldName + "DOUBLE", Double.doubleToRawLongBits((double) linkLong)));
     } else {
       document.add(new SortedDocValuesField(fieldName, new BytesRef(linkValue)));
       document.add(new NumericDocValuesField(fieldName + "INT", linkInt));
