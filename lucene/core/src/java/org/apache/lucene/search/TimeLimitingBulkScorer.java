@@ -61,8 +61,15 @@ final class TimeLimitingBulkScorer extends BulkScorer {
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
+    int interval = INTERVAL;
     while (min < max) {
-      final int newMax = (int) Math.min((long) min + INTERVAL, max);
+      final int newMax = (int) Math.min((long) min + interval, max);
+      final int newInterval =
+          interval + (interval >> 1); // increase the interval by 50% on each iteration
+      // overflow check
+      if (interval < newInterval) {
+        interval = newInterval;
+      }
       if (queryTimeout.shouldExit()) {
         throw new TimeLimitingBulkScorer.TimeExceededException();
       }

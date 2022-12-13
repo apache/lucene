@@ -126,6 +126,10 @@ API Changes
 * GITHUB#11962: VectorValues#cost() now delegates to VectorValues#size().
   (Adrien Grand)
 
+* GITHUB#11984: Improved TimeLimitBulkScorer to check the timeout at exponantial rate.
+  (Costin Leau)
+
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
@@ -133,6 +137,8 @@ New Features
 
 * GITHUB#11929: MMapDirectory gives more granular control on which files to
   preload. (Adrien Grand, Uwe Schindler)
+
+* GITHUB#11999: MemoryIndex now supports stored fields. (Alan Woodward)
 
 Improvements
 ---------------------
@@ -144,6 +150,16 @@ Improvements
 
 * GITHUB#687: speed up IndexSortSortedNumericDocValuesRangeQuery#BoundedDocIdSetIterator
   construction using bkd binary search. (Jianping Weng)
+
+* GITHUB#11985: ExitableTerms to override Terms#getMin and Terms#getMax in order to avoid
+  iterating through the terms when the wrapped implementation caches such values. (Luca Cavanna)
+
+* GITHUB#11860: Improve storage efficiency of connections in the HNSW graph that Lucene uses for
+  vector search. (Ben Trent)
+
+* GITHUB#12008: Clean up LongRange#verifyAndEncode logic to remove unnecessary NaN checks. (Greg Miller)
+
+* GITHUB#12003: Minor cleanup/improvements to IndexSortSortedNumericDocValuesRangeQuery. (Greg Miller)
 
 Bug Fixes
 ---------------------
@@ -162,6 +178,10 @@ Bug Fixes
 
 * GITHUB#11950: Fix NPE in BinaryRangeFieldRangeQuery variants when the queried field doesn't exist
   in a segment or is of the wrong type. (Greg Miller)
+
+* GITHUB#11990: PassageSelector now has a larger minimum size for its priority queue,
+  so that subsequent passage merges don't mean that we return too few passages in
+  total. (Alan Woodward, Dawid Weiss)
 
 * GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
   common vertex. (Ignacio Vera)
@@ -187,12 +207,20 @@ Optimizations
 * GITHUB#11876: Use ByteArrayComparator to speed up PointInSetQuery in single dimension case.
   (Guo Feng)
 
+* GITHUB#11880: Use ByteArrayComparator to speed up BinaryRangeFieldRangeQuery, RangeFieldQuery
+  LatLonPointDistanceFeatureQuery and CheckIndex. (Guo Feng)
+
 * GITHUB#11881: Further optimize drill-sideways scoring by specializing the single dimension case
   and borrowing some concepts from "min should match" scoring. (Greg Miller)
 
 * GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
 
 * GITHUB#11895: count() in BooleanQuery could be early quit. (Lu Xugang)
+
+* GITHUB#11972: `IndexSortSortedNumericDocValuesRangeQuery` can now also
+  optimize query execution with points for descending sorts. (Adrien Grand)
+
+* GITHUB#12006: Do ints compare instead of ArrayUtil#compareUnsigned4 in LatlonPointQueries. (Guo Feng)
 
 Other
 ---------------------

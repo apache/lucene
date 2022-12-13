@@ -24,7 +24,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
@@ -32,6 +31,7 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
