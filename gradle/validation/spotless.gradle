@@ -92,6 +92,11 @@ configure(project(":lucene").subprojects) { prj ->
         project.mkdir("${buildDir}/spotless/spotlessJava")
       }
     }
+
+    // Schedule the core formatting task to run after Java compilation (GH-12012)
+    spotlessJava {
+      mustRunAfter tasks.withType(JavaCompile)
+    }
   }
 
   // Add an alias to 'spotlessApply' simply called 'tidy' and wire up
