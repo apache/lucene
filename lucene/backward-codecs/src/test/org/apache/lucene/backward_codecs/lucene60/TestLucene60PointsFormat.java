@@ -51,7 +51,8 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
     return codec;
   }
 
-  @SuppressWarnings("NarrowCalculation")
+  // TODO: clean up the math/estimation here rather than suppress so many warnings
+  @SuppressWarnings({"NarrowCalculation", "LongDoubleConversion"})
   public void testEstimatePointCount() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
@@ -177,7 +178,8 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
 
   // The tree is always balanced in the N dims case, and leaves are
   // not all full so things are a bit different
-  @SuppressWarnings("NarrowCalculation")
+  // TODO: clean up the math/estimation here rather than suppress so many warnings
+  @SuppressWarnings({"NarrowCalculation", "LongDoubleConversion"})
   public void testEstimatePointCount2Dims() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
