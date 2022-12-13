@@ -1813,6 +1813,20 @@ public class MemoryIndex {
     }
 
     @Override
+    public TermVectors termVectors() {
+      return new TermVectors() {
+        @Override
+        public Fields get(int docID) {
+          if (docID == 0) {
+            return memoryFields;
+          } else {
+            return null;
+          }
+        }
+      };
+    }
+
+    @Override
     public int numDocs() {
       if (DEBUG) System.err.println("MemoryIndexReader.numDocs");
       return 1;
@@ -1827,32 +1841,43 @@ public class MemoryIndex {
     @Override
     public void document(int docID, StoredFieldVisitor visitor) throws IOException {
       if (DEBUG) System.err.println("MemoryIndexReader.document");
-      for (Info info : fields.values()) {
-        StoredFieldVisitor.Status status = visitor.needsField(info.fieldInfo);
-        if (status == StoredFieldVisitor.Status.STOP) {
-          return;
-        }
-        if (status == StoredFieldVisitor.Status.NO) {
-          continue;
-        }
-        if (info.storedValues != null) {
-          for (Object value : info.storedValues) {
-            if (value instanceof BytesRef bytes) {
-              visitor.binaryField(info.fieldInfo, BytesRef.deepCopyOf(bytes).bytes);
-            } else if (value instanceof Double d) {
-              visitor.doubleField(info.fieldInfo, d);
-            } else if (value instanceof Float f) {
-              visitor.floatField(info.fieldInfo, f);
-            } else if (value instanceof Long l) {
-              visitor.longField(info.fieldInfo, l);
-            } else if (value instanceof Integer i) {
-              visitor.intField(info.fieldInfo, i);
-            } else if (value instanceof String s) {
-              visitor.stringField(info.fieldInfo, s);
+      storedFields().document(docID, visitor);
+    }
+
+    @Override
+    public StoredFields storedFields() {
+      return new StoredFields() {
+        @Override
+        public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+          if (DEBUG) System.err.println("MemoryIndexReader.document");
+          for (Info info : fields.values()) {
+            StoredFieldVisitor.Status status = visitor.needsField(info.fieldInfo);
+            if (status == StoredFieldVisitor.Status.STOP) {
+              return;
+            }
+            if (status == StoredFieldVisitor.Status.NO) {
+              continue;
+            }
+            if (info.storedValues != null) {
+              for (Object value : info.storedValues) {
+                if (value instanceof BytesRef bytes) {
+                  visitor.binaryField(info.fieldInfo, BytesRef.deepCopyOf(bytes).bytes);
+                } else if (value instanceof Double d) {
+                  visitor.doubleField(info.fieldInfo, d);
+                } else if (value instanceof Float f) {
+                  visitor.floatField(info.fieldInfo, f);
+                } else if (value instanceof Long l) {
+                  visitor.longField(info.fieldInfo, l);
+                } else if (value instanceof Integer i) {
+                  visitor.intField(info.fieldInfo, i);
+                } else if (value instanceof String s) {
+                  visitor.stringField(info.fieldInfo, s);
+                }
+              }
             }
           }
         }
-      }
+      };
     }
 
     @Override

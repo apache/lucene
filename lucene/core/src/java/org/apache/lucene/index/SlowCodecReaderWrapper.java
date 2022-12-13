@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -244,10 +245,16 @@ public final class SlowCodecReaderWrapper {
   }
 
   private static StoredFieldsReader readerToStoredFieldsReader(final LeafReader reader) {
+    final StoredFields storedFields;
+    try {
+      storedFields = reader.storedFields();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
     return new StoredFieldsReader() {
       @Override
-      public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
-        reader.document(docID, visitor);
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        storedFields.document(docID, visitor);
       }
 
       @Override
@@ -266,10 +273,16 @@ public final class SlowCodecReaderWrapper {
   }
 
   private static TermVectorsReader readerToTermVectorsReader(final LeafReader reader) {
+    final TermVectors termVectors;
+    try {
+      termVectors = reader.termVectors();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
     return new TermVectorsReader() {
       @Override
       public Fields get(int docID) throws IOException {
-        return reader.getTermVectors(docID);
+        return termVectors.get(docID);
       }
 
       @Override

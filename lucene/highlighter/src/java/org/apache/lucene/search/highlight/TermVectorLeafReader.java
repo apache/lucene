@@ -33,6 +33,8 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -180,6 +182,20 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
+  public TermVectors termVectors() throws IOException {
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) {
+        if (docID != 0) {
+          return null;
+        } else {
+          return fields;
+        }
+      }
+    };
+  }
+
+  @Override
   public int numDocs() {
     return 1;
   }
@@ -191,6 +207,14 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+
+  @Override
+  public StoredFields storedFields() throws IOException {
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+    };
+  }
 
   @Override
   public LeafMetaData getMetaData() {

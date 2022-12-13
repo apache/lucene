@@ -96,6 +96,12 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#11998: Add new stored fields and termvectors interfaces: IndexReader.storedFields()
+  and IndexReader.termVectors(). Deprecate IndexReader.document() and IndexReader.getTermVector().
+  The new APIs do not rely upon ThreadLocal storage for each index segment, which can greatly
+  reduce RAM requirements when there are many threads and/or segments.
+  (Adrien Grand, Robert Muir)
+
 * GITHUB#11742: MatchingFacetSetsCounts#getTopChildren now properly returns "top" children instead
   of all children. (Greg Miller)
 
@@ -128,7 +134,6 @@ API Changes
 
 * GITHUB#11984: Improved TimeLimitBulkScorer to check the timeout at exponantial rate.
   (Costin Leau)
-
 
 New Features
 ---------------------

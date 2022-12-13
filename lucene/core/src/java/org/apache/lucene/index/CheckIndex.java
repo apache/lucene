@@ -3001,7 +3001,7 @@ public final class CheckIndex implements Closeable {
         // Intentionally pull even deleted documents to
         // make sure they too are not corrupt:
         DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
-        storedFields.visitDocument(j, visitor);
+        storedFields.document(j, visitor);
         Document doc = visitor.getDocument();
         if (liveDocs == null || liveDocs.get(j)) {
           status.docCount++;

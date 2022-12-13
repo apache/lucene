@@ -93,9 +93,10 @@ public class TestTransactionRollback extends LuceneTestCase {
     // Perhaps not the most efficient approach but meets our
     // needs here.
     final Bits liveDocs = MultiBits.getLiveDocs(r);
+    StoredFields storedFields = r.storedFields();
     for (int i = 0; i < r.maxDoc(); i++) {
       if (liveDocs == null || liveDocs.get(i)) {
-        String sval = r.document(i).get(FIELD_RECORD_ID);
+        String sval = storedFields.document(i).get(FIELD_RECORD_ID);
         if (sval != null) {
           int val = Integer.parseInt(sval);
           assertTrue("Did not expect document #" + val, expecteds.get(val));

@@ -155,7 +155,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     IndexSearcher searcher = mi.createSearcher();
     IndexReader reader = searcher.getIndexReader();
 
-    assertEquals(reader.getTermVectors(0).size(), 1);
+    assertEquals(reader.termVectors().get(0).size(), 1);
   }
 
   public void testReaderConsistency() throws IOException {
@@ -722,7 +722,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     }
 
     MemoryIndex mi = MemoryIndex.fromDocument(doc, new StandardAnalyzer());
-    Document d = mi.createSearcher().doc(0);
+    Document d = mi.createSearcher().storedFields().document(0);
 
     assertContains(d, "long", 10L, IndexableField::numericValue);
     assertContains(d, "int", 1.7, IndexableField::numericValue);

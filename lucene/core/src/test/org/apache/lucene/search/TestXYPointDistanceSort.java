@@ -25,6 +25,7 @@ import org.apache.lucene.document.XYDocValuesField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.geo.ShapeTestUtil;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -206,6 +207,7 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
       writer.addDocument(doc);
     }
     IndexReader reader = writer.getReader();
+    StoredFields storedFields = reader.storedFields();
     IndexSearcher searcher = newSearcher(reader);
 
     for (int i = 0; i < numQueries; i++) {
@@ -216,7 +218,7 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
       Result[] expected = new Result[reader.maxDoc()];
 
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
-        Document targetDoc = reader.document(doc);
+        Document targetDoc = storedFields.document(doc);
         final double distance;
         if (targetDoc.getField("x") == null) {
           distance = missingValue; // missing

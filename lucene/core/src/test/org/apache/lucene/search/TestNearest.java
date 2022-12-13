@@ -29,6 +29,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.geo.GeoTestUtil;
@@ -57,7 +58,7 @@ public class TestNearest extends LuceneTestCase {
     // with its own points impl:
     IndexSearcher s = newSearcher(r, false);
     FieldDoc hit = (FieldDoc) LatLonPoint.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
-    assertEquals("0", r.document(hit.doc).getField("id").stringValue());
+    assertEquals("0", r.storedFields().document(hit.doc).getField("id").stringValue());
     r.close();
 
     w.deleteDocuments(new Term("id", "0"));
@@ -66,7 +67,7 @@ public class TestNearest extends LuceneTestCase {
     // with its own points impl:
     s = newSearcher(r, false);
     hit = (FieldDoc) LatLonPoint.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
-    assertEquals("1", r.document(hit.doc).getField("id").stringValue());
+    assertEquals("1", r.storedFields().document(hit.doc).getField("id").stringValue());
     r.close();
     w.close();
     dir.close();
@@ -89,7 +90,7 @@ public class TestNearest extends LuceneTestCase {
     // with its own points impl:
     IndexSearcher s = newSearcher(r, false);
     FieldDoc hit = (FieldDoc) LatLonPoint.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
-    assertEquals("0", r.document(hit.doc).getField("id").stringValue());
+    assertEquals("0", r.storedFields().document(hit.doc).getField("id").stringValue());
     r.close();
 
     w.deleteDocuments(new Term("id", "0"));
@@ -120,8 +121,8 @@ public class TestNearest extends LuceneTestCase {
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
     ScoreDoc[] hits = LatLonPoint.nearest(newSearcher(r, false), "point", 45.0, 50.0, 2).scoreDocs;
-    assertEquals("0", r.document(hits[0].doc).getField("id").stringValue());
-    assertEquals("1", r.document(hits[1].doc).getField("id").stringValue());
+    assertEquals("0", r.storedFields().document(hits[0].doc).getField("id").stringValue());
+    assertEquals("1", r.storedFields().document(hits[1].doc).getField("id").stringValue());
 
     r.close();
     w.close();
@@ -232,11 +233,12 @@ public class TestNearest extends LuceneTestCase {
               new Sort(LatLonDocValuesField.newDistanceSort("point", pointLat, pointLon)));
 
       ScoreDoc[] hits = LatLonPoint.nearest(s, "point", pointLat, pointLon, topN).scoreDocs;
+      StoredFields storedFields = r.storedFields();
       for (int i = 0; i < topN; i++) {
         FieldDoc expected = expectedHits[i];
         FieldDoc expected2 = (FieldDoc) fieldDocs.scoreDocs[i];
         FieldDoc actual = (FieldDoc) hits[i];
-        Document actualDoc = r.document(actual.doc);
+        Document actualDoc = storedFields.document(actual.doc);
 
         if (VERBOSE) {
           System.out.println("hit " + i);

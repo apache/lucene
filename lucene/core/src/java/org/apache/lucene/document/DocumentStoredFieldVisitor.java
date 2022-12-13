@@ -22,8 +22,8 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
 
 /**
  * A {@link StoredFieldVisitor} that creates a {@link Document} from stored fields.
@@ -31,7 +31,7 @@ import org.apache.lucene.index.StoredFieldVisitor;
  * <p>This visitor supports loading all stored fields, or only specific requested fields provided
  * from a {@link Set}.
  *
- * <p>This is used by {@link IndexReader#document(int)} to load a document.
+ * <p>This is used by {@link StoredFields#document(int)} to load a document.
  *
  * @lucene.experimental
  */

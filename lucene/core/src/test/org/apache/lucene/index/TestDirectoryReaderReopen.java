@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -132,7 +133,9 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
           if (i > 0) {
             int k = i - 1;
             int n = j + k * M;
-            Document prevItereationDoc = reader.document(n);
+            final DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
+            reader.storedFields().document(n, visitor);
+            Document prevItereationDoc = visitor.getDocument();
             assertNotNull(prevItereationDoc);
             String id = prevItereationDoc.get("id");
             assertEquals(k + "_" + j, id);
@@ -285,7 +288,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
                                 1000)
                             .scoreDocs;
                     if (hits.length > 0) {
-                      searcher.doc(hits[0].doc);
+                      searcher.storedFields().document(hits[0].doc);
                     }
                     if (refreshed != r) {
                       refreshed.close();

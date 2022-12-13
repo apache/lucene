@@ -37,6 +37,8 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.BulkScorer;
@@ -259,6 +261,11 @@ public class QueryUtils {
       }
 
       @Override
+      public TermVectors termVectors() {
+        return TermVectors.EMPTY;
+      }
+
+      @Override
       public int numDocs() {
         return 0;
       }
@@ -270,6 +277,14 @@ public class QueryUtils {
 
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+
+      @Override
+      public StoredFields storedFields() {
+        return new StoredFields() {
+          @Override
+          public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+        };
+      }
 
       @Override
       protected void doClose() throws IOException {}

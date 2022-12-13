@@ -445,7 +445,7 @@ public class TestStressNRT extends LuceneTestCase {
                     if (results.totalHits.value != 1) {
                       System.out.println("FAIL: hits id:" + id + " val=" + val);
                       for (ScoreDoc sd : results.scoreDocs) {
-                        final Document doc = r.document(sd.doc);
+                        final Document doc = r.storedFields().document(sd.doc);
                         System.out.println(
                             "  docID="
                                 + sd.doc
@@ -456,7 +456,7 @@ public class TestStressNRT extends LuceneTestCase {
                       }
                       fail("id=" + id + " reader=" + r + " totalHits=" + results.totalHits.value);
                     }
-                    Document doc = searcher.doc(results.scoreDocs[0].doc);
+                    Document doc = searcher.storedFields().document(results.scoreDocs[0].doc);
                     long foundVal = Long.parseLong(doc.get(field));
                     if (foundVal < Math.abs(val)) {
                       fail("foundVal=" + foundVal + " val=" + val + " id=" + id + " reader=" + r);

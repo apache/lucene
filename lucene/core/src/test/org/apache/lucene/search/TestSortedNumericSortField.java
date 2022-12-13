@@ -96,8 +96,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 3 comes before 5
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -125,8 +125,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 'bar' comes before 'baz'
-    assertEquals("2", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -159,9 +159,9 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     assertEquals(3, td.totalHits.value);
     // 3 comes before 5
     // null comes first
-    assertEquals("3", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -193,10 +193,10 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(3, td.totalHits.value);
     // 3 comes before 5
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
     // null comes last
-    assertEquals("3", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -222,8 +222,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // 3 comes before 5
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -250,8 +250,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // -5 comes before -3
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -278,8 +278,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
     assertEquals(2, td.totalHits.value);
     // -5 comes before -3
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();

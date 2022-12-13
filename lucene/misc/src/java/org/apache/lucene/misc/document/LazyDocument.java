@@ -94,7 +94,7 @@ public class LazyDocument {
   synchronized Document getDocument() {
     if (doc == null) {
       try {
-        doc = reader.document(docID, fieldNames);
+        doc = reader.storedFields().document(docID, fieldNames);
       } catch (IOException ioe) {
         throw new IllegalStateException("unable to load document", ioe);
       }

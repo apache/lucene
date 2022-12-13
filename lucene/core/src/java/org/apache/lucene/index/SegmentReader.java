@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import org.apache.lucene.codecs.Codec;
@@ -244,16 +245,52 @@ public final class SegmentReader extends CodecReader {
     return si.info.maxDoc();
   }
 
+  /* Support for deprecated threadlocal document/vectors APIs */
+
+  @Override
+  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
+    Objects.checkIndex(docID, maxDoc());
+    getThreadLocalFieldsReader().document(docID, visitor);
+  }
+
+  @Override
+  public final Fields getTermVectors(int docID) throws IOException {
+    Objects.checkIndex(docID, maxDoc());
+    TermVectorsReader termVectorsReader = getThreadLocalTermVectorsReader();
+    if (termVectorsReader == null) {
+      return null;
+    }
+    return termVectorsReader.get(docID);
+  }
+
+  @Deprecated
+  private TermVectorsReader getThreadLocalTermVectorsReader() {
+    ensureOpen();
+    return core.termVectorsLocal.get();
+  }
+
+  @Deprecated
+  private StoredFieldsReader getThreadLocalFieldsReader() {
+    ensureOpen();
+    return core.fieldsReaderLocal.get();
+  }
+
+  /* end support for deprecated threadlocal document/vectors APIs */
+
   @Override
   public TermVectorsReader getTermVectorsReader() {
     ensureOpen();
-    return core.termVectorsLocal.get();
+    if (core.termVectorsReaderOrig == null) {
+      return null;
+    } else {
+      return core.termVectorsReaderOrig.clone();
+    }
   }
 
   @Override
   public StoredFieldsReader getFieldsReader() {
     ensureOpen();
-    return core.fieldsReaderLocal.get();
+    return core.fieldsReaderOrig.clone();
   }
 
   @Override
