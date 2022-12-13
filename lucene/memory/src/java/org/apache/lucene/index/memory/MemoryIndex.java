@@ -1804,15 +1804,6 @@ public class MemoryIndex {
     }
 
     @Override
-    public Fields getTermVectors(int docID) {
-      if (docID == 0) {
-        return memoryFields;
-      } else {
-        return null;
-      }
-    }
-
-    @Override
     public TermVectors termVectors() {
       return new TermVectors() {
         @Override
@@ -1836,12 +1827,6 @@ public class MemoryIndex {
     public int maxDoc() {
       if (DEBUG) System.err.println("MemoryIndexReader.maxDoc");
       return 1;
-    }
-
-    @Override
-    public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-      if (DEBUG) System.err.println("MemoryIndexReader.document");
-      storedFields().document(docID, visitor);
     }
 
     @Override

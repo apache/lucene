@@ -1453,15 +1453,6 @@ public class UnifiedHighlighter {
     }
 
     @Override
-    public Fields getTermVectors(int docID) throws IOException {
-      if (docID != lastDocId) {
-        lastDocId = docID;
-        tvFields = in.getTermVectors(docID);
-      }
-      return tvFields;
-    }
-
-    @Override
     public TermVectors termVectors() throws IOException {
       TermVectors orig = in.termVectors();
       return new TermVectors() {

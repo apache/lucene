@@ -83,21 +83,6 @@ public abstract class CodecReader extends LeafReader {
    */
   public abstract KnnVectorsReader getVectorReader();
 
-  // intentionally throw UOE for deprecated APIs: keep CodecReader clean!
-  // (IndexWriter should not be triggering threadlocals in any way)
-
-  @Override
-  @Deprecated
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    throw new UnsupportedOperationException("deprecated document access is not supported");
-  }
-
-  @Override
-  @Deprecated
-  public Fields getTermVectors(int docID) throws IOException {
-    throw new UnsupportedOperationException("deprecated term vector access is not supported");
-  }
-
   @Override
   public final StoredFields storedFields() throws IOException {
     final StoredFields reader = getFieldsReader();

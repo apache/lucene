@@ -48,11 +48,6 @@ public class MismatchedLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    in.document(docID, new MismatchedVisitor(visitor));
-  }
-
-  @Override
   public StoredFields storedFields() throws IOException {
     final StoredFields inStoredFields = in.storedFields();
     return new StoredFields() {

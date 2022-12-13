@@ -174,14 +174,6 @@ public class TermVectorLeafReader extends LeafReader {
   public void checkIntegrity() throws IOException {}
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    if (docID != 0) {
-      return null;
-    }
-    return fields;
-  }
-
-  @Override
   public TermVectors termVectors() throws IOException {
     return new TermVectors() {
       @Override
@@ -204,9 +196,6 @@ public class TermVectorLeafReader extends LeafReader {
   public int maxDoc() {
     return 1;
   }
-
-  @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
 
   @Override
   public StoredFields storedFields() throws IOException {

@@ -69,11 +69,6 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public final TermVectors termVectors() throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -85,11 +80,6 @@ abstract class DocValuesLeafReader extends LeafReader {
 
   @Override
   public final int maxDoc() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
     throw new UnsupportedOperationException();
   }
 

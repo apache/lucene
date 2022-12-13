@@ -70,11 +70,6 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    return termVectors().get(docID);
-  }
-
-  @Override
   public TermVectors termVectors() throws IOException {
     TermVectors orig = super.termVectors();
     return new TermVectors() {
@@ -90,11 +85,6 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
         return f.iterator().hasNext() ? f : null;
       }
     };
-  }
-
-  @Override
-  public void document(final int docID, final StoredFieldVisitor visitor) throws IOException {
-    storedFields().document(docID, visitor);
   }
 
   @Override
@@ -184,6 +174,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
     return sb.append(fields).append(')').toString();
   }
 
+  @SuppressWarnings("unused")
   private class FieldFilterFields extends FilterFields {
 
     public FieldFilterFields(Fields in) {

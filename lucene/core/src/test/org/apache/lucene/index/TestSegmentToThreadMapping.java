@@ -67,11 +67,6 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public Fields getTermVectors(int doc) {
-        return null;
-      }
-
-      @Override
       public TermVectors termVectors() {
         return TermVectors.EMPTY;
       }
@@ -124,9 +119,6 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
 
       @Override
       protected void doClose() {}
-
-      @Override
-      public void document(int doc, StoredFieldVisitor visitor) {}
 
       @Override
       public StoredFields storedFields() {

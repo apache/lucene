@@ -266,14 +266,6 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    ensureOpen();
-    for (final LeafReader reader : storedFieldsReaders) {
-      reader.document(docID, visitor);
-    }
-  }
-
-  @Override
   public StoredFields storedFields() throws IOException {
     ensureOpen();
     StoredFields[] fields = new StoredFields[storedFieldsReaders.length];
@@ -314,24 +306,6 @@ public class ParallelLeafReader extends LeafReader {
       return parallelReaders[0].getReaderCacheHelper();
     }
     return null;
-  }
-
-  @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    ParallelFields fields = null;
-    for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-      String fieldName = ent.getKey();
-      Terms vector = ent.getValue().getTermVector(docID, fieldName);
-      if (vector != null) {
-        if (fields == null) {
-          fields = new ParallelFields();
-        }
-        fields.addField(fieldName, vector);
-      }
-    }
-
-    return fields;
   }
 
   @Override

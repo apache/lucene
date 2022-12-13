@@ -621,11 +621,6 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     }
 
     @Override
-    public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-      super.document(maxDoc() - 1 - docID, visitor);
-    }
-
-    @Override
     public StoredFields storedFields() throws IOException {
       StoredFields orig = in.storedFields();
       return new StoredFields() {

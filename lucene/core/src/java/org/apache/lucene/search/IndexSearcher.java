@@ -24,14 +24,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
@@ -39,7 +37,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -377,39 +374,6 @@ public class IndexSearcher {
   /** Return the {@link IndexReader} this searches. */
   public IndexReader getIndexReader() {
     return reader;
-  }
-
-  /**
-   * Sugar for <code>.getIndexReader().document(docID)</code>
-   *
-   * @see IndexReader#document(int)
-   * @deprecated Use {@link #storedFields()} to access fields for one or more documents
-   */
-  @Deprecated
-  public Document doc(int docID) throws IOException {
-    return reader.document(docID);
-  }
-
-  /**
-   * Sugar for <code>.getIndexReader().document(docID, fieldVisitor)</code>
-   *
-   * @see IndexReader#document(int, StoredFieldVisitor)
-   * @deprecated Use {@link #storedFields()} to access fields for one or more documents
-   */
-  @Deprecated
-  public void doc(int docID, StoredFieldVisitor fieldVisitor) throws IOException {
-    reader.document(docID, fieldVisitor);
-  }
-
-  /**
-   * Sugar for <code>.getIndexReader().document(docID, fieldsToLoad)</code>
-   *
-   * @see IndexReader#document(int, Set)
-   * @deprecated Use {@link #storedFields()} to access fields for one or more documents
-   */
-  @Deprecated
-  public Document doc(int docID, Set<String> fieldsToLoad) throws IOException {
-    return reader.document(docID, fieldsToLoad);
   }
 
   /**

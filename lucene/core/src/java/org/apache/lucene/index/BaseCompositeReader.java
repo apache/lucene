@@ -112,13 +112,6 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    final int i = readerIndex(docID); // find subreader num
-    return subReaders[i].getTermVectors(docID - starts[i]); // dispatch to subreader
-  }
-
-  @Override
   public final TermVectors termVectors() throws IOException {
     ensureOpen();
     TermVectors[] subVectors = new TermVectors[subReaders.length];
@@ -162,13 +155,6 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   public final int maxDoc() {
     // Don't call ensureOpen() here (it could affect performance)
     return maxDoc;
-  }
-
-  @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    ensureOpen();
-    final int i = readerIndex(docID); // find subreader num
-    subReaders[i].document(docID - starts[i], visitor); // dispatch to subreader
   }
 
   @Override

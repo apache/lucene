@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -256,11 +255,6 @@ public class QueryUtils {
       public void checkIntegrity() throws IOException {}
 
       @Override
-      public Fields getTermVectors(int docID) throws IOException {
-        return null;
-      }
-
-      @Override
       public TermVectors termVectors() {
         return TermVectors.EMPTY;
       }
@@ -274,9 +268,6 @@ public class QueryUtils {
       public int maxDoc() {
         return maxDoc;
       }
-
-      @Override
-      public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
 
       @Override
       public StoredFields storedFields() {
