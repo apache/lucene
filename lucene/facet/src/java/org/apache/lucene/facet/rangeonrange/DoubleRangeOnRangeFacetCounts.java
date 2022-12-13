@@ -56,9 +56,9 @@ public class DoubleRangeOnRangeFacetCounts extends RangeOnRangeFacetCounts {
   }
 
   /**
-   * Represents counts for long range on range faceting. See class javadoc for more details.
+   * Represents counts for double range on range faceting. See class javadoc for more details.
    *
-   * @param field specifies a {@link org.apache.lucene.document.LongRangeDocValuesField} that will
+   * @param field specifies a {@link org.apache.lucene.document.DoubleRangeDocValuesField} that will
    *     define the indexed ranges
    * @param hits hits we want to count against
    * @param queryType type of intersection we want to count (IE: range intersection, range contains,
