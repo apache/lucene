@@ -52,6 +52,7 @@ import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -233,8 +234,9 @@ public class TestLucene70DocValuesFormat extends BaseCompressingDocValuesFormatT
 
       final SortedSetDocValues sortedSet = DocValues.getSortedSet(reader, "sorted_set");
 
+      StoredFields storedFields = reader.storedFields();
       for (int i = 0; i < reader.maxDoc(); ++i) {
-        final Document doc = reader.document(i);
+        final Document doc = storedFields.document(i);
         final IndexableField valueField = doc.getField("value");
         final Long value = valueField == null ? null : valueField.numericValue().longValue();
 
@@ -620,11 +622,12 @@ public class TestLucene70DocValuesFormat extends BaseCompressingDocValuesFormatT
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(r, "dv");
+      StoredFields storedFields = r.storedFields();
       for (int i = 0; i < r.maxDoc(); i++) {
         if (i > docValues.docID()) {
           docValues.nextDoc();
         }
-        String[] expected = r.document(i).getValues("stored");
+        String[] expected = storedFields.document(i).getValues("stored");
         if (i < docValues.docID()) {
           assertEquals(0, expected.length);
         } else {
@@ -675,10 +678,11 @@ public class TestLucene70DocValuesFormat extends BaseCompressingDocValuesFormatT
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
+      StoredFields storedFields = r.storedFields();
       NumericDocValues docValues = DocValues.getNumeric(r, "dv");
       docValues.nextDoc();
       for (int i = 0; i < r.maxDoc(); i++) {
-        String storedValue = r.document(i).get("stored");
+        String storedValue = storedFields.document(i).get("stored");
         if (storedValue == null) {
           assertTrue(docValues.docID() > i);
         } else {

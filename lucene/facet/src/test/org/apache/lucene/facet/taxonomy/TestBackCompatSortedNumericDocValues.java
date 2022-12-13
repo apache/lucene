@@ -32,6 +32,7 @@ import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -102,8 +103,9 @@ public class TestBackCompatSortedNumericDocValues extends LuceneTestCase {
 
     TopFieldDocs docs = searcher.search(new MatchAllDocsQuery(), numDocs, Sort.INDEXORDER);
 
+    StoredFields storedFields = reader.storedFields();
     for (ScoreDoc scoreDoc : docs.scoreDocs) {
-      String id = reader.document(scoreDoc.doc).get("id");
+      String id = storedFields.document(scoreDoc.doc).get("id");
       int docId = scoreDoc.doc;
 
       int doc;

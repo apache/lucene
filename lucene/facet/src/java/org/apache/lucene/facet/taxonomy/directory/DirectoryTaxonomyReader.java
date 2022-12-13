@@ -339,7 +339,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         || values.advanceExact(ordinal - indexReader.leaves().get(readerIndex).docBase) == false) {
       // The index uses the older StoredField format to store the mapping
       // On recreating the index, the values will be stored using the BinaryDocValuesField format
-      Document doc = indexReader.document(ordinal);
+      Document doc = indexReader.storedFields().document(ordinal);
       ret = new FacetLabel(FacetsConfig.stringToPath(doc.get(Consts.FULL)));
     } else {
       // The index uses the BinaryDocValuesField format to store the mapping
