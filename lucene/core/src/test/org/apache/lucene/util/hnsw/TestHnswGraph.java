@@ -45,6 +45,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -213,6 +214,7 @@ public class TestHnswGraph extends LuceneTestCase {
 
           TopDocs topDocs = searcher.search(query, 5);
           float lastScore = -1;
+          StoredFields storedFields = reader.storedFields();
           for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
             if (scoreDoc.score == lastScore) {
               // if we have repeated score this test is invalid
@@ -220,13 +222,14 @@ public class TestHnswGraph extends LuceneTestCase {
             } else {
               lastScore = scoreDoc.score;
             }
-            Document doc = reader.document(scoreDoc.doc, Set.of("id"));
+            Document doc = storedFields.document(scoreDoc.doc, Set.of("id"));
             ids1.add(doc.get("id"));
             docs1.add(scoreDoc.doc);
           }
           TopDocs topDocs2 = searcher2.search(query, 5);
+          StoredFields storedFields2 = reader2.storedFields();
           for (ScoreDoc scoreDoc : topDocs2.scoreDocs) {
-            Document doc = reader2.document(scoreDoc.doc, Set.of("id"));
+            Document doc = storedFields2.document(scoreDoc.doc, Set.of("id"));
             ids2.add(doc.get("id"));
             docs2.add(scoreDoc.doc);
           }

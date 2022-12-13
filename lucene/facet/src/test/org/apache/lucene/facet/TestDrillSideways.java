@@ -1218,7 +1218,8 @@ public class TestDrillSideways extends FacetTestCase {
                           @Override
                           public boolean matches() throws IOException {
                             int docID = approximation.docID();
-                            return (Integer.parseInt(context.reader().document(docID).get("id"))
+                            return (Integer.parseInt(
+                                        context.reader().storedFields().document(docID).get("id"))
                                     & 1)
                                 == 0;
                           }
@@ -1323,7 +1324,7 @@ public class TestDrillSideways extends FacetTestCase {
       TopDocs hits = s.search(baseQuery, numDocs);
       Map<String, Float> scores = new HashMap<>();
       for (ScoreDoc sd : hits.scoreDocs) {
-        scores.put(s.doc(sd.doc).get("id"), sd.score);
+        scores.put(s.storedFields().document(sd.doc).get("id"), sd.score);
       }
       if (VERBOSE) {
         System.out.println("  verify all facets");
@@ -1624,7 +1625,7 @@ public class TestDrillSideways extends FacetTestCase {
 
     Map<String, Integer> idToDocID = new HashMap<>();
     for (int i = 0; i < s.getIndexReader().maxDoc(); i++) {
-      idToDocID.put(s.doc(i).get("id"), i);
+      idToDocID.put(s.storedFields().document(i).get("id"), i);
     }
 
     Collections.sort(hits);
@@ -1668,7 +1669,8 @@ public class TestDrillSideways extends FacetTestCase {
       if (VERBOSE) {
         System.out.println("    hit " + i + " expected=" + expected.hits.get(i).id);
       }
-      assertEquals(expected.hits.get(i).id, s.doc(actual.results.get(i).doc).get("id"));
+      assertEquals(
+          expected.hits.get(i).id, s.storedFields().document(actual.results.get(i).doc).get("id"));
       // Score should be IDENTICAL:
       assertEquals(scores.get(expected.hits.get(i).id), actual.results.get(i).score, 0.0f);
     }

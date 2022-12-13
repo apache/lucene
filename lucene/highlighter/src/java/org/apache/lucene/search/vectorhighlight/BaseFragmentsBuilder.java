@@ -177,23 +177,25 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
       throws IOException {
     // according to javadoc, doc.getFields(fieldName) cannot be used with lazy loaded field???
     final List<Field> fields = new ArrayList<>();
-    reader.document(
-        docId,
-        new StoredFieldVisitor() {
+    reader
+        .storedFields()
+        .document(
+            docId,
+            new StoredFieldVisitor() {
 
-          @Override
-          public void stringField(FieldInfo fieldInfo, String value) {
-            Objects.requireNonNull(value, "String value should not be null");
-            FieldType ft = new FieldType(TextField.TYPE_STORED);
-            ft.setStoreTermVectors(fieldInfo.hasVectors());
-            fields.add(new Field(fieldInfo.name, value, ft));
-          }
+              @Override
+              public void stringField(FieldInfo fieldInfo, String value) {
+                Objects.requireNonNull(value, "String value should not be null");
+                FieldType ft = new FieldType(TextField.TYPE_STORED);
+                ft.setStoreTermVectors(fieldInfo.hasVectors());
+                fields.add(new Field(fieldInfo.name, value, ft));
+              }
 
-          @Override
-          public Status needsField(FieldInfo fieldInfo) {
-            return fieldInfo.name.equals(fieldName) ? Status.YES : Status.NO;
-          }
-        });
+              @Override
+              public Status needsField(FieldInfo fieldInfo) {
+                return fieldInfo.name.equals(fieldName) ? Status.YES : Status.NO;
+              }
+            });
     return fields.toArray(new Field[fields.size()]);
   }
 

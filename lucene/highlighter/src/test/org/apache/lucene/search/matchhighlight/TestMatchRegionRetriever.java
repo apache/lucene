@@ -749,7 +749,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         (docId, leafReader, leafDocId, fieldHighlights) -> {
           StringBuilder sb = new StringBuilder();
 
-          Document document = leafReader.document(leafDocId);
+          Document document = leafReader.storedFields().document(leafDocId);
           formatter
               .apply(document, new TreeMap<>(fieldHighlights))
               .forEach(

@@ -22,6 +22,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -81,9 +82,10 @@ public class TestDocToDoubleVectorUtils extends LuceneTestCase {
   @Test
   public void testDenseFreqDoubleArrayConversion() throws Exception {
     IndexSearcher indexSearcher = new IndexSearcher(index);
+    TermVectors termVectors = index.termVectors();
     for (ScoreDoc scoreDoc :
         indexSearcher.search(new MatchAllDocsQuery(), Integer.MAX_VALUE).scoreDocs) {
-      Terms docTerms = index.getTermVector(scoreDoc.doc, "text");
+      Terms docTerms = termVectors.get(scoreDoc.doc, "text");
       Double[] vector = DocToDoubleVectorUtils.toDenseLocalFreqDoubleArray(docTerms);
       assertNotNull(vector);
       assertTrue(vector.length > 0);
@@ -95,9 +97,10 @@ public class TestDocToDoubleVectorUtils extends LuceneTestCase {
     Terms fieldTerms = MultiTerms.getTerms(index, "text");
     if (fieldTerms != null && fieldTerms.size() != -1) {
       IndexSearcher indexSearcher = new IndexSearcher(index);
+      TermVectors termVectors = index.termVectors();
       for (ScoreDoc scoreDoc :
           indexSearcher.search(new MatchAllDocsQuery(), Integer.MAX_VALUE).scoreDocs) {
-        Terms docTerms = index.getTermVector(scoreDoc.doc, "text");
+        Terms docTerms = termVectors.get(scoreDoc.doc, "text");
         Double[] vector = DocToDoubleVectorUtils.toSparseLocalFreqDoubleArray(docTerms, fieldTerms);
         assertNotNull(vector);
         assertTrue(vector.length > 0);

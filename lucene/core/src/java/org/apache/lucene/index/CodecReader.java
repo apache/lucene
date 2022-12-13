@@ -36,14 +36,14 @@ public abstract class CodecReader extends LeafReader {
   protected CodecReader() {}
 
   /**
-   * Expert: retrieve thread-private StoredFieldsReader
+   * Expert: retrieve underlying StoredFieldsReader
    *
    * @lucene.internal
    */
   public abstract StoredFieldsReader getFieldsReader();
 
   /**
-   * Expert: retrieve thread-private TermVectorsReader
+   * Expert: retrieve underlying TermVectorsReader
    *
    * @lucene.internal
    */
@@ -85,23 +85,26 @@ public abstract class CodecReader extends LeafReader {
   public abstract KnnVectorsReader getVectorReader();
 
   @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    checkBounds(docID);
-    getFieldsReader().visitDocument(docID, visitor);
+  public final StoredFields storedFields() throws IOException {
+    final StoredFields reader = getFieldsReader();
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.document(docID, visitor);
+      }
+    };
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
-    TermVectorsReader termVectorsReader = getTermVectorsReader();
-    if (termVectorsReader == null) {
-      return null;
+  public final TermVectors termVectors() throws IOException {
+    TermVectorsReader reader = getTermVectorsReader();
+    if (reader == null) {
+      return TermVectors.EMPTY;
+    } else {
+      return reader;
     }
-    checkBounds(docID);
-    return termVectorsReader.get(docID);
-  }
-
-  private void checkBounds(int docID) {
-    Objects.checkIndex(docID, maxDoc());
   }
 
   @Override

@@ -30,6 +30,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -116,8 +117,9 @@ public class TestSearch extends LuceneTestCase {
       hits = searcher.search(query, 1000, sort).scoreDocs;
 
       out.println(hits.length + " total results");
+      StoredFields storedFields = searcher.storedFields();
       for (int i = 0; i < hits.length && i < 10; i++) {
-        Document d = searcher.doc(hits[i].doc);
+        Document d = storedFields.document(hits[i].doc);
         out.println(i + " " + hits[i].score + " " + d.get("contents"));
       }
     }

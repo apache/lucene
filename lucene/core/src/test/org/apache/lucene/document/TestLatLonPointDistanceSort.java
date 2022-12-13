@@ -26,6 +26,7 @@ import java.util.Arrays;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -209,6 +210,7 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numQueries; i++) {
       double lat = GeoTestUtil.nextLatitude();
       double lon = GeoTestUtil.nextLongitude();
@@ -217,7 +219,7 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
       Result[] expected = new Result[reader.maxDoc()];
 
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
-        Document targetDoc = reader.document(doc);
+        Document targetDoc = storedFields.document(doc);
         final double distance;
         if (targetDoc.getField("lat") == null) {
           distance = missingValue; // missing

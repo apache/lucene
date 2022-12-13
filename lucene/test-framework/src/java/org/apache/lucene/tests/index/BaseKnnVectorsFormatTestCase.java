@@ -40,6 +40,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -724,14 +725,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         LeafReader leaf = getOnlyLeafReader(reader);
 
+        StoredFields storedFields = leaf.storedFields();
         VectorValues vectorValues = leaf.getVectorValues(fieldName);
         assertEquals(2, vectorValues.dimension());
         assertEquals(3, vectorValues.size());
-        assertEquals("1", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals("1", storedFields.document(vectorValues.nextDoc()).get("id"));
         assertEquals(-1f, vectorValues.vectorValue()[0], 0);
-        assertEquals("2", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals("2", storedFields.document(vectorValues.nextDoc()).get("id"));
         assertEquals(1, vectorValues.vectorValue()[0], 0);
-        assertEquals("4", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals("4", storedFields.document(vectorValues.nextDoc()).get("id"));
         assertEquals(0, vectorValues.vectorValue()[0], 0);
         assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
       }
@@ -752,14 +754,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         LeafReader leaf = getOnlyLeafReader(reader);
 
+        StoredFields storedFields = leaf.storedFields();
         VectorValues vectorValues = leaf.getVectorValues(fieldName);
         assertEquals(2, vectorValues.dimension());
         assertEquals(3, vectorValues.size());
-        assertEquals("1", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals("1", storedFields.document(vectorValues.nextDoc()).get("id"));
         assertEquals(-1f, vectorValues.vectorValue()[0], 0);
-        assertEquals("2", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals("2", storedFields.document(vectorValues.nextDoc()).get("id"));
         assertEquals(1, vectorValues.vectorValue()[0], 0);
-        assertEquals("4", leaf.document(vectorValues.nextDoc()).get("id"));
+        assertEquals("4", storedFields.document(vectorValues.nextDoc()).get("id"));
         assertEquals(0, vectorValues.vectorValue()[0], 0);
         assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
       }
@@ -868,11 +871,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             continue;
           }
           totalSize += vectorValues.size();
+          StoredFields storedFields = ctx.reader().storedFields();
           int docId;
           while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
             float[] v = vectorValues.vectorValue();
             assertEquals(dimension, v.length);
-            String idString = ctx.reader().document(docId).getField("id").stringValue();
+            String idString = storedFields.document(docId).getField("id").stringValue();
             int id = Integer.parseInt(idString);
             if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
               assertArrayEquals(idString, values[id], v, 0);
@@ -944,11 +948,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             continue;
           }
           totalSize += vectorValues.size();
+          StoredFields storedFields = ctx.reader().storedFields();
           int docId;
           while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
             BytesRef v = vectorValues.binaryValue();
             assertEquals(dimension, v.length);
-            String idString = ctx.reader().document(docId).getField("id").stringValue();
+            String idString = storedFields.document(docId).getField("id").stringValue();
             int id = Integer.parseInt(idString);
             if (ctx.reader().getLiveDocs() == null || ctx.reader().getLiveDocs().get(docId)) {
               assertEquals(idString, 0, values[id].compareTo(v));
@@ -1059,12 +1064,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           if (vectorValues == null) {
             continue;
           }
+          StoredFields storedFields = ctx.reader().storedFields();
           int docId;
           int numLiveDocsWithVectors = 0;
           while ((docId = vectorValues.nextDoc()) != NO_MORE_DOCS) {
             float[] v = vectorValues.vectorValue();
             assertEquals(dimension, v.length);
-            String idString = ctx.reader().document(docId).getField("id").stringValue();
+            String idString = storedFields.document(docId).getField("id").stringValue();
             int id = Integer.parseInt(idString);
             if (liveDocs == null || liveDocs.get(docId)) {
               assertArrayEquals(
@@ -1318,10 +1324,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         for (LeafReaderContext ctx : r.leaves()) {
           VectorValues vectors = ctx.reader().getVectorValues("knn_vector");
           if (vectors != null) {
+            StoredFields storedFields = ctx.reader().storedFields();
             docCount += vectors.size();
             while (vectors.nextDoc() != NO_MORE_DOCS) {
               checksum += vectors.vectorValue()[0];
-              Document doc = ctx.reader().document(vectors.docID(), Set.of("id"));
+              Document doc = storedFields.document(vectors.docID(), Set.of("id"));
               sumDocIds += Integer.parseInt(doc.get("id"));
             }
           }

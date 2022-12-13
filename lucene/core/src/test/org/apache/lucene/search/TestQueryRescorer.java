@@ -170,8 +170,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     TopDocs hits = searcher.search(bq.build(), 10);
     assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using PhraseQuery:
     PhraseQuery pq = new PhraseQuery(5, "field", "wizard", "oz");
@@ -180,8 +180,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     // Resorting changed the order:
     assertEquals(2, hits2.totalHits.value);
-    assertEquals("1", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();
@@ -213,8 +213,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     TopDocs hits = searcher.search(bq.build(), 10);
     assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using TermQuery on term that does not exist.
     TermQuery tq = new TermQuery(new Term("field", "gold"));
@@ -251,8 +251,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     TopDocs hits = searcher.search(bq.build(), 10);
     assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using PhraseQuery, but with an
     // opposite-world combine:
@@ -273,8 +273,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     // Resorting didn't change the order:
     assertEquals(2, hits2.totalHits.value);
-    assertEquals("0", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();
@@ -304,8 +304,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     TopDocs hits = searcher.search(bq.build(), 10);
     assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using PhraseQuery:
     PhraseQuery pq = new PhraseQuery("field", "wizard", "oz");
@@ -327,8 +327,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     // Resorting changed the order:
     assertEquals(2, hits2.totalHits.value);
-    assertEquals("1", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
 
     int docID = hits2.scoreDocs[0].doc;
     Explanation explain = rescorer.explain(searcher, searcher.explain(bq.build(), docID), docID);
@@ -377,8 +377,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     TopDocs hits = searcher.search(bq.build(), 10);
     assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using PhraseQuery, no slop:
     PhraseQuery pq = new PhraseQuery("field", "wizard", "oz");
@@ -387,8 +387,8 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     // Resorting changed the order:
     assertEquals(2, hits2.totalHits.value);
-    assertEquals("1", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();
@@ -446,8 +446,8 @@ public class TestQueryRescorer extends LuceneTestCase {
           @Override
           public int compare(Integer a, Integer b) {
             try {
-              int av = idToNum[Integer.parseInt(r.document(a).get("id"))];
-              int bv = idToNum[Integer.parseInt(r.document(b).get("id"))];
+              int av = idToNum[Integer.parseInt(r.storedFields().document(a).get("id"))];
+              int bv = idToNum[Integer.parseInt(r.storedFields().document(b).get("id"))];
               if (av < bv) {
                 return -reverseInt;
               } else if (bv < av) {
@@ -465,7 +465,7 @@ public class TestQueryRescorer extends LuceneTestCase {
     boolean fail = false;
     for (int i = 0; i < numHits; i++) {
       // System.out.println("expected=" + expected[i] + " vs " + hits2.scoreDocs[i].doc + " v=" +
-      // idToNum[Integer.parseInt(r.document(expected[i]).get("id"))]);
+      // idToNum[Integer.parseInt(r.storedFields().document(expected[i]).get("id"))]);
       if (expected[i].intValue() != hits2.scoreDocs[i].doc) {
         // System.out.println("  diff!");
         fail = true;
@@ -537,7 +537,9 @@ public class TestQueryRescorer extends LuceneTestCase {
 
             @Override
             public float score() throws IOException {
-              int num = idToNum[Integer.parseInt(context.reader().document(docID).get("id"))];
+              int num =
+                  idToNum[
+                      Integer.parseInt(context.reader().storedFields().document(docID).get("id"))];
               if (reverse) {
                 // System.out.println("score doc=" + docID + " num=" + num);
                 return num;

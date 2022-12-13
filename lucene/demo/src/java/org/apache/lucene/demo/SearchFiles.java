@@ -31,6 +31,7 @@ import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause;
@@ -205,13 +206,14 @@ public class SearchFiles {
 
       end = Math.min(hits.length, start + hitsPerPage);
 
+      StoredFields storedFields = searcher.storedFields();
       for (int i = start; i < end; i++) {
         if (raw) { // output raw format
           System.out.println("doc=" + hits[i].doc + " score=" + hits[i].score);
           continue;
         }
 
-        Document doc = searcher.doc(hits[i].doc);
+        Document doc = storedFields.document(hits[i].doc);
         String path = doc.get("path");
         if (path != null) {
           System.out.println((i + 1) + ". " + path);

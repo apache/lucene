@@ -49,6 +49,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -714,12 +715,13 @@ public class TestSuggestField extends LuceneTestCase {
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
     assertEquals(num, suggest.totalHits.value);
+    StoredFields storedFields = reader.storedFields();
     for (SuggestScoreDoc suggestScoreDoc : suggest.scoreLookupDocs()) {
       String key = suggestScoreDoc.key.toString();
       assertTrue(key.startsWith("abc_"));
       String substring = key.substring(4);
       int fieldValue = Integer.parseInt(substring);
-      Document doc = reader.document(suggestScoreDoc.doc);
+      Document doc = storedFields.document(suggestScoreDoc.doc);
       assertEquals(doc.getField("int_field").numericValue().intValue(), fieldValue);
     }
 

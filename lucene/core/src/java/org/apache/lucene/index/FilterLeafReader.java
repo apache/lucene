@@ -364,9 +364,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
+  public TermVectors termVectors() throws IOException {
     ensureOpen();
-    return in.getTermVectors(docID);
+    return in.termVectors();
   }
 
   @Override
@@ -382,9 +382,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+  public StoredFields storedFields() throws IOException {
     ensureOpen();
-    in.document(docID, visitor);
+    return in.storedFields();
   }
 
   @Override

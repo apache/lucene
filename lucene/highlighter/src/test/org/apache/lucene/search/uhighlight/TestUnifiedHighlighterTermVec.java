@@ -37,6 +37,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.ParallelLeafReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -123,7 +124,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
       assertArrayEquals(expectedSnippetsByDoc, fieldToSnippets.get(field));
     }
 
-    ir.document(0); // ensure this works because the ir hasn't been closed
+    ir.storedFields().document(0); // ensure this works because the ir hasn't been closed
     ir.close();
   }
 
@@ -136,17 +137,24 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
               BitSet seenDocIDs = new BitSet();
 
               @Override
-              public Fields getTermVectors(int docID) throws IOException {
-                // if we're invoked by ParallelLeafReader then we can't do our assertion. TODO see
-                // LUCENE-6868
-                if (callStackContains(ParallelLeafReader.class) == false
-                    && callStackContains(CheckIndex.class) == false) {
-                  assertFalse(
-                      "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
-                  seenDocIDs.set(docID);
-                }
+              public TermVectors termVectors() throws IOException {
+                TermVectors orig = in.termVectors();
+                return new TermVectors() {
+                  @Override
+                  public Fields get(int docID) throws IOException {
+                    // if we're invoked by ParallelLeafReader then we can't do our assertion. TODO
+                    // see
+                    // LUCENE-6868
+                    if (callStackContains(ParallelLeafReader.class) == false
+                        && callStackContains(CheckIndex.class) == false) {
+                      assertFalse(
+                          "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
+                      seenDocIDs.set(docID);
+                    }
 
-                return super.getTermVectors(docID);
+                    return orig.get(docID);
+                  }
+                };
               }
 
               @Override

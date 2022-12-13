@@ -36,6 +36,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -629,8 +630,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         AbstractKnnVectorQuery query = getKnnVectorQuery("vector", randomVector(dim), hits);
         TopDocs topDocs = searcher.search(query, numDocs);
+        StoredFields storedFields = reader.storedFields();
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-          Document doc = reader.document(scoreDoc.doc, Set.of("index"));
+          Document doc = storedFields.document(scoreDoc.doc, Set.of("index"));
           String index = doc.get("index");
           assertFalse(
               "search returned a deleted document: " + index,
@@ -775,7 +777,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   void assertIdMatches(IndexReader reader, String expectedId, ScoreDoc scoreDoc)
       throws IOException {
-    String actualId = reader.document(scoreDoc.doc).get("id");
+    String actualId = reader.storedFields().document(scoreDoc.doc).get("id");
     assertEquals(expectedId, actualId);
   }
 

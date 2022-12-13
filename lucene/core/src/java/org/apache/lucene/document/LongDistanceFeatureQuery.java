@@ -267,8 +267,8 @@ final class LongDistanceFeatureQuery extends Query {
       return doc;
     }
 
-    private float score(double distance) {
-      return (float) (boost * (pivotDistance / (pivotDistance + distance)));
+    private float score(long distance) {
+      return (float) (boost * (pivotDistance / (pivotDistance + (double) distance)));
     }
 
     /**
