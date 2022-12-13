@@ -125,7 +125,7 @@ API Changes
 
 * GITHUB#11962: VectorValues#cost() now delegates to VectorValues#size().
   (Adrien Grand)
-  
+
 * GITHUB#11984: Improved TimeLimitBulkScorer to check the timeout at exponantial rate.
   (Costin Leau)
 
@@ -182,6 +182,9 @@ Bug Fixes
 * GITHUB#11990: PassageSelector now has a larger minimum size for its priority queue,
   so that subsequent passage merges don't mean that we return too few passages in
   total. (Alan Woodward, Dawid Weiss)
+
+* GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
+  common vertex. (Ignacio Vera)
 
 Optimizations
 ---------------------
