@@ -47,7 +47,9 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -1333,6 +1335,7 @@ public class UnifiedHighlighter {
         new ArrayList<>(cacheCharsThreshold == 0 ? 1 : (int) Math.min(64, docIter.cost()));
 
     LimitedStoredFieldVisitor visitor = newLimitedStoredFieldsVisitor(fields);
+    StoredFields storedFields = searcher.storedFields();
     int sumChars = 0;
     do {
       int docId = docIter.nextDoc();
@@ -1340,7 +1343,7 @@ public class UnifiedHighlighter {
         break;
       }
       visitor.init();
-      searcher.doc(docId, visitor);
+      storedFields.document(docId, visitor);
       CharSequence[] valuesByField = visitor.getValuesByField();
       docListOfFields.add(valuesByField);
       for (CharSequence val : valuesByField) {
@@ -1431,9 +1434,9 @@ public class UnifiedHighlighter {
   }
 
   /**
-   * Wraps an IndexReader that remembers/caches the last call to {@link
-   * LeafReader#getTermVectors(int)} so that if the next call has the same ID, then it is reused. If
-   * TV's were column-stride (like doc-values), there would be no need for this.
+   * Wraps an IndexReader that remembers/caches the last call to {@link TermVectors#get(int)} so
+   * that if the next call has the same ID, then it is reused. If TV's were column-stride (like
+   * doc-values), there would be no need for this.
    */
   private static class TermVectorReusingLeafReader extends FilterLeafReader {
 
@@ -1469,6 +1472,21 @@ public class UnifiedHighlighter {
         tvFields = in.getTermVectors(docID);
       }
       return tvFields;
+    }
+
+    @Override
+    public TermVectors termVectors() throws IOException {
+      TermVectors orig = in.termVectors();
+      return new TermVectors() {
+        @Override
+        public Fields get(int docID) throws IOException {
+          if (docID != lastDocId) {
+            lastDocId = docID;
+            tvFields = orig.get(docID);
+          }
+          return tvFields;
+        }
+      };
     }
 
     @Override

@@ -70,10 +70,10 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     }
 
     @Override
-    public void visitDocument(int n, StoredFieldVisitor visitor) throws IOException {
+    public void document(int n, StoredFieldVisitor visitor) throws IOException {
       AssertingCodec.assertThread("StoredFieldsReader", creationThread);
       assert n >= 0 && n < maxDoc;
-      in.visitDocument(n, visitor);
+      in.document(n, visitor);
     }
 
     @Override

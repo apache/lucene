@@ -24,6 +24,7 @@ import java.util.Arrays;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -346,8 +347,9 @@ public class TestCoreParser extends LuceneTestCase {
     }
     if (VERBOSE) {
       ScoreDoc[] scoreDocs = hits.scoreDocs;
+      StoredFields storedFields = searcher.storedFields();
       for (int i = 0; i < Math.min(numDocs, hits.totalHits.value); i++) {
-        Document ldoc = searcher.doc(scoreDocs[i].doc);
+        Document ldoc = storedFields.document(scoreDocs[i].doc);
         System.out.println("[" + ldoc.get("date") + "]" + ldoc.get("contents"));
       }
       System.out.println();

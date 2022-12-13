@@ -499,7 +499,7 @@ public class TestSimilarityBase extends LuceneTestCase {
       assertEquals(
           "Failed: " + sim.toString(),
           "2",
-          reader.document(topDocs.scoreDocs[0].doc).get(FIELD_ID));
+          reader.storedFields().document(topDocs.scoreDocs[0].doc).get(FIELD_ID));
     }
   }
 

@@ -25,6 +25,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 
@@ -57,8 +58,9 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
 
     DirectoryReader ir = DirectoryReader.open(dir);
     assertEquals(10, ir.numDocs());
+    StoredFields storedFields = ir.storedFields();
     for (int i = 0; i < 10; i++) {
-      Document doc = ir.document(i);
+      Document doc = storedFields.document(i);
       assertEquals("value1", doc.get("field1"));
       assertEquals("value2", doc.get("field2"));
     }

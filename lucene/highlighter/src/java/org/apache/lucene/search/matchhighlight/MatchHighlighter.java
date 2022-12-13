@@ -200,7 +200,7 @@ public class MatchHighlighter {
             }
           };
 
-      leafReader.document(leafDocId, visitor);
+      leafReader.storedFields().document(leafDocId, visitor);
       return visitor.getDocument();
     }
   }

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import org.apache.lucene.index.StoredFields;
+
 /** Holds one hit in {@link TopDocs}. */
 public class ScoreDoc {
 
@@ -25,7 +27,7 @@ public class ScoreDoc {
   /**
    * A hit document's number.
    *
-   * @see IndexSearcher#doc(int)
+   * @see StoredFields#document(int)
    */
   public int doc;
 

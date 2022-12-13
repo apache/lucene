@@ -58,7 +58,7 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
     IndexSearcher s = newSearcher(r, false);
     FieldDoc hit =
         (FieldDoc) FloatPointNearestNeighbor.nearest(s, "point", 1, 40.0f, 50.0f).scoreDocs[0];
-    assertEquals("0", r.document(hit.doc).getField("id").stringValue());
+    assertEquals("0", r.storedFields().document(hit.doc).getField("id").stringValue());
     r.close();
 
     w.deleteDocuments(new Term("id", "0"));
@@ -67,7 +67,7 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
     // with its own points impl:
     s = newSearcher(r, false);
     hit = (FieldDoc) LatLonPointPrototypeQueries.nearest(s, "point", 40.0, 50.0, 1).scoreDocs[0];
-    assertEquals("1", r.document(hit.doc).getField("id").stringValue());
+    assertEquals("1", r.storedFields().document(hit.doc).getField("id").stringValue());
     r.close();
     w.close();
     dir.close();
@@ -91,7 +91,7 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
     IndexSearcher s = newSearcher(r, false);
     FieldDoc hit =
         (FieldDoc) FloatPointNearestNeighbor.nearest(s, "point", 1, 40.0f, 50.0f).scoreDocs[0];
-    assertEquals("0", r.document(hit.doc).getField("id").stringValue());
+    assertEquals("0", r.storedFields().document(hit.doc).getField("id").stringValue());
     r.close();
 
     w.deleteDocuments(new Term("id", "0"));
@@ -125,8 +125,8 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
     ScoreDoc[] hits =
         FloatPointNearestNeighbor.nearest(newSearcher(r, false), "point", 2, 45.0f, 50.0f)
             .scoreDocs;
-    assertEquals("0", r.document(hits[0].doc).getField("id").stringValue());
-    assertEquals("1", r.document(hits[1].doc).getField("id").stringValue());
+    assertEquals("0", r.storedFields().document(hits[0].doc).getField("id").stringValue());
+    assertEquals("1", r.storedFields().document(hits[1].doc).getField("id").stringValue());
 
     r.close();
     w.close();
@@ -233,7 +233,7 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
         for (int i = 0; i < topK; ++i) {
           FloatPointNearestNeighbor.NearestHit expected = expectedHits[i];
           FieldDoc actual = (FieldDoc) hits[i];
-          Document actualDoc = r.document(actual.doc);
+          Document actualDoc = r.storedFields().document(actual.doc);
           System.out.println("hit " + i);
           System.out.println(
               "  expected id="

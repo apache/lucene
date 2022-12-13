@@ -53,6 +53,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -405,6 +406,7 @@ public class KnnGraphTester {
         totalCpuTime =
             TimeUnit.NANOSECONDS.toMillis(bean.getCurrentThreadCpuTime() - cpuTimeStartNs);
         elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start); // ns -> ms
+        StoredFields storedFields = reader.storedFields();
         for (int i = 0; i < numIters; i++) {
           totalVisited += results[i].totalHits.value;
           for (ScoreDoc doc : results[i].scoreDocs) {
@@ -412,7 +414,7 @@ public class KnnGraphTester {
               // there is a bug somewhere that can result in doc=NO_MORE_DOCS!  I think it happens
               // in some degenerate case (like input query has NaN in it?) that causes no results to
               // be returned from HNSW search?
-              doc.doc = Integer.parseInt(reader.document(doc.doc).get("id"));
+              doc.doc = Integer.parseInt(storedFields.document(doc.doc).get("id"));
             } else {
               System.out.println("NO_MORE_DOCS!");
             }

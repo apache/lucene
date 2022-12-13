@@ -942,6 +942,7 @@ public class TestTermsEnum extends LuceneTestCase {
     TermsEnum termsEnum = MultiTerms.getTerms(r, "id").iterator();
     PostingsEnum postingsEnum = null;
     PerThreadPKLookup pkLookup = new PerThreadPKLookup(r, "id");
+    StoredFields storedFields = r.storedFields();
 
     int iters = atLeast(numTerms * 3);
     List<String> termsList = new ArrayList<>(terms);
@@ -970,7 +971,7 @@ public class TestTermsEnum extends LuceneTestCase {
         int docID = postingsEnum.nextDoc();
         assertTrue(docID != PostingsEnum.NO_MORE_DOCS);
         assertEquals(docID, pkLookup.lookup(termBytesRef));
-        Document doc = r.document(docID);
+        Document doc = storedFields.document(docID);
         assertEquals(term, doc.get("id"));
 
         if (random().nextInt(7) == 1) {

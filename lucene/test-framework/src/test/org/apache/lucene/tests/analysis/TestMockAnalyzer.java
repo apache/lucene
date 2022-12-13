@@ -315,7 +315,7 @@ public class TestMockAnalyzer extends BaseTokenStreamTestCase {
     doc.add(new Field("f", "a", ft));
     writer.addDocument(doc);
     final LeafReader reader = getOnlyLeafReader(writer.getReader());
-    final Fields fields = reader.getTermVectors(0);
+    final Fields fields = reader.termVectors().get(0);
     final Terms terms = fields.terms("f");
     final TermsEnum te = terms.iterator();
     assertEquals(new BytesRef("a"), te.next());

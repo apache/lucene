@@ -36,6 +36,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -587,8 +588,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
   private Set<String> toDocIDs(IndexSearcher s, TopDocs hits) throws IOException {
     Set<String> result = new HashSet<>();
+    StoredFields storedFields = s.storedFields();
     for (ScoreDoc hit : hits.scoreDocs) {
-      result.add(s.doc(hit.doc).get("id"));
+      result.add(storedFields.document(hit.doc).get("id"));
     }
     return result;
   }

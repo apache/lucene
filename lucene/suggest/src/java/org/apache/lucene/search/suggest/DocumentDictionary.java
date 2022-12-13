@@ -26,6 +26,7 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.spell.Dictionary;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -46,6 +47,9 @@ public class DocumentDictionary implements Dictionary {
   /** {@link IndexReader} to load documents from */
   protected final IndexReader reader;
 
+  /** {@link StoredFields} for this reader */
+  protected final StoredFields storedFields;
+
   /** Field to read payload from */
   protected final String payloadField;
   /** Field to read contexts from */
@@ -58,7 +62,8 @@ public class DocumentDictionary implements Dictionary {
    * Creates a new dictionary with the contents of the fields named <code>field</code> for the terms
    * and <code>weightField</code> for the weights that will be used for the corresponding terms.
    */
-  public DocumentDictionary(IndexReader reader, String field, String weightField) {
+  public DocumentDictionary(IndexReader reader, String field, String weightField)
+      throws IOException {
     this(reader, field, weightField, null);
   }
 
@@ -68,7 +73,8 @@ public class DocumentDictionary implements Dictionary {
    * terms and <code>payloadField</code> for the corresponding payloads for the entry.
    */
   public DocumentDictionary(
-      IndexReader reader, String field, String weightField, String payloadField) {
+      IndexReader reader, String field, String weightField, String payloadField)
+      throws IOException {
     this(reader, field, weightField, payloadField, null);
   }
 
@@ -83,8 +89,10 @@ public class DocumentDictionary implements Dictionary {
       String field,
       String weightField,
       String payloadField,
-      String contextsField) {
+      String contextsField)
+      throws IOException {
     this.reader = reader;
+    this.storedFields = reader.storedFields();
     this.field = field;
     this.weightField = weightField;
     this.payloadField = payloadField;
@@ -157,7 +165,7 @@ public class DocumentDictionary implements Dictionary {
           continue;
         }
 
-        Document doc = reader.document(currentDocId, relevantFields);
+        Document doc = storedFields.document(currentDocId, relevantFields);
 
         BytesRef tempPayload = null;
         if (hasPayloads) {

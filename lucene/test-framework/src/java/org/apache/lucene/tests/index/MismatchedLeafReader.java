@@ -27,6 +27,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
 
 /**
  * Shuffles field numbers around to try to trip bugs where field numbers are assumed to always be
@@ -49,6 +50,17 @@ public class MismatchedLeafReader extends FilterLeafReader {
   @Override
   public void document(int docID, StoredFieldVisitor visitor) throws IOException {
     in.document(docID, new MismatchedVisitor(visitor));
+  }
+
+  @Override
+  public StoredFields storedFields() throws IOException {
+    final StoredFields inStoredFields = in.storedFields();
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        inStoredFields.document(docID, new MismatchedVisitor(visitor));
+      }
+    };
   }
 
   @Override

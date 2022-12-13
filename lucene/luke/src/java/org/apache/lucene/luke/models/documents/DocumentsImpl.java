@@ -87,7 +87,7 @@ public final class DocumentsImpl extends LukeModel implements Documents {
     List<DocumentField> res = new ArrayList<>();
 
     try {
-      Document doc = reader.document(docid);
+      Document doc = reader.storedFields().document(docid);
 
       for (FieldInfo finfo : IndexUtils.getFieldInfos(reader)) {
         // iterate all fields for this document
