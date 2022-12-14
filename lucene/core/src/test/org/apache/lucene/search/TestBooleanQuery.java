@@ -1014,8 +1014,8 @@ public class TestBooleanQuery extends LuceneTestCase {
       }
     }
   }
-  
-  public void testAggressiveMatchCount() throws IOException{
+
+  public void testAggressiveMatchCount() throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     Document doc = new Document();
@@ -1032,52 +1032,56 @@ public class TestBooleanQuery extends LuceneTestCase {
     writer.close();
     IndexSearcher searcher = new IndexSearcher(reader);
 
-    long[] lower = new long[]{4L, 5L, 6L};
-    long[] upper = new long[]{9L, 10L, 11L};
+    long[] lower = new long[] {4L, 5L, 6L};
+    long[] upper = new long[] {9L, 10L, 11L};
     Query unknownCountQuery = LongPoint.newRangeQuery("long", lower, upper);
     assert reader.leaves().size() == 1;
-    assert searcher.createWeight(unknownCountQuery, ScoreMode.COMPLETE, 1f).count(reader.leaves().get(0)) == -1;
+    assert searcher
+            .createWeight(unknownCountQuery, ScoreMode.COMPLETE, 1f)
+            .count(reader.leaves().get(0))
+        == -1;
 
     Query query =
-            new BooleanQuery.Builder()
-                    .add(new TermQuery(new Term("string", "xyz")), Occur.MUST)
-                    .add(unknownCountQuery, Occur.MUST_NOT)
-                    .add(new MatchAllDocsQuery(), Occur.MUST_NOT)
-                    .build();
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "xyz")), Occur.MUST)
+            .add(unknownCountQuery, Occur.MUST_NOT)
+            .add(new MatchAllDocsQuery(), Occur.MUST_NOT)
+            .build();
     Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
-    // count of the first MUST_NOT clause is unknown, but the second MUST_NOT clause matches all docs
+    // count of the first MUST_NOT clause is unknown, but the second MUST_NOT clause matches all
+    // docs
     assertEquals(0, weight.count(reader.leaves().get(0)));
 
-
     query =
-            new BooleanQuery.Builder()
-                    .add(new TermQuery(new Term("string", "xyz")), Occur.MUST)
-                    .add(unknownCountQuery, Occur.MUST_NOT)
-                    .add(new TermQuery(new Term("string", "abc")), Occur.MUST_NOT)
-                    .build();
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "xyz")), Occur.MUST)
+            .add(unknownCountQuery, Occur.MUST_NOT)
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST_NOT)
+            .build();
     weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
-    // count of the first MUST_NOT clause is unknown, though the second MUST_NOT clause matche one doc, we can't figure out the number of
+    // count of the first MUST_NOT clause is unknown, though the second MUST_NOT clause matche one
+    // doc, we can't figure out the number of
     // docs
     assertEquals(-1, weight.count(reader.leaves().get(0)));
 
-
     // test pure disConjunction
     query =
-            new BooleanQuery.Builder()
-                    .add(unknownCountQuery, Occur.SHOULD)
-                    .add(new MatchAllDocsQuery(), Occur.SHOULD)
-                    .build();
+        new BooleanQuery.Builder()
+            .add(unknownCountQuery, Occur.SHOULD)
+            .add(new MatchAllDocsQuery(), Occur.SHOULD)
+            .build();
     weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
     // count of the first SHOULD clause is unknown, but the second SHOULD clause matches all docs
     assertEquals(2, weight.count(reader.leaves().get(0)));
 
     query =
-            new BooleanQuery.Builder()
-                    .add(unknownCountQuery, Occur.SHOULD)
-                    .add(new TermQuery(new Term("string", "abc")), Occur.SHOULD)
-                    .build();
+        new BooleanQuery.Builder()
+            .add(unknownCountQuery, Occur.SHOULD)
+            .add(new TermQuery(new Term("string", "abc")), Occur.SHOULD)
+            .build();
     weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
-    // count of the first SHOULD clause is unknown, though the second SHOULD clause matche one doc, we can't figure out the number of
+    // count of the first SHOULD clause is unknown, though the second SHOULD clause matche one doc,
+    // we can't figure out the number of
     // docs
     assertEquals(-1, weight.count(reader.leaves().get(0)));
 

@@ -476,8 +476,9 @@ final class BooleanWeight extends Weight {
         continue;
       }
       int count = weightedClause.weight.count(context);
-      if(count == -1){
-        // If one clause has a number of matches that is unknown, let's be more aggressive to check whether remain clauses could match all docs.
+      if (count == -1) {
+        // If one clause has a number of matches that is unknown, let's be more aggressive to check
+        // whether remain clauses could match all docs.
         unknownCount = true;
         continue;
       }
@@ -496,7 +497,8 @@ final class BooleanWeight extends Weight {
         return -1;
       }
     }
-    // If at least one of clauses has a number of matches that is unknown and no clause matches all docs, then the number of matches of
+    // If at least one of clauses has a number of matches that is unknown and no clause matches all
+    // docs, then the number of matches of
     // the disjunction is unknown
     return unknownCount ? -1 : optCount;
   }
