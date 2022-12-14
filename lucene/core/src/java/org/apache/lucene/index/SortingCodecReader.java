@@ -477,6 +477,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
+      public TopDocs search(
+          String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
       public void close() throws IOException {
         delegate.close();
       }

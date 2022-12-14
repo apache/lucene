@@ -281,16 +281,35 @@ public class TestHnswGraph extends LuceneTestCase {
             vectors, vectorEncoding, similarityFunction, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // run some searches
-    NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            10,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            null,
-            Integer.MAX_VALUE);
+    final NeighborQueue nn;
+    switch (vectorEncoding) {
+      case FLOAT32:
+        nn =
+            HnswGraphSearcher.search(
+                getTargetVector(),
+                10,
+                vectors.copy(),
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                null,
+                Integer.MAX_VALUE);
+        break;
+      case BYTE:
+        nn =
+            HnswGraphSearcher.search(
+                getTargetByteVector(),
+                10,
+                vectors.copy(),
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                null,
+                Integer.MAX_VALUE);
+        break;
+      default:
+        throw new IllegalArgumentException("unexpected vector encoding: " + vectorEncoding);
+    }
 
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
@@ -323,16 +342,35 @@ public class TestHnswGraph extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
-    NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            10,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            acceptOrds,
-            Integer.MAX_VALUE);
+    final NeighborQueue nn;
+    switch (vectorEncoding) {
+      case FLOAT32:
+        nn =
+            HnswGraphSearcher.search(
+                getTargetVector(),
+                10,
+                vectors.copy(),
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+        break;
+      case BYTE:
+        nn =
+            HnswGraphSearcher.search(
+                getTargetByteVector(),
+                10,
+                vectors.copy(),
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+        break;
+      default:
+        throw new IllegalArgumentException("unexpected vector encoding: " + vectorEncoding);
+    }
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
@@ -362,16 +400,35 @@ public class TestHnswGraph extends LuceneTestCase {
 
     // Check the search finds all accepted vectors
     int numAccepted = acceptOrds.cardinality();
-    NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            numAccepted,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            acceptOrds,
-            Integer.MAX_VALUE);
+    final NeighborQueue nn;
+    switch (vectorEncoding) {
+      case FLOAT32:
+        nn =
+            HnswGraphSearcher.search(
+                getTargetVector(),
+                numAccepted,
+                vectors.copy(),
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+        break;
+      case BYTE:
+        nn =
+            HnswGraphSearcher.search(
+                getTargetByteVector(),
+                numAccepted,
+                vectors.copy(),
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+        break;
+      default:
+        throw new IllegalArgumentException("unexpected vector encoding: " + vectorEncoding);
+    }
     int[] nodes = nn.nodes();
     assertEquals(numAccepted, nodes.length);
     for (int node : nodes) {
@@ -381,6 +438,10 @@ public class TestHnswGraph extends LuceneTestCase {
 
   private float[] getTargetVector() {
     return new float[] {1, 0};
+  }
+
+  private BytesRef getTargetByteVector() {
+    return new BytesRef(new byte[] {1, 0});
   }
 
   public void testSearchWithSkewedAcceptOrds() throws IOException {
@@ -431,16 +492,36 @@ public class TestHnswGraph extends LuceneTestCase {
 
     int topK = 50;
     int visitedLimit = topK + random().nextInt(5);
-    NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            topK,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            createRandomAcceptOrds(0, vectors.size),
-            visitedLimit);
+    final NeighborQueue nn;
+    switch (vectorEncoding) {
+      case FLOAT32:
+        nn =
+            HnswGraphSearcher.search(
+                getTargetVector(),
+                topK,
+                vectors.copy(),
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                createRandomAcceptOrds(0, vectors.size),
+                visitedLimit);
+        break;
+      case BYTE:
+        nn =
+            HnswGraphSearcher.search(
+                getTargetByteVector(),
+                topK,
+                vectors.copy(),
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                createRandomAcceptOrds(0, vectors.size),
+                visitedLimit);
+        break;
+      default:
+        throw new IllegalArgumentException("unexpected vector encoding: " + vectorEncoding);
+    }
+
     assertTrue(nn.incomplete());
     // The visited count shouldn't exceed the limit
     assertTrue(nn.visitedCount() <= visitedLimit);
@@ -654,7 +735,6 @@ public class TestHnswGraph extends LuceneTestCase {
 
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
-      NeighborQueue actual;
       float[] query;
       BytesRef bQuery = null;
       if (vectorEncoding == VectorEncoding.BYTE) {
@@ -663,16 +743,35 @@ public class TestHnswGraph extends LuceneTestCase {
       } else {
         query = randomVector(random(), dim);
       }
-      actual =
-          HnswGraphSearcher.search(
-              query,
-              100,
-              vectors,
-              vectorEncoding,
-              similarityFunction,
-              hnsw,
-              acceptOrds,
-              Integer.MAX_VALUE);
+      final NeighborQueue actual;
+      switch (vectorEncoding) {
+        case BYTE:
+          actual =
+              HnswGraphSearcher.search(
+                  bQuery,
+                  100,
+                  vectors,
+                  vectorEncoding,
+                  similarityFunction,
+                  hnsw,
+                  acceptOrds,
+                  Integer.MAX_VALUE);
+          break;
+        case FLOAT32:
+          actual =
+              HnswGraphSearcher.search(
+                  query,
+                  100,
+                  vectors,
+                  vectorEncoding,
+                  similarityFunction,
+                  hnsw,
+                  acceptOrds,
+                  Integer.MAX_VALUE);
+          break;
+        default:
+          throw new IllegalArgumentException("unexpected vector encoding: " + vectorEncoding);
+      }
       while (actual.size() > topK) {
         actual.pop();
       }

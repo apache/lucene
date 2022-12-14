@@ -1403,6 +1403,12 @@ public class MemoryIndex {
     }
 
     @Override
+    public TopDocs searchNearestVectors(
+        String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+      return null;
+    }
+
+    @Override
     public void checkIntegrity() throws IOException {
       // no-op
     }

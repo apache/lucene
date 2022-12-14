@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.VectorUtil.toBytesRef;
 
 import java.io.IOException;
 import org.apache.lucene.index.VectorEncoding;
@@ -96,17 +95,6 @@ public class HnswGraphSearcher<T> {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    if (vectorEncoding == VectorEncoding.BYTE) {
-      return search(
-          toBytesRef(query),
-          topK,
-          vectors,
-          vectorEncoding,
-          similarityFunction,
-          graph,
-          acceptOrds,
-          visitedLimit);
-    }
     HnswGraphSearcher<float[]> graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
@@ -132,7 +120,21 @@ public class HnswGraphSearcher<T> {
     return results;
   }
 
-  private static NeighborQueue search(
+  /**
+   * Searches HNSW graph for the nearest neighbors of a query vector.
+   *
+   * @param query search query vector
+   * @param topK the number of nodes to be returned
+   * @param vectors the vector values
+   * @param similarityFunction the similarity function to compare vectors
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @return a priority queue holding the closest neighbors found
+   */
+  public static NeighborQueue search(
       BytesRef query,
       int topK,
       RandomAccessVectorValues vectors,
@@ -142,6 +144,13 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
+    if (query.length != vectors.dimension()) {
+      throw new IllegalArgumentException(
+          "vector query dimension: "
+              + query.length
+              + " differs from field dimension: "
+              + vectors.dimension());
+    }
     HnswGraphSearcher<BytesRef> graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
