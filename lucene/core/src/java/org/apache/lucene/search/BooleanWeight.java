@@ -470,14 +470,18 @@ final class BooleanWeight extends Weight {
   private int optCount(LeafReaderContext context, Occur occur) throws IOException {
     final int numDocs = context.reader().numDocs();
     int optCount = 0;
+    boolean unknownCount = false;
     for (WeightedBooleanClause weightedClause : weightedClauses) {
       if (weightedClause.clause.getOccur() != occur) {
         continue;
       }
       int count = weightedClause.weight.count(context);
-      if (count == -1 || count == numDocs) {
-        // If any of the clauses has a number of matches that is unknown, the number of matches of
-        // the disjunction is unknown.
+      if(count == -1){
+        // If one clause has a number of matches that is unknown, let's be more aggressive to check whether remain clauses could match all docs.
+        unknownCount = true;
+        continue;
+      }
+      if (count == numDocs) {
         // If either clause matches all docs, then the disjunction matches all docs.
         return count;
       } else if (count == 0) {
@@ -492,7 +496,9 @@ final class BooleanWeight extends Weight {
         return -1;
       }
     }
-    return optCount;
+    // If at least one of clauses has a number of matches that is unknown and no clause matches all docs, then the number of matches of
+    // the disjunction is unknown
+    return unknownCount ? -1 : optCount;
   }
 
   @Override
