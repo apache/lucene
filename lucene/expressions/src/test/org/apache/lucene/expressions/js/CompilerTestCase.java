@@ -43,8 +43,6 @@ public abstract class CompilerTestCase extends LuceneTestCase {
   /** compiles expression for sourceText with custom functions list and parent classloader */
   protected Expression compile(String sourceText, Map<String, Method> functions, ClassLoader parent)
       throws ParseException {
-    JavascriptCompilerSettings settings = new JavascriptCompilerSettings();
-    settings.setPicky(true);
-    return JavascriptCompiler.compile(sourceText, functions, parent, settings);
+    return JavascriptCompiler.compile(sourceText, functions, parent, true);
   }
 }

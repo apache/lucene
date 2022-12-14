@@ -125,7 +125,7 @@ public final class JavascriptCompiler {
 
   final String sourceText;
   final Map<String, Method> functions;
-  final JavascriptCompilerSettings settings;
+  final boolean picky;
 
   /**
    * Compiles the given expression using default compiler settings.
@@ -135,7 +135,7 @@ public final class JavascriptCompiler {
    * @throws ParseException on failure to compile
    */
   public static Expression compile(String sourceText) throws ParseException {
-    return compile(sourceText, JavascriptCompilerSettings.DEFAULT);
+    return compile(sourceText, false);
   }
 
   /**
@@ -154,7 +154,7 @@ public final class JavascriptCompiler {
    */
   public static Expression compile(
       String sourceText, Map<String, Method> functions, ClassLoader parent) throws ParseException {
-    return compile(sourceText, functions, parent, JavascriptCompilerSettings.DEFAULT);
+    return compile(sourceText, functions, parent, false);
   }
 
   /**
@@ -167,15 +167,13 @@ public final class JavascriptCompiler {
    * @param functions map of String names to functions
    * @param parent a {@code ClassLoader} that should be used as the parent of the loaded class. It
    *     must contain all classes referred to by the given {@code functions}.
-   * @param settings additional compiler settings
+   * @param picky whether to throw exception on ambiguity or other internal parsing issues (this
+   *     option makes things slower too, it is only for debugging).
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
   static Expression compile(
-      String sourceText,
-      Map<String, Method> functions,
-      ClassLoader parent,
-      JavascriptCompilerSettings settings)
+      String sourceText, Map<String, Method> functions, ClassLoader parent, boolean picky)
       throws ParseException {
     if (parent == null) {
       throw new NullPointerException("A parent ClassLoader must be given.");
@@ -184,20 +182,20 @@ public final class JavascriptCompiler {
       checkFunctionClassLoader(m, parent);
       checkFunction(m);
     }
-    return new JavascriptCompiler(sourceText, functions, settings).compileExpression(parent);
+    return new JavascriptCompiler(sourceText, functions, picky).compileExpression(parent);
   }
 
   /**
    * Compiles the given expression.
    *
    * @param sourceText The expression to compile
-   * @param settings additional compiler settings
+   * @param picky whether to throw exception on ambiguity or other internal parsing issues (this
+   *     option makes things slower too, it is only for debugging).
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
-  static Expression compile(String sourceText, JavascriptCompilerSettings settings)
-      throws ParseException {
-    return new JavascriptCompiler(sourceText, settings)
+  static Expression compile(String sourceText, boolean picky) throws ParseException {
+    return new JavascriptCompiler(sourceText, picky)
         .compileExpression(JavascriptCompiler.class.getClassLoader());
   }
 
@@ -217,8 +215,8 @@ public final class JavascriptCompiler {
    *
    * @param sourceText The expression to compile
    */
-  private JavascriptCompiler(String sourceText, JavascriptCompilerSettings settings) {
-    this(sourceText, DEFAULT_FUNCTIONS, settings);
+  private JavascriptCompiler(String sourceText, boolean picky) {
+    this(sourceText, DEFAULT_FUNCTIONS, picky);
   }
 
   /**
@@ -226,14 +224,13 @@ public final class JavascriptCompiler {
    *
    * @param sourceText The expression to compile
    */
-  private JavascriptCompiler(
-      String sourceText, Map<String, Method> functions, JavascriptCompilerSettings settings) {
+  private JavascriptCompiler(String sourceText, Map<String, Method> functions, boolean picky) {
     if (sourceText == null) {
       throw new NullPointerException();
     }
     this.sourceText = sourceText;
     this.functions = functions;
-    this.settings = settings;
+    this.picky = picky;
   }
 
   /**
@@ -283,7 +280,7 @@ public final class JavascriptCompiler {
     final JavascriptParser javascriptParser =
         new JavascriptParser(new CommonTokenStream(javascriptLexer));
     javascriptParser.removeErrorListeners();
-    if (settings.isPicky()) {
+    if (picky) {
       setupPicky(javascriptParser);
     }
     javascriptParser.setErrorHandler(new JavascriptParserErrorStrategy());
