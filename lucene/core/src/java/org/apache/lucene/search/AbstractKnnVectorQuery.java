@@ -145,7 +145,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   protected abstract TopDocs approximateSearch(
       LeafReaderContext context, Bits acceptDocs, int visitedLimit) throws IOException;
 
-  abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
+  abstract VectorScorer<?> createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
 
   // We allow this to be overridden so that tests can check what search strategy is used
@@ -157,7 +157,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    VectorScorer vectorScorer = createVectorScorer(context, fi);
+    VectorScorer<?> vectorScorer = createVectorScorer(context, fi);
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     int doc;

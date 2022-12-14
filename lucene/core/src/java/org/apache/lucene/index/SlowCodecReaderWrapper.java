@@ -169,6 +169,11 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
+      public ByteVectorValues getByteVectorValues(String field) throws IOException {
+        return reader.getByteVectorValues(field);
+      }
+
+      @Override
       public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
           throws IOException {
         return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);

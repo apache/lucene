@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.index.AbstractVectorValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -28,8 +30,8 @@ import org.apache.lucene.util.BytesRef;
  * is primarily used by {@link org.apache.lucene.search.KnnVectorQuery} to run an exact, exhaustive
  * search over the vectors.
  */
-abstract class VectorScorer {
-  protected final VectorValues values;
+abstract class VectorScorer<T> {
+  protected final AbstractVectorValues<T> values;
   protected final VectorSimilarityFunction similarity;
 
   /**
@@ -48,12 +50,12 @@ abstract class VectorScorer {
 
   static ByteVectorScorer create(LeafReaderContext context, FieldInfo fi, BytesRef query)
       throws IOException {
-    VectorValues values = context.reader().getVectorValues(fi.name);
+    ByteVectorValues values = context.reader().getByteVectorValues(fi.name);
     VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
     return new ByteVectorScorer(values, query, similarity);
   }
 
-  VectorScorer(VectorValues values, VectorSimilarityFunction similarity) {
+  VectorScorer(AbstractVectorValues<T> values, VectorSimilarityFunction similarity) {
     this.values = values;
     this.similarity = similarity;
   }
@@ -73,22 +75,22 @@ abstract class VectorScorer {
   /** Compute the similarity score for the current document. */
   abstract float score() throws IOException;
 
-  private static class ByteVectorScorer extends VectorScorer {
+  private static class ByteVectorScorer extends VectorScorer<BytesRef> {
     private final BytesRef query;
 
     protected ByteVectorScorer(
-        VectorValues values, BytesRef query, VectorSimilarityFunction similarity) {
+        ByteVectorValues values, BytesRef query, VectorSimilarityFunction similarity) {
       super(values, similarity);
       this.query = query;
     }
 
     @Override
     public float score() throws IOException {
-      return similarity.compare(query, values.binaryValue());
+      return similarity.compare(query, values.vectorValue());
     }
   }
 
-  private static class FloatVectorScorer extends VectorScorer {
+  private static class FloatVectorScorer extends VectorScorer<float[]> {
     private final float[] query;
 
     protected FloatVectorScorer(

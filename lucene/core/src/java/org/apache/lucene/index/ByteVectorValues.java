@@ -17,22 +17,22 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
- * KnnVectorField}.
+ * KnnByteVectorField}.
  *
  * @lucene.experimental
  */
-public abstract class VectorValues extends AbstractVectorValues<float[]> {
+public abstract class ByteVectorValues extends AbstractVectorValues<BytesRef> {
 
   /** The maximum length of a vector */
   public static final int MAX_DIMENSIONS = 1024;
 
   /** Sole constructor */
-  protected VectorValues() {}
+  protected ByteVectorValues() {}
 
   /**
    * Return the binary encoded vector value for the current document ID. These are the bytes
@@ -43,7 +43,7 @@ public abstract class VectorValues extends AbstractVectorValues<float[]> {
    * @return the binary value
    */
   @Override
-  public BytesRef binaryValue() throws IOException {
-    throw new UnsupportedOperationException();
+  public final BytesRef binaryValue() throws IOException {
+    return vectorValue();
   }
 }

@@ -22,6 +22,7 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -45,7 +46,7 @@ public class TestVectorScorer extends LuceneTestCase {
       assert reader.leaves().size() == 1;
       LeafReaderContext context = reader.leaves().get(0);
       FieldInfo fieldInfo = context.reader().getFieldInfos().fieldInfo("field");
-      final VectorScorer vectorScorer;
+      final VectorScorer<?> vectorScorer;
       switch (encoding) {
         case BYTE:
           vectorScorer = VectorScorer.create(context, fieldInfo, new BytesRef(new byte[] {1, 2}));
@@ -79,7 +80,7 @@ public class TestVectorScorer extends LuceneTestCase {
         for (int j = 0; j < v.length; j++) {
           v.bytes[j] = (byte) contents[i][j];
         }
-        doc.add(new KnnVectorField(field, v, EUCLIDEAN));
+        doc.add(new KnnByteVectorField(field, v, EUCLIDEAN));
       } else {
         doc.add(new KnnVectorField(field, contents[i]));
       }
