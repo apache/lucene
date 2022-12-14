@@ -90,6 +90,12 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
                 String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
               throw new UnsupportedOperationException();
             }
+
+            @Override
+            public TopDocs search(
+                String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+              throw new UnsupportedOperationException();
+            }
           };
 
       writeField(fieldData.fieldInfo, knnVectorsReader, maxDoc);
@@ -182,6 +188,12 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
           @Override
           public TopDocs search(
               String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public TopDocs search(
+              String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
             throw new UnsupportedOperationException();
           }
 

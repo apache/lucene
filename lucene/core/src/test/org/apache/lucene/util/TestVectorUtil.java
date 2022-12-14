@@ -172,6 +172,17 @@ public class TestVectorUtil extends LuceneTestCase {
     return v;
   }
 
+  public static BytesRef randomVectorBytes(int dim) {
+    BytesRef v = TestUtil.randomBinaryTerm(random(), dim);
+    // clip at -127 to avoid overflow
+    for (int i = v.offset; i < v.offset + v.length; i++) {
+      if (v.bytes[i] == -128) {
+        v.bytes[i] = -127;
+      }
+    }
+    return v;
+  }
+
   public void testBasicDotProductBytes() {
     BytesRef a = new BytesRef(new byte[] {1, 2, 3});
     BytesRef b = new BytesRef(new byte[] {-10, 0, 5});

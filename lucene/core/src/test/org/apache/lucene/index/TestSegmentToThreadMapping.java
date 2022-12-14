@@ -33,6 +33,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.Version;
@@ -119,6 +120,12 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       @Override
       public TopDocs searchNearestVectors(
           String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+        return null;
+      }
+
+      @Override
+      public TopDocs searchNearestVectors(
+          String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
         return null;
       }
 

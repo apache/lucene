@@ -40,6 +40,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -54,13 +55,11 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  */
 public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
 
-  private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
 
   Lucene92HnswVectorsReader(SegmentReadState state) throws IOException {
-    this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -260,18 +259,10 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
-  /** Get knn graph values; used for testing */
-  public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
-    }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.vectorIndexLength > 0) {
-      return getGraph(entry);
-    } else {
-      return HnswGraph.EMPTY;
-    }
+  @Override
+  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {

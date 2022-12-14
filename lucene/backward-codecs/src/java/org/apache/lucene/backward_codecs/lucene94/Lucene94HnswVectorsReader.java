@@ -41,6 +41,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -55,13 +56,11 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  */
 public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
-  private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
 
   Lucene94HnswVectorsReader(SegmentReadState state) throws IOException {
-    this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -255,7 +254,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
-    if (fieldEntry.size() == 0) {
+    if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
 
@@ -290,18 +289,44 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
-  /** Get knn graph values; used for testing */
-  public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
+  @Override
+  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    FieldEntry fieldEntry = fields.get(field);
+
+    if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.vectorIndexLength > 0) {
-      return getGraph(entry);
-    } else {
-      return HnswGraph.EMPTY;
+
+    // bound k by total number of vectors to prevent oversizing data structures
+    k = Math.min(k, fieldEntry.size());
+    OffHeapVectorValues vectorValues = OffHeapVectorValues.load(fieldEntry, vectorData);
+
+    NeighborQueue results =
+        HnswGraphSearcher.search(
+            target,
+            k,
+            vectorValues,
+            fieldEntry.vectorEncoding,
+            fieldEntry.similarityFunction,
+            getGraph(fieldEntry),
+            vectorValues.getAcceptOrds(acceptDocs),
+            visitedLimit);
+
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
+    while (results.size() > 0) {
+      int node = results.topNode();
+      float score = results.topScore();
+      results.pop();
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
     }
+
+    TotalHits.Relation relation =
+        results.incomplete()
+            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+            : TotalHits.Relation.EQUAL_TO;
+    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
