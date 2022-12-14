@@ -21,6 +21,9 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSelector;
+import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 
@@ -40,18 +43,13 @@ import org.apache.lucene.util.NumericUtils;
  * @see PointValues
  */
 public final class DoubleField extends Field {
-  private static final FieldType SINGLE_VALUE_TYPE = new FieldType();
 
-  private static final FieldType MULTI_VALUED_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE = new FieldType();
 
   static {
-    SINGLE_VALUE_TYPE.setDimensions(1, Double.BYTES);
-    SINGLE_VALUE_TYPE.setDocValuesType(DocValuesType.NUMERIC);
-    SINGLE_VALUE_TYPE.freeze();
-
-    MULTI_VALUED_TYPE.setDimensions(1, Double.BYTES);
-    MULTI_VALUED_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    MULTI_VALUED_TYPE.freeze();
+    FIELD_TYPE.setDimensions(1, Double.BYTES);
+    FIELD_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    FIELD_TYPE.freeze();
   }
 
   /**
@@ -62,20 +60,8 @@ public final class DoubleField extends Field {
    * @throws IllegalArgumentException if the field name or value is null.
    */
   public DoubleField(String name, double value) {
-    this(name, value, true);
-  }
-
-  /**
-   * Creates a new DoubleField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the double value
-   * @param multiValued configure the field to support multiple DocValues
-   * @throws IllegalArgumentException if the field name or value is null.
-   */
-  public DoubleField(String name, double value, boolean multiValued) {
-    super(name, multiValued ? MULTI_VALUED_TYPE : SINGLE_VALUE_TYPE);
-    fieldsData = Double.doubleToRawLongBits(value);
+    super(name, FIELD_TYPE);
+    fieldsData = NumericUtils.doubleToSortableLong(value);
   }
 
   @Override
@@ -87,7 +73,7 @@ public final class DoubleField extends Field {
   }
 
   private double getValueAsDouble() {
-    return Double.longBitsToDouble(numericValue().longValue());
+    return NumericUtils.sortableLongToDouble(numericValue().longValue());
   }
 
   @Override
@@ -97,7 +83,7 @@ public final class DoubleField extends Field {
 
   @Override
   public void setDoubleValue(double value) {
-    super.setLongValue(Double.doubleToRawLongBits(value));
+    super.setLongValue(NumericUtils.doubleToSortableLong(value));
   }
 
   @Override
@@ -139,5 +125,17 @@ public final class DoubleField extends Field {
             field,
             NumericUtils.doubleToSortableLong(lowerValue),
             NumericUtils.doubleToSortableLong(upperValue)));
+  }
+
+  /**
+   * Create a new {@link SortField} for double values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param reverse true if natural order should be reversed.
+   * @param selector custom selector type for choosing the sort value from the set.
+   */
+  public static SortField newSortField(
+      String field, boolean reverse, SortedNumericSelector.Type selector) {
+    return new SortedNumericSortField(field, SortField.Type.DOUBLE, reverse, selector);
   }
 }

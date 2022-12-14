@@ -256,25 +256,33 @@ public class TestField extends LuceneTestCase {
   public void testFloatField() throws Exception {
     FloatField field = new FloatField("foo", 12.6f);
 
+    assertEquals(12.6f, NumericUtils.sortableIntToFloat(field.numericValue().intValue()), 0.0f);
+    assertEquals(12.6f, FloatPoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+    assertEquals("FloatField <foo:12.6>", field.toString());
+
     trySetByteValue(field);
     trySetBytesValue(field);
     trySetBytesRefValue(field);
     trySetDoubleValue(field);
     trySetIntValue(field);
     trySetLongValue(field);
-    field.setFloatValue(28.8f);
+    field.setFloatValue(-28.8f);
     trySetReaderValue(field);
     trySetShortValue(field);
     trySetStringValue(field);
     trySetTokenStreamValue(field);
 
-    assertEquals(28.8f, Float.intBitsToFloat(field.numericValue().intValue()), 0.0f);
-    assertEquals(28.8f, FloatPoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
-    assertEquals("FloatField <foo:28.8>", field.toString());
+    assertEquals(-28.8f, NumericUtils.sortableIntToFloat(field.numericValue().intValue()), 0.0f);
+    assertEquals(-28.8f, FloatPoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+    assertEquals("FloatField <foo:-28.8>", field.toString());
   }
 
   public void testDoubleField() throws Exception {
     DoubleField field = new DoubleField("foo", 12.7);
+
+    assertEquals(12.7, NumericUtils.sortableLongToDouble(field.numericValue().longValue()), 0.0f);
+    assertEquals(12.7, DoublePoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+    assertEquals("DoubleField <foo:12.7>", field.toString());
 
     trySetByteValue(field);
     trySetBytesValue(field);
@@ -282,15 +290,15 @@ public class TestField extends LuceneTestCase {
     trySetIntValue(field);
     trySetLongValue(field);
     trySetFloatValue(field);
-    field.setDoubleValue(28.8);
+    field.setDoubleValue(-28.8);
     trySetReaderValue(field);
     trySetShortValue(field);
     trySetStringValue(field);
     trySetTokenStreamValue(field);
 
-    assertEquals(28.8, Double.longBitsToDouble(field.numericValue().longValue()), 0.0f);
-    assertEquals(28.8, DoublePoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
-    assertEquals("DoubleField <foo:28.8>", field.toString());
+    assertEquals(-28.8, NumericUtils.sortableLongToDouble(field.numericValue().longValue()), 0.0f);
+    assertEquals(-28.8, DoublePoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+    assertEquals("DoubleField <foo:-28.8>", field.toString());
   }
 
   public void testNumericDocValuesField() throws Exception {

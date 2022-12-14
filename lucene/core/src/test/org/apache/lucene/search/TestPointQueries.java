@@ -39,14 +39,10 @@ import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FloatField;
 import org.apache.lucene.document.FloatPoint;
-import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -350,232 +346,6 @@ public class TestPointQueries extends LuceneTestCase {
     assertEquals(
         2, s.count(FloatPoint.newRangeQuery("point", Float.MAX_VALUE, Float.POSITIVE_INFINITY)));
     assertEquals(2, s.count(FloatPoint.newRangeQuery("point", Float.POSITIVE_INFINITY, Float.NaN)));
-
-    w.close();
-    r.close();
-    dir.close();
-  }
-
-  public void testBasicIntFields() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
-
-    Document doc = new Document();
-    doc.add(new IntField("point", -7));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new IntField("point", 0));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new IntField("point", 3));
-    w.addDocument(doc);
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher s = new IndexSearcher(r);
-    assertEquals(2, s.count(IntField.newRangeQuery("point", -8, 1)));
-    assertEquals(3, s.count(IntField.newRangeQuery("point", -7, 3)));
-    assertEquals(1, s.count(IntField.newExactQuery("point", -7)));
-    assertEquals(0, s.count(IntField.newExactQuery("point", -6)));
-    w.close();
-    r.close();
-    dir.close();
-  }
-
-  public void testBasicLongFields() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
-
-    Document doc = new Document();
-    doc.add(new LongField("long_field", -7));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new LongField("long_field", 0));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new LongField("long_field", 3));
-    w.addDocument(doc);
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher s = new IndexSearcher(r);
-    assertEquals(2, s.count(LongField.newRangeQuery("long_field", -8, 1)));
-    assertEquals(3, s.count(LongField.newRangeQuery("long_field", -7, 3)));
-    assertEquals(1, s.count(LongField.newExactQuery("long_field", -7)));
-    assertEquals(0, s.count(LongField.newExactQuery("long_field", -6)));
-    w.close();
-    r.close();
-    dir.close();
-  }
-
-  public void testBasicFloatFields() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
-
-    Document doc = new Document();
-    doc.add(new FloatField("point", -7.0f));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("point", 0.0f));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("point", 3.0f));
-    w.addDocument(doc);
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher s = new IndexSearcher(r);
-    assertEquals(2, s.count(FloatField.newRangeQuery("point", -8.0f, 1.0f)));
-    assertEquals(3, s.count(FloatField.newRangeQuery("point", -7.0f, 3.0f)));
-    assertEquals(1, s.count(FloatField.newExactQuery("point", -7.0f)));
-    assertEquals(0, s.count(FloatField.newExactQuery("point", -6.0f)));
-    w.close();
-    r.close();
-    dir.close();
-  }
-
-  public void testCrazyFloatFields() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
-
-    Document doc = new Document();
-    doc.add(new FloatField("point", Float.NEGATIVE_INFINITY));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("point", -0.0F));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("point", +0.0F));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("point", Float.MIN_VALUE));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("point", Float.MAX_VALUE));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("point", Float.POSITIVE_INFINITY));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("point", Float.NaN));
-    w.addDocument(doc);
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher s = new IndexSearcher(r);
-
-    // exact queries
-    assertEquals(1, s.count(FloatField.newExactQuery("point", Float.NEGATIVE_INFINITY)));
-    assertEquals(1, s.count(FloatField.newExactQuery("point", -0.0F)));
-    assertEquals(1, s.count(FloatField.newExactQuery("point", +0.0F)));
-    assertEquals(1, s.count(FloatField.newExactQuery("point", Float.MIN_VALUE)));
-    assertEquals(1, s.count(FloatField.newExactQuery("point", Float.MAX_VALUE)));
-    assertEquals(1, s.count(FloatField.newExactQuery("point", Float.POSITIVE_INFINITY)));
-    assertEquals(1, s.count(FloatField.newExactQuery("point", Float.NaN)));
-
-    // ranges
-    assertEquals(2, s.count(FloatField.newRangeQuery("point", Float.NEGATIVE_INFINITY, -0.0F)));
-    assertEquals(2, s.count(FloatField.newRangeQuery("point", -0.0F, 0.0F)));
-    assertEquals(2, s.count(FloatField.newRangeQuery("point", 0.0F, Float.MIN_VALUE)));
-    assertEquals(2, s.count(FloatField.newRangeQuery("point", Float.MIN_VALUE, Float.MAX_VALUE)));
-    assertEquals(
-        2, s.count(FloatField.newRangeQuery("point", Float.MAX_VALUE, Float.POSITIVE_INFINITY)));
-    assertEquals(2, s.count(FloatField.newRangeQuery("point", Float.POSITIVE_INFINITY, Float.NaN)));
-
-    w.close();
-    r.close();
-    dir.close();
-  }
-
-  public void testBasicDoubleFields() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
-
-    Document doc = new Document();
-    doc.add(new DoubleField("point", -7.0));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("point", 0.0));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("point", 3.0));
-    w.addDocument(doc);
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher s = new IndexSearcher(r);
-    assertEquals(2, s.count(DoubleField.newRangeQuery("point", -8.0f, 1.0f)));
-    assertEquals(3, s.count(DoubleField.newRangeQuery("point", -7.0f, 3.0f)));
-    assertEquals(1, s.count(DoubleField.newExactQuery("point", -7.0f)));
-    assertEquals(0, s.count(DoubleField.newExactQuery("point", -6.0f)));
-    w.close();
-    r.close();
-    dir.close();
-  }
-
-  public void testCrazyDoubleFields() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
-
-    Document doc = new Document();
-    doc.add(new DoubleField("point", Double.NEGATIVE_INFINITY));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("point", -0.0D));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("point", +0.0D));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("point", Double.MIN_VALUE));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("point", Double.MAX_VALUE));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("point", Double.POSITIVE_INFINITY));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("point", Double.NaN));
-    w.addDocument(doc);
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher s = new IndexSearcher(r);
-
-    // exact queries
-    assertEquals(1, s.count(DoubleField.newExactQuery("point", Double.NEGATIVE_INFINITY)));
-    assertEquals(1, s.count(DoubleField.newExactQuery("point", -0.0D)));
-    assertEquals(1, s.count(DoubleField.newExactQuery("point", +0.0D)));
-    assertEquals(1, s.count(DoubleField.newExactQuery("point", Double.MIN_VALUE)));
-    assertEquals(1, s.count(DoubleField.newExactQuery("point", Double.MAX_VALUE)));
-    assertEquals(1, s.count(DoubleField.newExactQuery("point", Double.POSITIVE_INFINITY)));
-    assertEquals(1, s.count(DoubleField.newExactQuery("point", Double.NaN)));
-
-    // ranges
-    assertEquals(2, s.count(DoubleField.newRangeQuery("point", Double.NEGATIVE_INFINITY, -0.0D)));
-    assertEquals(2, s.count(DoubleField.newRangeQuery("point", -0.0D, 0.0D)));
-    assertEquals(2, s.count(DoubleField.newRangeQuery("point", 0.0D, Double.MIN_VALUE)));
-    assertEquals(
-        2, s.count(DoubleField.newRangeQuery("point", Double.MIN_VALUE, Double.MAX_VALUE)));
-    assertEquals(
-        2, s.count(DoubleField.newRangeQuery("point", Double.MAX_VALUE, Double.POSITIVE_INFINITY)));
-    assertEquals(
-        2, s.count(DoubleField.newRangeQuery("point", Double.POSITIVE_INFINITY, Double.NaN)));
 
     w.close();
     r.close();
@@ -1508,22 +1278,6 @@ public class TestPointQueries extends LuceneTestCase {
     doc.add(new DoublePoint("double", 1.0));
     w.addDocument(doc);
 
-    doc = new Document();
-    doc.add(new IntField("int_field", 1));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new LongField("long_field", 48L));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new FloatField("float_field", 2.0f));
-    w.addDocument(doc);
-
-    doc = new Document();
-    doc.add(new DoubleField("double_field", 4.0));
-    w.addDocument(doc);
-
     IndexReader r = DirectoryReader.open(w);
     IndexSearcher s = newSearcher(r, false);
     assertEquals(1, s.count(IntPoint.newExactQuery("int", 42)));
@@ -1537,19 +1291,6 @@ public class TestPointQueries extends LuceneTestCase {
 
     assertEquals(1, s.count(DoublePoint.newExactQuery("double", 1.0)));
     assertEquals(0, s.count(DoublePoint.newExactQuery("double", 2.0)));
-
-    assertEquals(1, s.count(IntField.newExactQuery("int_field", 1)));
-    assertEquals(0, s.count(IntField.newExactQuery("int_field", 2)));
-
-    assertEquals(1, s.count(LongField.newExactQuery("long_field", 48L)));
-    assertEquals(0, s.count(LongField.newExactQuery("long_field", 50L)));
-
-    assertEquals(1, s.count(FloatField.newExactQuery("float_field", 2.0f)));
-    assertEquals(0, s.count(FloatField.newExactQuery("float_field", 1.0f)));
-
-    assertEquals(1, s.count(DoubleField.newExactQuery("double_field", 4.0)));
-    assertEquals(0, s.count(DoubleField.newExactQuery("double_field", 2.0)));
-
     w.close();
     r.close();
     dir.close();
@@ -1580,24 +1321,6 @@ public class TestPointQueries extends LuceneTestCase {
         "field:[1.3 TO 2.5],[-2.9 TO 1.0]",
         DoublePoint.newRangeQuery("field", new double[] {1.3, -2.9}, new double[] {2.5, 1.0})
             .toString());
-
-    // int fields
-    assertEquals("field:[1 TO 2]", IntField.newRangeQuery("field", 1, 2).toString());
-    assertEquals("field:[-2 TO 1]", IntField.newRangeQuery("field", -2, 1).toString());
-
-    // long fields
-    assertEquals(
-        "field:[1099511627776 TO 2199023255552]",
-        LongField.newRangeQuery("field", 1L << 40, 1L << 41).toString());
-    assertEquals("field:[-5 TO 6]", LongField.newRangeQuery("field", -5L, 6L).toString());
-
-    // float fields
-    assertEquals("field:[1.3 TO 2.5]", FloatField.newRangeQuery("field", 1.3F, 2.5F).toString());
-    assertEquals("field:[-2.9 TO 1.0]", FloatField.newRangeQuery("field", -2.9F, 1.0F).toString());
-
-    // double fields
-    assertEquals("field:[1.3 TO 2.5]", DoubleField.newRangeQuery("field", 1.3, 2.5).toString());
-    assertEquals("field:[-2.9 TO 1.0]", DoubleField.newRangeQuery("field", -2.9, 1.0).toString());
   }
 
   private int[] toArray(Set<Integer> valuesSet) {

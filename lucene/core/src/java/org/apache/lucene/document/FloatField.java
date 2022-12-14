@@ -21,6 +21,9 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSelector;
+import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 
@@ -40,18 +43,13 @@ import org.apache.lucene.util.NumericUtils;
  * @see PointValues
  */
 public final class FloatField extends Field {
-  private static final FieldType SINGLE_VALUE_TYPE = new FieldType();
 
-  private static final FieldType MULTI_VALUED_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE = new FieldType();
 
   static {
-    SINGLE_VALUE_TYPE.setDimensions(1, Float.BYTES);
-    SINGLE_VALUE_TYPE.setDocValuesType(DocValuesType.NUMERIC);
-    SINGLE_VALUE_TYPE.freeze();
-
-    MULTI_VALUED_TYPE.setDimensions(1, Float.BYTES);
-    MULTI_VALUED_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    MULTI_VALUED_TYPE.freeze();
+    FIELD_TYPE.setDimensions(1, Float.BYTES);
+    FIELD_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    FIELD_TYPE.freeze();
   }
 
   /**
@@ -62,20 +60,8 @@ public final class FloatField extends Field {
    * @throws IllegalArgumentException if the field name or value is null.
    */
   public FloatField(String name, float value) {
-    this(name, value, true);
-  }
-
-  /**
-   * Creates a new FloatField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the float value
-   * @param multiValued configure the field to support multiple DocValues
-   * @throws IllegalArgumentException if the field name or value is null.
-   */
-  public FloatField(String name, float value, boolean multiValued) {
-    super(name, multiValued ? MULTI_VALUED_TYPE : SINGLE_VALUE_TYPE);
-    fieldsData = (long) Float.floatToRawIntBits(value);
+    super(name, FIELD_TYPE);
+    fieldsData = (long) NumericUtils.floatToSortableInt(value);
   }
 
   @Override
@@ -87,7 +73,7 @@ public final class FloatField extends Field {
   }
 
   private float getValueAsFloat() {
-    return Float.intBitsToFloat(numericValue().intValue());
+    return NumericUtils.sortableIntToFloat(numericValue().intValue());
   }
 
   @Override
@@ -97,7 +83,7 @@ public final class FloatField extends Field {
 
   @Override
   public void setFloatValue(float value) {
-    super.setLongValue(Float.floatToRawIntBits(value));
+    super.setLongValue(NumericUtils.floatToSortableInt(value));
   }
 
   @Override
@@ -139,5 +125,17 @@ public final class FloatField extends Field {
             field,
             NumericUtils.floatToSortableInt(lowerValue),
             NumericUtils.floatToSortableInt(upperValue)));
+  }
+
+  /**
+   * Create a new {@link SortField} for float values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param reverse true if natural order should be reversed.
+   * @param selector custom selector type for choosing the sort value from the set.
+   */
+  public static SortField newSortField(
+      String field, boolean reverse, SortedNumericSelector.Type selector) {
+    return new SortedNumericSortField(field, SortField.Type.FLOAT, reverse, selector);
   }
 }

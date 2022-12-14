@@ -17,15 +17,16 @@
 package org.apache.lucene.search;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.FloatField;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.NumericUtils;
 
 /** Simple tests for SortedNumericSortField */
 public class TestSortedNumericSortField extends LuceneTestCase {
@@ -79,12 +80,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
-    doc.add(new SortedNumericDocValuesField("value", 7));
+    doc.add(new IntField("value", 3));
+    doc.add(new IntField("value", 7));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
@@ -107,12 +108,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
-    doc.add(new SortedNumericDocValuesField("value", 7));
+    doc.add(new IntField("value", 3));
+    doc.add(new IntField("value", 7));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
 
@@ -136,12 +137,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
-    doc.add(new SortedNumericDocValuesField("value", 7));
+    doc.add(new IntField("value", 3));
+    doc.add(new IntField("value", 7));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
@@ -171,12 +172,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
-    doc.add(new SortedNumericDocValuesField("value", 7));
+    doc.add(new IntField("value", 3));
+    doc.add(new IntField("value", 7));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
@@ -206,11 +207,11 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
+    doc.add(new IntField("value", 3));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
@@ -233,12 +234,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.floatToSortableInt(-3f)));
+    doc.add(new FloatField("value", -3f));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.floatToSortableInt(-5f)));
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.floatToSortableInt(7f)));
+    doc.add(new FloatField("value", -5f));
+    doc.add(new FloatField("value", 7f));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
@@ -261,12 +262,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.doubleToSortableLong(-3d)));
+    doc.add(new DoubleField("value", -3d));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.doubleToSortableLong(-5d)));
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.doubleToSortableLong(7d)));
+    doc.add(new DoubleField("value", -5d));
+    doc.add(new DoubleField("value", 7d));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();

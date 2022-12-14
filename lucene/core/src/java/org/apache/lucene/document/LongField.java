@@ -18,9 +18,15 @@ package org.apache.lucene.document;
 
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSelector;
+import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 
@@ -40,18 +46,13 @@ import org.apache.lucene.util.NumericUtils;
  * @see PointValues
  */
 public final class LongField extends Field {
-  private static final FieldType SINGLE_VALUE_TYPE = new FieldType();
 
-  private static final FieldType MULTI_VALUED_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE = new FieldType();
 
   static {
-    SINGLE_VALUE_TYPE.setDimensions(1, Long.BYTES);
-    SINGLE_VALUE_TYPE.setDocValuesType(DocValuesType.NUMERIC);
-    SINGLE_VALUE_TYPE.freeze();
-
-    MULTI_VALUED_TYPE.setDimensions(1, Long.BYTES);
-    MULTI_VALUED_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    MULTI_VALUED_TYPE.freeze();
+    FIELD_TYPE.setDimensions(1, Long.BYTES);
+    FIELD_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    FIELD_TYPE.freeze();
   }
 
   /**
@@ -62,19 +63,7 @@ public final class LongField extends Field {
    * @throws IllegalArgumentException if the field name or value is null.
    */
   public LongField(String name, long value) {
-    this(name, value, true);
-  }
-
-  /**
-   * Creates a new LongField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the long value
-   * @param multiValued configure the field to support multiple DocValues
-   * @throws IllegalArgumentException if the field name or value is null.
-   */
-  public LongField(String name, long value, boolean multiValued) {
-    super(name, multiValued ? MULTI_VALUED_TYPE : SINGLE_VALUE_TYPE);
+    super(name, FIELD_TYPE);
     fieldsData = value;
   }
 
@@ -122,5 +111,35 @@ public final class LongField extends Field {
     return new IndexOrDocValuesQuery(
         LongPoint.newRangeQuery(field, lowerValue, upperValue),
         SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+  }
+
+  /**
+   * Create a new {@link SortField} for long values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param reverse true if natural order should be reversed.
+   * @param selector custom selector type for choosing the sort value from the set.
+   */
+  public static SortField newSortField(
+      String field, boolean reverse, SortedNumericSelector.Type selector) {
+    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector);
+  }
+
+  /**
+   * Returns a query that scores documents based on their distance to {@code origin}: {@code score =
+   * weight * pivotDistance / (pivotDistance + distance)}, ie. score is in the {@code [0, weight]}
+   * range, is equal to {@code weight} when the document's value is equal to {@code origin} and is
+   * equal to {@code weight/2} when the document's value is distant of {@code pivotDistance} from
+   * {@code origin}. In case of multi-valued fields, only the closest point to {@code origin} will
+   * be considered. This query is typically useful to boost results based on recency by adding this
+   * query to a {@link Occur#SHOULD} clause of a {@link BooleanQuery}.
+   */
+  public static Query newDistanceFeatureQuery(
+      String field, float weight, long origin, long pivotDistance) {
+    Query query = new LongDistanceFeatureQuery(field, origin, pivotDistance);
+    if (weight != 1f) {
+      query = new BoostQuery(query, weight);
+    }
+    return query;
   }
 }
