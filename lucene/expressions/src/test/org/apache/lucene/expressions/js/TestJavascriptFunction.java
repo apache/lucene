@@ -16,29 +16,13 @@
  */
 package org.apache.lucene.expressions.js;
 
-import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
-import java.util.Arrays;
 import org.apache.lucene.expressions.Expression;
-import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestJavascriptFunction extends LuceneTestCase {
+public class TestJavascriptFunction extends CompilerTestCase {
   private static double DELTA = 0.0000001;
-  private final JavascriptCompilerSettings compilerSettings;
-
-  @ParametersFactory(argumentFormatting = "settings=%1$s")
-  public static Iterable<Object[]> compilerSettings() {
-    final JavascriptCompilerSettings picky = new JavascriptCompilerSettings();
-    picky.setPicky(true);
-
-    return Arrays.asList(new Object[] {JavascriptCompilerSettings.DEFAULT}, new Object[] {picky});
-  }
-
-  public TestJavascriptFunction(JavascriptCompilerSettings compilerSettings) {
-    this.compilerSettings = compilerSettings;
-  }
 
   private void assertEvaluatesTo(String expression, double expected) throws Exception {
-    Expression evaluator = JavascriptCompiler.compile(expression, compilerSettings);
+    Expression evaluator = compile(expression);
     double actual = evaluator.evaluate(null);
     assertEquals(expected, actual, DELTA);
   }

@@ -16,32 +16,15 @@
  */
 package org.apache.lucene.expressions.js;
 
-import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.text.ParseException;
-import java.util.Arrays;
 import org.apache.lucene.expressions.Expression;
-import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestJavascriptCompiler extends LuceneTestCase {
-  @ParametersFactory(argumentFormatting = "settings=%1$s")
-  public static Iterable<Object[]> compilerSettings() {
-    final JavascriptCompilerSettings picky = new JavascriptCompilerSettings();
-    picky.setPicky(true);
-
-    return Arrays.asList(new Object[] {JavascriptCompilerSettings.DEFAULT}, new Object[] {picky});
-  }
-
-  private final JavascriptCompilerSettings compilerSettings;
-
-  public TestJavascriptCompiler(JavascriptCompilerSettings compilerSettings) {
-    this.compilerSettings = compilerSettings;
-  }
-
+public class TestJavascriptCompiler extends CompilerTestCase {
   public void testValidCompiles() throws Exception {
-    assertNotNull(JavascriptCompiler.compile("100", compilerSettings));
-    assertNotNull(JavascriptCompiler.compile("valid0+100", compilerSettings));
-    assertNotNull(JavascriptCompiler.compile("valid0+\n100", compilerSettings));
-    assertNotNull(JavascriptCompiler.compile("logn(2, 20+10-5.0)", compilerSettings));
+    assertNotNull(compile("100"));
+    assertNotNull(compile("valid0+100"));
+    assertNotNull(compile("valid0+\n100"));
+    assertNotNull(compile("logn(2, 20+10-5.0)"));
   }
 
   public void testValidVariables() throws Exception {
@@ -81,7 +64,7 @@ public class TestJavascriptCompiler extends LuceneTestCase {
   }
 
   void doTestValidVariable(String variable, String output) throws Exception {
-    Expression e = JavascriptCompiler.compile(variable, compilerSettings);
+    Expression e = compile(variable);
     assertNotNull(e);
     assertEquals(1, e.variables.length);
     assertEquals(output, e.variables[0]);
@@ -108,7 +91,7 @@ public class TestJavascriptCompiler extends LuceneTestCase {
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile(variable, compilerSettings);
+          compile(variable);
         });
   }
 
@@ -117,7 +100,7 @@ public class TestJavascriptCompiler extends LuceneTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              JavascriptCompiler.compile("\n .", compilerSettings);
+              compile("\n .");
             });
     assertTrue(expected.getMessage().contains("unexpected character '.' on line (2) position (1)"));
   }
@@ -126,31 +109,31 @@ public class TestJavascriptCompiler extends LuceneTestCase {
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile("100 100", compilerSettings);
+          compile("100 100");
         });
 
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile("7*/-8", compilerSettings);
+          compile("7*/-8");
         });
 
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile("0y1234", compilerSettings);
+          compile("0y1234");
         });
 
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile("500EE", compilerSettings);
+          compile("500EE");
         });
 
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile("500.5EE", compilerSettings);
+          compile("500.5EE");
         });
   }
 
@@ -158,19 +141,19 @@ public class TestJavascriptCompiler extends LuceneTestCase {
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile("", compilerSettings);
+          compile("");
         });
 
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile("()", compilerSettings);
+          compile("()");
         });
 
     expectThrows(
         ParseException.class,
         () -> {
-          JavascriptCompiler.compile("   \r\n   \n \t", compilerSettings);
+          compile("   \r\n   \n \t");
         });
   }
 
@@ -178,7 +161,7 @@ public class TestJavascriptCompiler extends LuceneTestCase {
     expectThrows(
         NullPointerException.class,
         () -> {
-          JavascriptCompiler.compile(null, compilerSettings);
+          compile(null);
         });
   }
 
@@ -187,7 +170,7 @@ public class TestJavascriptCompiler extends LuceneTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              JavascriptCompiler.compile("tan()", compilerSettings);
+              compile("tan()");
               fail();
             });
     assertEquals(
@@ -199,7 +182,7 @@ public class TestJavascriptCompiler extends LuceneTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              JavascriptCompiler.compile("tan(1, 1)", compilerSettings);
+              compile("tan(1, 1)");
             });
     assertTrue(expected.getMessage().contains("arguments for function call"));
 
@@ -207,7 +190,7 @@ public class TestJavascriptCompiler extends LuceneTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              JavascriptCompiler.compile(" tan()", compilerSettings);
+              compile(" tan()");
             });
     assertEquals(
         "Invalid expression ' tan()': Expected (1) arguments for function call (tan), but found (0).",
@@ -218,7 +201,7 @@ public class TestJavascriptCompiler extends LuceneTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              JavascriptCompiler.compile("1 + tan()", compilerSettings);
+              compile("1 + tan()");
             });
     assertEquals(
         "Invalid expression '1 + tan()': Expected (1) arguments for function call (tan), but found (0).",
@@ -228,27 +211,27 @@ public class TestJavascriptCompiler extends LuceneTestCase {
 
   public void testVariableNormalization() throws Exception {
     // multiple double quotes
-    Expression x = JavascriptCompiler.compile("foo[\"a\"][\"b\"]", compilerSettings);
+    Expression x = compile("foo[\"a\"][\"b\"]");
     assertEquals("foo['a']['b']", x.variables[0]);
 
     // single and double in the same var
-    x = JavascriptCompiler.compile("foo['a'][\"b\"]", compilerSettings);
+    x = compile("foo['a'][\"b\"]");
     assertEquals("foo['a']['b']", x.variables[0]);
 
     // escapes remain the same in single quoted strings
-    x = JavascriptCompiler.compile("foo['\\\\\\'\"']", compilerSettings);
+    x = compile("foo['\\\\\\'\"']");
     assertEquals("foo['\\\\\\'\"']", x.variables[0]);
 
     // single quotes are escaped
-    x = JavascriptCompiler.compile("foo[\"'\"]", compilerSettings);
+    x = compile("foo[\"'\"]");
     assertEquals("foo['\\'']", x.variables[0]);
 
     // double quotes are unescaped
-    x = JavascriptCompiler.compile("foo[\"\\\"\"]", compilerSettings);
+    x = compile("foo[\"\\\"\"]");
     assertEquals("foo['\"']", x.variables[0]);
 
     // backslash escapes are kept the same
-    x = JavascriptCompiler.compile("foo['\\\\'][\"\\\\\"]", compilerSettings);
+    x = compile("foo['\\\\'][\"\\\\\"]");
     assertEquals("foo['\\\\']['\\\\']", x.variables[0]);
   }
 }
