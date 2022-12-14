@@ -24,6 +24,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Sort;
@@ -64,8 +65,9 @@ public class TestCollationDocValuesField extends LuceneTestCase {
     SortField sortField = new SortField("collated", SortField.Type.STRING);
 
     TopDocs td = is.search(new MatchAllDocsQuery(), 5, new Sort(sortField));
-    assertEquals("abc", ir.document(td.scoreDocs[0].doc).get("field"));
-    assertEquals("ABC", ir.document(td.scoreDocs[1].doc).get("field"));
+    StoredFields storedFields = ir.storedFields();
+    assertEquals("abc", storedFields.document(td.scoreDocs[0].doc).get("field"));
+    assertEquals("ABC", storedFields.document(td.scoreDocs[1].doc).get("field"));
     ir.close();
     dir.close();
   }
@@ -120,8 +122,9 @@ public class TestCollationDocValuesField extends LuceneTestCase {
       Collator collator)
       throws Exception {
     SortedDocValues dvs = MultiDocValues.getSortedValues(is.getIndexReader(), "collated");
+    StoredFields storedFields = is.storedFields();
     for (int docID = 0; docID < is.getIndexReader().maxDoc(); docID++) {
-      Document doc = is.doc(docID);
+      Document doc = storedFields.document(docID);
       String s = doc.getField("field").stringValue();
       boolean collatorAccepts =
           collate(collator, s, startPoint) >= 0 && collate(collator, s, endPoint) <= 0;

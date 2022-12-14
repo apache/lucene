@@ -278,13 +278,15 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertEquals(1, vectorValue.length);
               assertEquals((float) ids.longValue(), vectorValue[0], 0.001f);
 
-              Fields termVectors = leaf.getTermVectors(idNext);
+              Fields termVectors = leaf.termVectors().get(idNext);
               assertTrue(
                   termVectors
                       .terms("term_vectors")
                       .iterator()
                       .seekExact(new BytesRef("test" + ids.longValue())));
-              assertEquals(Long.toString(ids.longValue()), leaf.document(idNext).get("string_id"));
+              assertEquals(
+                  Long.toString(ids.longValue()),
+                  leaf.storedFields().document(idNext).get("string_id"));
               IndexSearcher searcher = new IndexSearcher(r);
               TopDocs result =
                   searcher.search(LongPoint.newExactQuery("point_id", ids.longValue()), 1);

@@ -86,7 +86,7 @@ public class TestDocumentWriter extends LuceneTestCase {
     // After adding the document, we should be able to read it back in
     SegmentReader reader = new SegmentReader(info, Version.LATEST.major, newIOContext(random()));
     assertTrue(reader != null);
-    Document doc = reader.document(0);
+    Document doc = reader.storedFields().document(0);
     assertTrue(doc != null);
 
     // System.out.println("Document: " + doc);

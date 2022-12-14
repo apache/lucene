@@ -42,7 +42,7 @@ public interface IndexableFieldType {
    * True if this field's indexed form should be also stored into term vectors.
    *
    * <p>This builds a miniature inverted-index for this field which can be accessed in a
-   * document-oriented way from {@link IndexReader#getTermVector(int,String)}.
+   * document-oriented way from {@link TermVectors#get(int,String)}.
    *
    * <p>This option is illegal if {@link #indexOptions()} returns IndexOptions.NONE.
    */

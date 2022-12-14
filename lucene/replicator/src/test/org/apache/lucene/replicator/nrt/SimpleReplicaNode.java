@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -293,9 +294,10 @@ class SimpleReplicaNode extends ReplicaNode {
                 TopDocs hits =
                     searcher.search(
                         new TermQuery(new Term("marker", "marker")), expectedAtLeastCount);
+                StoredFields storedFields = searcher.storedFields();
                 List<Integer> seen = new ArrayList<>();
                 for (ScoreDoc hit : hits.scoreDocs) {
-                  Document doc = searcher.doc(hit.doc);
+                  Document doc = storedFields.document(hit.doc);
                   seen.add(Integer.parseInt(doc.get("docid").substring(1)));
                 }
                 Collections.sort(seen);

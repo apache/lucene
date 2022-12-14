@@ -185,6 +185,12 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+  }
+
+  @Override
   public void checkIntegrity() throws IOException {
     IndexInput clone = dataIn.clone();
     clone.seek(0);

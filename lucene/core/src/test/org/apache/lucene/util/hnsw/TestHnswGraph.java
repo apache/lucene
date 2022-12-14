@@ -45,6 +45,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -213,6 +214,7 @@ public class TestHnswGraph extends LuceneTestCase {
 
           TopDocs topDocs = searcher.search(query, 5);
           float lastScore = -1;
+          StoredFields storedFields = reader.storedFields();
           for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
             if (scoreDoc.score == lastScore) {
               // if we have repeated score this test is invalid
@@ -220,13 +222,14 @@ public class TestHnswGraph extends LuceneTestCase {
             } else {
               lastScore = scoreDoc.score;
             }
-            Document doc = reader.document(scoreDoc.doc, Set.of("id"));
+            Document doc = storedFields.document(scoreDoc.doc, Set.of("id"));
             ids1.add(doc.get("id"));
             docs1.add(scoreDoc.doc);
           }
           TopDocs topDocs2 = searcher2.search(query, 5);
+          StoredFields storedFields2 = reader2.storedFields();
           for (ScoreDoc scoreDoc : topDocs2.scoreDocs) {
-            Document doc = reader2.document(scoreDoc.doc, Set.of("id"));
+            Document doc = storedFields2.document(scoreDoc.doc, Set.of("id"));
             ids2.add(doc.get("id"));
             docs2.add(scoreDoc.doc);
           }
@@ -279,15 +282,26 @@ public class TestHnswGraph extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // run some searches
     NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            10,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            null,
-            Integer.MAX_VALUE);
+        switch (vectorEncoding) {
+          case BYTE -> HnswGraphSearcher.search(
+              getTargetByteVector(),
+              10,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              null,
+              Integer.MAX_VALUE);
+          case FLOAT32 -> HnswGraphSearcher.search(
+              getTargetVector(),
+              10,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              null,
+              Integer.MAX_VALUE);
+        };
 
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
@@ -321,15 +335,26 @@ public class TestHnswGraph extends LuceneTestCase {
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, vectors.size);
     NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            10,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            acceptOrds,
-            Integer.MAX_VALUE);
+        switch (vectorEncoding) {
+          case BYTE -> HnswGraphSearcher.search(
+              getTargetByteVector(),
+              10,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              Integer.MAX_VALUE);
+          case FLOAT32 -> HnswGraphSearcher.search(
+              getTargetVector(),
+              10,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              Integer.MAX_VALUE);
+        };
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
@@ -360,15 +385,27 @@ public class TestHnswGraph extends LuceneTestCase {
     // Check the search finds all accepted vectors
     int numAccepted = acceptOrds.cardinality();
     NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            numAccepted,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            acceptOrds,
-            Integer.MAX_VALUE);
+        switch (vectorEncoding) {
+          case FLOAT32 -> HnswGraphSearcher.search(
+              getTargetVector(),
+              numAccepted,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              Integer.MAX_VALUE);
+          case BYTE -> HnswGraphSearcher.search(
+              getTargetByteVector(),
+              numAccepted,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              acceptOrds,
+              Integer.MAX_VALUE);
+        };
+
     int[] nodes = nn.nodes();
     assertEquals(numAccepted, nodes.length);
     for (int node : nodes) {
@@ -378,6 +415,10 @@ public class TestHnswGraph extends LuceneTestCase {
 
   private float[] getTargetVector() {
     return new float[] {1, 0};
+  }
+
+  private BytesRef getTargetByteVector() {
+    return new BytesRef(new byte[] {1, 0});
   }
 
   public void testSearchWithSkewedAcceptOrds() throws IOException {
@@ -429,15 +470,27 @@ public class TestHnswGraph extends LuceneTestCase {
     int topK = 50;
     int visitedLimit = topK + random().nextInt(5);
     NeighborQueue nn =
-        HnswGraphSearcher.search(
-            getTargetVector(),
-            topK,
-            vectors.copy(),
-            vectorEncoding,
-            similarityFunction,
-            hnsw,
-            createRandomAcceptOrds(0, vectors.size),
-            visitedLimit);
+        switch (vectorEncoding) {
+          case FLOAT32 -> HnswGraphSearcher.search(
+              getTargetVector(),
+              topK,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              createRandomAcceptOrds(0, vectors.size),
+              visitedLimit);
+          case BYTE -> HnswGraphSearcher.search(
+              getTargetByteVector(),
+              topK,
+              vectors.copy(),
+              vectorEncoding,
+              similarityFunction,
+              hnsw,
+              createRandomAcceptOrds(0, vectors.size),
+              visitedLimit);
+        };
+
     assertTrue(nn.incomplete());
     // The visited count shouldn't exceed the limit
     assertTrue(nn.visitedCount() <= visitedLimit);
@@ -661,15 +714,27 @@ public class TestHnswGraph extends LuceneTestCase {
         query = randomVector(random(), dim);
       }
       actual =
-          HnswGraphSearcher.search(
-              query,
-              100,
-              vectors,
-              vectorEncoding,
-              similarityFunction,
-              hnsw,
-              acceptOrds,
-              Integer.MAX_VALUE);
+          switch (vectorEncoding) {
+            case BYTE -> HnswGraphSearcher.search(
+                bQuery,
+                100,
+                vectors,
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+            case FLOAT32 -> HnswGraphSearcher.search(
+                query,
+                100,
+                vectors,
+                vectorEncoding,
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+          };
+
       while (actual.size() > topK) {
         actual.pop();
       }
