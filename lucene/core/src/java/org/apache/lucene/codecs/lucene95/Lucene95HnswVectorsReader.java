@@ -43,6 +43,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -253,6 +254,52 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0) {
+      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    }
+    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    }
+
+    // bound k by total number of vectors to prevent oversizing data structures
+    k = Math.min(k, fieldEntry.size());
+    OffHeapVectorValues vectorValues = OffHeapVectorValues.load(fieldEntry, vectorData);
+
+    NeighborQueue results =
+        HnswGraphSearcher.search(
+            target,
+            k,
+            vectorValues,
+            fieldEntry.vectorEncoding,
+            fieldEntry.similarityFunction,
+            getGraph(fieldEntry),
+            vectorValues.getAcceptOrds(acceptDocs),
+            visitedLimit);
+
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
+    while (results.size() > 0) {
+      int node = results.topNode();
+      float score = results.topScore();
+      results.pop();
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
+    }
+
+    TotalHits.Relation relation =
+        results.incomplete()
+            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+            : TotalHits.Relation.EQUAL_TO;
+    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+  }
+
+  @Override
+  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    FieldEntry fieldEntry = fields.get(field);
+
+    if (fieldEntry.size() == 0) {
+      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    }
+    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
 

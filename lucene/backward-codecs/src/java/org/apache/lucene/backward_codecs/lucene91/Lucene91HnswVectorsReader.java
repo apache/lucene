@@ -266,6 +266,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
+  @Override
+  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
