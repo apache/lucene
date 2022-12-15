@@ -493,7 +493,7 @@ final class BooleanWeight extends Weight {
       } else {
         // We have two clauses whose count is in [1, numDocs), we can't figure out the number of
         // docs that match the disjunction without running the query.
-        return -1;
+        unknownCount = true;
       }
     }
     // If at least one of clauses has a number of matches that is unknown and no clause matches all
