@@ -135,7 +135,7 @@ public final class JavascriptCompiler {
    * @throws ParseException on failure to compile
    */
   public static Expression compile(String sourceText) throws ParseException {
-    return compile(sourceText, false);
+    return compile(sourceText, DEFAULT_FUNCTIONS, JavascriptCompiler.class.getClassLoader());
   }
 
   /**
@@ -186,20 +186,6 @@ public final class JavascriptCompiler {
   }
 
   /**
-   * Compiles the given expression.
-   *
-   * @param sourceText The expression to compile
-   * @param picky whether to throw exception on ambiguity or other internal parsing issues (this
-   *     option makes things slower too, it is only for debugging).
-   * @return A new compiled expression
-   * @throws ParseException on failure to compile
-   */
-  static Expression compile(String sourceText, boolean picky) throws ParseException {
-    return new JavascriptCompiler(sourceText, picky)
-        .compileExpression(JavascriptCompiler.class.getClassLoader());
-  }
-
-  /**
    * This method is unused, it is just here to make sure that the function signatures don't change.
    * If this method fails to compile, you also have to change the byte code generator to correctly
    * use the FunctionValues class.
@@ -208,15 +194,6 @@ public final class JavascriptCompiler {
   private static void unusedTestCompile() throws IOException {
     DoubleValues f = null;
     f.doubleValue();
-  }
-
-  /**
-   * Constructs a compiler for expressions.
-   *
-   * @param sourceText The expression to compile
-   */
-  private JavascriptCompiler(String sourceText, boolean picky) {
-    this(sourceText, DEFAULT_FUNCTIONS, picky);
   }
 
   /**
