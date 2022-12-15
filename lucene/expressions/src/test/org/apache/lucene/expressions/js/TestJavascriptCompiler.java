@@ -20,6 +20,30 @@ import java.text.ParseException;
 import org.apache.lucene.expressions.Expression;
 
 public class TestJavascriptCompiler extends CompilerTestCase {
+
+  public void testNullExpression() throws Exception {
+    expectThrows(NullPointerException.class, () -> {
+      JavascriptCompiler.compile(null);
+    });
+  }
+
+  public void testNullFunctions() throws Exception {
+    expectThrows(NullPointerException.class, () -> {
+      JavascriptCompiler.compile("100", null, getClass().getClassLoader());
+    });
+  }
+
+  public void testNullLoader() throws Exception {
+    expectThrows(NullPointerException.class, () -> {
+      JavascriptCompiler.compile("100", JavascriptCompiler.DEFAULT_FUNCTIONS, null);
+    });
+  }
+
+  public void testEnormousExpressionSource() throws Exception {
+    String expr = " ".repeat(20000) + "100";
+    assertNotNull(compile(expr));
+  }
+
   public void testValidCompiles() throws Exception {
     assertNotNull(compile("100"));
     assertNotNull(compile("valid0+100"));
