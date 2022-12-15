@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -36,8 +37,7 @@ import org.apache.lucene.util.BytesRef;
 public class TestVectorScorer extends LuceneTestCase {
 
   public void testFindAll() throws IOException {
-    VectorEncoding encoding =
-        VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
+    VectorEncoding encoding = RandomPicks.randomFrom(random(), VectorEncoding.values());
     try (Directory indexStore =
             getIndexStore(
                 "field", encoding, new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
