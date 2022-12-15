@@ -68,8 +68,6 @@ Bug Fixes
 * LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
   they reach the maximum merge size. (Adrien Grand)
 
-* GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
-
 Other
 ---------------------
 
@@ -196,6 +194,8 @@ Bug Fixes
 
 * GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
   common vertex. (Ignacio Vera)
+
+* GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
 
 Optimizations
 ---------------------
