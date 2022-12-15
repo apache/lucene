@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
@@ -33,7 +34,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   private int numLevels; // the current number of levels in the graph
-  private int entryNode; // the current graph entry node on the top level
+  private int entryNode; // the current graph entry node on the top level. -1 if not set
 
   // Nodes by level expressed as the level 0's nodes' ordinals.
   // As level 0 contains all nodes, nodesByLevel.get(0) is null.
@@ -53,24 +54,17 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private int upto;
   private NeighborArray cur;
 
-  OnHeapHnswGraph(int M, int levelOfFirstNode) {
-    this.numLevels = levelOfFirstNode + 1;
-    this.graph = new ArrayList<>(numLevels);
-    this.entryNode = 0;
+  OnHeapHnswGraph(int M) {
+    this.numLevels = 1; // Implicitly start the graph with a single level
+    this.graph = new ArrayList<>(Collections.singleton(new ArrayList<>()));
+    this.entryNode = -1; // Entry node should be negative until a node is added
     // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
     // We allocate extra space for neighbours, but then prune them to keep allowed maximum
     this.nsize = M + 1;
     this.nsize0 = (M * 2 + 1);
-    for (int l = 0; l < numLevels; l++) {
-      graph.add(new ArrayList<>());
-      graph.get(l).add(new NeighborArray(l == 0 ? nsize0 : nsize, true));
-    }
 
     this.nodesByLevel = new ArrayList<>(numLevels);
     nodesByLevel.add(null); // we don't need this for 0th level, as it contains all nodes
-    for (int l = 1; l < numLevels; l++) {
-      nodesByLevel.add(new int[] {0});
-    }
   }
 
   /**
@@ -100,6 +94,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * @param node the node to add, represented as an ordinal on the level 0.
    */
   public void addNode(int level, int node) {
+    if (entryNode == -1) {
+      entryNode = node;
+    }
+
     if (level > 0) {
       // if the new node introduces a new level, add more levels to the graph,
       // and make this node the graph's new entry point

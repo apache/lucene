@@ -110,8 +110,7 @@ public final class HnswGraphBuilder<T> {
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode);
+    this.hnsw = new OnHeapHnswGraph(M);
     this.graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
@@ -144,8 +143,7 @@ public final class HnswGraphBuilder<T> {
 
   private void addVectors(RandomAccessVectorValues<T> vectorsToAdd) throws IOException {
     long start = System.nanoTime(), t = start;
-    // start at node 1! node 0 is added implicitly, in the constructor
-    for (int node = 1; node < vectorsToAdd.size(); node++) {
+    for (int node = 0; node < vectorsToAdd.size(); node++) {
       addGraphNode(node, vectorsToAdd);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
@@ -167,6 +165,14 @@ public final class HnswGraphBuilder<T> {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
+
+    // If entrynode is -1, then this should all fail with no neighbors
+    if (hnsw.entryNode() == -1) {
+      for (int level = nodeLevel; level >= 0; level--) {
+        hnsw.addNode(level, node);
+      }
+      return;
+    }
     int[] eps = new int[] {hnsw.entryNode()};
 
     // if a node introduces new levels to the graph, add this new node on new levels
