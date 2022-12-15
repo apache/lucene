@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -36,13 +37,25 @@ import org.apache.lucene.util.BytesRef;
 public class TestVectorScorer extends LuceneTestCase {
 
   public void testFindAll() throws IOException {
+    VectorEncoding encoding = RandomPicks.randomFrom(random(), VectorEncoding.values());
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore(
+                "field", encoding, new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       assert reader.leaves().size() == 1;
       LeafReaderContext context = reader.leaves().get(0);
       FieldInfo fieldInfo = context.reader().getFieldInfos().fieldInfo("field");
-      VectorScorer vectorScorer = VectorScorer.create(context, fieldInfo, new float[] {1, 2});
+      final VectorScorer vectorScorer;
+      switch (encoding) {
+        case BYTE:
+          vectorScorer = VectorScorer.create(context, fieldInfo, new BytesRef(new byte[] {1, 2}));
+          break;
+        case FLOAT32:
+          vectorScorer = VectorScorer.create(context, fieldInfo, new float[] {1, 2});
+          break;
+        default:
+          throw new IllegalArgumentException("unexpected vector encoding: " + encoding);
+      }
 
       int numDocs = 0;
       for (int i = 0; i < reader.maxDoc(); i++) {
@@ -55,11 +68,10 @@ public class TestVectorScorer extends LuceneTestCase {
   }
 
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
-  private Directory getIndexStore(String field, float[]... contents) throws IOException {
+  private Directory getIndexStore(String field, VectorEncoding encoding, float[]... contents)
+      throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
-    VectorEncoding encoding =
-        VectorEncoding.values()[random().nextInt(VectorEncoding.values().length)];
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
       if (encoding == VectorEncoding.BYTE) {
