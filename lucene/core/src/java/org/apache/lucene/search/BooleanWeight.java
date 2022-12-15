@@ -481,7 +481,7 @@ final class BooleanWeight extends Weight {
         // whether remain clauses could match all docs.
         unknownCount = true;
         continue;
-      }else if (count == numDocs) {
+      } else if (count == numDocs) {
         // If either clause matches all docs, then the disjunction matches all docs.
         return count;
       } else if (count == 0) {
