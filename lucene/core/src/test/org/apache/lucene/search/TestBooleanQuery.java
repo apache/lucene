@@ -1064,7 +1064,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     // docs
     assertEquals(-1, weight.count(reader.leaves().get(0)));
 
-    // test pure disConjunction
+    // test pure disjunction
     query =
         new BooleanQuery.Builder()
             .add(unknownCountQuery, Occur.SHOULD)
