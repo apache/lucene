@@ -195,6 +195,8 @@ Bug Fixes
 * GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
   common vertex. (Ignacio Vera)
 
+* GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
