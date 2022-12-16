@@ -166,6 +166,8 @@ Improvements
 
 * GITHUB#12003: Minor cleanup/improvements to IndexSortSortedNumericDocValuesRangeQuery. (Greg Miller)
 
+* GITHUB#12016: Upgrade lucene/expressions to use antlr 4.11.1 (Andriy Redko)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
