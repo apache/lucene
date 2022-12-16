@@ -25,6 +25,7 @@ import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -425,6 +426,79 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     for (int node : nodes) {
       assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
     }
+  }
+
+  public void testBuildOnHeapHnswGraphOutOfOrder() throws IOException {
+    int maxNumLevels = randomIntBetween(2, 10);
+    int nodeCount = randomIntBetween(1, 100);
+
+    List<List<Integer>> nodesPerLevel = new ArrayList<>();
+    for (int i = 0; i < maxNumLevels; i++) {
+      nodesPerLevel.add(new ArrayList<>());
+    }
+
+    int numLevels = 0;
+    for (int currNode = 0; currNode < nodeCount; currNode++) {
+      int nodeMaxLevel = random().nextInt(1, maxNumLevels + 1);
+      numLevels = Math.max(numLevels, nodeMaxLevel);
+      for (int currLevel = 0; currLevel < nodeMaxLevel; currLevel++) {
+        nodesPerLevel.get(currLevel).add(currNode);
+      }
+    }
+
+    OnHeapHnswGraph topDownOrderReversedHnsw = new OnHeapHnswGraph(10);
+    for (int currLevel = numLevels - 1; currLevel >= 0; currLevel--) {
+      List<Integer> currLevelNodes = nodesPerLevel.get(currLevel);
+      int currLevelNodesSize = currLevelNodes.size();
+      for (int currNodeInd = currLevelNodesSize - 1; currNodeInd >= 0; currNodeInd--) {
+        topDownOrderReversedHnsw.addNode(currLevel, currLevelNodes.get(currNodeInd));
+      }
+    }
+
+    OnHeapHnswGraph bottomUpOrderReversedHnsw = new OnHeapHnswGraph(10);
+    for (int currLevel = 0; currLevel < numLevels; currLevel++) {
+      List<Integer> currLevelNodes = nodesPerLevel.get(currLevel);
+      int currLevelNodesSize = currLevelNodes.size();
+      for (int currNodeInd = currLevelNodesSize - 1; currNodeInd >= 0; currNodeInd--) {
+        bottomUpOrderReversedHnsw.addNode(currLevel, currLevelNodes.get(currNodeInd));
+      }
+    }
+
+    OnHeapHnswGraph topDownOrderRandomHnsw = new OnHeapHnswGraph(10);
+    for (int currLevel = numLevels - 1; currLevel >= 0; currLevel--) {
+      List<Integer> currLevelNodes = new ArrayList<>(nodesPerLevel.get(currLevel));
+      Collections.shuffle(currLevelNodes, random());
+      for (Integer currNode : currLevelNodes) {
+        topDownOrderRandomHnsw.addNode(currLevel, currNode);
+      }
+    }
+
+    OnHeapHnswGraph bottomUpExpectedHnsw = new OnHeapHnswGraph(10);
+    for (int currLevel = 0; currLevel < numLevels; currLevel++) {
+      for (Integer currNode : nodesPerLevel.get(currLevel)) {
+        bottomUpExpectedHnsw.addNode(currLevel, currNode);
+      }
+    }
+
+    assertEquals(nodeCount, bottomUpExpectedHnsw.getNodesOnLevel(0).size());
+    for (Integer node : nodesPerLevel.get(0)) {
+      assertEquals(0, bottomUpExpectedHnsw.getNeighbors(0, node).size());
+    }
+
+    for (int currLevel = 1; currLevel < numLevels; currLevel++) {
+      NodesIterator nodesIterator = bottomUpExpectedHnsw.getNodesOnLevel(currLevel);
+      List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
+      assertEquals(expectedNodesOnLevel.size(), nodesIterator.size());
+      for (Integer expectedNode : expectedNodesOnLevel) {
+        int currentNode = nodesIterator.nextInt();
+        assertEquals(expectedNode.intValue(), currentNode);
+        assertEquals(0, bottomUpExpectedHnsw.getNeighbors(currLevel, currentNode).size());
+      }
+    }
+
+    assertGraphEqual(bottomUpExpectedHnsw, topDownOrderReversedHnsw);
+    assertGraphEqual(bottomUpExpectedHnsw, bottomUpOrderReversedHnsw);
+    assertGraphEqual(bottomUpExpectedHnsw, topDownOrderRandomHnsw);
   }
 
   @SuppressWarnings("unchecked")

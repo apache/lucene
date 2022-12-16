@@ -53,6 +53,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // KnnGraphValues iterator members
   private int upto;
   private NeighborArray cur;
+  // Keep track of the last added nodes in the graph for insertion optimization
+  private final List<Integer> lastAddedPosInLayer;
 
   OnHeapHnswGraph(int M) {
     this.numLevels = 1; // Implicitly start the graph with a single level
@@ -65,6 +67,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
     this.nodesByLevel = new ArrayList<>(numLevels);
     nodesByLevel.add(null); // we don't need this for 0th level, as it contains all nodes
+
+    this.lastAddedPosInLayer = new ArrayList<>(numLevels);
+    lastAddedPosInLayer.add(null);
   }
 
   /**
@@ -88,7 +93,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   }
 
   /**
-   * Add node on the given level
+   * Add node on the given level. Nodes can be inserted out of order, but it requires that the nodes
+   * preceded by the node inserted out of order are eventually added.
    *
    * @param level level to add a node on
    * @param node the node to add, represented as an ordinal on the level 0.
@@ -102,26 +108,68 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       // if the new node introduces a new level, add more levels to the graph,
       // and make this node the graph's new entry point
       if (level >= numLevels) {
-        for (int i = numLevels; i <= level; i++) {
+        for (int i = numLevels; i < level; i++) {
           graph.add(new ArrayList<>());
-          nodesByLevel.add(new int[] {node});
+          nodesByLevel.add(new int[] {});
+          lastAddedPosInLayer.add(-1);
         }
+        nodesByLevel.add(new int[] {node});
         numLevels = level + 1;
         entryNode = node;
+        lastAddedPosInLayer.add(0);
+        graph.add(new ArrayList<>(Collections.singleton(new NeighborArray(nsize, true))));
       } else {
         // Add this node id to this level's nodes
         int[] nodes = nodesByLevel.get(level);
         int idx = graph.get(level).size();
-        if (idx < nodes.length) {
-          nodes[idx] = node;
-        } else {
+        if (idx >= nodes.length) {
           nodes = ArrayUtil.grow(nodes);
-          nodes[idx] = node;
           nodesByLevel.set(level, nodes);
         }
+
+        // Find what position in the nodes array to insert the new node to ensure it stays sorted.
+        // In the worst case, we need to perform a binary search to find the position to insert the
+        // node.
+        // However, we can avoid binary search in 2 common cases:
+        // (1) When the node belongs at the end of the array
+        // (2) When the node belongs after the position of the last inserted node
+        int position;
+        int lastPositionInsertedInLevel = lastAddedPosInLayer.get(level);
+
+        if (lastPositionInsertedInLevel == -1) {
+          position = 0;
+        } else if (lastPositionInsertedInLevel == idx - 1 && node > nodes[idx - 1]) {
+          position = idx;
+        } else if (lastPositionInsertedInLevel < idx - 1
+            && node > nodes[lastPositionInsertedInLevel]
+            && node < nodes[lastPositionInsertedInLevel + 1]) {
+          position = lastPositionInsertedInLevel + 1;
+        } else {
+          position = Arrays.binarySearch(nodes, 0, idx, node);
+          assert position < 0;
+          position = -1 * position - 1;
+        }
+
+        if (position == idx) {
+          graph.get(level).add(new NeighborArray(nsize, true));
+        } else {
+          System.arraycopy(nodes, position, nodes, position + 1, (idx - position));
+          graph.get(level).add(position, new NeighborArray(nsize, true));
+        }
+        nodes[position] = node;
+        lastAddedPosInLayer.set(level, position);
+      }
+    } else {
+      // Add nodes all the way up to and including "node" in the new graph on level 0. This will
+      // cause the size of the
+      // graph to differ from the number of nodes added to the graph. The size of the graph and the
+      // number of nodes
+      // added will only be in sync once all nodes from 0...last_node are added into the graph.
+      List<NeighborArray> level0Neighbors = graph.get(level);
+      while (node >= level0Neighbors.size()) {
+        level0Neighbors.add(new NeighborArray(nsize0, true));
       }
     }
-    graph.get(level).add(new NeighborArray(level == 0 ? nsize0 : nsize, true));
   }
 
   @Override

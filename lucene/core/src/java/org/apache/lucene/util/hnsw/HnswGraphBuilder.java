@@ -166,7 +166,7 @@ public final class HnswGraphBuilder<T> {
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
 
-    // If entrynode is -1, then this should all fail with no neighbors
+    // If entrynode is -1, then this should finish without adding neighbors
     if (hnsw.entryNode() == -1) {
       for (int level = nodeLevel; level >= 0; level--) {
         hnsw.addNode(level, node);
