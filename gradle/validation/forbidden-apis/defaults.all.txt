@@ -69,3 +69,7 @@ javax.naming.spi.ContinuationContext
 javax.naming.spi.ContinuationDirContext
 javax.sql.rowset.spi.ProviderImpl
 javax.sql.rowset.spi.SyncFactory
+
+@defaultMessage Math.fma is insanely slow (2500x) in many environments (e.g. VMs). Use multiply/add and suffer the extra rounding
+java.lang.Math#fma(float,float,float)
+java.lang.Math#fma(double,double,double)
