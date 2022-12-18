@@ -310,14 +310,17 @@ public class FieldInfos implements Iterable<FieldInfo> {
     final int numDimensions;
     final VectorEncoding vectorEncoding;
     final VectorSimilarityFunction similarityFunction;
+    final boolean multiValued;
 
     FieldVectorProperties(
         int numDimensions,
         VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction) {
+        VectorSimilarityFunction similarityFunction,
+        boolean multiValued) {
       this.numDimensions = numDimensions;
       this.vectorEncoding = vectorEncoding;
       this.similarityFunction = similarityFunction;
+      this.multiValued = multiValued;
     }
   }
 
@@ -407,7 +410,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
         vectorProps.put(
             fieldName,
             new FieldVectorProperties(
-                fi.getVectorDimension(), fi.getVectorEncoding(), fi.getVectorSimilarityFunction()));
+                fi.getVectorDimension(), fi.getVectorEncoding(), fi.getVectorSimilarityFunction(), fi.isVectorMultiValued()));
       }
       return fieldNumber.intValue();
     }
@@ -467,9 +470,11 @@ public class FieldInfos implements Iterable<FieldInfo> {
           props.numDimensions,
           props.vectorEncoding,
           props.similarityFunction,
+          props.multiValued,
           fi.getVectorDimension(),
           fi.getVectorEncoding(),
-          fi.getVectorSimilarityFunction());
+          fi.getVectorSimilarityFunction(),
+          fi.isVectorMultiValued());
     }
 
     /**

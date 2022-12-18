@@ -58,17 +58,21 @@ public abstract class VectorValues extends DocIdSetIterator {
    * @return the vector value
    */
   public abstract float[] vectorValue() throws IOException;
-
-
+  
   /**
-   * bla bla
-   * @param ord
-   * @return
+   * Return the document ID corresponding to the input vector id(ordinal)
+   * @param ord vector ID(ordinal)
+   * @return the document ID
    */
   public int ordToDoc(int ord){
     return ord;
   }
-  
+
+  /**
+   * Return the next vector ID(ordinal)
+   *
+   * @return the vector ID(ordinal)
+   */
   public int nextOrd() throws IOException {
     return nextDoc();
   }

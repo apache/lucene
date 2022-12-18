@@ -237,9 +237,11 @@ public final class FieldInfo {
         this.vectorDimension,
         this.vectorEncoding,
         this.vectorSimilarityFunction,
+        this.vectorMultiValued,
         o.vectorDimension,
         o.vectorEncoding,
-        o.vectorSimilarityFunction);
+        o.vectorSimilarityFunction,
+        o.vectorMultiValued);
   }
 
   /**
@@ -357,10 +359,12 @@ public final class FieldInfo {
       int vd1,
       VectorEncoding ve1,
       VectorSimilarityFunction vsf1,
+      boolean vmv1,
       int vd2,
       VectorEncoding ve2,
-      VectorSimilarityFunction vsf2) {
-    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2) {
+      VectorSimilarityFunction vsf2,
+      boolean vmv2) {
+    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2 || vmv1 != vmv2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -370,12 +374,16 @@ public final class FieldInfo {
               + ve1
               + ", vector similarity function="
               + vsf1
+              + ", vector multi valued="
+              + vmv1    
               + " to inconsistent vector dimension="
               + vd2
               + ", vector encoding="
               + ve2
               + ", vector similarity function="
-              + vsf2);
+              + vsf2 
+              + ", vector multi valued="
+              + vmv2 );
     }
   }
 

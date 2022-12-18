@@ -39,7 +39,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
 public class HnswGraphSearcher<T> {
   private final VectorSimilarityFunction similarityFunction;
   private final VectorEncoding vectorEncoding;
-  
+    
   /**
    * multi valued approach
    */
@@ -47,7 +47,7 @@ public class HnswGraphSearcher<T> {
     NONE {
       @Override
       float updateScore(float originalScore, float newScore) {
-        return 0;
+        return originalScore;
       }
     },
     MAX {
@@ -280,8 +280,11 @@ public class HnswGraphSearcher<T> {
         candidates.add(vectorId, score);
         int docId = vectors.ordToDoc(vectorId);
         if (acceptOrds == null || acceptOrds.get(docId)) {
-          results.add(docId, score, strategy);
-        }
+          if(level == 0) {
+            results.add(docId, score, strategy);
+          } else {
+            results.add(vectorId, score, strategy);
+          }        }
       }
     }
 

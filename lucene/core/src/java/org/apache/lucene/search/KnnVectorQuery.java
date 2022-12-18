@@ -89,6 +89,7 @@ public class KnnVectorQuery extends Query {
    * @param target the target of the search
    * @param k the number of documents to find
    * @param filter a filter applied before the vector search
+   * @param strategy how matches in multi valued vector fields should affect the score
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnVectorQuery(String field, float[] target, int k, Query filter, HnswGraphSearcher.Multivalued strategy) {

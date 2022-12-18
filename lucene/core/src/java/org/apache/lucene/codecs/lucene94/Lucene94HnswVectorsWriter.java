@@ -17,15 +17,6 @@
 
 package org.apache.lucene.codecs.lucene94;
 
-import static org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -52,6 +43,16 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -540,7 +541,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       for (int doc = iterator.nextDoc();
            doc != DocIdSetIterator.NO_MORE_DOCS;
            doc = iterator.nextDoc()) {
-        int documentVectorsCount = valuesPerDocument[doc];
+        int documentVectorsCount = field.isVectorMultiValued()?valuesPerDocument[doc]:1;
         for (int i = 0; i < documentVectorsCount; i++) {
           ordToDocWriter.add(doc);
         }
@@ -659,7 +660,16 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     @Override
     @SuppressWarnings("unchecked")
     public void addValue(int docID, Object value) throws IOException {
+      if (!fieldInfo.isVectorMultiValued() && docID == lastDocID) {
+        throw new IllegalArgumentException(
+            "VectorValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
+      }
       T vectorValue = (T) value;
+      if (!fieldInfo.isVectorMultiValued()) {
+        assert docID > lastDocID;
+      }
       docsWithField.add(docID);
       vectors.add(copyValue(vectorValue));
       if (node > 0) {

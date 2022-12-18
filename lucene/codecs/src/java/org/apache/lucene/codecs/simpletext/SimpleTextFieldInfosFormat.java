@@ -160,7 +160,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), VECTOR_MULTI_VALUED);
-        boolean vectorMultiValued = !Boolean.parseBoolean(readString(VECTOR_MULTI_VALUED.length, scratch));
+        boolean vectorMultiValued = Boolean.parseBoolean(readString(VECTOR_MULTI_VALUED.length, scratch));
         
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), VECTOR_ENCODING);
@@ -313,6 +313,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
         SimpleTextUtil.write(out, VECTOR_NUM_DIMS);
         SimpleTextUtil.write(out, Integer.toString(fi.getVectorDimension()), scratch);
+        SimpleTextUtil.writeNewline(out);
+
+        SimpleTextUtil.write(out, VECTOR_MULTI_VALUED);
+        SimpleTextUtil.write(out, Boolean.toString(fi.isVectorMultiValued()), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, VECTOR_ENCODING);
