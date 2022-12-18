@@ -385,5 +385,5 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final byte OMIT_NORMS = 0x2;
   static final byte STORE_PAYLOADS = 0x4;
   static final byte SOFT_DELETES_FIELD = 0x8;
-  static final byte VECTOR_MULTI_VALUED = 0x16;
+  static final byte VECTOR_MULTI_VALUED = 0x10;
 }
