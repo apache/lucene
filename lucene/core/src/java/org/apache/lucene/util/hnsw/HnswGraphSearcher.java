@@ -268,22 +268,22 @@ public class HnswGraphSearcher<T> {
     NeighborQueue results = new NeighborQueue(topK, false);
     prepareScratchState(vectors.size());
 
-    int numVisited = 0;
+    int vectorIdsVisited = 0;
     for (int vectorId : entryPoints) {
       if (visited.getAndSet(vectorId) == false) {
-        if (numVisited >= visitedLimit) {
+        if (vectorIdsVisited >= visitedLimit) {
           results.markIncomplete();
           break;
         }
         float score = compare(query, vectors, vectorId);
-        numVisited++;
+        vectorIdsVisited++;
         candidates.add(vectorId, score);
         int docId = vectors.ordToDoc(vectorId);
-        if (acceptOrds == null || acceptOrds.get(docId)) {
-          if(level == 0) {
+        if (acceptOrds == null || acceptOrds.get(vectorId)) {
+          if(level == 0) { // final result list of Lucene Documents
             results.add(docId, score, strategy);
           } else {
-            results.add(vectorId, score, strategy);
+            results.add(vectorId, score, strategy); // next entry point, it is a vector
           }        }
       }
     }
@@ -310,16 +310,22 @@ public class HnswGraphSearcher<T> {
           continue;
         }
 
-        if (numVisited >= visitedLimit) {
+        if (vectorIdsVisited >= visitedLimit) {
           results.markIncomplete();
           break;
         }
         float friendSimilarity = compare(query, vectors, friendVectorId);
-        numVisited++;
+        vectorIdsVisited++;
         if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendVectorId, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendVectorId)) {
-            if (results.insertWithOverflow(vectors.ordToDoc(friendVectorId), friendSimilarity, strategy) && results.size() >= topK) {
+            boolean nodeInserted = false;
+            if(level == 0){
+              nodeInserted = results.insertWithOverflow(vectors.ordToDoc(friendVectorId), friendSimilarity, strategy);
+            } else {
+              nodeInserted = results.insertWithOverflow(friendVectorId, friendSimilarity, strategy);
+            }
+            if (nodeInserted && results.size() >= topK) {
               minAcceptedSimilarity = results.topScore();
             }
           }
@@ -329,7 +335,7 @@ public class HnswGraphSearcher<T> {
     while (results.size() > topK) {
       results.pop();
     }
-    results.setVisitedCount(numVisited);
+    results.setVisitedCount(vectorIdsVisited);
     return results;
   }
 
