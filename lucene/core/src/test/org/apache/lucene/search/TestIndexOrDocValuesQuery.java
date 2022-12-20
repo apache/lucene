@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -113,18 +114,15 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
       if (i < 1000) {
         doc.add(new StringField("f1", "bar", Store.NO));
         for (int j = 0; j < 500; j++) {
-          doc.add(new LongPoint("f2", 42L));
-          doc.add(new SortedNumericDocValuesField("f2", 42L));
+          doc.add(new LongField("f2", 42L));
         }
       } else if (i == 1001) {
         doc.add(new StringField("f1", "foo", Store.NO));
-        doc.add(new LongPoint("f2", 2L));
-        doc.add(new SortedNumericDocValuesField("f2", 42L));
+        doc.add(new LongField("f2", 2L));
       } else {
         doc.add(new StringField("f1", "bar", Store.NO));
         for (int j = 0; j < 100; j++) {
-          doc.add(new LongPoint("f2", 2L));
-          doc.add(new SortedNumericDocValuesField("f2", 2L));
+          doc.add(new LongField("f2", 2L));
         }
       }
       w.addDocument(doc);

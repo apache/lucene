@@ -36,6 +36,7 @@ import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.NumericUtils;
 
 // sanity check some basics of fields
 public class TestField extends LuceneTestCase {
@@ -209,6 +210,95 @@ public class TestField extends LuceneTestCase {
             });
     assertTrue(expected.getMessage().contains("cannot convert to a single numeric value"));
     assertEquals("IntPoint <foo:6,7>", field.toString());
+  }
+
+  public void testIntField() throws Exception {
+    IntField field = new IntField("foo", 12);
+
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    field.setIntValue(6);
+    trySetLongValue(field);
+    trySetFloatValue(field);
+    trySetLongValue(field);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    assertEquals(6, field.numericValue().intValue());
+    assertEquals(6, NumericUtils.sortableBytesToInt(field.binaryValue().bytes, 0));
+    assertEquals("IntField <foo:6>", field.toString());
+  }
+
+  public void testLongField() throws Exception {
+    LongField field = new LongField("foo", 12);
+
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    trySetIntValue(field);
+    field.setLongValue(6);
+    trySetFloatValue(field);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    assertEquals(6L, field.numericValue().longValue());
+    assertEquals(6L, NumericUtils.sortableBytesToLong(field.binaryValue().bytes, 0));
+    assertEquals("LongField <foo:6>", field.toString());
+  }
+
+  public void testFloatField() throws Exception {
+    FloatField field = new FloatField("foo", 12.6f);
+
+    assertEquals(12.6f, NumericUtils.sortableIntToFloat(field.numericValue().intValue()), 0.0f);
+    assertEquals(12.6f, FloatPoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+    assertEquals("FloatField <foo:12.6>", field.toString());
+
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    trySetIntValue(field);
+    trySetLongValue(field);
+    field.setFloatValue(-28.8f);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    assertEquals(-28.8f, NumericUtils.sortableIntToFloat(field.numericValue().intValue()), 0.0f);
+    assertEquals(-28.8f, FloatPoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+    assertEquals("FloatField <foo:-28.8>", field.toString());
+  }
+
+  public void testDoubleField() throws Exception {
+    DoubleField field = new DoubleField("foo", 12.7);
+
+    assertEquals(12.7, NumericUtils.sortableLongToDouble(field.numericValue().longValue()), 0.0f);
+    assertEquals(12.7, DoublePoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+    assertEquals("DoubleField <foo:12.7>", field.toString());
+
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetIntValue(field);
+    trySetLongValue(field);
+    trySetFloatValue(field);
+    field.setDoubleValue(-28.8);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    assertEquals(-28.8, NumericUtils.sortableLongToDouble(field.numericValue().longValue()), 0.0f);
+    assertEquals(-28.8, DoublePoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+    assertEquals("DoubleField <foo:-28.8>", field.toString());
   }
 
   public void testNumericDocValuesField() throws Exception {

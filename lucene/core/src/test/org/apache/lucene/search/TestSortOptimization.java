@@ -31,10 +31,10 @@ import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.IntRange;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -809,10 +809,8 @@ public class TestSortOptimization extends LuceneTestCase {
       int value = random().nextInt();
       int value2 = random().nextInt();
       final Document doc = new Document();
-      doc.add(new SortedNumericDocValuesField("my_field", value));
-      doc.add(new SortedNumericDocValuesField("my_field", value2));
-      doc.add(new LongPoint("my_field", value));
-      doc.add(new LongPoint("my_field", value2));
+      doc.add(new LongField("my_field", value));
+      doc.add(new LongField("my_field", value2));
       writer.addDocument(doc);
     }
     final IndexReader reader = DirectoryReader.open(writer);
@@ -823,12 +821,10 @@ public class TestSortOptimization extends LuceneTestCase {
     SortedNumericSelector.Type type =
         RandomPicks.randomFrom(random(), SortedNumericSelector.Type.values());
     boolean reverse = random().nextBoolean();
-    final SortField sortField =
-        new SortedNumericSortField("my_field", SortField.Type.LONG, reverse, type);
+    final SortField sortField = LongField.newSortField("my_field", reverse, type);
     sortField.setOptimizeSortWithIndexedData(false);
     final Sort sort = new Sort(sortField); // sort without sort optimization
-    final SortField sortField2 =
-        new SortedNumericSortField("my_field", SortField.Type.LONG, reverse, type);
+    final SortField sortField2 = LongField.newSortField("my_field", reverse, type);
     final Sort sort2 = new Sort(sortField2); // sort with sort optimization
     Query query = new MatchAllDocsQuery();
     final int totalHitsThreshold = 3;
