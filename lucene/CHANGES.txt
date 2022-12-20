@@ -138,6 +138,10 @@ API Changes
 * GITHUB#12004: Add new KnnByteVectorQuery for querying vector fields that are encoded as BYTE. Removes the ability to
   use KnnVectorQuery against fields encoded as BYTE (Ben Trent)
 
+* GITHUB#11997: Introduce IntField, LongField, FloatField and DoubleField.
+  These new fields index both 1D points and sorted numeric doc values and
+  provide best performance for filtering and sorting.
+  (Francisco Fernández Castaño, Adrien Grand)
 
 New Features
 ---------------------
@@ -148,6 +152,10 @@ New Features
   preload. (Adrien Grand, Uwe Schindler)
 
 * GITHUB#11999: MemoryIndex now supports stored fields. (Alan Woodward)
+
+* GITHUB#11997: Add IntField, LongField, FloatField and DoubleField: easy to
+  use numeric fields that perform well both for filtering and sorting.
+  (Francisco Fernández Castaño)
 
 Improvements
 ---------------------
