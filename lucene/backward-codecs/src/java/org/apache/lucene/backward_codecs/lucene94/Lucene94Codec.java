@@ -63,7 +63,7 @@ public class Lucene94Codec extends Codec {
 
     private final Lucene90StoredFieldsFormat.Mode storedMode;
 
-    private Mode(Lucene90StoredFieldsFormat.Mode storedMode) {
+    Mode(Lucene90StoredFieldsFormat.Mode storedMode) {
       this.storedMode = Objects.requireNonNull(storedMode);
     }
   }
@@ -164,7 +164,7 @@ public class Lucene94Codec extends Codec {
   }
 
   @Override
-  public final KnnVectorsFormat knnVectorsFormat() {
+  public KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
   }
 

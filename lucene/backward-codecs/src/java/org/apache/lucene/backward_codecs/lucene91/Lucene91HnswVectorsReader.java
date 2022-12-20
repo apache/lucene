@@ -57,13 +57,11 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  */
 public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
-  private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
 
   Lucene91HnswVectorsReader(SegmentReadState state) throws IOException {
-    this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -297,20 +295,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         return fieldEntry.size;
       }
     };
-  }
-
-  /** Get knn graph values; used for testing */
-  public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
-    }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.vectorIndexLength > 0) {
-      return getGraph(entry);
-    } else {
-      return HnswGraph.EMPTY;
-    }
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
@@ -581,12 +565,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public int numLevels() throws IOException {
+    public int numLevels() {
       return numLevels;
     }
 
     @Override
-    public int entryNode() throws IOException {
+    public int entryNode() {
       return entryNode;
     }
 

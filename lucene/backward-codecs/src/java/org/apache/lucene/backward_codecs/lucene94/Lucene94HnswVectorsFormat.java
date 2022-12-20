@@ -96,7 +96,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
+public class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
 
   static final String META_CODEC_NAME = "lucene94HnswVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "lucene94HnswVectorsFormatData";
@@ -115,20 +115,18 @@ public final class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
    */
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
-  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
-
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
    * {@link Lucene94HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
-  private final int maxConn;
+  final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
    * node. Defaults to to {@link Lucene94HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
-  private final int beamWidth;
+  final int beamWidth;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene94HnswVectorsFormat() {
@@ -149,7 +147,7 @@ public final class Lucene94HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene94HnswVectorsWriter(state, maxConn, beamWidth);
+    throw new UnsupportedOperationException("Old codecs may only be used for reading");
   }
 
   @Override

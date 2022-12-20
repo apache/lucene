@@ -16,26 +16,31 @@
  */
 package org.apache.lucene.backward_codecs.lucene94;
 
-import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 
-public class TestLucene94HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
-  @Override
-  protected Codec getCodec() {
-    return new Lucene94RWCodec();
+/** Implements the Lucene 9.4 index format for backwards compat testing */
+public class Lucene94RWCodec extends Lucene94Codec {
+
+  private final KnnVectorsFormat defaultKnnVectorsFormat;
+  private final KnnVectorsFormat knnVectorsFormat =
+      new PerFieldKnnVectorsFormat() {
+        @Override
+        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+          return defaultKnnVectorsFormat;
+        }
+      };
+
+  /** Instantiates a new codec. */
+  public Lucene94RWCodec() {
+    defaultKnnVectorsFormat =
+        new Lucene94RWHnswVectorsFormat(
+            Lucene94HnswVectorsFormat.DEFAULT_MAX_CONN,
+            Lucene94HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
   }
 
-  public void testToString() {
-    Lucene94RWCodec customCodec =
-        new Lucene94RWCodec() {
-          @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene94RWHnswVectorsFormat(10, 20);
-          }
-        };
-    String expectedString =
-        "Lucene94RWHnswVectorsFormat(name=Lucene94RWHnswVectorsFormat, maxConn=10, beamWidth=20)";
-    assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
+  @Override
+  public final KnnVectorsFormat knnVectorsFormat() {
+    return knnVectorsFormat;
   }
 }
