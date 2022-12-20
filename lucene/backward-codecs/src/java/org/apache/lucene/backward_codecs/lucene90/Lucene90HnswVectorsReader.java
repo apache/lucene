@@ -55,15 +55,12 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  */
 public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
-  private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
   private final long checksumSeed;
 
   Lucene90HnswVectorsReader(SegmentReadState state) throws IOException {
-    this.fieldInfos = state.fieldInfos;
-
     int versionMeta = readMetadata(state);
     long[] checksumRef = new long[1];
     boolean success = false;
@@ -303,20 +300,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         return fieldEntry.ordToDoc.length;
       }
     };
-  }
-
-  /** Get knn graph values; used for testing */
-  public HnswGraph getGraphValues(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
-    }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.indexDataLength > 0) {
-      return getGraphValues(entry);
-    } else {
-      return HnswGraph.EMPTY;
-    }
   }
 
   private HnswGraph getGraphValues(FieldEntry entry) throws IOException {

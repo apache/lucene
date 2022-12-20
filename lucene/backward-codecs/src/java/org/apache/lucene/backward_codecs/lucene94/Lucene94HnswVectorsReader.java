@@ -510,12 +510,12 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public int numLevels() throws IOException {
+    public int numLevels() {
       return numLevels;
     }
 
     @Override
-    public int entryNode() throws IOException {
+    public int entryNode() {
       return entryNode;
     }
 

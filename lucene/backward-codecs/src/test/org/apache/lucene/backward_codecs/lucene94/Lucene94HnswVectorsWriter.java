@@ -17,7 +17,7 @@
 
 package org.apache.lucene.backward_codecs.lucene94;
 
-import static org.apache.lucene.backward_codecs.lucene94.Lucene94HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.backward_codecs.lucene94.Lucene94RWHnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
