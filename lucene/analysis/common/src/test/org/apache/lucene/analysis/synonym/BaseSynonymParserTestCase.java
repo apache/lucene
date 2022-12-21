@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.analysis.synonym;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
@@ -23,11 +27,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.Util;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /** Base class for testing synonym parsers. */
 public abstract class BaseSynonymParserTestCase extends BaseTokenStreamTestCase {
