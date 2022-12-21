@@ -107,4 +107,8 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
     result = 31 * result + Arrays.hashCode(target);
     return result;
   }
+
+  public float[] getTarget() {
+    return target;
+  }
 }
