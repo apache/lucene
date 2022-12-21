@@ -46,9 +46,9 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  protected final String field;
-  protected final int k;
-  private final Query filter;
+  protected String field;
+  protected int k;
+  private Query filter;
 
   public AbstractKnnVectorQuery(String field, int k, Query filter) {
     this.field = field;
@@ -236,6 +236,30 @@ abstract class AbstractKnnVectorQuery extends Query {
   @Override
   public int hashCode() {
     return Objects.hash(field, k, filter);
+  }
+
+  public String getField() {
+    return field;
+  }
+
+  public void setField(String field) {
+    this.field = field;
+  }
+
+  public int getK() {
+    return k;
+  }
+
+  public void setK(int k) {
+    this.k = k;
+  }
+
+  public Query getFilter() {
+    return filter;
+  }
+
+  public void setFilter(Query filter) {
+    this.filter = filter;
   }
 
   /** Caches the results of a KnnVector search: a list of docs and their scores */
