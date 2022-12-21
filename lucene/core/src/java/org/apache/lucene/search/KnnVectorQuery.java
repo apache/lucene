@@ -23,6 +23,7 @@ import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -109,6 +110,6 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   public float[] getTargetCopy() {
-    return Arrays.copyOf(target, target.length);
+    return ArrayUtil.copyOfSubArray(target, 0, target.length);
   }
 }

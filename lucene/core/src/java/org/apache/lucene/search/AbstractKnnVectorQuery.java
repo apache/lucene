@@ -249,7 +249,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   public Query getFilter() {
     return filter;
   }
-  
+
   /** Caches the results of a KnnVector search: a list of docs and their scores */
   static class DocAndScoreQuery extends Query {
 
