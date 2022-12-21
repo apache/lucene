@@ -167,6 +167,8 @@ Other
 * GITHUB#11983: Make constructors for OffsetFromPositions and OffsetsFromMatchIterator
   public. (Alan Woodward)
 
+* LUCENE-10546: Update Faceting user guide. (Egor Potemkin)
+
 Build
 ---------------------
 
