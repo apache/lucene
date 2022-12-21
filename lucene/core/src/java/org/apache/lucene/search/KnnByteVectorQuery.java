@@ -114,7 +114,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
     return Objects.hash(super.hashCode(), target);
   }
 
-  public BytesRef getTarget() {
-    return target;
+  public BytesRef getTargetCopy() {
+    return target.clone();
   }
 }

@@ -108,7 +108,7 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
     return result;
   }
 
-  public float[] getTarget() {
-    return target;
+  public float[] getTargetCopy() {
+    return Arrays.copyOf(target, target.length);
   }
 }
