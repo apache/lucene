@@ -1136,7 +1136,7 @@ public class Dictionary {
         new WordStorage.Builder(wordCount, hasCustomMorphData, flags, allNonSuggestibleFlags());
 
     try (ByteSequencesReader reader =
-        new ByteSequencesReader(tempDir.openChecksumInput(sorted, IOContext.READONCE), sorted)) {
+        new ByteSequencesReader(tempDir.openChecksumInput(sorted), sorted)) {
 
       // TODO: the flags themselves can be double-chars (long) or also numeric
       // either way the trick is to encode them as char... but they must be parsed differently
