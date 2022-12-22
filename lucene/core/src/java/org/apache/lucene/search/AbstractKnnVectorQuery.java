@@ -253,8 +253,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   /**
-   * @return the filter that is executed before the KnnVector search happens. 
-   * Only the results accepted by this filter are returned by the KnnVector search.
+   * @return the filter that is executed before the KnnVector search happens. Only the results
+   *     accepted by this filter are returned by the KnnVector search.
    */
   public Query getFilter() {
     return filter;

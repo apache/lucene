@@ -70,7 +70,7 @@ public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
   public void testGetTarget() {
     float[] queryVector = new float[] {0, 1};
     KnnVectorQuery q1 = new KnnVectorQuery("f1", queryVector, 10);
-    
+
     Assert.assertArrayEquals(queryVector, q1.getTargetCopy(), 0);
     assertNotEquals(queryVector, q1.getTargetCopy());
   }
