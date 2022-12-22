@@ -115,6 +115,6 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   }
 
   public BytesRef getTargetCopy() {
-    return target.clone();
+    return BytesRef.deepCopyOf(target);
   }
 }
