@@ -239,14 +239,14 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   /**
-   * @return the KnnVectorField where the KnnVector search happens
+   * @return the KnnVectorField where the KnnVector search happens.
    */
   public String getField() {
     return field;
   }
 
   /**
-   * @return the max number of results the KnnVector search returns
+   * @return the max number of results the KnnVector search returns.
    */
   public int getK() {
     return k;
