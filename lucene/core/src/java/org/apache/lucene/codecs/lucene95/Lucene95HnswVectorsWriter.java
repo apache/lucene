@@ -25,11 +25,16 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.*;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -442,6 +447,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         beamWidth,
                         HnswGraphBuilder.randSeed);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
+                maybeInitializeFromGraph(hnswGraphBuilder, mergeState, fieldInfo);
                 yield hnswGraphBuilder.build(vectorValues.copy());
               }
               case FLOAT32 -> {
@@ -460,6 +466,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         beamWidth,
                         HnswGraphBuilder.randSeed);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
+                maybeInitializeFromGraph(hnswGraphBuilder, mergeState, fieldInfo);
                 yield hnswGraphBuilder.build(vectorValues.copy());
               }
             };
@@ -487,6 +494,126 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+  }
+
+  private void maybeInitializeFromGraph(
+      HnswGraphBuilder<?> hnswGraphBuilder, MergeState mergeState, FieldInfo fieldInfo)
+      throws IOException {
+    int initializerIndex = selectGraphForInitialization(mergeState, fieldInfo);
+    if (initializerIndex == -1) {
+      return;
+    }
+
+    HnswGraph initializerGraph =
+        getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]);
+    Map<Integer, Integer> ordinalMapper =
+        getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
+    hnswGraphBuilder.initializeFromGraph(initializerGraph, ordinalMapper);
+  }
+
+  private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)
+      throws IOException {
+    // Find the KnnVectorReader with the most docs that meets the following criteria:
+    //  1. Does not contain any deleted docs
+    //  2. Is a Lucene95HnswVectorsReader/PerFieldKnnVectorReader
+    // If no readers exist that meet this criteria, return -1. If they do, return their index in
+    // merge state
+    int maxCandidateVectorCount = 0;
+    int initializerIndex = -1;
+
+    for (int i = 0; i < mergeState.liveDocs.length; i++) {
+      KnnVectorsReader currKnnVectorsReader = mergeState.knnVectorsReaders[i];
+      if (mergeState.knnVectorsReaders[i]
+          instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
+        currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
+      }
+
+      if (!allMatch(mergeState.liveDocs[i])
+          || !(currKnnVectorsReader instanceof Lucene95HnswVectorsReader candidateReader)) {
+        continue;
+      }
+
+      VectorValues vectorValues = candidateReader.getVectorValues(fieldInfo.name);
+      if (vectorValues == null) {
+        continue;
+      }
+
+      int candidateVectorCount = vectorValues.size();
+      if (candidateVectorCount > maxCandidateVectorCount) {
+        maxCandidateVectorCount = candidateVectorCount;
+        initializerIndex = i;
+      }
+    }
+    return initializerIndex;
+  }
+
+  private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
+        && perFieldReader.getFieldReader(fieldName)
+            instanceof Lucene95HnswVectorsReader fieldReader) {
+      return fieldReader.getGraph(fieldName);
+    }
+
+    if (knnVectorsReader instanceof Lucene95HnswVectorsReader) {
+      return ((Lucene95HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
+    }
+
+    throw new IllegalArgumentException(
+        "Invalid KnnVectorsReader. Must be of type PerFieldKnnVectorsFormat.FieldsReader or Lucene94HnswVectorsReader");
+  }
+
+  private Map<Integer, Integer> getOldToNewOrdinalMap(
+      MergeState mergeState, FieldInfo fieldInfo, int initializerIndex) throws IOException {
+    VectorValues initializerVectorValues =
+        mergeState.knnVectorsReaders[initializerIndex].getVectorValues(fieldInfo.name);
+    MergeState.DocMap initializerDocMap = mergeState.docMaps[initializerIndex];
+
+    Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
+    int oldOrd = 0;
+    for (int oldId = initializerVectorValues.nextDoc();
+        oldId != NO_MORE_DOCS;
+        oldId = initializerVectorValues.nextDoc()) {
+      if (initializerVectorValues.vectorValue() == null) {
+        continue;
+      }
+      int newId = initializerDocMap.get(oldId);
+      newIdToOldOrdinal.put(newId, oldOrd);
+      oldOrd++;
+    }
+
+    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
+    int newOrd = 0;
+    int maxNewDocID = Collections.max(newIdToOldOrdinal.keySet());
+    VectorValues vectorValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+
+    for (int newDocId = vectorValues.nextDoc();
+        newDocId <= maxNewDocID;
+        newDocId = vectorValues.nextDoc()) {
+      if (vectorValues.vectorValue() == null) {
+        continue;
+      }
+
+      if (newIdToOldOrdinal.containsKey(newDocId)) {
+        oldToNewOrdinalMap.put(newIdToOldOrdinal.get(newDocId), newOrd);
+      }
+      newOrd++;
+    }
+
+    return oldToNewOrdinalMap;
+  }
+
+  private boolean allMatch(Bits bits) {
+    if (bits == null) {
+      return true;
+    }
+
+    for (int i = 0; i < bits.length(); i++) {
+      if (!bits.get(i)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
