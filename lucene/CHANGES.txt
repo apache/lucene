@@ -154,6 +154,8 @@ Optimizations
 
 * GITHUB#12006: Do ints compare instead of ArrayUtil#compareUnsigned4 in LatlonPointQueries. (Guo Feng)
 
+* GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
+
 Other
 ---------------------
 
