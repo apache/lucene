@@ -238,14 +238,24 @@ abstract class AbstractKnnVectorQuery extends Query {
     return Objects.hash(field, k, filter);
   }
 
+  /**
+   * @return the KnnVectorField where the KnnVector search happens
+   */
   public String getField() {
     return field;
   }
 
+  /**
+   * @return the max number of results the KnnVector search returns
+   */
   public int getK() {
     return k;
   }
 
+  /**
+   * @return the filter that is executed before the KnnVector search happens. 
+   * Only the results accepted by this filter are returned by the KnnVector search.
+   */
   public Query getFilter() {
     return filter;
   }
