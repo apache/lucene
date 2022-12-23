@@ -643,100 +643,55 @@ public final class Tessellator {
         && Long.compareUnsigned(p.morton, minZ) >= 0
         && n != null
         && Long.compareUnsigned(n.morton, maxZ) <= 0) {
-      if (p.idx != ear.previous.idx
-          && p.idx != ear.next.idx
-          && pointInEar(
-              p.getX(),
-              p.getY(),
-              ear.previous.getX(),
-              ear.previous.getY(),
-              ear.getX(),
-              ear.getY(),
-              ear.next.getX(),
-              ear.next.getY())
-          && area(
-                  p.previous.getX(),
-                  p.previous.getY(),
-                  p.getX(),
-                  p.getY(),
-                  p.next.getX(),
-                  p.next.getY())
-              >= 0) return false;
+      if (pointsInsideEar(p, ear)) {
+        return false;
+      }
       p = p.previousZ;
 
-      if (n.idx != ear.previous.idx
-          && n.idx != ear.next.idx
-          && pointInEar(
-              n.getX(),
-              n.getY(),
-              ear.previous.getX(),
-              ear.previous.getY(),
-              ear.getX(),
-              ear.getY(),
-              ear.next.getX(),
-              ear.next.getY())
-          && area(
-                  n.previous.getX(),
-                  n.previous.getY(),
-                  n.getX(),
-                  n.getY(),
-                  n.next.getX(),
-                  n.next.getY())
-              >= 0) return false;
+      if (pointsInsideEar(n, ear)) {
+        return false;
+      }
       n = n.nextZ;
     }
 
     // first look for points inside the triangle in decreasing z-order
     while (p != null && Long.compareUnsigned(p.morton, minZ) >= 0) {
-      if (p.idx != ear.previous.idx
-          && p.idx != ear.next.idx
-          && pointInEar(
-              p.getX(),
-              p.getY(),
-              ear.previous.getX(),
-              ear.previous.getY(),
-              ear.getX(),
-              ear.getY(),
-              ear.next.getX(),
-              ear.next.getY())
-          && area(
-                  p.previous.getX(),
-                  p.previous.getY(),
-                  p.getX(),
-                  p.getY(),
-                  p.next.getX(),
-                  p.next.getY())
-              >= 0) {
+      if (pointsInsideEar(p, ear)) {
         return false;
       }
       p = p.previousZ;
     }
     // then look for points in increasing z-order
     while (n != null && Long.compareUnsigned(n.morton, maxZ) <= 0) {
-      if (n.idx != ear.previous.idx
-          && n.idx != ear.next.idx
-          && pointInEar(
-              n.getX(),
-              n.getY(),
-              ear.previous.getX(),
-              ear.previous.getY(),
-              ear.getX(),
-              ear.getY(),
-              ear.next.getX(),
-              ear.next.getY())
-          && area(
-                  n.previous.getX(),
-                  n.previous.getY(),
-                  n.getX(),
-                  n.getY(),
-                  n.next.getX(),
-                  n.next.getY())
-              >= 0) {
+      if (pointsInsideEar(n, ear)) {
         return false;
       }
       n = n.nextZ;
     }
     return true;
+  }
+
+  /** Check if there are other points inside the potential ear **/
+  private static boolean pointsInsideEar(Node nodeToCheck, Node ear) {
+    return nodeToCheck.idx != ear.previous.idx
+            && nodeToCheck.idx != ear.next.idx
+            && pointInEar(
+                nodeToCheck.getX(),
+                nodeToCheck.getY(),
+                ear.previous.getX(),
+                ear.previous.getY(),
+                ear.getX(),
+                ear.getY(),
+                ear.next.getX(),
+                ear.next.getY())
+            && area(
+                nodeToCheck.previous.getX(),
+                nodeToCheck.previous.getY(),
+                nodeToCheck.getX(),
+                nodeToCheck.getY(),
+                nodeToCheck.next.getX(),
+                nodeToCheck.next.getY())
+               >= 0;
   }
 
   /** Iterate through all polygon nodes and remove small local self-intersections * */
@@ -1000,7 +955,6 @@ public final class Tessellator {
       if (isPointInLine(p, p.previous, a) && isPointInLine(p, p.previous, b)) {
         return p.previous.isNextEdgeFromPolygon;
       }
-
       p = p.previousZ;
 
       if (isPointInLine(n, n.next, a) && isPointInLine(n, n.next, b)) {
@@ -1009,7 +963,6 @@ public final class Tessellator {
       if (isPointInLine(n, n.previous, a) && isPointInLine(n, n.previous, b)) {
         return n.previous.isNextEdgeFromPolygon;
       }
-
       n = n.nextZ;
     }
 
@@ -1114,7 +1067,7 @@ public final class Tessellator {
   /** Determine whether the polygon defined between node start and node end is CW */
   private static boolean isCWPolygon(final Node start, final Node end) {
     // The polygon must be CW
-    return (signedArea(start, end) < 0) ? true : false;
+    return signedArea(start, end) < 0;
   }
 
   /** Determine the signed area between node start and node end */
@@ -1425,17 +1378,7 @@ public final class Tessellator {
     // check the bounding box because if the triangle is degenerated, e.g points and lines, we need
     // to filter out
     // coplanar points that are not part of the triangle.
-    if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-      int a = orient(x, y, ax, ay, bx, by);
-      int b = orient(x, y, bx, by, cx, cy);
-      if (a == 0 || b == 0 || a < 0 == b < 0) {
-        int c = orient(x, y, cx, cy, ax, ay);
-        return c == 0 || (c < 0 == (b < 0 || a < 0));
-      }
-      return false;
-    } else {
-      return false;
-    }
+    return Component2D.pointInTriangle(minX, maxX, minY, maxY, x, y, ax, ay, bx, by, cx, cy);
   }
 
   /**
