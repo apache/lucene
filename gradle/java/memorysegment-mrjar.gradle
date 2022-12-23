@@ -42,7 +42,6 @@ configure(project(":lucene:core")) {
         if (!details.directory) {
           logger.info("Patching: ${details.file}")
           new RandomAccessFile(details.file, 'rw').withCloseable { f ->
-            f.seek(0L)
             int magic = f.readInt();
             if (magic != (int)0xCAFEBABE) {
               throw new GradleException("Invalid Java class file magic ${String.format("0x%08X", magic)}: ${details.file}")
