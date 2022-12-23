@@ -100,6 +100,29 @@ configure(project(":lucene:core")) {
       main19Implementation sourceSets.main.output
     }
 
+    def patchClassFiles = { DirectoryProperty destinationDirectory, int expectedMajor ->
+      destinationDirectory.getAsFileTree().matching(new PatternSet().include('**/*.class')).visit{ details ->
+        if (!details.directory) {
+          logger.info("Patching: ${details.file}")
+          new RandomAccessFile(details.file, 'rw').withCloseable { f ->
+            f.seek(0L)
+            int magic = f.readInt();
+            if (magic != (int)0xCAFEBABE) {
+              throw new GradleException("Invalid Java class file magic ${String.format("0x%08X", magic)}: ${details.file}")
+            }
+            f.seek(6L)
+            short major = f.readShort()
+            if (major != expectedMajor) {
+              throw new GradleException("Invalid Java class file version ${major}: ${details.file}")
+            }
+            // patch the minor version to 0 (remove preview flag):
+            f.seek(4L)
+            f.writeShort(0)
+          }
+        }
+      }
+    }
+
     tasks.named('compileMain19Java').configure {
       javaCompiler = javaToolchains.compilerFor {
         languageVersion = JavaLanguageVersion.of(19)
@@ -111,6 +134,10 @@ configure(project(":lucene:core")) {
       sourceCompatibility = 19
       targetCompatibility = 19
       options.compilerArgs += ["--release", 19 as String, "--enable-preview"]
+      
+      doLast {
+        patchClassFiles(destinationDirectory, 63)
+      }
     }
     
     tasks.named('jar').configure {
