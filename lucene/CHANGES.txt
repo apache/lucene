@@ -180,6 +180,8 @@ Improvements
 
 * GITHUB#12016: Upgrade lucene/expressions to use antlr 4.11.1 (Andriy Redko)
 
+* GITHUB#12034: Remove null check in IndexReaderContext#leaves() usages (Erik Pellizzon)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
