@@ -109,7 +109,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       // circuit in case a single query holds more than numClauses
       //
       // NOTE: this is not just an early check for optimization -- it's
-      // neccessary to prevent run-away 'rewriting' of bad queries from
+      // necessary to prevent run-away 'rewriting' of bad queries from
       // creating BQ objects that might eat up all the Heap.
       if (clauses.size() >= IndexSearcher.maxClauseCount) {
         throw new IndexSearcher.TooManyClauses();
@@ -204,11 +204,11 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     for (BooleanClause clause : clauses) {
       Query query = clause.getQuery();
       Query rewritten = new ConstantScoreQuery(query).rewrite(indexSearcher);
-      if (rewritten instanceof ConstantScoreQuery) {
-        rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+      if (rewritten instanceof ConstantScoreQuery constantScoreQuery) {
+        rewritten = constantScoreQuery.getQuery();
       }
       BooleanClause.Occur occur = clause.getOccur();
-      if (occur == Occur.SHOULD && keepShould == false) {
+      if (occur == Occur.SHOULD && !keepShould) {
         // ignore clause
         actuallyRewritten = true;
       } else if (occur == Occur.MUST) {
@@ -223,7 +223,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    if (actuallyRewritten == false) {
+    if (!actuallyRewritten) {
       return this;
     }
 
@@ -249,19 +249,14 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (minimumNumberShouldMatch == 1 && c.getOccur() == Occur.SHOULD) {
         return query;
       } else if (minimumNumberShouldMatch == 0) {
-        switch (c.getOccur()) {
-          case SHOULD:
-          case MUST:
-            return query;
-          case FILTER:
-            // no scoring clauses, so return a score of 0
-            return new BoostQuery(new ConstantScoreQuery(query), 0);
-          case MUST_NOT:
-            // no positive clauses
-            return new MatchNoDocsQuery("pure negative BooleanQuery");
-          default:
-            throw new AssertionError();
-        }
+        return switch (c.getOccur()) {
+          case SHOULD, MUST -> query;
+          // no scoring clauses, so return a score of 0
+          case FILTER -> new BoostQuery(new ConstantScoreQuery(query), 0);
+          // no positive clauses
+          case MUST_NOT -> new MatchNoDocsQuery("pure negative BooleanQuery");
+          default -> throw new AssertionError();
+        };
       }
     }
 
@@ -311,10 +306,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
     // remove duplicate FILTER and MUST_NOT clauses
     {
-      int clauseCount = 0;
-      for (Collection<Query> queries : clauseSets.values()) {
-        clauseCount += queries.size();
-      }
+      int clauseCount = clauseSets.values().stream().mapToInt(Collection::size).sum();
       if (clauseCount != clauses.size()) {
         // since clauseSets implicitly deduplicates FILTER and MUST_NOT
         // clauses, this means there were duplicates
@@ -346,21 +338,15 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     if (clauseSets.get(Occur.FILTER).size() > 0) {
       final Set<Query> filters = new HashSet<>(clauseSets.get(Occur.FILTER));
       boolean modified = false;
-      if (filters.size() > 1 || clauseSets.get(Occur.MUST).isEmpty() == false) {
+      if (filters.size() > 1 || !clauseSets.get(Occur.MUST).isEmpty()) {
         modified = filters.remove(new MatchAllDocsQuery());
       }
       modified |= filters.removeAll(clauseSets.get(Occur.MUST));
       if (modified) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
         builder.setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
-        for (BooleanClause clause : clauses) {
-          if (clause.getOccur() != Occur.FILTER) {
-            builder.add(clause);
-          }
-        }
-        for (Query filter : filters) {
-          builder.add(filter, Occur.FILTER);
-        }
+        clauses.stream().filter(clause -> clause.getOccur() != Occur.FILTER).forEach(builder::add);
+        filters.forEach(filter -> builder.add(filter, Occur.FILTER));
         return builder.build();
       }
     }
@@ -373,7 +359,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       Set<Query> intersection = new HashSet<>(filters);
       intersection.retainAll(shoulds);
 
-      if (intersection.isEmpty() == false) {
+      if (!intersection.isEmpty()) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
         int minShouldMatch = getMinimumNumberShouldMatch();
 
@@ -398,8 +384,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       Map<Query, Double> shouldClauses = new HashMap<>();
       for (Query query : clauseSets.get(Occur.SHOULD)) {
         double boost = 1;
-        while (query instanceof BoostQuery) {
-          BoostQuery bq = (BoostQuery) query;
+        while (query instanceof BoostQuery bq) {
           boost *= bq.getBoost();
           query = bq.getQuery();
         }
@@ -408,19 +393,14 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (shouldClauses.size() != clauseSets.get(Occur.SHOULD).size()) {
         BooleanQuery.Builder builder =
             new BooleanQuery.Builder().setMinimumNumberShouldMatch(minimumNumberShouldMatch);
-        for (Map.Entry<Query, Double> entry : shouldClauses.entrySet()) {
-          Query query = entry.getKey();
-          float boost = entry.getValue().floatValue();
+        shouldClauses.forEach((query, value) -> {
+          float boost = value.floatValue();
           if (boost != 1f) {
             query = new BoostQuery(query, boost);
           }
           builder.add(query, Occur.SHOULD);
-        }
-        for (BooleanClause clause : clauses) {
-          if (clause.getOccur() != Occur.SHOULD) {
-            builder.add(clause);
-          }
-        }
+        });
+        clauses.stream().filter(clause -> clause.getOccur() != Occur.SHOULD).forEach(builder::add);
         return builder.build();
       }
     }
@@ -430,8 +410,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       Map<Query, Double> mustClauses = new HashMap<>();
       for (Query query : clauseSets.get(Occur.MUST)) {
         double boost = 1;
-        while (query instanceof BoostQuery) {
-          BoostQuery bq = (BoostQuery) query;
+        while (query instanceof BoostQuery bq) {
           boost *= bq.getBoost();
           query = bq.getQuery();
         }
@@ -440,19 +419,14 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (mustClauses.size() != clauseSets.get(Occur.MUST).size()) {
         BooleanQuery.Builder builder =
             new BooleanQuery.Builder().setMinimumNumberShouldMatch(minimumNumberShouldMatch);
-        for (Map.Entry<Query, Double> entry : mustClauses.entrySet()) {
-          Query query = entry.getKey();
-          float boost = entry.getValue().floatValue();
+        mustClauses.forEach((query, value) -> {
+          float boost = value.floatValue();
           if (boost != 1f) {
             query = new BoostQuery(query, boost);
           }
           builder.add(query, Occur.MUST);
-        }
-        for (BooleanClause clause : clauses) {
-          if (clause.getOccur() != Occur.MUST) {
-            builder.add(clause);
-          }
-        }
+        });
+        clauses.stream().filter(clause -> clause.getOccur() != Occur.MUST).forEach(builder::add);
         return builder.build();
       }
     }
@@ -465,8 +439,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (musts.size() == 1 && filters.size() > 0) {
         Query must = musts.iterator().next();
         float boost = 1f;
-        if (must instanceof BoostQuery) {
-          BoostQuery boostQuery = (BoostQuery) must;
+        if (must instanceof BoostQuery boostQuery) {
           must = boostQuery.getQuery();
           boost = boostQuery.getBoost();
         }
@@ -476,15 +449,12 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
           BooleanQuery.Builder builder = new BooleanQuery.Builder();
           for (BooleanClause clause : clauses) {
             switch (clause.getOccur()) {
-              case FILTER:
-              case MUST_NOT:
-                builder.add(clause);
-                break;
-              case MUST:
-              case SHOULD:
-              default:
+              case FILTER, MUST_NOT -> builder.add(clause);
+              case MUST, SHOULD -> {
+              }
+              default -> {
                 // ignore
-                break;
+              }
             }
           }
           Query rewritten = builder.build();
@@ -513,13 +483,10 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
       boolean actuallyRewritten = false;
       for (BooleanClause clause : clauses) {
-        if (clause.getOccur() == Occur.SHOULD && clause.getQuery() instanceof BooleanQuery) {
-          BooleanQuery innerQuery = (BooleanQuery) clause.getQuery();
+        if (clause.getOccur() == Occur.SHOULD && clause.getQuery() instanceof BooleanQuery innerQuery) {
           if (innerQuery.isPureDisjunction()) {
             actuallyRewritten = true;
-            for (BooleanClause innerClause : innerQuery.clauses()) {
-              builder.add(innerClause);
-            }
+            innerQuery.clauses().forEach(builder::add);
           } else {
             builder.add(clause);
           }
@@ -536,23 +503,25 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     // Important(this can only be processed after nested clauses have been flattened)
     {
       final Collection<Query> shoulds = clauseSets.get(Occur.SHOULD);
-      if (shoulds.size() > 0) {
-        if (shoulds.size() < minimumNumberShouldMatch) {
-          return new MatchNoDocsQuery("SHOULD clause count less than minimumNumberShouldMatch");
-        }
+      if (shoulds.size() == 0) {
+        return super.rewrite(indexSearcher);
+      }
 
-        if (shoulds.size() == minimumNumberShouldMatch) {
-          BooleanQuery.Builder builder = new BooleanQuery.Builder();
-          for (BooleanClause clause : clauses) {
-            if (clause.getOccur() == Occur.SHOULD) {
-              builder.add(clause.getQuery(), Occur.MUST);
-            } else {
-              builder.add(clause);
-            }
+      if (shoulds.size() < minimumNumberShouldMatch) {
+        return new MatchNoDocsQuery("SHOULD clause count less than minimumNumberShouldMatch");
+      }
+
+      if (shoulds.size() == minimumNumberShouldMatch) {
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+        for (BooleanClause clause : clauses) {
+          if (clause.getOccur() == Occur.SHOULD) {
+            builder.add(clause.getQuery(), Occur.MUST);
+          } else {
+            builder.add(clause);
           }
-
-          return builder.build();
         }
+
+        return builder.build();
       }
     }
 
@@ -563,17 +532,12 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   public void visit(QueryVisitor visitor) {
     QueryVisitor sub = visitor.getSubVisitor(Occur.MUST, this);
     for (BooleanClause.Occur occur : clauseSets.keySet()) {
-      if (clauseSets.get(occur).size() > 0) {
-        if (occur == Occur.MUST) {
-          for (Query q : clauseSets.get(occur)) {
-            q.visit(sub);
-          }
-        } else {
-          QueryVisitor v = sub.getSubVisitor(occur, this);
-          for (Query q : clauseSets.get(occur)) {
-            q.visit(v);
-          }
-        }
+      if (clauseSets.get(occur).size() == 0) continue;
+      if (occur == Occur.MUST) {
+        clauseSets.get(occur).forEach(q -> q.visit(sub));
+      } else {
+        QueryVisitor v = sub.getSubVisitor(occur, this);
+        clauseSets.get(occur).forEach(q -> q.visit(v));
       }
     }
   }
