@@ -349,7 +349,8 @@ public class MMapDirectory extends FSDirectory {
 
   private static MMapIndexInputProvider lookupProvider() {
     final var lookup = MethodHandles.lookup();
-    if (Runtime.version().feature() == 19) {
+    final int runtimeVersion = Runtime.version().feature();
+    if (runtimeVersion == 19) {
       try {
         final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
         // we use method handles, so we do not need to deal with setAccessible as we have private
@@ -369,7 +370,7 @@ public class MMapDirectory extends FSDirectory {
         throw new LinkageError(
             "MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
       }
-    } else if (Runtime.version().feature() >= 20) {
+    } else if (runtimeVersion >= 20) {
       var log = Logger.getLogger(lookup.lookupClass().getName());
       log.warning(
           "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
