@@ -31,6 +31,10 @@ import java.io.IOException;
  */
 public class FilterIndexOutput extends IndexOutput {
 
+  /**
+   * Unwraps all FilterIndexOutputs until the first non-FilterIndexOutput IndexOutput instance and
+   * returns it
+   */
   public static IndexOutput unwrap(IndexOutput out) {
     while (out instanceof FilterIndexOutput) {
       out = ((FilterIndexOutput) out).out;
@@ -40,11 +44,15 @@ public class FilterIndexOutput extends IndexOutput {
 
   protected final IndexOutput out;
 
+  /**
+   * Creates a FilterIndexOutput with a resource description, name, and wrapped delegate IndexOutput
+   */
   protected FilterIndexOutput(String resourceDescription, String name, IndexOutput out) {
     super(resourceDescription, name);
     this.out = out;
   }
 
+  /** Gets the delegate that was passed in on creation */
   public final IndexOutput getDelegate() {
     return out;
   }

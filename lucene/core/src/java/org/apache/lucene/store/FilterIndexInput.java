@@ -29,6 +29,10 @@ import java.io.IOException;
  */
 public class FilterIndexInput extends IndexInput {
 
+  /**
+   * Unwraps all FilterIndexInputs until the first non-FilterIndexInput IndexInput instance and
+   * returns it
+   */
   public static IndexInput unwrap(IndexInput in) {
     while (in instanceof FilterIndexInput) {
       in = ((FilterIndexInput) in).in;
@@ -38,11 +42,13 @@ public class FilterIndexInput extends IndexInput {
 
   protected final IndexInput in;
 
+  /** Creates a FilterIndexInput with a resource description and wrapped delegate IndexInput */
   public FilterIndexInput(String resourceDescription, IndexInput in) {
     super(resourceDescription);
     this.in = in;
   }
 
+  /** Gets the delegate that was passed in on creation */
   public IndexInput getDelegate() {
     return in;
   }
