@@ -251,9 +251,9 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       } else if (minimumNumberShouldMatch == 0) {
         return switch (c.getOccur()) {
           case SHOULD, MUST -> query;
-          // no scoring clauses, so return a score of 0
+            // no scoring clauses, so return a score of 0
           case FILTER -> new BoostQuery(new ConstantScoreQuery(query), 0);
-          // no positive clauses
+            // no positive clauses
           case MUST_NOT -> new MatchNoDocsQuery("pure negative BooleanQuery");
           default -> throw new AssertionError();
         };
@@ -393,13 +393,14 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (shouldClauses.size() != clauseSets.get(Occur.SHOULD).size()) {
         BooleanQuery.Builder builder =
             new BooleanQuery.Builder().setMinimumNumberShouldMatch(minimumNumberShouldMatch);
-        shouldClauses.forEach((query, value) -> {
-          float boost = value.floatValue();
-          if (boost != 1f) {
-            query = new BoostQuery(query, boost);
-          }
-          builder.add(query, Occur.SHOULD);
-        });
+        shouldClauses.forEach(
+            (query, value) -> {
+              float boost = value.floatValue();
+              if (boost != 1f) {
+                query = new BoostQuery(query, boost);
+              }
+              builder.add(query, Occur.SHOULD);
+            });
         clauses.stream().filter(clause -> clause.getOccur() != Occur.SHOULD).forEach(builder::add);
         return builder.build();
       }
@@ -419,13 +420,14 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (mustClauses.size() != clauseSets.get(Occur.MUST).size()) {
         BooleanQuery.Builder builder =
             new BooleanQuery.Builder().setMinimumNumberShouldMatch(minimumNumberShouldMatch);
-        mustClauses.forEach((query, value) -> {
-          float boost = value.floatValue();
-          if (boost != 1f) {
-            query = new BoostQuery(query, boost);
-          }
-          builder.add(query, Occur.MUST);
-        });
+        mustClauses.forEach(
+            (query, value) -> {
+              float boost = value.floatValue();
+              if (boost != 1f) {
+                query = new BoostQuery(query, boost);
+              }
+              builder.add(query, Occur.MUST);
+            });
         clauses.stream().filter(clause -> clause.getOccur() != Occur.MUST).forEach(builder::add);
         return builder.build();
       }
@@ -450,8 +452,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
           for (BooleanClause clause : clauses) {
             switch (clause.getOccur()) {
               case FILTER, MUST_NOT -> builder.add(clause);
-              case MUST, SHOULD -> {
-              }
+              case MUST, SHOULD -> {}
               default -> {
                 // ignore
               }
@@ -483,7 +484,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
       boolean actuallyRewritten = false;
       for (BooleanClause clause : clauses) {
-        if (clause.getOccur() == Occur.SHOULD && clause.getQuery() instanceof BooleanQuery innerQuery) {
+        if (clause.getOccur() == Occur.SHOULD
+            && clause.getQuery() instanceof BooleanQuery innerQuery) {
           if (innerQuery.isPureDisjunction()) {
             actuallyRewritten = true;
             innerQuery.clauses().forEach(builder::add);
