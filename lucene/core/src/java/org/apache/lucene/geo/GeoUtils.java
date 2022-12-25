@@ -205,7 +205,13 @@ public final class GeoUtils {
   public static int orient(double ax, double ay, double bx, double by, double cx, double cy) {
     double v1 = (bx - ax) * (cy - ay);
     double v2 = (cx - ax) * (by - ay);
-    return Double.compare(v1, v2);
+    if (v1 > v2) {
+      return 1;
+    } else if (v1 < v2) {
+      return -1;
+    } else {
+      return 0;
+    }
   }
 
   /** uses orient method to compute whether two line segments cross */
