@@ -61,8 +61,8 @@ import org.apache.lucene.util.Constants;
  * the workaround will be automatically enabled (with no guarantees; if you discover any problems,
  * you can disable it).
  *
- * <p>On <b>Java 19</b> with {@code --enable-preview} command line setting, this class will use the
- * modern {@code MemorySegment} API which allows to safely unmap.
+ * <p>On exactly <b>Java 19</b> this class will use the modern {@code MemorySegment} API which
+ * allows to safely unmap.
  *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying channel immediately if at the same time the thread is
@@ -106,8 +106,7 @@ public class MMapDirectory extends FSDirectory {
    * Default max chunk size:
    *
    * <ul>
-   *   <li>16 GiBytes for 64 bit <b>Java 19</b> JVMs running with {@code --enable-preview} as
-   *       command line parameter
+   *   <li>16 GiBytes for 64 bit <b>Java 19</b> JVMs
    *   <li>1 GiBytes for other 64 bit JVMs
    *   <li>256 MiBytes for 32 bit JVMs
    * </ul>
@@ -211,9 +210,8 @@ public class MMapDirectory extends FSDirectory {
    * non-Oracle/OpenJDK JVMs. It forcefully unmaps the buffer on close by using an undocumented
    * internal cleanup functionality.
    *
-   * <p>On Java 19 with {@code --enable-preview} command line setting, this class will use the
-   * modern {@code MemorySegment} API which allows to safely unmap. <em>The following warnings no
-   * longer apply in that case!</em>
+   * <p>On exactly Java 19 this class will use the modern {@code MemorySegment} API which allows to
+   * safely unmap. <em>The following warnings no longer apply in that case!</em>
    *
    * <p><b>NOTE:</b> Enabling this is completely unsupported by Java and may lead to JVM crashes if
    * <code>IndexInput</code> is closed while another thread is still accessing it (SIGSEGV).
@@ -373,39 +371,33 @@ public class MMapDirectory extends FSDirectory {
 
   private static MMapIndexInputProvider lookupProvider() {
     final var lookup = MethodHandles.lookup();
-    try {
-      final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
-      // we use method handles, so we do not need to deal with setAccessible as we have private
-      // access through the lookup:
-      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+    final int runtimeVersion = Runtime.version().feature();
+    if (runtimeVersion == 19) {
       try {
-        return (MMapIndexInputProvider) constr.invoke();
-      } catch (RuntimeException | Error e) {
-        throw e;
-      } catch (Throwable th) {
-        throw new AssertionError(th);
+        final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
+        // we use method handles, so we do not need to deal with setAccessible as we have private
+        // access through the lookup:
+        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+        try {
+          return (MMapIndexInputProvider) constr.invoke();
+        } catch (RuntimeException | Error e) {
+          throw e;
+        } catch (Throwable th) {
+          throw new AssertionError(th);
+        }
+      } catch (NoSuchMethodException | IllegalAccessException e) {
+        throw new LinkageError(
+            "MemorySegmentIndexInputProvider is missing correctly typed constructor", e);
+      } catch (ClassNotFoundException cnfe) {
+        throw new LinkageError(
+            "MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
       }
-    } catch (
-        @SuppressWarnings("unused")
-        ClassNotFoundException e) {
-      // we're before Java 19
-      return new MappedByteBufferIndexInputProvider();
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedClassVersionError e) {
+    } else if (runtimeVersion >= 20) {
       var log = Logger.getLogger(lookup.lookupClass().getName());
-      if (Runtime.version().feature() == 19) {
-        log.warning(
-            "You are running with Java 19. To make full use of MMapDirectory, please pass '--enable-preview' to the Java command line.");
-      } else {
-        log.warning(
-            "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
-      }
-      return new MappedByteBufferIndexInputProvider();
-    } catch (NoSuchMethodException | IllegalAccessException e) {
-      throw new LinkageError(
-          "MemorySegmentIndexInputProvider is missing correctly typed constructor", e);
+      log.warning(
+          "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
     }
+    return new MappedByteBufferIndexInputProvider();
   }
 
   static {
