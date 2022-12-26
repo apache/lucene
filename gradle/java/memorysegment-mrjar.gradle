@@ -25,16 +25,23 @@ configure(project(":lucene:core")) {
           srcDirs = ['src/java19']
         }
       }
+      main20 {
+        java {
+          srcDirs = ['src/java20']
+        }
+      }
     }
 
     configurations {
       // Inherit any dependencies from the main source set.
       main19Implementation.extendsFrom implementation
+      main20Implementation.extendsFrom implementation
     }
     
     dependencies {
-      // We need the main classes to compile our Java 19 pieces.
+      // We need the main classes to compile our MR-JAR pieces.
       main19Implementation sourceSets.main.output
+      main20Implementation sourceSets.main.output
     }
 
     def patchClassFiles = { DirectoryProperty destinationDirectory, int expectedMajor ->
@@ -76,9 +83,29 @@ configure(project(":lucene:core")) {
       }
     }
     
+    tasks.named('compileMain20Java').configure {
+      javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(20)
+      }
+      
+      // undo alternative JDK support:
+      options.forkOptions.javaHome = null
+      
+      sourceCompatibility = 20
+      targetCompatibility = 20
+      options.compilerArgs += ["--release", 20 as String, "--enable-preview"]
+      
+      doLast {
+        patchClassFiles(destinationDirectory, 64)
+      }
+    }
+    
     tasks.named('jar').configure {
       into('META-INF/versions/19') {
         from sourceSets.main19.output
+      }
+      into('META-INF/versions/20') {
+        from sourceSets.main20.output
       }
 
       manifest.attributes(
