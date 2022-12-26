@@ -81,8 +81,7 @@ public class Lucene90PointsReader extends PointsReader {
       CodecUtil.retrieveChecksum(dataIn);
 
       long indexLength = -1, dataLength = -1;
-      try (ChecksumIndexInput metaIn =
-          readState.directory.openChecksumInput(metaFileName, IOContext.READONCE)) {
+      try (ChecksumIndexInput metaIn = readState.directory.openChecksumInput(metaFileName)) {
         Throwable priorE = null;
         try {
           CodecUtil.checkIndexHeader(

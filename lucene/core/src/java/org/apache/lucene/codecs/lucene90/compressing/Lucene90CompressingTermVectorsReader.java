@@ -143,7 +143,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
       final String metaStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION);
-      metaIn = d.openChecksumInput(metaStreamFN, IOContext.READONCE);
+      metaIn = d.openChecksumInput(metaStreamFN);
       CodecUtil.checkIndexHeader(
           metaIn,
           VECTORS_INDEX_CODEC_NAME + "Meta",

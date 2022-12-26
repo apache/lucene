@@ -82,8 +82,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
             SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
 
     boolean success = false;
-    try (ChecksumIndexInput in =
-        readState.directory.openChecksumInput(metaFileName, IOContext.DEFAULT)) {
+    try (ChecksumIndexInput in = readState.directory.openChecksumInput(metaFileName)) {
       int fieldNumber = readInt(in, FIELD_NUMBER);
       while (fieldNumber != -1) {
         String fieldName = readString(in, FIELD_NAME);

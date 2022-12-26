@@ -37,6 +37,8 @@ API Changes
 * GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
   rewriting. (Patrick Zhai)
 
+* GITHUB#11933: Remove IOContext from Directory#openChecksumInput. (Zach Chen)
+
 * GITHUB#11814: Support deletions in IndexRearranger. (Stefan Vodita)
 
 New Features
