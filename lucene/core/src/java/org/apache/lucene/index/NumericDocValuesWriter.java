@@ -102,9 +102,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     }
 
     dvConsumer.addNumericField(
-        fieldInfo,
-        getDocValuesProducer(
-            fieldInfo, finalValues, docsWithField, sortMap));
+        fieldInfo, getDocValuesProducer(fieldInfo, finalValues, docsWithField, sortMap));
   }
 
   static DocValuesProducer getDocValuesProducer(
