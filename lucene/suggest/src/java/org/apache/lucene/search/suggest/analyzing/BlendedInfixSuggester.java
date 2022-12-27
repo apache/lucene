@@ -30,6 +30,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
@@ -225,6 +226,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
     // we reduce the num to the one initially requested
     int actualNum = num / numFactor;
 
+    TermVectors termVectors = searcher.getIndexReader().termVectors();
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       FieldDoc fd = (FieldDoc) hits.scoreDocs[i];
 
@@ -258,7 +260,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
         // if hit starts with the key, we don't change the score
         coefficient = 1;
       } else {
-        coefficient = createCoefficient(searcher, fd.doc, matchedTokens, prefixToken);
+        coefficient = createCoefficient(termVectors, fd.doc, matchedTokens, prefixToken);
       }
       if (weight == 0) {
         weight = 1;
@@ -314,10 +316,10 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
    *     index.
    */
   private double createCoefficient(
-      IndexSearcher searcher, int doc, Set<String> matchedTokens, String prefixToken)
+      TermVectors termVectors, int doc, Set<String> matchedTokens, String prefixToken)
       throws IOException {
 
-    Terms tv = searcher.getIndexReader().getTermVector(doc, TEXT_FIELD_NAME);
+    Terms tv = termVectors.get(doc, TEXT_FIELD_NAME);
     TermsEnum it = tv.iterator();
 
     Integer position = Integer.MAX_VALUE;

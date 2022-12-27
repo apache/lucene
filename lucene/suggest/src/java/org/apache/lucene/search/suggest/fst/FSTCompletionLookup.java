@@ -202,8 +202,7 @@ public class FSTCompletionLookup extends Lookup {
 
       reader =
           new OfflineSorter.ByteSequencesReader(
-              tempDir.openChecksumInput(tempSortedFileName, IOContext.READONCE),
-              tempSortedFileName);
+              tempDir.openChecksumInput(tempSortedFileName), tempSortedFileName);
       long line = 0;
       int previousBucket = 0;
       int previousScore = 0;

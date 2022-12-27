@@ -56,7 +56,7 @@ public class SimpleFacetsExample {
   }
 
   /** Build the example index. */
-  private void index() throws IOException {
+  void index() throws IOException {
     IndexWriter indexWriter =
         new IndexWriter(
             indexDir, new IndexWriterConfig(new WhitespaceAnalyzer()).setOpenMode(OpenMode.CREATE));
@@ -94,7 +94,7 @@ public class SimpleFacetsExample {
   }
 
   /** User runs a query and counts facets. */
-  private List<FacetResult> facetsWithSearch() throws IOException {
+  List<FacetResult> facetsWithSearch() throws IOException {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
@@ -147,7 +147,7 @@ public class SimpleFacetsExample {
   }
 
   /** User drills down on 'Publish Date/2010', and we return facets for 'Author' */
-  private FacetResult drillDown() throws IOException {
+  FacetResult drillDown() throws IOException {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);

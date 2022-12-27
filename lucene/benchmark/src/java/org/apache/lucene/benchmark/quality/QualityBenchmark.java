@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import org.apache.lucene.benchmark.quality.utils.DocNameExtractor;
 import org.apache.lucene.benchmark.quality.utils.SubmissionReport;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -128,8 +129,9 @@ public class QualityBenchmark {
         System.currentTimeMillis(); // extraction of first doc name we measure also construction of
     // doc name extractor, just in case.
     DocNameExtractor xt = new DocNameExtractor(docNameField);
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < sd.length; i++) {
-      String docName = xt.docName(searcher, sd[i].doc);
+      String docName = xt.docName(storedFields, sd[i].doc);
       long docNameExtractTime = System.currentTimeMillis() - t1;
       t1 = System.currentTimeMillis();
       boolean isRelevant = judge.isRelevant(docName, qq);

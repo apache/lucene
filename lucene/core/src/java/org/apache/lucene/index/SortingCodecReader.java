@@ -402,8 +402,8 @@ public final class SortingCodecReader extends FilterCodecReader {
   private StoredFieldsReader newStoredFieldsReader(StoredFieldsReader delegate) {
     return new StoredFieldsReader() {
       @Override
-      public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
-        delegate.visitDocument(docMap.newToOld(docID), visitor);
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        delegate.document(docMap.newToOld(docID), visitor);
       }
 
       @Override
@@ -473,6 +473,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public TopDocs search(
           String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public TopDocs search(
+          String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
         throw new UnsupportedOperationException();
       }
 

@@ -37,6 +37,8 @@ API Changes
 * GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
   rewriting. (Patrick Zhai)
 
+* GITHUB#11933: Remove IOContext from Directory#openChecksumInput. (Zach Chen)
+
 * GITHUB#11814: Support deletions in IndexRearranger. (Stefan Vodita)
 
 New Features
@@ -96,6 +98,12 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#11998: Add new stored fields and termvectors interfaces: IndexReader.storedFields()
+  and IndexReader.termVectors(). Deprecate IndexReader.document() and IndexReader.getTermVector().
+  The new APIs do not rely upon ThreadLocal storage for each index segment, which can greatly
+  reduce RAM requirements when there are many threads and/or segments.
+  (Adrien Grand, Robert Muir)
+
 * GITHUB#11742: MatchingFacetSetsCounts#getTopChildren now properly returns "top" children instead
   of all children. (Greg Miller)
 
@@ -125,10 +133,17 @@ API Changes
 
 * GITHUB#11962: VectorValues#cost() now delegates to VectorValues#size().
   (Adrien Grand)
-  
+
 * GITHUB#11984: Improved TimeLimitBulkScorer to check the timeout at exponantial rate.
   (Costin Leau)
 
+* GITHUB#12004: Add new KnnByteVectorQuery for querying vector fields that are encoded as BYTE. Removes the ability to
+  use KnnVectorQuery against fields encoded as BYTE (Ben Trent)
+
+* GITHUB#11997: Introduce IntField, LongField, FloatField and DoubleField.
+  These new fields index both 1D points and sorted numeric doc values and
+  provide best performance for filtering and sorting.
+  (Francisco Fernández Castaño, Adrien Grand)
 
 New Features
 ---------------------
@@ -139,6 +154,15 @@ New Features
   preload. (Adrien Grand, Uwe Schindler)
 
 * GITHUB#11999: MemoryIndex now supports stored fields. (Alan Woodward)
+
+* GITHUB#11997: Add IntField, LongField, FloatField and DoubleField: easy to
+  use numeric fields that perform well both for filtering and sorting.
+  (Francisco Fernández Castaño)
+
+* GITHUB#12033: Support for Java 19 foreign memory support is now enabled by default,
+  no need to pass "--enable-preview" on the command line. If exactly Java 19 is used,
+  MMapDirectory will mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) and
+  indexes closed while queries are running can no longer crash the JVM.  (Uwe Schindler)
 
 Improvements
 ---------------------
@@ -161,6 +185,8 @@ Improvements
 
 * GITHUB#12003: Minor cleanup/improvements to IndexSortSortedNumericDocValuesRangeQuery. (Greg Miller)
 
+* GITHUB#12016: Upgrade lucene/expressions to use antlr 4.11.1 (Andriy Redko)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
@@ -182,6 +208,11 @@ Bug Fixes
 * GITHUB#11990: PassageSelector now has a larger minimum size for its priority queue,
   so that subsequent passage merges don't mean that we return too few passages in
   total. (Alan Woodward, Dawid Weiss)
+
+* GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
+  common vertex. (Ignacio Vera)
+
+* GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
 
 Optimizations
 ---------------------
@@ -222,6 +253,9 @@ Optimizations
 * GITHUB#12011: Minor speedup to flushing long postings lists when an index
   sort is configured. (Adrien Grand)
 
+* GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
+
+
 Other
 ---------------------
 
@@ -239,6 +273,8 @@ Other
 
 * GITHUB#11983: Make constructors for OffsetFromPositions and OffsetsFromMatchIterator
   public. (Alan Woodward)
+
+* LUCENE-10546: Update Faceting user guide. (Egor Potemkin)
 
 Build
 ---------------------

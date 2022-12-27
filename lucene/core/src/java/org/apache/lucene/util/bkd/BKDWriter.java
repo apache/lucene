@@ -33,7 +33,6 @@ import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
@@ -1532,7 +1531,7 @@ public class BKDWriter implements Closeable {
       // We are reading from a temp file; go verify the checksum:
       String tempFileName = ((OfflinePointWriter) writer).name;
       if (tempDir.getCreatedFiles().contains(tempFileName)) {
-        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE)) {
+        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
           CodecUtil.checkFooter(in, priorException);
         }
       }
