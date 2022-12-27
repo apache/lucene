@@ -208,7 +208,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         rewritten = constantScoreQuery.getQuery();
       }
       BooleanClause.Occur occur = clause.getOccur();
-      if (occur == Occur.SHOULD && keepShould == false) {
+      if (occur == Occur.SHOULD && !keepShould) {
         // ignore clause
         actuallyRewritten = true;
       } else if (occur == Occur.MUST) {
@@ -223,7 +223,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    if (actuallyRewritten == false) {
+    if (!actuallyRewritten) {
       return this;
     }
 
@@ -338,7 +338,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     if (clauseSets.get(Occur.FILTER).size() > 0) {
       final Set<Query> filters = new HashSet<>(clauseSets.get(Occur.FILTER));
       boolean modified = false;
-      if (filters.size() > 1 || clauseSets.get(Occur.MUST).isEmpty() == false) {
+      if (filters.size() > 1 || !clauseSets.get(Occur.MUST).isEmpty()) {
         modified = filters.remove(new MatchAllDocsQuery());
       }
       modified |= filters.removeAll(clauseSets.get(Occur.MUST));
@@ -359,7 +359,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       Set<Query> intersection = new HashSet<>(filters);
       intersection.retainAll(shoulds);
 
-      if (intersection.isEmpty() == false) {
+      if (!intersection.isEmpty()) {
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
         int minShouldMatch = getMinimumNumberShouldMatch();
 
