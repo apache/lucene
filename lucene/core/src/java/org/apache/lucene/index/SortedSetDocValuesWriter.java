@@ -22,6 +22,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.SortedDocValuesWriter.BufferedSortedDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
@@ -162,8 +163,7 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     bytesUsed = newBytesUsed;
   }
 
-  @Override
-  SortedSetDocValues getDocValues() {
+  private void finish() {
     if (finalOrds == null) {
       assert finalOrdCounts == null && finalSortedValues == null && finalOrdMap == null;
       finishCurrentDoc();
@@ -172,10 +172,15 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       finalOrdCounts = pendingCounts == null ? null : pendingCounts.build();
       finalSortedValues = hash.sort();
       finalOrdMap = new int[valueCount];
+      for (int ord = 0; ord < finalOrdMap.length; ord++) {
+        finalOrdMap[finalSortedValues[ord]] = ord;
+      }
     }
-    for (int ord = 0; ord < finalOrdMap.length; ord++) {
-      finalOrdMap[finalSortedValues[ord]] = ord;
-    }
+  }
+
+  @Override
+  SortedSetDocValues getDocValues() {
+    finish();
     return getValues(
         finalSortedValues, finalOrdMap, hash, finalOrds, finalOrdCounts, maxCount, docsWithField);
   }
@@ -200,27 +205,25 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   @Override
   public void flush(SegmentWriteState state, Sorter.DocMap sortMap, DocValuesConsumer dvConsumer)
       throws IOException {
-    final int valueCount = hash.size();
-    final PackedLongValues ords;
-    final PackedLongValues ordCounts;
-    final int[] sortedValues;
-    final int[] ordMap;
+    finish();
+    final PackedLongValues ords = finalOrds;
+    final PackedLongValues ordCounts = finalOrdCounts;
+    final int[] sortedValues = finalSortedValues;
+    final int[] ordMap = finalOrdMap;
 
-    if (finalOrds == null) {
-      assert finalOrdCounts == null && finalSortedValues == null && finalOrdMap == null;
-      finishCurrentDoc();
-      ords = pending.build();
-      ordCounts = pendingCounts == null ? null : pendingCounts.build();
-      sortedValues = hash.sort();
-      ordMap = new int[valueCount];
-      for (int ord = 0; ord < valueCount; ord++) {
-        ordMap[sortedValues[ord]] = ord;
-      }
-    } else {
-      ords = finalOrds;
-      ordCounts = finalOrdCounts;
-      sortedValues = finalSortedValues;
-      ordMap = finalOrdMap;
+    if (ordCounts == null) {
+      DocValuesProducer singleValueProducer =
+          SortedDocValuesWriter.getDocValuesProducer(
+              fieldInfo, hash, ords, sortedValues, ordMap, docsWithField, sortMap);
+      dvConsumer.addSortedSetField(
+          fieldInfo,
+          new EmptyDocValuesProducer() {
+            @Override
+            public SortedSetDocValues getSortedSet(FieldInfo fieldInfo) throws IOException {
+              return DocValues.singleton(singleValueProducer.getSorted(fieldInfo));
+            }
+          });
+      return;
     }
 
     final DocOrds docOrds;
