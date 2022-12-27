@@ -102,7 +102,9 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     if (currentDoc == -1) {
       return;
     }
-    Arrays.sort(currentValues, 0, currentUpto);
+    if (currentUpto > 1) {
+      Arrays.sort(currentValues, 0, currentUpto);
+    }
     int lastValue = -1;
     int count = 0;
     for (int i = 0; i < currentUpto; i++) {
