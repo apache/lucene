@@ -250,7 +250,11 @@ Optimizations
 
 * GITHUB#12006: Do ints compare instead of ArrayUtil#compareUnsigned4 in LatlonPointQueries. (Guo Feng)
 
+* GITHUB#12011: Minor speedup to flushing long postings lists when an index
+  sort is configured. (Adrien Grand)
+
 * GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
+
 
 Other
 ---------------------
