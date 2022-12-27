@@ -866,8 +866,8 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     }
 
     @Override
-    public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
-      ChecksumIndexInput in = super.openChecksumInput(name, context);
+    public ChecksumIndexInput openChecksumInput(String name) throws IOException {
+      ChecksumIndexInput in = super.openChecksumInput(name);
       final FixedBitSet set =
           readBytes.computeIfAbsent(name, n -> new FixedBitSet(Math.toIntExact(in.length())));
       if (set.length() != in.length()) {

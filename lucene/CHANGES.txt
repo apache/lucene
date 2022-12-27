@@ -37,6 +37,8 @@ API Changes
 * GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
   rewriting. (Patrick Zhai)
 
+* GITHUB#11933: Remove IOContext from Directory#openChecksumInput. (Zach Chen)
+
 * GITHUB#11814: Support deletions in IndexRearranger. (Stefan Vodita)
 
 New Features
@@ -157,6 +159,11 @@ New Features
   use numeric fields that perform well both for filtering and sorting.
   (Francisco Fernández Castaño)
 
+* GITHUB#12033: Support for Java 19 foreign memory support is now enabled by default,
+  no need to pass "--enable-preview" on the command line. If exactly Java 19 is used,
+  MMapDirectory will mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) and
+  indexes closed while queries are running can no longer crash the JVM.  (Uwe Schindler)
+
 Improvements
 ---------------------
 * GITHUB#11778: Detailed part-of-speech information for particle(조사) and ending(어미) on Nori
@@ -243,7 +250,11 @@ Optimizations
 
 * GITHUB#12006: Do ints compare instead of ArrayUtil#compareUnsigned4 in LatlonPointQueries. (Guo Feng)
 
+* GITHUB#12011: Minor speedup to flushing long postings lists when an index
+  sort is configured. (Adrien Grand)
+
 * GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
+
 
 Other
 ---------------------

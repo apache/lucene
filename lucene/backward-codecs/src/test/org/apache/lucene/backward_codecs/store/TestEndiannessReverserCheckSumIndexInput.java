@@ -29,7 +29,7 @@ public class TestEndiannessReverserCheckSumIndexInput extends EndiannessReverser
   @Override
   protected IndexInput getEndiannessReverserInput(Directory dir, String name, IOContext context)
       throws IOException {
-    return new EndiannessReverserChecksumIndexInput(dir.openChecksumInput(name, context));
+    return new EndiannessReverserChecksumIndexInput(dir.openChecksumInput(name));
   }
 
   @Override

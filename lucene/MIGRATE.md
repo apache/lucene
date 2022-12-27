@@ -74,6 +74,12 @@ determine the number of valid ordinals for the currently-positioned document up-
 illegal to call `SortedSetDocValues#nextOrd()` more than `SortedSetDocValues#docValueCount()` times
 for the currently-positioned document (doing so will result in undefined behavior).
 
+### IOContext removed from Directory#openChecksumInput (GITHUB-12027)
+
+`Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
+`IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
+Callers should remove the parameter when calling this method.
+
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)

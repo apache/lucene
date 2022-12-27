@@ -45,7 +45,6 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
@@ -841,7 +840,7 @@ final class SimpleTextBKDWriter implements Closeable {
     if (writer instanceof OfflinePointWriter) {
       // We are reading from a temp file; go verify the checksum:
       String tempFileName = ((OfflinePointWriter) writer).name;
-      try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE)) {
+      try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
         CodecUtil.checkFooter(in, priorException);
       }
     }

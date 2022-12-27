@@ -106,8 +106,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   private Map<String, FileEntry> readEntries(
       byte[] segmentID, Directory dir, String entriesFileName) throws IOException {
     Map<String, FileEntry> mapping = null;
-    try (ChecksumIndexInput entriesStream =
-        dir.openChecksumInput(entriesFileName, IOContext.READONCE)) {
+    try (ChecksumIndexInput entriesStream = dir.openChecksumInput(entriesFileName)) {
       Throwable priorE = null;
       try {
         version =
