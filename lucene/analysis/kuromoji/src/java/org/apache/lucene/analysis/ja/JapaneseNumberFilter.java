@@ -212,23 +212,23 @@ public class JapaneseNumberFilter extends TokenFilter {
       }
     }
 
-    if (composedNumberToken == false) {
-      return moreTokens;
+    if (composedNumberToken) {
+      if (moreTokens) {
+        // We have read past all numerals and there are still tokens left, so
+        // capture the state of this token and emit it on our next incrementToken()
+        state = captureState();
+      }
+
+      String normalizedNumber = normalizeNumber(numeral.toString());
+
+      termAttr.setEmpty();
+      termAttr.append(normalizedNumber);
+      offsetAttr.setOffset(startOffset, endOffset);
+
+      numeral = new StringBuilder();
+      return true;
     }
-    if (moreTokens) {
-      // We have read past all numerals and there are still tokens left, so
-      // capture the state of this token and emit it on our next incrementToken()
-      state = captureState();
-    }
-
-    String normalizedNumber = normalizeNumber(numeral.toString());
-
-    termAttr.setEmpty();
-    termAttr.append(normalizedNumber);
-    offsetAttr.setOffset(startOffset, endOffset);
-
-    numeral = new StringBuilder();
-    return true;
+    return moreTokens;
   }
 
   @Override
