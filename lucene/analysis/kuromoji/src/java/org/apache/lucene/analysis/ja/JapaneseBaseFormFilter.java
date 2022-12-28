@@ -44,7 +44,7 @@ public final class JapaneseBaseFormFilter extends TokenFilter {
 
   @Override
   public boolean incrementToken() throws IOException {
-    if (input.incrementToken() == false) {
+    if (input.incrementToken()) {
       if (keywordAtt.isKeyword() == false) {
         String baseForm = basicFormAtt.getBaseForm();
         if (baseForm != null) {
