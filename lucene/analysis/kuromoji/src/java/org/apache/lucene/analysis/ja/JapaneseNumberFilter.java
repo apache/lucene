@@ -184,7 +184,7 @@ public class JapaneseNumberFilter extends TokenFilter {
 
     while (moreTokens && numeralTerm) {
 
-      if (!composedNumberToken) {
+      if (composedNumberToken == false) {
         startOffset = offsetAttr.startOffset();
         composedNumberToken = true;
       }
@@ -212,23 +212,23 @@ public class JapaneseNumberFilter extends TokenFilter {
       }
     }
 
-    if (composedNumberToken) {
-      if (moreTokens) {
-        // We have read past all numerals and there are still tokens left, so
-        // capture the state of this token and emit it on our next incrementToken()
-        state = captureState();
-      }
-
-      String normalizedNumber = normalizeNumber(numeral.toString());
-
-      termAttr.setEmpty();
-      termAttr.append(normalizedNumber);
-      offsetAttr.setOffset(startOffset, endOffset);
-
-      numeral = new StringBuilder();
-      return true;
+    if (composedNumberToken == false) {
+      return moreTokens;
     }
-    return moreTokens;
+    if (moreTokens) {
+      // We have read past all numerals and there are still tokens left, so
+      // capture the state of this token and emit it on our next incrementToken()
+      state = captureState();
+    }
+
+    String normalizedNumber = normalizeNumber(numeral.toString());
+
+    termAttr.setEmpty();
+    termAttr.append(normalizedNumber);
+    offsetAttr.setOffset(startOffset, endOffset);
+
+    numeral = new StringBuilder();
+    return true;
   }
 
   @Override

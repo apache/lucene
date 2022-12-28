@@ -57,14 +57,15 @@ public final class JapaneseKatakanaStemFilter extends TokenFilter {
 
   @Override
   public boolean incrementToken() throws IOException {
-    if (input.incrementToken()) {
-      if (!keywordAttr.isKeyword()) {
-        termAttr.setLength(stem(termAttr.buffer(), termAttr.length()));
-      }
-      return true;
-    } else {
+    if (input.incrementToken() == false) {
       return false;
     }
+
+    if (keywordAttr.isKeyword() == false) {
+      termAttr.setLength(stem(termAttr.buffer(), termAttr.length()));
+    }
+
+    return true;
   }
 
   private int stem(char[] term, int length) {
@@ -72,7 +73,7 @@ public final class JapaneseKatakanaStemFilter extends TokenFilter {
       return length;
     }
 
-    if (!isKatakana(term, length)) {
+    if (isKatakana(term, length) == false) {
       return length;
     }
 

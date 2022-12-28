@@ -118,8 +118,7 @@ public class JapaneseAnalyzer extends StopwordAnalyzerBase {
 
   @Override
   protected TokenStream normalize(String fieldName, TokenStream in) {
-    TokenStream result = new LowerCaseFilter(in);
-    return result;
+    return new LowerCaseFilter(in);
   }
 
   @Override

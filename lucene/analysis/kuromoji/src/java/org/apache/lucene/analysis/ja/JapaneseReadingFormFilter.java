@@ -45,27 +45,27 @@ public final class JapaneseReadingFormFilter extends TokenFilter {
 
   @Override
   public boolean incrementToken() throws IOException {
-    if (input.incrementToken()) {
-      String reading = readingAttr.getReading();
-
-      if (useRomaji) {
-        if (reading == null) {
-          // if it's an OOV term, just try the term text
-          buffer.setLength(0);
-          ToStringUtil.getRomanization(buffer, termAttr);
-          termAttr.setEmpty().append(buffer);
-        } else {
-          ToStringUtil.getRomanization(termAttr.setEmpty(), reading);
-        }
-      } else {
-        // just replace the term text with the reading, if it exists
-        if (reading != null) {
-          termAttr.setEmpty().append(reading);
-        }
-      }
-      return true;
-    } else {
+    if (input.incrementToken() == false) {
       return false;
     }
+
+    String reading = readingAttr.getReading();
+
+    if (useRomaji) {
+      if (reading == null) {
+        // if it's an OOV term, just try the term text
+        buffer.setLength(0);
+        ToStringUtil.getRomanization(buffer, termAttr);
+        termAttr.setEmpty().append(buffer);
+      } else {
+        ToStringUtil.getRomanization(termAttr.setEmpty(), reading);
+      }
+    } else {
+      // just replace the term text with the reading, if it exists
+      if (reading != null) {
+        termAttr.setEmpty().append(reading);
+      }
+    }
+    return true;
   }
 }

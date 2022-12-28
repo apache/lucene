@@ -69,27 +69,30 @@ public class JapanesePartOfSpeechStopFilterFactory extends TokenFilterFactory
 
   @Override
   public void inform(ResourceLoader loader) throws IOException {
-    if (stopTagFiles != null) {
-      stopTags = null;
-      CharArraySet cas = getWordSet(loader, stopTagFiles, false);
-      if (cas != null) {
-        stopTags = new HashSet<>();
-        for (Object element : cas) {
-          char[] chars = (char[]) element;
-          stopTags.add(new String(chars));
-        }
-      }
+    if (stopTagFiles == null) {
+      return;
+    }
+
+    stopTags = null;
+    CharArraySet cas = getWordSet(loader, stopTagFiles, false);
+    if (cas == null) {
+      return;
+    }
+
+    stopTags = new HashSet<>();
+    for (Object element : cas) {
+      char[] chars = (char[]) element;
+      stopTags.add(new String(chars));
     }
   }
 
   @Override
   public TokenStream create(TokenStream stream) {
     // if stoptags is null, it means the file is empty
-    if (stopTags != null) {
-      final TokenStream filter = new JapanesePartOfSpeechStopFilter(stream, stopTags);
-      return filter;
-    } else {
+    if (stopTags == null) {
       return stream;
     }
+
+    return new JapanesePartOfSpeechStopFilter(stream, stopTags);
   }
 }

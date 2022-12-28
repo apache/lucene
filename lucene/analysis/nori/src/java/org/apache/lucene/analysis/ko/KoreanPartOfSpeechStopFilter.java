@@ -91,6 +91,6 @@ public final class KoreanPartOfSpeechStopFilter extends FilteringTokenFilter {
   @Override
   protected boolean accept() {
     final POS.Tag leftPOS = posAtt.getLeftPOS();
-    return leftPOS == null || !stopTags.contains(leftPOS);
+    return leftPOS == null || stopTags.contains(leftPOS) == false;
   }
 }

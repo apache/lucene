@@ -78,7 +78,7 @@ final class Viterbi
   @Override
   protected int processUnknownWord(boolean anyMatches, Position posData) throws IOException {
     final char firstCharacter = (char) buffer.get(pos);
-    if (!anyMatches || characterDefinition.isInvoke(firstCharacter)) {
+    if (anyMatches == false || characterDefinition.isInvoke(firstCharacter)) {
 
       // Find unknown match:
       int characterId = characterDefinition.getCharacterClass(firstCharacter);

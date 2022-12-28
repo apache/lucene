@@ -98,20 +98,16 @@ public final class JapaneseCompletionFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     mayIncrementToken();
-    if (tokenGenerator.hasNext()) {
-      clearAttributes();
-      CompletionToken token = tokenGenerator.next();
-      termAttr.setEmpty().append(token.term);
-      if (token.isFirst) {
-        posIncAtt.setPositionIncrement(1);
-      } else {
-        posIncAtt.setPositionIncrement(0);
-      }
-      offsetAtt.setOffset(token.startOffset, token.endOffset);
-      return true;
-    } else {
+    if (tokenGenerator.hasNext() == false) {
       return false;
     }
+
+    clearAttributes();
+    CompletionToken token = tokenGenerator.next();
+    termAttr.setEmpty().append(token.term);
+    posIncAtt.setPositionIncrement(token.isFirst ? 1 : 0);
+    offsetAtt.setOffset(token.startOffset, token.endOffset);
+    return true;
   }
 
   private void mayIncrementToken() throws IOException {

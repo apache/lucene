@@ -18,13 +18,9 @@ package org.apache.lucene.analysis.ja.completion;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
@@ -39,14 +35,15 @@ import org.apache.lucene.util.CharsRefBuilder;
 public class KatakanaRomanizer {
   private static final String ROMAJI_MAP_FILE = "romaji_map.txt";
 
-  private static KatakanaRomanizer INSTANCE;
+  private static final KatakanaRomanizer INSTANCE;
 
   static {
     // Build romaji-map and keystroke arrays from the pre-defined Katakana-Romaji mapping file.
-    try (InputStreamReader is =
+    try (Reader is =
             new InputStreamReader(
-                KatakanaRomanizer.class.getResourceAsStream(ROMAJI_MAP_FILE),
-                Charset.forName("UTF-8"));
+                Objects.requireNonNull(
+                    KatakanaRomanizer.class.getResourceAsStream(ROMAJI_MAP_FILE)),
+                StandardCharsets.UTF_8);
         BufferedReader ir = new BufferedReader(is)) {
       Map<CharsRef, List<CharsRef>> romajiMap = new HashMap<>();
       String line;
@@ -87,7 +84,7 @@ public class KatakanaRomanizer {
   private final CharsRef[][] keystrokes;
   private final Map<CharsRef, List<CharsRef>> romajiMap;
 
-  /** Returns the singleton instance of {@code KatakanaRomenizer} */
+  /** Returns the singleton instance of {@link KatakanaRomanizer} */
   public static KatakanaRomanizer getInstance() {
     return INSTANCE;
   }

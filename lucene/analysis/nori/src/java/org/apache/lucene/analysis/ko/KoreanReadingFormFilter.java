@@ -38,14 +38,13 @@ public final class KoreanReadingFormFilter extends TokenFilter {
 
   @Override
   public boolean incrementToken() throws IOException {
-    if (input.incrementToken()) {
-      String reading = readingAtt.getReading();
-      if (reading != null) {
-        termAtt.setEmpty().append(reading);
-      }
-      return true;
-    } else {
+    if (input.incrementToken() == false) {
       return false;
     }
+    String reading = readingAtt.getReading();
+    if (reading != null) {
+      termAtt.setEmpty().append(reading);
+    }
+    return true;
   }
 }

@@ -375,18 +375,17 @@ public final class JapaneseTokenizer extends Tokenizer {
   public int calcNBestCost(String examples) {
     int maxDelta = 0;
     for (String example : examples.split("/")) {
-      if (!example.isEmpty()) {
-        String[] pair = example.split("-");
-        if (pair.length != 2) {
-          throw new RuntimeException("Unexpected example form: " + example + " (expected two '-')");
-        } else {
-          try {
-            maxDelta = Math.max(maxDelta, probeDelta(pair[0], pair[1]));
-          } catch (IOException e) {
-            throw new RuntimeException(
-                "Internal error calculating best costs from examples. Got ", e);
-          }
-        }
+      if (example.isEmpty()) {
+        continue;
+      }
+      String[] pair = example.split("-");
+      if (pair.length != 2) {
+        throw new RuntimeException("Unexpected example form: " + example + " (expected two '-')");
+      }
+      try {
+        maxDelta = Math.max(maxDelta, probeDelta(pair[0], pair[1]));
+      } catch (IOException e) {
+        throw new RuntimeException("Internal error calculating best costs from examples. Got ", e);
       }
     }
     return maxDelta;
