@@ -46,9 +46,13 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
         "MemorySegmentIndexInputProvider", MMapDirectory.PROVIDER.getClass().getSimpleName());
   }
 
+  private static boolean hasMemorySegmentAPI() {
+    return Class.forName(Object.class.getModule(), "java.lang.foreign.MemorySegment") != null;
+  }
+
   public void testCorrectImplementation() {
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion == 19) {
+    if (runtimeVersion == 19 && hasMemorySegmentAPI()) {
       assertTrue(
           "on Java 19 we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
           isMemorySegmentImpl());

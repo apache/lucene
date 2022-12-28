@@ -350,7 +350,21 @@ public class MMapDirectory extends FSDirectory {
   private static MMapIndexInputProvider lookupProvider() {
     final var lookup = MethodHandles.lookup();
     final int runtimeVersion = Runtime.version().feature();
+    final var log = Logger.getLogger(lookup.lookupClass().getName());
     if (runtimeVersion == 19) {
+      // do sanity checks before loading our provider:
+      try {
+        lookup.findClass("java.lang.foreign.MemorySegment");
+      } catch (@SuppressWarnings("unused")
+          ClassNotFoundException
+          | IllegalAccessException
+          | Error e) {
+        log.warning(
+            "Apache Lucene has no access to preview MemorySegment API of Java "
+                + runtimeVersion
+                + ". To make full use of MMapDirectory, please use a different JVM vendor.");
+        return new MappedByteBufferIndexInputProvider();
+      }
       try {
         final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
         // we use method handles, so we do not need to deal with setAccessible as we have private
@@ -371,7 +385,6 @@ public class MMapDirectory extends FSDirectory {
             "MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
       }
     } else if (runtimeVersion >= 20) {
-      var log = Logger.getLogger(lookup.lookupClass().getName());
       log.warning(
           "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
     }

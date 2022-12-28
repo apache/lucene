@@ -210,12 +210,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
                       loader.getResource(
                           "META-INF/versions/19/org/apache/lucene/store/MemorySegmentIndexInput.class"))
                   .isNotNull();
-
-              if (Runtime.version().feature() == 19) {
-                Assertions.assertThat(
-                        loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
-                    .isNotNull();
-              }
             });
   }
 
