@@ -137,7 +137,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       final String metaStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION);
-      metaIn = d.openChecksumInput(metaStreamFN, IOContext.READONCE);
+      metaIn = d.openChecksumInput(metaStreamFN);
       CodecUtil.checkIndexHeader(
           metaIn,
           INDEX_CODEC_NAME + "Meta",
