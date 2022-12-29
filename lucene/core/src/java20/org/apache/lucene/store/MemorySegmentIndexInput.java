@@ -36,13 +36,13 @@ import org.apache.lucene.util.ArrayUtil;
 abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
-      ValueLayout.JAVA_SHORT.withOrder(ByteOrder.LITTLE_ENDIAN).withBitAlignment(8);
+      ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   static final ValueLayout.OfInt LAYOUT_LE_INT =
-      ValueLayout.JAVA_INT.withOrder(ByteOrder.LITTLE_ENDIAN).withBitAlignment(8);
+      ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   static final ValueLayout.OfLong LAYOUT_LE_LONG =
-      ValueLayout.JAVA_LONG.withOrder(ByteOrder.LITTLE_ENDIAN).withBitAlignment(8);
+      ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
-      ValueLayout.JAVA_FLOAT.withOrder(ByteOrder.LITTLE_ENDIAN).withBitAlignment(8);
+      ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
 
   final long length;
   final long chunkSizeMask;
