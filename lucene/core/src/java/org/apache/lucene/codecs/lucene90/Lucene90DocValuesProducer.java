@@ -42,7 +42,6 @@ import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
@@ -83,7 +82,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     merging = false;
 
     // read in the entries from the metadata file.
-    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName, IOContext.READONCE)) {
+    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName)) {
       Throwable priorE = null;
 
       try {

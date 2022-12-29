@@ -266,7 +266,7 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
 
     final String seedFileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, SEED_EXT);
-    final ChecksumIndexInput in = state.directory.openChecksumInput(seedFileName, state.context);
+    final ChecksumIndexInput in = state.directory.openChecksumInput(seedFileName);
     CodecUtil.checkIndexHeader(
         in, "MockRandomSeed", 0, 0, state.segmentInfo.getId(), state.segmentSuffix);
     final long seed = in.readLong();

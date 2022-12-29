@@ -567,7 +567,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       output.writeBytes(bytes, 0, bytes.length);
       output.close();
 
-      ChecksumIndexInput input = dir.openChecksumInput("checksum", newIOContext(random()));
+      ChecksumIndexInput input = dir.openChecksumInput("checksum");
       input.skipBytes(numBytes);
 
       assertEquals(expected.getValue(), input.getChecksum());
