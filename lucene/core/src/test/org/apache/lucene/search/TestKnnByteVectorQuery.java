@@ -81,7 +81,6 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     assertEquals(targetQueryVector, q1.getTargetCopy());
     assertFalse(targetQueryVector == q1.getTargetCopy());
     assertFalse(targetQueryVector.bytes == q1.getTargetCopy().bytes);
-
   }
 
   @Override
