@@ -251,7 +251,7 @@ public abstract class RangeFieldQuery extends Query {
       }
 
       @Override
-      boolean matches(
+      public boolean matches(
           byte[] queryPackedValue,
           byte[] packedValue,
           int numDims,
@@ -307,7 +307,11 @@ public abstract class RangeFieldQuery extends Query {
         int dim,
         ByteArrayComparator comparator);
 
-    boolean matches(
+    /**
+     * Compares every dim for 2 encoded ranges and returns true if all dims match. Matching
+     * implementation is based on the QueryType.
+     */
+    public boolean matches(
         byte[] queryPackedValue,
         byte[] packedValue,
         int numDims,
