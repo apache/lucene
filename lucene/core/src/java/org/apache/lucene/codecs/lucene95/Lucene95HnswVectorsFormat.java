@@ -109,6 +109,20 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
 
+  /**
+   * A maximum configurable maximum max conn.
+   *
+   * <p>NOTE: We eagerly populate `float[MAX_CONN*2]` and `int[MAX_CONN*2]`, so exceptionally large
+   * numbers here will use an inordinate amount of heap
+   */
+  public static final int MAXIMUM_MAX_CONN = 512;
+  /**
+   * The maximum size of the queue to maintain while searching during graph construction This
+   * maximum value preserves the ratio of the DEFAULT_BEAM_WIDTH/DEFAULT_MAX_CONN i.e. `6.25 * 16 =
+   * 3200`
+   */
+  public static final int MAXIMUM_BEAM_WIDTH = 3200;
+
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
   /**
@@ -137,17 +151,17 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene95HnswVectorsFormat(int maxConn, int beamWidth) {
     super("Lucene95HnswVectorsFormat");
-    if (maxConn <= 0 || maxConn > HnswGraphBuilder.MAXIMUM_MAX_CONN) {
+    if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be postive and less than or equal to"
-              + HnswGraphBuilder.MAXIMUM_MAX_CONN
+              + MAXIMUM_MAX_CONN
               + "; maxConn="
               + maxConn);
     }
-    if (beamWidth <= 0 || beamWidth > HnswGraphBuilder.MAXIMUM_BEAM_WIDTH) {
+    if (beamWidth <= 0 || beamWidth > MAXIMUM_BEAM_WIDTH) {
       throw new IllegalArgumentException(
           "beamWidth must be postive and less than or equal to"
-              + HnswGraphBuilder.MAXIMUM_BEAM_WIDTH
+              + MAXIMUM_BEAM_WIDTH
               + "; beamWidth="
               + beamWidth);
     }
