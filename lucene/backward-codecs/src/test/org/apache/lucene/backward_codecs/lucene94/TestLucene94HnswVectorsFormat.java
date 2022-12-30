@@ -19,24 +19,23 @@ package org.apache.lucene.backward_codecs.lucene94;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene94HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
+    return new Lucene94RWCodec();
   }
 
   public void testToString() {
-    Lucene94Codec customCodec =
-        new Lucene94Codec() {
+    Lucene94RWCodec customCodec =
+        new Lucene94RWCodec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene94HnswVectorsFormat(10, 20);
+            return new Lucene94RWHnswVectorsFormat(10, 20);
           }
         };
     String expectedString =
-        "Lucene94HnswVectorsFormat(name=Lucene94HnswVectorsFormat, maxConn=10, beamWidth=20)";
+        "Lucene94RWHnswVectorsFormat(name=Lucene94RWHnswVectorsFormat, maxConn=10, beamWidth=20)";
     assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
   }
 }

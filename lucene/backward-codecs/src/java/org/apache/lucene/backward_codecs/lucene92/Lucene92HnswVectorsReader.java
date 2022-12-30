@@ -88,7 +88,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene92HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
-    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
+    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
         versionMeta =
@@ -440,12 +440,12 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public int numLevels() throws IOException {
+    public int numLevels() {
       return numLevels;
     }
 
     @Override
-    public int entryNode() throws IOException {
+    public int entryNode() {
       return entryNode;
     }
 

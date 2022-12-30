@@ -20,6 +20,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Counter;
@@ -99,30 +100,38 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     if (finalValues == null) {
       finalValues = pending.build();
     }
+
+    dvConsumer.addNumericField(
+        fieldInfo, getDocValuesProducer(fieldInfo, finalValues, docsWithField, sortMap));
+  }
+
+  static DocValuesProducer getDocValuesProducer(
+      FieldInfo writerFieldInfo,
+      PackedLongValues values,
+      DocsWithFieldSet docsWithField,
+      Sorter.DocMap sortMap)
+      throws IOException {
     final NumericDVs sorted;
     if (sortMap != null) {
-      NumericDocValues oldValues =
-          new BufferedNumericDocValues(finalValues, docsWithField.iterator());
-      sorted = sortDocValues(state.segmentInfo.maxDoc(), sortMap, oldValues);
+      NumericDocValues oldValues = new BufferedNumericDocValues(values, docsWithField.iterator());
+      sorted = sortDocValues(sortMap.size(), sortMap, oldValues);
     } else {
       sorted = null;
     }
 
-    dvConsumer.addNumericField(
-        fieldInfo,
-        new EmptyDocValuesProducer() {
-          @Override
-          public NumericDocValues getNumeric(FieldInfo fieldInfo) {
-            if (fieldInfo != NumericDocValuesWriter.this.fieldInfo) {
-              throw new IllegalArgumentException("wrong fieldInfo");
-            }
-            if (sorted == null) {
-              return new BufferedNumericDocValues(finalValues, docsWithField.iterator());
-            } else {
-              return new SortingNumericDocValues(sorted);
-            }
-          }
-        });
+    return new EmptyDocValuesProducer() {
+      @Override
+      public NumericDocValues getNumeric(FieldInfo fieldInfo) {
+        if (fieldInfo != writerFieldInfo) {
+          throw new IllegalArgumentException("wrong fieldInfo");
+        }
+        if (sorted == null) {
+          return new BufferedNumericDocValues(values, docsWithField.iterator());
+        } else {
+          return new SortingNumericDocValues(sorted);
+        }
+      }
+    };
   }
 
   // iterates over the values we have in ram

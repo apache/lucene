@@ -138,7 +138,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
         if (name.equals(victim) == false) {
           dirCopy.copyFrom(dir, name, name, IOContext.DEFAULT);
         } else {
-          try (ChecksumIndexInput in = dir.openChecksumInput(name, IOContext.DEFAULT)) {
+          try (ChecksumIndexInput in = dir.openChecksumInput(name)) {
             try {
               CodecUtil.checkFooter(in);
               // In some rare cases, the codec footer would still appear as correct even though the

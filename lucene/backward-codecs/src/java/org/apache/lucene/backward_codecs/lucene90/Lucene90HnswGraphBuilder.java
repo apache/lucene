@@ -57,7 +57,7 @@ public final class Lucene90HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private RandomAccessVectorValues buildVectors;
+  private final RandomAccessVectorValues buildVectors;
 
   /**
    * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense

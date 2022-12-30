@@ -45,7 +45,7 @@ public final class EndiannessReverserUtil {
   /** Open a checksum index input */
   public static ChecksumIndexInput openChecksumInput(
       Directory directory, String name, IOContext context) throws IOException {
-    return new EndiannessReverserChecksumIndexInput(directory.openChecksumInput(name, context));
+    return new EndiannessReverserChecksumIndexInput(directory.openChecksumInput(name));
   }
 
   /** Open an index output */
