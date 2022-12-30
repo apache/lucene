@@ -220,6 +220,8 @@ Bug Fixes
 * GITHUB#12058: Fix detection of Hotspot in TestRamUsageEstimator so it works with OpenJ9.
   (Uwe Schindler)
 
+* GITHUB#12046: Out of boundary in CombinedFieldQuery#addTerm. (Lu Xugang)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
