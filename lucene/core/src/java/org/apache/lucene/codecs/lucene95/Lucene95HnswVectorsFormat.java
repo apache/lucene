@@ -115,13 +115,13 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
    * <p>NOTE: We eagerly populate `float[MAX_CONN*2]` and `int[MAX_CONN*2]`, so exceptionally large
    * numbers here will use an inordinate amount of heap
    */
-  public static final int MAXIMUM_MAX_CONN = 512;
+  private static final int MAXIMUM_MAX_CONN = 512;
   /**
    * The maximum size of the queue to maintain while searching during graph construction This
    * maximum value preserves the ratio of the DEFAULT_BEAM_WIDTH/DEFAULT_MAX_CONN i.e. `6.25 * 16 =
    * 3200`
    */
-  public static final int MAXIMUM_BEAM_WIDTH = 3200;
+  private static final int MAXIMUM_BEAM_WIDTH = 3200;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
