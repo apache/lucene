@@ -38,10 +38,32 @@ import org.apache.lucene.util.InfoStream;
  */
 public final class HnswGraphBuilder<T> {
 
-  /** Default random seed for level generation * */
-  private static final long DEFAULT_RAND_SEED = 42;
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
+
+  /** Default number of maximum connections per node */
+  public static final int DEFAULT_MAX_CONN = 16;
+  /**
+   * Default number of the size of the queue maintained while searching during a graph construction.
+   */
+  public static final int DEFAULT_BEAM_WIDTH = 100;
+
+  /**
+   * A maximum configurable maximum max conn.
+   *
+   * <p>NOTE: We eagerly populate `float[MAX_CONN*2]` and `int[MAX_CONN*2]`, so exceptionally large
+   * numbers here will use an inordinate amount of heap
+   */
+  public static final int MAXIMUM_MAX_CONN = 512;
+  /**
+   * The maximum size of the queue to maintain while searching during graph construction This
+   * maximum value preserves the ratio of the DEFAULT_BEAM_WIDTH/DEFAULT_MAX_CONN i.e. `6.25 * 16 =
+   * 3200`
+   */
+  public static final int MAXIMUM_BEAM_WIDTH = 3200;
+
+  /** Default random seed for level generation * */
+  private static final long DEFAULT_RAND_SEED = 42;
 
   /** Random seed for level generation; public to expose for testing * */
   public static long randSeed = DEFAULT_RAND_SEED;

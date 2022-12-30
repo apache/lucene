@@ -27,6 +27,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 
 /**
  * Lucene 9.5 vector format, which encodes numeric vector values and an optional associated graph
@@ -108,45 +109,24 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
 
-  /**
-   * A maximum configurable maximum max conn.
-   *
-   * <p>NOTE: We eagerly populate `float[MAX_CONN*2]` and `int[MAX_CONN*2]`, so exceptionally large
-   * numbers here will use an inordinate amount of heap
-   */
-  private static final int MAXIMUM_MAX_CONN = 512;
-  /** Default number of maximum connections per node */
-  public static final int DEFAULT_MAX_CONN = 16;
-
-  /**
-   * The maximum size of the queue to maintain while searching during graph construction This
-   * maximum value preserves the ratio of the DEFAULT_BEAM_WIDTH/DEFAULT_MAX_CONN i.e. `6.25 * 16 =
-   * 3200`
-   */
-  private static final int MAXIMUM_BEAM_WIDTH = 3200;
-  /**
-   * Default number of the size of the queue maintained while searching during a graph construction.
-   */
-  public static final int DEFAULT_BEAM_WIDTH = 100;
-
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
-   * {@link Lucene95HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
+   * {@link HnswGraphBuilder#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
   private final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene95HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
-   * HnswGraph} for details.
+   * node. Defaults to to {@link HnswGraphBuilder#DEFAULT_BEAM_WIDTH}. See {@link HnswGraph} for
+   * details.
    */
   private final int beamWidth;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene95HnswVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH);
+    this(HnswGraphBuilder.DEFAULT_MAX_CONN, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
   }
 
   /**
@@ -157,17 +137,17 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene95HnswVectorsFormat(int maxConn, int beamWidth) {
     super("Lucene95HnswVectorsFormat");
-    if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
+    if (maxConn <= 0 || maxConn > HnswGraphBuilder.MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be postive and less than or equal to"
-              + MAXIMUM_MAX_CONN
+              + HnswGraphBuilder.MAXIMUM_MAX_CONN
               + "; maxConn="
               + maxConn);
     }
-    if (beamWidth <= 0 || beamWidth > MAXIMUM_BEAM_WIDTH) {
+    if (beamWidth <= 0 || beamWidth > HnswGraphBuilder.MAXIMUM_BEAM_WIDTH) {
       throw new IllegalArgumentException(
           "beamWidth must be postive and less than or equal to"
-              + MAXIMUM_BEAM_WIDTH
+              + HnswGraphBuilder.MAXIMUM_BEAM_WIDTH
               + "; beamWidth="
               + beamWidth);
     }
