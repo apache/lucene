@@ -16,6 +16,14 @@
  */
 package org.apache.lucene.facet.rangeonrange;
 
+import static org.apache.lucene.document.DoubleRange.verifyAndEncode;
+import static org.apache.lucene.document.LongRange.verifyAndEncode;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleRangeDocValuesField;
 import org.apache.lucene.document.LongRangeDocValuesField;
@@ -45,15 +53,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.apache.lucene.document.DoubleRange.verifyAndEncode;
-import static org.apache.lucene.document.LongRange.verifyAndEncode;
 
 public class TestRangeOnRangeFacetCounts extends FacetTestCase {
 
