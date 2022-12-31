@@ -16,20 +16,8 @@
  */
 package org.apache.lucene.search;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
-
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -57,6 +45,19 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.automaton.Operations;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 
 public class TestBooleanQuery extends LuceneTestCase {
 
@@ -771,9 +772,6 @@ public class TestBooleanQuery extends LuceneTestCase {
     Query builtQuery = q.build();
 
     assertEquals(searcher.count(builtQuery), numMatchingDocs);
-    final Weight weight = searcher.createWeight(builtQuery, ScoreMode.COMPLETE, 1);
-    // tests that the Weight#count API returns -1 instead of returning the total number of matches
-    assertEquals(weight.count(reader.leaves().get(0)), -1);
 
     IOUtils.close(reader, w, dir);
   }
