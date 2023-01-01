@@ -128,7 +128,7 @@ Optimizations
 * GITHUB#11900: BloomFilteringPostingsFormat now uses multiple hash functions
   in order to achieve the same false positive probability with less memory.
   (Jean-François Boeuf)
-  
+
 * GITHUB#12118: Optimize FeatureQuery to TermQuery & weight when scoring is not required. (Ben Trent, Robert Muir)
 
 * GITHUB#12128, GITHUB#12133: Speed up docvalues set query by making use of sortedness. (Robert Muir, Uwe Schindler)
@@ -276,6 +276,9 @@ Improvements
 
 * GITHUB#12070: Compound file creation is no longer subject to merge throttling.
   (Adrien Grand)
+
+* GITHUB#12055: Better skipping support for multi-term queries that have a
+  FILTER rewrite. (Adrien Grand)
 
 Bug Fixes
 ---------------------
