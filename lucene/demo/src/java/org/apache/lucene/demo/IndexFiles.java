@@ -28,15 +28,17 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongField;
-import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -234,8 +236,8 @@ public class IndexFiles implements AutoCloseable {
       // field that is indexed (i.e. searchable), but don't tokenize
       // the field into separate words and don't index term frequency
       // or positional information:
-      Field pathField = new StringField("path", file.toString(), Field.Store.YES);
-      doc.add(pathField);
+      doc.add(new KeywordField("path", file.toString()));
+      doc.add(new StoredField("path", file.toString()));
 
       // Add the last modified date of the file a field named "modified".
       // Use a LongField that is indexed with points and doc values, and is efficient
