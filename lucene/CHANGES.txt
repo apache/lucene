@@ -217,6 +217,9 @@ Bug Fixes
 
 * GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
 
+* GITHUB#12058: Fix detection of Hotspot in TestRamUsageEstimator so it works with OpenJ9.
+  (Uwe Schindler)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
