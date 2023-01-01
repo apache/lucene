@@ -329,9 +329,6 @@ public class Field implements IndexableField {
               + fieldsData.getClass().getSimpleName()
               + " to BytesRef");
     }
-    if (type.indexOptions() != IndexOptions.NONE) {
-      throw new IllegalArgumentException("cannot set a BytesRef value on an indexed field");
-    }
     if (value == null) {
       throw new IllegalArgumentException("value must not be null");
     }
